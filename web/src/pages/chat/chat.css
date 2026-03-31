@@ -69,6 +69,21 @@
   grid-template-columns: 1fr;
 }
 
+/* Ensure correct placement when columns flip */
+.vt-chat-row-mine .vt-chat-avatar {
+  grid-column: 2;
+  justify-self: end;
+}
+
+.vt-chat-row-mine .vt-chat-bubble {
+  grid-column: 1;
+  justify-self: end;
+}
+
+.vt-chat-row-system .vt-chat-bubble {
+  grid-column: 1;
+}
+
 .vt-chat-row-selected .vt-chat-bubble {
   outline: 2px solid color-mix(in oklab, var(--primary) 25%, transparent);
 }
@@ -91,6 +106,8 @@
   padding: 10px 12px;
   background: var(--surface);
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+  width: fit-content;
+  max-width: min(680px, 86%);
 }
 
 .vt-chat-row-mine .vt-chat-bubble {
