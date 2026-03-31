@@ -19,7 +19,7 @@ Botón de Acción: "Enviar código" (Azul Primario).
 
 Nota Legal: Texto pequeño debajo indicando que se enviará un SMS (Gris suave).
 
-B. Pantalla 2: Verificación de PIN (OTP)
+Pantalla 2: Verificación de PIN (OTP)
 Visual: 4 o 6 recuadros individuales (slots) para los números.
 
 Comportamiento: El foco salta automáticamente al siguiente cuadro al escribir.
@@ -28,7 +28,7 @@ Temporizador: "Reenviar código en 00:59" en color gris. Si llega a cero, el tex
 
 Acción de Error: Si el código es incorrecto, los bordes de los cuadros se iluminan en Rojo con una pequeña vibración (haptic feedback).
 
-## 2. Vista de Inicio (Home) y Ofertas
+## Vista de Inicio (Home) y Ofertas
 En forma de scroll mostrando ofertas afines a los intereses del usuario, se muestra contenido con el siguiente formato:
 Cada tarjeta de producto o servicio debe presentar una estructura estandarizada:
 * **Visualización:** Imagen principal, título, precio, ubicacion del producto o del servicio y etiquetas de categoría.
@@ -38,7 +38,7 @@ Cada tarjeta de producto o servicio debe presentar una estructura estandarizada:
     2.  **Botón "Comprar":** Inicializa automáticamente un chat privado entre las dos entidades (comprador y vendedor).
 
 
-## 2. Módulo de Chat
+## Módulo de Chat
 El chat debe soportar múltiples tipos de contenido con una jerarquía visual clara:
 2.  **Inicio de Chat:** Al abrir una conversación entre comprador y vendedor, el sistema debe resaltar las credenciales del negocio y la disponibilidad de transporte para generar confianza desde el primer mensaje.
 
@@ -97,7 +97,7 @@ El chat debe tener una opcion pare revisar todos los contratos emitidos, con un 
 * **Formulario de Acuerdo:** Se despliega un formulario donde se definen los términos. El comprador debe marcar explícitamente su conformidad con el precio del transporte antes de proceder.
 
 
-## 3. Interfaz de Reels (Experiencia Inmersiva)
+## Interfaz de Reels (Experiencia Inmersiva)
 * **Navegación:** Video a pantalla completa con scroll vertical.
 * **Componente "Like/Dislike" (La Barra de Confianza):**
     * **Estado inicial:** Un círculo pequeño ("pelotica") de color neutro o según la tendencia actual del video.
@@ -127,7 +127,7 @@ Al iniciar, el sistema ejecuta una comprobacion silenciosa de reputacion:
     - En Revision: El video queda como "Pendiente". Se notifica al usuario que el contenido no parece
     comercial y se advierte sobre posibles bajas en su Barra de Confianza
 
-## 4. Perfiles de Negocio y Verificación
+## Perfiles de Negocio y Verificación
 * **Estructura del Perfil:**
     * **Header:** Nombre de la empresa y categorías (soporte multi-categoría).
     * **Badge de Verificación:** Icono distintivo para negocios con credenciales validadas por soporte. Si no hay credenciales, mostrar etiqueta de "No verificado".
@@ -149,7 +149,7 @@ Al iniciar, el sistema ejecuta una comprobacion silenciosa de reputacion:
 
 La hoja de ruta contempla el formulario siguiente:
 
-### B. La Hoja de Ruta (Roadmap)
+### La Hoja de Ruta (Roadmap)
 * **Campos del Formulario:**
     * Tramos del recorrido.
     * Ubicaciones de origen y destino por tramo.
@@ -166,20 +166,20 @@ Una vez emitido esta hoja ruta y aprobada entre las partes, procede a ser public
 
 * **Visualización:** La hoja de ruta se renderiza como un objeto interactivo en la oferta del transportista, y este objeto siempre puede ser consultado por el transportista en el chat
 
-### 9. Gestión de Relevos y Cambio de Propiedad (Owner)
+## Gestión de Relevos y Cambio de Propiedad (Owner)
 
-### A. Activación del Relevo (Interfaz del Transportista Actual)
+### Activación del Relevo (Interfaz del Transportista Actual)
 * **Botón de Acción:** Dentro del chat grupal, el Transportista A tiene un botón especial: **"Transferir Responsabilidad / Relevo"**.
 * **Selector de Nuevo Owner:** Se despliega una lista de los usuarios presentes en el chat que tienen rol de "Transportista". 
 * **Motivo del Relevo:** Un menú rápido (Ej: Avería, Cambio de tramo, Emergencia) para dejar constancia en el registro.
 
-### B. El "Handshake" (Entrega y Recepción)
+### El "Handshake" (Entrega y Recepción)
 * **Validación de Telemetría:** El sistema captura automáticamente la **ubicación GPS** y la **hora exacta** de ambos transportistas para certificar el punto de encuentro.
 * **Registro Inalterable:** Se genera un mensaje de sistema con fondo gris (estilo "Solo lectura") que dice:
     > 📜 **Registro de Cambio de Responsabilidad:** > La carga ha pasado de [Transportista A] a [Transportista B]. 
     > **Ubicación:** [Coordenadas/Mapa] | **Hora:** [HH:MM] | **Consenso:** [ID de Transacción].
 
-## 10. Actualización del Timeline (Header del Chat)
+### Actualización del Timeline (Header del Chat)
 * **Reflejo Visual:** El nodo del tramo actual en la barra superior debe actualizarse inmediatamente. 
 * **Iconografía:** El icono del transportista en el nodo activo cambia a la foto de perfil del **Nuevo Owner**, asegurando que el comprador sepa exactamente quién tiene su mercancía en cada segundo.
 
@@ -187,14 +187,14 @@ Una vez emitido esta hoja ruta y aprobada entre las partes, procede a ser public
 1.  **Jerarquía de Alerta:** El mensaje de "Cambio de Responsabilidad" debe verse diferente a un mensaje de chat común; debe parecer un **Certificado Digital** dentro del flujo de la conversación.
 
 
-### C. Sistema de Pagos y Notificaciones
+### Sistema de Pagos y Notificaciones
 * **Pago:** En el chat existe una opcion de realizar pago, al usuario clickear aqui, salta un modal con un warning que dice que se esta generando la factura del pago. Al estar creada esta factura, comienza el flujo para realizar el pago, la factura se emite en un siguiente paso y se muestran 2 botones para estar de acuerdo o consultar a soporte en caso de problemas. Si el usuario decide continuar, se depligan las opciones de pago, como moneda de pago, escoger targeta asociada a la plataforma y el resto de las credenciales necesarias para cada pasarela de pago.
 * **Consulta a soporte para el pago**: Se envia a soporte una descripcion de issue, y se cancela el pago hasta nuevo aviso.
 * **Confirmación de Pago:** Una vez que el comprador realiza el pago, el sistema emite un **"Warning de Notificación"** global.
 * **Alcance:** Este aviso llega a todos los participantes del chat (vendedor y todos los transportistas de la hoja de ruta) para confirmar que la operación está financiada y lista para ejecución.
 
 
-## Barra de confianza
+## Barra de confianza(Top side)
 - En la parte superior de la pantalla se muestra la barra de confianza del usuario, esta tiene forma de gradiente que a medida que se hace mas verde, indica mas confianza y a medida que se hace mas roja, es menos confiable, debe tener un numero en el centrado en la barra indicando un numero entre [100, -inf], tambien hay un diferenciador de umbral hacia lo negativo, que si se ubica por debajo, el usuario pierde acceso a interaccion en la plataforma y solo se permite acceso al pago de su mensualidad. 
 
 - El usuario debe recibir un warning en forma de modal siendole comunicado su situacion en caso de que baje del umbral o hacienda del umbral, cada accion exitosa en al plataforma se muestra en una acceso de su barra de confianza con una animacion.
@@ -204,16 +204,16 @@ Una vez emitido esta hoja ruta y aprobada entre las partes, procede a ser public
 
 ## Salida expontanea del chat
 
-Si antes del cumplimiento de un contrato un usuario sale del chat, se emite una alerta a este usuario pidiendole una razon de porque salio del chat y comunicandole que la accion sera investigada y puediera afectar a su barra de confianza.
+Si antes del cumplimiento de un contrato un usuario sale del chat, se emite una alerta a este usuario pidiendole una razon de porque salio del chat y comunicandole que la accion sera investigada y pudiera afectar a su barra de confianza.
 
-## 4. Sistema de Notificaciones
+## Sistema de Notificaciones
 * **Prioridad Alta:** Las respuestas a preguntas de productos y las confirmaciones de pago aparecen como banners en la **vista superior**.
 * **Historial:** Un centro de notificaciones donde se guarde el registro de estos eventos críticos.
 
 
-Notas Técnicas para el Diseñador (Figma)
-Estados de Carga: Diseñar un "spinner" o barra de progreso discreta para cuando el sistema verifica el código SMS o sube la foto de perfil.
+## Notas Técnicas para el Diseñador (Figma)
+- Estados de Carga: Diseñar un "spinner" o barra de progreso discreta para cuando el sistema verifica el código SMS o sube la foto de perfil.
 
-Teclado Adaptativo: Asegurar que el diseño de los formularios deje espacio suficiente para que el teclado del teléfono no tape el botón de "Siguiente".
+- Teclado Adaptativo: Asegurar que el diseño de los formularios deje espacio suficiente para que el teclado del teléfono no tape el botón de "Siguiente".
 
-Transiciones: Usar un deslizamiento lateral (slide) entre estas tres pantallas para dar sensación de avance en un proceso lineal.
+- Transiciones: Usar un deslizamiento lateral (slide) entre estas tres pantallas para dar sensación de avance en un proceso lineal.

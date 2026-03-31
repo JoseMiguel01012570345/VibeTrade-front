@@ -1,0 +1,89 @@
+.vt-storepage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vt-storehead-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vt-store-name {
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: -0.03em;
+}
+
+.vt-store-badge2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--bg) 45%, var(--surface));
+}
+
+.vt-store-badge2-ok {
+  background: color-mix(in oklab, var(--good) 12%, transparent);
+  color: color-mix(in oklab, var(--good) 85%, var(--text));
+}
+
+.vt-store-badge2-no {
+  background: color-mix(in oklab, var(--bad) 10%, transparent);
+  color: color-mix(in oklab, var(--bad) 80%, var(--text));
+}
+
+.vt-store-transport {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.vt-storegrid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+}
+
+.vt-storeoffer {
+  grid-column: span 12;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface);
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 0;
+}
+
+@media (min-width: 720px) {
+  .vt-storeoffer {
+    grid-column: span 6;
+  }
+}
+
+.vt-storeoffer img {
+  width: 120px;
+  height: 100%;
+  min-height: 90px;
+  object-fit: cover;
+  display: block;
+}
+
+.vt-storeoffer-body {
+  padding: 10px 12px;
+}
+
+.vt-storeoffer-title {
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+

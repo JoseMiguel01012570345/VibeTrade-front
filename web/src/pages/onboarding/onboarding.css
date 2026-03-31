@@ -1,0 +1,212 @@
+.vt-onb-wrap {
+  width: min(520px, 100%);
+  margin: 18px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vt-onb-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vt-onb-card {
+  background: var(--surface);
+}
+
+.vt-onb-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.vt-onb-prefix {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--bg) 35%, var(--surface));
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.vt-onb-legal {
+  margin-top: 8px;
+  font-size: 12px;
+  color: color-mix(in oklab, var(--muted) 85%, var(--text));
+}
+
+.vt-onb-action {
+  width: 100%;
+  padding: 12px 12px;
+}
+
+.vt-onb-foot {
+  display: flex;
+  justify-content: center;
+}
+
+.vt-country {
+  position: relative;
+}
+
+.vt-country-btn {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 12px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vt-country-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.vt-country-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.vt-country-input {
+  border: 0;
+  outline: 0;
+  width: 100%;
+}
+
+.vt-country-list {
+  max-height: 260px;
+  overflow: auto;
+}
+
+.vt-country-item {
+  width: 100%;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 10px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vt-country-item:hover {
+  background: color-mix(in oklab, var(--primary) 6%, transparent);
+}
+
+.vt-country-item-active {
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+}
+
+.vt-country-flag {
+  font-size: 16px;
+}
+
+.vt-country-dial {
+  font-weight: 800;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.vt-country-name {
+  font-weight: 700;
+}
+
+.vt-country-chev {
+  color: var(--muted);
+  transition: transform 120ms ease;
+}
+
+.vt-rot {
+  transform: rotate(180deg);
+}
+
+.vt-otp {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.vt-otp-slot {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 900;
+  padding: 12px 0;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  outline: none;
+}
+
+.vt-otp-slot:focus {
+  border-color: color-mix(in oklab, var(--primary) 70%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 18%, transparent);
+}
+
+.vt-otp-error .vt-otp-slot {
+  border-color: color-mix(in oklab, var(--bad) 70%, var(--border));
+}
+
+.vt-otp-error {
+  animation: vt-shake 450ms ease;
+}
+
+@keyframes vt-shake {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-5px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.vt-onb-resend {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: default;
+  padding: 8px 0 0;
+}
+
+.vt-onb-resend-active {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 800;
+}
+

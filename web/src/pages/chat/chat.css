@@ -1,0 +1,241 @@
+.vt-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vt-chat-head-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vt-chat-head-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.vt-chat-title {
+  font-weight: 950;
+  letter-spacing: -0.03em;
+}
+
+.vt-chat-sub {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vt-chat-warn {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: color-mix(in oklab, #f59e0b 10%, var(--surface));
+}
+
+.vt-chat-warn-text {
+  font-size: 13px;
+  color: color-mix(in oklab, var(--text) 75%, var(--muted));
+}
+
+.vt-chat-list {
+  height: min(62vh, 560px);
+  overflow: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--bg) 60%, var(--surface)), var(--surface));
+}
+
+.vt-chat-row {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 10px;
+  align-items: end;
+}
+
+.vt-chat-row-mine {
+  grid-template-columns: 1fr 36px;
+}
+
+.vt-chat-row-system {
+  grid-template-columns: 1fr;
+}
+
+.vt-chat-row-selected .vt-chat-bubble {
+  outline: 2px solid color-mix(in oklab, var(--primary) 25%, transparent);
+}
+
+.vt-chat-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 950;
+  color: white;
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.vt-chat-bubble {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 10px 12px;
+  background: var(--surface);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+}
+
+.vt-chat-row-mine .vt-chat-bubble {
+  background: color-mix(in oklab, var(--primary) 6%, var(--surface));
+}
+
+.vt-chat-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.vt-chat-name {
+  font-weight: 900;
+}
+
+.vt-chat-trust {
+  margin-left: auto;
+  font-weight: 950;
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--bg) 50%, var(--surface));
+  color: var(--muted);
+}
+
+.vt-chat-meta {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.vt-chat-read {
+  color: color-mix(in oklab, var(--good) 70%, var(--muted));
+  display: inline-flex;
+}
+
+.vt-chat-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.vt-chat-grid-multi {
+  grid-template-columns: 1fr 1fr;
+}
+
+.vt-chat-img {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  display: block;
+}
+
+.vt-chat-img img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+
+.vt-chat-audio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vt-chat-audio audio {
+  width: min(320px, 100%);
+}
+
+.vt-chat-doc {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vt-chat-doc-main {
+  display: flex;
+  flex-direction: column;
+}
+
+.vt-chat-doc-name {
+  font-weight: 900;
+}
+
+.vt-chat-cert {
+  border-radius: 16px;
+  border: 1px dashed var(--border);
+  padding: 12px;
+  background: color-mix(in oklab, var(--bg) 65%, var(--surface));
+}
+
+.vt-chat-cert-title {
+  font-weight: 950;
+}
+
+.vt-chat-cert-body {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.vt-chat-cert-meta {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.vt-chat-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vt-chat-replybar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 8px 10px;
+  background: color-mix(in oklab, var(--primary) 8%, transparent);
+}
+
+.vt-chat-actions2 {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.vt-chat-check {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-weight: 700;
+}
+

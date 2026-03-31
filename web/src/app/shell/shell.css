@@ -1,0 +1,53 @@
+.vt-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.vt-top {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in oklab, var(--bg) 65%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.vt-main {
+  flex: 1;
+  padding: 16px 0 88px;
+}
+
+.vt-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.vt-nav-inner {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  padding: 10px 0;
+}
+
+.vt-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.vt-tab-active {
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
+}
+
