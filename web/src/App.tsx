@@ -1,14 +1,14 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
-import { AppShell } from './app/shell/AppShell'
-import { ChatPage } from './pages/chat/ChatPage'
-import { HomePage } from './pages/home/HomePage'
-import { NotificationsPage } from './pages/notifications/NotificationsPage'
-import { OfferPage } from './pages/offer/OfferPage'
-import { OtpPage } from './pages/onboarding/OtpPage'
-import { PhoneEntryPage } from './pages/onboarding/PhoneEntryPage'
-import { ProfilePage } from './pages/profile/ProfilePage'
-import { ReelsPage } from './pages/reels/ReelsPage'
-import { StorePage } from './pages/store/StorePage'
+import { Navigate, Route, Routes } from "react-router-dom";
+import { AppShell } from "./app/shell/AppShell";
+import { ChatPage } from "./pages/chat/ChatPage";
+import { HomePage } from "./pages/home/HomePage";
+import { NotificationsPage } from "./pages/notifications/NotificationsPage";
+import { OfferPage } from "./pages/offer/OfferPage";
+import { ProfilePage } from "./pages/profile/ProfilePage";
+import { ReelsPage } from "./pages/reels/ReelsPage";
+import { StorePage } from "./pages/store/StorePage";
+import { OtpPage } from "./pages/onboarding/OtpPage";
+import { PhoneEntryPage } from "./pages/onboarding/PhoneEntryPage";
 
 export default function App() {
   return (
@@ -32,5 +32,5 @@ export default function App() {
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Route>
     </Routes>
-  )
+  );
 }

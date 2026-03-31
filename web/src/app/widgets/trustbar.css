@@ -29,9 +29,10 @@
 
 .vt-trust-bar {
   position: relative;
-  height: 16px;
+  height: 18px;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--bad), #f59e0b, var(--good));
+  /* Fondo blanco: lo no llenado queda blanco */
+  background: var(--surface);
   overflow: hidden;
   border: 1px solid var(--border);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
@@ -40,29 +41,151 @@
 .vt-trust-fill {
   position: absolute;
   inset: 0 auto 0 0;
-  background: rgba(255, 255, 255, 0.2);
-  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  /* El fill sí lleva el gradiente (lo "llenado") */
+  background: linear-gradient(90deg, var(--bad), #f59e0b, var(--good));
+  border-right: 1px solid color-mix(in oklab, var(--surface) 70%, transparent);
+  transition: width 320ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  will-change: width;
+  overflow: hidden; /* recorta olas dentro del fill */
+}
+
+/* efecto "agua": superficie con ondas (siempre animada) */
+.vt-trust-fill::before,
+.vt-trust-fill::after {
+  content: '';
+  position: absolute;
+  left: -80px;
+  right: -80px;
+  top: 0px; /* nunca sobrepasa el borde superior */
+  height: 22px;
+  background-repeat: repeat-x;
+  background-position: 0 0;
+  opacity: 0.46;
+  filter: blur(0.12px);
+  transform: translateY(0);
+  animation-timing-function: linear, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+  pointer-events: none;
+}
+
+/* Capa 1 (onda principal) */
+.vt-trust-fill::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='22' viewBox='0 0 160 22'%3E%3Cpath d='M0 14 C 20 8, 40 20, 60 14 S 100 8, 120 14 S 140 20, 160 14 V22 H0 Z' fill='rgba(255,255,255,0.92)'/%3E%3C/svg%3E");
+  background-size: 160px 22px;
+  animation-name: vt-water-x1, vt-water-y1;
+  animation-duration: 1050ms, 1500ms;
+}
+
+/* Capa 2 (onda secundaria, desfase) */
+.vt-trust-fill::after {
+  top: 0px;
+  opacity: 0.22;
+  filter: blur(0.3px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='22' viewBox='0 0 120 22'%3E%3Cpath d='M0 15 C 15 10, 30 20, 45 15 S 75 10, 90 15 S 105 20, 120 15 V22 H0 Z' fill='rgba(255,255,255,0.82)'/%3E%3C/svg%3E");
+  background-size: 120px 22px;
+  animation-name: vt-water-x2, vt-water-y2;
+  animation-duration: 820ms, 1200ms;
+}
+
+/* En movimiento: más amplitud y presencia */
+.vt-trust-fill[data-moving='1']::before,
+.vt-trust-fill[data-moving='1']::after {
+  opacity: 0.74;
+  filter: blur(0.08px);
+}
+
+/* highlight fino, tipo "reflejo" sobre la superficie */
+.vt-trust-fill {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.vt-trust-fill[data-moving='1']::before {
+  animation-duration: 750ms, 1400ms;
+}
+
+.vt-trust-fill[data-moving='1']::after {
+  animation-duration: 620ms, 1100ms;
 }
 
 .vt-trust-threshold {
   position: absolute;
-  top: -6px;
-  bottom: -6px;
-  width: 2px;
-  background: rgba(15, 23, 42, 0.5);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7);
+  top: -10px; /* un poco más alto que la barra */
+  bottom: -10px;
+  width: 4px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.92),
+    0 10px 18px rgba(15, 23, 42, 0.18),
+    0 0 18px rgba(37, 99, 235, 0.25);
+  cursor: help;
 }
 
 .vt-trust-score {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
   font-size: 12px;
   font-weight: 800;
   color: rgba(15, 23, 42, 0.92);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
   pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@keyframes vt-water-x1 {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 160px 0;
+  }
+}
+
+@keyframes vt-water-x2 {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: -120px 0;
+  }
+}
+
+@keyframes vt-water-y1 {
+  0% {
+    transform: translateY(0px);
+  }
+  25% {
+    transform: translateY(2.6px);
+  }
+  55% {
+    transform: translateY(1.2px);
+  }
+  75% {
+    transform: translateY(3.2px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes vt-water-y2 {
+  0% {
+    transform: translateY(1.0px);
+  }
+  30% {
+    transform: translateY(3.4px);
+  }
+  60% {
+    transform: translateY(1.6px);
+  }
+  85% {
+    transform: translateY(3.8px);
+  }
+  100% {
+    transform: translateY(1.0px);
+  }
 }
 
 .vt-modal-backdrop {
@@ -119,4 +242,3 @@
 .vt-btn-primary:hover {
   background: var(--primary-2);
 }
-

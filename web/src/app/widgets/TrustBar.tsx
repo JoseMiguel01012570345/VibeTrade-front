@@ -7,6 +7,37 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
 }
 
+function useFluidPct(target: number) {
+  const [v, setV] = useState(target)
+  const vRef = useRef(target)
+  const raf = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (raf.current) cancelAnimationFrame(raf.current)
+
+    const step = () => {
+      const cur = vRef.current
+      const delta = target - cur
+      const next = cur + delta * 0.18 // smoothing factor => "fluido"
+      vRef.current = next
+      setV(next)
+      if (Math.abs(delta) > 0.08) raf.current = requestAnimationFrame(step)
+      else {
+        vRef.current = target
+        setV(target)
+        raf.current = null
+      }
+    }
+
+    raf.current = requestAnimationFrame(step)
+    return () => {
+      if (raf.current) cancelAnimationFrame(raf.current)
+    }
+  }, [target])
+
+  return v
+}
+
 export function TrustBar() {
   const me = useAppStore((s) => s.me)
   const threshold = useAppStore((s) => s.trustThreshold)
@@ -21,11 +52,13 @@ export function TrustBar() {
     }
   }, [me.trustScore, threshold])
 
-  const pct = useMemo(() => {
+  const pctTarget = useMemo(() => {
     const min = -50
     const max = 100
     return ((clamp(me.trustScore, min, max) - min) / (max - min)) * 100
   }, [me.trustScore])
+
+  const pct = useFluidPct(pctTarget)
 
   const thresholdPct = useMemo(() => {
     const min = -50
@@ -46,8 +79,18 @@ export function TrustBar() {
         </div>
 
         <div className="vt-trust-bar" role="img" aria-label="Barra de confianza">
-          <div className="vt-trust-fill" style={{ width: `${pct}%` }} />
-          <div className="vt-trust-threshold" style={{ left: `${thresholdPct}%` }} />
+          <div
+            className="vt-trust-fill"
+            style={{ width: `${pct}%` }}
+            data-moving={Math.abs(pctTarget - pct) > 0.2 ? '1' : '0'}
+          />
+          <div
+            className="vt-trust-threshold"
+            style={{ left: `${thresholdPct}%` }}
+            title="Umbral de confianza: si bajás de este nivel se bloquean las interacciones y solo podrás pagar tu mensualidad."
+            aria-label="Umbral de confianza: si bajás de este nivel se bloquean las interacciones"
+            role="img"
+          />
           <div className="vt-trust-score" aria-label="Puntaje de confianza">
             {me.trustScore}
           </div>
