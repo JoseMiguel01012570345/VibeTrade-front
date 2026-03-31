@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { Bookmark, MessageCircle, Send, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -70,78 +70,136 @@ export function ReelsPage() {
   const [idx, setIdx] = useState(0)
   const [shareOpen, setShareOpen] = useState(false)
   const [trust, setTrust] = useState(0)
+  const viewportRef = useRef<HTMLDivElement | null>(null)
+  const isAnimatingRef = useRef(false)
 
   const reels = useMemo(() => DEMO_REELS, [])
-  const r = reels[idx] ?? reels[0]
-
   const canPublish = me.role === 'seller' || me.role === 'carrier'
+
+  useEffect(() => {
+    const el = viewportRef.current
+    if (!el) return
+    let touchStartY: number | null = null
+
+    function goByDelta(deltaY: number) {
+      if (shareOpen) return
+      if (isAnimatingRef.current) return
+      if (!reels.length) return
+
+      const dir = deltaY > 0 ? 1 : -1
+      // “depending on jump”: bigger wheel => larger step (clamped)
+      const jump = Math.max(1, Math.min(3, Math.round(Math.abs(deltaY) / 140)))
+
+      isAnimatingRef.current = true
+      setIdx((prev) => {
+        const next = (prev + dir * jump) % reels.length
+        return next < 0 ? next + reels.length : next
+      })
+
+      window.setTimeout(() => {
+        isAnimatingRef.current = false
+      }, 520)
+    }
+
+    const onWheel = (e: WheelEvent) => {
+      // Prevent normal page scroll so the reel “takes over” the gesture.
+      e.preventDefault()
+      goByDelta(e.deltaY)
+    }
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return
+      const t = e.touches[0]
+      touchStartY = t.clientY
+    }
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (touchStartY === null) return
+      const touch = e.changedTouches[0]
+      const dy = touchStartY - touch.clientY
+      touchStartY = null
+      if (Math.abs(dy) < 28) return
+      goByDelta(dy)
+    }
+
+    el.addEventListener('wheel', onWheel, { passive: false })
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    el.addEventListener('touchend', onTouchEnd, { passive: true })
+
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchend', onTouchEnd)
+    }
+  }, [reels.length, shareOpen])
 
   return (
     <div className="vt-reels">
-      <div className="vt-reel" style={{ backgroundImage: `url(${r.cover})` }}>
-        <div className="vt-reel-overlay" />
+      <div className="vt-reels-viewport" ref={viewportRef} aria-label="Reels">
+        <div
+          className="vt-reel-stack"
+          style={
+            ({ '--idx': idx } as CSSProperties & Record<string, number>)
+          }
+        >
+          {reels.map((r) => (
+            <div key={r.id} className="vt-reel" style={{ backgroundImage: `url(${r.cover})` }}>
+              <div className="vt-reel-overlay" />
 
-        <div className="vt-reel-top container">
-          <div className="vt-reel-title">{r.title}</div>
-          <div className="vt-reel-sub">
-            {r.by} · <span className="vt-pill">{r.category}</span>
-          </div>
-        </div>
+              <div className="vt-reel-top container">
+                <div className="vt-reel-title">{r.title}</div>
+                <div className="vt-reel-sub">
+                  {r.by} · <span className="vt-pill">{r.category}</span>
+                </div>
+              </div>
 
-        <div className="vt-reel-side">
-          <TrustSlider value={trust} onChange={setTrust} />
+              <div className="vt-reel-side">
+                <TrustSlider value={trust} onChange={setTrust} />
 
-          <button
-            className="vt-reel-btn"
-            onClick={() => {
-              toast('Comentarios (demo)', { icon: '💬' })
-            }}
-          >
-            <MessageCircle />
-          </button>
-          <button
-            className="vt-reel-btn"
-            onClick={() => {
-              setShareOpen(true)
-            }}
-            title="Compartir (solo contactos registrados)"
-          >
-            <Send />
-          </button>
-          <button
-            className={clsx('vt-reel-btn', savedReels[r.id] && 'vt-reel-btn-active')}
-            onClick={() => {
-              toggleSavedReel(r.id)
-              toast(savedReels[r.id] ? 'Quitado de guardados' : 'Guardado', { icon: '🔖' })
-            }}
-            title="Guardar"
-          >
-            <Bookmark />
-          </button>
+                <button
+                  className="vt-reel-btn"
+                  onClick={() => {
+                    toast('Comentarios (demo)', { icon: '💬' })
+                  }}
+                >
+                  <MessageCircle />
+                </button>
+                <button
+                  className="vt-reel-btn"
+                  onClick={() => {
+                    setShareOpen(true)
+                  }}
+                  title="Compartir (solo contactos registrados)"
+                >
+                  <Send />
+                </button>
+                <button
+                  className={clsx('vt-reel-btn', savedReels[r.id] && 'vt-reel-btn-active')}
+                  onClick={() => {
+                    toggleSavedReel(r.id)
+                    toast(savedReels[r.id] ? 'Quitado de guardados' : 'Guardado', { icon: '🔖' })
+                  }}
+                  title="Guardar"
+                >
+                  <Bookmark />
+                </button>
 
-          {canPublish && (
-            <button
-              className="vt-reel-btn vt-reel-btn-pub"
-              onClick={() => {
-                // flujo: validación silenciosa (demo)
-                const highTrust = me.trustScore >= 50
-                if (highTrust) toast.success('Publicación creada')
-                else toast('Revisión preventiva: el video quedará pendiente', { icon: '⚠️' })
-              }}
-              title="Publicar Reel profesional"
-            >
-              <Upload />
-            </button>
-          )}
-        </div>
-
-        <div className="vt-reel-nav">
-          <button className="vt-reel-swipe" onClick={() => setIdx((i) => (i <= 0 ? reels.length - 1 : i - 1))}>
-            Anterior
-          </button>
-          <button className="vt-reel-swipe" onClick={() => setIdx((i) => (i + 1) % reels.length)}>
-            Siguiente
-          </button>
+                {canPublish && (
+                  <button
+                    className="vt-reel-btn vt-reel-btn-pub"
+                    onClick={() => {
+                      const highTrust = me.trustScore >= 50
+                      if (highTrust) toast.success('Publicación creada')
+                      else toast('Revisión preventiva: el video quedará pendiente', { icon: '⚠️' })
+                    }}
+                    title="Publicar Reel profesional"
+                  >
+                    <Upload />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
