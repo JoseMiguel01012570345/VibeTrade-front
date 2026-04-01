@@ -30,6 +30,12 @@ export type Offer = {
   qa: QAItem[]
 }
 
+export type ReplyQuote = {
+  id: string
+  author: string
+  preview: string
+}
+
 export type Message =
   | {
       id: string
@@ -38,6 +44,8 @@ export type Message =
       text: string
       at: number
       read?: boolean
+      /** Citas cuando este mensaje responde a uno o más mensajes anteriores */
+      replyQuotes?: ReplyQuote[]
     }
   | {
       id: string
@@ -63,6 +71,8 @@ export type Message =
       name: string
       size: string
       kind: 'pdf' | 'doc' | 'other'
+      /** Public HTTPS URL for preview (PDF direct; Word via Office embed) */
+      url?: string
       at: number
       read?: boolean
     }
@@ -93,10 +103,38 @@ type MarketState = {
   answer: (offerId: string, qaId: string, answer: string) => void
   ensureThreadForOffer: (offerId: string) => string
   sendText: (threadId: string, text: string, replyToIds?: string[]) => void
+  sendAudio: (threadId: string, payload: { url: string; seconds: number }) => void
+  sendDocument: (
+    threadId: string,
+    payload: { name: string; size: string; kind: 'pdf' | 'doc' | 'other'; url: string },
+  ) => void
 }
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`
+}
+
+function previewForMessage(m: Message): string {
+  switch (m.type) {
+    case 'text':
+      return m.text.length > 96 ? `${m.text.slice(0, 96)}…` : m.text
+    case 'image':
+      return m.images.length > 1 ? `${m.images.length} fotos` : 'Foto'
+    case 'audio':
+      return 'Nota de voz'
+    case 'doc':
+      return m.name
+    case 'certificate':
+      return m.title
+    default:
+      return ''
+  }
+}
+
+function authorForMessage(m: Message, storeName: string): string {
+  if (m.from === 'me') return 'Tú'
+  if (m.from === 'other') return storeName
+  return 'Sistema'
 }
 
 const demoStores: Record<string, StoreBadge> = {
@@ -226,6 +264,48 @@ export const useMarketStore = create<MarketState>((set, get) => {
               'Inicio de chat: credenciales del negocio y disponibilidad de transporte destacadas arriba.',
             at: Date.now() - 60_000,
           },
+          {
+            id: uid('m'),
+            from: 'other',
+            type: 'image',
+            images: [
+              { url: 'https://images.unsplash.com/photo-1604908177522-4028c7a2e08d?auto=format&fit=crop&w=800&q=80' },
+              { url: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=800&q=80' },
+            ],
+            at: Date.now() - 50_000,
+            read: true,
+          },
+          {
+            id: uid('m'),
+            from: 'other',
+            type: 'audio',
+            url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+            seconds: 60,
+            at: Date.now() - 45_000,
+            read: true,
+          },
+          {
+            id: uid('m'),
+            from: 'other',
+            type: 'doc',
+            name: 'Especificaciones.pdf',
+            size: '240 KB',
+            kind: 'pdf',
+            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+            at: Date.now() - 40_000,
+            read: true,
+          },
+          {
+            id: uid('m'),
+            from: 'other',
+            type: 'doc',
+            name: 'Contrato borrador.docx',
+            size: '88 KB',
+            kind: 'doc',
+            url: 'https://file-examples.com/wp-content/storage/2017/02/file_sample_100kB.docx',
+            at: Date.now() - 35_000,
+            read: true,
+          },
         ],
       }
       set((x) => ({ ...x, threads: { ...x.threads, [id]: bootstrap } }))
@@ -233,20 +313,68 @@ export const useMarketStore = create<MarketState>((set, get) => {
     },
 
     sendText: (threadId, text, replyToIds) => {
-      const prefix =
-        replyToIds && replyToIds.length
-          ? `↪ Respuesta a ${replyToIds.length} mensaje(s)\n`
-          : ''
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th) return s
+        const storeName = th.store.name
+        const replyQuotes: ReplyQuote[] | undefined =
+          replyToIds && replyToIds.length
+            ? replyToIds
+                .map((id) => {
+                  const msg = th.messages.find((x) => x.id === id)
+                  if (!msg || msg.type === 'certificate') return null
+                  return {
+                    id: msg.id,
+                    author: authorForMessage(msg, storeName),
+                    preview: previewForMessage(msg),
+                  }
+                })
+                .filter((q): q is ReplyQuote => q !== null)
+            : undefined
+        const m: Message = {
+          id: uid('m'),
+          from: 'me',
+          type: 'text',
+          text: text.trim(),
+          at: Date.now(),
+          read: false,
+          ...(replyQuotes && replyQuotes.length ? { replyQuotes } : {}),
+        }
+        return { ...s, threads: { ...s.threads, [threadId]: { ...th, messages: [...th.messages, m] } } }
+      })
+    },
+
+    sendAudio: (threadId, payload) => {
       set((s) => {
         const th = s.threads[threadId]
         if (!th) return s
         const m: Message = {
           id: uid('m'),
           from: 'me',
-          type: 'text',
-          text: `${prefix}${text}`.trim(),
+          type: 'audio',
+          url: payload.url,
+          seconds: Math.max(1, Math.round(payload.seconds)),
           at: Date.now(),
-          read: true,
+          read: false,
+        }
+        return { ...s, threads: { ...s.threads, [threadId]: { ...th, messages: [...th.messages, m] } } }
+      })
+    },
+
+    sendDocument: (threadId, payload) => {
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th) return s
+        const m: Message = {
+          id: uid('m'),
+          from: 'me',
+          type: 'doc',
+          name: payload.name,
+          size: payload.size,
+          kind: payload.kind,
+          url: payload.url,
+          at: Date.now(),
+          read: false,
         }
         return { ...s, threads: { ...s.threads, [threadId]: { ...th, messages: [...th.messages, m] } } }
       })

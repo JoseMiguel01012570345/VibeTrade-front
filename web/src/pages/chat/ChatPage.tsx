@@ -1,90 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type ChangeEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
-import {
-  ArrowLeft,
-  CheckCheck,
-  FileText,
-  Headphones,
-  MapPin,
-  Plus,
-  ShieldCheck,
-} from 'lucide-react'
+import { ArrowLeft, Mic, Music, Paperclip, Plus, Send, ShieldCheck, Square, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../../app/store/useAppStore'
-import { type Message, useMarketStore } from '../../app/store/useMarketStore'
+import { useMarketStore } from '../../app/store/useMarketStore'
+import { ImageLightbox, MessageBody, MsgMeta } from './ChatMedia'
+import { formatFileSize, inferDocKind, messageAuthorLabel, messagePreviewLine } from './chatAttachments'
 import './chat.css'
-
-function hhmm(ts: number) {
-  const d = new Date(ts)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
 
 function TrustChip({ score }: { score: number }) {
   return (
     <span
       className="vt-chat-trust"
+      data-chat-interactive
       title="Indicador de confianza. Helper: reputación basada en historial de acciones."
     >
       {score}
     </span>
   )
-}
-
-function MsgMeta({ at, read }: { at: number; read?: boolean }) {
-  return (
-    <span className="vt-chat-meta">
-      {hhmm(at)}
-      {read ? (
-        <span className="vt-chat-read" title="Leído">
-          <CheckCheck size={14} />
-        </span>
-      ) : null}
-    </span>
-  )
-}
-
-function Content({ m }: { m: Message }) {
-  if (m.type === 'text') return <div className="vt-chat-text">{m.text}</div>
-  if (m.type === 'image')
-    return (
-      <div className={clsx('vt-chat-grid', m.images.length > 1 && 'vt-chat-grid-multi')}>
-        {m.images.map((img, i) => (
-          <a key={i} href={img.url} target="_blank" rel="noreferrer" className="vt-chat-img">
-            <img src={img.url} alt="imagen" />
-          </a>
-        ))}
-      </div>
-    )
-  if (m.type === 'audio')
-    return (
-      <div className="vt-chat-audio">
-        <Headphones size={16} />
-        <audio controls src={m.url} />
-        <span className="vt-muted">{m.seconds}s</span>
-      </div>
-    )
-  if (m.type === 'doc')
-    return (
-      <div className="vt-chat-doc">
-        <FileText size={16} />
-        <div className="vt-chat-doc-main">
-          <div className="vt-chat-doc-name">{m.name}</div>
-          <div className="vt-muted">{m.size}</div>
-        </div>
-      </div>
-    )
-  if (m.type === 'certificate')
-    return (
-      <div className="vt-chat-cert">
-        <div className="vt-chat-cert-title">{m.title}</div>
-        <div className="vt-chat-cert-body">{m.body}</div>
-        <div className="vt-chat-cert-meta">
-          <MapPin size={14} /> {hhmm(m.at)}
-        </div>
-      </div>
-    )
-  return null
 }
 
 export function ChatPage() {
@@ -97,12 +31,25 @@ export function ChatPage() {
   const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer)
   const thread = useMarketStore((s) => (threadId ? s.threads[threadId] : undefined))
   const sendText = useMarketStore((s) => s.sendText)
+  const sendAudio = useMarketStore((s) => s.sendAudio)
+  const sendDocument = useMarketStore((s) => s.sendDocument)
 
   const [draft, setDraft] = useState('')
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [showContracts, setShowContracts] = useState(false)
   const [showCarrier, setShowCarrier] = useState(false)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
+  const draftInputRef = useRef<HTMLInputElement | null>(null)
+  const docInputRef = useRef<HTMLInputElement | null>(null)
+  const audioFileInputRef = useRef<HTMLInputElement | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordChunksRef = useRef<Blob[]>([])
+  const recordStartRef = useRef(0)
+  const recordTickRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const [recording, setRecording] = useState(false)
+  const [recordSecs, setRecordSecs] = useState(0)
 
   useEffect(() => {
     if (threadId === 'demo') {
@@ -115,7 +62,27 @@ export function ChatPage() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight })
   }, [thread?.messages?.length])
 
+  useEffect(() => {
+    return () => {
+      if (recordTickRef.current) clearInterval(recordTickRef.current)
+      const mr = mediaRecorderRef.current
+      if (mr && mr.state !== 'inactive') {
+        mr.stream.getTracks().forEach((t) => t.stop())
+      }
+    }
+  }, [])
+
   const selectedIds = useMemo(() => Object.keys(selected).filter((id) => selected[id]), [selected])
+
+  const selectedOrdered = useMemo(() => {
+    if (!thread) return []
+    const order = new Map(thread.messages.map((m, i) => [m.id, i]))
+    return [...selectedIds].sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0))
+  }, [selectedIds, thread])
+
+  useEffect(() => {
+    if (selectedIds.length > 0) draftInputRef.current?.focus()
+  }, [selectedIds.length])
 
   if (!threadId || threadId === 'demo') return null
   if (!thread) {
@@ -128,6 +95,107 @@ export function ChatPage() {
 
   const store = thread.store
   const transportWarning = !store.transportIncluded
+
+  function toggleSelectRow(e: MouseEvent, id: string) {
+    if ((e.target as HTMLElement).closest('[data-chat-interactive]')) return
+    setSelected((s) => ({ ...s, [id]: !s[id] }))
+  }
+
+  function onPickDocument(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f || !threadId) return
+    const url = URL.createObjectURL(f)
+    sendDocument(threadId, {
+      name: f.name,
+      size: formatFileSize(f.size),
+      kind: inferDocKind(f.name),
+      url,
+    })
+    setSelected({})
+    toast.success('Documento enviado')
+  }
+
+  function onPickAudioFile(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f || !threadId) return
+    const url = URL.createObjectURL(f)
+    const el = new Audio()
+    el.preload = 'metadata'
+    el.src = url
+    el.addEventListener(
+      'loadedmetadata',
+      () => {
+        const sec = Number.isFinite(el.duration) && el.duration > 0 ? el.duration : 1
+        sendAudio(threadId, { url, seconds: Math.max(1, Math.round(sec)) })
+        setSelected({})
+        toast.success('Audio enviado')
+      },
+      { once: true },
+    )
+    el.addEventListener(
+      'error',
+      () => {
+        sendAudio(threadId, { url, seconds: 1 })
+        setSelected({})
+        toast.success('Audio enviado')
+      },
+      { once: true },
+    )
+  }
+
+  function stopVoiceRecording() {
+    const mr = mediaRecorderRef.current
+    if (mr && mr.state !== 'inactive') mr.stop()
+  }
+
+  async function startVoiceRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      recordChunksRef.current = []
+      const mr = new MediaRecorder(stream)
+      mediaRecorderRef.current = mr
+      mr.ondataavailable = (ev) => {
+        if (ev.data.size > 0) recordChunksRef.current.push(ev.data)
+      }
+      mr.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop())
+        const blob = new Blob(recordChunksRef.current, { type: mr.mimeType || 'audio/webm' })
+        const url = URL.createObjectURL(blob)
+        const seconds = Math.max(1, Math.round((Date.now() - recordStartRef.current) / 1000))
+        if (threadId) {
+          sendAudio(threadId, { url, seconds })
+          setSelected({})
+          toast.success('Nota de voz enviada')
+        }
+        setRecording(false)
+        setRecordSecs(0)
+        if (recordTickRef.current) {
+          clearInterval(recordTickRef.current)
+          recordTickRef.current = null
+        }
+        mediaRecorderRef.current = null
+      }
+      recordStartRef.current = Date.now()
+      mr.start(250)
+      setRecording(true)
+      setRecordSecs(0)
+      recordTickRef.current = setInterval(() => {
+        setRecordSecs(Math.floor((Date.now() - recordStartRef.current) / 1000))
+      }, 400)
+    } catch {
+      toast.error('No se pudo acceder al micrófono')
+    }
+  }
+
+  function toggleVoiceRecording() {
+    if (recording) {
+      stopVoiceRecording()
+    } else {
+      void startVoiceRecording()
+    }
+  }
 
   return (
     <div className="container vt-page">
@@ -183,13 +251,19 @@ export function ChatPage() {
                   system && 'vt-chat-row-system',
                   isSelected && 'vt-chat-row-selected',
                 )}
-                onClick={() => {
+                onClick={(e) => {
                   if (system) return
-                  setSelected((s) => ({ ...s, [m.id]: !s[m.id] }))
+                  toggleSelectRow(e, m.id)
                 }}
               >
                 {!system && (
-                  <Link to={`/profile/${mine ? me.id : store.id}`} className="vt-chat-avatar" title="Ver perfil">
+                  <Link
+                    to={`/profile/${mine ? me.id : store.id}`}
+                    className="vt-chat-avatar"
+                    title="Ver perfil"
+                    data-chat-interactive
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {mine ? me.name.slice(0, 1) : store.name.slice(0, 1)}
                   </Link>
                 )}
@@ -198,12 +272,19 @@ export function ChatPage() {
                   {!system && (
                     <div className="vt-chat-badge">
                       <span className="vt-chat-name">{mine ? me.name : store.name}</span>
-                      <span className="vt-muted">{phone}</span>
+                      <span className="vt-muted" data-chat-interactive>
+                        {phone}
+                      </span>
                       <TrustChip score={trust} />
                     </div>
                   )}
-                  <Content m={m} />
-                  {'at' in m && <MsgMeta at={m.at} read={'read' in m ? m.read : undefined} />}
+                  <MessageBody m={m} onImageOpen={setLightboxUrl} />
+                  {'at' in m && (
+                    <MsgMeta
+                      at={m.at}
+                      read={'read' in m ? m.read : undefined}
+                    />
+                  )}
                 </div>
               </div>
             )
@@ -212,43 +293,153 @@ export function ChatPage() {
 
         <div className="vt-chat-compose vt-card vt-card-pad">
           {selectedIds.length > 0 && (
-            <div className="vt-chat-replybar">
-              <span>
-                Replicar a <b>{selectedIds.length}</b> mensaje(s)
-              </span>
-              <button className="vt-btn" onClick={() => setSelected({})}>
-                Limpiar
-              </button>
+            <div className="vt-chat-reply-wa" role="region" aria-label="Respondiendo a mensajes">
+              <div className="vt-chat-reply-wa-head">
+                <span className="vt-chat-reply-wa-title">
+                  Respondiendo a {selectedIds.length} mensaje{selectedIds.length === 1 ? '' : 's'}
+                </span>
+                <button
+                  type="button"
+                  className="vt-chat-reply-wa-closeall"
+                  aria-label="Cancelar respuesta"
+                  title="Cancelar"
+                  onClick={() => setSelected({})}
+                >
+                  <X size={20} strokeWidth={2} />
+                </button>
+              </div>
+              <div className="vt-chat-reply-wa-list">
+                {selectedOrdered.map((id) => {
+                  const msg = thread.messages.find((x) => x.id === id)
+                  if (!msg || msg.type === 'certificate') return null
+                  const author = messageAuthorLabel(msg, store.name)
+                  const preview = messagePreviewLine(msg)
+                  return (
+                    <div key={id} className="vt-chat-reply-wa-row">
+                      <span className="vt-chat-reply-wa-accent" aria-hidden />
+                      <div className="vt-chat-reply-wa-snippet">
+                        <span className="vt-chat-reply-wa-author">{author}</span>
+                        <span className="vt-chat-reply-wa-preview">{preview}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="vt-chat-reply-wa-remove"
+                        aria-label={`Quitar cita a ${author}`}
+                        onClick={() =>
+                          setSelected((s) => {
+                            const n = { ...s }
+                            delete n[id]
+                            return n
+                          })
+                        }
+                      >
+                        <X size={16} strokeWidth={2} />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 
-          <div className="vt-row">
-            <input
-              className="vt-input"
-              placeholder="Escribe un mensaje…"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
+          <div className="vt-chat-compose-bar">
+            <div className="vt-chat-compose-tools">
+              <input
+                ref={docInputRef}
+                type="file"
+                className="vt-chat-file-input"
+                accept=".pdf,.doc,.docx,.odt,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                aria-hidden
+                tabIndex={-1}
+                onChange={onPickDocument}
+              />
+              <input
+                ref={audioFileInputRef}
+                type="file"
+                className="vt-chat-file-input"
+                accept="audio/*"
+                aria-hidden
+                tabIndex={-1}
+                onChange={onPickAudioFile}
+              />
+              <button
+                type="button"
+                className="vt-chat-tool-btn"
+                aria-label="Adjuntar documento"
+                title="Documento"
+                onClick={() => docInputRef.current?.click()}
+              >
+                <Paperclip size={22} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                className={clsx('vt-chat-tool-btn', recording && 'vt-chat-tool-btn-rec')}
+                aria-label={recording ? 'Detener y enviar nota de voz' : 'Grabar nota de voz'}
+                title={recording ? 'Detener' : 'Nota de voz'}
+                onClick={toggleVoiceRecording}
+              >
+                {recording ? <Square size={18} fill="currentColor" /> : <Mic size={22} strokeWidth={2} />}
+              </button>
+              <button
+                type="button"
+                className="vt-chat-tool-btn"
+                aria-label="Adjuntar archivo de audio"
+                title="Archivo de audio"
+                onClick={() => audioFileInputRef.current?.click()}
+              >
+                <Music size={22} strokeWidth={2} />
+              </button>
+            </div>
+            {recording && (
+              <div className="vt-chat-rec-banner" role="status">
+                <span className="vt-chat-rec-dot" />
+                Grabando… {recordSecs}s — tocá de nuevo para enviar
+              </div>
+            )}
+            <div className="vt-chat-compose-inputrow">
+              <input
+                ref={draftInputRef}
+                className="vt-input"
+                placeholder={
+                  selectedIds.length ? 'Escribe una respuesta…' : 'Escribe un mensaje…'
+                }
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    if (!draft.trim()) return
+                    sendText(thread.id, draft.trim(), selectedIds)
+                    setDraft('')
+                    setSelected({})
+                    return
+                  }
+                  if (e.key === 'Backspace' && draft === '' && selectedOrdered.length > 0) {
+                    e.preventDefault()
+                    const last = selectedOrdered[selectedOrdered.length - 1]
+                    setSelected((s) => {
+                      const n = { ...s }
+                      delete n[last]
+                      return n
+                    })
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="vt-chat-send-btn"
+                aria-label="Enviar mensaje"
+                title="Enviar"
+                onClick={() => {
                   if (!draft.trim()) return
                   sendText(thread.id, draft.trim(), selectedIds)
                   setDraft('')
                   setSelected({})
-                }
-              }}
-            />
-            <button
-              className="vt-btn vt-btn-primary"
-              onClick={() => {
-                if (!draft.trim()) return
-                sendText(thread.id, draft.trim(), selectedIds)
-                setDraft('')
-                setSelected({})
-              }}
-            >
-              Enviar
-            </button>
+                }}
+              >
+                <Send size={22} strokeWidth={2.25} />
+              </button>
+            </div>
           </div>
 
           <div className="vt-chat-actions2">
@@ -269,7 +460,6 @@ export function ChatPage() {
             <button
               className="vt-btn"
               onClick={() => {
-                // quick demo: trust score action animation trigger
                 setTrustScore(me.trustScore + 1)
                 toast.success('Acción exitosa (sube confianza)')
               }}
@@ -290,6 +480,8 @@ export function ChatPage() {
           </div>
         </div>
       </div>
+
+      <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
 
       {showContracts && (
         <div className="vt-modal-backdrop" role="dialog" aria-modal="true">
@@ -342,4 +534,3 @@ export function ChatPage() {
     </div>
   )
 }
-
