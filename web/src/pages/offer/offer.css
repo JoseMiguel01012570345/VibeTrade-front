@@ -100,6 +100,9 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .vt-qa-meta {
@@ -108,15 +111,23 @@
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 6px;
+  min-width: 0;
+}
+
+.vt-qa-meta > b {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .vt-qa-q {
   font-weight: 600;
+  min-width: 0;
 }
 
 .vt-qa-a {
   padding-top: 10px;
   border-top: 1px dashed var(--border);
   color: var(--text);
+  min-width: 0;
 }
 
