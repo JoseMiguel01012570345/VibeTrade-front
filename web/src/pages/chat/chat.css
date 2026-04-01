@@ -117,6 +117,13 @@
   background: color-mix(in oklab, var(--primary) 6%, var(--surface));
 }
 
+/* Enviado y aún no leído por el destinatario: tono gris */
+.vt-chat-row-mine .vt-chat-bubble-pending {
+  background: color-mix(in oklab, var(--muted) 22%, var(--surface));
+  border-color: color-mix(in oklab, var(--muted) 35%, var(--border));
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
 .vt-chat-badge {
   display: flex;
   align-items: center;
@@ -538,14 +545,59 @@
   min-width: 0;
 }
 
-/* Composer: respuesta estilo WhatsApp (varias citas) */
+/* Composer: respuesta estilo WhatsApp (varias citas) + indicador de hilo nuevo */
 .vt-chat-reply-wa {
   border-radius: 12px;
-  padding: 10px 12px 10px 14px;
+  padding: 0;
   background: color-mix(in oklab, var(--bg) 40%, var(--surface));
   border: 1px solid color-mix(in oklab, var(--muted) 22%, var(--border));
   border-left: 4px solid #25d366;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.vt-chat-reply-thread-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px 10px 12px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--primary) 14%, var(--surface)),
+    color-mix(in oklab, #7c3aed 10%, var(--surface))
+  );
+  border-bottom: 1px dashed color-mix(in oklab, var(--primary) 28%, var(--border));
+}
+
+.vt-chat-reply-thread-strip-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--primary) 18%, transparent);
+  color: var(--primary);
+}
+
+.vt-chat-reply-thread-strip-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vt-chat-reply-thread-strip-title {
+  font-size: 13px;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.vt-chat-reply-thread-strip-sub {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--muted);
 }
 
 .vt-chat-reply-wa-head {
@@ -554,6 +606,7 @@
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 8px;
+  padding: 10px 12px 0 14px;
 }
 
 .vt-chat-reply-wa-title {
@@ -585,7 +638,8 @@
   gap: 8px;
   max-height: 140px;
   overflow-y: auto;
-  padding-right: 2px;
+  padding: 0 12px 10px 14px;
+  padding-right: 10px;
 }
 
 .vt-chat-reply-wa-row {
@@ -677,10 +731,44 @@
   min-width: 0;
 }
 
+/* Línea vertical estilo YouTube: todo el bloque citas + texto */
+.vt-chat-text-block--yt-thread {
+  padding-left: 12px;
+  margin-left: 1px;
+  border-left: 3px solid color-mix(in oklab, var(--muted) 44%, var(--border));
+  border-radius: 0 10px 10px 0;
+}
+
+.vt-chat-text-block--yt-thread .vt-chat-text {
+  padding-top: 2px;
+}
+
 .vt-chat-reply-quotes {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.vt-chat-thread-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-bottom: 2px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--primary) 90%, var(--text));
+  background: color-mix(in oklab, var(--primary) 12%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--primary) 22%, var(--border));
+}
+
+.vt-chat-thread-marker svg {
+  flex-shrink: 0;
+  opacity: 0.9;
 }
 
 .vt-chat-reply-quote {
@@ -688,6 +776,10 @@
   gap: 8px;
   min-width: 0;
   align-items: stretch;
+}
+
+.vt-chat-text-block--yt-thread .vt-chat-reply-quote {
+  display: block;
 }
 
 .vt-chat-reply-quote-bar {

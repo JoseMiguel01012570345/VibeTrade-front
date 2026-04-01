@@ -8,7 +8,7 @@ import {
 } from 'react'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
-import { Check, CheckCheck, Download, FileText, Loader2, MapPin, Pause, Play } from 'lucide-react'
+import { Check, CheckCheck, Download, FileText, GitBranch, Loader2, MapPin, Pause, Play } from 'lucide-react'
 import type { Message } from '../../app/store/useMarketStore'
 
 function hhmm(ts: number) {
@@ -325,13 +325,17 @@ export function MessageBody({
   onImageOpen: (url: string) => void
 }) {
   if (m.type === 'text') {
+    const hasThread = m.replyQuotes && m.replyQuotes.length > 0
     return (
-      <div className="vt-chat-text-block">
-        {m.replyQuotes && m.replyQuotes.length > 0 && (
+      <div className={clsx('vt-chat-text-block', hasThread && 'vt-chat-text-block--yt-thread')}>
+        {hasThread && (
           <div className="vt-chat-reply-quotes" aria-label="Mensajes citados">
-            {m.replyQuotes.map((q) => (
+            <div className="vt-chat-thread-marker" title="Mensaje dentro de un hilo de respuesta">
+              <GitBranch size={14} strokeWidth={2.25} aria-hidden />
+              <span>Hilo nuevo</span>
+            </div>
+            {m.replyQuotes!.map((q) => (
               <div key={q.id} className="vt-chat-reply-quote">
-                <span className="vt-chat-reply-quote-bar" aria-hidden />
                 <div className="vt-chat-reply-quote-body">
                   <span className="vt-chat-reply-quote-author">{q.author}</span>
                   <span className="vt-chat-reply-quote-preview">{q.preview}</span>

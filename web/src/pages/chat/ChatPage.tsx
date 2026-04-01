@@ -1,7 +1,7 @@
 import { type ChangeEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
-import { ArrowLeft, Mic, Music, Paperclip, Plus, Send, ShieldCheck, Square, X } from 'lucide-react'
+import { ArrowLeft, GitBranch, Mic, Music, Paperclip, Plus, Send, ShieldCheck, Square, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../../app/store/useAppStore'
 import { useMarketStore } from '../../app/store/useMarketStore'
@@ -241,6 +241,7 @@ export function ChatPage() {
             const isSelected = !!selected[m.id]
             const phone = mine ? me.phone : '+54 11 0000-0000'
             const trust = mine ? me.trustScore : store.trustScore
+            const pendingRead = mine && 'read' in m && m.read === false
 
             return (
               <div
@@ -268,7 +269,7 @@ export function ChatPage() {
                   </Link>
                 )}
 
-                <div className="vt-chat-bubble">
+                <div className={clsx('vt-chat-bubble', pendingRead && 'vt-chat-bubble-pending')}>
                   {!system && (
                     <div className="vt-chat-badge">
                       <span className="vt-chat-name">{mine ? me.name : store.name}</span>
@@ -293,10 +294,21 @@ export function ChatPage() {
 
         <div className="vt-chat-compose vt-card vt-card-pad">
           {selectedIds.length > 0 && (
-            <div className="vt-chat-reply-wa" role="region" aria-label="Respondiendo a mensajes">
+            <div className="vt-chat-reply-wa" role="region" aria-label="Respondiendo a mensajes en un hilo nuevo">
+              <div className="vt-chat-reply-thread-strip">
+                <span className="vt-chat-reply-thread-strip-icon" aria-hidden>
+                  <GitBranch size={18} strokeWidth={2.25} />
+                </span>
+                <div className="vt-chat-reply-thread-strip-text">
+                  <span className="vt-chat-reply-thread-strip-title">Nuevo hilo</span>
+                  <span className="vt-chat-reply-thread-strip-sub">
+                    Tu mensaje enlaza estas citas y se muestra como continuación de hilo
+                  </span>
+                </div>
+              </div>
               <div className="vt-chat-reply-wa-head">
                 <span className="vt-chat-reply-wa-title">
-                  Respondiendo a {selectedIds.length} mensaje{selectedIds.length === 1 ? '' : 's'}
+                  Citas en este hilo ({selectedIds.length})
                 </span>
                 <button
                   type="button"

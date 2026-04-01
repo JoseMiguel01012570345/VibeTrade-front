@@ -3,6 +3,8 @@ import { Bookmark, MessageCircle, Send, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { useAppStore } from '../../app/store/useAppStore'
+import { ReelCommentsPanel, type ReelComment } from './ReelCommentsPanel'
+import { ReelTrustSlider } from './ReelTrustSlider'
 import './reels.css'
 
 type Reel = {
@@ -32,35 +34,30 @@ const DEMO_REELS: Reel[] = [
   },
 ]
 
-function TrustSlider({
-  value,
-  onChange,
-}: {
-  value: number
-  onChange: (v: number) => void
-}) {
-  const [open, setOpen] = useState(false)
+function uid(prefix: string) {
+  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`
+}
 
-  return (
-    <div
-      className={clsx('vt-reel-trust', open && 'vt-reel-trust-open')}
-      onPointerEnter={() => setOpen(true)}
-      onPointerLeave={() => setOpen(false)}
-      onPointerDown={(e) => {
-        setOpen(true)
-        ;(e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId)
-      }}
-      onPointerMove={(e) => {
-        if (!open || e.buttons === 0) return
-        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-        const y = (e.clientY - rect.top) / rect.height // 0 top, 1 bottom
-        const v = 1 - Math.max(0, Math.min(1, y)) // 1 top (green), 0 bottom (red-ish)
-        onChange(v * 2 - 1) // [-1..1]
-      }}
-    >
-      <div className="vt-reel-trust-dot" style={{ top: `${((1 - (value + 1) / 2) * 100).toFixed(1)}%` }} />
-    </div>
-  )
+const INITIAL_COMMENTS: Record<string, ReelComment[]> = {
+  r1: [
+    {
+      id: 'rc_demo_1',
+      parentId: null,
+      authorName: 'María',
+      text: '¿Sigue disponible la misma cosecha?',
+      at: Date.now() - 3_600_000,
+      ratingsByUser: { u_maria: 0.1, u_demo_a: 0.2, u_demo_b: 0.15 },
+    },
+    {
+      id: 'rc_demo_2',
+      parentId: 'rc_demo_1',
+      authorName: 'AgroNorte SRL',
+      text: 'Sí, tenemos stock para esta semana.',
+      at: Date.now() - 1_800_000,
+      ratingsByUser: { u_store: 0.8, u_demo_a: 0.65, u_demo_c: 0.72 },
+    },
+  ],
+  r2: [],
 }
 
 export function ReelsPage() {
@@ -69,12 +66,52 @@ export function ReelsPage() {
   const toggleSavedReel = useAppStore((s) => s.toggleSavedReel)
   const [idx, setIdx] = useState(0)
   const [shareOpen, setShareOpen] = useState(false)
+  const [commentsOpen, setCommentsOpen] = useState(false)
   const [trust, setTrust] = useState(0)
+  const [commentsByReel, setCommentsByReel] = useState<Record<string, ReelComment[]>>(() => ({
+    ...INITIAL_COMMENTS,
+  }))
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const isAnimatingRef = useRef(false)
 
   const reels = useMemo(() => DEMO_REELS, [])
   const canPublish = me.role === 'seller' || me.role === 'carrier'
+  const currentReel = reels[idx]
+
+  function addComment(text: string, parentId: string | null) {
+    if (!currentReel) return
+    const reelId = currentReel.id
+    const next: ReelComment = {
+      id: uid('cmt'),
+      parentId,
+      authorName: me.name,
+      text,
+      at: Date.now(),
+      ratingsByUser: {},
+    }
+    setCommentsByReel((prev) => ({
+      ...prev,
+      [reelId]: [...(prev[reelId] ?? []), next],
+    }))
+    toast.success(parentId ? 'Respuesta enviada' : 'Comentario enviado')
+  }
+
+  function setCommentRating(commentId: string, value: number) {
+    if (!currentReel) return
+    const reelId = currentReel.id
+    const viewerId = me.id
+    setCommentsByReel((prev) => {
+      const list = prev[reelId] ?? []
+      return {
+        ...prev,
+        [reelId]: list.map((c) =>
+          c.id === commentId
+            ? { ...c, ratingsByUser: { ...c.ratingsByUser, [viewerId]: value } }
+            : c,
+        ),
+      }
+    })
+  }
 
   useEffect(() => {
     const el = viewportRef.current
@@ -82,12 +119,11 @@ export function ReelsPage() {
     let touchStartY: number | null = null
 
     function goByDelta(deltaY: number) {
-      if (shareOpen) return
+      if (shareOpen || commentsOpen) return
       if (isAnimatingRef.current) return
       if (!reels.length) return
 
       const dir = deltaY > 0 ? 1 : -1
-      // “depending on jump”: bigger wheel => larger step (clamped)
       const jump = Math.max(1, Math.min(3, Math.round(Math.abs(deltaY) / 140)))
 
       isAnimatingRef.current = true
@@ -102,7 +138,6 @@ export function ReelsPage() {
     }
 
     const onWheel = (e: WheelEvent) => {
-      // Prevent normal page scroll so the reel “takes over” the gesture.
       e.preventDefault()
       goByDelta(e.deltaY)
     }
@@ -131,7 +166,7 @@ export function ReelsPage() {
       el.removeEventListener('touchstart', onTouchStart)
       el.removeEventListener('touchend', onTouchEnd)
     }
-  }, [reels.length, shareOpen])
+  }, [reels.length, shareOpen, commentsOpen])
 
   return (
     <div className="vt-reels">
@@ -154,17 +189,19 @@ export function ReelsPage() {
               </div>
 
               <div className="vt-reel-side">
-                <TrustSlider value={trust} onChange={setTrust} />
+                <ReelTrustSlider value={trust} onChange={setTrust} ariaLabel="Valorar este reel" />
 
                 <button
+                  type="button"
                   className="vt-reel-btn"
-                  onClick={() => {
-                    toast('Comentarios (demo)', { icon: '💬' })
-                  }}
+                  onClick={() => setCommentsOpen(true)}
+                  title="Comentarios"
+                  aria-label="Abrir comentarios"
                 >
                   <MessageCircle />
                 </button>
                 <button
+                  type="button"
                   className="vt-reel-btn"
                   onClick={() => {
                     setShareOpen(true)
@@ -174,6 +211,7 @@ export function ReelsPage() {
                   <Send />
                 </button>
                 <button
+                  type="button"
                   className={clsx('vt-reel-btn', savedReels[r.id] && 'vt-reel-btn-active')}
                   onClick={() => {
                     toggleSavedReel(r.id)
@@ -186,6 +224,7 @@ export function ReelsPage() {
 
                 {canPublish && (
                   <button
+                    type="button"
                     className="vt-reel-btn vt-reel-btn-pub"
                     onClick={() => {
                       const highTrust = me.trustScore >= 50
@@ -203,6 +242,15 @@ export function ReelsPage() {
         </div>
       </div>
 
+      <ReelCommentsPanel
+        open={commentsOpen}
+        onClose={() => setCommentsOpen(false)}
+        reel={currentReel ? { id: currentReel.id, title: currentReel.title, by: currentReel.by } : null}
+        comments={currentReel ? commentsByReel[currentReel.id] ?? [] : []}
+        onAddComment={addComment}
+        onSetRating={setCommentRating}
+      />
+
       {shareOpen && (
         <div className="vt-modal-backdrop" role="dialog" aria-modal="true">
           <div className="vt-modal">
@@ -213,6 +261,7 @@ export function ReelsPage() {
                 {['María', 'Carlos', 'Lucía', 'Pedro'].map((c) => (
                   <button
                     key={c}
+                    type="button"
                     className="vt-btn"
                     onClick={() => {
                       toast.success(`Compartido con ${c}`)
@@ -225,7 +274,7 @@ export function ReelsPage() {
               </div>
             </div>
             <div className="vt-modal-actions">
-              <button className="vt-btn" onClick={() => setShareOpen(false)}>
+              <button type="button" className="vt-btn" onClick={() => setShareOpen(false)}>
                 Cerrar
               </button>
             </div>
@@ -235,4 +284,3 @@ export function ReelsPage() {
     </div>
   )
 }
-
