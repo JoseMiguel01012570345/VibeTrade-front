@@ -61,6 +61,7 @@ export function ChatPage() {
   const pushNotification = useAppStore((s) => s.pushNotification);
 
   const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer);
+  const syncThreadBuyerQa = useMarketStore((s) => s.syncThreadBuyerQa);
   const thread = useMarketStore((s) =>
     threadId ? s.threads[threadId] : undefined,
   );
@@ -168,10 +169,15 @@ export function ChatPage() {
 
   useEffect(() => {
     if (threadId === "demo") {
-      const real = ensureThreadForOffer("o1");
+      const real = ensureThreadForOffer("o1", { buyerId: me.id });
       nav(`/chat/${real}`, { replace: true });
     }
-  }, [ensureThreadForOffer, nav, threadId]);
+  }, [ensureThreadForOffer, me.id, nav, threadId]);
+
+  useEffect(() => {
+    if (!threadId || threadId === "demo") return;
+    syncThreadBuyerQa(threadId, me.id);
+  }, [me.id, syncThreadBuyerQa, threadId]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -390,7 +396,12 @@ export function ChatPage() {
               <ArrowLeft size={16} />
             </button>
             <div className="vt-chat-head-main">
-              <div className="vt-chat-title">{store.name}</div>
+              <div className="vt-chat-title-row">
+                <div className="vt-chat-title">{store.name}</div>
+                {thread.purchaseMode && (
+                  <span className="vt-chat-purchase-badge">Modo compra</span>
+                )}
+              </div>
               <div className="vt-chat-sub">
                 <span className="vt-pill">
                   <ShieldCheck size={14} />{" "}

@@ -44,6 +44,8 @@ export type Message =
       text: string
       at: number
       read?: boolean
+      /** Mensajes generados desde Q&A de la oferta (sync al abrir Comprar). */
+      offerQaId?: string
       /** Citas cuando este mensaje responde a uno o más mensajes anteriores */
       replyQuotes?: ReplyQuote[]
     }
@@ -111,6 +113,8 @@ export type Thread = {
   offerId: string
   storeId: string
   store: StoreBadge
+  /** true cuando el comprador abre el chat desde «Comprar» (flujo de cierre). */
+  purchaseMode?: boolean
   messages: Message[]
 }
 
@@ -122,7 +126,9 @@ type MarketState = {
 
   ask: (offerId: string, askedBy: { id: string; name: string; trustScore: number }, question: string) => string
   answer: (offerId: string, qaId: string, answer: string) => void
-  ensureThreadForOffer: (offerId: string) => string
+  ensureThreadForOffer: (offerId: string, opts?: { buyerId?: string }) => string
+  /** Incorpora al hilo la Q&A del comprador desde la oferta (p. ej. al volver a abrir el chat). */
+  syncThreadBuyerQa: (threadId: string, buyerId: string) => void
   sendText: (threadId: string, text: string, replyToIds?: string[]) => void
   sendAudio: (threadId: string, payload: { url: string; seconds: number }) => void
   sendDocument: (
@@ -197,6 +203,115 @@ function collectReplyQuotes(th: Thread, replyToIds: string[] | undefined): Reply
   return list.length ? list : undefined
 }
 
+function hasSeededQuestion(messages: Message[], q: QAItem): boolean {
+  return messages.some((m) => {
+    if (m.type !== 'text' || m.from !== 'me') return false
+    if (m.offerQaId) return m.offerQaId === q.id
+    return m.text === q.question
+  })
+}
+
+function hasSeededAnswer(messages: Message[], q: QAItem): boolean {
+  if (!q.answer) return true
+  return messages.some((m) => {
+    if (m.type !== 'text' || m.from !== 'other') return false
+    if (m.offerQaId) return m.offerQaId === q.id
+    return m.text === q.answer
+  })
+}
+
+/** Añade al hilo las preguntas/respuestas del comprador que aún no estén reflejadas (p. ej. preguntó después del primer Comprar). */
+function syncOwnQaIntoMessages(
+  prev: Message[],
+  offer: Offer,
+  buyerId: string | undefined,
+): Message[] {
+  if (!buyerId) return prev
+
+  const ownQa = [...offer.qa]
+    .filter((q) => q.askedBy.id === buyerId)
+    .sort((a, b) => a.createdAt - b.createdAt)
+
+  let next = [...prev]
+  let t = next.length ? Math.max(...next.map((m) => m.at)) + 1 : Date.now()
+
+  for (const q of ownQa) {
+    if (!hasSeededQuestion(next, q)) {
+      next.push({
+        id: uid('m'),
+        from: 'me',
+        type: 'text',
+        text: q.question,
+        at: t++,
+        read: true,
+        offerQaId: q.id,
+      })
+    }
+    if (q.answer && !hasSeededAnswer(next, q)) {
+      next.push({
+        id: uid('m'),
+        from: 'other',
+        type: 'text',
+        text: q.answer,
+        at: t++,
+        read: true,
+        offerQaId: q.id,
+      })
+    }
+  }
+
+  return next
+}
+
+function buildPurchaseThreadMessages(offer: Offer, buyerId: string | undefined): Message[] {
+  const messages: Message[] = []
+  let seq = 0
+  const base = Date.now() - 90_000
+
+  messages.push({
+    id: uid('m'),
+    from: 'system',
+    type: 'text',
+    text: `Inicio de chat de compra · ${offer.title}. Credenciales del negocio y disponibilidad de transporte se destacan arriba.`,
+    at: base + seq++ * 1000,
+  })
+
+  if (!buyerId) return messages
+
+  const ownQa = [...offer.qa]
+    .filter((q) => q.askedBy.id === buyerId)
+    .sort((a, b) => a.createdAt - b.createdAt)
+
+  for (const q of ownQa) {
+    const tQ = base + seq++ * 1000
+    const tA = base + seq++ * 1000
+
+    messages.push({
+      id: uid('m'),
+      from: 'me',
+      type: 'text',
+      text: q.question,
+      at: tQ,
+      read: true,
+      offerQaId: q.id,
+    })
+
+    if (q.answer) {
+      messages.push({
+        id: uid('m'),
+        from: 'other',
+        type: 'text',
+        text: q.answer,
+        at: tA,
+        read: true,
+        offerQaId: q.id,
+      })
+    }
+  }
+
+  return messages
+}
+
 const demoStores: Record<string, StoreBadge> = {
   s1: {
     id: 's1',
@@ -230,10 +345,18 @@ const demoOffers: Offer[] = [
       {
         id: 'qa1',
         question: '¿Incluye embalaje?',
-        askedBy: { id: 'u2', name: 'María', trustScore: 74 },
+        askedBy: { id: 'me', name: 'Jhosef', trustScore: 72 },
         answeredBy: { id: 's1', name: 'AgroNorte SRL', trustScore: 88 },
         answer: 'Sí, incluye embalaje estándar. Podemos cotizar reforzado.',
         createdAt: Date.now() - 1000 * 60 * 60 * 2,
+      },
+      {
+        id: 'qa2',
+        question: '¿Entregan en zona norte?',
+        askedBy: { id: 'u2', name: 'María', trustScore: 74 },
+        answeredBy: { id: 's1', name: 'AgroNorte SRL', trustScore: 88 },
+        answer: 'Sí, coordinamos logística.',
+        createdAt: Date.now() - 1000 * 60 * 60 * 3,
       },
     ],
   },
@@ -302,12 +425,28 @@ export const useMarketStore = create<MarketState>((set, get) => {
       })
     },
 
-    ensureThreadForOffer: (offerId) => {
+    ensureThreadForOffer: (offerId, opts) => {
       const s = get()
-      const existing = Object.values(s.threads).find((t) => t.offerId === offerId)
-      if (existing) return existing.id
-
       const offer = s.offers[offerId]
+      if (!offer) return ''
+
+      const existing = Object.values(s.threads).find((t) => t.offerId === offerId)
+      const buyerId = opts?.buyerId
+
+      if (existing) {
+        const merged = syncOwnQaIntoMessages(existing.messages, offer, buyerId)
+        if (merged.length !== existing.messages.length) {
+          set((x) => ({
+            ...x,
+            threads: {
+              ...x.threads,
+              [existing.id]: { ...existing, messages: merged },
+            },
+          }))
+        }
+        return existing.id
+      }
+
       const store = s.stores[offer.storeId]
       const id = uid('th')
       const bootstrap: Thread = {
@@ -315,61 +454,26 @@ export const useMarketStore = create<MarketState>((set, get) => {
         offerId,
         storeId: offer.storeId,
         store,
-        messages: [
-          {
-            id: uid('m'),
-            from: 'system',
-            type: 'text',
-            text:
-              'Inicio de chat: credenciales del negocio y disponibilidad de transporte destacadas arriba.',
-            at: Date.now() - 60_000,
-          },
-          {
-            id: uid('m'),
-            from: 'other',
-            type: 'image',
-            images: [
-              { url: 'https://images.unsplash.com/photo-1604908177522-4028c7a2e08d?auto=format&fit=crop&w=800&q=80' },
-              { url: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=800&q=80' },
-            ],
-            at: Date.now() - 50_000,
-            read: true,
-          },
-          {
-            id: uid('m'),
-            from: 'other',
-            type: 'audio',
-            url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-            seconds: 60,
-            at: Date.now() - 45_000,
-            read: true,
-          },
-          {
-            id: uid('m'),
-            from: 'other',
-            type: 'doc',
-            name: 'Especificaciones.pdf',
-            size: '240 KB',
-            kind: 'pdf',
-            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-            at: Date.now() - 40_000,
-            read: true,
-          },
-          {
-            id: uid('m'),
-            from: 'other',
-            type: 'doc',
-            name: 'Contrato borrador.docx',
-            size: '88 KB',
-            kind: 'doc',
-            url: 'https://file-examples.com/wp-content/storage/2017/02/file_sample_100kB.docx',
-            at: Date.now() - 35_000,
-            read: true,
-          },
-        ],
+        purchaseMode: true,
+        messages: buildPurchaseThreadMessages(offer, buyerId),
       }
       set((x) => ({ ...x, threads: { ...x.threads, [id]: bootstrap } }))
       return id
+    },
+
+    syncThreadBuyerQa: (threadId, buyerId) => {
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th?.purchaseMode) return s
+        const offer = s.offers[th.offerId]
+        if (!offer) return s
+        const merged = syncOwnQaIntoMessages(th.messages, offer, buyerId)
+        if (merged.length === th.messages.length) return s
+        return {
+          ...s,
+          threads: { ...s.threads, [threadId]: { ...th, messages: merged } },
+        }
+      })
     },
 
     sendText: (threadId, text, replyToIds) => {

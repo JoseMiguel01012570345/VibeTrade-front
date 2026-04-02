@@ -20,6 +20,24 @@
   letter-spacing: -0.03em;
 }
 
+.vt-chat-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.vt-chat-purchase-badge {
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--accent, #16a34a) 18%, transparent);
+  color: var(--accent-foreground, #14532d);
+  border: 1px solid color-mix(in oklab, var(--accent, #16a34a) 35%, transparent);
+}
+
 .vt-chat-sub {
   margin-top: 6px;
   display: flex;

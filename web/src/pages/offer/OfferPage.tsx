@@ -116,7 +116,9 @@ export function OfferPage() {
               <button
                 className="vt-btn vt-btn-primary"
                 onClick={() => {
-                  const threadId = ensureThreadForOffer(offer.id);
+                  const threadId = ensureThreadForOffer(offer.id, {
+                    buyerId: me.id,
+                  });
                   nav(`/chat/${threadId}`);
                 }}
               >
