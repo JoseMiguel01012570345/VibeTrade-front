@@ -11,6 +11,10 @@ export function messagePreviewLine(m: Message): string {
       return 'Nota de voz'
     case 'doc':
       return m.name
+    case 'docs':
+      return m.documents.length > 1
+        ? `${m.documents.length} documentos`
+        : (m.documents[0]?.name ?? 'Documento')
     case 'certificate':
       return m.title
     default:

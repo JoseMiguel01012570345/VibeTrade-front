@@ -54,6 +54,9 @@ export type Message =
       images: { url: string }[]
       at: number
       read?: boolean
+      caption?: string
+      embeddedAudio?: { url: string; seconds: number }
+      replyQuotes?: ReplyQuote[]
     }
   | {
       id: string
@@ -75,6 +78,24 @@ export type Message =
       url?: string
       at: number
       read?: boolean
+      caption?: string
+      replyQuotes?: ReplyQuote[]
+    }
+  | {
+      id: string
+      from: 'me' | 'other'
+      type: 'docs'
+      documents: {
+        name: string
+        size: string
+        kind: 'pdf' | 'doc' | 'other'
+        url?: string
+      }[]
+      caption?: string
+      embeddedAudio?: { url: string; seconds: number }
+      at: number
+      read?: boolean
+      replyQuotes?: ReplyQuote[]
     }
   | {
       id: string
@@ -107,6 +128,24 @@ type MarketState = {
   sendDocument: (
     threadId: string,
     payload: { name: string; size: string; kind: 'pdf' | 'doc' | 'other'; url: string },
+    options?: { replyToIds?: string[]; caption?: string },
+  ) => void
+  sendImages: (
+    threadId: string,
+    images: { url: string }[],
+    options?: {
+      replyToIds?: string[]
+      caption?: string
+      embeddedAudio?: { url: string; seconds: number }
+    },
+  ) => void
+  sendDocsBundle: (
+    threadId: string,
+    payload: {
+      documents: { name: string; size: string; kind: 'pdf' | 'doc' | 'other'; url: string }[]
+      embeddedAudio?: { url: string; seconds: number }
+    },
+    options?: { replyToIds?: string[]; caption?: string },
   ) => void
 }
 
@@ -124,6 +163,10 @@ function previewForMessage(m: Message): string {
       return 'Nota de voz'
     case 'doc':
       return m.name
+    case 'docs':
+      return m.documents.length > 1
+        ? `${m.documents.length} documentos`
+        : m.documents[0]?.name ?? 'Documento'
     case 'certificate':
       return m.title
     default:
@@ -135,6 +178,23 @@ function authorForMessage(m: Message, storeName: string): string {
   if (m.from === 'me') return 'Tú'
   if (m.from === 'other') return storeName
   return 'Sistema'
+}
+
+function collectReplyQuotes(th: Thread, replyToIds: string[] | undefined): ReplyQuote[] | undefined {
+  if (!replyToIds?.length) return undefined
+  const storeName = th.store.name
+  const list = replyToIds
+    .map((id) => {
+      const msg = th.messages.find((x) => x.id === id)
+      if (!msg || msg.type === 'certificate') return null
+      return {
+        id: msg.id,
+        author: authorForMessage(msg, storeName),
+        preview: previewForMessage(msg),
+      }
+    })
+    .filter((q): q is ReplyQuote => q !== null)
+  return list.length ? list : undefined
 }
 
 const demoStores: Record<string, StoreBadge> = {
@@ -316,21 +376,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
       set((s) => {
         const th = s.threads[threadId]
         if (!th) return s
-        const storeName = th.store.name
-        const replyQuotes: ReplyQuote[] | undefined =
-          replyToIds && replyToIds.length
-            ? replyToIds
-                .map((id) => {
-                  const msg = th.messages.find((x) => x.id === id)
-                  if (!msg || msg.type === 'certificate') return null
-                  return {
-                    id: msg.id,
-                    author: authorForMessage(msg, storeName),
-                    preview: previewForMessage(msg),
-                  }
-                })
-                .filter((q): q is ReplyQuote => q !== null)
-            : undefined
+        const replyQuotes = collectReplyQuotes(th, replyToIds)
         const m: Message = {
           id: uid('m'),
           from: 'me',
@@ -361,10 +407,12 @@ export const useMarketStore = create<MarketState>((set, get) => {
       })
     },
 
-    sendDocument: (threadId, payload) => {
+    sendDocument: (threadId, payload, options) => {
       set((s) => {
         const th = s.threads[threadId]
         if (!th) return s
+        const replyQuotes = collectReplyQuotes(th, options?.replyToIds)
+        const cap = options?.caption?.trim()
         const m: Message = {
           id: uid('m'),
           from: 'me',
@@ -375,6 +423,66 @@ export const useMarketStore = create<MarketState>((set, get) => {
           url: payload.url,
           at: Date.now(),
           read: false,
+          ...(cap ? { caption: cap } : {}),
+          ...(replyQuotes && replyQuotes.length ? { replyQuotes } : {}),
+        }
+        return { ...s, threads: { ...s.threads, [threadId]: { ...th, messages: [...th.messages, m] } } }
+      })
+    },
+
+    sendImages: (threadId, images, options) => {
+      if (!images.length) return
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th) return s
+        const replyQuotes = collectReplyQuotes(th, options?.replyToIds)
+        const cap = options?.caption?.trim()
+        const audio = options?.embeddedAudio
+        const m: Message = {
+          id: uid('m'),
+          from: 'me',
+          type: 'image',
+          images,
+          at: Date.now(),
+          read: false,
+          ...(cap ? { caption: cap } : {}),
+          ...(audio
+            ? {
+                embeddedAudio: {
+                  url: audio.url,
+                  seconds: Math.max(1, Math.round(audio.seconds)),
+                },
+              }
+            : {}),
+          ...(replyQuotes && replyQuotes.length ? { replyQuotes } : {}),
+        }
+        return { ...s, threads: { ...s.threads, [threadId]: { ...th, messages: [...th.messages, m] } } }
+      })
+    },
+
+    sendDocsBundle: (threadId, payload, options) => {
+      if (!payload.documents.length) return
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th) return s
+        const replyQuotes = collectReplyQuotes(th, options?.replyToIds)
+        const cap = options?.caption?.trim()
+        const audio = payload.embeddedAudio
+        const m: Message = {
+          id: uid('m'),
+          from: 'me',
+          type: 'docs',
+          documents: payload.documents.map((d) => ({
+            name: d.name,
+            size: d.size,
+            kind: d.kind,
+            url: d.url,
+          })),
+          at: Date.now(),
+          read: false,
+          ...(cap ? { caption: cap } : {}),
+          ...(audio ? { embeddedAudio: { url: audio.url, seconds: Math.max(1, Math.round(audio.seconds)) } } : {}),
+          ...(replyQuotes && replyQuotes.length ? { replyQuotes } : {}),
         }
         return { ...s, threads: { ...s.threads, [threadId]: { ...th, messages: [...th.messages, m] } } }
       })

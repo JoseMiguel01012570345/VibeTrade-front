@@ -9,7 +9,26 @@ import {
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
 import { Check, CheckCheck, Download, FileText, GitBranch, Loader2, MapPin, Pause, Play } from 'lucide-react'
-import type { Message } from '../../app/store/useMarketStore'
+import type { Message, ReplyQuote } from '../../app/store/useMarketStore'
+
+function ChatReplyQuotes({ quotes }: { quotes: ReplyQuote[] }) {
+  return (
+    <div className="vt-chat-reply-quotes" aria-label="Mensajes citados">
+      <div className="vt-chat-thread-marker" title="Mensaje dentro de un hilo de respuesta">
+        <GitBranch size={14} strokeWidth={2.25} aria-hidden />
+        <span>Hilo nuevo</span>
+      </div>
+      {quotes.map((q) => (
+        <div key={q.id} className="vt-chat-reply-quote">
+          <div className="vt-chat-reply-quote-body">
+            <span className="vt-chat-reply-quote-author">{q.author}</span>
+            <span className="vt-chat-reply-quote-preview">{q.preview}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function hhmm(ts: number) {
   const d = new Date(ts)
@@ -33,8 +52,16 @@ export function MsgMeta({ at, read }: { at: number; read?: boolean }) {
   )
 }
 
+/** `audio.duration` is often Infinity/NaN for some blobs until fully buffered; guard UI math. */
+function finiteDuration(sec: number, fallback: number): number {
+  if (Number.isFinite(sec) && sec > 0) return sec
+  if (Number.isFinite(fallback) && fallback > 0) return fallback
+  return 0
+}
+
 function formatTime(sec: number) {
-  const s = Math.floor(sec)
+  if (!Number.isFinite(sec) || sec < 0) sec = 0
+  const s = Math.floor(Math.min(sec, 359_999))
   const m = Math.floor(s / 60)
   const r = s % 60
   return `${m}:${String(r).padStart(2, '0')}`
@@ -44,7 +71,7 @@ export function AudioMicro({ url, seconds }: { url: string; seconds: number }) {
   const ref = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
   const [cur, setCur] = useState(0)
-  const [dur, setDur] = useState(seconds)
+  const [dur, setDur] = useState(() => finiteDuration(seconds, seconds))
 
   const toggle = useCallback(() => {
     const a = ref.current
@@ -57,28 +84,40 @@ export function AudioMicro({ url, seconds }: { url: string; seconds: number }) {
   }, [playing])
 
   useEffect(() => {
+    setCur(0)
+    setDur(finiteDuration(seconds, seconds))
+  }, [url, seconds])
+
+  useEffect(() => {
     const a = ref.current
     if (!a) return
-    const onTime = () => setCur(a.currentTime)
-    const onMeta = () => setDur(a.duration || seconds)
+    const onTime = () => {
+      const t = a.currentTime
+      setCur(Number.isFinite(t) && t >= 0 ? t : 0)
+    }
+    const onMeta = () => setDur(finiteDuration(a.duration, seconds))
+    const onDurChange = () => setDur(finiteDuration(a.duration, seconds))
     const onEnd = () => setPlaying(false)
     const onPlay = () => setPlaying(true)
     const onPause = () => setPlaying(false)
     a.addEventListener('timeupdate', onTime)
     a.addEventListener('loadedmetadata', onMeta)
+    a.addEventListener('durationchange', onDurChange)
     a.addEventListener('ended', onEnd)
     a.addEventListener('play', onPlay)
     a.addEventListener('pause', onPause)
     return () => {
       a.removeEventListener('timeupdate', onTime)
       a.removeEventListener('loadedmetadata', onMeta)
+      a.removeEventListener('durationchange', onDurChange)
       a.removeEventListener('ended', onEnd)
       a.removeEventListener('play', onPlay)
       a.removeEventListener('pause', onPause)
     }
   }, [seconds, url])
 
-  const pct = dur > 0 ? (cur / dur) * 100 : 0
+  const total = finiteDuration(dur, seconds)
+  const pct = total > 0 ? Math.min(100, (cur / total) * 100) : 0
 
   return (
     <div className="vt-chat-audio-micro" data-chat-interactive>
@@ -90,7 +129,7 @@ export function AudioMicro({ url, seconds }: { url: string; seconds: number }) {
         <div className="vt-chat-audio-progress" style={{ width: `${pct}%` }} />
       </div>
       <span className="vt-chat-audio-dur">
-        {formatTime(cur)} / {formatTime(dur || seconds)}
+        {formatTime(cur)} / {formatTime(total)}
       </span>
     </div>
   )
@@ -116,6 +155,31 @@ export function ImageGrid({
         >
           <img src={img.url} alt="" loading="lazy" />
         </button>
+      ))}
+    </div>
+  )
+}
+
+export function DocGrid({
+  documents,
+}: {
+  documents: { name: string; size: string; kind: 'pdf' | 'doc' | 'other'; url?: string }[]
+}) {
+  return (
+    <div
+      className={clsx(
+        'vt-chat-docs-grid',
+        documents.length > 1 && 'vt-chat-docs-grid-multi',
+      )}
+    >
+      {documents.map((d, i) => (
+        <DocRow
+          key={`${d.name}-${i}`}
+          name={d.name}
+          size={d.size}
+          kind={d.kind}
+          url={d.url}
+        />
       ))}
     </div>
   )
@@ -328,29 +392,48 @@ export function MessageBody({
     const hasThread = m.replyQuotes && m.replyQuotes.length > 0
     return (
       <div className={clsx('vt-chat-text-block', hasThread && 'vt-chat-text-block--yt-thread')}>
-        {hasThread && (
-          <div className="vt-chat-reply-quotes" aria-label="Mensajes citados">
-            <div className="vt-chat-thread-marker" title="Mensaje dentro de un hilo de respuesta">
-              <GitBranch size={14} strokeWidth={2.25} aria-hidden />
-              <span>Hilo nuevo</span>
-            </div>
-            {m.replyQuotes!.map((q) => (
-              <div key={q.id} className="vt-chat-reply-quote">
-                <div className="vt-chat-reply-quote-body">
-                  <span className="vt-chat-reply-quote-author">{q.author}</span>
-                  <span className="vt-chat-reply-quote-preview">{q.preview}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {hasThread && <ChatReplyQuotes quotes={m.replyQuotes!} />}
         <div className="vt-chat-text">{m.text}</div>
       </div>
     )
   }
-  if (m.type === 'image') return <ImageGrid images={m.images} onOpen={onImageOpen} />
+  if (m.type === 'image') {
+    const hasThread = m.replyQuotes && m.replyQuotes.length > 0
+    return (
+      <div className={clsx('vt-chat-media-block', hasThread && 'vt-chat-text-block--yt-thread')}>
+        {hasThread && <ChatReplyQuotes quotes={m.replyQuotes!} />}
+        <ImageGrid images={m.images} onOpen={onImageOpen} />
+        {m.embeddedAudio ? (
+          <AudioMicro url={m.embeddedAudio.url} seconds={m.embeddedAudio.seconds} />
+        ) : null}
+        {m.caption ? <div className="vt-chat-caption">{m.caption}</div> : null}
+      </div>
+    )
+  }
   if (m.type === 'audio') return <AudioMicro url={m.url} seconds={m.seconds} />
-  if (m.type === 'doc') return <DocRow name={m.name} size={m.size} kind={m.kind} url={m.url} />
+  if (m.type === 'docs') {
+    const hasThread = m.replyQuotes && m.replyQuotes.length > 0
+    return (
+      <div className={clsx('vt-chat-media-block', hasThread && 'vt-chat-text-block--yt-thread')}>
+        {hasThread && <ChatReplyQuotes quotes={m.replyQuotes!} />}
+        <DocGrid documents={m.documents} />
+        {m.embeddedAudio ? (
+          <AudioMicro url={m.embeddedAudio.url} seconds={m.embeddedAudio.seconds} />
+        ) : null}
+        {m.caption ? <div className="vt-chat-caption">{m.caption}</div> : null}
+      </div>
+    )
+  }
+  if (m.type === 'doc') {
+    const hasThread = m.replyQuotes && m.replyQuotes.length > 0
+    return (
+      <div className={clsx('vt-chat-media-block', hasThread && 'vt-chat-text-block--yt-thread')}>
+        {hasThread && <ChatReplyQuotes quotes={m.replyQuotes!} />}
+        <DocRow name={m.name} size={m.size} kind={m.kind} url={m.url} />
+        {m.caption ? <div className="vt-chat-caption">{m.caption}</div> : null}
+      </div>
+    )
+  }
   if (m.type === 'certificate')
     return (
       <div className="vt-chat-cert">
