@@ -1,10 +1,17 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
-import { Bookmark, MessageCircle, Send, Upload } from 'lucide-react'
+import {
+  type CSSProperties,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react'
+import { Bookmark, MessageCircle, Send, ThumbsUp, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { useAppStore } from '../../app/store/useAppStore'
 import { ReelCommentsPanel, type ReelComment } from './ReelCommentsPanel'
-import { ReelTrustSlider } from './ReelTrustSlider'
+// import { ReelTrustSlider } from './ReelTrustSlider'
 import './reels.css'
 
 type Reel = {
@@ -32,10 +39,60 @@ const DEMO_REELS: Reel[] = [
     cover:
       'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80',
   },
+  {
+    id: 'r3',
+    title: 'Cadena fría: exportación hortícola',
+    category: 'Logística',
+    by: 'Logística Sur',
+    cover:
+      'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    id: 'r4',
+    title: 'Granos a granel — origen Rosario',
+    category: 'Mercancías',
+    by: 'AgroNorte SRL',
+    cover:
+      'https://images.unsplash.com/photo-1574943320219-553eb213f72d?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    id: 'r5',
+    title: 'Semi-remolque disponible Bs.As. → NEA',
+    category: 'Transportista',
+    by: 'Logística Sur',
+    cover:
+      'https://images.unsplash.com/photo-1519003722824-cd2daa86a310?auto=format&fit=crop&w=1200&q=80',
+  },
 ]
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`
+}
+
+const INITIAL_REEL_LIKE_COUNTS: Record<string, number> = {
+  r1: 128,
+  r2: 42,
+  r3: 89,
+  r4: 203,
+  r5: 17,
+}
+
+type ReelLikeBundle = { liked: Record<string, boolean>; counts: Record<string, number> }
+
+function reelLikeReducer(
+  state: ReelLikeBundle,
+  action: { type: 'toggle'; reelId: string },
+): ReelLikeBundle {
+  if (action.type !== 'toggle') return state
+  const { reelId } = action
+  const was = !!state.liked[reelId]
+  return {
+    liked: { ...state.liked, [reelId]: !was },
+    counts: {
+      ...state.counts,
+      [reelId]: Math.max(0, (state.counts[reelId] ?? 0) + (was ? -1 : 1)),
+    },
+  }
 }
 
 const INITIAL_COMMENTS: Record<string, ReelComment[]> = {
@@ -58,6 +115,35 @@ const INITIAL_COMMENTS: Record<string, ReelComment[]> = {
     },
   ],
   r2: [],
+  r3: [
+    {
+      id: 'rc_demo_r3_1',
+      parentId: null,
+      authorName: 'Lucas',
+      text: '¿Cubren documentación Aduana?',
+      at: Date.now() - 7200_000,
+      ratingsByUser: { u_lucas: 0.1, u_demo_d: 0.2 },
+    },
+  ],
+  r4: [],
+  r5: [
+    {
+      id: 'rc_demo_r5_1',
+      parentId: null,
+      authorName: 'Ana',
+      text: 'Precio por km aproximado?',
+      at: Date.now() - 5400_000,
+      ratingsByUser: { u_ana: 0.15 },
+    },
+    {
+      id: 'rc_demo_r5_2',
+      parentId: 'rc_demo_r5_1',
+      authorName: 'Logística Sur',
+      text: 'Te escribimos al DM con tarifario.',
+      at: Date.now() - 3600_000,
+      ratingsByUser: { u_store: 0.75 },
+    },
+  ],
 }
 
 export function ReelsPage() {
@@ -67,7 +153,10 @@ export function ReelsPage() {
   const [idx, setIdx] = useState(0)
   const [shareOpen, setShareOpen] = useState(false)
   const [commentsOpen, setCommentsOpen] = useState(false)
-  const [trust, setTrust] = useState(0)
+  const [reelLikes, dispatchReelLike] = useReducer(reelLikeReducer, {
+    liked: {},
+    counts: { ...INITIAL_REEL_LIKE_COUNTS },
+  })
   const [commentsByReel, setCommentsByReel] = useState<Record<string, ReelComment[]>>(() => ({
     ...INITIAL_COMMENTS,
   }))
@@ -104,11 +193,13 @@ export function ReelsPage() {
       const list = prev[reelId] ?? []
       return {
         ...prev,
-        [reelId]: list.map((c) =>
-          c.id === commentId
-            ? { ...c, ratingsByUser: { ...c.ratingsByUser, [viewerId]: value } }
-            : c,
-        ),
+        [reelId]: list.map((c) => {
+          if (c.id !== commentId) return c
+          const next = { ...c.ratingsByUser }
+          if (value === 0) delete next[viewerId]
+          else next[viewerId] = value
+          return { ...c, ratingsByUser: next }
+        }),
       }
     })
   }
@@ -189,7 +280,29 @@ export function ReelsPage() {
               </div>
 
               <div className="vt-reel-side">
+                {/*
+                Espectro de valoración (-1…1) — desactivado; reemplazado por me gusta simple.
                 <ReelTrustSlider value={trust} onChange={setTrust} ariaLabel="Valorar este reel" />
+                */}
+                <div className="vt-reel-side-action">
+                  <button
+                    type="button"
+                    className={clsx('vt-reel-btn', reelLikes.liked[r.id] && 'vt-reel-btn-active')}
+                    onClick={() => dispatchReelLike({ type: 'toggle', reelId: r.id })}
+                    title={`Me gusta (${reelLikes.counts[r.id] ?? 0})`}
+                    aria-label={
+                      reelLikes.liked[r.id]
+                        ? `Quitar me gusta, ${reelLikes.counts[r.id] ?? 0} en total`
+                        : `Me gusta, ${reelLikes.counts[r.id] ?? 0} en total`
+                    }
+                    aria-pressed={reelLikes.liked[r.id]}
+                  >
+                    <ThumbsUp />
+                  </button>
+                  <span className="vt-reel-side-count" aria-hidden>
+                    {reelLikes.counts[r.id] ?? 0}
+                  </span>
+                </div>
 
                 <button
                   type="button"
@@ -249,6 +362,7 @@ export function ReelsPage() {
         comments={currentReel ? commentsByReel[currentReel.id] ?? [] : []}
         onAddComment={addComment}
         onSetRating={setCommentRating}
+        viewerId={me.id}
       />
 
       {shareOpen && (

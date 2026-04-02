@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { MessageCircle, Send, X } from 'lucide-react'
-import { ReelTrustSlider } from './ReelTrustSlider'
-import { averageRating } from './reelRating'
+import { MessageCircle, Send, ThumbsUp, X } from 'lucide-react'
+// import { ReelTrustSlider } from './ReelTrustSlider'
+// import { averageRating } from './reelRating'
+import { countPositiveRatings } from './reelRating'
 
 export type ReelComment = {
   id: string
@@ -21,6 +22,7 @@ type Props = {
   comments: ReelComment[]
   onAddComment: (text: string, parentId: string | null) => void
   onSetRating: (commentId: string, value: number) => void
+  viewerId: string
 }
 
 function timeAgo(ts: number) {
@@ -38,6 +40,7 @@ export function ReelCommentsPanel({
   comments,
   onAddComment,
   onSetRating,
+  viewerId,
 }: Props) {
   const [draft, setDraft] = useState('')
   const [replyingTo, setReplyingTo] = useState<ReelComment | null>(null)
@@ -69,16 +72,49 @@ export function ReelCommentsPanel({
     return rows.map((c) => {
       const childRows = tree.get(c.id) ?? []
       const hasReplies = childRows.length > 0
+      const likeTotal = countPositiveRatings(c.ratingsByUser)
       return (
         <div key={c.id} className="vt-reel-cmt-thread">
           <div className={clsx('vt-reel-cmt-row', depth > 0 && 'vt-reel-cmt-row-reply')}>
-          <ReelTrustSlider
-            compact
-            ariaLabel={`Valorar comentario de ${c.authorName}`}
-            value={averageRating(c.ratingsByUser)}
-            unrated={Object.keys(c.ratingsByUser).length === 0}
-            onChange={(v) => onSetRating(c.id, v)}
-          />
+            {/*
+            Espectro de valoración por comentario — desactivado; me gusta binario.
+            <ReelTrustSlider
+              compact
+              ariaLabel={`Valorar comentario de ${c.authorName}`}
+              value={averageRating(c.ratingsByUser)}
+              unrated={Object.keys(c.ratingsByUser).length === 0}
+              onChange={(v) => onSetRating(c.id, v)}
+            />
+            */}
+            <div className="vt-reel-cmt-like-col">
+              <button
+                type="button"
+                className={clsx(
+                  'vt-reel-cmt-like',
+                  (c.ratingsByUser[viewerId] ?? 0) > 0 && 'vt-reel-cmt-like--on',
+                )}
+                onClick={() => {
+                  const liked = (c.ratingsByUser[viewerId] ?? 0) > 0
+                  onSetRating(c.id, liked ? 0 : 1)
+                }}
+                title={
+                  (c.ratingsByUser[viewerId] ?? 0) > 0
+                    ? 'Quitar me gusta'
+                    : `Me gusta (${likeTotal})`
+                }
+                aria-label={
+                  (c.ratingsByUser[viewerId] ?? 0) > 0
+                    ? `Quitar me gusta, ${likeTotal} en total`
+                    : `Me gusta, ${likeTotal} en total`
+                }
+                aria-pressed={(c.ratingsByUser[viewerId] ?? 0) > 0}
+              >
+                <ThumbsUp size={18} strokeWidth={2.25} />
+              </button>
+              <span className="vt-reel-cmt-like-count" aria-hidden>
+                {likeTotal}
+              </span>
+            </div>
           <div className="vt-reel-cmt-body">
             <div className="vt-reel-cmt-head">
               <span className="vt-reel-cmt-author">{c.authorName}</span>

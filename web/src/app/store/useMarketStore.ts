@@ -440,6 +440,59 @@ const demoOffers: Offer[] = [
       'https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=1200&q=80',
     qa: [],
   },
+  {
+    id: 'o3',
+    storeId: 's1',
+    title: 'Aceite de oliva extra virgen — bidón 20 L',
+    price: 'USD 185 / unidad',
+    location: 'Mendoza, AR',
+    tags: ['Mercancías', 'Alimentos', 'Mayorista'],
+    imageUrl:
+      'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=1200&q=80',
+    qa: [],
+  },
+  {
+    id: 'o4',
+    storeId: 's2',
+    title: 'Flete refrigerado CABA ↔ Litoral (pallets)',
+    price: 'Cotizar',
+    location: 'Buenos Aires, AR',
+    tags: ['Servicio', 'Cadena fría', 'Transporte'],
+    imageUrl:
+      'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80',
+    qa: [
+      {
+        id: 'qa_o4_1',
+        question: '¿Temperatura controlada en todo el trayecto?',
+        askedBy: { id: 'me', name: 'Jhosef', trustScore: 72 },
+        answeredBy: { id: 's2', name: 'Flete Rápido', trustScore: 63 },
+        answer: 'Sí, monitoreo GPS + registro de temperatura.',
+        createdAt: Date.now() - 1000 * 60 * 60 * 5,
+      },
+    ],
+  },
+  {
+    id: 'o5',
+    storeId: 's3',
+    title: 'Almacenaje + picking para e-commerce (zona sur)',
+    price: 'USD 0,45 / unidad / mes',
+    location: 'La Plata, AR',
+    tags: ['Servicio', 'Logística', 'Fulfillment'],
+    imageUrl:
+      'https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=1200&q=80',
+    qa: [],
+  },
+  {
+    id: 'o6',
+    storeId: 's1',
+    title: 'Miel orgánica multifloral — tambor 300 kg',
+    price: 'USD 2.650',
+    location: 'Entre Ríos, AR',
+    tags: ['Mercancías', 'Orgánico', 'B2B'],
+    imageUrl:
+      'https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&w=1200&q=80',
+    qa: [],
+  },
 ]
 
 export const useMarketStore = create<MarketState>((set, get) => {

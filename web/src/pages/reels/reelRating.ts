@@ -1,3 +1,8 @@
+/** Cantidad de reacciones positivas (me gusta: un voto por usuario con valor > 0). */
+export function countPositiveRatings(ratingsByUser: Record<string, number>): number {
+  return Object.values(ratingsByUser).filter((v) => v > 0).length
+}
+
 /** Promedio de valoraciones -1…1 por usuario; sin votos → 0 (neutro). */
 export function averageRating(ratingsByUser: Record<string, number>): number {
   const vals = Object.values(ratingsByUser)

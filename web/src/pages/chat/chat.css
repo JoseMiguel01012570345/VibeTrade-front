@@ -1784,6 +1784,12 @@ body:has(.vt-chat-page) {
   z-index: 90;
 }
 
+.vt-modal-actions {
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 .vt-btn-sm {
   padding: 6px 10px;
   font-size: 13px;

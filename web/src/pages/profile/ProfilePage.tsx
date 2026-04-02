@@ -7,6 +7,9 @@ import './profile.css'
 const REEL_TITLES: Record<string, string> = {
   r1: 'Cosecha: Malanga premium',
   r2: 'Flete 5 Ton - disponibilidad hoy',
+  r3: 'Cadena fría: exportación hortícola',
+  r4: 'Granos a granel — origen Rosario',
+  r5: 'Semi-remolque disponible Bs.As. → NEA',
 }
 
 export function ProfilePage() {
