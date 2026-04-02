@@ -30,6 +30,12 @@ export type RouteStop = {
   tipoMercanciaCarga?: string
   tipoMercanciaDescarga?: string
   notas?: string
+  /** Por tramo: responsabilidad por daños por embalaje */
+  responsabilidadEmbalaje?: string
+  /** Por tramo: frágil, refrigerado, ADR, etc. */
+  requisitosEspeciales?: string
+  /** Por tramo: tipo de vehículo requerido */
+  tipoVehiculoRequerido?: string
   completada?: boolean
   /**
    * Legado: datos antiguos con una sola «parada» / lugar.
@@ -50,12 +56,6 @@ export type RouteSheet = {
   mercanciasResumen: string
   paradas: RouteStop[]
   notasGenerales?: string
-  /** Responsabilidad por daños por embalaje */
-  responsabilidadEmbalaje?: string
-  /** Requisitos especiales (frágil, refrigerado, etc.) */
-  requisitosEspeciales?: string
-  /** Tipo de vehículo requerido */
-  tipoVehiculoRequerido?: string
   /** Publicada a transportistas vía plataforma (demo). */
   publicadaPlataforma?: boolean
   /** true tras guardar desde el formulario de edición; bloquea eliminar si sigue sin publicar. */
@@ -82,9 +82,6 @@ export function defaultRouteSheetDraft(): Omit<
     estado: 'borrador',
     mercanciasResumen: '',
     notasGenerales: '',
-    responsabilidadEmbalaje: '',
-    requisitosEspeciales: '',
-    tipoVehiculoRequerido: '',
     paradas: [emptyRouteStop(1), emptyRouteStop(2)],
   }
 }
@@ -104,6 +101,9 @@ export type RouteTramoFormInput = {
   tipoMercanciaCarga?: string
   tipoMercanciaDescarga?: string
   notas?: string
+  responsabilidadEmbalaje?: string
+  requisitosEspeciales?: string
+  tipoVehiculoRequerido?: string
 }
 
 export type RouteSheetCreatePayload = {
@@ -111,13 +111,35 @@ export type RouteSheetCreatePayload = {
   mercanciasResumen: string
   paradas: RouteTramoFormInput[]
   notasGenerales?: string
+}
+
+/** Datos viejos guardados a nivel hoja (antes de por-tramo). */
+export type RouteSheetLegacyHead = {
   responsabilidadEmbalaje?: string
   requisitosEspeciales?: string
   tipoVehiculoRequerido?: string
 }
 
+/** Lee cabecera legada desde estado persistido (runtime). */
+export function routeSheetLegacyHead(rs: RouteSheet): RouteSheetLegacyHead | undefined {
+  const x = rs as RouteSheet & RouteSheetLegacyHead
+  const a = x.responsabilidadEmbalaje?.trim()
+  const b = x.requisitosEspeciales?.trim()
+  const c = x.tipoVehiculoRequerido?.trim()
+  if (!a && !b && !c) return undefined
+  return {
+    responsabilidadEmbalaje: x.responsabilidadEmbalaje,
+    requisitosEspeciales: x.requisitosEspeciales,
+    tipoVehiculoRequerido: x.tipoVehiculoRequerido,
+  }
+}
+
 /** Convierte paradas persistidas al formato del formulario de alta/edición. */
-export function routeStopsToFormInputs(paradas: RouteStop[]): RouteTramoFormInput[] {
+export function routeStopsToFormInputs(
+  paradas: RouteStop[],
+  legacyHead?: RouteSheetLegacyHead | null,
+): RouteTramoFormInput[] {
+  const L = legacyHead ?? {}
   return paradas.map((p) => ({
     origen: p.origen?.trim() || p.lugar?.trim() || '',
     destino: p.destino?.trim() || '',
@@ -132,6 +154,9 @@ export function routeStopsToFormInputs(paradas: RouteStop[]): RouteTramoFormInpu
     tipoMercanciaCarga: p.tipoMercanciaCarga ?? '',
     tipoMercanciaDescarga: p.tipoMercanciaDescarga ?? '',
     notas: p.notas ?? '',
+    responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() || L.responsabilidadEmbalaje?.trim() || '',
+    requisitosEspeciales: p.requisitosEspeciales?.trim() || L.requisitosEspeciales?.trim() || '',
+    tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || L.tipoVehiculoRequerido?.trim() || '',
   }))
 }
 

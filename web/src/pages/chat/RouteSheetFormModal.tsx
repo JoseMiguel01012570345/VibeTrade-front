@@ -1,8 +1,9 @@
 import { useEffect, useState, type HTMLAttributes } from 'react'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
-import { MapPin } from 'lucide-react'
+import { MapPin, Trash2 } from 'lucide-react'
 import {
+  routeSheetLegacyHead,
   routeStopsToFormInputs,
   type RouteSheet,
   type RouteSheetCreatePayload,
@@ -98,6 +99,31 @@ function emptyTramo(): RouteTramoFormInput {
     tipoMercanciaCarga: '',
     tipoMercanciaDescarga: '',
     notas: '',
+    responsabilidadEmbalaje: '',
+    requisitosEspeciales: '',
+    tipoVehiculoRequerido: '',
+  }
+}
+
+/** Copia los valores del tramo anterior para prellenar uno nuevo (mismo recorrido / datos repetidos). */
+function cloneTramoFromPrevious(prev: RouteTramoFormInput): RouteTramoFormInput {
+  return {
+    origen: prev.origen ?? '',
+    destino: prev.destino ?? '',
+    origenLat: prev.origenLat ?? '',
+    origenLng: prev.origenLng ?? '',
+    destinoLat: prev.destinoLat ?? '',
+    destinoLng: prev.destinoLng ?? '',
+    tiempoRecogidaEstimado: prev.tiempoRecogidaEstimado ?? '',
+    tiempoEntregaEstimado: prev.tiempoEntregaEstimado ?? '',
+    precioTransportista: prev.precioTransportista ?? '',
+    cargaEnTramo: prev.cargaEnTramo ?? '',
+    tipoMercanciaCarga: prev.tipoMercanciaCarga ?? '',
+    tipoMercanciaDescarga: prev.tipoMercanciaDescarga ?? '',
+    notas: prev.notas ?? '',
+    responsabilidadEmbalaje: prev.responsabilidadEmbalaje ?? '',
+    requisitosEspeciales: prev.requisitosEspeciales ?? '',
+    tipoVehiculoRequerido: prev.tipoVehiculoRequerido ?? '',
   }
 }
 
@@ -107,9 +133,6 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
   const [titulo, setTitulo] = useState('')
   const [merc, setMerc] = useState('')
   const [notasG, setNotasG] = useState('')
-  const [respEmb, setRespEmb] = useState('')
-  const [reqEsp, setReqEsp] = useState('')
-  const [tipoVeh, setTipoVeh] = useState('')
   const [tramos, setTramos] = useState<RouteTramoFormInput[]>([emptyTramo(), emptyTramo()])
   const [mapPick, setMapPick] = useState<MapPick | null>(null)
   const [mapLat, setMapLat] = useState('')
@@ -127,19 +150,15 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
       setTitulo(rs.titulo)
       setMerc(rs.mercanciasResumen)
       setNotasG(rs.notasGenerales ?? '')
-      setRespEmb(rs.responsabilidadEmbalaje ?? '')
-      setReqEsp(rs.requisitosEspeciales ?? '')
-      setTipoVeh(rs.tipoVehiculoRequerido ?? '')
       setTramos(
-        rs.paradas.length > 0 ? routeStopsToFormInputs(rs.paradas) : [emptyTramo(), emptyTramo()],
+        rs.paradas.length > 0
+          ? routeStopsToFormInputs(rs.paradas, routeSheetLegacyHead(rs))
+          : [emptyTramo(), emptyTramo()],
       )
     } else {
       setTitulo('')
       setMerc('')
       setNotasG('')
-      setRespEmb('')
-      setReqEsp('')
-      setTipoVeh('')
       setTramos([emptyTramo(), emptyTramo()])
     }
   }, [open, initialRouteSheet?.id])
@@ -204,15 +223,15 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
       tipoMercanciaCarga: p.tipoMercanciaCarga?.trim() ?? '',
       tipoMercanciaDescarga: p.tipoMercanciaDescarga?.trim() ?? '',
       notas: p.notas?.trim() ?? '',
+      responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() ?? '',
+      requisitosEspeciales: p.requisitosEspeciales?.trim() ?? '',
+      tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() ?? '',
     }))
     const draft: RouteSheetCreatePayload = {
       titulo: t,
       mercanciasResumen: m,
       paradas: limpios,
       notasGenerales: notasG.trim(),
-      responsabilidadEmbalaje: respEmb.trim(),
-      requisitosEspeciales: reqEsp.trim(),
-      tipoVehiculoRequerido: tipoVeh.trim(),
     }
     const e = getRouteSheetFormErrors(draft)
     setFormErrors(e)
@@ -238,6 +257,28 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
       next[i] = { ...next[i], ...patch }
       return next
     })
+  }
+
+  function addTramoClonedFromLast() {
+    setTramos((prev) => {
+      const last = prev[prev.length - 1]
+      return [...prev, cloneTramoFromPrevious(last ?? emptyTramo())]
+    })
+    setFormErrors({})
+  }
+
+  function removeTramoAt(index: number) {
+    setTramos((prev) => {
+      if (prev.length <= 1) return prev
+      return prev.filter((_, j) => j !== index)
+    })
+    setMapPick((mp) => {
+      if (!mp) return null
+      if (mp.tramoIndex === index) return null
+      if (mp.tramoIndex > index) return { ...mp, tramoIndex: mp.tramoIndex - 1 }
+      return mp
+    })
+    setFormErrors({})
   }
 
   const err = formErrors
@@ -270,32 +311,6 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
               error={err.mercanciasResumen}
               inputId="ruta-merc"
             />
-            <Field
-              label="Responsabilidad por daños por embalaje"
-              value={respEmb}
-              onChange={setRespEmb}
-              multiline
-              placeholder="Quién responde y en qué casos"
-              error={err.responsabilidadEmbalaje}
-              inputId="ruta-resp-emb"
-            />
-            <Field
-              label="Requisitos especiales"
-              value={reqEsp}
-              onChange={setReqEsp}
-              multiline
-              placeholder="Frágil, refrigerado, ADR, etc."
-              error={err.requisitosEspeciales}
-              inputId="ruta-req"
-            />
-            <Field
-              label="Tipo de vehículo requerido"
-              value={tipoVeh}
-              onChange={setTipoVeh}
-              placeholder="Ej. camión baranda, refrigerado, sider"
-              error={err.tipoVehiculoRequerido}
-              inputId="ruta-veh"
-            />
 
             <div className="vt-agr-details vt-ruta-tramos-block">
               <strong>Tramos del recorrido</strong>
@@ -308,7 +323,23 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
                 const te = err.tramos?.[i]
                 return (
                   <div key={i} className="vt-ruta-tramo-card">
-                    <span className="vt-agr-detail-sub">Tramo {i + 1}</span>
+                    <div className="vt-ruta-tramo-card-head">
+                      <span className="vt-agr-detail-sub">Tramo {i + 1}</span>
+                      <button
+                        type="button"
+                        className="vt-btn vt-btn-ghost vt-btn-sm vt-ruta-tramo-remove"
+                        disabled={tramos.length <= 1}
+                        title={
+                          tramos.length <= 1
+                            ? 'Debe quedar al menos un tramo'
+                            : 'Eliminar este tramo'
+                        }
+                        onClick={() => removeTramoAt(i)}
+                      >
+                        <Trash2 size={14} aria-hidden />
+                        <span>Eliminar tramo</span>
+                      </button>
+                    </div>
                     <div className="vt-ruta-tramo-grid">
                       <Field
                         label="Origen"
@@ -363,6 +394,32 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
                         Destino: {p.destinoLat ?? '—'}, {p.destinoLng ?? '—'}
                       </div>
                     ) : null}
+                    <Field
+                      label="Responsabilidad por daños por embalaje (este tramo)"
+                      value={p.responsabilidadEmbalaje ?? ''}
+                      onChange={(v) => updateTramo(i, { responsabilidadEmbalaje: v })}
+                      multiline
+                      placeholder="Quién responde y en qué casos"
+                      error={te?.responsabilidadEmbalaje}
+                      inputId={`ruta-tramo-${i}-resp-emb`}
+                    />
+                    <Field
+                      label="Requisitos especiales (este tramo)"
+                      value={p.requisitosEspeciales ?? ''}
+                      onChange={(v) => updateTramo(i, { requisitosEspeciales: v })}
+                      multiline
+                      placeholder="Frágil, refrigerado, ADR, etc."
+                      error={te?.requisitosEspeciales}
+                      inputId={`ruta-tramo-${i}-req`}
+                    />
+                    <Field
+                      label="Tipo de vehículo requerido (este tramo)"
+                      value={p.tipoVehiculoRequerido ?? ''}
+                      onChange={(v) => updateTramo(i, { tipoVehiculoRequerido: v })}
+                      placeholder="Ej. camión baranda, refrigerado, sider"
+                      error={te?.tipoVehiculoRequerido}
+                      inputId={`ruta-tramo-${i}-veh`}
+                    />
                     <div className="vt-ruta-tramo-grid">
                       <Field
                         label="Tiempo estimado recogida (horas, número)"
@@ -428,8 +485,8 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
                   </div>
                 )
               })}
-              <button type="button" className="vt-btn" onClick={() => setTramos((x) => [...x, emptyTramo()])}>
-                + Tramo
+              <button type="button" className="vt-btn" onClick={addTramoClonedFromLast}>
+                + Tramo (copia del último)
               </button>
             </div>
 

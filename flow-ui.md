@@ -67,17 +67,18 @@ Nota: El chat se inicializa con todas las preguntas que se han echo junto con su
 
 - Una vez que las partes se han puesto de acuerdo, el vendedor emite un acuerdo en forma de formulario que detalla los parametros de la compra, como:
   - Titulo
-  - Mercancias:
-    - Tipo de mercancias, una lista.
-    - Cantidad, una lista por cada tipo de mercancia.
-    - Valor de cada producto, un lista por cada tipo de mercancia.
-    - Estado (nuevo, usado, reacondicionado)
-    - Descuentos (si aplican), un numero por cada tipo de mercancia
-    - Impuestos (IVA, aranceles, etc.)
-    - Moneda
-    - Tipo de embalaje
-    - Condiciones para devolver, descripcion, Quién paga el envío de devolución, Plazos
-    - Regulaciones y cumplimiento, Aduanas (si aplica), Restricciones legales, Permisos
+  - Mercancías:
+    - Lista de ítems (cada ítem = un tipo o línea de mercancía). **Por cada ítem** se declara:
+      - Tipo / descripción de la mercancía.
+      - Cantidad.
+      - Valor (por unidad o del ítem, según se acuerde).
+      - Estado (nuevo, usado, reacondicionado).
+      - Descuentos (si aplican).
+      - Impuestos (IVA, aranceles, etc.).
+      - Moneda (del ítem o de su precio).
+      - Tipo de embalaje.
+      - Condiciones para devolver: descripción, quién paga el envío de devolución, plazos.
+      - Regulaciones y cumplimiento: aduanas (si aplica), restricciones legales, permisos.
   - Servicios:
     - Tipo de servicio
     - Tiempo del servicio, de inicio a fin
@@ -177,9 +178,7 @@ La hoja de ruta contempla el formulario siguiente:
   - Carga que llevara el transportista en su tramo.
   - En cada tramo puede haber una carga y descarga de mercancias, en cada caso indicar que tipo de mercancia es.
   - Para seleccionar la ubicacion de cada tramo, se abre una vista de un mapa para seleccionar las coordenadas.
-  - Responsabilidad por daños por embalaje.
-  - Requisitos especiales (frágil, refrigerado, etc.)
-  - Tipo de vehiculo requerido
+  - Por cada tramo: responsabilidad por daños por embalaje; requisitos especiales (frágil, refrigerado, etc.); tipo de vehículo requerido.
 
 Una vez emitido esta hoja ruta y aprobada entre las partes, procede a ser publicada y la plataforma le muestra a sus transportistas esta hoja de ruta, estos se suscriben con un boton de "Suscribirse" en la oferta seleccionando un vehiculo que tengan en su catalago y espera a ser aprobado por los integrantes del chat comprador/vendedor y de ser aprobado este entra automaticamente en el chat.
 

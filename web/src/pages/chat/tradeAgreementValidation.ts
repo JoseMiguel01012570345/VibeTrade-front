@@ -1,9 +1,4 @@
-import type {
-  MerchandiseLine,
-  MerchandiseSectionMeta,
-  ServiceAgreementBlock,
-  TradeAgreementDraft,
-} from './tradeAgreementTypes'
+import type { MerchandiseLine, ServiceAgreementBlock, TradeAgreementDraft } from './tradeAgreementTypes'
 
 type MerchandiseHolder = { merchandise: MerchandiseLine[] }
 
@@ -13,7 +8,6 @@ export type TradeAgreementFormErrors = {
   /** Alcance global: al menos mercancías o servicio; mercancías vacías con el flag activo. */
   scope?: string
   merchandiseLines?: Record<number, Partial<Record<keyof MerchandiseLine, string>>>
-  merchandiseMeta?: Partial<Record<keyof MerchandiseSectionMeta, string>>
   service?: Partial<Record<keyof ServiceAgreementBlock, string>>
 }
 
@@ -104,7 +98,13 @@ function lineIsActive(line: MerchandiseLine): boolean {
     !isBlank(line.cantidad) ||
     !isBlank(line.valorUnitario) ||
     !isBlank(line.descuento) ||
-    !isBlank(line.impuestos)
+    !isBlank(line.impuestos) ||
+    !isBlank(line.moneda) ||
+    !isBlank(line.tipoEmbalaje) ||
+    !isBlank(line.devolucionesDesc) ||
+    !isBlank(line.devolucionQuienPaga) ||
+    !isBlank(line.devolucionPlazos) ||
+    !isBlank(line.regulaciones)
   )
 }
 
@@ -113,7 +113,7 @@ export function hasMerchandise(d: MerchandiseHolder): boolean {
 }
 
 /**
- * Validación completa según flow-ui: título, mercancías (líneas + meta),
+ * Validación completa según flow-ui: título, mercancías (cada línea con su bloque de condiciones),
  * servicios (todos los campos), hoja de ruta interna si hay mercancías.
  */
 export function validateTradeAgreementDraft(d: TradeAgreementDraft): TradeAgreementFormErrors {
@@ -128,7 +128,6 @@ export function validateTradeAgreementDraft(d: TradeAgreementDraft): TradeAgreem
     errors.scope = 'Debés incluir al menos mercancías o servicios (podés marcar ambos).'
   }
 
-  const merch = d.includeMerchandise && hasMerchandise(d)
   if (d.includeMerchandise && !hasMerchandise(d)) {
     errors.scope =
       errors.scope ??
@@ -169,15 +168,6 @@ export function validateTradeAgreementDraft(d: TradeAgreementDraft): TradeAgreem
       if (om) le.impuestos = om
     }
 
-    if (Object.keys(le).length) lineErrors[i] = le
-  })
-
-  if (Object.keys(lineErrors).length) errors.merchandiseLines = lineErrors
-
-  const mm = d.merchandiseMeta
-  const mmErr: Partial<Record<keyof MerchandiseSectionMeta, string>> = {}
-
-  if (d.includeMerchandise && merch) {
     ;(
       [
         ['moneda', 'Moneda'],
@@ -188,20 +178,22 @@ export function validateTradeAgreementDraft(d: TradeAgreementDraft): TradeAgreem
         ['regulaciones', 'Regulaciones y cumplimiento'],
       ] as const
     ).forEach(([key, label]) => {
-      const v = mm[key]
+      const v = line[key]
       const e =
         key === 'regulaciones' || key === 'devolucionesDesc'
           ? requireNonEmpty(v, label, true)
           : requireNonEmpty(v, label, false)
-      if (e) mmErr[key] = e
+      if (e) le[key] = e
       else {
         const om = optionalTextMax(v, label, key === 'regulaciones' || key === 'devolucionesDesc')
-        if (om) mmErr[key] = om
+        if (om) le[key] = om
       }
     })
-  }
 
-  if (Object.keys(mmErr).length) errors.merchandiseMeta = mmErr
+    if (Object.keys(le).length) lineErrors[i] = le
+  })
+
+  if (Object.keys(lineErrors).length) errors.merchandiseLines = lineErrors
 
   const sv = d.service
   const svErr: Partial<Record<keyof ServiceAgreementBlock, string>> = {}
@@ -253,7 +245,6 @@ export function validationErrorCount(e: TradeAgreementFormErrors): number {
   let n = 0
   if (e.title) n++
   if (e.scope) n++
-  if (e.merchandiseMeta) n += Object.keys(e.merchandiseMeta).length
   if (e.merchandiseLines) {
     Object.values(e.merchandiseLines).forEach((row) => {
       if (row) n += Object.keys(row).length

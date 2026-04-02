@@ -585,6 +585,27 @@ body:has(.vt-chat-page) {
   background: color-mix(in oklab, var(--bg) 85%, transparent);
 }
 
+.vt-ruta-tramo-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.vt-ruta-tramo-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted, #888);
+}
+
+.vt-ruta-tramo-remove:not(:disabled):hover {
+  color: var(--danger, #c62828);
+}
+
 .vt-ruta-tramo-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

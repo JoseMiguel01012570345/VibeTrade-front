@@ -361,24 +361,6 @@ export function ChatRightRail({
                 <strong>Mercancías</strong>
                 <p>{selRoute.mercanciasResumen}</p>
               </div>
-              {selRoute.responsabilidadEmbalaje ? (
-                <div className="vt-ruta-notes">
-                  <strong>Responsabilidad embalaje</strong>
-                  <p>{selRoute.responsabilidadEmbalaje}</p>
-                </div>
-              ) : null}
-              {selRoute.requisitosEspeciales ? (
-                <div className="vt-ruta-notes">
-                  <strong>Requisitos especiales</strong>
-                  <p>{selRoute.requisitosEspeciales}</p>
-                </div>
-              ) : null}
-              {selRoute.tipoVehiculoRequerido ? (
-                <div className="vt-ruta-notes">
-                  <strong>Vehículo requerido</strong>
-                  <p>{selRoute.tipoVehiculoRequerido}</p>
-                </div>
-              ) : null}
               {selRoute.notasGenerales ? (
                 <div className="vt-ruta-notes">
                   <strong>Notas generales</strong>
@@ -431,6 +413,21 @@ export function ChatRightRail({
                       <div className="vt-muted">
                         Mercancía carga: {p.tipoMercanciaCarga ?? '—'} · descarga:{' '}
                         {p.tipoMercanciaDescarga ?? '—'}
+                      </div>
+                    ) : null}
+                    {p.responsabilidadEmbalaje ? (
+                      <div className="vt-ruta-stop-notes">
+                        <strong>Responsabilidad embalaje:</strong> {p.responsabilidadEmbalaje}
+                      </div>
+                    ) : null}
+                    {p.requisitosEspeciales ? (
+                      <div className="vt-ruta-stop-notes">
+                        <strong>Requisitos especiales:</strong> {p.requisitosEspeciales}
+                      </div>
+                    ) : null}
+                    {p.tipoVehiculoRequerido ? (
+                      <div className="vt-ruta-stop-notes">
+                        <strong>Vehículo requerido:</strong> {p.tipoVehiculoRequerido}
                       </div>
                     ) : null}
                     {p.notas ? <div className="vt-ruta-stop-notes">{p.notas}</div> : null}

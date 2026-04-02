@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { TradeAgreement, TradeAgreementDraft } from '../../pages/chat/tradeAgreementTypes'
-import { emptyMerchandiseMeta, emptyServiceBlock } from '../../pages/chat/tradeAgreementTypes'
+import { emptyServiceBlock, normalizeMerchandiseLine } from '../../pages/chat/tradeAgreementTypes'
 import { hasValidationErrors, validateTradeAgreementDraft } from '../../pages/chat/tradeAgreementValidation'
 import {
   getRouteSheetFormErrors,
@@ -13,6 +13,15 @@ import type {
   RouteSheetStatus,
   RouteStop,
 } from '../../pages/chat/routeSheetTypes'
+
+/** Datos viejos a nivel hoja: no persistir al guardar de nuevo. */
+function stripLegacyRouteSheetHead(s: RouteSheet): RouteSheet {
+  const o = { ...s } as Record<string, unknown>
+  delete o.responsabilidadEmbalaje
+  delete o.requisitosEspeciales
+  delete o.tipoVehiculoRequerido
+  return o as RouteSheet
+}
 export type { TradeAgreement, TradeAgreementDraft } from '../../pages/chat/tradeAgreementTypes'
 export type {
   RouteSheet,
@@ -568,8 +577,9 @@ export const useMarketStore = create<MarketState>((set, get) => {
           issuedByStoreId: th.storeId,
           issuerLabel: th.store.name,
           status: 'pending_buyer',
-          merchandise: draft.includeMerchandise ? draft.merchandise : [],
-          merchandiseMeta: draft.includeMerchandise ? draft.merchandiseMeta : emptyMerchandiseMeta(),
+          merchandise: draft.includeMerchandise
+            ? draft.merchandise.map((l) => normalizeMerchandiseLine(l))
+            : [],
           service: draft.includeService ? draft.service : emptyServiceBlock(),
           routeSheetId: undefined,
         }
@@ -662,6 +672,9 @@ export const useMarketStore = create<MarketState>((set, get) => {
           tipoMercanciaCarga: p.tipoMercanciaCarga?.trim() || undefined,
           tipoMercanciaDescarga: p.tipoMercanciaDescarga?.trim() || undefined,
           notas: p.notas?.trim() || undefined,
+          responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() || undefined,
+          requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
+          tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || undefined,
           completada: false,
         }))
       const rid = uid('ruta')
@@ -676,9 +689,6 @@ export const useMarketStore = create<MarketState>((set, get) => {
         mercanciasResumen: merc,
         paradas,
         notasGenerales: payload.notasGenerales?.trim() || undefined,
-        responsabilidadEmbalaje: payload.responsabilidadEmbalaje?.trim() || undefined,
-        requisitosEspeciales: payload.requisitosEspeciales?.trim() || undefined,
-        tipoVehiculoRequerido: payload.tipoVehiculoRequerido?.trim() || undefined,
         publicadaPlataforma: false,
         editadaEnFormulario: false,
       }
@@ -722,6 +732,9 @@ export const useMarketStore = create<MarketState>((set, get) => {
           tipoMercanciaCarga: p.tipoMercanciaCarga?.trim() || undefined,
           tipoMercanciaDescarga: p.tipoMercanciaDescarga?.trim() || undefined,
           notas: p.notas?.trim() || undefined,
+          responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() || undefined,
+          requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
+          tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || undefined,
           completada: false as boolean | undefined,
         }))
       let ok = false
@@ -739,14 +752,11 @@ export const useMarketStore = create<MarketState>((set, get) => {
         }))
         const now = Date.now()
         const sheet: RouteSheet = {
-          ...existing,
+          ...stripLegacyRouteSheetHead(existing),
           titulo,
           mercanciasResumen: merc,
           paradas,
           notasGenerales: payload.notasGenerales?.trim() || undefined,
-          responsabilidadEmbalaje: payload.responsabilidadEmbalaje?.trim() || undefined,
-          requisitosEspeciales: payload.requisitosEspeciales?.trim() || undefined,
-          tipoVehiculoRequerido: payload.tipoVehiculoRequerido?.trim() || undefined,
           actualizadoEn: now,
           editadaEnFormulario: true,
         }

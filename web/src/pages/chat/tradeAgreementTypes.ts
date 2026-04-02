@@ -9,8 +9,15 @@ export type MerchandiseLine = {
   estado: MerchandiseCondition
   descuento: string
   impuestos: string
+  moneda: string
+  tipoEmbalaje: string
+  devolucionesDesc: string
+  devolucionQuienPaga: string
+  devolucionPlazos: string
+  regulaciones: string
 }
 
+/** Legado: antes las condiciones iban una sola vez a nivel bloque; ya no se emite desde el formulario. */
 export type MerchandiseSectionMeta = {
   moneda: string
   tipoEmbalaje: string
@@ -59,7 +66,8 @@ export type TradeAgreement = {
   /** Si el acuerdo declara el bloque de servicios. */
   includeService: boolean
   merchandise: MerchandiseLine[]
-  merchandiseMeta: MerchandiseSectionMeta
+  /** Solo lectura / datos antiguos (una cabecera para todo el bloque). */
+  merchandiseMeta?: MerchandiseSectionMeta
   service: ServiceAgreementBlock
   /** Solo lectura / legado: ya no se asigna desde el formulario de acuerdo. */
   routeSheetId?: string
@@ -69,7 +77,16 @@ export type TradeAgreement = {
 
 export type TradeAgreementDraft = Omit<
   TradeAgreement,
-  'id' | 'threadId' | 'issuedAt' | 'issuedByStoreId' | 'issuerLabel' | 'status' | 'respondedAt' | 'routeSheetUrl' | 'routeSheetId'
+  | 'id'
+  | 'threadId'
+  | 'issuedAt'
+  | 'issuedByStoreId'
+  | 'issuerLabel'
+  | 'status'
+  | 'respondedAt'
+  | 'routeSheetUrl'
+  | 'routeSheetId'
+  | 'merchandiseMeta'
 >
 
 export function emptyMerchandiseLine(): MerchandiseLine {
@@ -80,6 +97,21 @@ export function emptyMerchandiseLine(): MerchandiseLine {
     estado: 'nuevo',
     descuento: '',
     impuestos: '',
+    moneda: '',
+    tipoEmbalaje: '',
+    devolucionesDesc: '',
+    devolucionQuienPaga: '',
+    devolucionPlazos: '',
+    regulaciones: '',
+  }
+}
+
+/** Completa claves faltantes (p. ej. datos persistidos antes del modelo por ítem). */
+export function normalizeMerchandiseLine(line: Partial<MerchandiseLine>): MerchandiseLine {
+  return {
+    ...emptyMerchandiseLine(),
+    ...line,
+    estado: line.estado ?? 'nuevo',
   }
 }
 
@@ -125,7 +157,6 @@ export function defaultAgreementDraft(): TradeAgreementDraft {
     includeMerchandise: true,
     includeService: true,
     merchandise: [emptyMerchandiseLine()],
-    merchandiseMeta: emptyMerchandiseMeta(),
     service: emptyServiceBlock(),
   }
 }

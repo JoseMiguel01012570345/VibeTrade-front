@@ -141,6 +141,50 @@ function LineEditor({
           inputId={p('impuestos')}
           multiline
         />
+        <Field
+          label="Moneda"
+          value={line.moneda}
+          onChange={(v) => onChange({ ...line, moneda: v })}
+          error={errors?.moneda}
+          inputId={p('moneda')}
+        />
+        <Field
+          label="Tipo de embalaje"
+          value={line.tipoEmbalaje}
+          onChange={(v) => onChange({ ...line, tipoEmbalaje: v })}
+          error={errors?.tipoEmbalaje}
+          inputId={p('tipoEmbalaje')}
+        />
+        <Field
+          label="Condiciones para devolver"
+          value={line.devolucionesDesc}
+          multiline
+          onChange={(v) => onChange({ ...line, devolucionesDesc: v })}
+          error={errors?.devolucionesDesc}
+          inputId={p('devolucionesDesc')}
+        />
+        <Field
+          label="Quién paga el envío de devolución"
+          value={line.devolucionQuienPaga}
+          onChange={(v) => onChange({ ...line, devolucionQuienPaga: v })}
+          error={errors?.devolucionQuienPaga}
+          inputId={p('devolucionQuienPaga')}
+        />
+        <Field
+          label="Plazos (devolución)"
+          value={line.devolucionPlazos}
+          onChange={(v) => onChange({ ...line, devolucionPlazos: v })}
+          error={errors?.devolucionPlazos}
+          inputId={p('devolucionPlazos')}
+        />
+        <Field
+          label="Regulaciones y cumplimiento (aduanas, restricciones, permisos)"
+          value={line.regulaciones}
+          multiline
+          onChange={(v) => onChange({ ...line, regulaciones: v })}
+          error={errors?.regulaciones}
+          inputId={p('regulaciones')}
+        />
       </div>
     </div>
   )
@@ -171,9 +215,7 @@ export function TradeAgreementFormModal({
 
   if (!open) return null
 
-  const mm = draft.merchandiseMeta
   const sv = draft.service
-  const me = errors.merchandiseMeta
   const se = errors.service
 
   function setMerchLine(i: number, line: MerchandiseLine) {
@@ -286,80 +328,6 @@ export function TradeAgreementFormModal({
               <button type="button" className="vt-btn" onClick={addLine}>
                 + Añadir tipo de mercancía
               </button>
-            ) : null}
-
-            {draft.includeMerchandise ? (
-              <div className="vt-agr-block-spaced">
-                <Field
-                  label="Moneda"
-                  value={mm.moneda}
-                  onChange={(v) => setDraft((d) => ({ ...d, merchandiseMeta: { ...d.merchandiseMeta, moneda: v } }))}
-                  error={me?.moneda}
-                  inputId="agr-mm-moneda"
-                />
-                <Field
-                  label="Tipo de embalaje"
-                  value={mm.tipoEmbalaje}
-                  onChange={(v) =>
-                    setDraft((d) => ({
-                      ...d,
-                      merchandiseMeta: { ...d.merchandiseMeta, tipoEmbalaje: v },
-                    }))
-                  }
-                  error={me?.tipoEmbalaje}
-                  inputId="agr-mm-embalaje"
-                />
-                <Field
-                  label="Condiciones para devolver"
-                  value={mm.devolucionesDesc}
-                  multiline
-                  onChange={(v) =>
-                    setDraft((d) => ({
-                      ...d,
-                      merchandiseMeta: { ...d.merchandiseMeta, devolucionesDesc: v },
-                    }))
-                  }
-                  error={me?.devolucionesDesc}
-                  inputId="agr-mm-devol"
-                />
-                <Field
-                  label="Quién paga el envío de devolución"
-                  value={mm.devolucionQuienPaga}
-                  onChange={(v) =>
-                    setDraft((d) => ({
-                      ...d,
-                      merchandiseMeta: { ...d.merchandiseMeta, devolucionQuienPaga: v },
-                    }))
-                  }
-                  error={me?.devolucionQuienPaga}
-                  inputId="agr-mm-quien"
-                />
-                <Field
-                  label="Plazos (devolución)"
-                  value={mm.devolucionPlazos}
-                  onChange={(v) =>
-                    setDraft((d) => ({
-                      ...d,
-                      merchandiseMeta: { ...d.merchandiseMeta, devolucionPlazos: v },
-                    }))
-                  }
-                  error={me?.devolucionPlazos}
-                  inputId="agr-mm-plazos"
-                />
-                <Field
-                  label="Regulaciones y cumplimiento (aduanas, restricciones, permisos)"
-                  value={mm.regulaciones}
-                  multiline
-                  onChange={(v) =>
-                    setDraft((d) => ({
-                      ...d,
-                      merchandiseMeta: { ...d.merchandiseMeta, regulaciones: v },
-                    }))
-                  }
-                  error={me?.regulaciones}
-                  inputId="agr-mm-reg"
-                />
-              </div>
             ) : null}
           </details>
 

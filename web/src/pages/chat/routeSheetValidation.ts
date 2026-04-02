@@ -104,15 +104,15 @@ export type RouteTramoFieldErrors = Partial<{
   tipoMercanciaCarga: string
   tipoMercanciaDescarga: string
   notas: string
+  responsabilidadEmbalaje: string
+  requisitosEspeciales: string
+  tipoVehiculoRequerido: string
 }>
 
 export type RouteSheetFormErrors = {
   titulo?: string
   mercanciasResumen?: string
   notasGenerales?: string
-  responsabilidadEmbalaje?: string
-  requisitosEspeciales?: string
-  tipoVehiculoRequerido?: string
   /** Sin tramos en el payload (caso borde). */
   paradasGlobal?: string
   tramos?: Record<number, RouteTramoFieldErrors>
@@ -153,18 +153,6 @@ export function getRouteSheetFormErrors(p: RouteSheetCreatePayload): RouteSheetF
   {
     const x = requiredText(p.notasGenerales, NOTAS_G_MIN, FIELD_MAX)
     if (x) e.notasGenerales = x
-  }
-  {
-    const x = requiredText(p.responsabilidadEmbalaje, BLOQUE_MIN, FIELD_MAX)
-    if (x) e.responsabilidadEmbalaje = x
-  }
-  {
-    const x = requiredText(p.requisitosEspeciales, BLOQUE_MIN, FIELD_MAX)
-    if (x) e.requisitosEspeciales = x
-  }
-  {
-    const x = requiredText(p.tipoVehiculoRequerido, PLACE_MIN, PLACE_MAX)
-    if (x) e.tipoVehiculoRequerido = x
   }
 
   const paradas = p.paradas ?? []
@@ -235,13 +223,26 @@ export function getRouteSheetFormErrors(p: RouteSheetCreatePayload): RouteSheetF
     } else if (nt.length > NOTA_TRAMO_MAX) {
       mergeTramo(e, i, { notas: `Máximo ${NOTA_TRAMO_MAX} caracteres` })
     }
+
+    {
+      const x = requiredText(raw.responsabilidadEmbalaje, BLOQUE_MIN, FIELD_MAX)
+      if (x) mergeTramo(e, i, { responsabilidadEmbalaje: x })
+    }
+    {
+      const x = requiredText(raw.requisitosEspeciales, BLOQUE_MIN, FIELD_MAX)
+      if (x) mergeTramo(e, i, { requisitosEspeciales: x })
+    }
+    {
+      const x = requiredText(raw.tipoVehiculoRequerido, PLACE_MIN, PLACE_MAX)
+      if (x) mergeTramo(e, i, { tipoVehiculoRequerido: x })
+    }
   })
 
   return e
 }
 
 export function hasRouteSheetFormErrors(e: RouteSheetFormErrors): boolean {
-  if (e.titulo || e.mercanciasResumen || e.notasGenerales || e.responsabilidadEmbalaje || e.requisitosEspeciales || e.tipoVehiculoRequerido || e.paradasGlobal) {
+  if (e.titulo || e.mercanciasResumen || e.notasGenerales || e.paradasGlobal) {
     return true
   }
   if (!e.tramos) return false
@@ -256,9 +257,6 @@ export function routeSheetFormErrorCount(e: RouteSheetFormErrors): number {
   bump(e.titulo)
   bump(e.mercanciasResumen)
   bump(e.notasGenerales)
-  bump(e.responsabilidadEmbalaje)
-  bump(e.requisitosEspeciales)
-  bump(e.tipoVehiculoRequerido)
   bump(e.paradasGlobal)
   if (e.tramos) {
     for (const t of Object.values(e.tramos)) {
@@ -288,6 +286,9 @@ export function normalizeRouteSheetParadas(paradas: RouteTramoFormInput[]): Rout
       tipoMercanciaCarga: norm(p.tipoMercanciaCarga) || undefined,
       tipoMercanciaDescarga: norm(p.tipoMercanciaDescarga) || undefined,
       notas: norm(p.notas) || undefined,
+      responsabilidadEmbalaje: norm(p.responsabilidadEmbalaje) || undefined,
+      requisitosEspeciales: norm(p.requisitosEspeciales) || undefined,
+      tipoVehiculoRequerido: norm(p.tipoVehiculoRequerido) || undefined,
     }))
     .filter((p) => p.origen.length >= PLACE_MIN && p.destino.length >= PLACE_MIN)
 }
@@ -300,9 +301,6 @@ export function validateRouteSheetPayload(p: RouteSheetCreatePayload): string[] 
   if (e.titulo) out.push(`Título: ${e.titulo}`)
   if (e.mercanciasResumen) out.push(`Mercancías: ${e.mercanciasResumen}`)
   if (e.notasGenerales) out.push(`Notas generales: ${e.notasGenerales}`)
-  if (e.responsabilidadEmbalaje) out.push(`Responsabilidad embalaje: ${e.responsabilidadEmbalaje}`)
-  if (e.requisitosEspeciales) out.push(`Requisitos: ${e.requisitosEspeciales}`)
-  if (e.tipoVehiculoRequerido) out.push(`Vehículo: ${e.tipoVehiculoRequerido}`)
   if (e.paradasGlobal) out.push(e.paradasGlobal)
   if (e.tramos) {
     Object.entries(e.tramos).forEach(([idx, t]) => {
