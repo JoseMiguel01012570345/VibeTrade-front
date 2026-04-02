@@ -62,9 +62,8 @@ DONE-----------------------------------------
 - **Replicas de mensajes:** El usuario puede selecionar tantos mensajes como quiera para replicar con un mensaje.
   DONE-----------------------------------------
 
-DONE-----------------------------------------
+PARTIALLY-DONE-----------------------------------------
 Nota: El chat se inicializa con todas las preguntas que se han echo junto con sus respuestas para el comprador, sin embargo cuando el comprador decide inicializar el chat, este se carga con todas las preguntas y respuestas y en modo compra.
-DONE-----------------------------------------
 
 - Una vez que las partes se han puesto de acuerdo, el vendedor emite un acuerdo en forma de formulario que detalla los parametros de la compra, como:
   - Titulo
@@ -102,6 +101,8 @@ DONE-----------------------------------------
 Este formulario puede ser aceptado o rechazado por el comprador, una vez aceptado por ambas partes, este acuerdo no se puede derogar, aunque se pueden emitir mas contratos entre las partes.
 
 El chat debe tener una opcion pare revisar todos los contratos emitidos, con un filtro para filtrar por usuario del chat, y cada contrato se puede linkear a una hoja de rutas en caso de que existan mercancias de por medio.
+
+PARTIALLY-DONE-----------------------------------------
 
 - **Flujo de Chat Comercial y Logística**
 
@@ -160,6 +161,8 @@ Existe un boton para publicar reels si el usuario es vendedor de mercancias|serv
 
 - **Vehiculos:** Los transportistas disponen de vehiculos, y si un transportista esta dando un viaje, no puede tomar viajes que le solapen en tiempo con el tiempo de su viaje actual. Cada transportista muestra en su catalogo o tienda fotos de sus vehiculos. Cada vehiculo debe tener una descripcion sobre su rendimiento y tipo de mercancias que puede llevar y bajo que condiciones lo puede hacer.
 
+PARTIALLY-DONE----------------------------------------
+
 - **Emitir contratos a transportistas:** El comprador/vendedor emiten un contrato en forma de hoja de ruta que se fuciona con otro contrato, esta fucion se puede quitar y poner simpre y cuando no se halla aceptado por ningun miembro comprador/vendedor y cada vez que se haga la fucion, esta debe ser aprobada por los miembros del chat vendedor/comprador. Al decidirse transportar mercancias, debe existir la opcion en el chat de crear una o mas hojas de ruta estas hojas de rutas son aprobadas entre el comprador/vendedor y adjuntadas en orden cronologico al contrato principal.
 
 La hoja de ruta contempla el formulario siguiente:
@@ -181,6 +184,8 @@ La hoja de ruta contempla el formulario siguiente:
 Una vez emitido esta hoja ruta y aprobada entre las partes, procede a ser publicada y la plataforma le muestra a sus transportistas esta hoja de ruta, estos se suscriben con un boton de "Suscribirse" en la oferta seleccionando un vehiculo que tengan en su catalago y espera a ser aprobado por los integrantes del chat comprador/vendedor y de ser aprobado este entra automaticamente en el chat.
 
 - **Visualización:** La hoja de ruta se renderiza como un objeto interactivo en la oferta del transportista, y este objeto siempre puede ser consultado por el transportista en el chat
+
+PARTIALLY-DONE----------------------------------------
 
 ## Gestión de Relevos y Cambio de Propiedad (Owner)
 

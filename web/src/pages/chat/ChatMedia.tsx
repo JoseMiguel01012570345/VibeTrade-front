@@ -10,6 +10,8 @@ import clsx from 'clsx'
 import toast from 'react-hot-toast'
 import { Check, CheckCheck, Download, FileText, GitBranch, Loader2, MapPin, Pause, Play } from 'lucide-react'
 import type { Message, ReplyQuote } from '../../app/store/useMarketStore'
+import { agreementDeclaresMerchandise, agreementDeclaresService, type TradeAgreement } from './tradeAgreementTypes'
+import { hasMerchandise } from './tradeAgreementValidation'
 
 function ChatReplyQuotes({ quotes }: { quotes: ReplyQuote[] }) {
   return (
@@ -381,12 +383,112 @@ export function DocRow({
   )
 }
 
+function AgreementBubble({
+  title,
+  agreement,
+  onAccept,
+  onReject,
+  canRespond,
+  onOpenRouteSheet,
+}: {
+  title: string
+  agreement?: TradeAgreement
+  onAccept?: () => void
+  onReject?: () => void
+  canRespond?: boolean
+  onOpenRouteSheet?: () => void
+}) {
+  const st = agreement?.status
+  const hasRoute =
+    agreement &&
+    agreementDeclaresMerchandise(agreement) &&
+    hasMerchandise({ merchandise: agreement.merchandise }) &&
+    (agreement.routeSheetId || agreement.routeSheetUrl)
+  return (
+    <div className="vt-chat-agreement" data-chat-interactive>
+      <div className="vt-chat-agreement-head">
+        <FileText size={18} aria-hidden />
+        <span>Acuerdo de compra</span>
+      </div>
+      <div className="vt-chat-agreement-title">{title}</div>
+      {agreement ? (
+        <div className="vt-chat-agreement-summary">
+          {agreementDeclaresMerchandise(agreement) && agreementDeclaresService(agreement)
+            ? 'Mercancías y servicios'
+            : agreementDeclaresMerchandise(agreement)
+              ? 'Solo mercancías'
+              : agreementDeclaresService(agreement)
+                ? 'Solo servicios'
+                : 'Sin bloques declarados'}
+        </div>
+      ) : (
+        <div className="vt-muted">Cargando detalle…</div>
+      )}
+      {st === 'pending_buyer' ? (
+        <div className="vt-chat-agreement-status">
+          <span className="vt-agr-pill-pending">Pendiente de comprador</span>
+        </div>
+      ) : null}
+      {st === 'accepted' ? (
+        <div className="vt-chat-agreement-status">
+          <span className="vt-agr-pill-ok">Aceptado · no revocable</span>
+        </div>
+      ) : null}
+      {st === 'rejected' ? (
+        <div className="vt-chat-agreement-status">
+          <span className="vt-agr-pill-no">Rechazado</span>
+        </div>
+      ) : null}
+      {hasRoute ? (
+        <div className="vt-chat-agreement-routes">
+          {agreement?.routeSheetId && onOpenRouteSheet ? (
+            <button type="button" className="vt-btn vt-btn-sm" onClick={onOpenRouteSheet}>
+              Ver hoja de ruta
+            </button>
+          ) : null}
+          {agreement?.routeSheetUrl ? (
+            <a
+              href={agreement.routeSheetUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="vt-btn vt-btn-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Enlace externo
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+      {canRespond && st === 'pending_buyer' ? (
+        <div className="vt-chat-agreement-actions">
+          <button type="button" className="vt-btn vt-btn-primary vt-btn-sm" onClick={onAccept}>
+            Aceptar acuerdo
+          </button>
+          <button type="button" className="vt-btn vt-btn-sm" onClick={onReject}>
+            Rechazar
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function MessageBody({
   m,
   onImageOpen,
+  agreementDoc,
+  onAcceptAgreement,
+  onRejectAgreement,
+  canRespondAgreement,
+  onOpenAgreementRouteSheet,
 }: {
   m: Message
   onImageOpen: (url: string) => void
+  agreementDoc?: TradeAgreement | null
+  onAcceptAgreement?: () => void
+  onRejectAgreement?: () => void
+  canRespondAgreement?: boolean
+  onOpenAgreementRouteSheet?: () => void
 }) {
   if (m.type === 'text') {
     const hasThread = m.replyQuotes && m.replyQuotes.length > 0
@@ -443,6 +545,17 @@ export function MessageBody({
           <MapPin size={14} /> {hhmm(m.at)}
         </div>
       </div>
+    )
+  if (m.type === 'agreement')
+    return (
+      <AgreementBubble
+        title={m.title}
+        agreement={agreementDoc ?? undefined}
+        onAccept={onAcceptAgreement}
+        onReject={onRejectAgreement}
+        canRespond={canRespondAgreement}
+        onOpenRouteSheet={onOpenAgreementRouteSheet}
+      />
     )
   return null
 }

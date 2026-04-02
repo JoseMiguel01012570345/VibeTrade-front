@@ -17,6 +17,8 @@ export function messagePreviewLine(m: Message): string {
         : (m.documents[0]?.name ?? 'Documento')
     case 'certificate':
       return m.title
+    case 'agreement':
+      return `Acuerdo: ${m.title}`
     default:
       return ''
   }

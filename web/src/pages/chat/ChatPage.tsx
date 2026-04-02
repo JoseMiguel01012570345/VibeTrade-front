@@ -15,11 +15,12 @@ import {
   GitBranch,
   Image as ImageIcon,
   Mic,
+  PanelRight,
   Paperclip,
-  Plus,
   Send,
   ShieldCheck,
   Square,
+  Users,
   X,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -32,6 +33,10 @@ import {
   messageAuthorLabel,
   messagePreviewLine,
 } from "./chatAttachments";
+import { ChatRightRail } from "./ChatRightRail";
+import type { RouteSheet } from "./routeSheetTypes";
+import { RouteSheetFormModal } from "./RouteSheetFormModal";
+import { TradeAgreementFormModal } from "./TradeAgreementFormModal";
 import "./chat.css";
 
 function formatVoiceDur(sec: number) {
@@ -62,6 +67,11 @@ export function ChatPage() {
 
   const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer);
   const syncThreadBuyerQa = useMarketStore((s) => s.syncThreadBuyerQa);
+  const emitTradeAgreement = useMarketStore((s) => s.emitTradeAgreement);
+  const respondTradeAgreement = useMarketStore((s) => s.respondTradeAgreement);
+  const createRouteSheet = useMarketStore((s) => s.createRouteSheet);
+  const updateRouteSheet = useMarketStore((s) => s.updateRouteSheet);
+  const toggleRouteStop = useMarketStore((s) => s.toggleRouteStop);
   const thread = useMarketStore((s) =>
     threadId ? s.threads[threadId] : undefined,
   );
@@ -72,8 +82,13 @@ export function ChatPage() {
 
   const [draft, setDraft] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [showContracts, setShowContracts] = useState(false);
-  const [showCarrier, setShowCarrier] = useState(false);
+  const [showAgreementForm, setShowAgreementForm] = useState(false);
+  const [showRouteSheetForm, setShowRouteSheetForm] = useState(false);
+  const [routeSheetBeingEdited, setRouteSheetBeingEdited] =
+    useState<RouteSheet | null>(null);
+  const [railOpen, setRailOpen] = useState(false);
+  const [participantsEpoch, setParticipantsEpoch] = useState(0);
+  const [focusRouteId, setFocusRouteId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const draftInputRef = useRef<HTMLInputElement | null>(null);
@@ -228,7 +243,6 @@ export function ChatPage() {
   }
 
   const store = thread.store;
-  const transportWarning = !store.transportIncluded;
 
   function toggleSelectRow(e: MouseEvent, id: string) {
     if ((e.target as HTMLElement).closest("[data-chat-interactive]")) return;
@@ -384,8 +398,10 @@ export function ChatPage() {
   }
 
   return (
-    <div className="container vt-page">
-      <div className="vt-chat">
+    <div className="container vt-page vt-chat-page">
+      <div className="vt-chat-layout">
+        <div className="vt-chat-layout-main">
+          <div className="vt-chat">
         <div className="vt-chat-head vt-card vt-card-pad">
           <div className="vt-chat-head-top">
             <button
@@ -417,31 +433,46 @@ export function ChatPage() {
               </div>
             </div>
 
-            <button className="vt-btn" onClick={() => setShowContracts(true)}>
-              Contratos
-            </button>
-          </div>
-
-          {transportWarning && (
-            <div className="vt-chat-warn">
-              <div className="vt-chat-warn-text">
-                Este producto/servicio no incluye transporte. Podés añadir
-                transportista antes de cerrar el acuerdo.
-              </div>
+            <div className="vt-chat-head-actions">
               <button
-                className="vt-btn vt-btn-primary"
-                onClick={() => setShowCarrier(true)}
+                type="button"
+                className="vt-btn"
+                onClick={() => {
+                  setRailOpen(true);
+                  setParticipantsEpoch((n) => n + 1);
+                }}
+                title="Ver quién participa en este chat"
               >
-                <Plus size={16} /> Añadir Transportista
+                <Users size={16} /> Integrantes
+              </button>
+              <button
+                type="button"
+                className="vt-btn vt-chat-rail-toggle"
+                onClick={() => setRailOpen((o) => !o)}
+                title="Contratos y hojas de ruta"
+              >
+                <PanelRight size={16} /> Panel
+              </button>
+              <button
+                type="button"
+                className="vt-btn"
+                onClick={() => setShowAgreementForm(true)}
+                title="Emitir acuerdo como negocio"
+              >
+                <FileText size={16} /> Emitir acuerdo
               </button>
             </div>
-          )}
+          </div>
         </div>
 
         <div className="vt-chat-list vt-card" ref={listRef}>
           {thread.messages.map((m) => {
             const mine = m.from === "me";
             const system = m.from === "system";
+            const agreementDoc =
+              m.type === "agreement"
+                ? thread.contracts?.find((c) => c.id === m.agreementId)
+                : undefined;
             const isSelected = !!selected[m.id];
             const phone = mine ? me.phone : "+54 11 0000-0000";
             const trust = mine ? me.trustScore : store.trustScore;
@@ -457,7 +488,7 @@ export function ChatPage() {
                   isSelected && "vt-chat-row-selected",
                 )}
                 onClick={(e) => {
-                  if (system) return;
+                  if (system || m.type === "agreement") return;
                   toggleSelectRow(e, m.id);
                 }}
               >
@@ -490,7 +521,42 @@ export function ChatPage() {
                       <TrustChip score={trust} />
                     </div>
                   )}
-                  <MessageBody m={m} onImageOpen={setLightboxUrl} />
+                  <MessageBody
+                    m={m}
+                    onImageOpen={setLightboxUrl}
+                    agreementDoc={agreementDoc}
+                    onAcceptAgreement={
+                      m.type === "agreement"
+                        ? () => {
+                            respondTradeAgreement(thread.id, m.agreementId, "accept");
+                            toast.success(
+                              "Acuerdo aceptado. No puede derogarse; podés emitir otros contratos nuevos.",
+                            );
+                          }
+                        : undefined
+                    }
+                    onRejectAgreement={
+                      m.type === "agreement"
+                        ? () => {
+                            respondTradeAgreement(thread.id, m.agreementId, "reject");
+                            toast("Acuerdo rechazado");
+                          }
+                        : undefined
+                    }
+                    canRespondAgreement={
+                      m.type === "agreement" &&
+                      agreementDoc?.status === "pending_buyer" &&
+                      me.role === "buyer"
+                    }
+                    onOpenAgreementRouteSheet={
+                      m.type === "agreement" && agreementDoc?.routeSheetId
+                        ? () => {
+                            setFocusRouteId(agreementDoc.routeSheetId!);
+                            setRailOpen(true);
+                          }
+                        : undefined
+                    }
+                  />
                   {"at" in m && (
                     <MsgMeta
                       at={m.at}
@@ -859,63 +925,102 @@ export function ChatPage() {
           </div>
         </div>
       </div>
+        </div>
+
+        <div
+          className={railOpen ? "vt-chat-rail-wrap vt-chat-rail-wrap--open" : "vt-chat-rail-wrap"}
+        >
+          {railOpen ? (
+            <button
+              type="button"
+              className="vt-chat-rail-backdrop"
+              aria-label="Cerrar panel"
+              onClick={() => setRailOpen(false)}
+            />
+          ) : null}
+          <ChatRightRail
+            threadId={thread.id}
+            contracts={thread.contracts ?? []}
+            routeSheets={thread.routeSheets ?? []}
+            storeName={store.name}
+            buyerName={me.name}
+            buyer={{
+              id: me.id,
+              name: me.name,
+              trustScore: me.trustScore,
+            }}
+            seller={store}
+            participantsFocusEpoch={participantsEpoch}
+            focusRouteId={focusRouteId}
+            onConsumedRouteFocus={() => setFocusRouteId(null)}
+            onOpenNewRouteSheet={() => {
+              setRouteSheetBeingEdited(null);
+              setShowRouteSheetForm(true);
+              setRailOpen(true);
+            }}
+            onEditRouteSheet={(sheet) => {
+              if (sheet.publicadaPlataforma) {
+                toast.error(
+                  "No se puede editar una hoja de ruta ya publicada en la plataforma.",
+                );
+                return;
+              }
+              setRouteSheetBeingEdited(sheet);
+              setShowRouteSheetForm(true);
+              setRailOpen(true);
+            }}
+            toggleRouteStop={toggleRouteStop}
+          />
+        </div>
+      </div>
 
       <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
 
-      {showContracts && (
-        <div className="vt-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="vt-modal">
-            <div className="vt-modal-title">Contratos (demo)</div>
-            <div className="vt-modal-body">
-              Aquí se listan acuerdos emitidos, con filtro por usuario y link a
-              hojas de ruta cuando hay mercancías.
-            </div>
-            <div className="vt-modal-actions">
-              <button
-                className="vt-btn"
-                onClick={() => setShowContracts(false)}
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <TradeAgreementFormModal
+        open={showAgreementForm}
+        onClose={() => setShowAgreementForm(false)}
+        storeName={store.name}
+        onSubmit={(draft) => {
+          const id = emitTradeAgreement(thread.id, draft);
+          if (id) toast.success("Acuerdo emitido al chat");
+          else
+            toast.error(
+              "No se pudo emitir: revisá los datos del acuerdo (validación del servidor).",
+            );
+        }}
+      />
 
-      {showCarrier && (
-        <div className="vt-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="vt-modal">
-            <div className="vt-modal-title">Añadir transportista</div>
-            <div className="vt-modal-body">
-              <div className="vt-col" style={{ gap: 10 }}>
-                <div className="vt-muted">
-                  Se despliega un formulario donde se definen términos. El
-                  comprador debe aceptar explícitamente el precio del transporte
-                  antes de proceder.
-                </div>
-                <label className="vt-chat-check">
-                  <input type="checkbox" /> Estoy de acuerdo con el precio del
-                  transporte
-                </label>
-              </div>
-            </div>
-            <div className="vt-modal-actions">
-              <button className="vt-btn" onClick={() => setShowCarrier(false)}>
-                Cancelar
-              </button>
-              <button
-                className="vt-btn vt-btn-primary"
-                onClick={() => {
-                  toast.success("Transportista añadido (demo)");
-                  setShowCarrier(false);
-                }}
-              >
-                Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RouteSheetFormModal
+        open={showRouteSheetForm}
+        initialRouteSheet={routeSheetBeingEdited}
+        onClose={() => {
+          setShowRouteSheetForm(false);
+          setRouteSheetBeingEdited(null);
+        }}
+        onSubmit={(payload) => {
+          if (routeSheetBeingEdited) {
+            const ok = updateRouteSheet(
+              thread.id,
+              routeSheetBeingEdited.id,
+              payload,
+            );
+            if (!ok) {
+              toast.error(
+                "No se pudo guardar: revisá título, mercancías y al menos un tramo con origen y destino",
+              );
+            }
+            return ok;
+          }
+          const id = createRouteSheet(thread.id, payload);
+          if (!id) {
+            toast.error(
+              "Completá título, mercancías y al menos un tramo con origen y destino",
+            );
+            return false;
+          }
+          return true;
+        }}
+      />
     </div>
   );
 }

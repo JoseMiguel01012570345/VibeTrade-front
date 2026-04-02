@@ -16,6 +16,24 @@
 .vt-main {
   flex: 1;
   padding: 16px 0 88px;
+  min-height: 0;
+}
+
+/* Chat: sin scroll en main/contenedor; solo listas internas (.vt-chat-list, .vt-chat-rail-body) */
+.vt-main:has(.vt-chat-page) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.vt-main:has(.vt-chat-page) > .container.vt-chat-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .vt-nav {

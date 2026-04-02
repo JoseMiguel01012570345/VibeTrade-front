@@ -47,7 +47,7 @@ export function StorePage() {
               <Truck size={16} /> Transporte {store.transportIncluded ? 'incluido' : 'NO incluido'}
             </span>
             {!store.transportIncluded && (
-              <span className="vt-muted">Se mostrará warning en el chat para habilitar “Añadir Transportista”.</span>
+              <span className="vt-muted">En el chat se indica si el transporte está incluido o no.</span>
             )}
           </div>
         </div>

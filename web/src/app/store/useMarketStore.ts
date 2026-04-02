@@ -1,4 +1,25 @@
 import { create } from 'zustand'
+import type { TradeAgreement, TradeAgreementDraft } from '../../pages/chat/tradeAgreementTypes'
+import { emptyMerchandiseMeta, emptyServiceBlock } from '../../pages/chat/tradeAgreementTypes'
+import { hasValidationErrors, validateTradeAgreementDraft } from '../../pages/chat/tradeAgreementValidation'
+import {
+  getRouteSheetFormErrors,
+  hasRouteSheetFormErrors,
+  normalizeRouteSheetParadas,
+} from '../../pages/chat/routeSheetValidation'
+import type {
+  RouteSheet,
+  RouteSheetCreatePayload,
+  RouteSheetStatus,
+  RouteStop,
+} from '../../pages/chat/routeSheetTypes'
+export type { TradeAgreement, TradeAgreementDraft } from '../../pages/chat/tradeAgreementTypes'
+export type {
+  RouteSheet,
+  RouteSheetCreatePayload,
+  RouteSheetStatus,
+  RouteStop,
+} from '../../pages/chat/routeSheetTypes'
 
 export type StoreBadge = {
   id: string
@@ -107,6 +128,15 @@ export type Message =
       body: string
       at: number
     }
+  | {
+      id: string
+      from: 'other'
+      type: 'agreement'
+      agreementId: string
+      title: string
+      at: number
+      read?: boolean
+    }
 
 export type Thread = {
   id: string
@@ -116,6 +146,10 @@ export type Thread = {
   /** true cuando el comprador abre el chat desde «Comprar» (flujo de cierre). */
   purchaseMode?: boolean
   messages: Message[]
+  /** Acuerdos emitidos en el hilo (vendedor → comprador). */
+  contracts?: TradeAgreement[]
+  /** Hojas de rutas logísticas del hilo (vinculables a contratos con mercancías). */
+  routeSheets?: RouteSheet[]
 }
 
 type MarketState = {
@@ -153,6 +187,22 @@ type MarketState = {
     },
     options?: { replyToIds?: string[]; caption?: string },
   ) => void
+  emitTradeAgreement: (threadId: string, draft: TradeAgreementDraft) => string | null
+  respondTradeAgreement: (threadId: string, agreementId: string, response: 'accept' | 'reject') => void
+  createRouteSheet: (threadId: string, payload: RouteSheetCreatePayload) => string | null
+  updateRouteSheet: (threadId: string, routeSheetId: string, payload: RouteSheetCreatePayload) => boolean
+  setRouteSheetStatus: (threadId: string, routeSheetId: string, estado: RouteSheetStatus) => void
+  toggleRouteStop: (threadId: string, routeSheetId: string, stopId: string) => void
+  /** Marca como publicadas las hojas indicadas (solo las aún no publicadas; demo). */
+  publishRouteSheetsToPlatform: (threadId: string, routeSheetIds: string[]) => void
+  /** Vincula un acuerdo con mercancías a una hoja de ruta y notifica en el chat. */
+  linkAgreementToRouteSheet: (
+    threadId: string,
+    agreementId: string,
+    routeSheetId: string,
+  ) => boolean
+  /** Solo si no está publicada ni fue editada en formulario. Limpia vínculos en acuerdos. */
+  deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean
 }
 
 function uid(prefix: string) {
@@ -175,6 +225,8 @@ function previewForMessage(m: Message): string {
         : m.documents[0]?.name ?? 'Documento'
     case 'certificate':
       return m.title
+    case 'agreement':
+      return `Acuerdo: ${m.title}`
     default:
       return ''
   }
@@ -329,6 +381,14 @@ const demoStores: Record<string, StoreBadge> = {
     transportIncluded: true,
     trustScore: 63,
   },
+  s3: {
+    id: 's3',
+    name: 'Logística Sur',
+    verified: true,
+    categories: ['Transportista', 'Carga general'],
+    transportIncluded: true,
+    trustScore: 71,
+  },
 }
 
 const demoOffers: Offer[] = [
@@ -440,7 +500,12 @@ export const useMarketStore = create<MarketState>((set, get) => {
             ...x,
             threads: {
               ...x.threads,
-              [existing.id]: { ...existing, messages: merged },
+              [existing.id]: {
+                ...existing,
+                messages: merged,
+                contracts: existing.contracts ?? [],
+                routeSheets: existing.routeSheets ?? [],
+              },
             },
           }))
         }
@@ -456,6 +521,8 @@ export const useMarketStore = create<MarketState>((set, get) => {
         store,
         purchaseMode: true,
         messages: buildPurchaseThreadMessages(offer, buyerId),
+        contracts: [],
+        routeSheets: [],
       }
       set((x) => ({ ...x, threads: { ...x.threads, [id]: bootstrap } }))
       return id
@@ -471,9 +538,371 @@ export const useMarketStore = create<MarketState>((set, get) => {
         if (merged.length === th.messages.length) return s
         return {
           ...s,
-          threads: { ...s.threads, [threadId]: { ...th, messages: merged } },
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...th,
+              messages: merged,
+              contracts: th.contracts ?? [],
+              routeSheets: th.routeSheets ?? [],
+            },
+          },
         }
       })
+    },
+
+    emitTradeAgreement: (threadId, draft) => {
+      if (hasValidationErrors(validateTradeAgreementDraft(draft))) return null
+      const title = draft.title.trim()
+      if (!title) return null
+      const aid = uid('agr')
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th) return s
+        const agreement: TradeAgreement = {
+          ...draft,
+          title,
+          id: aid,
+          threadId,
+          issuedAt: Date.now(),
+          issuedByStoreId: th.storeId,
+          issuerLabel: th.store.name,
+          status: 'pending_buyer',
+          merchandise: draft.includeMerchandise ? draft.merchandise : [],
+          merchandiseMeta: draft.includeMerchandise ? draft.merchandiseMeta : emptyMerchandiseMeta(),
+          service: draft.includeService ? draft.service : emptyServiceBlock(),
+          routeSheetId: undefined,
+        }
+        const msg: Message = {
+          id: uid('m'),
+          from: 'other',
+          type: 'agreement',
+          agreementId: aid,
+          title,
+          at: Date.now(),
+          read: false,
+        }
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...th,
+              contracts: [...(th.contracts ?? []), agreement],
+              messages: [...th.messages, msg],
+              routeSheets: th.routeSheets ?? [],
+            },
+          },
+        }
+      })
+      return aid
+    },
+
+    respondTradeAgreement: (threadId, agreementId, response) => {
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th) return s
+        const list = th.contracts ?? []
+        const idx = list.findIndex((c) => c.id === agreementId)
+        if (idx < 0) return s
+        const ag = list[idx]
+        if (ag.status !== 'pending_buyer') return s
+        const nextContracts = [...list]
+        nextContracts[idx] = {
+          ...ag,
+          status: response === 'accept' ? 'accepted' : 'rejected',
+          respondedAt: Date.now(),
+        }
+        const sysText =
+          response === 'accept'
+            ? `Acuerdo «${ag.title}» aceptado por ambas partes. No puede derogarse; pueden emitirse nuevos contratos adicionales.`
+            : `Acuerdo «${ag.title}» rechazado por el comprador.`
+        const sys: Message = {
+          id: uid('m'),
+          from: 'system',
+          type: 'text',
+          text: sysText,
+          at: Date.now(),
+        }
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...th,
+              contracts: nextContracts,
+              messages: [...th.messages, sys],
+              routeSheets: th.routeSheets ?? [],
+            },
+          },
+        }
+      })
+    },
+
+    createRouteSheet: (threadId, payload) => {
+      if (hasRouteSheetFormErrors(getRouteSheetFormErrors(payload))) return null
+      const paradasNorm = normalizeRouteSheetParadas(payload.paradas)
+      if (paradasNorm.length === 0) return null
+      const titulo = payload.titulo.trim()
+      const merc = payload.mercanciasResumen.trim()
+      const paradas: RouteStop[] = paradasNorm
+        .map((p, i) => ({
+          id: uid('stop'),
+          orden: i + 1,
+          origen: p.origen.trim(),
+          destino: p.destino.trim(),
+          origenLat: p.origenLat?.trim() || undefined,
+          origenLng: p.origenLng?.trim() || undefined,
+          destinoLat: p.destinoLat?.trim() || undefined,
+          destinoLng: p.destinoLng?.trim() || undefined,
+          tiempoRecogidaEstimado: p.tiempoRecogidaEstimado?.trim() || undefined,
+          tiempoEntregaEstimado: p.tiempoEntregaEstimado?.trim() || undefined,
+          precioTransportista: p.precioTransportista?.trim() || undefined,
+          cargaEnTramo: p.cargaEnTramo?.trim() || undefined,
+          tipoMercanciaCarga: p.tipoMercanciaCarga?.trim() || undefined,
+          tipoMercanciaDescarga: p.tipoMercanciaDescarga?.trim() || undefined,
+          notas: p.notas?.trim() || undefined,
+          completada: false,
+        }))
+      const rid = uid('ruta')
+      const now = Date.now()
+      const sheet: RouteSheet = {
+        id: rid,
+        threadId,
+        titulo,
+        creadoEn: now,
+        actualizadoEn: now,
+        estado: 'borrador',
+        mercanciasResumen: merc,
+        paradas,
+        notasGenerales: payload.notasGenerales?.trim() || undefined,
+        responsabilidadEmbalaje: payload.responsabilidadEmbalaje?.trim() || undefined,
+        requisitosEspeciales: payload.requisitosEspeciales?.trim() || undefined,
+        tipoVehiculoRequerido: payload.tipoVehiculoRequerido?.trim() || undefined,
+        publicadaPlataforma: false,
+        editadaEnFormulario: false,
+      }
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th) return s
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...th,
+              routeSheets: [...(th.routeSheets ?? []), sheet],
+            },
+          },
+        }
+      })
+      return rid
+    },
+
+    updateRouteSheet: (threadId, routeSheetId, payload) => {
+      if (hasRouteSheetFormErrors(getRouteSheetFormErrors(payload))) return false
+      const paradasNorm = normalizeRouteSheetParadas(payload.paradas)
+      if (paradasNorm.length === 0) return false
+      const titulo = payload.titulo.trim()
+      const merc = payload.mercanciasResumen.trim()
+      const built = paradasNorm
+        .map((p, i) => ({
+          id: uid('stop'),
+          orden: i + 1,
+          origen: p.origen.trim(),
+          destino: p.destino.trim(),
+          origenLat: p.origenLat?.trim() || undefined,
+          origenLng: p.origenLng?.trim() || undefined,
+          destinoLat: p.destinoLat?.trim() || undefined,
+          destinoLng: p.destinoLng?.trim() || undefined,
+          tiempoRecogidaEstimado: p.tiempoRecogidaEstimado?.trim() || undefined,
+          tiempoEntregaEstimado: p.tiempoEntregaEstimado?.trim() || undefined,
+          precioTransportista: p.precioTransportista?.trim() || undefined,
+          cargaEnTramo: p.cargaEnTramo?.trim() || undefined,
+          tipoMercanciaCarga: p.tipoMercanciaCarga?.trim() || undefined,
+          tipoMercanciaDescarga: p.tipoMercanciaDescarga?.trim() || undefined,
+          notas: p.notas?.trim() || undefined,
+          completada: false as boolean | undefined,
+        }))
+      let ok = false
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th?.routeSheets) return s
+        const idx = th.routeSheets.findIndex((rs) => rs.id === routeSheetId)
+        if (idx < 0) return s
+        const existing = th.routeSheets[idx]
+        if (existing.publicadaPlataforma) return s
+        const paradas: RouteStop[] = built.map((p, i) => ({
+          ...p,
+          id: existing.paradas[i]?.id ?? p.id,
+          completada: existing.paradas[i]?.completada ?? false,
+        }))
+        const now = Date.now()
+        const sheet: RouteSheet = {
+          ...existing,
+          titulo,
+          mercanciasResumen: merc,
+          paradas,
+          notasGenerales: payload.notasGenerales?.trim() || undefined,
+          responsabilidadEmbalaje: payload.responsabilidadEmbalaje?.trim() || undefined,
+          requisitosEspeciales: payload.requisitosEspeciales?.trim() || undefined,
+          tipoVehiculoRequerido: payload.tipoVehiculoRequerido?.trim() || undefined,
+          actualizadoEn: now,
+          editadaEnFormulario: true,
+        }
+        const list = [...th.routeSheets]
+        list[idx] = sheet
+        ok = true
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...th, routeSheets: list },
+          },
+        }
+      })
+      return ok
+    },
+
+    setRouteSheetStatus: (threadId, routeSheetId, estado) => {
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th?.routeSheets) return s
+        const list = th.routeSheets.map((rs) =>
+          rs.id === routeSheetId
+            ? { ...rs, estado, actualizadoEn: Date.now() }
+            : rs,
+        )
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...th, routeSheets: list },
+          },
+        }
+      })
+    },
+
+    toggleRouteStop: (threadId, routeSheetId, stopId) => {
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th?.routeSheets) return s
+        const list = th.routeSheets.map((rs) => {
+          if (rs.id !== routeSheetId) return rs
+          return {
+            ...rs,
+            actualizadoEn: Date.now(),
+            paradas: rs.paradas.map((p) =>
+              p.id === stopId ? { ...p, completada: !p.completada } : p,
+            ),
+          }
+        })
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...th, routeSheets: list },
+          },
+        }
+      })
+    },
+
+    publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
+      const idSet = new Set(routeSheetIds)
+      set((s) => {
+        const th = s.threads[threadId]
+        const sheets = th?.routeSheets
+        if (!th || !sheets?.length) return s
+        const now = Date.now()
+        const list = sheets.map((rs) =>
+          idSet.has(rs.id) && !rs.publicadaPlataforma
+            ? { ...rs, publicadaPlataforma: true, actualizadoEn: now }
+            : rs,
+        )
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...th, routeSheets: list },
+          },
+        }
+      })
+    },
+
+    linkAgreementToRouteSheet: (threadId, agreementId, routeSheetId) => {
+      let ok = false
+      set((s) => {
+        const th = s.threads[threadId]
+        const contracts = th.contracts ?? []
+        const sheets = th.routeSheets ?? []
+        if (!th || !contracts.length || !sheets.length) return s
+        const sheet = sheets.find((r) => r.id === routeSheetId)
+        if (!sheet) return s
+        const cIdx = contracts.findIndex((c) => c.id === agreementId)
+        if (cIdx < 0) return s
+        const prev = contracts[cIdx]
+        if (prev.routeSheetId === routeSheetId) return s
+        const nextContracts = [...contracts]
+        nextContracts[cIdx] = { ...prev, routeSheetId }
+        const sys: Message = {
+          id: uid('m'),
+          from: 'system',
+          type: 'text',
+          text: `Acuerdo «${prev.title}» vinculado a la hoja de ruta «${sheet.titulo}».`,
+          at: Date.now(),
+        }
+        ok = true
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...th,
+              contracts: nextContracts,
+              messages: [...th.messages, sys],
+              routeSheets: th.routeSheets ?? [],
+            },
+          },
+        }
+      })
+      return ok
+    },
+
+    deleteRouteSheet: (threadId, routeSheetId) => {
+      let ok = false
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th?.routeSheets?.length) return s
+        const sheet = th.routeSheets.find((r) => r.id === routeSheetId)
+        if (!sheet) return s
+        if (sheet.publicadaPlataforma) return s
+        if (sheet.editadaEnFormulario) return s
+        const list = th.routeSheets.filter((r) => r.id !== routeSheetId)
+        const contracts = (th.contracts ?? []).map((c) =>
+          c.routeSheetId === routeSheetId ? { ...c, routeSheetId: undefined } : c,
+        )
+        const sys: Message = {
+          id: uid('m'),
+          from: 'system',
+          type: 'text',
+          text: `Se eliminó la hoja de ruta «${sheet.titulo}».`,
+          at: Date.now(),
+        }
+        ok = true
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...th,
+              routeSheets: list,
+              contracts,
+              messages: [...th.messages, sys],
+            },
+          },
+        }
+      })
+      return ok
     },
 
     sendText: (threadId, text, replyToIds) => {

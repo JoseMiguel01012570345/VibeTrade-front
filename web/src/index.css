@@ -39,6 +39,11 @@ body {
   margin: 0;
 }
 
+#root {
+  height: 100%;
+  min-height: 0;
+}
+
 a {
   color: var(--primary);
   text-decoration: none;
