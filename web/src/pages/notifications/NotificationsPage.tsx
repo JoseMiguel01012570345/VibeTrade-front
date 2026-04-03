@@ -1,6 +1,6 @@
 import { Bell, CheckCircle2 } from 'lucide-react'
+import { cn } from '../../lib/cn'
 import { useAppStore } from '../../app/store/useAppStore'
-import './notifications.css'
 
 function fmt(ts: number) {
   const d = new Date(ts)
@@ -14,8 +14,8 @@ export function NotificationsPage() {
 
   return (
     <div className="container vt-page">
-      <div className="vt-notifs">
-        <div className="vt-notifs-head">
+      <div className="flex flex-col gap-3.5">
+        <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="vt-h1">Notificaciones</h1>
             <div className="vt-muted">
@@ -32,16 +32,23 @@ export function NotificationsPage() {
           {items.length === 0 ? (
             <div className="vt-muted">Aún no hay notificaciones.</div>
           ) : (
-            <div className="vt-notifs-list">
+            <div className="flex flex-col gap-2.5">
               {items.map((n) => (
-                <div key={n.id} className={n.read ? 'vt-notif' : 'vt-notif vt-notif-unread'}>
-                  <div className="vt-notif-icon">
+                <div
+                  key={n.id}
+                  className={cn(
+                    'grid grid-cols-[32px_1fr] gap-2.5 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-3 py-2.5',
+                    !n.read &&
+                      'border-[color-mix(in_oklab,var(--primary)_20%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))]',
+                  )}
+                >
+                  <div className="grid h-8 w-8 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)]">
                     <Bell size={16} />
                   </div>
-                  <div className="vt-notif-main">
-                    <div className="vt-notif-title">{n.title}</div>
+                  <div>
+                    <div className="font-black tracking-[-0.02em]">{n.title}</div>
                     <div className="vt-muted">{n.body}</div>
-                    <div className="vt-notif-time">{fmt(n.createdAt)}</div>
+                    <div className="mt-1.5 text-xs text-[var(--muted)]">{fmt(n.createdAt)}</div>
                   </div>
                 </div>
               ))}
@@ -52,4 +59,3 @@ export function NotificationsPage() {
     </div>
   )
 }
-

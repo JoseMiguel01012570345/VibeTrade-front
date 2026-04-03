@@ -1,12 +1,11 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import clsx from 'clsx'
 import { HelpCircle, LogOut, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { Message, Thread } from '../../app/store/useMarketStore'
 import { useMarketStore } from '../../app/store/useMarketStore'
+import { cn } from '../../lib/cn'
 import { messagePreviewLine } from './chatAttachments'
-import './chat-list.css'
 
 const PREMATURE_EXIT_TOOLTIP =
   'Este chat se resalta porque se está investigando una salida prematura: abandonaste la conversación sin un acuerdo aceptado.'
@@ -76,74 +75,81 @@ export function ChatListPage() {
 
   return (
     <div className="container vt-page">
-      <div className="vt-chatlist-head">
+      <div className="mb-4">
         <h1 className="vt-h1">Chats</h1>
         <div className="vt-muted">
-          Tus conversaciones con negocios (una por oferta en esta demo). Usá «Salir» en cada fila para
-          registrar la salida; si hay un acuerdo aceptado sin pago, al volver el chat quedará restringido hasta
-          pagar.
+          Tus conversaciones con negocios (una por oferta en esta demo). Usá «Salir» en cada fila para registrar la
+          salida; si hay un acuerdo aceptado sin pago, al volver el chat quedará restringido hasta pagar.
         </div>
       </div>
 
       <div className="vt-card vt-card-pad">
         {rows.length === 0 ? (
-          <div className="vt-chatlist-empty">
-            <MessageCircle size={40} strokeWidth={1.25} style={{ opacity: 0.35, marginBottom: 12 }} />
+          <div className="px-4 py-7 text-center">
+            <MessageCircle size={40} strokeWidth={1.25} className="mb-3 opacity-[0.35]" />
             <div className="vt-muted">Todavía no tenés conversaciones.</div>
-            <div className="vt-muted" style={{ marginTop: 6, fontSize: 13 }}>
-              Abrí una oferta y tocá «Comprar» para iniciar un chat.
-            </div>
-            <Link to="/home" className="vt-btn vt-btn-primary">
+            <div className="vt-muted mt-1.5 text-[13px]">Abrí una oferta y tocá «Comprar» para iniciar un chat.</div>
+            <Link to="/home" className="vt-btn vt-btn-primary mt-4 inline-flex">
               Ver ofertas
             </Link>
           </div>
         ) : (
-          <div className="vt-chatlist-list">
-            {rows.map(({ th, offerTitle, preview, at }) => (
-              <div
-                key={th.id}
-                className={clsx(
-                  'vt-chatlist-row-wrap',
-                  th.prematureExitUnderInvestigation && 'vt-chatlist-row-wrap--investigation',
-                )}
-              >
-                <Link
-                  to={`/chat/${th.id}`}
-                  className="vt-chatlist-row"
-                  title={th.prematureExitUnderInvestigation ? PREMATURE_EXIT_TOOLTIP : undefined}
+          <div className="flex flex-col">
+            {rows.map(({ th, offerTitle, preview, at }) => {
+              const inv = Boolean(th.prematureExitUnderInvestigation)
+              return (
+                <div
+                  key={th.id}
+                  className={cn(
+                    'flex items-stretch gap-2 border-b border-[var(--border)] transition-colors duration-150 last:border-b-0',
+                    inv &&
+                      '-ml-0.5 border-l-4 border-l-amber-600 bg-[color-mix(in_oklab,#d97706_12%,var(--surface))] pl-2',
+                  )}
                 >
-                  {th.prematureExitUnderInvestigation ? (
-                    <span className="vt-sr-only">{PREMATURE_EXIT_TOOLTIP}</span>
-                  ) : null}
-                  <div className="vt-chatlist-avatar" aria-hidden>
-                    {th.store.name.slice(0, 1).toUpperCase()}
-                  </div>
-                  <div className="vt-chatlist-main">
-                    <div className="vt-chatlist-top">
-                      <div className="vt-chatlist-title">{th.store.name}</div>
-                      <div className="vt-chatlist-top-right">
-                        {th.prematureExitUnderInvestigation ? (
-                          <span className="vt-chatlist-investigation-mark" aria-hidden>
-                            <HelpCircle size={18} strokeWidth={2.25} />
-                          </span>
-                        ) : null}
-                        <span className="vt-chatlist-time">{fmtShort(at)}</span>
-                      </div>
+                  <Link
+                    to={`/chat/${th.id}`}
+                    className={cn(
+                      'relative flex min-w-0 flex-1 items-start gap-3 py-3.5 text-inherit no-underline transition-colors duration-150',
+                      inv
+                        ? 'hover:bg-[color-mix(in_oklab,#d97706_16%,var(--surface))]'
+                        : 'hover:bg-[color-mix(in_oklab,var(--primary)_6%,transparent)]',
+                    )}
+                    title={inv ? PREMATURE_EXIT_TOOLTIP : undefined}
+                  >
+                    {inv ? <span className="sr-only">{PREMATURE_EXIT_TOOLTIP}</span> : null}
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_oklab,var(--primary)_18%,var(--surface))] text-base font-bold text-[var(--primary)]"
+                      aria-hidden
+                    >
+                      {th.store.name.slice(0, 1).toUpperCase()}
                     </div>
-                    <div className="vt-chatlist-offer">{offerTitle}</div>
-                    <div className="vt-chatlist-preview">{preview}</div>
-                  </div>
-                </Link>
-                <button
-                  type="button"
-                  className="vt-btn vt-chatlist-exit"
-                  title="Registrar salida del chat (puede restringir acciones si hay acuerdo sin pago)"
-                  onClick={() => handleExitChat(th.id)}
-                >
-                  <LogOut size={16} aria-hidden /> Salir
-                </button>
-              </div>
-            ))}
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <div className="truncate text-[15px] font-semibold">{th.store.name}</div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          {inv ? (
+                            <span className="flex leading-none text-amber-700" aria-hidden>
+                              <HelpCircle size={18} strokeWidth={2.25} />
+                            </span>
+                          ) : null}
+                          <span className="shrink-0 text-xs text-[var(--muted)]">{fmtShort(at)}</span>
+                        </div>
+                      </div>
+                      <div className="mb-0.5 truncate text-[13px] text-[var(--muted)]">{offerTitle}</div>
+                      <div className="truncate text-[13px] text-[var(--muted)]">{preview}</div>
+                    </div>
+                  </Link>
+                  <button
+                    type="button"
+                    className="vt-btn my-2 mr-1 inline-flex shrink-0 items-center gap-1.5 self-center text-nowrap text-[13px]"
+                    title="Registrar salida del chat (puede restringir acciones si hay acuerdo sin pago)"
+                    onClick={() => handleExitChat(th.id)}
+                  >
+                    <LogOut size={16} aria-hidden /> Salir
+                  </button>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
