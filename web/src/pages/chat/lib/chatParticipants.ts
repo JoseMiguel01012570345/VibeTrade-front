@@ -1,4 +1,4 @@
-import type { StoreBadge } from '../../app/store/useMarketStore'
+import type { StoreBadge } from '../../../app/store/useMarketStore'
 
 export type ChatParticipantRole = 'buyer' | 'seller'
 

@@ -1,4 +1,4 @@
-import { cn } from '../../lib/cn'
+import { cn } from '../../../lib/cn'
 
 /** Acuerdo / hoja de ruta (ancho) */
 export const modalShellWide =

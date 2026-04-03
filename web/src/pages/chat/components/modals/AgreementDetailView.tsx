@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { cn } from '../../lib/cn'
+import { cn } from '../../../../lib/cn'
 import {
   agreementDeclaresMerchandise,
   agreementDeclaresService,
@@ -7,9 +7,9 @@ import {
   type MerchandiseLine,
   type MerchandiseSectionMeta,
   type TradeAgreement,
-} from './tradeAgreementTypes'
-import { hasMerchandise } from './tradeAgreementValidation'
-import type { RouteSheet } from './routeSheetTypes'
+} from '../../domain/tradeAgreementTypes'
+import { hasMerchandise } from '../../domain/tradeAgreementValidation'
+import type { RouteSheet } from '../../domain/routeSheetTypes'
 import {
   agrDetailBlock,
   agrDetailCard,
@@ -24,7 +24,7 @@ import {
   fieldLabel,
   linkRutaRow,
   linkRutaSelect,
-} from './formModalStyles'
+} from '../../styles/formModalStyles'
 
 function Row({ label, value }: { label: string; value: string }) {
   if (!value.trim()) return null

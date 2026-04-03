@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import type { Message, Thread } from '../../app/store/useMarketStore'
 import { useMarketStore } from '../../app/store/useMarketStore'
 import { cn } from '../../lib/cn'
-import { messagePreviewLine } from './chatAttachments'
+import { messagePreviewLine } from './lib/chatAttachments'
 
 const PREMATURE_EXIT_TOOLTIP =
   'Este chat se resalta porque se está investigando una salida prematura: abandonaste la conversación sin un acuerdo aceptado.'

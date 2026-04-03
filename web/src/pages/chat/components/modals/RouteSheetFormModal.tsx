@@ -1,6 +1,8 @@
-import { useEffect, useState, type HTMLAttributes } from 'react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { cn } from '../../lib/cn'
+import { cn } from '../../../../lib/cn'
+import { ModalFormField as Field } from './ModalFormField'
+import { cloneTramoFromPrevious, emptyTramo } from '../../lib/routeSheetTramoFormUtils'
 import {
   agrDetailSub,
   detailsBlock,
@@ -20,8 +22,7 @@ import {
   rutaTramoHead,
   rutaTramoRemoveBtn,
   rutaTramosBlock,
-  textareaMin,
-} from './formModalStyles'
+} from '../../styles/formModalStyles'
 import { MapPin, Trash2 } from 'lucide-react'
 import {
   routeSheetLegacyHead,
@@ -29,15 +30,15 @@ import {
   type RouteSheet,
   type RouteSheetCreatePayload,
   type RouteTramoFormInput,
-} from './routeSheetTypes'
-import type { RouteSheetFormErrors } from './routeSheetValidation'
+} from '../../domain/routeSheetTypes'
+import type { RouteSheetFormErrors } from '../../domain/routeSheetValidation'
 import {
   getRouteSheetFormErrors,
   hasRouteSheetFormErrors,
   normalizeRouteSheetParadas,
   routeSheetFormErrorCount,
   validateRouteCoordPair,
-} from './routeSheetValidation'
+} from '../../domain/routeSheetValidation'
 
 export type RouteSheetFormPayload = RouteSheetCreatePayload
 
@@ -46,106 +47,6 @@ type Props = {
   onClose: () => void
   initialRouteSheet?: RouteSheet | null
   onSubmit: (p: RouteSheetFormPayload) => boolean
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  multiline,
-  error,
-  inputId,
-  placeholder,
-  rows,
-  inputMode,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  multiline?: boolean
-  error?: string
-  inputId?: string
-  placeholder?: string
-  rows?: number
-  inputMode?: HTMLAttributes<HTMLInputElement>['inputMode']
-}) {
-  const errId = inputId ? `${inputId}-err` : undefined
-  return (
-    <label className={fieldRootWithInvalid(!!error)}>
-      <span className={fieldLabel}>{label}</span>
-      {multiline ? (
-        <textarea
-          id={inputId}
-          className={cn('vt-input', textareaMin)}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          rows={rows ?? 2}
-          placeholder={placeholder}
-          aria-invalid={!!error}
-          aria-describedby={error ? errId : undefined}
-        />
-      ) : (
-        <input
-          id={inputId}
-          className="vt-input"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          inputMode={inputMode}
-          aria-invalid={!!error}
-          aria-describedby={error ? errId : undefined}
-        />
-      )}
-      {error ? (
-        <span id={errId} className={fieldError} role="alert">
-          {error}
-        </span>
-      ) : null}
-    </label>
-  )
-}
-
-function emptyTramo(): RouteTramoFormInput {
-  return {
-    origen: '',
-    destino: '',
-    origenLat: '',
-    origenLng: '',
-    destinoLat: '',
-    destinoLng: '',
-    tiempoRecogidaEstimado: '',
-    tiempoEntregaEstimado: '',
-    precioTransportista: '',
-    cargaEnTramo: '',
-    tipoMercanciaCarga: '',
-    tipoMercanciaDescarga: '',
-    notas: '',
-    responsabilidadEmbalaje: '',
-    requisitosEspeciales: '',
-    tipoVehiculoRequerido: '',
-  }
-}
-
-/** Copia los valores del tramo anterior para prellenar uno nuevo (mismo recorrido / datos repetidos). */
-function cloneTramoFromPrevious(prev: RouteTramoFormInput): RouteTramoFormInput {
-  return {
-    origen: prev.origen ?? '',
-    destino: prev.destino ?? '',
-    origenLat: prev.origenLat ?? '',
-    origenLng: prev.origenLng ?? '',
-    destinoLat: prev.destinoLat ?? '',
-    destinoLng: prev.destinoLng ?? '',
-    tiempoRecogidaEstimado: prev.tiempoRecogidaEstimado ?? '',
-    tiempoEntregaEstimado: prev.tiempoEntregaEstimado ?? '',
-    precioTransportista: prev.precioTransportista ?? '',
-    cargaEnTramo: prev.cargaEnTramo ?? '',
-    tipoMercanciaCarga: prev.tipoMercanciaCarga ?? '',
-    tipoMercanciaDescarga: prev.tipoMercanciaDescarga ?? '',
-    notas: prev.notas ?? '',
-    responsabilidadEmbalaje: prev.responsabilidadEmbalaje ?? '',
-    requisitosEspeciales: prev.requisitosEspeciales ?? '',
-    tipoVehiculoRequerido: prev.tipoVehiculoRequerido ?? '',
-  }
 }
 
 type MapPick = { tramoIndex: number; punto: 'origen' | 'destino' }

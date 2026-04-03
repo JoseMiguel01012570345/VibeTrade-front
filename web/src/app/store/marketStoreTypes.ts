@@ -1,0 +1,193 @@
+import type { TradeAgreement, TradeAgreementDraft } from '../../pages/chat/domain/tradeAgreementTypes'
+import type { RouteSheet, RouteSheetCreatePayload, RouteSheetStatus } from '../../pages/chat/domain/routeSheetTypes'
+
+export type { TradeAgreement, TradeAgreementDraft } from '../../pages/chat/domain/tradeAgreementTypes'
+export type {
+  RouteSheet,
+  RouteSheetCreatePayload,
+  RouteSheetStatus,
+  RouteStop,
+} from '../../pages/chat/domain/routeSheetTypes'
+
+export type StoreBadge = {
+  id: string
+  name: string
+  verified: boolean
+  categories: string[]
+  transportIncluded: boolean
+  avatarUrl?: string
+  trustScore: number
+}
+
+export type QAItem = {
+  id: string
+  question: string
+  askedBy: { id: string; name: string; trustScore: number }
+  answeredBy?: { id: string; name: string; trustScore: number }
+  answer?: string
+  createdAt: number
+}
+
+export type Offer = {
+  id: string
+  storeId: string
+  title: string
+  price: string
+  location: string
+  tags: string[]
+  imageUrl: string
+  qa: QAItem[]
+}
+
+export type ReplyQuote = {
+  id: string
+  author: string
+  preview: string
+}
+
+export type Message =
+  | {
+      id: string
+      from: 'me' | 'other' | 'system'
+      type: 'text'
+      text: string
+      at: number
+      read?: boolean
+      offerQaId?: string
+      replyQuotes?: ReplyQuote[]
+    }
+  | {
+      id: string
+      from: 'me' | 'other'
+      type: 'image'
+      images: { url: string }[]
+      at: number
+      read?: boolean
+      caption?: string
+      embeddedAudio?: { url: string; seconds: number }
+      replyQuotes?: ReplyQuote[]
+    }
+  | {
+      id: string
+      from: 'me' | 'other'
+      type: 'audio'
+      url: string
+      seconds: number
+      at: number
+      read?: boolean
+    }
+  | {
+      id: string
+      from: 'me' | 'other'
+      type: 'doc'
+      name: string
+      size: string
+      kind: 'pdf' | 'doc' | 'other'
+      url?: string
+      at: number
+      read?: boolean
+      caption?: string
+      replyQuotes?: ReplyQuote[]
+    }
+  | {
+      id: string
+      from: 'me' | 'other'
+      type: 'docs'
+      documents: {
+        name: string
+        size: string
+        kind: 'pdf' | 'doc' | 'other'
+        url?: string
+      }[]
+      caption?: string
+      embeddedAudio?: { url: string; seconds: number }
+      at: number
+      read?: boolean
+      replyQuotes?: ReplyQuote[]
+    }
+  | {
+      id: string
+      from: 'system'
+      type: 'certificate'
+      title: string
+      body: string
+      at: number
+    }
+  | {
+      id: string
+      from: 'other'
+      type: 'agreement'
+      agreementId: string
+      title: string
+      at: number
+      read?: boolean
+    }
+
+export type Thread = {
+  id: string
+  offerId: string
+  storeId: string
+  store: StoreBadge
+  purchaseMode?: boolean
+  messages: Message[]
+  contracts?: TradeAgreement[]
+  routeSheets?: RouteSheet[]
+  prematureExitUnderInvestigation?: boolean
+  paymentCompleted?: boolean
+  chatActionsLocked?: boolean
+}
+
+export function threadHasAcceptedAgreement(th: Thread): boolean {
+  return (th.contracts ?? []).some((c) => c.status === 'accepted')
+}
+
+export function threadHasAcceptedAgreementUnpaid(th: Thread): boolean {
+  return threadHasAcceptedAgreement(th) && !th.paymentCompleted
+}
+
+export type MarketState = {
+  stores: Record<string, StoreBadge>
+  offers: Record<string, Offer>
+  offerIds: string[]
+  threads: Record<string, Thread>
+
+  ask: (offerId: string, askedBy: { id: string; name: string; trustScore: number }, question: string) => string
+  answer: (offerId: string, qaId: string, answer: string) => void
+  ensureThreadForOffer: (offerId: string, opts?: { buyerId?: string }) => string
+  syncThreadBuyerQa: (threadId: string, buyerId: string) => void
+  sendText: (threadId: string, text: string, replyToIds?: string[]) => void
+  sendAudio: (threadId: string, payload: { url: string; seconds: number }) => void
+  sendDocument: (
+    threadId: string,
+    payload: { name: string; size: string; kind: 'pdf' | 'doc' | 'other'; url: string },
+    options?: { replyToIds?: string[]; caption?: string },
+  ) => void
+  sendImages: (
+    threadId: string,
+    images: { url: string }[],
+    options?: {
+      replyToIds?: string[]
+      caption?: string
+      embeddedAudio?: { url: string; seconds: number }
+    },
+  ) => void
+  sendDocsBundle: (
+    threadId: string,
+    payload: {
+      documents: { name: string; size: string; kind: 'pdf' | 'doc' | 'other'; url: string }[]
+      embeddedAudio?: { url: string; seconds: number }
+    },
+    options?: { replyToIds?: string[]; caption?: string },
+  ) => void
+  emitTradeAgreement: (threadId: string, draft: TradeAgreementDraft) => string | null
+  respondTradeAgreement: (threadId: string, agreementId: string, response: 'accept' | 'reject') => void
+  createRouteSheet: (threadId: string, payload: RouteSheetCreatePayload) => string | null
+  updateRouteSheet: (threadId: string, routeSheetId: string, payload: RouteSheetCreatePayload) => boolean
+  setRouteSheetStatus: (threadId: string, routeSheetId: string, estado: RouteSheetStatus) => void
+  toggleRouteStop: (threadId: string, routeSheetId: string, stopId: string) => void
+  publishRouteSheetsToPlatform: (threadId: string, routeSheetIds: string[]) => void
+  linkAgreementToRouteSheet: (threadId: string, agreementId: string, routeSheetId: string) => boolean
+  deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean
+  recordChatExitFromList: (threadId: string) => void
+  markThreadPaymentCompleted: (threadId: string) => void
+}

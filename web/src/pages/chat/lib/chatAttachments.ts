@@ -1,4 +1,4 @@
-import type { Message } from '../../app/store/useMarketStore'
+import type { Message } from '../../../app/store/useMarketStore'
 
 /** Línea corta para citas en la UI (composer / burbujas). */
 export function messagePreviewLine(m: Message): string {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { RouteSheet } from './routeSheetTypes'
+import type { RouteSheet } from '../../domain/routeSheetTypes'
 import {
   modalFormBody,
   modalShellNarrow,
@@ -7,7 +7,7 @@ import {
   publishRutaList,
   publishRutaRow,
   publishRutaTitle,
-} from './formModalStyles'
+} from '../../styles/formModalStyles'
 
 type Props = {
   open: boolean
