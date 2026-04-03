@@ -9,7 +9,13 @@ import {
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "../../lib/cn";
-import { ArrowLeft, FileText, PanelRight, ShieldCheck, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  PanelRight,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { useAppStore } from "../../app/store/useAppStore";
 import {
@@ -225,12 +231,10 @@ export function ChatPage() {
   function submitComposer() {
     if (!threadId || !thread || recording || thread.chatActionsLocked) return;
     const replyIds = selectedIds;
-    const hasDocsOrImages =
-      pendingDocs.length > 0 || pendingImages.length > 0;
+    const hasDocsOrImages = pendingDocs.length > 0 || pendingImages.length > 0;
     const hasVoice = pendingAudio !== null;
     /** No caption when voice is bundled with files (product rule). */
-    const noTextWithVoiceAndFiles =
-      hasVoice && hasDocsOrImages;
+    const noTextWithVoiceAndFiles = hasVoice && hasDocsOrImages;
     const caption = noTextWithVoiceAndFiles ? "" : draft.trim();
     const cap = caption || undefined;
     if (!hasDocsOrImages && !caption && !hasVoice) return;
@@ -268,8 +272,7 @@ export function ChatPage() {
             pendingAudio && !voiceEmbeddedInDocs ? pendingAudio : undefined,
         },
       );
-      voiceEmbeddedInImages =
-        pendingAudio !== null && !voiceEmbeddedInDocs;
+      voiceEmbeddedInImages = pendingAudio !== null && !voiceEmbeddedInDocs;
       first = false;
     }
 
@@ -298,8 +301,7 @@ export function ChatPage() {
     draft.trim().length > 0 ||
     pendingAudio !== null;
 
-  const canSend =
-    !recording && hasComposeToSend && !chatActionsLocked;
+  const canSend = !recording && hasComposeToSend && !chatActionsLocked;
 
   function stopVoiceRecording() {
     const mr = mediaRecorderRef.current;
@@ -384,133 +386,137 @@ export function ChatPage() {
       >
         <div className="flex min-h-0 min-w-0 flex-col px-1 min-[961px]:pl-2 min-[961px]:pr-1">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3.5">
-        <div className="vt-card shrink-0 px-[22px] py-[18px]">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              className="vt-btn"
-              onClick={() => nav("/chat")}
-              aria-label="Volver a la lista de chats"
-            >
-              <ArrowLeft size={16} />
-            </button>
-            <div className="min-w-0 flex-1">
+            <div className="vt-card shrink-0 px-[22px] py-[18px]">
               <div className="flex flex-wrap items-center gap-2.5">
-                <div className="font-black tracking-[-0.03em]">{store.name}</div>
-                {thread.purchaseMode && (
-                  <span className="rounded-full border border-[color-mix(in_oklab,var(--accent,#16a34a)_35%,transparent)] bg-[color-mix(in_oklab,var(--accent,#16a34a)_18%,transparent)] px-2.5 py-1 text-xs font-bold tracking-wide text-[var(--accent-foreground,#14532d)]">
-                    Modo compra
-                  </span>
-                )}
-              </div>
-              <div className="mt-1.5 flex flex-wrap gap-2">
-                <span className="vt-pill">
-                  <ShieldCheck size={14} />{" "}
-                  {store.verified ? "Credenciales validadas" : "No verificado"}
-                </span>
-                <span
-                  className="vt-pill"
-                  title="Disponibilidad de transporte indicada por el perfil del negocio."
+                <button
+                  className="vt-btn"
+                  onClick={() => nav("/chat")}
+                  aria-label="Volver a la lista de chats"
                 >
-                  Transporte:{" "}
-                  {store.transportIncluded ? "incluido" : "NO incluido"}
-                </span>
+                  <ArrowLeft size={16} />
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="font-black tracking-[-0.03em]">
+                      {store.name}
+                    </div>
+                    {thread.purchaseMode && (
+                      <span className="rounded-full border border-[color-mix(in_oklab,var(--accent,#16a34a)_35%,transparent)] bg-[color-mix(in_oklab,var(--accent,#16a34a)_18%,transparent)] px-2.5 py-1 text-xs font-bold tracking-wide text-[var(--accent-foreground,#14532d)]">
+                        Modo compra
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <span className="vt-pill inline-flex items-center gap-1">
+                      <ShieldCheck size={14} aria-hidden />
+                      {store.verified
+                        ? "Credenciales validadas"
+                        : "No verificado"}
+                    </span>
+                    <span
+                      className="vt-pill"
+                      title="Disponibilidad de transporte indicada por el perfil del negocio."
+                    >
+                      Transporte:{" "}
+                      {store.transportIncluded ? "incluido" : "NO incluido"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className="vt-btn"
+                    onClick={() => {
+                      setRailOpen(true);
+                      setParticipantsEpoch((n) => n + 1);
+                    }}
+                    title="Ver quién participa en este chat"
+                  >
+                    <Users size={16} /> Integrantes
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-btn vt-chat-rail-toggle"
+                    onClick={() => setRailOpen((o) => !o)}
+                    title="Contratos y hojas de ruta"
+                  >
+                    <PanelRight size={16} /> Panel
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-btn"
+                    disabled={chatActionsLocked}
+                    title={
+                      chatActionsLocked
+                        ? "No disponible hasta registrar el pago"
+                        : "Emitir acuerdo como negocio"
+                    }
+                    onClick={() => setShowAgreementForm(true)}
+                  >
+                    <FileText size={16} /> Emitir acuerdo
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                className="vt-btn"
-                onClick={() => {
-                  setRailOpen(true);
-                  setParticipantsEpoch((n) => n + 1);
-                }}
-                title="Ver quién participa en este chat"
+            {chatActionsLocked ? (
+              <div
+                className="mx-1 mt-2.5 rounded-xl border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_12%,var(--surface))] p-3 text-sm leading-snug text-[var(--text)]"
+                role="status"
               >
-                <Users size={16} /> Integrantes
-              </button>
-              <button
-                type="button"
-                className="vt-btn vt-chat-rail-toggle"
-                onClick={() => setRailOpen((o) => !o)}
-                title="Contratos y hojas de ruta"
-              >
-                <PanelRight size={16} /> Panel
-              </button>
-              <button
-                type="button"
-                className="vt-btn"
-                disabled={chatActionsLocked}
-                title={
-                  chatActionsLocked
-                    ? "No disponible hasta registrar el pago"
-                    : "Emitir acuerdo como negocio"
-                }
-                onClick={() => setShowAgreementForm(true)}
-              >
-                <FileText size={16} /> Emitir acuerdo
-              </button>
-            </div>
+                Chat restringido: saliste con un acuerdo{" "}
+                <strong>aceptado</strong> y el pago aún no registrado. Solo
+                podés usar <strong>Pago</strong> para continuar; no podés enviar
+                mensajes ni crear acuerdos u hojas de ruta hasta entonces.
+              </div>
+            ) : null}
+
+            <ChatMessageList
+              listRef={listRef}
+              thread={thread}
+              me={me}
+              selected={selected}
+              chatActionsLocked={chatActionsLocked}
+              toggleSelectRow={toggleSelectRow}
+              setLightboxUrl={setLightboxUrl}
+              respondTradeAgreement={respondTradeAgreement}
+              setFocusRouteId={setFocusRouteId}
+              setRailOpen={setRailOpen}
+            />
+
+            <ChatComposerSection
+              thread={thread}
+              me={me}
+              storeName={store.name}
+              chatActionsLocked={chatActionsLocked}
+              draftInputRef={draftInputRef}
+              draft={draft}
+              setDraft={setDraft}
+              selected={selected}
+              setSelected={setSelected}
+              selectedIds={selectedIds}
+              selectedOrdered={selectedOrdered}
+              pendingDocs={pendingDocs}
+              pendingImages={pendingImages}
+              pendingAudio={pendingAudio}
+              recording={recording}
+              recordSecs={recordSecs}
+              blockTextWithVoiceAndFiles={blockTextWithVoiceAndFiles}
+              hasComposeToSend={hasComposeToSend}
+              canSend={canSend}
+              onPickDocument={onPickDocument}
+              onPickImages={onPickImages}
+              removePendingDoc={removePendingDoc}
+              removePendingImage={removePendingImage}
+              removePendingAudio={removePendingAudio}
+              submitComposer={submitComposer}
+              toggleVoiceRecording={toggleVoiceRecording}
+              markThreadPaymentCompleted={markThreadPaymentCompleted}
+              pushNotification={pushNotification}
+              setTrustScore={setTrustScore}
+            />
           </div>
-        </div>
-
-        {chatActionsLocked ? (
-          <div
-            className="mx-1 mt-2.5 rounded-xl border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_12%,var(--surface))] p-3 text-sm leading-snug text-[var(--text)]"
-            role="status"
-          >
-            Chat restringido: saliste con un acuerdo <strong>aceptado</strong> y el
-            pago aún no registrado. Solo podés usar <strong>Pago</strong> para
-            continuar; no podés enviar mensajes ni crear acuerdos u hojas de ruta
-            hasta entonces.
-          </div>
-        ) : null}
-
-        <ChatMessageList
-          listRef={listRef}
-          thread={thread}
-          me={me}
-          selected={selected}
-          chatActionsLocked={chatActionsLocked}
-          toggleSelectRow={toggleSelectRow}
-          setLightboxUrl={setLightboxUrl}
-          respondTradeAgreement={respondTradeAgreement}
-          setFocusRouteId={setFocusRouteId}
-          setRailOpen={setRailOpen}
-        />
-
-        <ChatComposerSection
-          thread={thread}
-          me={me}
-          storeName={store.name}
-          chatActionsLocked={chatActionsLocked}
-          draftInputRef={draftInputRef}
-          draft={draft}
-          setDraft={setDraft}
-          selected={selected}
-          setSelected={setSelected}
-          selectedIds={selectedIds}
-          selectedOrdered={selectedOrdered}
-          pendingDocs={pendingDocs}
-          pendingImages={pendingImages}
-          pendingAudio={pendingAudio}
-          recording={recording}
-          recordSecs={recordSecs}
-          blockTextWithVoiceAndFiles={blockTextWithVoiceAndFiles}
-          hasComposeToSend={hasComposeToSend}
-          canSend={canSend}
-          onPickDocument={onPickDocument}
-          onPickImages={onPickImages}
-          removePendingDoc={removePendingDoc}
-          removePendingImage={removePendingImage}
-          removePendingAudio={removePendingAudio}
-          submitComposer={submitComposer}
-          toggleVoiceRecording={toggleVoiceRecording}
-          markThreadPaymentCompleted={markThreadPaymentCompleted}
-          pushNotification={pushNotification}
-          setTrustScore={setTrustScore}
-        />
-      </div>
         </div>
 
         <div
