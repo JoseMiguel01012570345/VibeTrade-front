@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./app/shell/AppShell";
+import { ChatListPage } from "./pages/chat/ChatListPage";
 import { ChatPage } from "./pages/chat/ChatPage";
 import { HomePage } from "./pages/home/HomePage";
 import { NotificationsPage } from "./pages/notifications/NotificationsPage";
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/offer/:offerId" element={<OfferPage />} />
         <Route path="/store/:storeId" element={<StorePage />} />
 
+        <Route path="/chat" element={<ChatListPage />} />
         <Route path="/chat/:threadId" element={<ChatPage />} />
         <Route path="/reels" element={<ReelsPage />} />
 

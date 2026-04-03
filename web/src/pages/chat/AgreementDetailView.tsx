@@ -54,11 +54,13 @@ export function AgreementDetailView({
   onOpenRouteSheet,
   routeSheets = [],
   onLinkRouteSheet,
+  linkActionsDisabled = false,
 }: {
   a: TradeAgreement
   onOpenRouteSheet?: (routeSheetId: string) => void
   routeSheets?: RouteSheet[]
   onLinkRouteSheet?: (agreementId: string, routeSheetId: string) => void
+  linkActionsDisabled?: boolean
 }) {
   const m = a.merchandiseMeta ?? undefined
   const s = a.service
@@ -91,13 +93,18 @@ export function AgreementDetailView({
               </p>
             ) : (
               <>
+                {linkActionsDisabled ? (
+                  <p className="vt-muted vt-agr-detail-hint" style={{ marginBottom: 8 }}>
+                    La vinculación de hojas de ruta no está disponible hasta registrar el pago en el chat.
+                  </p>
+                ) : null}
                 <div className="vt-agr-link-ruta-row">
                   <label className="vt-agr-link-ruta-select">
                     <span className="vt-agr-field-label">Elegir hoja</span>
                     <select
                       className="vt-input"
                       value={pickId}
-                      disabled={linkUiLocked}
+                      disabled={linkUiLocked || linkActionsDisabled}
                       onChange={(e) => setPickId(e.target.value)}
                     >
                       <option value="">Seleccionar…</option>
@@ -112,10 +119,19 @@ export function AgreementDetailView({
                     type="button"
                     className="vt-btn vt-btn-primary vt-agr-link-ruta-btn"
                     disabled={
-                      linkUiLocked || !pickId || pickId === (a.routeSheetId ?? '')
+                      linkActionsDisabled ||
+                      linkUiLocked ||
+                      !pickId ||
+                      pickId === (a.routeSheetId ?? '')
                     }
                     onClick={() => {
-                      if (!pickId || !onLinkRouteSheet || linkUiLocked) return
+                      if (
+                        !pickId ||
+                        !onLinkRouteSheet ||
+                        linkUiLocked ||
+                        linkActionsDisabled
+                      )
+                        return
                       onLinkRouteSheet(a.id, pickId)
                     }}
                   >

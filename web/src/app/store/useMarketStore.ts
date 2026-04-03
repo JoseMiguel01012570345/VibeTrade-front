@@ -159,6 +159,33 @@ export type Thread = {
   contracts?: TradeAgreement[]
   /** Hojas de rutas logísticas del hilo (vinculables a contratos con mercancías). */
   routeSheets?: RouteSheet[]
+  /** Salida del chat sin acuerdo aceptado: revisión de salida prematura (UI lista). */
+  prematureExitUnderInvestigation?: boolean
+  /** Pago del acuerdo registrado en la demo (botón Pago). */
+  paymentCompleted?: boolean
+  /** Salida desde la lista con acuerdo aceptado y sin pago: bloquea acciones hasta pagar. */
+  chatActionsLocked?: boolean
+}
+
+export function threadHasAcceptedAgreement(th: Thread): boolean {
+  return (th.contracts ?? []).some((c) => c.status === 'accepted')
+}
+
+/** Acuerdo ya aceptado y sin pago confirmado (bloqueo al salir del chat). */
+export function threadHasAcceptedAgreementUnpaid(th: Thread): boolean {
+  return threadHasAcceptedAgreement(th) && !th.paymentCompleted
+}
+
+function routeSheetIdsLinkedToContracts(th: Thread): Set<string> {
+  const out = new Set<string>()
+  for (const c of th.contracts ?? []) {
+    if (c.routeSheetId) out.add(c.routeSheetId)
+  }
+  return out
+}
+
+function threadIsActionLocked(th: Thread | undefined): boolean {
+  return th?.chatActionsLocked === true
 }
 
 type MarketState = {
@@ -210,8 +237,12 @@ type MarketState = {
     agreementId: string,
     routeSheetId: string,
   ) => boolean
-  /** Solo si no está publicada ni fue editada en formulario. Limpia vínculos en acuerdos. */
+  /** Solo si no está publicada. Limpia vínculos en acuerdos. */
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean
+  /** Salir desde la lista: investigación si no hay acuerdo aceptado; bloqueo si hay acuerdo aceptado sin pago. */
+  recordChatExitFromList: (threadId: string) => void
+  /** Desbloquea acciones del hilo al confirmar pago (demo). */
+  markThreadPaymentCompleted: (threadId: string) => void
 }
 
 function uid(prefix: string) {
@@ -593,7 +624,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
     syncThreadBuyerQa: (threadId, buyerId) => {
       set((s) => {
         const th = s.threads[threadId]
-        if (!th?.purchaseMode) return s
+        if (!th?.purchaseMode || threadIsActionLocked(th)) return s
         const offer = s.offers[th.offerId]
         if (!offer) return s
         const merged = syncOwnQaIntoMessages(th.messages, offer, buyerId)
@@ -615,12 +646,13 @@ export const useMarketStore = create<MarketState>((set, get) => {
 
     emitTradeAgreement: (threadId, draft) => {
       if (hasValidationErrors(validateTradeAgreementDraft(draft))) return null
+      if (threadIsActionLocked(get().threads[threadId])) return null
       const title = draft.title.trim()
       if (!title) return null
       const aid = uid('agr')
       set((s) => {
         const th = s.threads[threadId]
-        if (!th) return s
+        if (!th || threadIsActionLocked(th)) return s
         const agreement: TradeAgreement = {
           ...draft,
           title,
@@ -664,7 +696,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
     respondTradeAgreement: (threadId, agreementId, response) => {
       set((s) => {
         const th = s.threads[threadId]
-        if (!th) return s
+        if (!th || threadIsActionLocked(th)) return s
         const list = th.contracts ?? []
         const idx = list.findIndex((c) => c.id === agreementId)
         if (idx < 0) return s
@@ -696,6 +728,48 @@ export const useMarketStore = create<MarketState>((set, get) => {
               contracts: nextContracts,
               messages: [...th.messages, sys],
               routeSheets: th.routeSheets ?? [],
+              prematureExitUnderInvestigation:
+                response === 'accept' ? false : th.prematureExitUnderInvestigation,
+            },
+          },
+        }
+      })
+    },
+
+    recordChatExitFromList: (threadId) => {
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th) return s
+        const next: Partial<Pick<Thread, 'prematureExitUnderInvestigation' | 'chatActionsLocked'>> = {}
+        if (!threadHasAcceptedAgreement(th)) {
+          next.prematureExitUnderInvestigation = true
+        }
+        if (threadHasAcceptedAgreementUnpaid(th)) {
+          next.chatActionsLocked = true
+        }
+        if (Object.keys(next).length === 0) return s
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...th, ...next },
+          },
+        }
+      })
+    },
+
+    markThreadPaymentCompleted: (threadId) => {
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th) return s
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...th,
+              paymentCompleted: true,
+              chatActionsLocked: false,
             },
           },
         }
@@ -703,6 +777,9 @@ export const useMarketStore = create<MarketState>((set, get) => {
     },
 
     createRouteSheet: (threadId, payload) => {
+      const th0 = get().threads[threadId]
+      if (threadIsActionLocked(th0)) return null
+      if (!th0 || !threadHasAcceptedAgreement(th0)) return null
       if (hasRouteSheetFormErrors(getRouteSheetFormErrors(payload))) return null
       const paradasNorm = normalizeRouteSheetParadas(payload.paradas)
       if (paradasNorm.length === 0) return null
@@ -747,7 +824,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
       }
       set((s) => {
         const th = s.threads[threadId]
-        if (!th) return s
+        if (!th || threadIsActionLocked(th)) return s
         return {
           ...s,
           threads: {
@@ -763,6 +840,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
     },
 
     updateRouteSheet: (threadId, routeSheetId, payload) => {
+      if (threadIsActionLocked(get().threads[threadId])) return false
       if (hasRouteSheetFormErrors(getRouteSheetFormErrors(payload))) return false
       const paradasNorm = normalizeRouteSheetParadas(payload.paradas)
       if (paradasNorm.length === 0) return false
@@ -793,7 +871,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
       let ok = false
       set((s) => {
         const th = s.threads[threadId]
-        if (!th?.routeSheets) return s
+        if (!th?.routeSheets || threadIsActionLocked(th)) return s
         const idx = th.routeSheets.findIndex((rs) => rs.id === routeSheetId)
         if (idx < 0) return s
         const existing = th.routeSheets[idx]
@@ -830,7 +908,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
     setRouteSheetStatus: (threadId, routeSheetId, estado) => {
       set((s) => {
         const th = s.threads[threadId]
-        if (!th?.routeSheets) return s
+        if (!th?.routeSheets || threadIsActionLocked(th)) return s
         const list = th.routeSheets.map((rs) =>
           rs.id === routeSheetId
             ? { ...rs, estado, actualizadoEn: Date.now() }
@@ -849,7 +927,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
     toggleRouteStop: (threadId, routeSheetId, stopId) => {
       set((s) => {
         const th = s.threads[threadId]
-        if (!th?.routeSheets) return s
+        if (!th?.routeSheets || threadIsActionLocked(th)) return s
         const list = th.routeSheets.map((rs) => {
           if (rs.id !== routeSheetId) return rs
           return {
@@ -875,10 +953,13 @@ export const useMarketStore = create<MarketState>((set, get) => {
       set((s) => {
         const th = s.threads[threadId]
         const sheets = th?.routeSheets
-        if (!th || !sheets?.length) return s
+        if (!th || threadIsActionLocked(th) || !sheets?.length) return s
+        const linked = routeSheetIdsLinkedToContracts(th)
+        const allowed = new Set([...idSet].filter((id) => linked.has(id)))
+        if (allowed.size === 0) return s
         const now = Date.now()
         const list = sheets.map((rs) =>
-          idSet.has(rs.id) && !rs.publicadaPlataforma
+          allowed.has(rs.id) && !rs.publicadaPlataforma
             ? { ...rs, publicadaPlataforma: true, actualizadoEn: now }
             : rs,
         )
@@ -898,7 +979,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
         const th = s.threads[threadId]
         const contracts = th.contracts ?? []
         const sheets = th.routeSheets ?? []
-        if (!th || !contracts.length || !sheets.length) return s
+        if (!th || threadIsActionLocked(th) || !contracts.length || !sheets.length) return s
         const sheet = sheets.find((r) => r.id === routeSheetId)
         if (!sheet) return s
         const cIdx = contracts.findIndex((c) => c.id === agreementId)
@@ -935,11 +1016,10 @@ export const useMarketStore = create<MarketState>((set, get) => {
       let ok = false
       set((s) => {
         const th = s.threads[threadId]
-        if (!th?.routeSheets?.length) return s
+        if (!th?.routeSheets?.length || threadIsActionLocked(th)) return s
         const sheet = th.routeSheets.find((r) => r.id === routeSheetId)
         if (!sheet) return s
         if (sheet.publicadaPlataforma) return s
-        if (sheet.editadaEnFormulario) return s
         const list = th.routeSheets.filter((r) => r.id !== routeSheetId)
         const contracts = (th.contracts ?? []).map((c) =>
           c.routeSheetId === routeSheetId ? { ...c, routeSheetId: undefined } : c,
@@ -971,7 +1051,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
     sendText: (threadId, text, replyToIds) => {
       set((s) => {
         const th = s.threads[threadId]
-        if (!th) return s
+        if (!th || threadIsActionLocked(th)) return s
         const replyQuotes = collectReplyQuotes(th, replyToIds)
         const m: Message = {
           id: uid('m'),
@@ -989,7 +1069,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
     sendAudio: (threadId, payload) => {
       set((s) => {
         const th = s.threads[threadId]
-        if (!th) return s
+        if (!th || threadIsActionLocked(th)) return s
         const m: Message = {
           id: uid('m'),
           from: 'me',
@@ -1006,7 +1086,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
     sendDocument: (threadId, payload, options) => {
       set((s) => {
         const th = s.threads[threadId]
-        if (!th) return s
+        if (!th || threadIsActionLocked(th)) return s
         const replyQuotes = collectReplyQuotes(th, options?.replyToIds)
         const cap = options?.caption?.trim()
         const m: Message = {
@@ -1030,7 +1110,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
       if (!images.length) return
       set((s) => {
         const th = s.threads[threadId]
-        if (!th) return s
+        if (!th || threadIsActionLocked(th)) return s
         const replyQuotes = collectReplyQuotes(th, options?.replyToIds)
         const cap = options?.caption?.trim()
         const audio = options?.embeddedAudio
@@ -1060,7 +1140,7 @@ export const useMarketStore = create<MarketState>((set, get) => {
       if (!payload.documents.length) return
       set((s) => {
         const th = s.threads[threadId]
-        if (!th) return s
+        if (!th || threadIsActionLocked(th)) return s
         const replyQuotes = collectReplyQuotes(th, options?.replyToIds)
         const cap = options?.caption?.trim()
         const audio = payload.embeddedAudio

@@ -242,6 +242,7 @@
   font-weight: 700;
 }
 
-.vt-btn-primary:hover {
+.vt-btn-primary:hover:not(:disabled) {
   background: var(--primary-2);
+  color: #fff;
 }

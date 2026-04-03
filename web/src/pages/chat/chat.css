@@ -65,6 +65,29 @@ body:has(.vt-chat-page) {
   flex-direction: column;
 }
 
+.vt-chat-locked-banner {
+  margin: 10px 4px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, #d97706 35%, var(--border));
+  background: color-mix(in oklab, #d97706 12%, var(--surface));
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.vt-chat-compose-bar--locked .vt-chat-compose-tools .vt-chat-tool-file-label,
+.vt-chat-compose-bar--locked .vt-chat-compose-tools .vt-chat-tool-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.vt-chat-compose-bar--locked .vt-chat-compose-pending .vt-chat-pending-remove,
+.vt-chat-compose-bar--locked .vt-chat-compose-pending .vt-chat-pending-thumb-x {
+  pointer-events: none;
+  opacity: 0.35;
+}
+
 @media (min-width: 961px) {
   .vt-chat-layout-main {
     padding: 0 8px 0 4px;

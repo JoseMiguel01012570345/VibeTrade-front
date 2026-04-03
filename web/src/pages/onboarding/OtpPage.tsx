@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useAppStore } from '../../app/store/useAppStore'
 import { OtpInput } from './OtpInput'
 import './onboarding.css'
 
@@ -12,6 +13,7 @@ function fmt(n: number) {
 export function OtpPage() {
   const nav = useNavigate()
   const loc = useLocation()
+  const setSessionActive = useAppStore((s) => s.setSessionActive)
   const phone = (loc.state as { phone?: string } | null)?.phone ?? ''
 
   const [otp, setOtp] = useState('')
@@ -37,6 +39,7 @@ export function OtpPage() {
       return
     }
     toast.success('Teléfono verificado')
+    setSessionActive(true)
     nav('/home', { replace: true })
   }
 

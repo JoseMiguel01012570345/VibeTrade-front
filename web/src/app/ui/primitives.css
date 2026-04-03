@@ -87,8 +87,15 @@
   font-weight: 800;
 }
 
+/* Enlaces <a> con estas clases: index.css a:hover usa --primary-2 y empataba el fondo del hover. */
+a.vt-btn-primary:hover:not(:disabled),
+a.vt-btn-primary:focus-visible {
+  color: #fff;
+}
+
 .vt-btn-primary:hover:not(:disabled) {
   background: var(--primary-2);
+  color: #fff;
 }
 
 .vt-pill {

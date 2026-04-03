@@ -43,7 +43,8 @@ export function PublishRouteSheetsModal({ open, onClose, routeSheets, onConfirm 
       <div className="vt-modal vt-modal-narrow">
         <div className="vt-modal-title">Publicar en la plataforma</div>
         <div className="vt-muted vt-agr-modal-sub">
-          Elegí qué hojas de ruta ofrecer a transportistas. Las ya publicadas no aparecen aquí.
+          Solo aparecen hojas aún no publicadas y vinculadas a un acuerdo. Vinculá desde el detalle del contrato
+          si falta alguna.
         </div>
         <div className="vt-modal-body vt-agr-form-body">
           {candidatas.length === 0 ? (

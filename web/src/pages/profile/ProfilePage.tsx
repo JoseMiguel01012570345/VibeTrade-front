@@ -77,10 +77,13 @@ export function ProfilePage() {
                   value={me.role}
                   onChange={(e) => setRole(e.target.value as UserRole)}
                 >
-                  <option value="buyer">Comprador</option>
                   <option value="seller">Vendedor</option>
                   <option value="carrier">Transportista</option>
                 </select>
+                <div className="vt-muted" style={{ marginTop: 8, fontSize: 13, lineHeight: 1.45 }}>
+                  Todos los usuarios son compradores por defecto. Indicá si además operás como vendedor o como
+                  transportista; los acuerdos del chat son entre compradores y negocios.
+                </div>
               </label>
 
               <div className="vt-prof-field">

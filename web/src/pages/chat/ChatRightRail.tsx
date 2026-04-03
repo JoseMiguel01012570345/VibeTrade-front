@@ -30,6 +30,8 @@ type Props = {
   threadId: string
   contracts: TradeAgreement[]
   routeSheets: RouteSheet[]
+  /** Sin pago tras salir con acuerdo emitido: solo lectura en acciones de contratos/rutas. */
+  actionsLocked?: boolean
   storeName: string
   buyerName: string
   buyer: { id: string; name: string; trustScore: number }
@@ -73,6 +75,7 @@ export function ChatRightRail({
   threadId,
   contracts,
   routeSheets,
+  actionsLocked = false,
   storeName,
   buyerName,
   focusRouteId,
@@ -109,9 +112,28 @@ export function ChatRightRail({
 
   const participants = useMemo(() => buildChatParticipants(buyer, seller), [buyer, seller])
 
+  const hasAcceptedContract = useMemo(
+    () => contracts.some((c) => c.status === 'accepted'),
+    [contracts],
+  )
+
   const routeSheetsUnpublished = useMemo(
     () => routeSheets.filter((r) => !r.publicadaPlataforma).length,
     [routeSheets],
+  )
+
+  const linkedRouteSheetIds = useMemo(() => {
+    const s = new Set<string>()
+    for (const c of contracts) {
+      if (c.routeSheetId) s.add(c.routeSheetId)
+    }
+    return s
+  }, [contracts])
+
+  /** No publicadas y vinculadas a algún acuerdo (único caso publicable). */
+  const routeSheetsEligibleToPublish = useMemo(
+    () => routeSheets.filter((r) => !r.publicadaPlataforma && linkedRouteSheetIds.has(r.id)),
+    [routeSheets, linkedRouteSheetIds],
   )
 
   const displayContracts = useMemo(() => {
@@ -126,22 +148,39 @@ export function ChatRightRail({
     : null
 
   function handlePublishToPlatform() {
+    if (contracts.length === 0) {
+      toast.error('Necesitás al menos un acuerdo antes de publicar hojas de ruta.')
+      setTab('contracts')
+      return
+    }
     if (routeSheets.length === 0) {
-      toast.error('Creá al menos una hoja de ruta en la pestaña Rutas')
+      toast.error('Creá una hoja de ruta en la pestaña Rutas y vinculála a un acuerdo.')
       setTab('routes')
       return
     }
-    if (routeSheetsUnpublished === 0) {
-      toast('Las hojas de ruta de este chat ya están publicadas en la plataforma', { icon: 'ℹ️' })
+    if (routeSheetsEligibleToPublish.length === 0) {
+      if (routeSheetsUnpublished > 0) {
+        toast.error(
+          'Solo podés publicar hojas vinculadas a un acuerdo. Abrí el contrato en Contratos y usá «Vincular».',
+        )
+      } else {
+        toast('Las hojas de ruta de este chat ya están publicadas en la plataforma', { icon: 'ℹ️' })
+      }
+      setTab('contracts')
       return
     }
     setPublishModalOpen(true)
   }
 
   function confirmPublish(ids: string[]) {
-    publishRouteSheetsToPlatform(threadId, ids)
+    const allowed = ids.filter((id) => linkedRouteSheetIds.has(id))
+    if (!allowed.length) {
+      toast.error('Ninguna de las hojas elegidas está vinculada a un acuerdo.')
+      return
+    }
+    publishRouteSheetsToPlatform(threadId, allowed)
     toast.success(
-      `Publicado en la plataforma (${ids.length} hoja${ids.length === 1 ? '' : 's'}) — demo`,
+      `Publicado en la plataforma (${allowed.length} hoja${allowed.length === 1 ? '' : 's'}) — demo`,
     )
   }
 
@@ -150,7 +189,7 @@ export function ChatRightRail({
       <PublishRouteSheetsModal
         open={publishModalOpen}
         onClose={() => setPublishModalOpen(false)}
-        routeSheets={routeSheets}
+        routeSheets={routeSheetsEligibleToPublish}
         onConfirm={confirmPublish}
       />
     <aside className="vt-chat-rail" aria-label="Contratos, rutas e integrantes del chat">
@@ -158,15 +197,20 @@ export function ChatRightRail({
         <button
           type="button"
           className="vt-btn vt-btn-primary vt-chat-rail-publish-btn"
+          disabled={actionsLocked}
+          title={
+            actionsLocked
+              ? 'No disponible hasta registrar el pago en el chat'
+              : 'Ofrece las hojas de ruta a transportistas en la plataforma'
+          }
           onClick={handlePublishToPlatform}
-          title="Ofrece las hojas de ruta a transportistas en la plataforma"
         >
           <Megaphone size={16} aria-hidden />
           Publicar en la plataforma
         </button>
         <p className="vt-chat-rail-publish-hint">
-          Contratos y rutas del chat: al publicar, las hojas de ruta pasan a ser visibles para transportistas
-          (demo).
+          Solo se publican hojas ya vinculadas a un acuerdo (desde la pestaña Contratos). Creá la hoja en Rutas,
+          vinculala al contrato y luego publicá (demo).
         </p>
       </div>
       <div className="vt-chat-rail-tabs">
@@ -237,6 +281,7 @@ export function ChatRightRail({
               <AgreementDetailView
                 a={agreementForDetail}
                 routeSheets={routeSheets}
+                linkActionsDisabled={actionsLocked}
                 onLinkRouteSheet={(agreementId, routeSheetId) => {
                   const ok = linkAgreementToRouteSheet(threadId, agreementId, routeSheetId)
                   if (ok) toast.success('Vinculación registrada; se notificó en el chat')
@@ -292,7 +337,19 @@ export function ChatRightRail({
 
       {tab === 'routes' && (
         <div className="vt-chat-rail-body">
-          <button type="button" className="vt-btn vt-btn-primary vt-chat-rail-new" onClick={onOpenNewRouteSheet}>
+          <button
+            type="button"
+            className="vt-btn vt-btn-primary vt-chat-rail-new"
+            disabled={actionsLocked || !hasAcceptedContract}
+            title={
+              actionsLocked
+                ? 'No disponible hasta registrar el pago en el chat'
+                : !hasAcceptedContract
+                  ? 'Necesitás al menos un contrato aceptado para crear una hoja de ruta'
+                  : undefined
+            }
+            onClick={onOpenNewRouteSheet}
+          >
             <MapPin size={16} /> Nueva hoja de ruta
           </button>
 
@@ -305,11 +362,13 @@ export function ChatRightRail({
                 <button
                   type="button"
                   className="vt-btn vt-chat-rail-edit-route"
-                  disabled={!!selRoute.publicadaPlataforma}
+                  disabled={actionsLocked || !!selRoute.publicadaPlataforma}
                   title={
-                    selRoute.publicadaPlataforma
-                      ? 'No se puede editar una hoja ya publicada'
-                      : 'Editar hoja de ruta'
+                    actionsLocked
+                      ? 'No disponible hasta registrar el pago'
+                      : selRoute.publicadaPlataforma
+                        ? 'No se puede editar una hoja ya publicada'
+                        : 'Editar hoja de ruta'
                   }
                   onClick={() => {
                     if (selRoute.publicadaPlataforma) {
@@ -321,11 +380,16 @@ export function ChatRightRail({
                 >
                   <Pencil size={14} aria-hidden /> Editar
                 </button>
-                {!selRoute.publicadaPlataforma && !selRoute.editadaEnFormulario ? (
+                {!selRoute.publicadaPlataforma ? (
                   <button
                     type="button"
                     className="vt-btn vt-chat-rail-delete-route"
-                    title="Eliminar esta hoja (solo borradores sin edición en formulario)"
+                    disabled={actionsLocked}
+                    title={
+                      actionsLocked
+                        ? 'No disponible hasta registrar el pago'
+                        : 'Eliminar esta hoja (no disponible si ya está publicada en la plataforma)'
+                    }
                     onClick={() => {
                       if (
                         !globalThis.confirm(
@@ -338,9 +402,7 @@ export function ChatRightRail({
                         toast.success('Hoja de ruta eliminada')
                         setSelRouteId(null)
                       } else {
-                        toast.error(
-                          'No se puede eliminar: publicada o ya editada en el formulario.',
-                        )
+                        toast.error('No se puede eliminar una hoja ya publicada en la plataforma.')
                       }
                     }}
                   >
@@ -375,7 +437,12 @@ export function ChatRightRail({
                       <button
                         type="button"
                         className="vt-ruta-stop-check"
-                        title="Marcar tramo"
+                        disabled={actionsLocked}
+                        title={
+                          actionsLocked
+                            ? 'No disponible hasta registrar el pago'
+                            : 'Marcar tramo'
+                        }
                         onClick={() => toggleRouteStop(threadId, selRoute.id, p.id)}
                       >
                         <Check size={16} strokeWidth={2.5} />
@@ -437,7 +504,9 @@ export function ChatRightRail({
             </div>
           ) : routeSheets.length === 0 ? (
             <p className="vt-muted vt-chat-rail-empty">
-              Creá una hoja de ruta para vincularla al contrato cuando haya mercancías.
+              {!hasAcceptedContract
+                ? 'Primero tenés que tener al menos un contrato aceptado; después podés crear la hoja de ruta y vincularla al acuerdo.'
+                : 'Creá una hoja de ruta y vinculála al acuerdo desde Contratos (con mercancías) antes de publicar en la plataforma.'}
             </p>
           ) : (
             <ul className="vt-chat-rail-list">

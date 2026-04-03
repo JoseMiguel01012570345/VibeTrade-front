@@ -25,7 +25,10 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAppStore } from "../../app/store/useAppStore";
-import { useMarketStore } from "../../app/store/useMarketStore";
+import {
+  threadHasAcceptedAgreement,
+  useMarketStore,
+} from "../../app/store/useMarketStore";
 import { ImageLightbox, MessageBody, MsgMeta } from "./ChatMedia";
 import {
   formatFileSize,
@@ -79,6 +82,9 @@ export function ChatPage() {
   const sendAudio = useMarketStore((s) => s.sendAudio);
   const sendDocsBundle = useMarketStore((s) => s.sendDocsBundle);
   const sendImages = useMarketStore((s) => s.sendImages);
+  const markThreadPaymentCompleted = useMarketStore(
+    (s) => s.markThreadPaymentCompleted,
+  );
 
   const [draft, setDraft] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -195,6 +201,10 @@ export function ChatPage() {
   }, [me.id, syncThreadBuyerQa, threadId]);
 
   useEffect(() => {
+    if (thread?.chatActionsLocked) setSelected({});
+  }, [thread?.chatActionsLocked]);
+
+  useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [thread?.messages?.length]);
 
@@ -243,14 +253,16 @@ export function ChatPage() {
   }
 
   const store = thread.store;
+  const chatActionsLocked = thread.chatActionsLocked === true;
 
   function toggleSelectRow(e: MouseEvent, id: string) {
+    if (chatActionsLocked) return;
     if ((e.target as HTMLElement).closest("[data-chat-interactive]")) return;
     setSelected((s) => ({ ...s, [id]: !s[id] }));
   }
 
   function submitComposer() {
-    if (!threadId || !thread || recording) return;
+    if (!threadId || !thread || recording || thread.chatActionsLocked) return;
     const replyIds = selectedIds;
     const hasDocsOrImages =
       pendingDocs.length > 0 || pendingImages.length > 0;
@@ -325,7 +337,8 @@ export function ChatPage() {
     draft.trim().length > 0 ||
     pendingAudio !== null;
 
-  const canSend = !recording && hasComposeToSend;
+  const canSend =
+    !recording && hasComposeToSend && !chatActionsLocked;
 
   function stopVoiceRecording() {
     const mr = mediaRecorderRef.current;
@@ -333,6 +346,7 @@ export function ChatPage() {
   }
 
   async function startVoiceRecording() {
+    if (chatActionsLocked) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       recordChunksRef.current = [];
@@ -390,6 +404,7 @@ export function ChatPage() {
   }
 
   function toggleVoiceRecording() {
+    if (!recording && chatActionsLocked) return;
     if (recording) {
       stopVoiceRecording();
     } else {
@@ -406,8 +421,8 @@ export function ChatPage() {
           <div className="vt-chat-head-top">
             <button
               className="vt-btn"
-              onClick={() => nav(-1)}
-              aria-label="Volver"
+              onClick={() => nav("/chat")}
+              aria-label="Volver a la lista de chats"
             >
               <ArrowLeft size={16} />
             </button>
@@ -456,14 +471,28 @@ export function ChatPage() {
               <button
                 type="button"
                 className="vt-btn"
+                disabled={chatActionsLocked}
+                title={
+                  chatActionsLocked
+                    ? "No disponible hasta registrar el pago"
+                    : "Emitir acuerdo como negocio"
+                }
                 onClick={() => setShowAgreementForm(true)}
-                title="Emitir acuerdo como negocio"
               >
                 <FileText size={16} /> Emitir acuerdo
               </button>
             </div>
           </div>
         </div>
+
+        {chatActionsLocked ? (
+          <div className="vt-chat-locked-banner" role="status">
+            Chat restringido: saliste con un acuerdo <strong>aceptado</strong> y el
+            pago aún no registrado. Solo podés usar <strong>Pago</strong> para
+            continuar; no podés enviar mensajes ni crear acuerdos u hojas de ruta
+            hasta entonces.
+          </div>
+        ) : null}
 
         <div className="vt-chat-list vt-card" ref={listRef}>
           {thread.messages.map((m) => {
@@ -488,7 +517,8 @@ export function ChatPage() {
                   isSelected && "vt-chat-row-selected",
                 )}
                 onClick={(e) => {
-                  if (system || m.type === "agreement") return;
+                  if (chatActionsLocked || system || m.type === "agreement")
+                    return;
                   toggleSelectRow(e, m.id);
                 }}
               >
@@ -546,7 +576,7 @@ export function ChatPage() {
                     canRespondAgreement={
                       m.type === "agreement" &&
                       agreementDoc?.status === "pending_buyer" &&
-                      me.role === "buyer"
+                      !chatActionsLocked
                     }
                     onOpenAgreementRouteSheet={
                       m.type === "agreement" && agreementDoc?.routeSheetId
@@ -642,7 +672,12 @@ export function ChatPage() {
             </div>
           )}
 
-          <div className="vt-chat-compose-bar">
+          <div
+            className={clsx(
+              "vt-chat-compose-bar",
+              chatActionsLocked && "vt-chat-compose-bar--locked",
+            )}
+          >
             <div className="vt-chat-compose-tools">
               {recording ? (
                 <span
@@ -785,7 +820,9 @@ export function ChatPage() {
               <input
                 ref={draftInputRef}
                 className="vt-input"
-                disabled={recording || blockTextWithVoiceAndFiles}
+                disabled={
+                  recording || blockTextWithVoiceAndFiles || chatActionsLocked
+                }
                 placeholder={
                   recording
                     ? "Grabando nota de voz…"
@@ -802,7 +839,11 @@ export function ChatPage() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (recording || blockTextWithVoiceAndFiles) {
+                  if (
+                    recording ||
+                    blockTextWithVoiceAndFiles ||
+                    chatActionsLocked
+                  ) {
                     e.preventDefault();
                     return;
                   }
@@ -849,6 +890,7 @@ export function ChatPage() {
                   "vt-chat-compose-voice-btn",
                   recording && "vt-chat-tool-btn-rec",
                 )}
+                disabled={chatActionsLocked && !recording}
                 aria-label={
                   recording
                     ? "Detener y enviar nota de voz"
@@ -888,6 +930,7 @@ export function ChatPage() {
             <button
               className="vt-btn"
               onClick={() => {
+                markThreadPaymentCompleted(thread.id);
                 pushNotification({
                   kind: "payment",
                   title: "Pago",
@@ -901,26 +944,18 @@ export function ChatPage() {
 
             <button
               className="vt-btn"
+              disabled={chatActionsLocked}
+              title={
+                chatActionsLocked
+                  ? "No disponible hasta registrar el pago"
+                  : undefined
+              }
               onClick={() => {
                 setTrustScore(me.trustScore + 1);
                 toast.success("Acción exitosa (sube confianza)");
               }}
             >
               + Confianza
-            </button>
-
-            <button
-              className="vt-btn"
-              onClick={() => {
-                const reason = window.prompt("Motivo para salir del chat");
-                if (!reason) return;
-                toast(
-                  "Salida registrada. Se investigará y podría afectar tu confianza.",
-                  { icon: "⚠️" },
-                );
-              }}
-            >
-              Salir del chat
             </button>
           </div>
         </div>
@@ -942,6 +977,7 @@ export function ChatPage() {
             threadId={thread.id}
             contracts={thread.contracts ?? []}
             routeSheets={thread.routeSheets ?? []}
+            actionsLocked={chatActionsLocked}
             storeName={store.name}
             buyerName={me.name}
             buyer={{
@@ -954,6 +990,12 @@ export function ChatPage() {
             focusRouteId={focusRouteId}
             onConsumedRouteFocus={() => setFocusRouteId(null)}
             onOpenNewRouteSheet={() => {
+              if (!threadHasAcceptedAgreement(thread)) {
+                toast.error(
+                  "Necesitás al menos un contrato aceptado para crear una hoja de ruta.",
+                );
+                return;
+              }
               setRouteSheetBeingEdited(null);
               setShowRouteSheetForm(true);
               setRailOpen(true);
@@ -1013,9 +1055,15 @@ export function ChatPage() {
           }
           const id = createRouteSheet(thread.id, payload);
           if (!id) {
-            toast.error(
-              "Completá título, mercancías y al menos un tramo con origen y destino",
-            );
+            if (!threadHasAcceptedAgreement(thread)) {
+              toast.error(
+                "Necesitás al menos un contrato aceptado para crear una hoja de ruta.",
+              );
+            } else {
+              toast.error(
+                "Completá título, mercancías y al menos un tramo con origen y destino",
+              );
+            }
             return false;
           }
           return true;
