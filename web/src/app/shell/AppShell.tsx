@@ -27,7 +27,7 @@ export function AppShell() {
   const isSessionActive = useAppStore((s) => s.isSessionActive)
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="vt-app flex min-h-screen flex-col">
       <div className="sticky top-0 z-50 border-b border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_65%,transparent)] backdrop-blur-[10px]">
         <div className="container">{isSessionActive ? <TrustBar /> : null}</div>
       </div>

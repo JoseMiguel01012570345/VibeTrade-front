@@ -1,37 +1,7 @@
 /*
- * Ruta de chat: sin scroll en documento / shell. Solo se mueven:
- * - .vt-chat-list (mensajes)
- * - .vt-chat-rail-body (panel derecho)
+ * Estilos de UI del chat (layout de mensajes, rail, modales embebidos).
+ * Bloqueo de scroll del documento y ancho del container: index.css
  */
-html:has(.vt-chat-page),
-body:has(.vt-chat-page) {
-  height: 100%;
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-
-#root:has(.vt-chat-page) {
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-#root:has(.vt-chat-page) .vt-app {
-  flex: 1;
-  min-height: 0;
-  max-height: 100%;
-  overflow: hidden;
-}
-
-/* Página de chat: más ancho que el .container genérico */
-.container.vt-chat-page {
-  width: min(1680px, calc(100% - 20px));
-  max-width: none;
-  overflow: hidden;
-  min-height: 0;
-}
 
 /* Layout chat + panel derecho (contratos / hojas de ruta) */
 .vt-chat-layout {

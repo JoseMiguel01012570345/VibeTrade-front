@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import clsx from 'clsx'
-import './onboarding.css'
+import { cn } from '../../lib/cn'
 
 export function OtpInput({
   value,
@@ -22,7 +21,6 @@ export function OtpInput({
   }, [length, value])
 
   useEffect(() => {
-    // keep parent value normalized
     const cleaned = value.replace(/[^\d]/g, '').slice(0, length)
     if (cleaned !== value) onChange(cleaned)
   }, [length, onChange, value])
@@ -34,14 +32,25 @@ export function OtpInput({
   }
 
   return (
-    <div className={clsx('vt-otp', error && 'vt-otp-error')} aria-label="Código de verificación">
+    <div
+      className={cn(
+        'flex flex-row justify-between gap-[clamp(6px,2vw,10px)]',
+        error && 'animate-[vt-shake_450ms_ease]',
+      )}
+      aria-label="Código de verificación"
+    >
       {digits.map((d, i) => (
         <input
           key={i}
           ref={(el) => {
             refs.current[i] = el
           }}
-          className="vt-otp-slot"
+          className={cn(
+            'min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] py-[clamp(8px,2.6vw,12px)] text-center text-[clamp(14px,3.8vw,18px)] font-black outline-none',
+            'w-[clamp(36px,12vw,52px)]',
+            'focus:border-[color-mix(in_oklab,var(--primary)_70%,var(--border))] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_18%,transparent)]',
+            error && 'border-[color-mix(in_oklab,var(--bad)_70%,var(--border))]',
+          )}
           inputMode="numeric"
           autoComplete={i === 0 ? 'one-time-code' : 'off'}
           value={d}
@@ -63,4 +72,3 @@ export function OtpInput({
     </div>
   )
 }
-

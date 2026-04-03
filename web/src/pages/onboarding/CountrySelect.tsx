@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
-import clsx from 'clsx'
 import { ChevronDown, Search } from 'lucide-react'
+import { cn } from '../../lib/cn'
 import { COUNTRIES, type Country } from './countries'
-import './onboarding.css'
 
 export function CountrySelect({
   value,
@@ -21,47 +20,54 @@ export function CountrySelect({
   }, [q])
 
   return (
-    <div className="vt-country">
+    <div className="relative">
       <button
         type="button"
-        className="vt-country-btn"
+        className="grid w-full cursor-pointer grid-cols-[auto_auto_1fr_auto] items-center gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-left"
         onClick={() => setOpen((x) => !x)}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className="vt-country-flag">{value.flag}</span>
-        <span className="vt-country-dial">{value.dial}</span>
-        <span className="vt-country-name">{value.name}</span>
-        <ChevronDown size={16} className={clsx('vt-country-chev', open && 'vt-rot')} />
+        <span className="text-base">{value.flag}</span>
+        <span className="text-xs font-extrabold text-[var(--muted)]">{value.dial}</span>
+        <span className="font-bold">{value.name}</span>
+        <ChevronDown size={16} className={cn('text-[var(--muted)] transition-transform duration-150', open && 'rotate-180')} />
       </button>
 
       {open && (
-        <div className="vt-country-pop" role="listbox">
-          <div className="vt-country-search">
+        <div
+          className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]"
+          role="listbox"
+        >
+          <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-2.5 text-[var(--muted)]">
             <Search size={16} />
             <input
-              className="vt-country-input"
+              className="w-full border-0 bg-transparent outline-none"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar país o código…"
               autoFocus
             />
           </div>
-          <div className="vt-country-list">
+          <div className="max-h-[260px] overflow-auto">
             {items.map((c) => (
               <button
                 type="button"
                 key={c.code}
-                className={clsx('vt-country-item', c.code === value.code && 'vt-country-item-active')}
+                className={cn(
+                  'grid w-full cursor-pointer grid-cols-[auto_auto_1fr] items-center gap-2.5 border-0 bg-transparent px-3 py-2.5 text-left',
+                  'hover:bg-[color-mix(in_oklab,var(--primary)_6%,transparent)]',
+                  c.code === value.code && 'bg-[color-mix(in_oklab,var(--primary)_10%,transparent)]',
+                )}
                 onClick={() => {
                   onChange(c)
                   setOpen(false)
                   setQ('')
                 }}
               >
-                <span className="vt-country-flag">{c.flag}</span>
-                <span className="vt-country-dial">{c.dial}</span>
-                <span className="vt-country-name">{c.name}</span>
+                <span className="text-base">{c.flag}</span>
+                <span className="text-xs font-extrabold text-[var(--muted)]">{c.dial}</span>
+                <span className="font-bold">{c.name}</span>
               </button>
             ))}
           </div>
@@ -70,4 +76,3 @@ export function CountrySelect({
     </div>
   )
 }
-

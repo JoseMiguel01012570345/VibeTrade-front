@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Camera, CreditCard, ExternalLink, Image, Mail, Phone, Save, UserCog } from 'lucide-react'
+import { cn } from '../../lib/cn'
 import { type UserRole, useAppStore } from '../../app/store/useAppStore'
-import './profile.css'
 
 const REEL_TITLES: Record<string, string> = {
   r1: 'Cosecha: Malanga premium',
@@ -26,11 +26,13 @@ export function ProfilePage() {
 
   return (
     <div className="container vt-page">
-      <div className="vt-prof">
-        <div className="vt-card vt-card-pad vt-prof-head">
-          <div className="vt-prof-avatar">{(isMe ? me.name : userId ?? 'U').slice(0, 1).toUpperCase()}</div>
-          <div className="vt-prof-main">
-            <div className="vt-prof-name">{isMe ? me.name : `Usuario ${userId}`}</div>
+      <div className="flex flex-col gap-3.5">
+        <div className="vt-card vt-card-pad flex items-center gap-3">
+          <div className="grid h-[52px] w-[52px] place-items-center rounded-[18px] bg-gradient-to-br from-[var(--primary)] to-violet-600 text-lg font-black text-white">
+            {(isMe ? me.name : userId ?? 'U').slice(0, 1).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-lg font-black tracking-[-0.03em]">{isMe ? me.name : `Usuario ${userId}`}</div>
             <div className="vt-muted">{isMe ? me.phone : '+—'}</div>
           </div>
           <button className="vt-btn" onClick={() => nav(-1)}>
@@ -38,11 +40,25 @@ export function ProfilePage() {
           </button>
         </div>
 
-        <div className="vt-prof-tabs">
-          <button className={tab === 'account' ? 'vt-prof-tab vt-prof-tab-active' : 'vt-prof-tab'} onClick={() => setTab('account')}>
+        <div className="flex gap-2.5">
+          <button
+            className={cn(
+              'flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black',
+              tab === 'account' &&
+                'border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]',
+            )}
+            onClick={() => setTab('account')}
+          >
             Cuenta
           </button>
-          <button className={tab === 'reels' ? 'vt-prof-tab vt-prof-tab-active' : 'vt-prof-tab'} onClick={() => setTab('reels')}>
+          <button
+            className={cn(
+              'flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black',
+              tab === 'reels' &&
+                'border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]',
+            )}
+            onClick={() => setTab('reels')}
+          >
             Mis Reels
           </button>
         </div>
@@ -50,25 +66,25 @@ export function ProfilePage() {
         {tab === 'account' && (
           <div className="vt-card vt-card-pad">
             <div className="vt-h2">Configuración del usuario</div>
-            <div className="vt-divider" style={{ margin: '12px 0' }} />
+            <div className="vt-divider my-3" />
 
-            <div className="vt-prof-form">
-              <label className="vt-prof-field">
-                <span className="vt-prof-label">
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-2">
+                <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                   <Mail size={14} /> Email (obligatorio)
                 </span>
                 <input className="vt-input" defaultValue="demo@vibetrade.app" disabled={!isMe} />
               </label>
 
-              <label className="vt-prof-field">
-                <span className="vt-prof-label">
+              <label className="flex flex-col gap-2">
+                <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                   <Phone size={14} /> Teléfono (obligatorio)
                 </span>
                 <input className="vt-input" defaultValue={me.phone} disabled />
               </label>
 
-              <label className="vt-prof-field">
-                <span className="vt-prof-label">
+              <label className="flex flex-col gap-2">
+                <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                   <UserCog size={14} /> Rol (demo)
                 </span>
                 <select
@@ -80,17 +96,17 @@ export function ProfilePage() {
                   <option value="seller">Vendedor</option>
                   <option value="carrier">Transportista</option>
                 </select>
-                <div className="vt-muted" style={{ marginTop: 8, fontSize: 13, lineHeight: 1.45 }}>
+                <div className="vt-muted mt-2 text-[13px] leading-snug">
                   Todos los usuarios son compradores por defecto. Indicá si además operás como vendedor o como
                   transportista; los acuerdos del chat son entre compradores y negocios.
                 </div>
               </label>
 
-              <div className="vt-prof-field">
-                <div className="vt-prof-label">
+              <div className="flex flex-col gap-2">
+                <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                   <ExternalLink size={14} /> Multi-cuenta (Instagram / Telegram / X)
                 </div>
-                <div className="vt-prof-links">
+                <div className="flex flex-wrap gap-2.5">
                   <button className="vt-btn" disabled={!isMe}>
                     <Camera size={16} /> Conectar Instagram
                   </button>
@@ -103,8 +119,8 @@ export function ProfilePage() {
                 </div>
               </div>
 
-              <div className="vt-prof-field">
-                <div className="vt-prof-label">
+              <div className="flex flex-col gap-2">
+                <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                   <Image size={14} /> Imagen de perfil
                 </div>
                 <button className="vt-btn" disabled={!isMe}>
@@ -113,13 +129,11 @@ export function ProfilePage() {
               </div>
 
               {isMe && (
-                <div className="vt-prof-field">
-                  <div className="vt-prof-label">
+                <div className="flex flex-col gap-2">
+                  <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                     <CreditCard size={14} /> Configurar tarjetas de pago (solo propietario)
                   </div>
-                  <div className="vt-muted">
-                    Elegí una pasarela y añadí credenciales necesarias por pasarela (demo).
-                  </div>
+                  <div className="vt-muted">Elegí una pasarela y añadí credenciales necesarias por pasarela (demo).</div>
                   <button className="vt-btn">Configurar</button>
                 </div>
               )}
@@ -130,19 +144,22 @@ export function ProfilePage() {
         {tab === 'reels' && (
           <div className="vt-card vt-card-pad">
             <div className="vt-h2">Guardados</div>
-            <div className="vt-muted" style={{ marginTop: 6 }}>
+            <div className="vt-muted mt-1.5">
               Reels guardados desde la barra lateral de la experiencia inmersiva.
             </div>
-            <div className="vt-divider" style={{ margin: '12px 0' }} />
+            <div className="vt-divider my-3" />
             {savedIds.length === 0 ? (
               <div className="vt-muted">Aún no guardaste Reels.</div>
             ) : (
-              <div className="vt-prof-saved">
+              <div className="flex flex-col gap-2.5">
                 {savedIds.map((id) => (
-                  <div key={id} className="vt-prof-saved-item">
+                  <div
+                    key={id}
+                    className="flex items-center gap-2.5 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-3 py-2.5"
+                  >
                     <Save size={16} />
                     <div>
-                      <div className="vt-prof-saved-title">{REEL_TITLES[id] ?? id}</div>
+                      <div className="font-black tracking-[-0.02em]">{REEL_TITLES[id] ?? id}</div>
                       <div className="vt-muted">ID: {id}</div>
                     </div>
                   </div>
@@ -155,4 +172,3 @@ export function ProfilePage() {
     </div>
   )
 }
-
