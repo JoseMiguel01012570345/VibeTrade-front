@@ -1,16 +1,37 @@
 import { useEffect, useState } from 'react'
-import type { MerchandiseLine, MerchandiseSectionMeta, TradeAgreement } from './tradeAgreementTypes'
-import { normalizeMerchandiseLine } from './tradeAgreementTypes'
-import { agreementDeclaresMerchandise, agreementDeclaresService } from './tradeAgreementTypes'
+import { cn } from '../../lib/cn'
+import {
+  agreementDeclaresMerchandise,
+  agreementDeclaresService,
+  normalizeMerchandiseLine,
+  type MerchandiseLine,
+  type MerchandiseSectionMeta,
+  type TradeAgreement,
+} from './tradeAgreementTypes'
 import { hasMerchandise } from './tradeAgreementValidation'
 import type { RouteSheet } from './routeSheetTypes'
+import {
+  agrDetailBlock,
+  agrDetailCard,
+  agrDetailH,
+  agrDetailHint,
+  agrDetailLabel,
+  agrDetailLink,
+  agrDetailRoot,
+  agrDetailRow,
+  agrDetailSub,
+  agrDetailValue,
+  fieldLabel,
+  linkRutaRow,
+  linkRutaSelect,
+} from './formModalStyles'
 
 function Row({ label, value }: { label: string; value: string }) {
   if (!value.trim()) return null
   return (
-    <div className="vt-agr-detail-row">
-      <div className="vt-agr-detail-label">{label}</div>
-      <div className="vt-agr-detail-value">{value}</div>
+    <div className={agrDetailRow}>
+      <div className={agrDetailLabel}>{label}</div>
+      <div className={agrDetailValue}>{value}</div>
     </div>
   )
 }
@@ -23,13 +44,13 @@ function legacyMerchandiseMetaHasContent(m?: MerchandiseSectionMeta): boolean {
 function MerchandiseBlock({ lines }: { lines: MerchandiseLine[] }) {
   if (!lines.length) return null
   return (
-    <div className="vt-agr-detail-block">
-      <div className="vt-agr-detail-h">Mercancías</div>
+    <div className={agrDetailBlock}>
+      <div className={agrDetailH}>Mercancías</div>
       {lines.map((raw, i) => {
         const line = normalizeMerchandiseLine(raw)
         return (
-          <div key={i} className="vt-agr-detail-card">
-            <div className="vt-agr-detail-sub">Ítem {i + 1}</div>
+          <div key={i} className={agrDetailCard}>
+            <div className={agrDetailSub}>Ítem {i + 1}</div>
             <Row label="Tipo" value={line.tipo} />
             <Row label="Cantidad" value={line.cantidad} />
             <Row label="Valor unitario" value={line.valorUnitario} />
@@ -80,27 +101,27 @@ export function AgreementDetailView({
   const linkUiLocked = !!a.routeSheetId
 
   return (
-    <div className="vt-agr-detail">
+    <div className={agrDetailRoot}>
       <Row label="Título" value={a.title} />
 
       {showMerch && hasGoods ? (
-        <div className="vt-agr-detail-block">
-          <div className="vt-agr-detail-h">Hoja de ruta</div>
+        <div className={agrDetailBlock}>
+          <div className={agrDetailH}>Hoja de ruta</div>
           {onLinkRouteSheet ? (
             routeSheets.length === 0 ? (
-              <p className="vt-muted vt-agr-detail-hint">
+              <p className={cn('vt-muted', agrDetailHint)}>
                 No hay hojas de ruta en este chat. Creá una en la pestaña Rutas y volvé para vincularla.
               </p>
             ) : (
               <>
                 {linkActionsDisabled ? (
-                  <p className="vt-muted vt-agr-detail-hint" style={{ marginBottom: 8 }}>
+                  <p className={cn('vt-muted', agrDetailHint, 'mb-2')}>
                     La vinculación de hojas de ruta no está disponible hasta registrar el pago en el chat.
                   </p>
                 ) : null}
-                <div className="vt-agr-link-ruta-row">
-                  <label className="vt-agr-link-ruta-select">
-                    <span className="vt-agr-field-label">Elegir hoja</span>
+                <div className={linkRutaRow}>
+                  <label className={linkRutaSelect}>
+                    <span className={fieldLabel}>Elegir hoja</span>
                     <select
                       className="vt-input"
                       value={pickId}
@@ -117,7 +138,7 @@ export function AgreementDetailView({
                   </label>
                   <button
                     type="button"
-                    className="vt-btn vt-btn-primary vt-agr-link-ruta-btn"
+                    className="vt-btn vt-btn-primary shrink-0"
                     disabled={
                       linkActionsDisabled ||
                       linkUiLocked ||
@@ -139,7 +160,7 @@ export function AgreementDetailView({
                   </button>
                 </div>
                 {linkUiLocked ? (
-                  <p className="vt-muted vt-agr-detail-hint" style={{ marginTop: 6 }}>
+                  <p className={cn('vt-muted', agrDetailHint, 'mt-1.5')}>
                     La hoja vinculada no se puede cambiar desde aquí.
                   </p>
                 ) : null}
@@ -147,28 +168,27 @@ export function AgreementDetailView({
             )
           ) : null}
           {a.routeSheetId && linkedTitle ? (
-            <p className="vt-muted vt-agr-detail-hint">
+            <p className={cn('vt-muted', agrDetailHint)}>
               Vinculada a: <strong>{linkedTitle}</strong>
             </p>
           ) : null}
           {a.routeSheetId && onOpenRouteSheet ? (
             <button
               type="button"
-              className="vt-btn vt-btn-sm"
-              style={{ marginTop: 8 }}
+              className="vt-btn vt-btn-sm mt-2"
               onClick={() => onOpenRouteSheet(a.routeSheetId!)}
             >
               Ver hoja de ruta en el panel
             </button>
           ) : null}
           {a.routeSheetUrl ? (
-            <div className="vt-agr-detail-row" style={{ marginTop: 10 }}>
-              <div className="vt-agr-detail-label">Enlace externo</div>
+            <div className={cn(agrDetailRow, 'mt-2.5')}>
+              <div className={agrDetailLabel}>Enlace externo</div>
               <a
                 href={a.routeSheetUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="vt-agr-detail-link"
+                className={agrDetailLink}
               >
                 {a.routeSheetUrl}
               </a>
@@ -180,9 +200,9 @@ export function AgreementDetailView({
       {showMerch ? <MerchandiseBlock lines={a.merchandise} /> : null}
 
       {showMerch && legacyMerchandiseMetaHasContent(m) ? (
-        <div className="vt-agr-detail-block">
-          <div className="vt-agr-detail-h">Mercancías · condiciones generales (acuerdo anterior)</div>
-          <p className="vt-muted vt-agr-detail-hint" style={{ marginBottom: 8 }}>
+        <div className={agrDetailBlock}>
+          <div className={agrDetailH}>Mercancías · condiciones generales (acuerdo anterior)</div>
+          <p className={cn('vt-muted', agrDetailHint, 'mb-2')}>
             Estos datos eran comunes a todo el bloque; en acuerdos nuevos van por cada ítem.
           </p>
           <Row label="Moneda" value={m!.moneda} />
@@ -198,8 +218,8 @@ export function AgreementDetailView({
       ) : null}
 
       {showService ? (
-        <div className="vt-agr-detail-block">
-          <div className="vt-agr-detail-h">Servicios</div>
+        <div className={agrDetailBlock}>
+          <div className={agrDetailH}>Servicios</div>
           <Row label="Tipo de servicio" value={s.tipoServicio} />
           <Row label="Tiempo del servicio" value={s.tiempoInicioFin} />
           <Row label="Horarios y fechas" value={s.horariosFechas} />

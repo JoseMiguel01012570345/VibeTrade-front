@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import clsx from 'clsx'
 import { useAppStore } from '../store/useAppStore'
-import './trustbar.css'
+import { cn } from '../../lib/cn'
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
@@ -70,10 +69,15 @@ export function TrustBar() {
 
   return (
     <>
-      <div className="vt-trust">
-        <div className="vt-trust-left">
-          <div className="vt-trust-title">Barra de confianza</div>
-          <div className={clsx('vt-trust-sub', locked && 'vt-trust-sub-warn')}>
+      <div className="grid grid-cols-1 gap-2.5 py-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="font-bold tracking-[-0.02em]">Barra de confianza</div>
+          <div
+            className={cn(
+              'text-xs text-[var(--muted)]',
+              locked && 'font-semibold text-[color-mix(in_oklab,var(--bad)_75%,var(--muted))]',
+            )}
+          >
             {locked ? 'Interacciones bloqueadas (solo mensualidad)' : 'Activa'}
           </div>
         </div>
@@ -114,7 +118,7 @@ export function TrustBar() {
               )}
             </div>
             <div className="vt-modal-actions">
-              <button className="vt-btn vt-btn-primary" onClick={() => setModal(null)}>
+              <button type="button" className="vt-btn vt-btn-primary" onClick={() => setModal(null)}>
                 Entendido
               </button>
             </div>
@@ -124,4 +128,3 @@ export function TrustBar() {
     </>
   )
 }
-

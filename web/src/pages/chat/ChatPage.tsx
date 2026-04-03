@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import clsx from "clsx";
+import { cn } from "../../lib/cn";
 import {
   ArrowLeft,
   FileText,
@@ -52,7 +52,7 @@ function formatVoiceDur(sec: number) {
 function TrustChip({ score }: { score: number }) {
   return (
     <span
-      className="vt-chat-trust"
+      className="ml-auto rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_50%,var(--surface))] px-2 py-1 text-xs font-black text-[var(--muted)]"
       data-chat-interactive
       title="Indicador de confianza. Helper: reputación basada en historial de acciones."
     >
@@ -414,11 +414,17 @@ export function ChatPage() {
 
   return (
     <div className="container vt-page vt-chat-page">
-      <div className="vt-chat-layout">
-        <div className="vt-chat-layout-main">
-          <div className="vt-chat">
-        <div className="vt-chat-head vt-card vt-card-pad">
-          <div className="vt-chat-head-top">
+      <div
+        className={cn(
+          "grid min-h-0 flex-1 grid-cols-1 items-stretch gap-5",
+          "max-[960px]:grid-rows-[minmax(0,1fr)_auto] max-[960px]:gap-x-4 max-[960px]:row-gap-0",
+          "min-[961px]:grid-cols-[minmax(0,1fr)_minmax(340px,480px)]",
+        )}
+      >
+        <div className="flex min-h-0 min-w-0 flex-col px-1 min-[961px]:pl-2 min-[961px]:pr-1">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3.5">
+        <div className="vt-card shrink-0 px-[22px] py-[18px]">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
               className="vt-btn"
               onClick={() => nav("/chat")}
@@ -426,14 +432,16 @@ export function ChatPage() {
             >
               <ArrowLeft size={16} />
             </button>
-            <div className="vt-chat-head-main">
-              <div className="vt-chat-title-row">
-                <div className="vt-chat-title">{store.name}</div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="font-black tracking-[-0.03em]">{store.name}</div>
                 {thread.purchaseMode && (
-                  <span className="vt-chat-purchase-badge">Modo compra</span>
+                  <span className="rounded-full border border-[color-mix(in_oklab,var(--accent,#16a34a)_35%,transparent)] bg-[color-mix(in_oklab,var(--accent,#16a34a)_18%,transparent)] px-2.5 py-1 text-xs font-bold tracking-wide text-[var(--accent-foreground,#14532d)]">
+                    Modo compra
+                  </span>
                 )}
               </div>
-              <div className="vt-chat-sub">
+              <div className="mt-1.5 flex flex-wrap gap-2">
                 <span className="vt-pill">
                   <ShieldCheck size={14} />{" "}
                   {store.verified ? "Credenciales validadas" : "No verificado"}
@@ -448,7 +456,7 @@ export function ChatPage() {
               </div>
             </div>
 
-            <div className="vt-chat-head-actions">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 className="vt-btn"
@@ -486,7 +494,10 @@ export function ChatPage() {
         </div>
 
         {chatActionsLocked ? (
-          <div className="vt-chat-locked-banner" role="status">
+          <div
+            className="mx-1 mt-2.5 rounded-xl border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_12%,var(--surface))] p-3 text-sm leading-snug text-[var(--text)]"
+            role="status"
+          >
             Chat restringido: saliste con un acuerdo <strong>aceptado</strong> y el
             pago aún no registrado. Solo podés usar <strong>Pago</strong> para
             continuar; no podés enviar mensajes ni crear acuerdos u hojas de ruta
@@ -494,7 +505,10 @@ export function ChatPage() {
           </div>
         ) : null}
 
-        <div className="vt-chat-list vt-card" ref={listRef}>
+        <div
+          ref={listRef}
+          className="vt-card flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[color-mix(in_oklab,var(--bg)_60%,var(--surface))] to-[var(--surface)] px-6 py-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        >
           {thread.messages.map((m) => {
             const mine = m.from === "me";
             const system = m.from === "system";
@@ -510,11 +524,13 @@ export function ChatPage() {
             return (
               <div
                 key={m.id}
-                className={clsx(
-                  "vt-chat-row",
-                  mine && "vt-chat-row-mine",
-                  system && "vt-chat-row-system",
-                  isSelected && "vt-chat-row-selected",
+                className={cn(
+                  "grid items-end gap-2.5",
+                  system
+                    ? "grid-cols-1"
+                    : mine
+                      ? "grid-cols-[minmax(0,1fr)_36px]"
+                      : "grid-cols-[36px_minmax(0,1fr)]",
                 )}
                 onClick={(e) => {
                   if (chatActionsLocked || system || m.type === "agreement")
@@ -525,7 +541,10 @@ export function ChatPage() {
                 {!system && (
                   <Link
                     to={`/profile/${mine ? me.id : store.id}`}
-                    className="vt-chat-avatar"
+                    className={cn(
+                      "grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/35 bg-gradient-to-br from-[var(--primary)] to-[#7c3aed] font-black text-white",
+                      mine ? "col-start-2 justify-self-end" : "col-start-1",
+                    )}
                     title="Ver perfil"
                     data-chat-interactive
                     onClick={(e) => e.stopPropagation()}
@@ -535,14 +554,24 @@ export function ChatPage() {
                 )}
 
                 <div
-                  className={clsx(
-                    "vt-chat-bubble",
-                    pendingRead && "vt-chat-bubble-pending",
+                  className={cn(
+                    "w-fit max-w-[min(920px,96%)] min-w-0 break-words rounded-2xl border border-[var(--border)] px-4 py-3 shadow-[0_10px_25px_rgba(15,23,42,0.06)] [overflow-wrap:anywhere]",
+                    system && "col-start-1 bg-[var(--surface)]",
+                    !system &&
+                      mine &&
+                      "col-start-1 justify-self-end bg-[color-mix(in_oklab,var(--primary)_6%,var(--surface))]",
+                    !system &&
+                      !mine &&
+                      "col-start-2 bg-[var(--surface)]",
+                    pendingRead &&
+                      "border-[color-mix(in_oklab,var(--muted)_35%,var(--border))] bg-[color-mix(in_oklab,var(--muted)_22%,var(--surface))] shadow-[0_8px_20px_rgba(15,23,42,0.05)]",
+                    isSelected &&
+                      "outline outline-2 outline-[color-mix(in_oklab,var(--primary)_25%,transparent)]",
                   )}
                 >
                   {!system && (
-                    <div className="vt-chat-badge">
-                      <span className="vt-chat-name">
+                    <div className="mb-1.5 flex items-center justify-between gap-2.5 text-xs">
+                      <span className="font-black">
                         {mine ? me.name : store.name}
                       </span>
                       <span className="vt-muted" data-chat-interactive>
@@ -586,6 +615,7 @@ export function ChatPage() {
                           }
                         : undefined
                     }
+                    isMine={mine}
                   />
                   {"at" in m && (
                     <MsgMeta
@@ -599,34 +629,37 @@ export function ChatPage() {
           })}
         </div>
 
-        <div className="vt-chat-compose vt-card vt-card-pad">
+        <div className="vt-card vt-card-pad flex shrink-0 flex-col gap-2.5">
           {selectedIds.length > 0 && (
             <div
-              className="vt-chat-reply-wa"
+              className="overflow-hidden rounded-xl border border-[color-mix(in_oklab,var(--muted)_22%,var(--border))] border-l-4 border-l-[#25d366] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] shadow-[0_1px_0_rgba(15,23,42,0.06)]"
               role="region"
               aria-label="Respondiendo a mensajes en un hilo nuevo"
             >
-              <div className="vt-chat-reply-thread-strip">
-                <span className="vt-chat-reply-thread-strip-icon" aria-hidden>
+              <div className="flex items-start gap-2.5 border-b border-dashed border-[color-mix(in_oklab,var(--primary)_28%,var(--border))] bg-gradient-to-br from-[color-mix(in_oklab,var(--primary)_14%,var(--surface))] to-[color-mix(in_oklab,#7c3aed_10%,var(--surface))] px-3 py-2.5">
+                <span
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[color-mix(in_oklab,var(--primary)_18%,transparent)] text-[var(--primary)]"
+                  aria-hidden
+                >
                   <GitBranch size={18} strokeWidth={2.25} />
                 </span>
-                <div className="vt-chat-reply-thread-strip-text">
-                  <span className="vt-chat-reply-thread-strip-title">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-[13px] font-black tracking-[-0.02em] text-[var(--text)]">
                     Nuevo hilo
                   </span>
-                  <span className="vt-chat-reply-thread-strip-sub">
+                  <span className="text-[11px] leading-snug text-[var(--muted)]">
                     Tu mensaje enlaza estas citas y se muestra como continuación
                     de hilo
                   </span>
                 </div>
               </div>
-              <div className="vt-chat-reply-wa-head">
-                <span className="vt-chat-reply-wa-title">
+              <div className="mb-2 flex items-center justify-between gap-2.5 px-3 pb-0 pl-3.5 pt-2.5">
+                <span className="text-[13px] font-extrabold text-[color-mix(in_oklab,var(--text)_88%,var(--muted))]">
                   Citas en este hilo ({selectedIds.length})
                 </span>
                 <button
                   type="button"
-                  className="vt-chat-reply-wa-closeall"
+                  className="grid cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-1 leading-none text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_14%,transparent)] hover:text-[var(--text)]"
                   aria-label="Cancelar respuesta"
                   title="Cancelar"
                   onClick={() => setSelected({})}
@@ -634,26 +667,29 @@ export function ChatPage() {
                   <X size={20} strokeWidth={2} />
                 </button>
               </div>
-              <div className="vt-chat-reply-wa-list">
+              <div className="flex max-h-[140px] flex-col gap-2 overflow-y-auto px-3 pb-2.5 pl-3.5 pr-2.5">
                 {selectedOrdered.map((id) => {
                   const msg = thread.messages.find((x) => x.id === id);
                   if (!msg || msg.type === "certificate") return null;
                   const author = messageAuthorLabel(msg, store.name);
                   const preview = messagePreviewLine(msg);
                   return (
-                    <div key={id} className="vt-chat-reply-wa-row">
-                      <span className="vt-chat-reply-wa-accent" aria-hidden />
-                      <div className="vt-chat-reply-wa-snippet">
-                        <span className="vt-chat-reply-wa-author">
+                    <div key={id} className="flex min-w-0 items-start gap-2">
+                      <span
+                        className="mt-0.5 min-h-9 w-1 shrink-0 self-stretch rounded bg-gradient-to-b from-[#25d366] to-[color-mix(in_oklab,#25d366_65%,var(--primary))]"
+                        aria-hidden
+                      />
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="text-xs font-extrabold text-[#25d366]">
                           {author}
                         </span>
-                        <span className="vt-chat-reply-wa-preview">
+                        <span className="line-clamp-2 text-xs leading-snug text-[var(--muted)]">
                           {preview}
                         </span>
                       </div>
                       <button
                         type="button"
-                        className="vt-chat-reply-wa-remove"
+                        className="-mt-0.5 grid shrink-0 cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-1 leading-none text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_12%,transparent)] hover:text-[var(--text)]"
                         aria-label={`Quitar cita a ${author}`}
                         onClick={() =>
                           setSelected((s) => {
@@ -672,67 +708,68 @@ export function ChatPage() {
             </div>
           )}
 
-          <div
-            className={clsx(
-              "vt-chat-compose-bar",
-              chatActionsLocked && "vt-chat-compose-bar--locked",
-            )}
-          >
-            <div className="vt-chat-compose-tools">
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center gap-1">
               {recording ? (
                 <span
-                  className="vt-chat-tool-btn vt-chat-tool-disabled"
+                  className="grid h-11 w-11 shrink-0 cursor-not-allowed place-items-center rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] opacity-45"
                   title="Termina la grabación para adjuntar archivos"
                   aria-disabled="true"
                   aria-label="Adjuntar documentos (no disponible durante la grabación)"
                 >
-                  <span className="vt-chat-tool-file-face" aria-hidden>
+                  <span className="pointer-events-none grid place-items-center" aria-hidden>
                     <Paperclip size={22} strokeWidth={2} />
                   </span>
                 </span>
               ) : (
                 <label
-                  className="vt-chat-tool-btn vt-chat-tool-file-label"
+                  className={cn(
+                    "relative m-0 grid h-11 w-11 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[#111b21]",
+                    chatActionsLocked && "pointer-events-none opacity-40",
+                  )}
                   aria-label="Adjuntar documentos"
                   title="Documentos"
                 >
                   <input
                     type="file"
-                    className="vt-chat-file-input"
+                    className="sr-only"
                     multiple
                     accept=".pdf,.doc,.docx,.odt,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     onChange={onPickDocument}
                   />
-                  <span className="vt-chat-tool-file-face" aria-hidden>
+                  <span className="pointer-events-none grid place-items-center" aria-hidden>
                     <Paperclip size={22} strokeWidth={2} />
                   </span>
                 </label>
               )}
               {recording ? (
                 <span
-                  className="vt-chat-tool-btn vt-chat-tool-disabled"
+                  className="grid h-11 w-11 shrink-0 cursor-not-allowed place-items-center rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] opacity-45"
                   title="Termina la grabación para adjuntar archivos"
                   aria-disabled="true"
                   aria-label="Adjuntar imágenes (no disponible durante la grabación)"
                 >
-                  <span className="vt-chat-tool-file-face" aria-hidden>
+                  <span className="pointer-events-none grid place-items-center" aria-hidden>
                     <ImageIcon size={22} strokeWidth={2} />
                   </span>
                 </span>
               ) : (
                 <label
-                  className="vt-chat-tool-btn vt-chat-tool-file-label"
+                  className={cn(
+                    "relative m-0 grid h-11 w-11 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[#111b21]",
+                    chatActionsLocked && "pointer-events-none opacity-40",
+                  )}
                   aria-label="Adjuntar imágenes"
                   title="Imágenes"
                 >
                   <input
                     type="file"
-                    className="vt-chat-file-input"
+                    className="sr-only"
                     accept="image/*"
                     multiple
                     onChange={onPickImages}
                   />
-                  <span className="vt-chat-tool-file-face" aria-hidden>
+                  <span className="pointer-events-none grid place-items-center" aria-hidden>
                     <ImageIcon size={22} strokeWidth={2} />
                   </span>
                 </label>
@@ -742,25 +779,31 @@ export function ChatPage() {
               pendingImages.length > 0 ||
               pendingAudio) && (
               <div
-                className="vt-chat-compose-pending"
+                className="flex min-h-0 flex-wrap items-end gap-2 py-2 pb-1"
                 aria-label="Archivos listos para enviar"
               >
                 {pendingDocs.map((doc) => (
-                  <div key={doc.id} className="vt-chat-pending-doc">
-                    <div className="vt-chat-pending-doc-icon" aria-hidden>
+                  <div
+                    key={doc.id}
+                    className="flex min-w-0 max-w-full flex-[1_1_200px] items-center gap-2.5 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-2.5 py-2"
+                  >
+                    <div className="shrink-0 text-[var(--muted)]" aria-hidden>
                       <FileText size={22} strokeWidth={2} />
                     </div>
-                    <div className="vt-chat-pending-doc-info">
-                      <span className="vt-chat-pending-doc-name">
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="truncate text-[13px] font-extrabold">
                         {doc.name}
                       </span>
-                      <span className="vt-chat-pending-doc-meta">
+                      <span className="text-[11px] text-[var(--muted)]">
                         {doc.size}
                       </span>
                     </div>
                     <button
                       type="button"
-                      className="vt-chat-pending-remove"
+                      className={cn(
+                        "grid shrink-0 cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-1 leading-none text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_12%,transparent)] hover:text-[var(--text)]",
+                        chatActionsLocked && "pointer-events-none opacity-[0.35]",
+                      )}
                       aria-label={`Quitar ${doc.name}`}
                       onClick={() => removePendingDoc(doc.id)}
                     >
@@ -769,15 +812,21 @@ export function ChatPage() {
                   </div>
                 ))}
                 {pendingImages.map((img) => (
-                  <div key={img.id} className="vt-chat-pending-thumb-wrap">
+                  <div
+                    key={img.id}
+                    className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-xl border border-[var(--border)]"
+                  >
                     <img
                       src={img.url}
                       alt=""
-                      className="vt-chat-pending-thumb"
+                      className="block h-full w-full object-cover"
                     />
                     <button
                       type="button"
-                      className="vt-chat-pending-thumb-x"
+                      className={cn(
+                        "absolute right-1 top-1 grid h-6 w-6 cursor-pointer place-items-center rounded-full border-0 bg-[rgba(15,23,42,0.65)] leading-none text-white hover:bg-[rgba(15,23,42,0.85)]",
+                        chatActionsLocked && "pointer-events-none opacity-[0.35]",
+                      )}
                       aria-label="Quitar imagen"
                       onClick={() => removePendingImage(img.id)}
                     >
@@ -786,21 +835,27 @@ export function ChatPage() {
                   </div>
                 ))}
                 {pendingAudio && (
-                  <div className="vt-chat-pending-audio">
-                    <div className="vt-chat-pending-audio-icon" aria-hidden>
+                  <div className="flex min-w-0 max-w-full flex-[1_1_200px] items-center gap-2.5 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] px-2.5 py-2">
+                    <div
+                      className="grid shrink-0 place-items-center text-[var(--primary)]"
+                      aria-hidden
+                    >
                       <Mic size={20} strokeWidth={2} />
                     </div>
-                    <div className="vt-chat-pending-audio-info">
-                      <span className="vt-chat-pending-audio-label">
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="text-[13px] font-extrabold">
                         Nota de voz
                       </span>
-                      <span className="vt-chat-pending-audio-meta">
+                      <span className="text-[11px] text-[var(--muted)]">
                         {formatVoiceDur(pendingAudio.seconds)}
                       </span>
                     </div>
                     <button
                       type="button"
-                      className="vt-chat-pending-remove"
+                      className={cn(
+                        "grid shrink-0 cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-1 leading-none text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_12%,transparent)] hover:text-[var(--text)]",
+                        chatActionsLocked && "pointer-events-none opacity-[0.35]",
+                      )}
                       aria-label="Quitar nota de voz"
                       onClick={() => removePendingAudio()}
                     >
@@ -811,15 +866,18 @@ export function ChatPage() {
               </div>
             )}
             {recording && (
-              <div className="vt-chat-rec-banner" role="status">
-                <span className="vt-chat-rec-dot" />
+              <div
+                className="flex items-center gap-2 rounded-[10px] bg-[color-mix(in_oklab,#ef4444_10%,var(--surface))] px-2.5 py-1.5 text-[13px] font-semibold text-[#b91c1c]"
+                role="status"
+              >
+                <span className="h-2 w-2 animate-[vt-rec-dot_1s_ease-in-out_infinite] rounded-full bg-[#ef4444]" />
                 Grabando… {recordSecs}s — tocá de nuevo para enviar
               </div>
             )}
-            <div className="vt-chat-compose-inputrow">
+            <div className="flex items-center gap-2.5">
               <input
                 ref={draftInputRef}
-                className="vt-input"
+                className="vt-input min-w-0 flex-1 self-stretch"
                 disabled={
                   recording || blockTextWithVoiceAndFiles || chatActionsLocked
                 }
@@ -885,10 +943,10 @@ export function ChatPage() {
               />
               <button
                 type="button"
-                className={clsx(
-                  "vt-chat-tool-btn",
-                  "vt-chat-compose-voice-btn",
-                  recording && "vt-chat-tool-btn-rec",
+                className={cn(
+                  "grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[#111b21]",
+                  recording &&
+                    "animate-[vt-rec-pulse_1.2s_ease-in-out_infinite] bg-[color-mix(in_oklab,#ef4444_18%,var(--surface))] text-[#b91c1c] hover:bg-[color-mix(in_oklab,#ef4444_18%,var(--surface))] hover:text-[#b91c1c]",
                 )}
                 disabled={chatActionsLocked && !recording}
                 aria-label={
@@ -908,9 +966,10 @@ export function ChatPage() {
               {hasComposeToSend && (
                 <button
                   type="button"
-                  className={clsx(
-                    "vt-chat-send-btn",
-                    !canSend && "vt-chat-send-btn-disabled",
+                  className={cn(
+                    "grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-gradient-to-br from-[var(--primary)] to-[color-mix(in_oklab,var(--primary)_75%,#7c3aed)] text-white shadow-[0_8px_20px_color-mix(in_oklab,var(--primary)_35%,transparent)] hover:brightness-105 active:scale-[0.97]",
+                    !canSend &&
+                      "cursor-not-allowed opacity-45 [filter:grayscale(0.2)] hover:brightness-100 active:scale-100",
                   )}
                   aria-label="Enviar mensaje"
                   title="Enviar"
@@ -926,7 +985,7 @@ export function ChatPage() {
             </div>
           </div>
 
-          <div className="vt-chat-actions2">
+          <div className="flex flex-wrap gap-2.5">
             <button
               className="vt-btn"
               onClick={() => {
@@ -963,7 +1022,11 @@ export function ChatPage() {
         </div>
 
         <div
-          className={railOpen ? "vt-chat-rail-wrap vt-chat-rail-wrap--open" : "vt-chat-rail-wrap"}
+          className={cn(
+            "relative z-[2] flex min-h-0 flex-col min-[961px]:self-stretch",
+            "vt-chat-rail-wrap",
+            railOpen && "vt-chat-rail-wrap--open",
+          )}
         >
           {railOpen ? (
             <button

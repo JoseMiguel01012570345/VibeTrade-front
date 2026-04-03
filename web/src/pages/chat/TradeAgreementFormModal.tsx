@@ -1,6 +1,22 @@
 import { useEffect, useState } from 'react'
-import clsx from 'clsx'
 import toast from 'react-hot-toast'
+import { cn } from '../../lib/cn'
+import {
+  agrDetailSub,
+  checkRow,
+  detailsBlock,
+  fieldError,
+  fieldLabel,
+  fieldRootWithInvalid,
+  lineGrid,
+  merchLineHead,
+  merchLineWrap,
+  modalFormBody,
+  modalShellWide,
+  modalSub,
+  scopeRow,
+  textareaMin,
+} from './formModalStyles'
 import type { MerchandiseLine, TradeAgreementDraft } from './tradeAgreementTypes'
 import { defaultAgreementDraft, emptyMerchandiseLine } from './tradeAgreementTypes'
 import type { TradeAgreementFormErrors } from './tradeAgreementValidation'
@@ -27,14 +43,12 @@ function Field({
 }) {
   const errId = inputId ? `${inputId}-err` : undefined
   return (
-    <label
-      className={clsx('vt-agr-field', error && 'vt-agr-field--invalid')}
-    >
-      <span className="vt-agr-field-label">{label}</span>
+    <label className={fieldRootWithInvalid(!!error)}>
+      <span className={fieldLabel}>{label}</span>
       {multiline ? (
         <textarea
           id={inputId}
-          className="vt-input vt-agr-textarea"
+          className={cn('vt-input', textareaMin)}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={2}
@@ -52,7 +66,7 @@ function Field({
         />
       )}
       {error ? (
-        <span id={errId} className="vt-agr-field-error" role="alert">
+        <span id={errId} className={fieldError} role="alert">
           {error}
         </span>
       ) : null}
@@ -77,16 +91,20 @@ function LineEditor({
 }) {
   const p = (k: keyof MerchandiseLine) => `agr-m-${lineIndex}-${k}`
   return (
-    <div className="vt-agr-line">
-      <div className="vt-agr-line-head">
-        <span className="vt-agr-detail-sub">Línea de mercancía {lineIndex + 1}</span>
+    <div className={merchLineWrap}>
+      <div className={merchLineHead}>
+        <span className={agrDetailSub}>Línea de mercancía {lineIndex + 1}</span>
         {canRemove ? (
-          <button type="button" className="vt-btn vt-btn-ghost" onClick={onRemove}>
+          <button
+            type="button"
+            className="vt-btn vt-btn-ghost no-underline"
+            onClick={onRemove}
+          >
             Quitar
           </button>
         ) : null}
       </div>
-      <div className="vt-agr-line-grid">
+      <div className={lineGrid}>
         <Field
           label="Tipo"
           value={line.tipo}
@@ -108,8 +126,8 @@ function LineEditor({
           error={errors?.valorUnitario}
           inputId={p('valorUnitario')}
         />
-        <label className="vt-agr-field">
-          <span className="vt-agr-field-label">Estado</span>
+        <label className={fieldRootWithInvalid(false)}>
+          <span className={fieldLabel}>Estado</span>
           <select
             id={p('estado')}
             className="vt-input"
@@ -251,14 +269,14 @@ export function TradeAgreementFormModal({
 
   return (
     <div className="vt-modal-backdrop" role="dialog" aria-modal="true">
-      <div className="vt-modal vt-modal-wide vt-agr-modal">
+      <div className={modalShellWide}>
         <div className="vt-modal-title">Emitir acuerdo de compra</div>
-        <div className="vt-muted vt-agr-modal-sub">
+        <div className={modalSub}>
           Emitido por <b>{storeName}</b>. El comprador podrá aceptar o rechazar. Todos los
           campos obligatorios deben completarse según el tipo de dato.
         </div>
 
-        <div className="vt-modal-body vt-agr-form-body">
+        <div className={modalFormBody}>
           <Field
             label="Título del acuerdo"
             value={draft.title}
@@ -268,13 +286,13 @@ export function TradeAgreementFormModal({
           />
 
           {errors.scope ? (
-            <div className="vt-agr-field-error" role="alert" style={{ marginBottom: 8 }}>
+            <div className={cn(fieldError, 'mb-2')} role="alert">
               {errors.scope}
             </div>
           ) : null}
 
-          <div className="vt-agr-scope-row" aria-label="Qué incluye este acuerdo">
-            <label className="vt-agr-check">
+          <div className={scopeRow} aria-label="Qué incluye este acuerdo">
+            <label className={checkRow}>
               <input
                 type="checkbox"
                 checked={draft.includeMerchandise}
@@ -287,7 +305,7 @@ export function TradeAgreementFormModal({
               />
               <span>Incluir mercancías</span>
             </label>
-            <label className="vt-agr-check">
+            <label className={checkRow}>
               <input
                 type="checkbox"
                 checked={draft.includeService}
@@ -305,7 +323,7 @@ export function TradeAgreementFormModal({
             Al menos uno debe estar marcado. Solo se validan los bloques que incluyas.
           </p>
 
-          <details open={draft.includeMerchandise} className="vt-agr-details">
+          <details open={draft.includeMerchandise} className={detailsBlock}>
             <summary>Mercancías</summary>
             {draft.includeMerchandise
               ? draft.merchandise.map((line, i) => (
@@ -331,10 +349,10 @@ export function TradeAgreementFormModal({
             ) : null}
           </details>
 
-          <details open={draft.includeService} className="vt-agr-details">
+          <details open={draft.includeService} className={detailsBlock}>
             <summary>Servicios</summary>
             {draft.includeService ? (
-            <div className="vt-agr-line-grid">
+            <div className={lineGrid}>
               <Field label="Tipo de servicio" value={sv.tipoServicio} onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, tipoServicio: v } }))} error={se?.tipoServicio} inputId="agr-sv-tipo" />
               <Field
                 label="Tiempo del servicio (inicio / fin)"

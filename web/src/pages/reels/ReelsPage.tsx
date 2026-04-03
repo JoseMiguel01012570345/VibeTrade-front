@@ -1,18 +1,9 @@
-import {
-  type CSSProperties,
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-} from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Bookmark, MessageCircle, Send, ThumbsUp, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
-import clsx from 'clsx'
 import { useAppStore } from '../../app/store/useAppStore'
+import { cn } from '../../lib/cn'
 import { ReelCommentsPanel, type ReelComment } from './ReelCommentsPanel'
-// import { ReelTrustSlider } from './ReelTrustSlider'
-import './reels.css'
 
 type Reel = {
   id: string
@@ -146,6 +137,9 @@ const INITIAL_COMMENTS: Record<string, ReelComment[]> = {
   ],
 }
 
+const reelBtn =
+  'grid h-[46px] w-[46px] shrink-0 cursor-pointer place-items-center rounded-2xl border border-white/25 bg-[rgba(2,6,23,0.4)] text-white [&_svg]:h-5 [&_svg]:w-5'
+
 export function ReelsPage() {
   const me = useAppStore((s) => s.me)
   const savedReels = useAppStore((s) => s.savedReels)
@@ -223,7 +217,7 @@ export function ReelsPage() {
         return next < 0 ? next + reels.length : next
       })
 
-      window.setTimeout(() => {
+      globalThis.setTimeout(() => {
         isAnimatingRef.current = false
       }, 520)
     }
@@ -260,34 +254,45 @@ export function ReelsPage() {
   }, [reels.length, shareOpen, commentsOpen])
 
   return (
-    <div className="vt-reels">
-      <div className="vt-reels-viewport" ref={viewportRef} aria-label="Reels">
+    <div className="h-[calc(100vh-120px)]">
+      <div
+        className="relative h-full overflow-hidden rounded-[18px] border border-[var(--border)]"
+        ref={viewportRef}
+        aria-label="Reels"
+      >
         <div
-          className="vt-reel-stack"
-          style={
-            ({ '--idx': idx } as CSSProperties & Record<string, number>)
-          }
+          className="h-full will-change-transform transition-transform duration-[520ms] ease-[ease]"
+          style={{ transform: `translateY(-${idx * 100}%)` }}
         >
           {reels.map((r) => (
-            <div key={r.id} className="vt-reel" style={{ backgroundImage: `url(${r.cover})` }}>
-              <div className="vt-reel-overlay" />
+            <div
+              key={r.id}
+              className="relative h-full overflow-hidden border-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${r.cover})` }}
+            >
+              <div
+                className="absolute inset-0 rounded-none bg-[radial-gradient(1200px_600px_at_20%_10%,rgba(0,0,0,0.15),transparent),linear-gradient(180deg,rgba(2,6,23,0.25),rgba(2,6,23,0.75))]"
+                aria-hidden
+              />
 
-              <div className="vt-reel-top container">
-                <div className="vt-reel-title">{r.title}</div>
-                <div className="vt-reel-sub">
-                  {r.by} · <span className="vt-pill">{r.category}</span>
+              <div className="container relative z-[2] pt-[18px] text-white">
+                <div className="text-[22px] font-black tracking-[-0.03em]">{r.title}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2.5 text-white/90">
+                  {r.by} ·{' '}
+                  <span className="rounded-full border border-white/25 bg-white/15 px-2.5 py-1.5 text-xs text-white/95">
+                    {r.category}
+                  </span>
                 </div>
               </div>
 
-              <div className="vt-reel-side">
-                {/*
-                Espectro de valoración (-1…1) — desactivado; reemplazado por me gusta simple.
-                <ReelTrustSlider value={trust} onChange={setTrust} ariaLabel="Valorar este reel" />
-                */}
-                <div className="vt-reel-side-action">
+              <div className="absolute right-3 top-1/2 z-[3] flex -translate-y-1/2 flex-col gap-2.5">
+                <div className="flex flex-col items-center gap-0.5">
                   <button
                     type="button"
-                    className={clsx('vt-reel-btn', reelLikes.liked[r.id] && 'vt-reel-btn-active')}
+                    className={cn(
+                      reelBtn,
+                      reelLikes.liked[r.id] && 'border-white/35 bg-[rgba(37,99,235,0.55)]',
+                    )}
                     onClick={() => dispatchReelLike({ type: 'toggle', reelId: r.id })}
                     title={`Me gusta (${reelLikes.counts[r.id] ?? 0})`}
                     aria-label={
@@ -299,14 +304,17 @@ export function ReelsPage() {
                   >
                     <ThumbsUp />
                   </button>
-                  <span className="vt-reel-side-count" aria-hidden>
+                  <span
+                    className="min-w-[1.25rem] text-center text-[11px] font-extrabold leading-none text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.55)] [font-variant-numeric:tabular-nums]"
+                    aria-hidden
+                  >
                     {reelLikes.counts[r.id] ?? 0}
                   </span>
                 </div>
 
                 <button
                   type="button"
-                  className="vt-reel-btn"
+                  className={reelBtn}
                   onClick={() => setCommentsOpen(true)}
                   title="Comentarios"
                   aria-label="Abrir comentarios"
@@ -315,7 +323,7 @@ export function ReelsPage() {
                 </button>
                 <button
                   type="button"
-                  className="vt-reel-btn"
+                  className={reelBtn}
                   onClick={() => {
                     setShareOpen(true)
                   }}
@@ -325,7 +333,10 @@ export function ReelsPage() {
                 </button>
                 <button
                   type="button"
-                  className={clsx('vt-reel-btn', savedReels[r.id] && 'vt-reel-btn-active')}
+                  className={cn(
+                    reelBtn,
+                    savedReels[r.id] && 'border-white/35 bg-[rgba(37,99,235,0.55)]',
+                  )}
                   onClick={() => {
                     toggleSavedReel(r.id)
                     toast(savedReels[r.id] ? 'Quitado de guardados' : 'Guardado', { icon: '🔖' })
@@ -338,7 +349,7 @@ export function ReelsPage() {
                 {canPublish && (
                   <button
                     type="button"
-                    className="vt-reel-btn vt-reel-btn-pub"
+                    className={cn(reelBtn, 'bg-[rgba(34,197,94,0.35)]')}
                     onClick={() => {
                       const highTrust = me.trustScore >= 50
                       if (highTrust) toast.success('Publicación creada')
@@ -371,7 +382,7 @@ export function ReelsPage() {
             <div className="vt-modal-title">Compartir</div>
             <div className="vt-modal-body">
               Lista de contactos registrados (demo):
-              <div className="vt-reel-contacts">
+              <div className="mt-3 flex flex-wrap gap-2.5">
                 {['María', 'Carlos', 'Lucía', 'Pedro'].map((c) => (
                   <button
                     key={c}

@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { RouteSheet } from './routeSheetTypes'
+import {
+  modalFormBody,
+  modalShellNarrow,
+  modalSub,
+  publishRutaList,
+  publishRutaRow,
+  publishRutaTitle,
+} from './formModalStyles'
 
 type Props = {
   open: boolean
@@ -40,26 +48,26 @@ export function PublishRouteSheetsModal({ open, onClose, routeSheets, onConfirm 
 
   return (
     <div className="vt-modal-backdrop" role="dialog" aria-modal="true">
-      <div className="vt-modal vt-modal-narrow">
+      <div className={modalShellNarrow}>
         <div className="vt-modal-title">Publicar en la plataforma</div>
-        <div className="vt-muted vt-agr-modal-sub">
+        <div className={modalSub}>
           Solo aparecen hojas aún no publicadas y vinculadas a un acuerdo. Vinculá desde el detalle del contrato
           si falta alguna.
         </div>
-        <div className="vt-modal-body vt-agr-form-body">
+        <div className={modalFormBody}>
           {candidatas.length === 0 ? (
             <p className="vt-muted">No hay hojas pendientes de publicar.</p>
           ) : (
-            <ul className="vt-publish-ruta-list">
+            <ul className={publishRutaList}>
               {candidatas.map((r) => (
                 <li key={r.id}>
-                  <label className="vt-publish-ruta-row">
+                  <label className={publishRutaRow}>
                     <input
                       type="checkbox"
                       checked={!!selected[r.id]}
                       onChange={() => toggle(r.id)}
                     />
-                    <span className="vt-publish-ruta-title">{r.titulo}</span>
+                    <span className={publishRutaTitle}>{r.titulo}</span>
                     <span className="vt-muted">{r.paradas.length} tramo{r.paradas.length === 1 ? '' : 's'}</span>
                   </label>
                 </li>

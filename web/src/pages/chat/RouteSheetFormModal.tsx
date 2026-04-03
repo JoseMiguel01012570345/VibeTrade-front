@@ -1,6 +1,27 @@
 import { useEffect, useState, type HTMLAttributes } from 'react'
-import clsx from 'clsx'
 import toast from 'react-hot-toast'
+import { cn } from '../../lib/cn'
+import {
+  agrDetailSub,
+  detailsBlock,
+  fieldError,
+  fieldLabel,
+  fieldRootWithInvalid,
+  mapBackdropLayer,
+  modalFormBody,
+  modalShellNarrow,
+  modalShellWide,
+  modalSub,
+  rutaCoordsHint,
+  rutaCoordsRow,
+  rutaMapBtn,
+  rutaTramoCard,
+  rutaTramoGrid,
+  rutaTramoHead,
+  rutaTramoRemoveBtn,
+  rutaTramosBlock,
+  textareaMin,
+} from './formModalStyles'
 import { MapPin, Trash2 } from 'lucide-react'
 import {
   routeSheetLegacyHead,
@@ -50,12 +71,12 @@ function Field({
 }) {
   const errId = inputId ? `${inputId}-err` : undefined
   return (
-    <label className={clsx('vt-agr-field', error && 'vt-agr-field--invalid')}>
-      <span className="vt-agr-field-label">{label}</span>
+    <label className={fieldRootWithInvalid(!!error)}>
+      <span className={fieldLabel}>{label}</span>
       {multiline ? (
         <textarea
           id={inputId}
-          className="vt-input vt-agr-textarea"
+          className={cn('vt-input', textareaMin)}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={rows ?? 2}
@@ -76,7 +97,7 @@ function Field({
         />
       )}
       {error ? (
-        <span id={errId} className="vt-agr-field-error" role="alert">
+        <span id={errId} className={fieldError} role="alert">
           {error}
         </span>
       ) : null}
@@ -286,15 +307,15 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
   return (
     <>
       <div className="vt-modal-backdrop" role="dialog" aria-modal="true">
-        <div className="vt-modal vt-modal-wide vt-agr-modal vt-ruta-form-modal">
+        <div className={modalShellWide}>
           <div className="vt-modal-title">
             {initialRouteSheet ? 'Editar hoja de rutas' : 'Nueva hoja de rutas'}
           </div>
-          <div className="vt-muted vt-agr-modal-sub">
+          <div className={modalSub}>
             Todos los campos son obligatorios. Tiempos estimados y precio del tramo deben ser números (ej. horas o
             monto). Las coordenadas se cargan desde el botón del mapa.
           </div>
-          <div className="vt-modal-body vt-agr-form-body">
+          <div className={modalFormBody}>
             <Field
               label="Título"
               value={titulo}
@@ -312,22 +333,22 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
               inputId="ruta-merc"
             />
 
-            <div className="vt-agr-details vt-ruta-tramos-block">
+            <div className={cn(detailsBlock, rutaTramosBlock)}>
               <strong>Tramos del recorrido</strong>
               {err.paradasGlobal ? (
-                <div className="vt-agr-field-error" role="alert" style={{ marginTop: 8 }}>
+                <div className={cn(fieldError, 'mt-2')} role="alert">
                   {err.paradasGlobal}
                 </div>
               ) : null}
               {tramos.map((p, i) => {
                 const te = err.tramos?.[i]
                 return (
-                  <div key={i} className="vt-ruta-tramo-card">
-                    <div className="vt-ruta-tramo-card-head">
-                      <span className="vt-agr-detail-sub">Tramo {i + 1}</span>
+                  <div key={i} className={rutaTramoCard}>
+                    <div className={rutaTramoHead}>
+                      <span className={agrDetailSub}>Tramo {i + 1}</span>
                       <button
                         type="button"
-                        className="vt-btn vt-btn-ghost vt-btn-sm vt-ruta-tramo-remove"
+                        className={rutaTramoRemoveBtn}
                         disabled={tramos.length <= 1}
                         title={
                           tramos.length <= 1
@@ -340,7 +361,7 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
                         <span>Eliminar tramo</span>
                       </button>
                     </div>
-                    <div className="vt-ruta-tramo-grid">
+                    <div className={rutaTramoGrid}>
                       <Field
                         label="Origen"
                         value={p.origen}
@@ -358,39 +379,39 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
                         inputId={`ruta-tramo-${i}-destino`}
                       />
                     </div>
-                    <div className="vt-ruta-coords-actions">
+                    <div className={rutaCoordsRow}>
                       <button
                         type="button"
-                        className="vt-btn vt-btn-ghost vt-ruta-map-btn"
+                        className={rutaMapBtn}
                         onClick={() => openMapPicker(i, 'origen')}
                       >
                         <MapPin size={14} /> Coordenadas origen (mapa)
                       </button>
                       <button
                         type="button"
-                        className="vt-btn vt-btn-ghost vt-ruta-map-btn"
+                        className={rutaMapBtn}
                         onClick={() => openMapPicker(i, 'destino')}
                       >
                         <MapPin size={14} /> Coordenadas destino (mapa)
                       </button>
                     </div>
                     {te?.coordOrigen ? (
-                      <div className="vt-agr-field-error" role="alert">
+                      <div className={fieldError} role="alert">
                         {te.coordOrigen}
                       </div>
                     ) : null}
                     {(p.origenLat || p.origenLng) ? (
-                      <div className="vt-muted vt-ruta-coords-hint">
+                      <div className={rutaCoordsHint}>
                         Origen: {p.origenLat ?? '—'}, {p.origenLng ?? '—'}
                       </div>
                     ) : null}
                     {te?.coordDestino ? (
-                      <div className="vt-agr-field-error" role="alert">
+                      <div className={fieldError} role="alert">
                         {te.coordDestino}
                       </div>
                     ) : null}
                     {(p.destinoLat || p.destinoLng) ? (
-                      <div className="vt-muted vt-ruta-coords-hint">
+                      <div className={rutaCoordsHint}>
                         Destino: {p.destinoLat ?? '—'}, {p.destinoLng ?? '—'}
                       </div>
                     ) : null}
@@ -420,7 +441,7 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
                       error={te?.tipoVehiculoRequerido}
                       inputId={`ruta-tramo-${i}-veh`}
                     />
-                    <div className="vt-ruta-tramo-grid">
+                    <div className={rutaTramoGrid}>
                       <Field
                         label="Tiempo estimado recogida (horas, número)"
                         value={p.tiempoRecogidaEstimado ?? ''}
@@ -458,7 +479,7 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
                       error={te?.cargaEnTramo}
                       inputId={`ruta-tramo-${i}-carga`}
                     />
-                    <div className="vt-ruta-tramo-grid">
+                    <div className={rutaTramoGrid}>
                       <Field
                         label="Tipo de mercancía (carga)"
                         value={p.tipoMercanciaCarga ?? ''}
@@ -512,22 +533,22 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
 
       {mapPick ? (
         <div
-          className="vt-modal-backdrop vt-ruta-map-layer"
+          className={mapBackdropLayer}
           role="dialog"
           aria-modal="true"
           aria-label="Coordenadas del mapa"
         >
-          <div className="vt-modal vt-modal-narrow">
+          <div className={modalShellNarrow}>
             <div className="vt-modal-title">
               {mapPick.punto === 'origen' ? 'Coordenadas de origen' : 'Coordenadas de destino'} (tramo{' '}
               {mapPick.tramoIndex + 1})
             </div>
-            <div className="vt-muted vt-agr-modal-sub">
+            <div className={modalSub}>
               En producción se abrirá un mapa interactivo. Ingresá latitud y longitud manualmente o desde Maps.
             </div>
-            <div className="vt-modal-body vt-agr-form-body">
-              <label className={clsx('vt-agr-field', mapCoordError && 'vt-agr-field--invalid')}>
-                <span className="vt-agr-field-label">Latitud</span>
+            <div className={modalFormBody}>
+              <label className={fieldRootWithInvalid(!!mapCoordError)}>
+                <span className={fieldLabel}>Latitud</span>
                 <input
                   className="vt-input"
                   value={mapLat}
@@ -539,8 +560,8 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
                   aria-invalid={!!mapCoordError}
                 />
               </label>
-              <label className={clsx('vt-agr-field', mapCoordError && 'vt-agr-field--invalid')}>
-                <span className="vt-agr-field-label">Longitud</span>
+              <label className={fieldRootWithInvalid(!!mapCoordError)}>
+                <span className={fieldLabel}>Longitud</span>
                 <input
                   className="vt-input"
                   value={mapLng}
@@ -553,7 +574,7 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
                 />
               </label>
               {mapCoordError ? (
-                <div className="vt-agr-field-error" role="alert">
+                <div className={fieldError} role="alert">
                   {mapCoordError}
                 </div>
               ) : null}
