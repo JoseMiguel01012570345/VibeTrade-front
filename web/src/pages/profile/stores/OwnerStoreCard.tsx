@@ -9,6 +9,7 @@ import {
   Package,
   Pencil,
   Plus,
+  Save,
   Store,
   Trash2,
   Truck,
@@ -21,9 +22,14 @@ type Props = Readonly<{
   store: StoreBadge;
   catalog: StoreCatalog | undefined;
   joinedLabel: string;
+  /** Vista previa local o imagen guardada */
+  avatarDisplayUrl: string | undefined;
+  storeAvatarDirty: boolean;
   onEditDetails: () => void;
   onRequestDeleteStore: () => void;
   onAvatarFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onSaveStoreAvatar: () => void;
+  onDiscardStoreAvatar: () => void;
   onAddProduct: () => void;
   onEditProduct: (productId: string) => void;
   onRemoveProduct: (productId: string) => void;
@@ -37,9 +43,13 @@ export function OwnerStoreCard({
   store: b,
   catalog: cat,
   joinedLabel: joined,
+  avatarDisplayUrl,
+  storeAvatarDirty,
   onEditDetails,
   onRequestDeleteStore,
   onAvatarFileChange,
+  onSaveStoreAvatar,
+  onDiscardStoreAvatar,
   onAddProduct,
   onEditProduct,
   onRemoveProduct,
@@ -67,9 +77,9 @@ export function OwnerStoreCard({
             className="grid h-12 w-12 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] shadow-sm transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))]"
             title="Tocar para subir foto de la tienda"
           >
-            {b.avatarUrl ? (
+            {avatarDisplayUrl ? (
               <img
-                src={b.avatarUrl}
+                src={avatarDisplayUrl}
                 alt=""
                 className="h-full w-full object-cover"
               />
@@ -110,6 +120,28 @@ export function OwnerStoreCard({
             ) : null}
             <div className="vt-muted mt-1 text-xs">
               {b.categories.join(" · ")}
+            </div>
+            <p className="vt-muted mt-2 max-w-md text-[12px] leading-snug">
+              Elegí una imagen con el avatar y guardala con el botón (vista
+              previa local con URL blob).
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="vt-btn vt-btn-primary vt-btn-sm inline-flex items-center gap-1.5"
+                disabled={!storeAvatarDirty}
+                onClick={onSaveStoreAvatar}
+              >
+                <Save size={14} aria-hidden /> Guardar foto
+              </button>
+              <button
+                type="button"
+                className="vt-btn vt-btn-ghost vt-btn-sm"
+                disabled={!storeAvatarDirty}
+                onClick={onDiscardStoreAvatar}
+              >
+                Descartar
+              </button>
             </div>
           </div>
         </div>

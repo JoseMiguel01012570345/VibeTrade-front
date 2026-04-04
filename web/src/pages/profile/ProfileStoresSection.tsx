@@ -1,8 +1,13 @@
-import { type ChangeEvent, useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import { useMarketStore } from "../../app/store/useMarketStore";
-import type { StoreBadge } from "../../app/store/marketStoreTypes";
 import {
   emptyStoreProductInput,
   emptyStoreServiceInput,
@@ -53,6 +58,21 @@ export function ProfileStoresSection({ ownerUserId }: { ownerUserId: string }) {
     storeId: string;
     serviceId?: string;
   } | null>(null);
+  const [avatarDrafts, setAvatarDrafts] = useState<Record<string, string>>({});
+  const avatarDraftsRef = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    avatarDraftsRef.current = avatarDrafts;
+  }, [avatarDrafts]);
+
+  useEffect(
+    () => () => {
+      for (const url of Object.values(avatarDraftsRef.current)) {
+        revokeIfBlob(url);
+      }
+    },
+    [],
+  );
 
   const editingBadge = editStoreId ? stores[editStoreId] : undefined;
   const editingCat = editStoreId ? storeCatalogs[editStoreId] : undefined;
@@ -73,7 +93,7 @@ export function ProfileStoresSection({ ownerUserId }: { ownerUserId: string }) {
         )
       : undefined;
 
-  function makeAvatarHandler(b: StoreBadge) {
+  function onStoreAvatarPick(storeId: string) {
     return (e: ChangeEvent<HTMLInputElement>) => {
       const input = e.currentTarget;
       const picked = input.files ? Array.from(input.files) : [];
@@ -84,16 +104,48 @@ export function ProfileStoresSection({ ownerUserId }: { ownerUserId: string }) {
         toast.error("Elegí un archivo de imagen.");
         return;
       }
-      const url = URL.createObjectURL(file);
-      const prev = b.avatarUrl;
-      if (updateOwnerStore(b.id, ownerUserId, { avatarUrl: url })) {
-        if (prev) revokeIfBlob(prev);
-        toast.success("Imagen de tienda actualizada");
-      } else {
-        revokeIfBlob(url);
-        toast.error("No se pudo guardar la imagen");
-      }
+      setAvatarDrafts((prev) => {
+        const oldDraft = prev[storeId];
+        if (oldDraft) revokeIfBlob(oldDraft);
+        return { ...prev, [storeId]: URL.createObjectURL(file) };
+      });
+      toast.success("Revisá la imagen y tocá Guardar foto para confirmar.");
     };
+  }
+
+  function saveStoreAvatar(storeId: string) {
+    const draft = avatarDrafts[storeId];
+    if (!draft) return;
+    const badge = stores[storeId];
+    if (!badge) return;
+    const prev = badge.avatarUrl;
+    if (updateOwnerStore(storeId, ownerUserId, { avatarUrl: draft })) {
+      if (prev) revokeIfBlob(prev);
+      setAvatarDrafts((p) => {
+        const next = { ...p };
+        delete next[storeId];
+        return next;
+      });
+      toast.success("Imagen de tienda guardada");
+    } else {
+      revokeIfBlob(draft);
+      setAvatarDrafts((p) => {
+        const next = { ...p };
+        delete next[storeId];
+        return next;
+      });
+      toast.error("No se pudo guardar la imagen");
+    }
+  }
+
+  function discardStoreAvatarDraft(storeId: string) {
+    setAvatarDrafts((p) => {
+      const url = p[storeId];
+      if (url) revokeIfBlob(url);
+      const next = { ...p };
+      delete next[storeId];
+      return next;
+    });
   }
 
   return (
@@ -145,6 +197,8 @@ export function ProfileStoresSection({ ownerUserId }: { ownerUserId: string }) {
                 store={b}
                 catalog={cat}
                 joinedLabel={joined}
+                avatarDisplayUrl={avatarDrafts[b.id] ?? b.avatarUrl}
+                storeAvatarDirty={Boolean(avatarDrafts[b.id])}
                 onEditDetails={() => setEditStoreId(b.id)}
                 onRequestDeleteStore={() => {
                   if (
@@ -152,12 +206,21 @@ export function ProfileStoresSection({ ownerUserId }: { ownerUserId: string }) {
                       "¿Eliminar esta tienda y su catálogo? No se puede deshacer.",
                     )
                   ) {
-                    if (deleteOwnerStore(b.id, ownerUserId))
+                    if (deleteOwnerStore(b.id, ownerUserId)) {
+                      setAvatarDrafts((p) => {
+                        const u = p[b.id];
+                        if (u) revokeIfBlob(u);
+                        const next = { ...p };
+                        delete next[b.id];
+                        return next;
+                      });
                       toast.success("Tienda eliminada");
-                    else toast.error("No se pudo eliminar");
+                    } else toast.error("No se pudo eliminar");
                   }
                 }}
-                onAvatarFileChange={makeAvatarHandler(b)}
+                onAvatarFileChange={onStoreAvatarPick(b.id)}
+                onSaveStoreAvatar={() => saveStoreAvatar(b.id)}
+                onDiscardStoreAvatar={() => discardStoreAvatarDraft(b.id)}
                 onAddProduct={() => setProductCtx({ storeId: b.id })}
                 onEditProduct={(productId) =>
                   setProductCtx({ storeId: b.id, productId })

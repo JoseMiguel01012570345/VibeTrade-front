@@ -44,6 +44,15 @@ function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
 }
 
+function revokeBlobUrlLocal(url: string | null | undefined) {
+  if (!url?.startsWith("blob:")) return;
+  try {
+    URL.revokeObjectURL(url);
+  } catch {
+    /* noop */
+  }
+}
+
 const SOCIAL_META: Record<
   SocialNetworkId,
   { title: string; hint: string; placeholder: string; short: string }
@@ -134,7 +143,20 @@ export function ProfilePage() {
   const [socialDraft, setSocialDraft] = useState("");
   const [nameDraft, setNameDraft] = useState(me.name);
   const [emailDraft, setEmailDraft] = useState(me.email);
+  const [avatarDraftUrl, setAvatarDraftUrl] = useState<string | null>(null);
+  const avatarDraftRef = useRef<string | null>(null);
   const profileAvatarInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    avatarDraftRef.current = avatarDraftUrl;
+  }, [avatarDraftUrl]);
+
+  useEffect(
+    () => () => {
+      revokeBlobUrlLocal(avatarDraftRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     setNameDraft(me.name);
@@ -168,8 +190,26 @@ export function ProfilePage() {
       toast.error("Elegí un archivo de imagen.");
       return;
     }
-    setMeAvatarUrl(URL.createObjectURL(file));
-    toast.success("Foto de perfil actualizada");
+    setAvatarDraftUrl((prev) => {
+      revokeBlobUrlLocal(prev);
+      return URL.createObjectURL(file);
+    });
+    toast.success("Revisá la imagen y tocá Guardar para confirmar.");
+  }
+
+  function saveProfileAvatar() {
+    if (!avatarDraftUrl) return;
+    setMeAvatarUrl(avatarDraftUrl);
+    avatarDraftRef.current = null;
+    setAvatarDraftUrl(null);
+    toast.success("Foto de perfil guardada");
+  }
+
+  function discardProfileAvatarDraft() {
+    setAvatarDraftUrl((prev) => {
+      revokeBlobUrlLocal(prev);
+      return null;
+    });
   }
 
   const letter = (isMe ? me.name : (userId ?? "U")).slice(0, 1).toUpperCase();
@@ -178,6 +218,8 @@ export function ProfilePage() {
   const emailDirty =
     isMe &&
     emailDraft.trim().toLowerCase() !== me.email.trim().toLowerCase();
+  const profileAvatarDirty = isMe && avatarDraftUrl !== null;
+  const profileAvatarDisplayUrl = avatarDraftUrl ?? me.avatarUrl;
 
   function saveDisplayName() {
     const t = nameDraft.trim();
@@ -278,23 +320,43 @@ export function ProfilePage() {
             <div className="vt-divider my-3" />
 
             {isMe ? (
-              <div className="mb-4 flex flex-col items-center gap-2 border-b border-[var(--border)] pb-4 text-center sm:flex-row sm:text-left">
+              <div className="mb-4 flex flex-col items-center gap-3 border-b border-[var(--border)] pb-4 text-center sm:flex-row sm:items-start sm:text-left">
                 <UserAvatarBadge
-                  avatarUrl={me.avatarUrl}
+                  avatarUrl={profileAvatarDisplayUrl}
                   fallbackLetter={letter}
                   sizeClass="h-[88px] w-[88px] shrink-0 text-2xl"
                   title="Cambiar foto de perfil"
                   interactive
                   onPickClick={() => profileAvatarInputRef.current?.click()}
                 />
-                <div className="min-w-0">
-                  <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
-                    <ImageIcon size={14} /> Foto de perfil
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <div>
+                    <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+                      <ImageIcon size={14} /> Foto de perfil
+                    </div>
+                    <p className="vt-muted mt-1 max-w-md text-[13px] leading-snug">
+                      Elegí una imagen desde tu dispositivo y guardala con el
+                      botón (vista previa local con URL blob).
+                    </p>
                   </div>
-                  <p className="vt-muted mt-1 max-w-md text-[13px] leading-snug">
-                    Tocá el avatar para subir una imagen desde tu dispositivo
-                    (demo local con URL blob).
-                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                    <button
+                      type="button"
+                      className="vt-btn vt-btn-primary vt-btn-sm inline-flex items-center gap-1.5"
+                      disabled={!profileAvatarDirty}
+                      onClick={saveProfileAvatar}
+                    >
+                      <Save size={14} aria-hidden /> Guardar foto
+                    </button>
+                    <button
+                      type="button"
+                      className="vt-btn vt-btn-ghost vt-btn-sm"
+                      disabled={!profileAvatarDirty}
+                      onClick={discardProfileAvatarDraft}
+                    >
+                      Descartar
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : null}
