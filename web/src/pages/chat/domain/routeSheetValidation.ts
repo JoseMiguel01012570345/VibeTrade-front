@@ -107,6 +107,7 @@ export type RouteTramoFieldErrors = Partial<{
   responsabilidadEmbalaje: string
   requisitosEspeciales: string
   tipoVehiculoRequerido: string
+  telefonoTransportista: string
 }>
 
 export type RouteSheetFormErrors = {
@@ -236,6 +237,11 @@ export function getRouteSheetFormErrors(p: RouteSheetCreatePayload): RouteSheetF
       const x = requiredText(raw.tipoVehiculoRequerido, PLACE_MIN, PLACE_MAX)
       if (x) mergeTramo(e, i, { tipoVehiculoRequerido: x })
     }
+
+    const tel = norm(raw.telefonoTransportista)
+    if (tel.length > 48) {
+      mergeTramo(e, i, { telefonoTransportista: 'Máximo 48 caracteres' })
+    }
   })
 
   return e
@@ -289,6 +295,7 @@ export function normalizeRouteSheetParadas(paradas: RouteTramoFormInput[]): Rout
       responsabilidadEmbalaje: norm(p.responsabilidadEmbalaje) || undefined,
       requisitosEspeciales: norm(p.requisitosEspeciales) || undefined,
       tipoVehiculoRequerido: norm(p.tipoVehiculoRequerido) || undefined,
+      telefonoTransportista: norm(p.telefonoTransportista) || undefined,
     }))
     .filter((p) => p.origen.length >= PLACE_MIN && p.destino.length >= PLACE_MIN)
 }

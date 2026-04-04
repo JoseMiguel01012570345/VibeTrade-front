@@ -1,8 +1,10 @@
+import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, MessageSquareText, ShoppingCart } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../../app/store/useAppStore'
 import { useMarketStore } from '../../app/store/useMarketStore'
+import { RouteOfferPreview } from './RouteOfferPreview'
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -22,9 +24,40 @@ export function OfferPage() {
   const pushNotification = useAppStore((s) => s.pushNotification)
   const offer = useMarketStore((s) => (offerId ? s.offers[offerId] : undefined))
   const stores = useMarketStore((s) => s.stores)
+  const routeOffer = useMarketStore((s) => (offerId ? s.routeOfferPublic[offerId] : undefined))
+  const subscribeRouteOfferTramo = useMarketStore((s) => s.subscribeRouteOfferTramo)
+  const validateRouteOfferTramo = useMarketStore((s) => s.validateRouteOfferTramo)
   const ask = useMarketStore((s) => s.ask)
   const answer = useMarketStore((s) => s.answer)
   const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer)
+
+  const openTramos = useMemo(
+    () => routeOffer?.tramos.filter((t) => !t.assignment) ?? [],
+    [routeOffer],
+  )
+  const [pickedStopId, setPickedStopId] = useState<string | null>(null)
+  const chosenStopId = pickedStopId ?? openTramos[0]?.stopId ?? ''
+
+  const pendingValidations = useMemo(
+    () => routeOffer?.tramos.filter((t) => t.assignment?.status === 'pending') ?? [],
+    [routeOffer],
+  )
+
+  const carrierConfirmedOnRoute = useMemo(
+    () =>
+      !!routeOffer?.tramos.some(
+        (t) => t.assignment?.userId === me.id && t.assignment.status === 'confirmed',
+      ),
+    [routeOffer, me.id],
+  )
+
+  const carrierPendingOnRoute = useMemo(
+    () =>
+      !!routeOffer?.tramos.some(
+        (t) => t.assignment?.userId === me.id && t.assignment.status === 'pending',
+      ),
+    [routeOffer, me.id],
+  )
 
   if (!offerId || !offer) {
     return (
@@ -87,6 +120,151 @@ export function OfferPage() {
               ))}
             </div>
 
+            {routeOffer ?
+              <>
+                <RouteOfferPreview state={routeOffer} className="mt-1" />
+                {me.role === 'carrier' ?
+                  <div className="mt-3 rounded-[14px] border border-[color-mix(in_oklab,var(--primary)_28%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] p-3.5">
+                    <div className="text-sm font-black tracking-tight">Suscribirme a un tramo</div>
+                    <p className="vt-muted mt-1.5 text-[13px] leading-snug">
+                      Elegí un tramo libre y enviá la solicitud. El vendedor y el comprador deben{' '}
+                      <strong>validar</strong> la suscripción antes de que puedas entrar al chat operativo de la ruta.
+                    </p>
+                    {carrierPendingOnRoute ?
+                      <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_8%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
+                        Tenés una solicitud pendiente de validación. Cuando te acepten, se habilitará el acceso al chat.
+                      </p>
+                    : null}
+                    {carrierConfirmedOnRoute ?
+                      <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,var(--good)_30%,var(--border))] bg-[color-mix(in_oklab,var(--good)_7%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
+                        Suscripción confirmada: ya podés abrir el chat de la operación.
+                      </p>
+                    : null}
+                    {openTramos.length === 0 ?
+                      <p className="mt-2 text-[13px] font-semibold text-[var(--text)]">
+                        Todos los tramos tienen transportista asignado o pendiente.
+                      </p>
+                    : <div className="mt-2 flex flex-col gap-2">
+                        {openTramos.map((t) => (
+                          <label
+                            key={t.stopId}
+                            className="flex cursor-pointer items-start gap-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-2.5"
+                          >
+                            <input
+                              type="radio"
+                              name="tramo-pick"
+                              className="mt-1"
+                              checked={chosenStopId === t.stopId}
+                              onChange={() => setPickedStopId(t.stopId)}
+                            />
+                            <span className="text-[13px] leading-snug">
+                              <strong>Tramo {t.orden}</strong>: {t.origenLine} → {t.destinoLine}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    }
+                    <div className="mt-3 flex flex-col gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="vt-btn vt-btn-primary"
+                          disabled={!chosenStopId || openTramos.length === 0}
+                          onClick={() => {
+                            if (!offerId || !chosenStopId) return
+                            const ok = subscribeRouteOfferTramo(offerId, chosenStopId, {
+                              userId: me.id,
+                              displayName: me.name,
+                              phone: me.phone,
+                              trustScore: me.trustScore,
+                            })
+                            if (ok) {
+                              toast.success('Solicitud enviada. Pendiente de validación del vendedor o comprador.')
+                              setPickedStopId(null)
+                            } else {
+                              toast.error('No se pudo suscribir a ese tramo.')
+                            }
+                          }}
+                        >
+                          Enviar solicitud de suscripción
+                        </button>
+                        <button
+                          type="button"
+                          className="vt-btn"
+                          disabled={!carrierConfirmedOnRoute}
+                          title={
+                            carrierConfirmedOnRoute ?
+                              'Abrir el chat de la operación'
+                            : 'Disponible cuando una de tus suscripciones a esta ruta esté validada'
+                          }
+                          onClick={() => {
+                            if (!carrierConfirmedOnRoute) {
+                              toast.error('El chat se habilita cuando el vendedor o el comprador aceptan tu suscripción.')
+                              return
+                            }
+                            const threadId = ensureThreadForOffer(offer.id, { buyerId: me.id })
+                            nav(`/chat/${threadId}`)
+                          }}
+                        >
+                          Ir al chat de la operación
+                        </button>
+                      </div>
+                      {!carrierConfirmedOnRoute ?
+                        <p className="text-[12px] leading-snug text-[var(--muted)]">
+                          El botón de chat permanece deshabilitado hasta que tu tramo quede <strong>validado</strong>.
+                        </p>
+                      : null}
+                    </div>
+                  </div>
+                : null}
+                {pendingValidations.length > 0 ?
+                  <div className="mt-3 rounded-[14px] border border-[color-mix(in_oklab,var(--border)_90%,transparent)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] p-3.5">
+                    <div className="text-sm font-black">Validación vendedor / comprador (demo)</div>
+                    <p className="vt-muted mt-1 text-[12px] leading-snug">
+                      En producción solo el vendedor del chat y el comprador podrían aceptar o rechazar. Aquí podés
+                      simular la decisión para ver el flujo completo.
+                    </p>
+                    <ul className="m-0 mt-2 list-none space-y-2 p-0">
+                      {pendingValidations.map((t) => (
+                        <li
+                          key={t.stopId}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] px-2.5 py-2"
+                        >
+                          <span className="text-[13px]">
+                            Tramo {t.orden}: {t.assignment?.displayName}
+                          </span>
+                          <span className="flex gap-1.5">
+                            <button
+                              type="button"
+                              className="vt-btn vt-btn-primary px-2.5 py-1.5 text-xs"
+                              onClick={() => {
+                                if (!offerId) return
+                                validateRouteOfferTramo(offerId, t.stopId, true)
+                                toast.success('Suscripción validada.')
+                              }}
+                            >
+                              Aceptar
+                            </button>
+                            <button
+                              type="button"
+                              className="vt-btn px-2.5 py-1.5 text-xs"
+                              onClick={() => {
+                                if (!offerId) return
+                                validateRouteOfferTramo(offerId, t.stopId, false)
+                                toast('Solicitud rechazada')
+                              }}
+                            >
+                              Rechazar
+                            </button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                : null}
+              </>
+            : null}
+
             <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
               <button
                 className="vt-btn"
@@ -114,7 +292,17 @@ export function OfferPage() {
               </button>
               <button
                 className="vt-btn vt-btn-primary"
+                disabled={me.role === 'carrier' && !!routeOffer}
+                title={
+                  me.role === 'carrier' && routeOffer ?
+                    'Como transportista: suscribite a un tramo y esperá la validación para usar el chat de la ruta.'
+                  : undefined
+                }
                 onClick={() => {
+                  if (me.role === 'carrier' && routeOffer) {
+                    toast.error('Usá la suscripción al tramo; el chat se habilita tras la validación.')
+                    return
+                  }
                   const threadId = ensureThreadForOffer(offer.id, {
                     buyerId: me.id,
                   })

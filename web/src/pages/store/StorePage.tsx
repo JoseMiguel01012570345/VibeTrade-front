@@ -18,6 +18,7 @@ import { cn } from '../../lib/cn'
 import { useMarketStore } from '../../app/store/useMarketStore'
 import type { StoreBadge } from '../../app/store/marketStoreTypes'
 import type { StoreCatalog, StoreProduct, StoreService } from '../chat/domain/storeCatalogTypes'
+import { reelsForStore } from '../reels/reelsDemoData'
 
 type StoreScreen = 'hub' | 'catalog' | 'products' | 'services' | 'feed' | 'reels'
 
@@ -337,7 +338,8 @@ export function StorePage() {
   const storeOffers = offerIds.map((id) => offers[id]).filter((o) => o && o.storeId === storeId)
 
   const publishedProducts = (catalog?.products ?? []).filter((p) => p.published)
-  const catalogServices = catalog?.services ?? []
+  const publishedServices = (catalog?.services ?? []).filter((s) => s.published !== false)
+  const storeReels = reelsForStore(storeId)
 
   const joinedLabel = catalog
     ? new Intl.DateTimeFormat('es', { day: 'numeric', month: 'long', year: 'numeric' }).format(catalog.joinedAt)
@@ -435,7 +437,7 @@ export function StorePage() {
       <div>
         <div className="font-black tracking-[-0.02em]">Servicios</div>
         <div className="vt-muted mt-1 text-[12px] leading-snug">
-          {catalogServices.length} en catálogo
+          {publishedServices.length} publicado{publishedServices.length === 1 ? '' : 's'} en vitrina
         </div>
       </div>
     </button>
@@ -479,7 +481,11 @@ export function StorePage() {
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">Contenido audiovisual</div>
         <div className="font-black tracking-[-0.02em]">Reels</div>
-        <div className="vt-muted mt-0.5 text-[12px]">Videos cortos del negocio</div>
+        <div className="vt-muted mt-0.5 text-[12px]">
+          {storeReels.length
+            ? `${storeReels.length} reel${storeReels.length === 1 ? '' : 's'} · abrí para ver en pantalla completa`
+            : 'Videos cortos del negocio'}
+        </div>
       </div>
       <ChevronRight size={20} className="shrink-0 text-[var(--muted)]" aria-hidden />
     </button>
@@ -511,6 +517,7 @@ export function StorePage() {
 
         {screen === 'hub' ? (
           <>
+            <StoreIdentityBlock store={store} catalog={catalog} joinedLabel={joinedLabel} />
             <div className="vt-card vt-card-pad">
               <div className="mb-2 flex items-center gap-2">
                 <LayoutGrid size={18} className="text-[var(--muted)]" aria-hidden />
@@ -520,6 +527,120 @@ export function StorePage() {
                 {hubStoreTile}
               </div>
             </div>
+
+            <div className="vt-card vt-card-pad flex flex-col gap-4">
+              <div>
+                <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">Vitrina pública</div>
+                <p className="vt-muted mt-1 max-w-[720px] text-[13px] leading-snug">
+                  Productos y servicios publicados, y reels de la tienda — la misma información que en la vista previa del
+                  dueño, sin opciones de edición.
+                </p>
+              </div>
+
+              {publishedProducts.length > 0 ? (
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Productos</span>
+                    <button type="button" className="vt-btn vt-btn-ghost vt-btn-sm" onClick={() => setScreen('products')}>
+                      Ver todos
+                    </button>
+                  </div>
+                  <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {publishedProducts.slice(0, 14).map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setScreen('products')}
+                        className="flex w-[148px] shrink-0 snap-start flex-col overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--surface)] text-left transition-colors hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))]"
+                      >
+                        <div className="relative h-[88px] bg-[color-mix(in_oklab,var(--bg)_75%,var(--surface))]">
+                          {p.photoUrls[0] ? (
+                            <img src={p.photoUrls[0]} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                          ) : (
+                            <div className="grid h-full place-items-center text-[var(--muted)]">
+                              <Package size={22} aria-hidden />
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-2">
+                          <div className="line-clamp-2 text-[12px] font-bold leading-snug">{p.name}</div>
+                          <div className="vt-muted mt-0.5 truncate text-[11px] font-semibold">{p.price}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {publishedServices.length > 0 ? (
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Servicios</span>
+                    <button type="button" className="vt-btn vt-btn-ghost vt-btn-sm" onClick={() => setScreen('services')}>
+                      Ver todos
+                    </button>
+                  </div>
+                  <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {publishedServices.slice(0, 14).map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setScreen('services')}
+                        className="min-w-[min(100%,200px)] shrink-0 snap-start rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-3 py-2 text-left transition-colors hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))]"
+                      >
+                        <div className="flex items-start gap-2">
+                          <Wrench size={16} className="mt-0.5 shrink-0 text-[var(--muted)]" aria-hidden />
+                          <span className="min-w-0">
+                            <span className="block text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+                              {s.category}
+                            </span>
+                            <span className="mt-0.5 block text-[13px] font-bold leading-snug">{s.tipoServicio}</span>
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {storeReels.length > 0 ? (
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Reels</span>
+                    <Link to={`/reels?store=${encodeURIComponent(storeId)}`} className="vt-btn vt-btn-ghost vt-btn-sm no-underline">
+                      Pantalla completa
+                    </Link>
+                  </div>
+                  <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {storeReels.map((r) => (
+                      <Link
+                        key={r.id}
+                        to={`/reels?store=${encodeURIComponent(storeId)}&reel=${encodeURIComponent(r.id)}`}
+                        className="group relative h-[124px] w-[88px] shrink-0 snap-start overflow-hidden rounded-[12px] border border-[var(--border)] no-underline"
+                      >
+                        <img src={r.cover} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-[1.03]" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[rgba(2,6,23,0.85)] via-transparent to-transparent" />
+                        <div className="absolute bottom-1.5 left-1.5 right-1.5 z-[1]">
+                          <div className="line-clamp-2 text-[10px] font-extrabold leading-tight text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
+                            {r.title}
+                          </div>
+                        </div>
+                        <span className="absolute right-1 top-1 z-[1] grid h-7 w-7 place-items-center rounded-full border border-white/30 bg-[rgba(2,6,23,0.45)] text-white backdrop-blur-[6px]">
+                          <Film size={14} aria-hidden />
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {publishedProducts.length === 0 && publishedServices.length === 0 && storeReels.length === 0 ? (
+                <p className="vt-muted rounded-xl border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-3 text-[13px] leading-snug">
+                  Esta tienda aún no tiene contenido publicado en vitrina.
+                </p>
+              ) : null}
+            </div>
+
             <div className="vt-card vt-card-pad flex flex-col gap-2.5">
               {feedSectionEntry}
               {reelsSectionEntry}
@@ -533,7 +654,7 @@ export function StorePage() {
             <div className="vt-card vt-card-pad">
               <div className="vt-h2">Catálogo de la tienda</div>
               <p className="vt-muted mt-1.5 text-[13px] leading-snug">
-                Elegí productos (fichas publicadas en vitrina) o servicios del catálogo.
+                Elegí productos (fichas publicadas en vitrina) o servicios publicados en vitrina.
               </p>
               <div className="vt-divider my-3" />
               <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[560px]:flex-nowrap min-[560px]:overflow-visible">
@@ -568,17 +689,17 @@ export function StorePage() {
         {screen === 'services' ? (
           <div className="vt-card vt-card-pad">
             <div className="vt-h2">Todos los servicios</div>
-            <p className="vt-muted mt-1.5 text-[13px] leading-snug">Fichas de servicio configuradas por el negocio.</p>
+            <p className="vt-muted mt-1.5 text-[13px] leading-snug">Solo se listan servicios publicados en la vitrina.</p>
             <div className="vt-divider my-3" />
-            {catalogServices.length ? (
+            {publishedServices.length ? (
               <div className="flex flex-col gap-3">
-                {catalogServices.map((s) => (
+                {publishedServices.map((s) => (
                   <ServiceDetailCard key={s.id} s={s} />
                 ))}
               </div>
             ) : (
               <p className="vt-muted rounded-xl border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-3 text-[13px] leading-snug">
-                Esta tienda aún no cargó servicios en el catálogo.
+                No hay servicios publicados en la vitrina.
               </p>
             )}
           </div>
@@ -619,13 +740,44 @@ export function StorePage() {
         {screen === 'reels' ? (
           <div className="vt-card vt-card-pad">
             <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">Contenido audiovisual</div>
-            <div className="vt-h2">Reels y contenido corto</div>
+            <div className="vt-h2">Reels de {store.name}</div>
             <p className="vt-muted mt-1.5 text-[13px] leading-snug">
-              Contenido vertical vinculado a esta tienda, aparte del catálogo y del feed de ofertas.
+              Mismo contenido que en la vista de reels filtrada por tienda; tocá una tarjeta para abrirlo vertical a pantalla completa.
             </p>
-            <div className="vt-muted mt-3 rounded-xl border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-3 text-[13px] leading-snug">
-              Próximamente: reels y publicaciones en formato vertical vinculadas a esta tienda.
-            </div>
+            <div className="vt-divider my-3" />
+            {storeReels.length ? (
+              <div className="grid grid-cols-2 gap-3 min-[520px]:grid-cols-3 min-[900px]:grid-cols-4">
+                {storeReels.map((r) => (
+                  <Link
+                    key={r.id}
+                    to={`/reels?store=${encodeURIComponent(storeId)}&reel=${encodeURIComponent(r.id)}`}
+                    className="group overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] no-underline"
+                  >
+                    <div className="relative aspect-[9/14] bg-[color-mix(in_oklab,var(--bg)_65%,var(--surface))]">
+                      <img
+                        src={r.cover}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-[1.03]"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[rgba(2,6,23,0.82)] via-transparent to-transparent" />
+                      <span className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full border border-white/25 bg-[rgba(2,6,23,0.4)] text-white backdrop-blur-[8px]">
+                        <Film size={16} aria-hidden />
+                      </span>
+                      <div className="absolute bottom-2 left-2 right-2 z-[1]">
+                        <div className="line-clamp-2 text-[12px] font-extrabold leading-tight text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.55)]">
+                          {r.title}
+                        </div>
+                        <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-white/85">{r.category}</div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="vt-muted rounded-xl border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-3 text-[13px] leading-snug">
+                Esta tienda aún no tiene reels en la demo.
+              </p>
+            )}
           </div>
         ) : null}
       </div>

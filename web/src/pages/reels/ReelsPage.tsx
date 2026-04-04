@@ -1,71 +1,18 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Bookmark, MessageCircle, Send, ThumbsUp, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../../app/store/useAppStore'
 import { cn } from '../../lib/cn'
 import { ReelCommentsPanel, type ReelComment } from './ReelCommentsPanel'
-
-type Reel = {
-  id: string
-  title: string
-  category: string
-  by: string
-  cover: string
-}
-
-const DEMO_REELS: Reel[] = [
-  {
-    id: 'r1',
-    title: 'Cosecha: Malanga premium',
-    category: 'Mercancías',
-    by: 'AgroNorte SRL',
-    cover:
-      'https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'r2',
-    title: 'Flete 5 Ton - disponibilidad hoy',
-    category: 'Transportista',
-    by: 'Flete Rápido',
-    cover:
-      'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'r3',
-    title: 'Cadena fría: exportación hortícola',
-    category: 'Logística',
-    by: 'Logística Sur',
-    cover:
-      'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'r4',
-    title: 'Granos a granel — origen Rosario',
-    category: 'Mercancías',
-    by: 'AgroNorte SRL',
-    cover:
-      'https://images.unsplash.com/photo-1574943320219-553eb213f72d?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'r5',
-    title: 'Semi-remolque disponible Bs.As. → NEA',
-    category: 'Transportista',
-    by: 'Logística Sur',
-    cover:
-      'https://images.unsplash.com/photo-1519003722824-cd2daa86a310?auto=format&fit=crop&w=1200&q=80',
-  },
-]
+import {
+  DEMO_REELS,
+  INITIAL_COMMENTS,
+  INITIAL_REEL_LIKE_COUNTS,
+} from './reelsDemoData'
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`
-}
-
-const INITIAL_REEL_LIKE_COUNTS: Record<string, number> = {
-  r1: 128,
-  r2: 42,
-  r3: 89,
-  r4: 203,
-  r5: 17,
 }
 
 type ReelLikeBundle = { liked: Record<string, boolean>; counts: Record<string, number> }
@@ -86,61 +33,14 @@ function reelLikeReducer(
   }
 }
 
-const INITIAL_COMMENTS: Record<string, ReelComment[]> = {
-  r1: [
-    {
-      id: 'rc_demo_1',
-      parentId: null,
-      authorName: 'María',
-      text: '¿Sigue disponible la misma cosecha?',
-      at: Date.now() - 3_600_000,
-      ratingsByUser: { u_maria: 0.1, u_demo_a: 0.2, u_demo_b: 0.15 },
-    },
-    {
-      id: 'rc_demo_2',
-      parentId: 'rc_demo_1',
-      authorName: 'AgroNorte SRL',
-      text: 'Sí, tenemos stock para esta semana.',
-      at: Date.now() - 1_800_000,
-      ratingsByUser: { u_store: 0.8, u_demo_a: 0.65, u_demo_c: 0.72 },
-    },
-  ],
-  r2: [],
-  r3: [
-    {
-      id: 'rc_demo_r3_1',
-      parentId: null,
-      authorName: 'Lucas',
-      text: '¿Cubren documentación Aduana?',
-      at: Date.now() - 7200_000,
-      ratingsByUser: { u_lucas: 0.1, u_demo_d: 0.2 },
-    },
-  ],
-  r4: [],
-  r5: [
-    {
-      id: 'rc_demo_r5_1',
-      parentId: null,
-      authorName: 'Ana',
-      text: 'Precio por km aproximado?',
-      at: Date.now() - 5400_000,
-      ratingsByUser: { u_ana: 0.15 },
-    },
-    {
-      id: 'rc_demo_r5_2',
-      parentId: 'rc_demo_r5_1',
-      authorName: 'Logística Sur',
-      text: 'Te escribimos al DM con tarifario.',
-      at: Date.now() - 3600_000,
-      ratingsByUser: { u_store: 0.75 },
-    },
-  ],
-}
-
 const reelBtn =
   'grid h-[46px] w-[46px] shrink-0 cursor-pointer place-items-center rounded-2xl border border-white/25 bg-[rgba(2,6,23,0.4)] text-white [&_svg]:h-5 [&_svg]:w-5'
 
 export function ReelsPage() {
+  const [searchParams] = useSearchParams()
+  const storeFilter = searchParams.get('store')
+  const reelFocusId = searchParams.get('reel')
+
   const me = useAppStore((s) => s.me)
   const savedReels = useAppStore((s) => s.savedReels)
   const toggleSavedReel = useAppStore((s) => s.toggleSavedReel)
@@ -157,9 +57,28 @@ export function ReelsPage() {
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const isAnimatingRef = useRef(false)
 
-  const reels = useMemo(() => DEMO_REELS, [])
+  const reels = useMemo(() => {
+    if (storeFilter) return DEMO_REELS.filter((r) => r.storeId === storeFilter)
+    return DEMO_REELS
+  }, [storeFilter])
+
+  useEffect(() => {
+    if (!reels.length) {
+      setIdx(0)
+      return
+    }
+    if (reelFocusId) {
+      const i = reels.findIndex((r) => r.id === reelFocusId)
+      if (i >= 0) {
+        setIdx(i)
+        return
+      }
+    }
+    setIdx(0)
+  }, [storeFilter, reelFocusId, reels])
+
   const canPublish = me.role === 'seller' || me.role === 'carrier'
-  const currentReel = reels[idx]
+  const currentReel = reels.length ? reels[Math.min(idx, reels.length - 1)] : undefined
 
   function addComment(text: string, parentId: string | null) {
     if (!currentReel) return

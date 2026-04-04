@@ -1,6 +1,8 @@
 import type { StoreBadge } from '../../../app/store/useMarketStore'
 
-export type ChatParticipantRole = 'buyer' | 'seller'
+import type { ThreadChatCarrier } from '../../../app/store/marketStoreTypes'
+
+export type ChatParticipantRole = 'buyer' | 'seller' | 'carrier'
 
 export type ChatParticipant = {
   id: string
@@ -10,14 +12,17 @@ export type ChatParticipant = {
   trustScore: number
   verified?: boolean
   avatarUrl?: string
+  phone?: string
+  detail?: string
 }
 
-/** Integrantes del hilo: comprador y vendedor (negocio). */
+/** Integrantes del hilo: comprador, vendedor (perfil: `ownerUserId` de la tienda si existe, si no `store.id`) y transportistas. */
 export function buildChatParticipants(
   buyer: { id: string; name: string; trustScore: number; avatarUrl?: string },
   seller: StoreBadge,
+  carriers?: ThreadChatCarrier[],
 ): ChatParticipant[] {
-  return [
+  const out: ChatParticipant[] = [
     {
       id: buyer.id,
       name: buyer.name,
@@ -27,7 +32,7 @@ export function buildChatParticipants(
       avatarUrl: buyer.avatarUrl,
     },
     {
-      id: seller.id,
+      id: seller.ownerUserId ?? seller.id,
       name: seller.name,
       role: 'seller',
       roleLabel: 'Vendedor',
@@ -36,4 +41,18 @@ export function buildChatParticipants(
       avatarUrl: seller.avatarUrl,
     },
   ]
+  if (carriers?.length) {
+    for (const c of carriers) {
+      out.push({
+        id: c.id,
+        name: c.name,
+        role: 'carrier',
+        roleLabel: 'Transportista',
+        trustScore: c.trustScore,
+        phone: c.phone,
+        detail: `${c.tramoLabel} · ${c.vehicleLabel}`,
+      })
+    }
+  }
+  return out
 }

@@ -45,6 +45,8 @@ export type StoreProduct = {
 export type StoreService = {
   id: string
   storeId: string
+  /** Si es `false`, la ficha no aparece en la vitrina pública de la tienda. Si falta, se trata como publicada. */
+  published?: boolean
   category: string
   tipoServicio: string
   descripcion: string

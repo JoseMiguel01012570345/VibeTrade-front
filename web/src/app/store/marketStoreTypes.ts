@@ -68,6 +68,57 @@ export type ReplyQuote = {
   preview: string
 }
 
+/** Transportistas asociados a la hoja de ruta en un hilo (demo / multicargo). */
+export type ThreadChatCarrier = {
+  id: string
+  name: string
+  phone: string
+  trustScore: number
+  vehicleLabel: string
+  tramoLabel: string
+}
+
+/** Transportista asignado o pendiente de validación en un tramo de una oferta de ruta publicada. */
+export type RouteOfferTramoAssignment = {
+  status: 'pending' | 'confirmed'
+  userId: string
+  displayName: string
+  phone: string
+  trustScore: number
+  vehicleLabel?: string
+}
+
+export type RouteOfferTramoPublic = {
+  stopId: string
+  orden: number
+  origenLine: string
+  destinoLine: string
+  /** Campos de la hoja publicada visibles al transportista antes de suscribirse. */
+  cargaEnTramo?: string
+  tipoMercanciaCarga?: string
+  tipoMercanciaDescarga?: string
+  tipoVehiculoRequerido?: string
+  tiempoRecogidaEstimado?: string
+  tiempoEntregaEstimado?: string
+  precioTransportista?: string
+  notas?: string
+  requisitosEspeciales?: string
+  assignment?: RouteOfferTramoAssignment
+}
+
+/** Vista pública de una hoja de ruta ofrecida a transportistas (feed + ficha de oferta). */
+export type RouteOfferPublicState = {
+  threadId: string
+  routeSheetId: string
+  routeTitle: string
+  mercanciasResumen?: string
+  /** Notas generales de la hoja (mismo texto que en el acuerdo / rail). */
+  notasGenerales?: string
+  /** Estado de la hoja (`programada`, etc.). */
+  hojaEstado?: string
+  tramos: RouteOfferTramoPublic[]
+}
+
 export type Message =
   | {
       id: string
@@ -159,6 +210,9 @@ export type Thread = {
   prematureExitUnderInvestigation?: boolean
   paymentCompleted?: boolean
   chatActionsLocked?: boolean
+  /** Comprador mostrado en integrantes cuando el hilo es vista logística (p. ej. demo cooperativa). */
+  demoBuyer?: { id: string; name: string; trustScore: number; avatarUrl?: string }
+  chatCarriers?: ThreadChatCarrier[]
 }
 
 export function threadHasAcceptedAgreement(th: Thread): boolean {
@@ -176,6 +230,8 @@ export type MarketState = {
   /** Catálogo de tienda (productos/servicios de ficha) por id de negocio — flow-ui perfil & acuerdos. */
   storeCatalogs: Record<string, StoreCatalog>
   threads: Record<string, Thread>
+  /** Ofertas de ruta publicada: tramos, suscripciones y validación (demo). */
+  routeOfferPublic: Record<string, RouteOfferPublicState>
 
   ask: (offerId: string, askedBy: { id: string; name: string; trustScore: number }, question: string) => string
   answer: (offerId: string, qaId: string, answer: string) => void
@@ -226,6 +282,15 @@ export type MarketState = {
   /** Quita el hilo del estado local (lista del comprador / demo). */
   removeThreadFromList: (threadId: string) => void
   markThreadPaymentCompleted: (threadId: string) => void
+
+  subscribeRouteOfferTramo: (
+    offerId: string,
+    stopId: string,
+    carrier: { userId: string; displayName: string; phone: string; trustScore: number },
+    vehicleLabel?: string,
+  ) => boolean
+  /** Vendedor/comprador del hilo: acepta o rechaza la suscripción pendiente al tramo. */
+  validateRouteOfferTramo: (offerId: string, stopId: string, accept: boolean) => boolean
 
   /** Tiendas creadas por el usuario (vendedor) — flow-ui perfil. */
   createOwnerStore: (ownerUserId: string, values: OwnerStoreFormValues) => string | null

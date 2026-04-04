@@ -57,12 +57,14 @@ export function ChatPage() {
   const updateRouteSheet = useMarketStore((s) => s.updateRouteSheet);
   const toggleRouteStop = useMarketStore((s) => s.toggleRouteStop);
   /** Una sola suscripción: evita referenciar `thread` antes de inicializarlo si el catálogo depende del hilo. */
-  const { thread, sellerCatalog } = useMarketStore(
+  const { thread, sellerCatalog, routeOfferForThisThread } = useMarketStore(
     useShallow((s) => {
       const th = threadId ? s.threads[threadId] : undefined;
+      const ro = th ? s.routeOfferPublic[th.offerId] : undefined;
       return {
         thread: th,
         sellerCatalog: th ? (s.storeCatalogs[th.storeId] ?? null) : null,
+        routeOfferForThisThread: ro,
       };
     }),
   );
@@ -330,8 +332,48 @@ export function ChatPage() {
     );
   }
 
+  const carrierBlockedFromRouteChat =
+    me.role === "carrier" &&
+    routeOfferForThisThread &&
+    routeOfferForThisThread.threadId === thread.id &&
+    !routeOfferForThisThread.tramos.some(
+      (t) => t.assignment?.userId === me.id && t.assignment.status === "confirmed",
+    );
+
+  if (carrierBlockedFromRouteChat) {
+    return (
+      <div className="container vt-page">
+        <div className="vt-card vt-card-pad max-w-lg">
+          <div className="text-lg font-black tracking-tight">Chat no disponible aún</div>
+          <p className="vt-muted mt-2 text-[13px] leading-snug">
+            Como transportista, el acceso al chat de esta operación se habilita cuando el vendedor o el comprador
+            aceptan tu suscripción a un tramo de la hoja de ruta publicada.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" className="vt-btn" onClick={() => nav(-1)}>
+              Volver
+            </button>
+            <button
+              type="button"
+              className="vt-btn vt-btn-primary"
+              onClick={() => nav(`/offer/${thread.offerId}`)}
+            >
+              Ir a la oferta de ruta
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const store = thread.store;
   const chatActionsLocked = thread.chatActionsLocked === true;
+  const buyerForRail = thread.demoBuyer ?? {
+    id: me.id,
+    name: me.name,
+    trustScore: me.trustScore,
+    avatarUrl: me.avatarUrl,
+  };
 
   function toggleSelectRow(e: MouseEvent, id: string) {
     if (chatActionsLocked) return;
@@ -587,14 +629,10 @@ export function ChatPage() {
             routeSheets={thread.routeSheets ?? []}
             actionsLocked={chatActionsLocked}
             storeName={store.name}
-            buyerName={me.name}
-            buyer={{
-              id: me.id,
-              name: me.name,
-              trustScore: me.trustScore,
-              avatarUrl: me.avatarUrl,
-            }}
+            buyerName={buyerForRail.name}
+            buyer={buyerForRail}
             seller={store}
+            chatCarriers={thread.chatCarriers}
             participantsFocusEpoch={participantsEpoch}
             focusRouteId={focusRouteId}
             onConsumedRouteFocus={() => setFocusRouteId(null)}
@@ -610,12 +648,6 @@ export function ChatPage() {
               setRailOpen(true);
             }}
             onEditRouteSheet={(sheet) => {
-              if (sheet.publicadaPlataforma) {
-                toast.error(
-                  "No se puede editar una hoja de ruta ya publicada en la plataforma.",
-                );
-                return;
-              }
               setRouteSheetBeingEdited(sheet);
               setShowRouteSheetForm(true);
               setRailOpen(true);

@@ -21,6 +21,8 @@ import {
 import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
 import { type SocialNetworkId, useAppStore } from "../../app/store/useAppStore";
+import { useMarketStore } from "../../app/store/useMarketStore";
+import { DEMO_SELLER_AGRONORTE_USER_ID } from "../../app/store/marketStoreSeed";
 import { onBackdropPointerClose } from "../chat/lib/modalClose";
 import {
   fieldLabel,
@@ -29,13 +31,16 @@ import {
   modalSub,
 } from "../chat/styles/formModalStyles";
 import { ProfileStoresSection } from "./ProfileStoresSection";
+import { REEL_TITLES_BY_ID } from "../reels/reelsDemoData";
 
-const REEL_TITLES: Record<string, string> = {
-  r1: "Cosecha: Malanga premium",
-  r2: "Flete 5 Ton - disponibilidad hoy",
-  r3: "Cadena fría: exportación hortícola",
-  r4: "Granos a granel — origen Rosario",
-  r5: "Semi-remolque disponible Bs.As. → NEA",
+const REEL_TITLES = REEL_TITLES_BY_ID;
+
+/** Nombres para mostrar en perfiles demo (ids de participantes del chat). */
+const DEMO_PROFILE_NAMES: Record<string, string> = {
+  u_demo_carrier_maria: "María Benedetti",
+  u_demo_buyer_laura: "Laura Méndez",
+  [DEMO_SELLER_AGRONORTE_USER_ID]: "AgroNorte SRL",
+  me: "Jhosef",
 };
 
 function isValidEmail(value: string): boolean {
@@ -130,6 +135,7 @@ export function ProfilePage() {
   const { userId } = useParams();
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
+  const stores = useMarketStore((s) => s.stores);
   const profileSocialLinks = useAppStore((s) => s.profileSocialLinks);
   const setMeAvatarUrl = useAppStore((s) => s.setMeAvatarUrl);
   const setMeName = useAppStore((s) => s.setMeName);
@@ -138,6 +144,15 @@ export function ProfilePage() {
   const saved = useAppStore((s) => s.savedReels);
 
   const isMe = userId === "me" || userId === me.id;
+  const resolvedProfileUserId = isMe ? me.id : (userId ?? me.id);
+
+  const storesForProfile = useMemo(() => {
+    return Object.values(stores).filter((b) => b.ownerUserId === resolvedProfileUserId);
+  }, [stores, resolvedProfileUserId]);
+
+  const profileDisplayName =
+    isMe ? me.name : (DEMO_PROFILE_NAMES[resolvedProfileUserId] ?? `Usuario ${resolvedProfileUserId}`);
+
   const [tab, setTab] = useState<"account" | "reels" | "stores">("account");
   const [socialModal, setSocialModal] = useState<SocialNetworkId | null>(null);
   const [socialDraft, setSocialDraft] = useState("");
@@ -167,8 +182,8 @@ export function ProfilePage() {
   }, [me.email]);
 
   useEffect(() => {
-    if (me.role !== "seller" && tab === "stores") setTab("account");
-  }, [me.role, tab]);
+    if (tab === "stores" && storesForProfile.length === 0) setTab("account");
+  }, [tab, storesForProfile.length]);
 
   const savedIds = useMemo(
     () => Object.keys(saved).filter((id) => saved[id]),
@@ -272,7 +287,9 @@ export function ProfilePage() {
             >
               <ArrowLeft size={20} />
             </button>
-            <h1 className="text-lg font-black tracking-[-0.03em]">Perfil</h1>
+            <h1 className="text-lg font-black tracking-[-0.03em]">
+              {isMe ? "Perfil" : `Perfil · ${profileDisplayName}`}
+            </h1>
           </div>
         </div>
 
@@ -288,18 +305,20 @@ export function ProfilePage() {
           >
             Cuenta
           </button>
-          <button
-            type="button"
-            className={cn(
-              "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black",
-              tab === "reels" &&
-                "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
-            )}
-            onClick={() => setTab("reels")}
-          >
-            Mis Reels
-          </button>
-          {isMe && me.role === "seller" ? (
+          {isMe ?
+            <button
+              type="button"
+              className={cn(
+                "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black",
+                tab === "reels" &&
+                  "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
+              )}
+              onClick={() => setTab("reels")}
+            >
+              Mis Reels
+            </button>
+          : null}
+          {storesForProfile.length > 0 ?
             <button
               type="button"
               className={cn(
@@ -311,7 +330,7 @@ export function ProfilePage() {
             >
               Tiendas
             </button>
-          ) : null}
+          : null}
         </div>
 
         {tab === "account" && (
@@ -389,7 +408,7 @@ export function ProfilePage() {
                 ) : (
                   <input
                     className="vt-input"
-                    value={`Usuario ${userId}`}
+                    value={profileDisplayName}
                     disabled
                     readOnly
                   />
@@ -527,9 +546,9 @@ export function ProfilePage() {
           </div>
         )}
 
-        {tab === "stores" && isMe && me.role === "seller" ? (
-          <ProfileStoresSection ownerUserId={me.id} />
-        ) : null}
+        {tab === "stores" && storesForProfile.length > 0 ?
+          <ProfileStoresSection ownerUserId={resolvedProfileUserId} canEdit={isMe} />
+        : null}
 
         {tab === "reels" && (
           <div className="vt-card vt-card-pad">

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { FileText, Megaphone, Route, Users } from 'lucide-react'
-import type { StoreBadge } from '../../../../app/store/useMarketStore'
+import type { StoreBadge, ThreadChatCarrier } from '../../../../app/store/useMarketStore'
 import { useMarketStore } from '../../../../app/store/useMarketStore'
 import { cn } from '../../../../lib/cn'
 import type { TradeAgreement } from '../../domain/tradeAgreementTypes'
@@ -38,6 +38,7 @@ type Props = {
   toggleRouteStop: (threadId: string, routeSheetId: string, stopId: string) => void
   /** Acuerdos `pending_buyer` o `rejected` emitidos por la tienda (no aceptados). */
   onEditPendingAgreement?: (agreement: TradeAgreement) => void
+  chatCarriers?: ThreadChatCarrier[]
 }
 
 export function ChatRightRail({
@@ -56,6 +57,7 @@ export function ChatRightRail({
   onEditRouteSheet,
   toggleRouteStop,
   onEditPendingAgreement,
+  chatCarriers,
 }: Props) {
   const publishRouteSheetsToPlatform = useMarketStore((s) => s.publishRouteSheetsToPlatform)
   const linkAgreementToRouteSheet = useMarketStore((s) => s.linkAgreementToRouteSheet)
@@ -81,7 +83,10 @@ export function ChatRightRail({
     setSelRouteId(null)
   }, [participantsFocusEpoch])
 
-  const participants = useMemo(() => buildChatParticipants(buyer, seller), [buyer, seller])
+  const participants = useMemo(
+    () => buildChatParticipants(buyer, seller, chatCarriers),
+    [buyer, seller, chatCarriers],
+  )
 
   const hasAcceptedContract = useMemo(() => contracts.some((c) => c.status === 'accepted'), [contracts])
 

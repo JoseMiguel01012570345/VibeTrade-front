@@ -36,6 +36,8 @@ export type RouteStop = {
   requisitosEspeciales?: string
   /** Por tramo: tipo de vehículo requerido */
   tipoVehiculoRequerido?: string
+  /** Teléfono del transportista asignado al tramo (p. ej. tras suscripción y aceptación). */
+  telefonoTransportista?: string
   completada?: boolean
   /**
    * Legado: datos antiguos con una sola «parada» / lugar.
@@ -90,6 +92,8 @@ export function defaultRouteSheetDraft(): Omit<
 export type RouteTramoFormInput = {
   origen: string
   destino: string
+  /** Contacto del transportista elegido para este tramo. */
+  telefonoTransportista?: string
   origenLat?: string
   origenLng?: string
   destinoLat?: string
@@ -157,6 +161,7 @@ export function routeStopsToFormInputs(
     responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() || L.responsabilidadEmbalaje?.trim() || '',
     requisitosEspeciales: p.requisitosEspeciales?.trim() || L.requisitosEspeciales?.trim() || '',
     tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || L.tipoVehiculoRequerido?.trim() || '',
+    telefonoTransportista: p.telefonoTransportista?.trim() || '',
   }))
 }
 

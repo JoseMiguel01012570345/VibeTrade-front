@@ -83,7 +83,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     name: 'Jhosef',
     email: 'demo@vibetrade.app',
     phone: '+54 11 5555-5555',
-    role: 'seller',
+    role: 'carrier',
     trustScore: 72,
   },
   profileSocialLinks: {},

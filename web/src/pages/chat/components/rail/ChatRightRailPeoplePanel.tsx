@@ -10,7 +10,9 @@ type Props = {
 export function ChatRightRailPeoplePanel({ bodyClassName, participants }: Props) {
   return (
     <div className={bodyClassName}>
-      <p className="vt-muted mb-3 px-1 py-3 text-[13px]">Comprador y vendedor con acceso a este hilo.</p>
+      <p className="vt-muted mb-3 px-1 py-3 text-[13px]">
+        Comprador, vendedor y, si aplica, transportistas con acceso a este hilo.
+      </p>
       <ul className="m-0 flex list-none flex-col gap-2 p-0">
         {participants.map((p) => (
           <li key={`${p.role}-${p.id}`}>
@@ -33,6 +35,11 @@ export function ChatRightRailPeoplePanel({ bodyClassName, participants }: Props)
                 <div className="text-sm font-extrabold leading-tight">{p.name}</div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[11px] text-[var(--muted)]">
                   <span className="font-bold">{p.roleLabel}</span>
+                  {p.phone ? (
+                    <span className="max-w-[140px] truncate font-mono text-[10px]" title={p.phone}>
+                      {p.phone}
+                    </span>
+                  ) : null}
                   {p.verified ? (
                     <span className="inline-flex text-[var(--primary)]" title="Verificado">
                       <ShieldCheck size={12} aria-hidden />
@@ -45,6 +52,9 @@ export function ChatRightRailPeoplePanel({ bodyClassName, participants }: Props)
                     {p.trustScore}
                   </span>
                 </div>
+                {p.detail ? (
+                  <div className="mt-1 text-[10px] leading-snug text-[var(--muted)]">{p.detail}</div>
+                ) : null}
               </div>
               <ChevronRight
                 size={16}

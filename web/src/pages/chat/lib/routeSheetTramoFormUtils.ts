@@ -18,6 +18,7 @@ export function emptyTramo(): RouteTramoFormInput {
     responsabilidadEmbalaje: '',
     requisitosEspeciales: '',
     tipoVehiculoRequerido: '',
+    telefonoTransportista: '',
   }
 }
 
@@ -40,5 +41,6 @@ export function cloneTramoFromPrevious(prev: RouteTramoFormInput): RouteTramoFor
     responsabilidadEmbalaje: prev.responsabilidadEmbalaje ?? '',
     requisitosEspeciales: prev.requisitosEspeciales ?? '',
     tipoVehiculoRequerido: prev.tipoVehiculoRequerido ?? '',
+    telefonoTransportista: prev.telefonoTransportista ?? '',
   }
 }

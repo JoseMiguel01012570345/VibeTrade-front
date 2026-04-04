@@ -23,6 +23,7 @@ import {
   threadIsActionLocked,
   uid,
 } from './marketStoreHelpers'
+import { cooperativeRouteDemoThread, getInitialRouteOfferPublic } from './cooperativeRouteDemoThread'
 import { demoOffers, demoStoreCatalogs, demoStores } from './marketStoreSeed'
 
 function isOwnerOfStore(stores: Record<string, StoreBadge>, storeId: string, ownerUserId: string): boolean {
@@ -38,7 +39,8 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
     offers,
     offerIds: demoOffers.map((o) => o.id),
     storeCatalogs: demoStoreCatalogs,
-    threads: {},
+    threads: { [cooperativeRouteDemoThread.id]: cooperativeRouteDemoThread },
+    routeOfferPublic: getInitialRouteOfferPublic(),
 
     ask: (offerId, askedBy, question) => {
       const qaId = uid('qa')
@@ -351,6 +353,129 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
       })
     },
 
+    subscribeRouteOfferTramo: (offerId, stopId, carrier, vehicleLabel) => {
+      let ok = false
+      set((s) => {
+        const ro = s.routeOfferPublic[offerId]
+        if (!ro) return s
+        const ti = ro.tramos.findIndex((t) => t.stopId === stopId)
+        if (ti < 0) return s
+        const tr = ro.tramos[ti]
+        if (tr.assignment?.status === 'confirmed' || tr.assignment?.status === 'pending') return s
+        const nextTramos = ro.tramos.map((t, i) =>
+          i === ti ?
+            {
+              ...t,
+              assignment: {
+                status: 'pending' as const,
+                userId: carrier.userId,
+                displayName: carrier.displayName,
+                phone: carrier.phone,
+                trustScore: carrier.trustScore,
+                ...(vehicleLabel?.trim() ? { vehicleLabel: vehicleLabel.trim() } : {}),
+              },
+            }
+          : t,
+        )
+        const th = s.threads[ro.threadId]
+        const sys: Message = {
+          id: uid('m'),
+          from: 'system',
+          type: 'text',
+          text: `${carrier.displayName} solicitó el tramo ${tr.orden} (${tr.origenLine} → ${tr.destinoLine}). Pendiente de validación del vendedor o comprador.`,
+          at: Date.now(),
+        }
+        ok = true
+        return {
+          ...s,
+          routeOfferPublic: { ...s.routeOfferPublic, [offerId]: { ...ro, tramos: nextTramos } },
+          threads:
+            th ?
+              { ...s.threads, [ro.threadId]: { ...th, messages: [...th.messages, sys] } }
+            : s.threads,
+        }
+      })
+      return ok
+    },
+
+    validateRouteOfferTramo: (offerId, stopId, accept) => {
+      let ok = false
+      set((s) => {
+        const ro = s.routeOfferPublic[offerId]
+        if (!ro) return s
+        const ti = ro.tramos.findIndex((t) => t.stopId === stopId)
+        if (ti < 0) return s
+        const tr = ro.tramos[ti]
+        const asg = tr.assignment
+        if (!asg || asg.status !== 'pending') return s
+        const nextTramos = ro.tramos.map((t, i) => {
+          if (i !== ti) return t
+          if (!accept) return { ...t, assignment: undefined }
+          return { ...t, assignment: { ...asg, status: 'confirmed' as const } }
+        })
+        const th0 = s.threads[ro.threadId]
+        let threads = s.threads
+        if (accept && th0?.routeSheets) {
+          const rsI = th0.routeSheets.findIndex((r) => r.id === ro.routeSheetId)
+          if (rsI >= 0) {
+            const rs = th0.routeSheets[rsI]
+            const paradas = rs.paradas.map((p) =>
+              p.id === stopId ? { ...p, telefonoTransportista: asg.phone } : p,
+            )
+            const newRs = { ...rs, paradas, actualizadoEn: Date.now() }
+            const routeSheets = [...th0.routeSheets]
+            routeSheets[rsI] = newRs
+            let chatCarriers = [...(th0.chatCarriers ?? [])]
+            if (!chatCarriers.some((c) => c.id === asg.userId)) {
+              chatCarriers.push({
+                id: asg.userId,
+                name: asg.displayName,
+                phone: asg.phone,
+                trustScore: asg.trustScore,
+                vehicleLabel: asg.vehicleLabel?.trim() || 'No indicada en la suscripción',
+                tramoLabel: `Tramo ${tr.orden} (${tr.origenLine} → ${tr.destinoLine})`,
+              })
+            }
+            const sysOk: Message = {
+              id: uid('m'),
+              from: 'system',
+              type: 'text',
+              text: `Suscripción validada: ${asg.displayName} queda asignado al tramo ${tr.orden}.`,
+              at: Date.now(),
+            }
+            threads = {
+              ...s.threads,
+              [ro.threadId]: {
+                ...th0,
+                routeSheets,
+                chatCarriers,
+                messages: [...th0.messages, sysOk],
+              },
+            }
+          }
+        } else if (!accept && th0) {
+          const sysNo: Message = {
+            id: uid('m'),
+            from: 'system',
+            type: 'text',
+            text: `Suscripción rechazada para el tramo ${tr.orden} (${asg.displayName}). El tramo vuelve a estar libre.`,
+            at: Date.now(),
+          }
+          threads = {
+            ...s.threads,
+            [ro.threadId]: { ...th0, messages: [...th0.messages, sysNo] },
+          }
+        }
+        ok = true
+        return {
+          ...s,
+          routeOfferPublic: { ...s.routeOfferPublic, [offerId]: { ...ro, tramos: nextTramos } },
+          threads,
+        }
+      })
+      return ok
+    },
+
     createRouteSheet: (threadId, payload) => {
       const th0 = get().threads[threadId]
       if (threadIsActionLocked(th0)) return null
@@ -380,6 +505,7 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
           responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() || undefined,
           requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
           tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || undefined,
+          telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
           completada: false,
         }))
       const rid = uid('ruta')
@@ -441,6 +567,7 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
           responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() || undefined,
           requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
           tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || undefined,
+          telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
           completada: false as boolean | undefined,
         }))
       let ok = false
@@ -450,7 +577,6 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
         const idx = th.routeSheets.findIndex((rs) => rs.id === routeSheetId)
         if (idx < 0) return s
         const existing = th.routeSheets[idx]
-        if (existing.publicadaPlataforma) return s
         const paradas: RouteStop[] = built.map((p, i) => ({
           ...p,
           id: existing.paradas[i]?.id ?? p.id,

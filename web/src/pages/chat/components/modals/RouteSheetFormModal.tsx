@@ -342,6 +342,14 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
                       error={te?.tipoVehiculoRequerido}
                       inputId={`ruta-tramo-${i}-veh`}
                     />
+                    <Field
+                      label="Teléfono del transportista asignado (este tramo)"
+                      value={p.telefonoTransportista ?? ''}
+                      onChange={(v) => updateTramo(i, { telefonoTransportista: v })}
+                      placeholder="Ej. +54 9 11 1234-5678"
+                      error={te?.telefonoTransportista}
+                      inputId={`ruta-tramo-${i}-tel`}
+                    />
                     <div className={rutaTramoGrid}>
                       <Field
                         label="Tiempo estimado recogida (horas, número)"

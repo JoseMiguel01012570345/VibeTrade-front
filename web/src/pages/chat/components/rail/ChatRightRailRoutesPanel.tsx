@@ -64,21 +64,15 @@ export function ChatRightRailRoutesPanel({
             <button
               type="button"
               className="vt-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
-              disabled={actionsLocked || !!selRoute.publicadaPlataforma}
+              disabled={actionsLocked}
               title={
                 actionsLocked
                   ? 'No disponible hasta registrar el pago'
                   : selRoute.publicadaPlataforma
-                    ? 'No se puede editar una hoja ya publicada'
+                    ? 'Editar hoja (también publicada: p. ej. contacto por tramo)'
                     : 'Editar hoja de ruta'
               }
-              onClick={() => {
-                if (selRoute.publicadaPlataforma) {
-                  toast.error('No se puede editar una hoja de ruta ya publicada en la plataforma.')
-                  return
-                }
-                onEditRouteSheet(selRoute)
-              }}
+              onClick={() => onEditRouteSheet(selRoute)}
             >
               <Pencil size={14} aria-hidden /> Editar
             </button>
@@ -197,6 +191,12 @@ export function ChatRightRailRoutesPanel({
                   </div>
                 ) : null}
                 {p.notas ? <div className="mt-1 text-xs text-[var(--muted)]">{p.notas}</div> : null}
+                {p.telefonoTransportista ? (
+                  <div className="mt-1 text-xs font-semibold text-[var(--text)]">
+                    <span className="text-[var(--muted)]">Contacto tramo: </span>
+                    {p.telefonoTransportista}
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

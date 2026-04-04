@@ -1,7 +1,30 @@
 import type { StoreCatalog, StoreProduct, StoreService } from '../../pages/chat/domain/storeCatalogTypes'
 import type { Offer, StoreBadge } from './marketStoreTypes'
 
+/** Usuario demo dueño de la tienda AgroNorte (vendedor en hilos de compra). */
+export const DEMO_SELLER_AGRONORTE_USER_ID = 'u_demo_seller_agronorte'
+
 export const demoStores: Record<string, StoreBadge> = {
+  /** Tienda de Jhosef: oferta servicios de transporte en catálogo (demo). */
+  s_jhosef: {
+    id: 's_jhosef',
+    name: 'Transportes Jhosef',
+    verified: false,
+    categories: ['Transportista', 'Carga general'],
+    transportIncluded: true,
+    trustScore: 72,
+    ownerUserId: 'me',
+  },
+  /** Otro transportista: tienda mock para el segundo conductor en la ruta demo. */
+  s_benedetti: {
+    id: 's_benedetti',
+    name: 'Benedetti Logística',
+    verified: false,
+    categories: ['Transportista', 'Larga distancia'],
+    transportIncluded: true,
+    trustScore: 74,
+    ownerUserId: 'u_demo_carrier_maria',
+  },
   s1: {
     id: 's1',
     name: 'AgroNorte SRL',
@@ -9,6 +32,7 @@ export const demoStores: Record<string, StoreBadge> = {
     categories: ['Mercancías', 'Cosechas'],
     transportIncluded: false,
     trustScore: 88,
+    ownerUserId: DEMO_SELLER_AGRONORTE_USER_ID,
   },
   s2: {
     id: 's2',
@@ -29,6 +53,17 @@ export const demoStores: Record<string, StoreBadge> = {
 }
 
 export const demoOffers: Offer[] = [
+  {
+    id: 'o_demo_malanga_ruta',
+    storeId: 's1',
+    title: 'Hoja de ruta publicada: malanga 1T · Posadas → Rosario (2 tramos)',
+    price: 'Suscripción transportista',
+    location: 'NEA → Litoral (demo)',
+    tags: ['Hoja de ruta', 'Para transportistas', 'demo-ruta-publica', 'A→B→C'],
+    imageUrl:
+      'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1200&q=80',
+    qa: [],
+  },
   {
     id: 'o1',
     storeId: 's1',
@@ -123,6 +158,56 @@ export const demoOffers: Offer[] = [
   },
 ]
 
+const fleteTransportService: StoreService = {
+  id: 's_jhosef-svc-flete',
+  storeId: 's_jhosef',
+  category: 'Transporte',
+  tipoServicio: 'Flete mercancía general y raíces (NEA, Litoral, Rosario)',
+  descripcion:
+    'Unidades con baranda y semirremolque para pallets y granel apilado. Coordinación de dos tramos con relevo.',
+  riesgos: {
+    enabled: true,
+    items: ['Demoras por climas extremos en ruta.', 'Espera en frontera de depósito mayor a 4 h sin aviso.'],
+  },
+  incluye: 'Conductor habilitado, comunicación durante el viaje, remito en demo.',
+  noIncluye: 'Custodia nocturna en destino sin contrato aparte.',
+  dependencias: { enabled: false, items: [] },
+  entregables: 'Acuse y fotos de descarga (demo).',
+  garantias: { enabled: false, texto: '' },
+  propIntelectual: 'Sin transferencia de know-how; servicio puntual de transporte.',
+  customFields: [
+    {
+      title: 'Dotación',
+      body: 'Flota propia: Scania R450 u homologado 12–16 t según disponibilidad.',
+    },
+  ],
+}
+
+const benedettiFleteService: StoreService = {
+  id: 's_benedetti-svc-flete',
+  storeId: 's_benedetti',
+  category: 'Transporte',
+  tipoServicio: 'Flete semirremolque Cuyo / Litoral / Rosario',
+  descripcion:
+    'Unidades Mercedes Actros y similares. Enfoque en segundo tramo y relevos en hub intermedio.',
+  riesgos: {
+    enabled: true,
+    items: ['Restricciones viales por lluvia.', 'Demoras en fiscalización en ruta.'],
+  },
+  incluye: 'Conductor, peajes básicos cotizados, contacto con despachante en demo.',
+  noIncluye: 'Almacenaje nocturno en destino.',
+  dependencias: { enabled: false, items: [] },
+  entregables: 'Remito digital.',
+  garantias: { enabled: false, texto: '' },
+  propIntelectual: 'N/A',
+  customFields: [
+    {
+      title: 'Flota',
+      body: 'Semis 14–16 t, furgones y baranda.',
+    },
+  ],
+}
+
 const agroProducts: StoreProduct[] = [
   {
     id: 's1-prod-malanga',
@@ -211,6 +296,19 @@ const agroServices: StoreService[] = [
 ]
 
 export const demoStoreCatalogs: Record<string, StoreCatalog> = {
+  s_jhosef: {
+    pitch:
+      'Servicios de flete de Jhosef: cargas generales, malanga y pallets en NEA–Litoral hasta Rosario. Una tienda, catálogo de transporte.',
+    joinedAt: Date.now() - 1000 * 60 * 60 * 24 * 200,
+    products: [],
+    services: [fleteTransportService],
+  },
+  s_benedetti: {
+    pitch: 'Benedetti Logística: larga distancia y segunda patas en corredores húmedos.',
+    joinedAt: Date.now() - 1000 * 60 * 60 * 24 * 310,
+    products: [],
+    services: [benedettiFleteService],
+  },
   s1: {
     pitch:
       'Insumos y cosechas con foco B2B: granos, hortalizas de raíz y acompañamiento en trazabilidad de lote.',

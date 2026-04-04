@@ -88,7 +88,7 @@ export function ChatMessageList({
           >
             {!system && (
               <Link
-                to={`/profile/${mine ? me.id : store.id}`}
+                to={`/profile/${mine ? me.id : store.ownerUserId ?? store.id}`}
                 className={cn(
                   'relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-white/35 bg-gradient-to-br from-[var(--primary)] to-[#7c3aed] font-black text-white',
                   mine ? 'col-start-2 justify-self-end' : 'col-start-1',

@@ -14,12 +14,20 @@ import {
 } from "../chat/domain/storeCatalogTypes";
 import { SUGGESTED_CATEGORIES } from "./stores/constants";
 import { OwnerStoreCard } from "./stores/OwnerStoreCard";
+import { VisitorStoreSummaryCard } from "./stores/VisitorStoreSummaryCard";
 import { ProductEditorModal } from "./stores/ProductEditorModal";
 import { ServiceEditorModal } from "./stores/ServiceEditorModal";
 import { StoreFormModal } from "./stores/StoreFormModal";
 import { ownerStoreToFormValues, revokeIfBlob } from "./stores/helpers";
 
-export function ProfileStoresSection({ ownerUserId }: { ownerUserId: string }) {
+export function ProfileStoresSection({
+  ownerUserId,
+  canEdit = true,
+}: {
+  ownerUserId: string
+  /** Si es false, solo enlaces a la tienda pública (perfil de otro usuario). */
+  canEdit?: boolean
+}) {
   const stores = useMarketStore((s) => s.stores);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
   const createOwnerStore = useMarketStore((s) => s.createOwnerStore);
@@ -146,6 +154,36 @@ export function ProfileStoresSection({ ownerUserId }: { ownerUserId: string }) {
       delete next[storeId];
       return next;
     });
+  }
+
+  if (!canEdit) {
+    return (
+      <div className="vt-card vt-card-pad">
+        <div className="vt-h2">Tiendas</div>
+        <p className="vt-muted mt-1.5 max-w-[640px] text-[13px] leading-snug">
+          Tiendas públicas de este usuario: podés abrir cada una para ver catálogo, publicaciones y reels como cualquier
+          visitante.
+        </p>
+        <div className="vt-divider my-3" />
+        {myStores.length === 0 ?
+          <p className="vt-muted text-[13px]">Este usuario no tiene tiendas vinculadas en la demo.</p>
+        : <div className="flex flex-col gap-3">
+            {myStores.map((b) => {
+              const cat = storeCatalogs[b.id];
+              const joined = cat
+                ? new Intl.DateTimeFormat("es", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  }).format(cat.joinedAt)
+                : "—";
+              return (
+                <VisitorStoreSummaryCard key={b.id} store={b} catalog={cat} joinedLabel={joined} />
+              );
+            })}
+          </div>}
+      </div>
+    );
   }
 
   return (
