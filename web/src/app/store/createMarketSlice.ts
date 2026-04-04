@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand'
 import type { TradeAgreement } from '../../pages/chat/domain/tradeAgreementTypes'
-import { emptyServiceBlock, normalizeMerchandiseLine } from '../../pages/chat/domain/tradeAgreementTypes'
+import { normalizeMerchandiseLine } from '../../pages/chat/domain/tradeAgreementTypes'
 import { hasValidationErrors, validateTradeAgreementDraft } from '../../pages/chat/domain/tradeAgreementValidation'
 import {
   getRouteSheetFormErrors,
@@ -163,7 +163,7 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
           merchandise: draft.includeMerchandise
             ? draft.merchandise.map((l) => normalizeMerchandiseLine(l))
             : [],
-          service: draft.includeService ? draft.service : emptyServiceBlock(),
+          services: draft.includeService ? draft.services : [],
           routeSheetId: undefined,
         }
         const msg: Message = {
@@ -189,6 +189,66 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
         }
       })
       return aid
+    },
+
+    updatePendingTradeAgreement: (threadId, agreementId, draft) => {
+      if (hasValidationErrors(validateTradeAgreementDraft(draft))) return false
+      if (threadIsActionLocked(get().threads[threadId])) return false
+      const title = draft.title.trim()
+      if (!title) return false
+      let applied = false
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th || threadIsActionLocked(th)) return s
+        const list = th.contracts ?? []
+        const idx = list.findIndex((c) => c.id === agreementId)
+        if (idx < 0) return s
+        const ag = list[idx]
+        if (ag.status !== 'pending_buyer' && ag.status !== 'rejected') return s
+        if (ag.issuedByStoreId !== th.storeId) return s
+        applied = true
+        const wasRejected = ag.status === 'rejected'
+        const nextContracts = [...list]
+        nextContracts[idx] = {
+          ...ag,
+          title,
+          includeMerchandise: draft.includeMerchandise,
+          includeService: draft.includeService,
+          merchandise: draft.includeMerchandise
+            ? draft.merchandise.map((l) => normalizeMerchandiseLine(l))
+            : [],
+          services: draft.includeService ? draft.services : [],
+          service: undefined,
+          status: 'pending_buyer',
+          respondedAt: undefined,
+        }
+        const nextMessages = th.messages.map((m) =>
+          m.type === 'agreement' && m.agreementId === agreementId ? { ...m, title } : m,
+        )
+        const sysText = wasRejected
+          ? `El vendedor revisó el acuerdo «${title}» tras el rechazo; volvió a quedar pendiente de respuesta del comprador.`
+          : `El vendedor actualizó el acuerdo «${title}» (sigue pendiente de respuesta del comprador).`
+        const sys: Message = {
+          id: uid('m'),
+          from: 'system',
+          type: 'text',
+          text: sysText,
+          at: Date.now(),
+        }
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...th,
+              contracts: nextContracts,
+              messages: [...nextMessages, sys],
+              routeSheets: th.routeSheets ?? [],
+            },
+          },
+        }
+      })
+      return applied
     },
 
     respondTradeAgreement: (threadId, agreementId, response) => {

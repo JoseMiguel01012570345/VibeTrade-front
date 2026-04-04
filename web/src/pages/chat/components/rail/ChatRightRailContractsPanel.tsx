@@ -27,6 +27,7 @@ type Props = {
   threadId: string
   linkAgreementToRouteSheet: (threadId: string, agreementId: string, routeSheetId: string) => boolean
   openRouteFromContract: (routeId: string) => void
+  onEditPendingAgreement?: (agreement: TradeAgreement) => void
 }
 
 export function ChatRightRailContractsPanel({
@@ -44,6 +45,7 @@ export function ChatRightRailContractsPanel({
   threadId,
   linkAgreementToRouteSheet,
   openRouteFromContract,
+  onEditPendingAgreement,
 }: Props) {
   return (
     <div className={bodyClassName}>
@@ -68,6 +70,32 @@ export function ChatRightRailContractsPanel({
           >
             ← Volver
           </button>
+          {agreementForDetail.status === 'accepted' ? (
+            <p className="mb-2.5 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_92%,transparent)] px-2.5 py-2 text-[12px] leading-snug text-[var(--muted)]">
+              Este acuerdo fue <strong className="text-[var(--text)]">aceptado por las partes</strong>; su texto ya
+              no puede modificarse. Si hace falta otro entendimiento, emití un <strong>nuevo</strong> acuerdo desde el
+              chat.
+            </p>
+          ) : null}
+          {(agreementForDetail.status === 'pending_buyer' || agreementForDetail.status === 'rejected') &&
+          !actionsLocked &&
+          agreementForDetail.issuerLabel === storeName &&
+          onEditPendingAgreement ? (
+            <div className="mb-2.5">
+              <button
+                type="button"
+                className="vt-btn vt-btn-sm"
+                onClick={() => onEditPendingAgreement(agreementForDetail)}
+              >
+                Editar acuerdo
+              </button>
+              <p className="vt-muted mt-1.5 text-[11px] leading-snug">
+                {agreementForDetail.status === 'rejected'
+                  ? 'Tras guardar, el acuerdo volverá a quedar pendiente para que el comprador lo acepte o rechace.'
+                  : 'Podés corregir el texto mientras el comprador no lo haya aceptado.'}
+              </p>
+            </div>
+          ) : null}
           <AgreementDetailView
             a={agreementForDetail}
             routeSheets={routeSheets}

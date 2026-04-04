@@ -36,6 +36,8 @@ type Props = {
   onOpenNewRouteSheet: () => void
   onEditRouteSheet: (sheet: RouteSheet) => void
   toggleRouteStop: (threadId: string, routeSheetId: string, stopId: string) => void
+  /** Acuerdos `pending_buyer` o `rejected` emitidos por la tienda (no aceptados). */
+  onEditPendingAgreement?: (agreement: TradeAgreement) => void
 }
 
 export function ChatRightRail({
@@ -53,6 +55,7 @@ export function ChatRightRail({
   onOpenNewRouteSheet,
   onEditRouteSheet,
   toggleRouteStop,
+  onEditPendingAgreement,
 }: Props) {
   const publishRouteSheetsToPlatform = useMarketStore((s) => s.publishRouteSheetsToPlatform)
   const linkAgreementToRouteSheet = useMarketStore((s) => s.linkAgreementToRouteSheet)
@@ -230,6 +233,7 @@ export function ChatRightRail({
             threadId={threadId}
             linkAgreementToRouteSheet={linkAgreementToRouteSheet}
             openRouteFromContract={openRouteFromContract}
+            onEditPendingAgreement={onEditPendingAgreement}
           />
         )}
 

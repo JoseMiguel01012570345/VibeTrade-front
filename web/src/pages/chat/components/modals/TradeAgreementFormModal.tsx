@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { cn } from '../../../../lib/cn'
+import { onBackdropPointerClose } from '../../lib/modalClose'
 import {
   checkRow,
   detailsBlock,
   fieldError,
-  lineGrid,
   modalFormBody,
   modalShellWide,
   modalSub,
@@ -14,19 +14,30 @@ import {
 import { MerchandiseLineEditor } from './MerchandiseLineEditor'
 import { ModalFormField as Field } from './ModalFormField'
 import type { MerchandiseLine, TradeAgreementDraft } from '../../domain/tradeAgreementTypes'
-import { defaultAgreementDraft, emptyMerchandiseLine } from '../../domain/tradeAgreementTypes'
+import {
+  defaultAgreementDraft,
+  emptyMerchandiseLine,
+  emptyServiceItem,
+} from '../../domain/tradeAgreementTypes'
 import type { TradeAgreementFormErrors } from '../../domain/tradeAgreementValidation'
 import {
   hasValidationErrors,
   validateTradeAgreementDraft,
   validationErrorCount,
 } from '../../domain/tradeAgreementValidation'
+import { ServiceConfigWizard } from './serviceConfig/ServiceConfigWizard'
+import { ServiceItemPreview } from './serviceConfig/ServiceItemPreview'
+import { serviceItemSummaryLine } from './serviceConfig/serviceItemFormat'
 
 type Props = {
   open: boolean
   onClose: () => void
-  onSubmit: (draft: TradeAgreementDraft) => void
+  /** Devolvé `true` si el guardado/emisión fue exitoso (se cierra el modal). */
+  onSubmit: (draft: TradeAgreementDraft) => boolean
   storeName: string
+  /** Modo edición: borrador desde acuerdo `pending_buyer` o `rejected` (al guardar, vuelve a pendiente). */
+  initialDraft?: TradeAgreementDraft | null
+  editingAgreementId?: string | null
 }
 
 export function TradeAgreementFormModal({
@@ -34,21 +45,31 @@ export function TradeAgreementFormModal({
   onClose,
   onSubmit,
   storeName,
+  initialDraft = null,
+  editingAgreementId = null,
 }: Props) {
   const [draft, setDraft] = useState<TradeAgreementDraft>(() => defaultAgreementDraft())
   const [errors, setErrors] = useState<TradeAgreementFormErrors>({})
+  const [configOpen, setConfigOpen] = useState(false)
+  const [configId, setConfigId] = useState<string | null>(null)
+  const isEdit = !!editingAgreementId
 
   useEffect(() => {
     if (open) {
-      setDraft(defaultAgreementDraft())
+      setDraft(
+        initialDraft
+          ? (JSON.parse(JSON.stringify(initialDraft)) as TradeAgreementDraft)
+          : defaultAgreementDraft(),
+      )
       setErrors({})
+      setConfigOpen(false)
+      setConfigId(null)
     }
-  }, [open])
+  }, [open, initialDraft, editingAgreementId])
 
   if (!open) return null
 
-  const sv = draft.service
-  const se = errors.service
+  const configItem = configId ? draft.services.find((s) => s.id === configId) : undefined
 
   function setMerchLine(i: number, line: MerchandiseLine) {
     setDraft((d) => {
@@ -69,6 +90,26 @@ export function TradeAgreementFormModal({
     }))
   }
 
+  function addService() {
+    const item = emptyServiceItem()
+    setDraft((d) => ({ ...d, services: [...d.services, item] }))
+    setConfigId(item.id)
+    setConfigOpen(true)
+  }
+
+  function removeService(id: string) {
+    setDraft((d) => ({ ...d, services: d.services.filter((s) => s.id !== id) }))
+    if (configId === id) {
+      setConfigId(null)
+      setConfigOpen(false)
+    }
+  }
+
+  function openConfig(id: string) {
+    setConfigId(id)
+    setConfigOpen(true)
+  }
+
   function trySubmit() {
     const e = validateTradeAgreementDraft(draft)
     setErrors(e)
@@ -77,17 +118,32 @@ export function TradeAgreementFormModal({
       toast.error(`Revisá el formulario (${n} error${n === 1 ? '' : 'es'})`)
       return
     }
-    onSubmit(draft)
-    onClose()
+    if (onSubmit(draft)) onClose()
   }
 
   return (
-    <div className="vt-modal-backdrop" role="dialog" aria-modal="true">
+    <div
+      className="vt-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => onBackdropPointerClose(e, onClose)}
+    >
       <div className={modalShellWide}>
-        <div className="vt-modal-title">Emitir acuerdo de compra</div>
+        <div className="vt-modal-title">
+          {isEdit ? 'Editar acuerdo enviado' : 'Emitir acuerdo de compra'}
+        </div>
         <div className={modalSub}>
-          Emitido por <b>{storeName}</b>. El comprador podrá aceptar o rechazar. Todos los
-          campos obligatorios deben completarse según el tipo de dato.
+          {isEdit ? (
+            <>
+              Podés guardar si el acuerdo está <b>pendiente</b> o fue <b>rechazado</b> (en ese caso volverá a
+              quedar pendiente para el comprador). Si ya fue <b>aceptado</b>, no se puede modificar.
+            </>
+          ) : (
+            <>
+              Emitido por <b>{storeName}</b>. El comprador podrá aceptar o rechazar. Todos los campos
+              obligatorios deben completarse según el tipo de dato.
+            </>
+          )}
         </div>
 
         <div className={modalFormBody}>
@@ -139,23 +195,23 @@ export function TradeAgreementFormModal({
 
           <details open={draft.includeMerchandise} className={detailsBlock}>
             <summary>Mercancías</summary>
-            {draft.includeMerchandise
-              ? draft.merchandise.map((line, i) => (
-                  <MerchandiseLineEditor
-                    key={`agr-line-${i}`}
-                    lineIndex={i}
-                    line={line}
-                    errors={errors.merchandiseLines?.[i]}
-                    onChange={(ln) => setMerchLine(i, ln)}
-                    onRemove={() => removeLine(i)}
-                    canRemove={draft.merchandise.length > 1}
-                  />
-                ))
-              : (
-                  <p className="vt-muted" style={{ fontSize: 13 }}>
-                    Marcá «Incluir mercancías» para completar líneas y logística.
-                  </p>
-                )}
+            {draft.includeMerchandise ? (
+              draft.merchandise.map((line, i) => (
+                <MerchandiseLineEditor
+                  key={`agr-line-${i}`}
+                  lineIndex={i}
+                  line={line}
+                  errors={errors.merchandiseLines?.[i]}
+                  onChange={(ln) => setMerchLine(i, ln)}
+                  onRemove={() => removeLine(i)}
+                  canRemove={draft.merchandise.length > 1}
+                />
+              ))
+            ) : (
+              <p className="vt-muted" style={{ fontSize: 13 }}>
+                Marcá «Incluir mercancías» para completar líneas y logística.
+              </p>
+            )}
             {draft.includeMerchandise ? (
               <button type="button" className="vt-btn" onClick={addLine}>
                 + Añadir tipo de mercancía
@@ -166,158 +222,57 @@ export function TradeAgreementFormModal({
           <details open={draft.includeService} className={detailsBlock}>
             <summary>Servicios</summary>
             {draft.includeService ? (
-            <div className={lineGrid}>
-              <Field label="Tipo de servicio" value={sv.tipoServicio} onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, tipoServicio: v } }))} error={se?.tipoServicio} inputId="agr-sv-tipo" />
-              <Field
-                label="Tiempo del servicio (inicio / fin)"
-                value={sv.tiempoInicioFin}
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, tiempoInicioFin: v } }))}
-                error={se?.tiempoInicioFin}
-                inputId="agr-sv-tiempo"
-              />
-              <Field
-                label="Horarios y fechas"
-                value={sv.horariosFechas}
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, horariosFechas: v } }))}
-                error={se?.horariosFechas}
-                inputId="agr-sv-hor"
-              />
-              <Field
-                label="Recurrencia de pagos (fechas y monto)"
-                value={sv.recurrenciaPagos}
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, recurrenciaPagos: v } }))}
-                error={se?.recurrenciaPagos}
-                inputId="agr-sv-rec"
-              />
-              <Field
-                label="Descripción del servicio"
-                value={sv.descripcion}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, descripcion: v } }))}
-                error={se?.descripcion}
-                inputId="agr-sv-desc"
-              />
-              <Field
-                label="Riesgos del servicio (lista, una línea por ítem)"
-                value={sv.riesgos}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, riesgos: v } }))}
-                error={se?.riesgos}
-                inputId="agr-sv-ries"
-              />
-              <Field
-                label="Qué incluye"
-                value={sv.incluye}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, incluye: v } }))}
-                error={se?.incluye}
-                inputId="agr-sv-inc"
-              />
-              <Field
-                label="Qué no incluye"
-                value={sv.noIncluye}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, noIncluye: v } }))}
-                error={se?.noIncluye}
-                inputId="agr-sv-noinc"
-              />
-              <Field
-                label="Dependencias (lista, una línea por ítem)"
-                value={sv.dependencias}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, dependencias: v } }))}
-                error={se?.dependencias}
-                inputId="agr-sv-dep"
-              />
-              <Field
-                label="Qué se entrega"
-                value={sv.entregables}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, entregables: v } }))}
-                error={se?.entregables}
-                inputId="agr-sv-ent"
-              />
-              <Field
-                label="Garantías"
-                value={sv.garantias}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, garantias: v } }))}
-                error={se?.garantias}
-                inputId="agr-sv-gar"
-              />
-              <Field
-                label="Penalizaciones por atraso"
-                value={sv.penalAtraso}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, penalAtraso: v } }))}
-                error={se?.penalAtraso}
-                inputId="agr-sv-pena"
-              />
-              <Field
-                label="Causas de terminación anticipada"
-                value={sv.terminacionAnticipada}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, terminacionAnticipada: v } }))}
-                error={se?.terminacionAnticipada}
-                inputId="agr-sv-term"
-              />
-              <Field
-                label="Periodo de aviso (ej. 30 días)"
-                value={sv.avisoDias}
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, avisoDias: v } }))}
-                error={se?.avisoDias}
-                inputId="agr-sv-aviso"
-              />
-              <Field
-                label="Método de pago"
-                value={sv.metodoPago}
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, metodoPago: v } }))}
-                error={se?.metodoPago}
-                inputId="agr-sv-pago"
-              />
-              <Field
-                label="Moneda"
-                value={sv.moneda}
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, moneda: v } }))}
-                error={se?.moneda}
-                inputId="agr-sv-moneda"
-              />
-              <Field
-                label="Cómo se mide el cumplimiento"
-                value={sv.medicionCumplimiento}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, medicionCumplimiento: v } }))}
-                error={se?.medicionCumplimiento}
-                inputId="agr-sv-med"
-              />
-              <Field
-                label="Penalizaciones por incumplimiento"
-                value={sv.penalIncumplimiento}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, penalIncumplimiento: v } }))}
-                error={se?.penalIncumplimiento}
-                inputId="agr-sv-peninc"
-              />
-              <Field
-                label="Nivel de responsabilidad"
-                value={sv.nivelResponsabilidad}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, nivelResponsabilidad: v } }))}
-                error={se?.nivelResponsabilidad}
-                inputId="agr-sv-nivel"
-              />
-              <Field
-                label="Propiedad intelectual / reutilización / licencias"
-                value={sv.propIntelectual}
-                multiline
-                onChange={(v) => setDraft((d) => ({ ...d, service: { ...d.service, propIntelectual: v } }))}
-                error={se?.propIntelectual}
-                inputId="agr-sv-pi"
-              />
-            </div>
+              <div className="flex flex-col gap-3">
+                {errors.serviceItems ? (
+                  <div className={fieldError} role="alert">
+                    {errors.serviceItems}
+                  </div>
+                ) : null}
+
+                {draft.services.map((sv, i) => (
+                  <div
+                    key={sv.id}
+                    className="rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_92%,transparent)] p-3"
+                  >
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0 font-extrabold tracking-[-0.02em]">
+                        Servicio {i + 1}: {serviceItemSummaryLine(sv)}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" className="vt-btn vt-btn-sm" onClick={() => openConfig(sv.id)}>
+                          Configurar servicio
+                        </button>
+                        <button
+                          type="button"
+                          className="vt-btn vt-btn-ghost vt-btn-sm text-[var(--muted)]"
+                          onClick={() => removeService(sv.id)}
+                        >
+                          Quitar
+                        </button>
+                      </div>
+                    </div>
+                    {sv.configured ? (
+                      <div className="mt-2 border-t border-[var(--border)] pt-3">
+                        <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
+                          Vista previa
+                        </div>
+                        <ServiceItemPreview sv={sv} />
+                      </div>
+                    ) : (
+                      <p className="vt-muted text-xs">
+                        Usá «Configurar servicio» para completar el asistente y generar la vista previa.
+                      </p>
+                    )}
+                  </div>
+                ))}
+
+                <button type="button" className="vt-btn" onClick={addService}>
+                  + Añadir servicio
+                </button>
+              </div>
             ) : (
               <p className="vt-muted" style={{ fontSize: 13 }}>
-                Marcá «Incluir servicios» para completar el bloque de servicio.
+                Marcá «Incluir servicios» para agregar y configurar servicios con el asistente.
               </p>
             )}
           </details>
@@ -328,10 +283,29 @@ export function TradeAgreementFormModal({
             Cancelar
           </button>
           <button type="button" className="vt-btn vt-btn-primary" onClick={trySubmit}>
-            Emitir acuerdo
+            {isEdit ? 'Guardar cambios' : 'Emitir acuerdo'}
           </button>
         </div>
       </div>
+
+      {configItem ? (
+        <ServiceConfigWizard
+          open={configOpen && !!configItem}
+          initial={configItem}
+          onClose={() => {
+            setConfigOpen(false)
+            setConfigId(null)
+          }}
+          onSave={(item) => {
+            setDraft((d) => ({
+              ...d,
+              services: d.services.map((s) => (s.id === item.id ? item : s)),
+            }))
+            setConfigOpen(false)
+            setConfigId(null)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

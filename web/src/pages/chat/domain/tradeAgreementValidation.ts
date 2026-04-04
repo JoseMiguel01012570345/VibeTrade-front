@@ -1,4 +1,6 @@
-import type { MerchandiseLine, ServiceAgreementBlock, TradeAgreementDraft } from './tradeAgreementTypes'
+import type { MerchandiseLine, ServiceItem, TradeAgreementDraft } from './tradeAgreementTypes'
+import { coerceServiceSchedule } from './tradeAgreementTypes'
+import { validateVigenciaRange } from './serviceVigenciaDates'
 
 type MerchandiseHolder = { merchandise: MerchandiseLine[] }
 
@@ -8,7 +10,9 @@ export type TradeAgreementFormErrors = {
   /** Alcance global: al menos mercancías o servicio; mercancías vacías con el flag activo. */
   scope?: string
   merchandiseLines?: Record<number, Partial<Record<keyof MerchandiseLine, string>>>
-  service?: Partial<Record<keyof ServiceAgreementBlock, string>>
+  /** Al menos un servicio; errores por índice de servicio */
+  serviceItems?: string
+  serviceErrors?: Record<number, string[]>
 }
 
 const TITLE_MIN = 3
@@ -195,50 +199,183 @@ export function validateTradeAgreementDraft(d: TradeAgreementDraft): TradeAgreem
 
   if (Object.keys(lineErrors).length) errors.merchandiseLines = lineErrors
 
-  const sv = d.service
-  const svErr: Partial<Record<keyof ServiceAgreementBlock, string>> = {}
-
-  const serviceFields: { key: keyof ServiceAgreementBlock; label: string; multiline: boolean }[] = [
-    { key: 'tipoServicio', label: 'Tipo de servicio', multiline: false },
-    { key: 'tiempoInicioFin', label: 'Tiempo del servicio', multiline: false },
-    { key: 'horariosFechas', label: 'Horarios y fechas', multiline: false },
-    { key: 'recurrenciaPagos', label: 'Recurrencia de pagos', multiline: false },
-    { key: 'descripcion', label: 'Descripción del servicio', multiline: true },
-    { key: 'riesgos', label: 'Riesgos del servicio', multiline: true },
-    { key: 'incluye', label: 'Qué incluye el servicio', multiline: true },
-    { key: 'noIncluye', label: 'Qué no incluye', multiline: true },
-    { key: 'dependencias', label: 'Dependencias', multiline: true },
-    { key: 'entregables', label: 'Qué se entrega', multiline: true },
-    { key: 'garantias', label: 'Garantías', multiline: true },
-    { key: 'penalAtraso', label: 'Penalizaciones por atraso', multiline: true },
-    { key: 'terminacionAnticipada', label: 'Causas de terminación anticipada', multiline: true },
-    { key: 'avisoDias', label: 'Periodo de aviso', multiline: false },
-    { key: 'metodoPago', label: 'Método de pago', multiline: false },
-    { key: 'moneda', label: 'Moneda (servicio)', multiline: false },
-    { key: 'medicionCumplimiento', label: 'Medición del cumplimiento', multiline: true },
-    { key: 'penalIncumplimiento', label: 'Penalizaciones por incumplimiento', multiline: true },
-    { key: 'nivelResponsabilidad', label: 'Nivel de responsabilidad', multiline: true },
-    { key: 'propIntelectual', label: 'Propiedad intelectual y licencias', multiline: true },
-  ]
-
   if (d.includeService) {
-    serviceFields.forEach(({ key, label, multiline }) => {
-      let e: string | undefined
-      if (key === 'riesgos' || key === 'dependencias') {
-        e = validateListField(sv[key], label)
-      } else if (key === 'avisoDias') {
-        e = validateAvisoDias(sv[key])
-      } else {
-        e = requireNonEmpty(sv[key], label, multiline)
-        if (!e) e = optionalTextMax(sv[key], label, multiline)
-      }
-      if (e) svErr[key] = e
-    })
+    const services = d.services ?? []
+    if (!services.length) {
+      errors.serviceItems = 'Agregá al menos un servicio y configurá cada uno con el asistente.'
+    } else {
+      const serviceErrors: NonNullable<TradeAgreementFormErrors['serviceErrors']> = {}
+      services.forEach((sv, idx) => {
+        const msgs = validateServiceItem(sv)
+        if (msgs.length) serviceErrors[idx] = msgs
+      })
+      if (Object.keys(serviceErrors).length) errors.serviceErrors = serviceErrors
+    }
   }
 
-  if (Object.keys(svErr).length) errors.service = svErr
-
   return errors
+}
+
+function collectServiceHorarioErrors(sv: ServiceItem): string[] {
+  const msgs: string[] = []
+  const hor = coerceServiceSchedule(sv.horarios)
+  if (!hor.months.length) msgs.push('Indicá al menos un mes para horarios del servicio')
+  for (const m of hor.months) {
+    const days = hor.daysByMonth[m]
+    if (!days?.length) msgs.push(`Mes ${m}: elegí al menos un día en el calendario`)
+  }
+  const defS = norm(sv.horarios.defaultWindow.start)
+  const defE = norm(sv.horarios.defaultWindow.end)
+  if (!defS || !defE) msgs.push('Horario por defecto: indicá inicio y fin (ej. 09:00–17:00)')
+  return msgs
+}
+
+function collectServicePagoErrors(sv: ServiceItem): string[] {
+  const msgs: string[] = []
+  if (!sv.recurrenciaPagos.months.length) msgs.push('Recurrencia de pagos: elegí al menos un mes')
+  if (sv.recurrenciaPagos.entries.length < 1) {
+    msgs.push('Recurrencia de pagos: agregá al menos una fila con mes, día y monto')
+  } else {
+    const seenDay = new Set<string>()
+    sv.recurrenciaPagos.entries.forEach((en, i) => {
+      if (!sv.recurrenciaPagos.months.includes(en.month)) {
+        msgs.push(`Pago ${i + 1}: el mes no está entre los meses seleccionados`)
+      }
+      if (en.day < 1 || en.day > 31) msgs.push(`Pago ${i + 1}: día inválido`)
+      const y = new Date().getFullYear()
+      const dim = en.month >= 1 && en.month <= 12 ? new Date(y, en.month, 0).getDate() : 31
+      if (en.day > dim) msgs.push(`Pago ${i + 1}: ese día no existe en el mes elegido`)
+      const dayKey = `${en.month}-${en.day}`
+      if (seenDay.has(dayKey)) {
+        msgs.push(`Pago ${i + 1}: ya hay otro pago el mismo día del mes (${dayKey.replace('-', '/')}).`)
+      }
+      seenDay.add(dayKey)
+      const pe = requireDecimal(en.amount, `Monto (pago ${i + 1})`, { positive: true })
+      if (pe) msgs.push(pe)
+    })
+  }
+  return msgs
+}
+
+function collectServiceAlcanceErrors(sv: ServiceItem): string[] {
+  const msgs: string[] = []
+  const eDesc = requireNonEmpty(sv.descripcion, 'Descripción del servicio', true)
+  if (eDesc) msgs.push(eDesc)
+  else {
+    const om = optionalTextMax(sv.descripcion, 'Descripción del servicio', true)
+    if (om) msgs.push(om)
+  }
+  const eIncl = requireNonEmpty(sv.incluye, 'Qué incluye el servicio', true)
+  if (eIncl) msgs.push(eIncl)
+  else {
+    const om = optionalTextMax(sv.incluye, 'Qué incluye el servicio', true)
+    if (om) msgs.push(om)
+  }
+  if (!isBlank(sv.noIncluye)) {
+    const omNo = optionalTextMax(sv.noIncluye, 'Qué no incluye', true)
+    if (omNo) msgs.push(omNo)
+  }
+  const eEnt = requireNonEmpty(sv.entregables, 'Qué se entrega', true)
+  if (eEnt) msgs.push(eEnt)
+  else {
+    const om = optionalTextMax(sv.entregables, 'Qué se entrega', true)
+    if (om) msgs.push(om)
+  }
+  return msgs
+}
+
+function collectServiceRiesgosDependenciasErrors(sv: ServiceItem): string[] {
+  const msgs: string[] = []
+  if (sv.riesgos.enabled) {
+    const er = validateListField(sv.riesgos.items.join('\n'), 'Riesgos del servicio')
+    if (er) msgs.push(er)
+  }
+  if (sv.dependencias.enabled) {
+    const ed = validateListField(sv.dependencias.items.join('\n'), 'Dependencias')
+    if (ed) msgs.push(ed)
+  }
+  return msgs
+}
+
+function collectServiceGarantiasPenalTermErrors(sv: ServiceItem): string[] {
+  const msgs: string[] = []
+  if (sv.garantias.enabled) {
+    const eg = requireNonEmpty(sv.garantias.texto, 'Garantías', true)
+    if (eg) msgs.push(eg)
+  }
+  if (sv.penalAtraso.enabled) {
+    const ep = requireNonEmpty(sv.penalAtraso.texto, 'Penalizaciones por atraso', true)
+    if (ep) msgs.push(ep)
+  }
+  if (sv.terminacion.enabled) {
+    const ec = validateListField(sv.terminacion.causas.join('\n'), 'Causas de terminación anticipada')
+    if (ec) msgs.push(ec)
+    const ea = validateAvisoDias(sv.terminacion.avisoDias)
+    if (ea) msgs.push(ea)
+  }
+  return msgs
+}
+
+/**
+ * Errores que deben resolurse antes de avanzar desde el paso `fromStep` del asistente
+ * (mismo índice que STEPS en ServiceConfigWizard: 0 = tipo…).
+ */
+export function validateServiceWizardAdvance(sv: ServiceItem, fromStep: number): string[] {
+  switch (fromStep) {
+    case 2:
+      return collectServiceHorarioErrors(sv)
+    case 3:
+      return collectServicePagoErrors(sv)
+    case 4:
+      return collectServiceAlcanceErrors(sv)
+    case 5:
+      return collectServiceRiesgosDependenciasErrors(sv)
+    case 6:
+      return collectServiceGarantiasPenalTermErrors(sv)
+    default:
+      return []
+  }
+}
+
+/** Validación de un ítem de servicio ya configurado (emitir acuerdo). */
+export function validateServiceItem(sv: ServiceItem): string[] {
+  const msgs: string[] = []
+  if (!sv.configured) {
+    msgs.push('Este servicio no está guardado desde el asistente de configuración.')
+    return msgs
+  }
+
+  const t = norm(sv.tipoServicio)
+  if (!t) msgs.push('Tipo de servicio es obligatorio')
+  else if (t.length < TEXT_MIN) msgs.push(`Tipo de servicio: mínimo ${TEXT_MIN} caracteres`)
+  else {
+    const om = optionalTextMax(sv.tipoServicio, 'Tipo de servicio', false)
+    if (om) msgs.push(om)
+  }
+
+  validateVigenciaRange(sv.tiempo.startDate, sv.tiempo.endDate).forEach((m) => msgs.push(m))
+
+  collectServiceHorarioErrors(sv).forEach((m) => msgs.push(m))
+  collectServicePagoErrors(sv).forEach((m) => msgs.push(m))
+  collectServiceAlcanceErrors(sv).forEach((m) => msgs.push(m))
+  collectServiceRiesgosDependenciasErrors(sv).forEach((m) => msgs.push(m))
+  collectServiceGarantiasPenalTermErrors(sv).forEach((m) => msgs.push(m))
+
+  const m1 = requireNonEmpty(sv.metodoPago, 'Método de pago', false)
+  if (m1) msgs.push(m1)
+  const m2 = requireNonEmpty(sv.moneda, 'Moneda', false)
+  if (m2) msgs.push(m2)
+
+  const eMed = requireNonEmpty(sv.medicionCumplimiento, 'Medición del cumplimiento', true)
+  if (eMed) msgs.push(eMed)
+  const ePen = requireNonEmpty(sv.penalIncumplimiento, 'Penalizaciones por incumplimiento', true)
+  if (ePen) msgs.push(ePen)
+  const eNiv = requireNonEmpty(sv.nivelResponsabilidad, 'Nivel de responsabilidad', true)
+  if (eNiv) msgs.push(eNiv)
+  const ePi = requireNonEmpty(sv.propIntelectual, 'Propiedad intelectual y licencias', true)
+  if (ePi) msgs.push(ePi)
+
+  return [...new Set(msgs)]
 }
 
 export function validationErrorCount(e: TradeAgreementFormErrors): number {
@@ -250,7 +387,12 @@ export function validationErrorCount(e: TradeAgreementFormErrors): number {
       if (row) n += Object.keys(row).length
     })
   }
-  if (e.service) n += Object.keys(e.service).length
+  if (e.serviceItems) n++
+  if (e.serviceErrors) {
+    Object.values(e.serviceErrors).forEach((arr) => {
+      n += arr?.length ?? 0
+    })
+  }
   return n
 }
 

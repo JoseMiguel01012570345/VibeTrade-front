@@ -62,7 +62,7 @@ DONE-----------------------------------------
 - **Replicas de mensajes:** El usuario puede selecionar tantos mensajes como quiera para replicar con un mensaje.
   DONE-----------------------------------------
 
-PARTIALLY-DONE-----------------------------------------
+DONE-----------------------------------------
 Nota: El chat se inicializa con todas las preguntas que se han echo junto con sus respuestas para el comprador, sin embargo cuando el comprador decide inicializar el chat, este se carga con todas las preguntas y respuestas y en modo compra.
 
 - Una vez que las partes se han puesto de acuerdo, el vendedor emite un acuerdo en forma de formulario que detalla los parametros de la compra, como:
@@ -81,35 +81,34 @@ Nota: El chat se inicializa con todas las preguntas que se han echo junto con su
       - Regulaciones y cumplimiento: aduanas (si aplica), restricciones legales, permisos.
   - Servicios:
     - Tipo de servicio
-    - Tiempo del servicio, de inicio a fin
-    - Horarios y fechas
-    - Recurrencia de pagos, fechas y cantidad
+    - Tiempo del servicio, de inicio a fin, crear 2 date picker, una de inicio y otro de fin. Crear un boton que al clickear sobre este salta un modal con estos campos a ser llenados, la fecha de inicio no puede ser mayor que la fecha de finalidad y la fecha de finalidad no puede ser menor que la fecha de inicio, la fecha de inicio debe ser requerida.
+    - Horarios y fechas, crear un boton que al ser clickeado abre un modal con un flujo, este flujo tiene como primera vista setear los meses en los que se da el servicio, estan por defecto selecionados todos los meses. Una vez el usuario escoge los meses, clickea en siguiente y salen los dias de las semanas sobre los meses que escogieron, de nuevo aqui salen todos los dias de la semana marcados de lunes a viernes por cada mes, si el usuario desmarca alguno, esto es que no se dara servicio ese dia. Luego mara determinar la hora, se marca como predeterminado de 9am-5pm, si el usuario decea cambiar este rango, el cambio se aplica a todos los dias seleccionados y si el usuario decea diferenciar el horario de un dia, puede ir a ese dia, clickear cambiar horario y salta un modal para cambiar el horario de ese dia.
+    - Recurrencia de pagos, fechas y cantidad. Esta seccion es parecida a la establecer horarios y fechas. Solo que aqui se establecen fechas y monto. La configuracion es, los meses seleccionados definen sus dias y en cada dia se establece un monto.
     - Descripcion del servicio
-    - Riesgos del servicio, lista de descripcion de riesgos
+    - Riesgos del servicio, lista de descripcion de riesgos, se depliega un modal para añadir descripciones de riesgos. Un check en falso invalida esta configuracion
     - Que incluye el servicio, descripcion
     - Que no incluye, descripcion
-    - Dependencias, lista que describe cada dependencia
+    - Dependencias, lista que describe cada dependencia, se depliega un modal para añadir descripciones de cad dependencia, un check en falso invalida esta configuracion
     - Que se entrega, descripcion
-    - Garantías, descripcion
-    - Penalizaciones por atraso, puede ser dinero o un bien, describirlo.
-    - Causas de terminación anticipada(descripcion de las causas), periodo de aviso, un numero (ej: 30 días)
-    - Método de pago, Moneda
-    - Cómo se mide el cumplimiento, descripcion
+    - Garantías, descripcion, esto debe ser un check, donde el usuario decide si da garantias, si las da, se despliega este field
+    - Penalizaciones por atraso, puede ser dinero o un bien, describirlo, donde el usuario decide si ha penalizaciones, si las hay, se despliega este field
+    - Causas de terminación anticipada(descripcion de las causas), periodo de aviso, un numero (ej: 30 días), se depliega un modal para añadir descripciones de las causas y justo debajo el periodo de aviso. El check en falso invalida esta configuracion.
+    - Método de pago, Moneda, es un select en cada caso
+    - Cómo se mide el cumplimiento, descripcion.
     - Penalizaciones por incumplimiento, descripcion
-    - Nivel de responsabilidad, como se define la responsabilidad, descripcion.
-    - Propiedad intelectual, ¿Quién es dueño del resultado del servicio?, ¿Se puede reutilizar?, Licencias
+    - Nivel de responsabilidad, como se define la responsabilidad, descripcion. Crear un question mark para aclarar que reprensenta este campo.
+    - Propiedad intelectual, ¿Quién es dueño del resultado del servicio?, ¿Se puede reutilizar?, Licencias. Crear un question mark para aclarar que reprensenta este campo.
 
 Este formulario puede ser aceptado o rechazado por el comprador, una vez aceptado por ambas partes, este acuerdo no se puede derogar, aunque se pueden emitir mas contratos entre las partes.
 
 El chat debe tener una opcion pare revisar todos los contratos emitidos, con un filtro para filtrar por usuario del chat, y cada contrato se puede linkear a una hoja de rutas en caso de que existan mercancias de por medio.
 
-PARTIALLY-DONE-----------------------------------------
+DONE-----------------------------------------
 
 - **Flujo de Chat Comercial y Logística**
 
 ### A. Inicialización y Transportistas
 
-- Si el producto no incluye transporte (según el warning del perfil), se habilita la opción **"Añadir Transportista"**.
 - **Formulario de Acuerdo:** Se despliega un formulario donde se definen los términos. El comprador debe marcar explícitamente su conformidad con el precio del transporte antes de proceder.
 
 ## Interfaz de Reels (Experiencia Inmersiva)
@@ -162,7 +161,7 @@ Existe un boton para publicar reels si el usuario es vendedor de mercancias|serv
 
 - **Vehiculos:** Los transportistas disponen de vehiculos, y si un transportista esta dando un viaje, no puede tomar viajes que le solapen en tiempo con el tiempo de su viaje actual. Cada transportista muestra en su catalogo o tienda fotos de sus vehiculos. Cada vehiculo debe tener una descripcion sobre su rendimiento y tipo de mercancias que puede llevar y bajo que condiciones lo puede hacer.
 
-PARTIALLY-DONE----------------------------------------
+DONE----------------------------------------
 
 - **Emitir contratos a transportistas:** El comprador/vendedor emiten un contrato en forma de hoja de ruta que se fuciona con otro contrato, esta fucion se puede quitar y poner simpre y cuando no se halla aceptado por ningun miembro comprador/vendedor y cada vez que se haga la fucion, esta debe ser aprobada por los miembros del chat vendedor/comprador. Al decidirse transportar mercancias, debe existir la opcion en el chat de crear una o mas hojas de ruta estas hojas de rutas son aprobadas entre el comprador/vendedor y adjuntadas en orden cronologico al contrato principal.
 
@@ -184,7 +183,7 @@ Una vez emitido esta hoja ruta y aprobada entre las partes, procede a ser public
 
 - **Visualización:** La hoja de ruta se renderiza como un objeto interactivo en la oferta del transportista, y este objeto siempre puede ser consultado por el transportista en el chat
 
-PARTIALLY-DONE----------------------------------------
+DONE----------------------------------------
 
 ## Gestión de Relevos y Cambio de Propiedad (Owner)
 
@@ -241,3 +240,7 @@ Si antes del cumplimiento de un contrato un usuario sale del chat, se emite una 
 - Teclado Adaptativo: Asegurar que el diseño de los formularios deje espacio suficiente para que el teclado del teléfono no tape el botón de "Siguiente".
 
 - Transiciones: Usar un deslizamiento lateral (slide) entre estas tres pantallas para dar sensación de avance en un proceso lineal.
+
+NOTAS IMPROTANTES:
+
+En cada request siempre se debe mandar como header la zona horario al backend para poder manejar las fechas en utc

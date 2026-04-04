@@ -180,6 +180,8 @@ export type MarketState = {
     options?: { replyToIds?: string[]; caption?: string },
   ) => void
   emitTradeAgreement: (threadId: string, draft: TradeAgreementDraft) => string | null
+  /** Si `pending_buyer` o `rejected` (en ese caso pasa otra vez a pendiente). Emisor = tienda del hilo. */
+  updatePendingTradeAgreement: (threadId: string, agreementId: string, draft: TradeAgreementDraft) => boolean
   respondTradeAgreement: (threadId: string, agreementId: string, response: 'accept' | 'reject') => void
   createRouteSheet: (threadId: string, payload: RouteSheetCreatePayload) => string | null
   updateRouteSheet: (threadId: string, routeSheetId: string, payload: RouteSheetCreatePayload) => boolean

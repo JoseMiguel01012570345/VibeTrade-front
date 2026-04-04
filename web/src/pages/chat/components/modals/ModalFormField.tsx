@@ -1,9 +1,9 @@
-import { type HTMLAttributes } from 'react'
+import { type HTMLAttributes, type ReactNode } from 'react'
 import { cn } from '../../../../lib/cn'
 import { fieldError, fieldLabel, fieldRootWithInvalid, textareaMin } from '../../styles/formModalStyles'
 
 type Props = {
-  label: string
+  label: ReactNode
   value: string
   onChange: (v: string) => void
   multiline?: boolean

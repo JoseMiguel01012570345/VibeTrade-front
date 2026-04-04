@@ -3,12 +3,14 @@ import { cn } from '../../../../lib/cn'
 import {
   agreementDeclaresMerchandise,
   agreementDeclaresService,
+  normalizeAgreementServices,
   normalizeMerchandiseLine,
   type MerchandiseLine,
   type MerchandiseSectionMeta,
   type TradeAgreement,
 } from '../../domain/tradeAgreementTypes'
 import { hasMerchandise } from '../../domain/tradeAgreementValidation'
+import { ServiceItemPreview } from './serviceConfig/ServiceItemPreview'
 import type { RouteSheet } from '../../domain/routeSheetTypes'
 import {
   agrDetailBlock,
@@ -84,7 +86,7 @@ export function AgreementDetailView({
   linkActionsDisabled?: boolean
 }) {
   const m = a.merchandiseMeta ?? undefined
-  const s = a.service
+  const services = normalizeAgreementServices(a)
   const showMerch = agreementDeclaresMerchandise(a)
   const showService = agreementDeclaresService(a)
   const hasGoods = hasMerchandise({ merchandise: a.merchandise })
@@ -217,29 +219,17 @@ export function AgreementDetailView({
         </div>
       ) : null}
 
-      {showService ? (
+      {showService && services.length > 0 ? (
         <div className={agrDetailBlock}>
           <div className={agrDetailH}>Servicios</div>
-          <Row label="Tipo de servicio" value={s.tipoServicio} />
-          <Row label="Tiempo del servicio" value={s.tiempoInicioFin} />
-          <Row label="Horarios y fechas" value={s.horariosFechas} />
-          <Row label="Recurrencia de pagos" value={s.recurrenciaPagos} />
-          <Row label="Descripción" value={s.descripcion} />
-          <Row label="Riesgos" value={s.riesgos} />
-          <Row label="Qué incluye" value={s.incluye} />
-          <Row label="Qué no incluye" value={s.noIncluye} />
-          <Row label="Dependencias" value={s.dependencias} />
-          <Row label="Qué se entrega" value={s.entregables} />
-          <Row label="Garantías" value={s.garantias} />
-          <Row label="Penalizaciones por atraso" value={s.penalAtraso} />
-          <Row label="Terminación anticipada" value={s.terminacionAnticipada} />
-          <Row label="Periodo de aviso (días)" value={s.avisoDias} />
-          <Row label="Método de pago" value={s.metodoPago} />
-          <Row label="Moneda (servicio)" value={s.moneda} />
-          <Row label="Medición del cumplimiento" value={s.medicionCumplimiento} />
-          <Row label="Penalizaciones por incumplimiento" value={s.penalIncumplimiento} />
-          <Row label="Nivel de responsabilidad" value={s.nivelResponsabilidad} />
-          <Row label="Propiedad intelectual / licencias" value={s.propIntelectual} />
+          {services.map((sv, i) => (
+            <div key={sv.id} className="mb-4 last:mb-0">
+              <div className={agrDetailSub}>Servicio {i + 1}</div>
+              <div className="mt-2">
+                <ServiceItemPreview sv={sv} />
+              </div>
+            </div>
+          ))}
         </div>
       ) : null}
     </div>

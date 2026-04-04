@@ -34,6 +34,7 @@ import { ChatRightRail } from "./components/rail/ChatRightRail";
 import type { RouteSheet } from "./domain/routeSheetTypes";
 import { RouteSheetFormModal } from "./components/modals/RouteSheetFormModal";
 import { TradeAgreementFormModal } from "./components/modals/TradeAgreementFormModal";
+import { tradeAgreementToDraft } from "./domain/tradeAgreementTypes";
 import "./chat.css";
 
 export function ChatPage() {
@@ -46,6 +47,7 @@ export function ChatPage() {
   const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer);
   const syncThreadBuyerQa = useMarketStore((s) => s.syncThreadBuyerQa);
   const emitTradeAgreement = useMarketStore((s) => s.emitTradeAgreement);
+  const updatePendingTradeAgreement = useMarketStore((s) => s.updatePendingTradeAgreement);
   const respondTradeAgreement = useMarketStore((s) => s.respondTradeAgreement);
   const createRouteSheet = useMarketStore((s) => s.createRouteSheet);
   const updateRouteSheet = useMarketStore((s) => s.updateRouteSheet);
@@ -64,6 +66,7 @@ export function ChatPage() {
   const [draft, setDraft] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [showAgreementForm, setShowAgreementForm] = useState(false);
+  const [agreementBeingEditedId, setAgreementBeingEditedId] = useState<string | null>(null);
   const [showRouteSheetForm, setShowRouteSheetForm] = useState(false);
   const [routeSheetBeingEdited, setRouteSheetBeingEdited] =
     useState<RouteSheet | null>(null);
@@ -197,6 +200,12 @@ export function ChatPage() {
       (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0),
     );
   }, [selectedIds, thread]);
+
+  const agreementFormInitial = useMemo(() => {
+    if (!agreementBeingEditedId || !thread?.contracts) return null;
+    const a = thread.contracts.find((c) => c.id === agreementBeingEditedId);
+    return a ? tradeAgreementToDraft(a) : null;
+  }, [agreementBeingEditedId, thread?.contracts]);
 
   useEffect(() => {
     if (selectedIds.length > 0) draftInputRef.current?.focus();
@@ -452,7 +461,10 @@ export function ChatPage() {
                         ? "No disponible hasta registrar el pago"
                         : "Emitir acuerdo como negocio"
                     }
-                    onClick={() => setShowAgreementForm(true)}
+                    onClick={() => {
+                      setAgreementBeingEditedId(null);
+                      setShowAgreementForm(true);
+                    }}
                   >
                     <FileText size={16} /> Emitir acuerdo
                   </button>
@@ -573,6 +585,11 @@ export function ChatPage() {
               setRailOpen(true);
             }}
             toggleRouteStop={toggleRouteStop}
+            onEditPendingAgreement={(ag) => {
+              if (ag.status !== "pending_buyer" && ag.status !== "rejected") return;
+              setAgreementBeingEditedId(ag.id);
+              setShowAgreementForm(true);
+            }}
           />
         </div>
       </div>
@@ -581,15 +598,34 @@ export function ChatPage() {
 
       <TradeAgreementFormModal
         open={showAgreementForm}
-        onClose={() => setShowAgreementForm(false)}
+        onClose={() => {
+          setShowAgreementForm(false);
+          setAgreementBeingEditedId(null);
+        }}
         storeName={store.name}
+        initialDraft={agreementBeingEditedId ? agreementFormInitial : null}
+        editingAgreementId={agreementBeingEditedId}
         onSubmit={(draft) => {
+          if (agreementBeingEditedId) {
+            const ok = updatePendingTradeAgreement(
+              thread.id,
+              agreementBeingEditedId,
+              draft,
+            );
+            if (ok) toast.success("Acuerdo actualizado");
+            else
+              toast.error(
+                "No se pudo guardar: solo se editan acuerdos pendientes o rechazados (no los ya aceptados).",
+              );
+            return ok;
+          }
           const id = emitTradeAgreement(thread.id, draft);
           if (id) toast.success("Acuerdo emitido al chat");
           else
             toast.error(
               "No se pudo emitir: revisá los datos del acuerdo (validación del servidor).",
             );
+          return id != null;
         }}
       />
 
