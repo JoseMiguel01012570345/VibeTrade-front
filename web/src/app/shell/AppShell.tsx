@@ -25,6 +25,7 @@ export function AppShell() {
   const { pathname } = useLocation()
   const isOnboarding = pathname.startsWith('/onboarding')
   const isSessionActive = useAppStore((s) => s.isSessionActive)
+  const me = useAppStore((s) => s.me)
 
   return (
     <div className="vt-app flex min-h-screen flex-col">
@@ -47,6 +48,8 @@ export function AppShell() {
             {tabs.map((t) => {
               const active = tabIsActive(pathname, t)
               const Icon = t.icon
+              const profileTab = t.to === '/profile/me'
+              const profileLetter = me.name.slice(0, 1).toUpperCase()
               return (
                 <Link
                   key={t.to}
@@ -57,7 +60,30 @@ export function AppShell() {
                       'bg-[color-mix(in_oklab,var(--primary)_10%,transparent)] text-[var(--primary)]',
                   )}
                 >
-                  <Icon size={18} />
+                  {profileTab ? (
+                    <span
+                      className={cn(
+                        'grid h-[22px] w-[22px] shrink-0 place-items-center overflow-hidden rounded-full',
+                        !me.avatarUrl &&
+                          'bg-gradient-to-br from-[var(--primary)] to-violet-600 text-[10px] font-black text-white',
+                        active &&
+                          'ring-2 ring-[color-mix(in_oklab,var(--primary)_55%,transparent)] ring-offset-2 ring-offset-[var(--surface)]',
+                      )}
+                      aria-hidden
+                    >
+                      {me.avatarUrl ? (
+                        <img
+                          src={me.avatarUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        profileLetter
+                      )}
+                    </span>
+                  ) : (
+                    <Icon size={18} />
+                  )}
                   <span>{t.label}</span>
                 </Link>
               )

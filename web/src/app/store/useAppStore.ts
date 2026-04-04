@@ -15,9 +15,15 @@ function readSessionActive(): boolean {
  */
 export type UserRole = 'seller' | 'carrier'
 
+export type SocialNetworkId = 'instagram' | 'telegram' | 'x'
+
+/** Usuario / enlace tal como lo guardó el usuario (demo). */
+export type ProfileSocialLinks = Partial<Record<SocialNetworkId, string>>
+
 export type User = {
   id: string
   name: string
+  email: string
   phone: string
   avatarUrl?: string
   role: UserRole
@@ -37,6 +43,8 @@ type AppState = {
   /** Sesión iniciada (p. ej. tras verificar OTP). La barra de confianza solo aplica al usuario autenticado. */
   isSessionActive: boolean
   me: User
+  /** @handles u otra cadena guardada desde el perfil (demo). */
+  profileSocialLinks: ProfileSocialLinks
   trustThreshold: number
   lastThresholdState: 'above' | 'below'
   notifications: NotificationItem[]
@@ -45,6 +53,10 @@ type AppState = {
   setSessionActive: (active: boolean) => void
   setTrustScore: (score: number) => void
   setRole: (role: UserRole) => void
+  setMeAvatarUrl: (url: string | undefined) => void
+  setMeName: (name: string) => void
+  setMeEmail: (email: string) => void
+  setProfileSocialLink: (network: SocialNetworkId, value: string) => void
   pushNotification: (n: Omit<NotificationItem, 'id' | 'createdAt' | 'read'>) => void
   markAllRead: () => void
   toggleSavedReel: (reelId: string) => void
@@ -54,15 +66,27 @@ function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`
 }
 
+function revokeBlobUrl(url: string | undefined) {
+  if (url?.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(url)
+    } catch {
+      /* noop */
+    }
+  }
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   isSessionActive: readSessionActive(),
   me: {
     id: 'me',
     name: 'Jhosef',
+    email: 'demo@vibetrade.app',
     phone: '+54 11 5555-5555',
     role: 'seller',
     trustScore: 72,
   },
+  profileSocialLinks: {},
   trustThreshold: 0,
   lastThresholdState: 'above',
   notifications: [],
@@ -87,6 +111,31 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setRole: (role) => set((s) => ({ me: { ...s.me, role } })),
+
+  setMeAvatarUrl: (url) =>
+    set((s) => {
+      revokeBlobUrl(s.me.avatarUrl)
+      return { me: { ...s.me, avatarUrl: url } }
+    }),
+
+  setMeName: (name) =>
+    set((s) => ({
+      me: { ...s.me, name: name.trim().slice(0, 100) },
+    })),
+
+  setMeEmail: (email) =>
+    set((s) => ({
+      me: { ...s.me, email: email.trim().slice(0, 120) },
+    })),
+
+  setProfileSocialLink: (network, value) =>
+    set((s) => {
+      const t = value.trim()
+      const next = { ...s.profileSocialLinks }
+      if (!t) delete next[network]
+      else next[network] = t
+      return { profileSocialLinks: next }
+    }),
 
   pushNotification: (n) => {
     const item: NotificationItem = {

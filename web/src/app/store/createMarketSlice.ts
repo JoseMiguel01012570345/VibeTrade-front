@@ -306,7 +306,9 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
         const th = s.threads[threadId]
         if (!th) return s
         const next: Partial<Pick<Thread, 'prematureExitUnderInvestigation' | 'chatActionsLocked'>> = {}
-        if (!threadHasAcceptedAgreement(th)) {
+        // Sin acuerdo aceptado: salir no marca investigación ni obliga sanción de confianza (demo).
+        // Con acuerdo aceptado: salida prematura puede revisarse.
+        if (threadHasAcceptedAgreement(th)) {
           next.prematureExitUnderInvestigation = true
         }
         if (threadHasAcceptedAgreementUnpaid(th)) {
@@ -320,6 +322,14 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
             [threadId]: { ...th, ...next },
           },
         }
+      })
+    },
+
+    removeThreadFromList: (threadId) => {
+      set((s) => {
+        if (!s.threads[threadId]) return s
+        const { [threadId]: _removed, ...rest } = s.threads
+        return { ...s, threads: rest }
       })
     },
 
@@ -774,6 +784,14 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
             : {}),
           ...(patch.transportIncluded !== undefined
             ? { transportIncluded: patch.transportIncluded }
+            : {}),
+          ...(patch.avatarUrl !== undefined
+            ? {
+                avatarUrl:
+                  patch.avatarUrl === null || patch.avatarUrl === ''
+                    ? undefined
+                    : patch.avatarUrl,
+              }
             : {}),
         }
         const nextCat: StoreCatalog =

@@ -244,7 +244,15 @@ export function StorePage() {
       <div className="flex flex-col gap-3.5">
         <div className="vt-card vt-card-pad">
           <div className="flex items-start justify-between gap-3">
-            <div>
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              {store.avatarUrl ? (
+                <img
+                  src={store.avatarUrl}
+                  alt=""
+                  className="mt-0.5 h-14 w-14 shrink-0 rounded-[16px] border border-[var(--border)] object-cover"
+                />
+              ) : null}
+              <div className="min-w-0">
               <div className="text-[22px] font-black tracking-[-0.03em]">{store.name}</div>
               <div className="vt-muted mt-1">{store.categories.join(' · ')}</div>
               {catalog?.pitch ? (
@@ -255,6 +263,7 @@ export function StorePage() {
                   <Calendar size={14} aria-hidden /> En la plataforma desde {joinedLabel}
                 </div>
               ) : null}
+              </div>
             </div>
             <div>
               {store.verified ? (

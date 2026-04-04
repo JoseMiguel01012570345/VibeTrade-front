@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom'
 import { HelpCircle, LogOut, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { Message, Thread } from '../../app/store/useMarketStore'
-import { useMarketStore } from '../../app/store/useMarketStore'
+import { threadHasAcceptedAgreement, useMarketStore } from '../../app/store/useMarketStore'
 import { cn } from '../../lib/cn'
 import { messagePreviewLine } from './lib/chatAttachments'
 
 const PREMATURE_EXIT_TOOLTIP =
-  'Este chat se resalta porque se está investigando una salida prematura: abandonaste la conversación sin un acuerdo aceptado.'
+  'Este chat se resalta porque registraste una salida con un acuerdo ya aceptado; la plataforma puede revisar el caso.'
 
 function threadLastActivity(th: Thread): number {
   let t = 0
@@ -48,14 +48,23 @@ export function ChatListPage() {
   const threads = useMarketStore((s) => s.threads)
   const offers = useMarketStore((s) => s.offers)
   const recordChatExitFromList = useMarketStore((s) => s.recordChatExitFromList)
+  const removeThreadFromList = useMarketStore((s) => s.removeThreadFromList)
 
   function handleExitChat(threadId: string) {
-    const reason = globalThis.prompt('Motivo para salir del chat')
-    if (reason == null || !String(reason).trim()) return
-    recordChatExitFromList(threadId)
-    toast('Salida registrada. Se investigará y podría afectar tu confianza.', {
-      icon: '⚠️',
-    })
+    const th = threads[threadId]
+    if (!th) return
+    const hadAccepted = threadHasAcceptedAgreement(th)
+    if (hadAccepted) {
+      const reason = globalThis.prompt('Motivo para salir del chat')
+      if (reason == null || !String(reason).trim()) return
+      recordChatExitFromList(threadId)
+      toast('Salida registrada. Podría revisarse y afectar tu confianza. El chat se quitó de tu lista.', {
+        icon: '⚠️',
+      })
+    } else {
+      toast.success('Chat eliminado de tu lista. Sin acuerdo aceptado, sin impacto en tu confianza.')
+    }
+    removeThreadFromList(threadId)
   }
 
   const rows = useMemo(() => {
@@ -78,8 +87,9 @@ export function ChatListPage() {
       <div className="mb-4">
         <h1 className="vt-h1">Chats</h1>
         <div className="vt-muted">
-          Tus conversaciones con negocios (una por oferta en esta demo). Usá «Salir» en cada fila para registrar la
-          salida; si hay un acuerdo aceptado sin pago, al volver el chat quedará restringido hasta pagar.
+          Tus conversaciones con negocios (una por oferta en esta demo). «Salir» <strong>elimina el chat de tu lista</strong>
+          . Si <strong>no</strong> hay ningún acuerdo aceptado, no pedimos motivo y no afecta tu confianza (demo). Si ya
+          aceptaste un acuerdo, pedimos el motivo de salida y la plataforma puede revisar el caso.
         </div>
       </div>
 
@@ -142,7 +152,7 @@ export function ChatListPage() {
                   <button
                     type="button"
                     className="vt-btn my-2 mr-1 inline-flex shrink-0 items-center gap-1.5 self-center text-nowrap text-[13px]"
-                    title="Registrar salida del chat (puede restringir acciones si hay acuerdo sin pago)"
+                    title="Quitar de tu lista: sin acuerdo aceptado, sin motivo ni impacto en confianza; con acuerdo aceptado, pedimos motivo"
                     onClick={() => handleExitChat(th.id)}
                   >
                     <LogOut size={16} aria-hidden /> Salir

@@ -143,6 +143,8 @@ Existe un boton para publicar reels si el usuario es vendedor de mercancias|serv
    - En Revision: El video queda como "Pendiente". Se notifica al usuario que el contenido no parece
      comercial y se advierte sobre posibles bajas en su Barra de Confianza
 
+Done--------------------------------------------------------
+
 ## Perfiles de Negocio y Verificación
 
 - **Estructura del Perfil:**
@@ -194,6 +196,7 @@ Existe un boton para publicar reels si el usuario es vendedor de mercancias|serv
 
 - **Vehiculos:** Los transportistas disponen de vehiculos, y si un transportista esta dando un viaje, no puede tomar viajes que le solapen en tiempo con el tiempo de su viaje actual. Cada transportista muestra en su catalogo o tienda fotos de sus vehiculos. Cada vehiculo debe tener una descripcion sobre su rendimiento y tipo de mercancias que puede llevar y bajo que condiciones lo puede hacer.
 
+Done--------------------------------------------------------
 DONE----------------------------------------
 
 - **Emitir contratos a transportistas:** El comprador/vendedor emiten un contrato en forma de hoja de ruta que se fuciona con otro contrato, esta fucion se puede quitar y poner simpre y cuando no se halla aceptado por ningun miembro comprador/vendedor y cada vez que se haga la fucion, esta debe ser aprobada por los miembros del chat vendedor/comprador. Al decidirse transportar mercancias, debe existir la opcion en el chat de crear una o mas hojas de ruta estas hojas de rutas son aprobadas entre el comprador/vendedor y adjuntadas en orden cronologico al contrato principal.

@@ -1236,13 +1236,65 @@ export function ProfileStoresSection({ ownerUserId }: { ownerUserId: string }) {
                 className="rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] p-3.5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
+                  <div className="flex min-w-0 flex-1 gap-3">
+                    <input
+                      id={`store-avatar-${b.id}`}
+                      type="file"
+                      className="sr-only"
+                      accept="image/*"
+                      aria-label={`Imagen de tienda ${b.name}`}
+                      onChange={(e) => {
+                        const input = e.currentTarget;
+                        const picked = input.files
+                          ? Array.from(input.files)
+                          : [];
+                        input.value = "";
+                        const file = picked[0];
+                        if (!file) {
+                          return;
+                        }
+                        if (!file.type.startsWith("image/")) {
+                          toast.error("Elegí un archivo de imagen.");
+                          return;
+                        }
+                        const url = URL.createObjectURL(file);
+                        const prev = b.avatarUrl;
+                        if (
+                          updateOwnerStore(b.id, ownerUserId, {
+                            avatarUrl: url,
+                          })
+                        ) {
+                          if (prev) {
+                            revokeIfBlob(prev);
+                          }
+                          toast.success("Imagen de tienda actualizada");
+                        } else {
+                          revokeIfBlob(url);
+                          toast.error("No se pudo guardar la imagen");
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`store-avatar-${b.id}`}
+                      className="grid h-12 w-12 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] shadow-sm transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))]"
+                      title="Tocar para subir foto de la tienda"
+                    >
+                      {b.avatarUrl ? (
+                        <img
+                          src={b.avatarUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Store
+                          size={22}
+                          className="text-[var(--muted)]"
+                          aria-hidden
+                        />
+                      )}
+                    </label>
+                    <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Store
-                        size={18}
-                        className="shrink-0 text-[var(--muted)]"
-                        aria-hidden
-                      />
                       <span className="text-base font-black tracking-[-0.02em]">
                         {b.name}
                       </span>
@@ -1272,6 +1324,7 @@ export function ProfileStoresSection({ ownerUserId }: { ownerUserId: string }) {
                     ) : null}
                     <div className="vt-muted mt-1 text-xs">
                       {b.categories.join(" · ")}
+                    </div>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">

@@ -34,6 +34,11 @@ export type OwnerStoreFormValues = {
   transportIncluded: boolean
 }
 
+/** Parcial permitido al actualizar tienda (incl. imagen de vitrina). */
+export type OwnerStorePatch = Partial<
+  OwnerStoreFormValues & { avatarUrl: string | null | undefined }
+>
+
 export type StoreProductInput = Omit<StoreProduct, 'id' | 'storeId'>
 export type StoreServiceInput = Omit<StoreService, 'id' | 'storeId'>
 
@@ -211,11 +216,13 @@ export type MarketState = {
   linkAgreementToRouteSheet: (threadId: string, agreementId: string, routeSheetId: string) => boolean
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean
   recordChatExitFromList: (threadId: string) => void
+  /** Quita el hilo del estado local (lista del comprador / demo). */
+  removeThreadFromList: (threadId: string) => void
   markThreadPaymentCompleted: (threadId: string) => void
 
   /** Tiendas creadas por el usuario (vendedor) — flow-ui perfil. */
   createOwnerStore: (ownerUserId: string, values: OwnerStoreFormValues) => string | null
-  updateOwnerStore: (storeId: string, ownerUserId: string, values: Partial<OwnerStoreFormValues>) => boolean
+  updateOwnerStore: (storeId: string, ownerUserId: string, values: OwnerStorePatch) => boolean
   deleteOwnerStore: (storeId: string, ownerUserId: string) => boolean
   addOwnerStoreProduct: (storeId: string, ownerUserId: string, product: StoreProductInput) => string | null
   updateOwnerStoreProduct: (

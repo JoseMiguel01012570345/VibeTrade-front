@@ -1,16 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  ArrowLeft,
   Camera,
   CreditCard,
   ExternalLink,
-  Image,
+  Image as ImageIcon,
   Mail,
   Phone,
   Save,
+  Send,
+  User,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
-import { useAppStore } from "../../app/store/useAppStore";
+import { type SocialNetworkId, useAppStore } from "../../app/store/useAppStore";
+import { onBackdropPointerClose } from "../chat/lib/modalClose";
+import {
+  fieldLabel,
+  modalFormBody,
+  modalShellWide,
+  modalSub,
+} from "../chat/styles/formModalStyles";
 import { ProfileStoresSection } from "./ProfileStoresSection";
 
 const REEL_TITLES: Record<string, string> = {
@@ -21,14 +38,111 @@ const REEL_TITLES: Record<string, string> = {
   r5: "Semi-remolque disponible Bs.As. → NEA",
 };
 
+function isValidEmail(value: string): boolean {
+  const t = value.trim();
+  if (t.length < 5) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
+}
+
+const SOCIAL_META: Record<
+  SocialNetworkId,
+  { title: string; hint: string; placeholder: string; short: string }
+> = {
+  instagram: {
+    title: "Conectar Instagram",
+    hint: "Podés guardar tu @usuario o un enlace a tu perfil.",
+    placeholder: "@mi_empresa o https://instagram.com/…",
+    short: "Instagram",
+  },
+  telegram: {
+    title: "Conectar Telegram",
+    hint: "Usuario público (sin @) o enlace t.me/…",
+    placeholder: "usuario o https://t.me/…",
+    short: "Telegram",
+  },
+  x: {
+    title: "Conectar X",
+    hint: "Tu @ de X o enlace al perfil.",
+    placeholder: "@empresa",
+    short: "X",
+  },
+};
+
+function UserAvatarBadge({
+  avatarUrl,
+  fallbackLetter,
+  sizeClass,
+  title,
+  onPickClick,
+  interactive,
+}: {
+  avatarUrl?: string;
+  fallbackLetter: string;
+  sizeClass: string;
+  title: string;
+  onPickClick?: () => void;
+  interactive?: boolean;
+}) {
+  const inner = (
+    <>
+      {avatarUrl ? (
+        <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <span className="text-lg font-black text-white">{fallbackLetter}</span>
+      )}
+    </>
+  );
+
+  const shellClass = cn(
+    "grid place-items-center overflow-hidden rounded-[18px] bg-gradient-to-br from-[var(--primary)] to-violet-600 text-white",
+    sizeClass,
+    interactive &&
+      "cursor-pointer ring-offset-2 transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]",
+  );
+
+  if (interactive && onPickClick) {
+    return (
+      <button
+        type="button"
+        className={shellClass}
+        title={title}
+        aria-label={title}
+        onClick={onPickClick}
+      >
+        {inner}
+      </button>
+    );
+  }
+
+  return <div className={shellClass}>{inner}</div>;
+}
+
 export function ProfilePage() {
   const { userId } = useParams();
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
+  const profileSocialLinks = useAppStore((s) => s.profileSocialLinks);
+  const setMeAvatarUrl = useAppStore((s) => s.setMeAvatarUrl);
+  const setMeName = useAppStore((s) => s.setMeName);
+  const setMeEmail = useAppStore((s) => s.setMeEmail);
+  const setProfileSocialLink = useAppStore((s) => s.setProfileSocialLink);
   const saved = useAppStore((s) => s.savedReels);
 
   const isMe = userId === "me" || userId === me.id;
   const [tab, setTab] = useState<"account" | "reels" | "stores">("account");
+  const [socialModal, setSocialModal] = useState<SocialNetworkId | null>(null);
+  const [socialDraft, setSocialDraft] = useState("");
+  const [nameDraft, setNameDraft] = useState(me.name);
+  const [emailDraft, setEmailDraft] = useState(me.email);
+  const profileAvatarInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setNameDraft(me.name);
+  }, [me.name]);
+
+  useEffect(() => {
+    setEmailDraft(me.email);
+  }, [me.email]);
 
   useEffect(() => {
     if (me.role !== "seller" && tab === "stores") setTab("account");
@@ -39,26 +153,90 @@ export function ProfilePage() {
     [saved],
   );
 
+  function openSocialModal(net: SocialNetworkId) {
+    setSocialDraft(profileSocialLinks[net] ?? "");
+    setSocialModal(net);
+  }
+
+  function onProfileAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const input = e.currentTarget;
+    const picked = input.files ? Array.from(input.files) : [];
+    input.value = "";
+    const file = picked[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Elegí un archivo de imagen.");
+      return;
+    }
+    setMeAvatarUrl(URL.createObjectURL(file));
+    toast.success("Foto de perfil actualizada");
+  }
+
+  const letter = (isMe ? me.name : (userId ?? "U")).slice(0, 1).toUpperCase();
+
+  const nameDirty = isMe && nameDraft.trim() !== me.name.trim();
+  const emailDirty =
+    isMe &&
+    emailDraft.trim().toLowerCase() !== me.email.trim().toLowerCase();
+
+  function saveDisplayName() {
+    const t = nameDraft.trim();
+    if (t.length < 2) {
+      toast.error("El nombre debe tener al menos 2 caracteres.");
+      return;
+    }
+    setMeName(t);
+    toast.success("Nombre guardado");
+  }
+
+  function saveEmailField() {
+    const t = emailDraft.trim();
+    if (!isValidEmail(t)) {
+      toast.error("Ingresá un email válido.");
+      return;
+    }
+    setMeEmail(t);
+    toast.success("Email guardado");
+  }
+
+  const socialModalMeta = socialModal ? SOCIAL_META[socialModal] : null;
+
   return (
     <div className="container vt-page">
+      <input
+        ref={profileAvatarInputRef}
+        type="file"
+        className="sr-only"
+        accept="image/*"
+        aria-label="Subir foto de perfil"
+        onChange={onProfileAvatarChange}
+      />
+
       <div className="flex flex-col gap-3.5">
-        <div className="vt-card vt-card-pad flex items-center gap-3">
-          <div className="grid h-[52px] w-[52px] place-items-center rounded-[18px] bg-gradient-to-br from-[var(--primary)] to-violet-600 text-lg font-black text-white">
-            {(isMe ? me.name : (userId ?? "U")).slice(0, 1).toUpperCase()}
+        <div className="vt-card vt-card-pad">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="vt-btn z-[2] shrink-0 border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
+              onClick={() => nav(-1)}
+              aria-label="Volver"
+              style={{
+                minWidth: 40,
+                minHeight: 40,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <h1 className="text-lg font-black tracking-[-0.03em]">Perfil</h1>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-lg font-black tracking-[-0.03em]">
-              {isMe ? me.name : `Usuario ${userId}`}
-            </div>
-            <div className="vt-muted">{isMe ? me.phone : "+—"}</div>
-          </div>
-          <button className="vt-btn" onClick={() => nav(-1)}>
-            Volver
-          </button>
         </div>
 
         <div className="flex gap-2.5">
           <button
+            type="button"
             className={cn(
               "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black",
               tab === "account" &&
@@ -69,6 +247,7 @@ export function ProfilePage() {
             Cuenta
           </button>
           <button
+            type="button"
             className={cn(
               "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black",
               tab === "reels" &&
@@ -80,6 +259,7 @@ export function ProfilePage() {
           </button>
           {isMe && me.role === "seller" ? (
             <button
+              type="button"
               className={cn(
                 "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black",
                 tab === "stores" &&
@@ -97,16 +277,92 @@ export function ProfilePage() {
             <div className="vt-h2">Configuración del usuario</div>
             <div className="vt-divider my-3" />
 
+            {isMe ? (
+              <div className="mb-4 flex flex-col items-center gap-2 border-b border-[var(--border)] pb-4 text-center sm:flex-row sm:text-left">
+                <UserAvatarBadge
+                  avatarUrl={me.avatarUrl}
+                  fallbackLetter={letter}
+                  sizeClass="h-[88px] w-[88px] shrink-0 text-2xl"
+                  title="Cambiar foto de perfil"
+                  interactive
+                  onPickClick={() => profileAvatarInputRef.current?.click()}
+                />
+                <div className="min-w-0">
+                  <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+                    <ImageIcon size={14} /> Foto de perfil
+                  </div>
+                  <p className="vt-muted mt-1 max-w-md text-[13px] leading-snug">
+                    Tocá el avatar para subir una imagen desde tu dispositivo
+                    (demo local con URL blob).
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-2">
+                <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+                  <User size={14} /> Nombre para mostrar
+                </span>
+                {isMe ? (
+                  <div className="flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-stretch">
+                    <input
+                      className="vt-input min-w-0 flex-1"
+                      value={nameDraft}
+                      onChange={(e) =>
+                        setNameDraft(e.target.value.slice(0, 100))
+                      }
+                      autoComplete="name"
+                      maxLength={100}
+                    />
+                    <button
+                      type="button"
+                      className="vt-btn vt-btn-primary vt-btn-sm inline-flex shrink-0 items-center justify-center gap-1.5 min-[480px]:self-stretch"
+                      disabled={!nameDirty}
+                      onClick={saveDisplayName}
+                    >
+                      <Save size={14} aria-hidden /> Guardar
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    className="vt-input"
+                    value={`Usuario ${userId}`}
+                    disabled
+                    readOnly
+                  />
+                )}
+              </label>
+
               <label className="flex flex-col gap-2">
                 <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                   <Mail size={14} /> Email (obligatorio)
                 </span>
-                <input
-                  className="vt-input"
-                  defaultValue="demo@vibetrade.app"
-                  disabled={!isMe}
-                />
+                {isMe ? (
+                  <div className="flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-stretch">
+                    <input
+                      className="vt-input min-w-0 flex-1"
+                      type="email"
+                      autoComplete="email"
+                      inputMode="email"
+                      value={emailDraft}
+                      onChange={(e) =>
+                        setEmailDraft(e.target.value.slice(0, 120))
+                      }
+                      maxLength={120}
+                    />
+                    <button
+                      type="button"
+                      className="vt-btn vt-btn-primary vt-btn-sm inline-flex shrink-0 items-center justify-center gap-1.5 min-[480px]:self-stretch"
+                      disabled={!emailDirty}
+                      onClick={saveEmailField}
+                    >
+                      <Save size={14} aria-hidden /> Guardar
+                    </button>
+                  </div>
+                ) : (
+                  <input className="vt-input" value="—" disabled readOnly />
+                )}
               </label>
 
               <label className="flex flex-col gap-2">
@@ -122,25 +378,72 @@ export function ProfilePage() {
                   / X)
                 </div>
                 <div className="flex flex-wrap gap-2.5">
-                  <button className="vt-btn" disabled={!isMe}>
-                    <Camera size={16} /> Conectar Instagram
+                  <button
+                    type="button"
+                    className="vt-btn"
+                    disabled={!isMe}
+                    onClick={() => isMe && openSocialModal("instagram")}
+                  >
+                    <Camera size={16} aria-hidden /> Conectar Instagram
                   </button>
-                  <button className="vt-btn" disabled={!isMe}>
-                    Conectar Telegram
+                  <button
+                    type="button"
+                    className="vt-btn"
+                    disabled={!isMe}
+                    onClick={() => isMe && openSocialModal("telegram")}
+                  >
+                    <Send size={16} aria-hidden /> Conectar Telegram
                   </button>
-                  <button className="vt-btn" disabled={!isMe}>
+                  <button
+                    type="button"
+                    className="vt-btn"
+                    disabled={!isMe}
+                    onClick={() => isMe && openSocialModal("x")}
+                  >
                     Conectar X
                   </button>
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
-                  <Image size={14} /> Imagen de perfil
-                </div>
-                <button className="vt-btn" disabled={!isMe}>
-                  Subir imagen
-                </button>
+                {isMe &&
+                (profileSocialLinks.instagram ||
+                  profileSocialLinks.telegram ||
+                  profileSocialLinks.x) ? (
+                  <div className="mt-1 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
+                    <div className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+                      Cuentas guardadas
+                    </div>
+                    <ul className="mt-2 space-y-2 text-[13px]">
+                      {(
+                        ["instagram", "telegram", "x"] as SocialNetworkId[]
+                      ).map((id) => {
+                        const v = profileSocialLinks[id];
+                        if (!v) return null;
+                        return (
+                          <li
+                            key={id}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2"
+                          >
+                            <span className="font-bold text-[var(--text)]">
+                              {SOCIAL_META[id].short}
+                            </span>
+                            <span
+                              className="vt-muted min-w-0 flex-1 truncate text-right font-mono text-[12px]"
+                              title={v}
+                            >
+                              {v}
+                            </span>
+                            <button
+                              type="button"
+                              className="vt-btn vt-btn-ghost vt-btn-sm shrink-0"
+                              onClick={() => openSocialModal(id)}
+                            >
+                              Editar
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
 
               {isMe && (
@@ -153,7 +456,9 @@ export function ProfilePage() {
                     Elegí una pasarela y añadí credenciales necesarias por
                     pasarela (demo).
                   </div>
-                  <button className="vt-btn">Configurar</button>
+                  <button type="button" className="vt-btn">
+                    Configurar
+                  </button>
                 </div>
               )}
             </div>
@@ -181,7 +486,7 @@ export function ProfilePage() {
                     key={id}
                     className="flex items-center gap-2.5 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-3 py-2.5"
                   >
-                    <Save size={16} />
+                    <Save size={16} aria-hidden />
                     <div>
                       <div className="font-black tracking-[-0.02em]">
                         {REEL_TITLES[id] ?? id}
@@ -195,6 +500,60 @@ export function ProfilePage() {
           </div>
         )}
       </div>
+
+      {socialModal && socialModalMeta ? (
+        <div
+          className="vt-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-social-modal-title"
+          onMouseDown={(e) =>
+            onBackdropPointerClose(e, () => setSocialModal(null))
+          }
+        >
+          <div
+            className={modalShellWide}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="vt-modal-title" id="profile-social-modal-title">
+              {socialModalMeta.title}
+            </div>
+            <div className={modalSub}>{socialModalMeta.hint}</div>
+            <div className={modalFormBody}>
+              <label className="flex flex-col gap-2">
+                <span className={fieldLabel}>Usuario o enlace</span>
+                <input
+                  className="vt-input"
+                  autoFocus
+                  placeholder={socialModalMeta.placeholder}
+                  value={socialDraft}
+                  onChange={(e) => setSocialDraft(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="vt-modal-actions">
+              <button
+                type="button"
+                className="vt-btn"
+                onClick={() => setSocialModal(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="vt-btn vt-btn-primary"
+                onClick={() => {
+                  setProfileSocialLink(socialModal, socialDraft);
+                  setSocialModal(null);
+                  toast.success("Enlace guardado");
+                }}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
