@@ -59,6 +59,7 @@ export function ChatRightRail({
 }: Props) {
   const publishRouteSheetsToPlatform = useMarketStore((s) => s.publishRouteSheetsToPlatform)
   const linkAgreementToRouteSheet = useMarketStore((s) => s.linkAgreementToRouteSheet)
+  const unlinkAgreementFromRouteSheet = useMarketStore((s) => s.unlinkAgreementFromRouteSheet)
   const deleteRouteSheet = useMarketStore((s) => s.deleteRouteSheet)
   const [publishModalOpen, setPublishModalOpen] = useState(false)
   const [tab, setTab] = useState<'contracts' | 'routes' | 'people'>('contracts')
@@ -232,6 +233,7 @@ export function ChatRightRail({
             actionsLocked={actionsLocked}
             threadId={threadId}
             linkAgreementToRouteSheet={linkAgreementToRouteSheet}
+            unlinkAgreementFromRouteSheet={unlinkAgreementFromRouteSheet}
             openRouteFromContract={openRouteFromContract}
             onEditPendingAgreement={onEditPendingAgreement}
           />

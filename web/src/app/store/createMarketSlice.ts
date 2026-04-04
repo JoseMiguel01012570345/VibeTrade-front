@@ -587,6 +587,47 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
       return ok
     },
 
+    unlinkAgreementFromRouteSheet: (threadId, agreementId) => {
+      let ok = false
+      set((s) => {
+        const th = s.threads[threadId]
+        const contracts = th.contracts ?? []
+        const sheets = th.routeSheets ?? []
+        if (!th || threadIsActionLocked(th) || !contracts.length) return s
+        const cIdx = contracts.findIndex((c) => c.id === agreementId)
+        if (cIdx < 0) return s
+        const prev = contracts[cIdx]
+        const rid = prev.routeSheetId
+        if (!rid) return s
+        const sheet = sheets.find((r) => r.id === rid)
+        if (sheet?.publicadaPlataforma) return s
+        const nextContracts = [...contracts]
+        nextContracts[cIdx] = { ...prev, routeSheetId: undefined }
+        const titulo = sheet?.titulo ?? 'hoja de ruta'
+        const sys: Message = {
+          id: uid('m'),
+          from: 'system',
+          type: 'text',
+          text: `Acuerdo «${prev.title}» desvinculado de la hoja de ruta «${titulo}».`,
+          at: Date.now(),
+        }
+        ok = true
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...th,
+              contracts: nextContracts,
+              messages: [...th.messages, sys],
+              routeSheets: th.routeSheets ?? [],
+            },
+          },
+        }
+      })
+      return ok
+    },
+
     deleteRouteSheet: (threadId, routeSheetId) => {
       let ok = false
       set((s) => {

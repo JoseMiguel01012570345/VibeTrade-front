@@ -96,12 +96,14 @@ export function AgreementDetailView({
   onOpenRouteSheet,
   routeSheets = [],
   onLinkRouteSheet,
+  onUnlinkRouteSheet,
   linkActionsDisabled = false,
 }: {
   a: TradeAgreement;
   onOpenRouteSheet?: (routeSheetId: string) => void;
   routeSheets?: RouteSheet[];
   onLinkRouteSheet?: (agreementId: string, routeSheetId: string) => void;
+  onUnlinkRouteSheet?: (agreementId: string) => void;
   linkActionsDisabled?: boolean;
 }) {
   const m = a.merchandiseMeta ?? undefined;
@@ -116,11 +118,18 @@ export function AgreementDetailView({
     setPickId(a.routeSheetId ?? "");
   }, [a.id, a.routeSheetId]);
 
-  const linkedTitle = a.routeSheetId
-    ? routeSheets.find((r) => r.id === a.routeSheetId)?.titulo
+  const linkedSheet = a.routeSheetId
+    ? routeSheets.find((r) => r.id === a.routeSheetId)
     : undefined;
-  /** Una vez vinculada una hoja, no se permite cambiar la elección desde este panel. */
-  const linkUiLocked = !!a.routeSheetId;
+  const linkedTitle = linkedSheet?.titulo;
+  const routeLinked = !!a.routeSheetId;
+  /** Publicada: sin desvincular ni desde aquí. */
+  const linkPublishedLocked =
+    !!a.routeSheetId && !!linkedSheet?.publicadaPlataforma;
+  const canUnlinkRoute =
+    !!a.routeSheetId &&
+    !linkedSheet?.publicadaPlataforma &&
+    !!onUnlinkRouteSheet;
 
   return (
     <div className={agrDetailRoot}>
@@ -149,7 +158,7 @@ export function AgreementDetailView({
                     <select
                       className="vt-input"
                       value={pickId}
-                      disabled={linkUiLocked || linkActionsDisabled}
+                      disabled={routeLinked || linkActionsDisabled}
                       onChange={(e) => setPickId(e.target.value)}
                     >
                       <option value="">Seleccionar…</option>
@@ -165,7 +174,7 @@ export function AgreementDetailView({
                     className="vt-btn vt-btn-primary shrink-0"
                     disabled={
                       linkActionsDisabled ||
-                      linkUiLocked ||
+                      routeLinked ||
                       !pickId ||
                       pickId === (a.routeSheetId ?? "")
                     }
@@ -173,7 +182,7 @@ export function AgreementDetailView({
                       if (
                         !pickId ||
                         !onLinkRouteSheet ||
-                        linkUiLocked ||
+                        routeLinked ||
                         linkActionsDisabled
                       )
                         return;
@@ -182,10 +191,30 @@ export function AgreementDetailView({
                   >
                     Vincular
                   </button>
+                  {canUnlinkRoute ? (
+                    <button
+                      type="button"
+                      className="vt-btn shrink-0"
+                      disabled={linkActionsDisabled}
+                      onClick={() => {
+                        if (linkActionsDisabled || !onUnlinkRouteSheet) return;
+                        onUnlinkRouteSheet(a.id);
+                      }}
+                    >
+                      Desvincular
+                    </button>
+                  ) : null}
                 </div>
-                {linkUiLocked ? (
+                {linkPublishedLocked ? (
                   <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
-                    La hoja vinculada no se puede cambiar desde aquí.
+                    La hoja ya está publicada en la plataforma: el vínculo no se
+                    puede cambiar ni quitar desde aquí.
+                  </p>
+                ) : a.routeSheetId ? (
+                  <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
+                    Con una hoja vinculada, la elección queda fija; podés
+                    desvincular para elegir otra mientras la hoja no esté
+                    publicada en la plataforma.
                   </p>
                 ) : null}
               </>

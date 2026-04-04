@@ -219,6 +219,8 @@ export type MarketState = {
   toggleRouteStop: (threadId: string, routeSheetId: string, stopId: string) => void
   publishRouteSheetsToPlatform: (threadId: string, routeSheetIds: string[]) => void
   linkAgreementToRouteSheet: (threadId: string, agreementId: string, routeSheetId: string) => boolean
+  /** Quitar vínculo solo si la hoja no está publicada en la plataforma. */
+  unlinkAgreementFromRouteSheet: (threadId: string, agreementId: string) => boolean
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean
   recordChatExitFromList: (threadId: string) => void
   /** Quita el hilo del estado local (lista del comprador / demo). */
