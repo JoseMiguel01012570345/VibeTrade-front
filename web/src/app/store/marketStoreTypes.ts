@@ -1,3 +1,8 @@
+import type {
+  StoreCatalog,
+  StoreProduct,
+  StoreService,
+} from '../../pages/chat/domain/storeCatalogTypes'
 import type { TradeAgreement, TradeAgreementDraft } from '../../pages/chat/domain/tradeAgreementTypes'
 import type { RouteSheet, RouteSheetCreatePayload, RouteSheetStatus } from '../../pages/chat/domain/routeSheetTypes'
 
@@ -17,7 +22,20 @@ export type StoreBadge = {
   transportIncluded: boolean
   avatarUrl?: string
   trustScore: number
+  /** Si existe, la tienda fue creada desde el perfil y solo ese usuario puede editarla. */
+  ownerUserId?: string
 }
+
+/** Alta de tienda desde perfil (flow-ui: nombre, categorías, descripción, transporte). */
+export type OwnerStoreFormValues = {
+  name: string
+  categories: string[]
+  categoryPitch: string
+  transportIncluded: boolean
+}
+
+export type StoreProductInput = Omit<StoreProduct, 'id' | 'storeId'>
+export type StoreServiceInput = Omit<StoreService, 'id' | 'storeId'>
 
 export type QAItem = {
   id: string
@@ -149,6 +167,8 @@ export type MarketState = {
   stores: Record<string, StoreBadge>
   offers: Record<string, Offer>
   offerIds: string[]
+  /** Catálogo de tienda (productos/servicios de ficha) por id de negocio — flow-ui perfil & acuerdos. */
+  storeCatalogs: Record<string, StoreCatalog>
   threads: Record<string, Thread>
 
   ask: (offerId: string, askedBy: { id: string; name: string; trustScore: number }, question: string) => string
@@ -192,4 +212,31 @@ export type MarketState = {
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean
   recordChatExitFromList: (threadId: string) => void
   markThreadPaymentCompleted: (threadId: string) => void
+
+  /** Tiendas creadas por el usuario (vendedor) — flow-ui perfil. */
+  createOwnerStore: (ownerUserId: string, values: OwnerStoreFormValues) => string | null
+  updateOwnerStore: (storeId: string, ownerUserId: string, values: Partial<OwnerStoreFormValues>) => boolean
+  deleteOwnerStore: (storeId: string, ownerUserId: string) => boolean
+  addOwnerStoreProduct: (storeId: string, ownerUserId: string, product: StoreProductInput) => string | null
+  updateOwnerStoreProduct: (
+    storeId: string,
+    ownerUserId: string,
+    productId: string,
+    product: StoreProductInput,
+  ) => boolean
+  removeOwnerStoreProduct: (storeId: string, ownerUserId: string, productId: string) => boolean
+  setOwnerStoreProductPublished: (
+    storeId: string,
+    ownerUserId: string,
+    productId: string,
+    published: boolean,
+  ) => boolean
+  addOwnerStoreService: (storeId: string, ownerUserId: string, service: StoreServiceInput) => string | null
+  updateOwnerStoreService: (
+    storeId: string,
+    ownerUserId: string,
+    serviceId: string,
+    service: StoreServiceInput,
+  ) => boolean
+  removeOwnerStoreService: (storeId: string, ownerUserId: string, serviceId: string) => boolean
 }

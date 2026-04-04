@@ -1,0 +1,265 @@
+import type { MerchandiseCondition, MerchandiseLine, ServiceItem } from './tradeAgreementTypes'
+import { emptyMerchandiseLine } from './tradeAgreementTypes'
+
+/** Archivo adjunto en un campo personalizado (URL de objeto o https persistente). */
+export type StoreCustomAttachment = {
+  id: string
+  url: string
+  fileName: string
+  /** image | pdf | other */
+  kind: 'image' | 'pdf' | 'other'
+}
+
+/** Campo libre con adjuntos (fotos / documentos + texto embebido) — flow-ui. */
+export type StoreCustomField = {
+  title: string
+  body: string
+  /** Leyenda opcional junto a los adjuntos */
+  attachmentNote?: string
+  attachments?: StoreCustomAttachment[]
+}
+
+export type StoreProduct = {
+  id: string
+  storeId: string
+  category: string
+  name: string
+  model?: string
+  shortDescription: string
+  mainBenefit: string
+  technicalSpecs: string
+  condition: MerchandiseCondition
+  price: string
+  /** Impuestos, envío o instalación — texto según flow-ui */
+  taxesShippingInstall?: string
+  availability: string
+  warrantyReturn: string
+  contentIncluded: string
+  usageConditions: string
+  photoUrls: string[]
+  /** Si es true, la ficha aparece en la vitrina pública de la tienda y puede anclarse en acuerdos como catálogo publicado. */
+  published: boolean
+  customFields: StoreCustomField[]
+}
+
+export type StoreService = {
+  id: string
+  storeId: string
+  category: string
+  tipoServicio: string
+  descripcion: string
+  riesgos: { enabled: boolean; items: string[] }
+  incluye: string
+  noIncluye: string
+  dependencias: { enabled: boolean; items: string[] }
+  entregables: string
+  garantias: { enabled: boolean; texto: string }
+  propIntelectual: string
+  customFields: StoreCustomField[]
+}
+
+/** Catálogo configurado para una tienda (demo / futura persistencia). */
+export type StoreCatalog = {
+  /** Texto: qué categorías de productos y servicios ofrece la tienda */
+  pitch: string
+  joinedAt: number
+  products: StoreProduct[]
+  services: StoreService[]
+}
+
+function norm(s: string): string {
+  return s.trim()
+}
+
+function pickLine(a: string, b: string): string {
+  return norm(a) !== '' ? a : b
+}
+
+function appendDetailBlock(base: string, title: string, body: string): string {
+  const t = norm(body)
+  if (!t) return base
+  const prefix = norm(base)
+  const chunk = `${title}\n${t}`
+  if (!prefix) return chunk
+  if (prefix.includes(t)) return base
+  return `${prefix}\n\n${chunk}`
+}
+
+/** Valores por defecto del acuerdo inferidos desde la ficha de producto de la tienda. */
+export function storeProductToMerchandiseDefaults(p: StoreProduct): MerchandiseLine {
+  const tipo = [p.name, p.model].filter(Boolean).join(' — ')
+  const regulaciones = [
+    p.category && `Categoría: ${p.category}`,
+    p.shortDescription && `Descripción breve: ${p.shortDescription}`,
+    p.mainBenefit && `Beneficio principal: ${p.mainBenefit}`,
+    p.technicalSpecs && `Características técnicas: ${p.technicalSpecs}`,
+    p.contentIncluded && `Contenido incluido: ${p.contentIncluded}`,
+    p.usageConditions && `Condiciones de uso: ${p.usageConditions}`,
+    ...p.customFields.map((f) => {
+      if (!norm(f.title)) return ''
+      const att =
+        f.attachments?.length ?
+          ` [Adjuntos: ${f.attachments.map((a) => a.fileName).join(', ')}]`
+        : ''
+      const note = f.attachmentNote ? ` (${f.attachmentNote})` : ''
+      return `${f.title}: ${f.body}${note}${att}`
+    }),
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  return {
+    ...emptyMerchandiseLine(),
+    tipo,
+    cantidad: '',
+    valorUnitario: p.price,
+    estado: p.condition,
+    impuestos: p.taxesShippingInstall ?? '',
+    devolucionesDesc: p.warrantyReturn,
+    tipoEmbalaje: '',
+    regulaciones,
+  }
+}
+
+/**
+ * Fusión para el acuerdo: lo ya cargado en la línea del acuerdo tiene prioridad;
+ * lo vacío se completa desde la ficha del catálogo (flow-ui).
+ */
+export function mergeMerchandiseLineWithStoreProduct(line: MerchandiseLine, p: StoreProduct): MerchandiseLine {
+  const def = storeProductToMerchandiseDefaults(p)
+  const sameLink = line.linkedStoreProductId === p.id
+  const merged: MerchandiseLine = {
+    ...line,
+    linkedStoreProductId: p.id,
+    tipo: pickLine(line.tipo, def.tipo),
+    cantidad: pickLine(line.cantidad, def.cantidad),
+    valorUnitario: pickLine(line.valorUnitario, def.valorUnitario),
+    estado: sameLink ? line.estado : p.condition,
+    descuento: pickLine(line.descuento, def.descuento),
+    impuestos: pickLine(line.impuestos, def.impuestos),
+    moneda: pickLine(line.moneda, def.moneda),
+    tipoEmbalaje: pickLine(line.tipoEmbalaje, def.tipoEmbalaje),
+    devolucionesDesc: pickLine(line.devolucionesDesc, def.devolucionesDesc),
+    devolucionQuienPaga: pickLine(line.devolucionQuienPaga, def.devolucionQuienPaga),
+    devolucionPlazos: pickLine(line.devolucionPlazos, def.devolucionPlazos),
+    regulaciones: pickLine(line.regulaciones, def.regulaciones),
+  }
+
+  if (norm(line.regulaciones) !== '' && norm(def.regulaciones) !== '' && line.regulaciones !== def.regulaciones) {
+    merged.regulaciones = appendDetailBlock(line.regulaciones, 'Detalle del catálogo', def.regulaciones)
+  }
+
+  if (norm(p.availability) && !norm(merged.cantidad)) {
+    merged.cantidad = p.availability
+  }
+
+  return merged
+}
+
+function mergeListBlock(
+  enabled: boolean,
+  items: string[],
+  catalog: { enabled: boolean; items: string[] },
+): { enabled: boolean; items: string[] } {
+  if (enabled && items.length > 0) return { enabled, items }
+  const catItems = catalog.enabled ? catalog.items : []
+  if (catItems.length > 0) return { enabled: true, items: catItems }
+  return { enabled: false, items: [] }
+}
+
+function mergeGarantias(
+  g: ServiceItem['garantias'],
+  catalog: StoreService['garantias'],
+): ServiceItem['garantias'] {
+  if (g.enabled && norm(g.texto)) return g
+  if (catalog.enabled && norm(catalog.texto)) return { enabled: true, texto: catalog.texto }
+  if (norm(g.texto)) return { enabled: true, texto: g.texto }
+  return { enabled: false, texto: '' }
+}
+
+/** Fusión servicio del acuerdo + ficha de servicio de la tienda (horarios y pagos del acuerdo se conservan). */
+export function mergeServiceItemWithStoreService(item: ServiceItem, s: StoreService): ServiceItem {
+  const next: ServiceItem = {
+    ...item,
+    linkedStoreServiceId: s.id,
+    tipoServicio: pickLine(item.tipoServicio, s.tipoServicio),
+    descripcion: pickLine(item.descripcion, s.descripcion),
+    incluye: pickLine(item.incluye, s.incluye),
+    noIncluye: pickLine(item.noIncluye, s.noIncluye),
+    entregables: pickLine(item.entregables, s.entregables),
+    propIntelectual: pickLine(item.propIntelectual, s.propIntelectual),
+    riesgos: mergeListBlock(item.riesgos.enabled, item.riesgos.items, s.riesgos),
+    dependencias: mergeListBlock(item.dependencias.enabled, item.dependencias.items, s.dependencias),
+    garantias: mergeGarantias(item.garantias, s.garantias),
+  }
+
+  if (norm(item.descripcion) !== '' && norm(s.descripcion) !== '' && item.descripcion !== s.descripcion) {
+    next.descripcion = appendDetailBlock(item.descripcion, 'Descripción en catálogo', s.descripcion)
+  }
+
+  const extra = s.customFields
+    .map((f) => {
+      if (!norm(f.title)) return ''
+      const att =
+        f.attachments?.length ?
+          ` [Adjuntos: ${f.attachments.map((a) => a.fileName).join(', ')}]`
+        : ''
+      return `${f.title}: ${f.body}${att}`
+    })
+    .filter(Boolean)
+    .join('\n')
+  if (extra) {
+    next.descripcion = appendDetailBlock(next.descripcion, 'Campos adicionales (catálogo)', extra)
+  }
+
+  return next
+}
+
+export function findStoreProduct(catalog: StoreCatalog | undefined, id: string | undefined): StoreProduct | undefined {
+  if (!catalog || !id) return undefined
+  return catalog.products.find((p) => p.id === id)
+}
+
+export function findStoreService(catalog: StoreCatalog | undefined, id: string | undefined): StoreService | undefined {
+  if (!catalog || !id) return undefined
+  return catalog.services.find((x) => x.id === id)
+}
+
+/** Valores iniciales del formulario de producto (perfil / ficha). */
+export function emptyStoreProductInput(): Omit<StoreProduct, 'id' | 'storeId'> {
+  return {
+    category: '',
+    name: '',
+    model: '',
+    shortDescription: '',
+    mainBenefit: '',
+    technicalSpecs: '',
+    condition: 'nuevo',
+    price: '',
+    taxesShippingInstall: '',
+    availability: '',
+    warrantyReturn: '',
+    contentIncluded: '',
+    usageConditions: '',
+    photoUrls: [],
+    published: false,
+    customFields: [],
+  }
+}
+
+/** Valores iniciales del formulario de servicio (perfil / ficha). */
+export function emptyStoreServiceInput(): Omit<StoreService, 'id' | 'storeId'> {
+  return {
+    category: '',
+    tipoServicio: '',
+    descripcion: '',
+    riesgos: { enabled: false, items: [] },
+    incluye: '',
+    noIncluye: '',
+    dependencias: { enabled: false, items: [] },
+    entregables: '',
+    garantias: { enabled: false, texto: '' },
+    propIntelectual: '',
+    customFields: [],
+  }
+}

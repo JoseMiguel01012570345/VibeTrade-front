@@ -8,7 +8,8 @@ import {
   normalizeRouteSheetParadas,
 } from '../../pages/chat/domain/routeSheetValidation'
 import type { RouteSheet, RouteStop } from '../../pages/chat/domain/routeSheetTypes'
-import type { MarketState, Message, Offer, Thread } from './marketStoreTypes'
+import type { StoreCatalog, StoreProduct, StoreService } from '../../pages/chat/domain/storeCatalogTypes'
+import type { MarketState, Message, Offer, StoreBadge, Thread } from './marketStoreTypes'
 import {
   threadHasAcceptedAgreement,
   threadHasAcceptedAgreementUnpaid,
@@ -22,7 +23,12 @@ import {
   threadIsActionLocked,
   uid,
 } from './marketStoreHelpers'
-import { demoOffers, demoStores } from './marketStoreSeed'
+import { demoOffers, demoStoreCatalogs, demoStores } from './marketStoreSeed'
+
+function isOwnerOfStore(stores: Record<string, StoreBadge>, storeId: string, ownerUserId: string): boolean {
+  const b = stores[storeId]
+  return !!b?.ownerUserId && b.ownerUserId === ownerUserId
+}
 
 export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
   const offers: Record<string, Offer> = Object.fromEntries(demoOffers.map((o) => [o.id, o]))
@@ -31,6 +37,7 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
     stores: demoStores,
     offers,
     offerIds: demoOffers.map((o) => o.id),
+    storeCatalogs: demoStoreCatalogs,
     threads: {},
 
     ask: (offerId, askedBy, question) => {
@@ -720,6 +727,189 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
         }
         return { ...s, threads: { ...s.threads, [threadId]: { ...th, messages: [...th.messages, m] } } }
       })
+    },
+
+    createOwnerStore: (ownerUserId, values) => {
+      const name = values.name.trim()
+      if (!name) return null
+      const cats = values.categories.map((c) => c.trim()).filter(Boolean)
+      const id = uid('ust')
+      const badge: StoreBadge = {
+        id,
+        name,
+        verified: false,
+        categories: cats.length ? cats : ['Sin categoría'],
+        transportIncluded: values.transportIncluded,
+        trustScore: 65,
+        ownerUserId,
+      }
+      const catalog: StoreCatalog = {
+        pitch: values.categoryPitch.trim(),
+        joinedAt: Date.now(),
+        products: [],
+        services: [],
+      }
+      set((s) => ({
+        ...s,
+        stores: { ...s.stores, [id]: badge },
+        storeCatalogs: { ...s.storeCatalogs, [id]: catalog },
+      }))
+      return id
+    },
+
+    updateOwnerStore: (storeId, ownerUserId, patch) => {
+      const s = get()
+      if (!isOwnerOfStore(s.stores, storeId, ownerUserId)) return false
+      const st = s.stores[storeId]
+      const cat = s.storeCatalogs[storeId]
+      if (!st || !cat) return false
+      set((prev) => {
+        const nextBadge: StoreBadge = {
+          ...st,
+          ...(patch.name !== undefined ? { name: patch.name.trim() || st.name } : {}),
+          ...(patch.categories !== undefined
+            ? {
+                categories: patch.categories.length ? patch.categories : st.categories,
+              }
+            : {}),
+          ...(patch.transportIncluded !== undefined
+            ? { transportIncluded: patch.transportIncluded }
+            : {}),
+        }
+        const nextCat: StoreCatalog =
+          patch.categoryPitch !== undefined ? { ...cat, pitch: patch.categoryPitch } : cat
+        return {
+          ...prev,
+          stores: { ...prev.stores, [storeId]: nextBadge },
+          storeCatalogs: { ...prev.storeCatalogs, [storeId]: nextCat },
+        }
+      })
+      return true
+    },
+
+    deleteOwnerStore: (storeId, ownerUserId) => {
+      const s = get()
+      if (!isOwnerOfStore(s.stores, storeId, ownerUserId)) return false
+      set((prev) => {
+        const { [storeId]: _removed, ...restStores } = prev.stores
+        const { [storeId]: _cat, ...restCat } = prev.storeCatalogs
+        return { ...prev, stores: restStores, storeCatalogs: restCat }
+      })
+      return true
+    },
+
+    addOwnerStoreProduct: (storeId, ownerUserId, input) => {
+      const s = get()
+      if (!isOwnerOfStore(s.stores, storeId, ownerUserId)) return null
+      const cat = s.storeCatalogs[storeId]
+      if (!cat) return null
+      const pid = uid('prd')
+      const product: StoreProduct = { ...input, id: pid, storeId }
+      set((prev) => ({
+        ...prev,
+        storeCatalogs: {
+          ...prev.storeCatalogs,
+          [storeId]: { ...cat, products: [...cat.products, product] },
+        },
+      }))
+      return pid
+    },
+
+    updateOwnerStoreProduct: (storeId, ownerUserId, productId, input) => {
+      const s = get()
+      if (!isOwnerOfStore(s.stores, storeId, ownerUserId)) return false
+      const cat = s.storeCatalogs[storeId]
+      if (!cat) return false
+      const idx = cat.products.findIndex((p) => p.id === productId)
+      if (idx < 0) return false
+      const next: StoreProduct = { ...input, id: productId, storeId }
+      const products = [...cat.products]
+      products[idx] = next
+      set((prev) => ({
+        ...prev,
+        storeCatalogs: { ...prev.storeCatalogs, [storeId]: { ...cat, products } },
+      }))
+      return true
+    },
+
+    removeOwnerStoreProduct: (storeId, ownerUserId, productId) => {
+      const s = get()
+      if (!isOwnerOfStore(s.stores, storeId, ownerUserId)) return false
+      const cat = s.storeCatalogs[storeId]
+      if (!cat) return false
+      set((prev) => ({
+        ...prev,
+        storeCatalogs: {
+          ...prev.storeCatalogs,
+          [storeId]: { ...cat, products: cat.products.filter((p) => p.id !== productId) },
+        },
+      }))
+      return true
+    },
+
+    setOwnerStoreProductPublished: (storeId, ownerUserId, productId, published) => {
+      const s = get()
+      if (!isOwnerOfStore(s.stores, storeId, ownerUserId)) return false
+      const cat = s.storeCatalogs[storeId]
+      if (!cat) return false
+      const idx = cat.products.findIndex((p) => p.id === productId)
+      if (idx < 0) return false
+      const products = [...cat.products]
+      products[idx] = { ...products[idx], published }
+      set((prev) => ({
+        ...prev,
+        storeCatalogs: { ...prev.storeCatalogs, [storeId]: { ...cat, products } },
+      }))
+      return true
+    },
+
+    addOwnerStoreService: (storeId, ownerUserId, input) => {
+      const s = get()
+      if (!isOwnerOfStore(s.stores, storeId, ownerUserId)) return null
+      const cat = s.storeCatalogs[storeId]
+      if (!cat) return null
+      const sid = uid('svc')
+      const service: StoreService = { ...input, id: sid, storeId }
+      set((prev) => ({
+        ...prev,
+        storeCatalogs: {
+          ...prev.storeCatalogs,
+          [storeId]: { ...cat, services: [...cat.services, service] },
+        },
+      }))
+      return sid
+    },
+
+    updateOwnerStoreService: (storeId, ownerUserId, serviceId, input) => {
+      const s = get()
+      if (!isOwnerOfStore(s.stores, storeId, ownerUserId)) return false
+      const cat = s.storeCatalogs[storeId]
+      if (!cat) return false
+      const idx = cat.services.findIndex((x) => x.id === serviceId)
+      if (idx < 0) return false
+      const next: StoreService = { ...input, id: serviceId, storeId }
+      const services = [...cat.services]
+      services[idx] = next
+      set((prev) => ({
+        ...prev,
+        storeCatalogs: { ...prev.storeCatalogs, [storeId]: { ...cat, services } },
+      }))
+      return true
+    },
+
+    removeOwnerStoreService: (storeId, ownerUserId, serviceId) => {
+      const s = get()
+      if (!isOwnerOfStore(s.stores, storeId, ownerUserId)) return false
+      const cat = s.storeCatalogs[storeId]
+      if (!cat) return false
+      set((prev) => ({
+        ...prev,
+        storeCatalogs: {
+          ...prev.storeCatalogs,
+          [storeId]: { ...cat, services: cat.services.filter((x) => x.id !== serviceId) },
+        },
+      }))
+      return true
     },
   }
 

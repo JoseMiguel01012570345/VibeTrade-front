@@ -25,6 +25,8 @@ import {
   validateTradeAgreementDraft,
   validationErrorCount,
 } from '../../domain/tradeAgreementValidation'
+import type { StoreCatalog } from '../../domain/storeCatalogTypes'
+import { mergeServiceItemWithStoreService } from '../../domain/storeCatalogTypes'
 import { ServiceConfigWizard } from './serviceConfig/ServiceConfigWizard'
 import { ServiceItemPreview } from './serviceConfig/ServiceItemPreview'
 import { serviceItemSummaryLine } from './serviceConfig/serviceItemFormat'
@@ -35,6 +37,8 @@ type Props = {
   /** Devolvé `true` si el guardado/emisión fue exitoso (se cierra el modal). */
   onSubmit: (draft: TradeAgreementDraft) => boolean
   storeName: string
+  /** Catálogo del vendedor (productos/servicios de ficha) para anclar líneas del acuerdo. */
+  sellerCatalog?: StoreCatalog | null
   /** Modo edición: borrador desde acuerdo `pending_buyer` o `rejected` (al guardar, vuelve a pendiente). */
   initialDraft?: TradeAgreementDraft | null
   editingAgreementId?: string | null
@@ -45,6 +49,7 @@ export function TradeAgreementFormModal({
   onClose,
   onSubmit,
   storeName,
+  sellerCatalog = null,
   initialDraft = null,
   editingAgreementId = null,
 }: Props) {
@@ -205,6 +210,7 @@ export function TradeAgreementFormModal({
                   onChange={(ln) => setMerchLine(i, ln)}
                   onRemove={() => removeLine(i)}
                   canRemove={draft.merchandise.length > 1}
+                  sellerCatalog={sellerCatalog}
                 />
               ))
             ) : (
@@ -239,6 +245,44 @@ export function TradeAgreementFormModal({
                         Servicio {i + 1}: {serviceItemSummaryLine(sv)}
                       </div>
                       <div className="flex flex-wrap gap-2">
+                        {sellerCatalog?.services.length ? (
+                          <label className="flex min-w-[200px] max-w-full flex-col gap-1">
+                            <span className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+                              Anclar a servicio del catálogo
+                            </span>
+                            <select
+                              className="vt-input vt-btn-sm py-1.5"
+                              value={sv.linkedStoreServiceId ?? ''}
+                              onChange={(e) => {
+                                const id = e.target.value
+                                if (!id) {
+                                  setDraft((d) => ({
+                                    ...d,
+                                    services: d.services.map((s) =>
+                                      s.id === sv.id ? { ...s, linkedStoreServiceId: undefined } : s,
+                                    ),
+                                  }))
+                                  return
+                                }
+                                const svc = sellerCatalog.services.find((x) => x.id === id)
+                                if (!svc) return
+                                setDraft((d) => ({
+                                  ...d,
+                                  services: d.services.map((s) =>
+                                    s.id === sv.id ? mergeServiceItemWithStoreService(s, svc) : s,
+                                  ),
+                                }))
+                              }}
+                            >
+                              <option value="">Sin anclar…</option>
+                              {sellerCatalog.services.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.category} · {s.tipoServicio}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : null}
                         <button type="button" className="vt-btn vt-btn-sm" onClick={() => openConfig(sv.id)}>
                           Configurar servicio
                         </button>

@@ -1,39 +1,56 @@
-import { useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { Camera, CreditCard, ExternalLink, Image, Mail, Phone, Save, UserCog } from 'lucide-react'
-import { cn } from '../../lib/cn'
-import { type UserRole, useAppStore } from '../../app/store/useAppStore'
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  Camera,
+  CreditCard,
+  ExternalLink,
+  Image,
+  Mail,
+  Phone,
+  Save,
+} from "lucide-react";
+import { cn } from "../../lib/cn";
+import { useAppStore } from "../../app/store/useAppStore";
+import { ProfileStoresSection } from "./ProfileStoresSection";
 
 const REEL_TITLES: Record<string, string> = {
-  r1: 'Cosecha: Malanga premium',
-  r2: 'Flete 5 Ton - disponibilidad hoy',
-  r3: 'Cadena fría: exportación hortícola',
-  r4: 'Granos a granel — origen Rosario',
-  r5: 'Semi-remolque disponible Bs.As. → NEA',
-}
+  r1: "Cosecha: Malanga premium",
+  r2: "Flete 5 Ton - disponibilidad hoy",
+  r3: "Cadena fría: exportación hortícola",
+  r4: "Granos a granel — origen Rosario",
+  r5: "Semi-remolque disponible Bs.As. → NEA",
+};
 
 export function ProfilePage() {
-  const { userId } = useParams()
-  const nav = useNavigate()
-  const me = useAppStore((s) => s.me)
-  const setRole = useAppStore((s) => s.setRole)
-  const saved = useAppStore((s) => s.savedReels)
+  const { userId } = useParams();
+  const nav = useNavigate();
+  const me = useAppStore((s) => s.me);
+  const saved = useAppStore((s) => s.savedReels);
 
-  const isMe = userId === 'me' || userId === me.id
-  const [tab, setTab] = useState<'account' | 'reels'>('account')
+  const isMe = userId === "me" || userId === me.id;
+  const [tab, setTab] = useState<"account" | "reels" | "stores">("account");
 
-  const savedIds = useMemo(() => Object.keys(saved).filter((id) => saved[id]), [saved])
+  useEffect(() => {
+    if (me.role !== "seller" && tab === "stores") setTab("account");
+  }, [me.role, tab]);
+
+  const savedIds = useMemo(
+    () => Object.keys(saved).filter((id) => saved[id]),
+    [saved],
+  );
 
   return (
     <div className="container vt-page">
       <div className="flex flex-col gap-3.5">
         <div className="vt-card vt-card-pad flex items-center gap-3">
           <div className="grid h-[52px] w-[52px] place-items-center rounded-[18px] bg-gradient-to-br from-[var(--primary)] to-violet-600 text-lg font-black text-white">
-            {(isMe ? me.name : userId ?? 'U').slice(0, 1).toUpperCase()}
+            {(isMe ? me.name : (userId ?? "U")).slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-lg font-black tracking-[-0.03em]">{isMe ? me.name : `Usuario ${userId}`}</div>
-            <div className="vt-muted">{isMe ? me.phone : '+—'}</div>
+            <div className="text-lg font-black tracking-[-0.03em]">
+              {isMe ? me.name : `Usuario ${userId}`}
+            </div>
+            <div className="vt-muted">{isMe ? me.phone : "+—"}</div>
           </div>
           <button className="vt-btn" onClick={() => nav(-1)}>
             Volver
@@ -43,27 +60,39 @@ export function ProfilePage() {
         <div className="flex gap-2.5">
           <button
             className={cn(
-              'flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black',
-              tab === 'account' &&
-                'border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]',
+              "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black",
+              tab === "account" &&
+                "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
             )}
-            onClick={() => setTab('account')}
+            onClick={() => setTab("account")}
           >
             Cuenta
           </button>
           <button
             className={cn(
-              'flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black',
-              tab === 'reels' &&
-                'border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]',
+              "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black",
+              tab === "reels" &&
+                "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
             )}
-            onClick={() => setTab('reels')}
+            onClick={() => setTab("reels")}
           >
             Mis Reels
           </button>
+          {isMe && me.role === "seller" ? (
+            <button
+              className={cn(
+                "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black",
+                tab === "stores" &&
+                  "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
+              )}
+              onClick={() => setTab("stores")}
+            >
+              Tiendas
+            </button>
+          ) : null}
         </div>
 
-        {tab === 'account' && (
+        {tab === "account" && (
           <div className="vt-card vt-card-pad">
             <div className="vt-h2">Configuración del usuario</div>
             <div className="vt-divider my-3" />
@@ -73,7 +102,11 @@ export function ProfilePage() {
                 <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                   <Mail size={14} /> Email (obligatorio)
                 </span>
-                <input className="vt-input" defaultValue="demo@vibetrade.app" disabled={!isMe} />
+                <input
+                  className="vt-input"
+                  defaultValue="demo@vibetrade.app"
+                  disabled={!isMe}
+                />
               </label>
 
               <label className="flex flex-col gap-2">
@@ -83,28 +116,10 @@ export function ProfilePage() {
                 <input className="vt-input" defaultValue={me.phone} disabled />
               </label>
 
-              <label className="flex flex-col gap-2">
-                <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
-                  <UserCog size={14} /> Rol (demo)
-                </span>
-                <select
-                  className="vt-input"
-                  disabled={!isMe}
-                  value={me.role}
-                  onChange={(e) => setRole(e.target.value as UserRole)}
-                >
-                  <option value="seller">Vendedor</option>
-                  <option value="carrier">Transportista</option>
-                </select>
-                <div className="vt-muted mt-2 text-[13px] leading-snug">
-                  Todos los usuarios son compradores por defecto. Indicá si además operás como vendedor o como
-                  transportista; los acuerdos del chat son entre compradores y negocios.
-                </div>
-              </label>
-
               <div className="flex flex-col gap-2">
                 <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
-                  <ExternalLink size={14} /> Multi-cuenta (Instagram / Telegram / X)
+                  <ExternalLink size={14} /> Multi-cuenta (Instagram / Telegram
+                  / X)
                 </div>
                 <div className="flex flex-wrap gap-2.5">
                   <button className="vt-btn" disabled={!isMe}>
@@ -131,9 +146,13 @@ export function ProfilePage() {
               {isMe && (
                 <div className="flex flex-col gap-2">
                   <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
-                    <CreditCard size={14} /> Configurar tarjetas de pago (solo propietario)
+                    <CreditCard size={14} /> Configurar tarjetas de pago (solo
+                    propietario)
                   </div>
-                  <div className="vt-muted">Elegí una pasarela y añadí credenciales necesarias por pasarela (demo).</div>
+                  <div className="vt-muted">
+                    Elegí una pasarela y añadí credenciales necesarias por
+                    pasarela (demo).
+                  </div>
                   <button className="vt-btn">Configurar</button>
                 </div>
               )}
@@ -141,11 +160,16 @@ export function ProfilePage() {
           </div>
         )}
 
-        {tab === 'reels' && (
+        {tab === "stores" && isMe && me.role === "seller" ? (
+          <ProfileStoresSection ownerUserId={me.id} />
+        ) : null}
+
+        {tab === "reels" && (
           <div className="vt-card vt-card-pad">
             <div className="vt-h2">Guardados</div>
             <div className="vt-muted mt-1.5">
-              Reels guardados desde la barra lateral de la experiencia inmersiva.
+              Reels guardados desde la barra lateral de la experiencia
+              inmersiva.
             </div>
             <div className="vt-divider my-3" />
             {savedIds.length === 0 ? (
@@ -159,7 +183,9 @@ export function ProfilePage() {
                   >
                     <Save size={16} />
                     <div>
-                      <div className="font-black tracking-[-0.02em]">{REEL_TITLES[id] ?? id}</div>
+                      <div className="font-black tracking-[-0.02em]">
+                        {REEL_TITLES[id] ?? id}
+                      </div>
                       <div className="vt-muted">ID: {id}</div>
                     </div>
                   </div>
@@ -170,5 +196,5 @@ export function ProfilePage() {
         )}
       </div>
     </div>
-  )
+  );
 }

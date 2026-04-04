@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useShallow } from "zustand/react/shallow";
 import { useAppStore } from "../../app/store/useAppStore";
 import {
   threadHasAcceptedAgreement,
@@ -52,8 +53,15 @@ export function ChatPage() {
   const createRouteSheet = useMarketStore((s) => s.createRouteSheet);
   const updateRouteSheet = useMarketStore((s) => s.updateRouteSheet);
   const toggleRouteStop = useMarketStore((s) => s.toggleRouteStop);
-  const thread = useMarketStore((s) =>
-    threadId ? s.threads[threadId] : undefined,
+  /** Una sola suscripción: evita referenciar `thread` antes de inicializarlo si el catálogo depende del hilo. */
+  const { thread, sellerCatalog } = useMarketStore(
+    useShallow((s) => {
+      const th = threadId ? s.threads[threadId] : undefined;
+      return {
+        thread: th,
+        sellerCatalog: th ? (s.storeCatalogs[th.storeId] ?? null) : null,
+      };
+    }),
   );
   const sendText = useMarketStore((s) => s.sendText);
   const sendAudio = useMarketStore((s) => s.sendAudio);
@@ -603,6 +611,7 @@ export function ChatPage() {
           setAgreementBeingEditedId(null);
         }}
         storeName={store.name}
+        sellerCatalog={sellerCatalog}
         initialDraft={agreementBeingEditedId ? agreementFormInitial : null}
         editingAgreementId={agreementBeingEditedId}
         onSubmit={(draft) => {

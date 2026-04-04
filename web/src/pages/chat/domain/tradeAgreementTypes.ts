@@ -3,6 +3,8 @@
 export type MerchandiseCondition = "nuevo" | "usado" | "reacondicionado";
 
 export type MerchandiseLine = {
+  /** Ancla a la ficha de producto configurada en la tienda del vendedor (flow-ui). */
+  linkedStoreProductId?: string;
   tipo: string;
   cantidad: string;
   valorUnitario: string;
@@ -86,6 +88,8 @@ export type ServicePaymentRecurrence = {
 
 export type ServiceItem = {
   id: string;
+  /** Ancla a la ficha de servicio configurada en la tienda del vendedor (flow-ui). */
+  linkedStoreServiceId?: string;
   /** True cuando el asistente guardó una configuración completa */
   configured: boolean;
   tipoServicio: string;

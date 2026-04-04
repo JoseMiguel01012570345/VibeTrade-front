@@ -79,6 +79,7 @@ Nota: El chat se inicializa con todas las preguntas que se han echo junto con su
       - Tipo de embalaje.
       - Condiciones para devolver: descripción, quién paga el envío de devolución, plazos.
       - Regulaciones y cumplimiento: aduanas (si aplica), restricciones legales, permisos.
+      - Fotos claras
   - Servicios:
     - Tipo de servicio
     - Tiempo del servicio, de inicio a fin, crear 2 date picker, una de inicio y otro de fin. Crear un boton que al clickear sobre este salta un modal con estos campos a ser llenados, la fecha de inicio no puede ser mayor que la fecha de finalidad y la fecha de finalidad no puede ser menor que la fecha de inicio, la fecha de inicio debe ser requerida.
@@ -155,9 +156,41 @@ Existe un boton para publicar reels si el usuario es vendedor de mercancias|serv
   - Campos obligatorios: Email y teléfono.
   - **Multi-cuenta:** Espacios para enlazar perfiles externos (Instagram, Telegram, X).
   - **Imagen:** Subir una imagen que represente el tipo de negocio.
-  - **Configurar targetas de pago**: Esta opcion solo es visible para el propietario de la cuenta, el usuario podra escoger una pasarela de pago y añadir las credenciales necesarias para cada pasarela que decide registrar.
+  - **Configurar targetas de pago**: Esta opcion solo es visible para el propietario de la cuenta, el usuario podra escoger una pasarela de pago y añadir las credenciales necesarias para cada pasarela que decide registrar, estas pasarelas son las permitidas por la plataforma
+    **Configuracion de la tieda:**
+  - El usuario puede configurar una o mas tiendas, cada tienda oferta servicios y productos.
+  - La tienda comprende un Nombre que debe ser otorgada por el usuario, una fecha en la que se unio a la plataforma, un estatus de verificado y que categoria tiene sus productos y servicios(descripcion).
+  - El usuario al añadir sus productos pasa por un flujo donde especifica caracteristicas de este producto, lo mismo sucede con el servicio
+  - Un producto debe llenar los siguientes campos:
+    - Categoria, esto es un select
+    - Nombre del producto y versión/modelo.
+    - Descripción breve: qué hace o qué resuelve.
+    - Beneficio principal: cuál es el resultado para el cliente.
+    - Características técnicas: tamaño, material, capacidad, potencia, compatibilidad, color, etc., según aplique.
+    - Estado del producto: nuevo, usado, reacondicionado.
+    - Precio
+    - Si incluye impuestos, envío o instalación, en tales caso, precio.
+    - Disponibilidad.
+    - Garantía y devolución.
+    - Contenido incluido.
+    - Condiciones de uso: limitaciones, requisitos, cuidado especial.
+    - Fotos claras
+    - Otro campo, aqui el usuario escoje el titulo del campo, y puede añadir fotos, o documentos con un texto embebido texto
 
-## Transportista,
+  - Un servicio tiene los siguientes campos:
+    - Categoria, esto es un select.
+    - Tipo de servicio
+    - Descripcion del servicio
+    - Riesgos del servicio, lista de descripcion de riesgos, se depliega un modal para añadir descripciones de riesgos. Un check en falso invalida esta configuracion
+    - Que incluye el servicio, descripcion
+    - Que no incluye, descripcion
+    - Dependencias, lista que describe cada dependencia, se depliega un modal para añadir descripciones de cada dependencia, un check en falso invalida esta configuracion
+    - Que se entrega, descripcion
+    - Garantías, descripcion, esto debe ser un check, donde el usuario decide si da garantias, si las da, se despliega este field
+    - Propiedad intelectual, ¿Quién es dueño del resultado del servicio?, ¿Se puede reutilizar?, Licencias. Crear un question mark para aclarar que reprensenta este campo.
+    - Otro campo, aqui el usuario escoje el titulo del campo, y puede añadir fotos, o documentos con un texto embebido texto
+
+## Transportista
 
 - **Vehiculos:** Los transportistas disponen de vehiculos, y si un transportista esta dando un viaje, no puede tomar viajes que le solapen en tiempo con el tiempo de su viaje actual. Cada transportista muestra en su catalogo o tienda fotos de sus vehiculos. Cada vehiculo debe tener una descripcion sobre su rendimiento y tipo de mercancias que puede llevar y bajo que condiciones lo puede hacer.
 
@@ -224,14 +257,21 @@ DONE----------------------------------------
 
 - Si el usuario baja el umbral, toda accion se inhabilita excepto el pago de la mensualidad.
 
+Done----------------------------------------------
+
 ## Salida expontanea del chat
 
 Si antes del cumplimiento de un contrato un usuario sale del chat, se emite una alerta a este usuario pidiendole una razon de porque salio del chat y comunicandole que la accion sera investigada y pudiera afectar a su barra de confianza.
+
+Done----------------------------------------------
+
+Done----------------------------------------------
 
 ## Sistema de Notificaciones
 
 - **Prioridad Alta:** Las respuestas a preguntas de productos y las confirmaciones de pago aparecen como banners en la **vista superior**.
 - **Historial:** Un centro de notificaciones donde se guarde el registro de estos eventos críticos.
+  Done----------------------------------------------
 
 ## Notas Técnicas para el Diseñador (Figma)
 

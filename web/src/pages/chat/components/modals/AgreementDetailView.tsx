@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useMarketStore } from "../../../../app/store/useMarketStore";
 import { cn } from "../../../../lib/cn";
 import {
   agreementDeclaresMerchandise,
@@ -10,6 +11,8 @@ import {
   type TradeAgreement,
 } from "../../domain/tradeAgreementTypes";
 import { hasMerchandise } from "../../domain/tradeAgreementValidation";
+import type { StoreCatalog } from "../../domain/storeCatalogTypes";
+import { findStoreProduct, findStoreService } from "../../domain/storeCatalogTypes";
 import { ServiceItemPreview } from "./serviceConfig/ServiceItemPreview";
 import type { RouteSheet } from "../../domain/routeSheetTypes";
 import {
@@ -43,16 +46,23 @@ function legacyMerchandiseMetaHasContent(m?: MerchandiseSectionMeta): boolean {
   return Object.values(m).some((v) => (v ?? "").trim() !== "");
 }
 
-function MerchandiseBlock({ lines }: { lines: MerchandiseLine[] }) {
+function MerchandiseBlock({ lines, catalog }: { lines: MerchandiseLine[]; catalog?: StoreCatalog }) {
   if (!lines.length) return null;
   return (
     <div className={agrDetailBlock}>
       <div className={agrDetailH}>Mercancías</div>
       {lines.map((raw, i) => {
         const line = normalizeMerchandiseLine(raw);
+        const linked = findStoreProduct(catalog, line.linkedStoreProductId);
         return (
           <div key={i} className={agrDetailCard}>
             <div className={agrDetailSub}>Ítem {i + 1}</div>
+            {linked ? (
+              <Row
+                label="Anclaje al catálogo"
+                value={`${linked.name} · ${linked.category}`}
+              />
+            ) : null}
             <Row label="Tipo" value={line.tipo} />
             <Row label="Cantidad" value={line.cantidad} />
             <Row label="Valor unitario" value={line.valorUnitario} />
@@ -95,6 +105,7 @@ export function AgreementDetailView({
   linkActionsDisabled?: boolean;
 }) {
   const m = a.merchandiseMeta ?? undefined;
+  const catalog = useMarketStore((s) => s.storeCatalogs[a.issuedByStoreId]);
   const services = normalizeAgreementServices(a);
   const showMerch = agreementDeclaresMerchandise(a);
   const showService = agreementDeclaresService(a);
@@ -210,7 +221,7 @@ export function AgreementDetailView({
         </div>
       ) : null}
 
-      {showMerch ? <MerchandiseBlock lines={a.merchandise} /> : null}
+      {showMerch ? <MerchandiseBlock lines={a.merchandise} catalog={catalog} /> : null}
 
       {showMerch && legacyMerchandiseMetaHasContent(m) ? (
         <div className={agrDetailBlock}>
@@ -242,14 +253,25 @@ export function AgreementDetailView({
       {showService && services.length > 0 ? (
         <div className={agrDetailBlock}>
           <div className={agrDetailH}>Servicios</div>
-          {services.map((sv, i) => (
-            <div key={sv.id} className="mb-4 last:mb-0">
-              <div className={agrDetailSub}>Servicio {i + 1}</div>
-              <div className="mt-2">
-                <ServiceItemPreview sv={sv} />
+          {services.map((sv, i) => {
+            const linked = findStoreService(catalog, sv.linkedStoreServiceId);
+            return (
+              <div key={sv.id} className="mb-4 last:mb-0">
+                <div className={agrDetailSub}>Servicio {i + 1}</div>
+                {linked ? (
+                  <div className={cn(agrDetailRow, "mt-2")}>
+                    <div className={agrDetailLabel}>Anclaje al catálogo</div>
+                    <div className={agrDetailValue}>
+                      {linked.tipoServicio} · {linked.category}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="mt-2">
+                  <ServiceItemPreview sv={sv} />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : null}
     </div>

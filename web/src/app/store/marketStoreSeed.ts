@@ -1,3 +1,4 @@
+import type { StoreCatalog, StoreProduct, StoreService } from '../../pages/chat/domain/storeCatalogTypes'
 import type { Offer, StoreBadge } from './marketStoreTypes'
 
 export const demoStores: Record<string, StoreBadge> = {
@@ -121,3 +122,112 @@ export const demoOffers: Offer[] = [
     qa: [],
   },
 ]
+
+const agroProducts: StoreProduct[] = [
+  {
+    id: 's1-prod-malanga',
+    storeId: 's1',
+    category: 'Cosechas',
+    name: 'Cosecha de Malanga',
+    model: 'Grado exportación',
+    shortDescription: 'Raíz seleccionada para industria alimentaria y mayoristas.',
+    mainBenefit: 'Lotes homogéneos con trazabilidad hasta el origen.',
+    technicalSpecs: 'Humedad controlada; calibre medio; sin brotes visibles.',
+    condition: 'nuevo',
+    price: 'USD 980 / tonelada',
+    taxesShippingInstall: 'IVA según factura. Instalación no aplica.',
+    availability: 'Lotes desde 1 ton; coordinación 5–7 días hábiles.',
+    warrantyReturn: 'Reclamos por calidad dentro de 48 h de recepción con acta y fotos.',
+    contentIncluded: 'Embalaje estándar a granel; certificado sanitario según normativa vigente.',
+    usageConditions: 'Mantener en cadena de frío recomendada por el comprador. No apto consumo sin procesamiento.',
+    photoUrls: [
+      'https://images.unsplash.com/photo-1604908177522-4028c7a2e08d?auto=format&fit=crop&w=800&q=80',
+    ],
+    published: true,
+    customFields: [
+      {
+        title: 'Certificación orgánica',
+        body: 'Disponible bajo pedido para campañas específicas.',
+        attachmentNote: 'PDF de muestra en tienda',
+      },
+    ],
+  },
+  {
+    id: 's1-prod-semillas',
+    storeId: 's1',
+    category: 'Insumos',
+    name: 'Semillas certificadas',
+    model: 'Pack 100 unidades',
+    shortDescription: 'Alta germinación; trazabilidad de lote.',
+    mainBenefit: 'Menos retrabajo en siembra y mejor uniformidad del cultivo.',
+    technicalSpecs: 'Pureza declarada por proveedor; almacenaje en ambiente seco.',
+    condition: 'nuevo',
+    price: 'USD 120',
+    taxesShippingInstall: 'Envío cotizado aparte según destino.',
+    availability: 'Stock permanente en depósito NEA.',
+    warrantyReturn: 'Cambio por lote defectuoso con informe de laboratorio.',
+    contentIncluded: 'Bolsa sellada + etiqueta de lote.',
+    usageConditions: 'Respetar fecha de siembra sugerida en envase.',
+    photoUrls: [
+      'https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=800&q=80',
+    ],
+    published: true,
+    customFields: [],
+  },
+]
+
+const agroServices: StoreService[] = [
+  {
+    id: 's1-svc-origen',
+    storeId: 's1',
+    category: 'Asesoría',
+    tipoServicio: 'Auditoría de origen y trazabilidad de lote',
+    descripcion:
+      'Revisión documental y visita remota/presencial para asegurar cadena de custodia hasta despacho.',
+    riesgos: {
+      enabled: true,
+      items: [
+        'Demoras por acceso a campo por clima.',
+        'Información incompleta del comprador puede alargar el informe.',
+      ],
+    },
+    incluye: 'Informe resumen, checklist y recomendaciones de mejora.',
+    noIncluye: 'Gestión aduanera ni certificaciones de terceros.',
+    dependencias: {
+      enabled: true,
+      items: ['Disponibilidad del contacto en campo o en planta.', 'Documentación de compras del último ciclo.'],
+    },
+    entregables: 'Informe en PDF dentro de 10 días hábiles tras kick-off.',
+    garantias: { enabled: true, texto: 'Corrección de errores materiales en el informe dentro de 15 días.' },
+    propIntelectual:
+      'El informe es propiedad del cliente para uso interno; no se redistribuye sin autorización escrita.',
+    customFields: [
+      {
+        title: 'Nivel de profundidad',
+        body: 'Estándar vs. profundo (incluye entrevistas adicionales).',
+      },
+    ],
+  },
+]
+
+export const demoStoreCatalogs: Record<string, StoreCatalog> = {
+  s1: {
+    pitch:
+      'Insumos y cosechas con foco B2B: granos, hortalizas de raíz y acompañamiento en trazabilidad de lote.',
+    joinedAt: Date.now() - 1000 * 60 * 60 * 24 * 380,
+    products: agroProducts,
+    services: agroServices,
+  },
+  s2: {
+    pitch: 'Transporte y cadena de frío para cargas paletizadas y sueltas.',
+    joinedAt: Date.now() - 1000 * 60 * 60 * 24 * 120,
+    products: [],
+    services: [],
+  },
+  s3: {
+    pitch: 'Fulfillment, almacenaje y última milla en zona sur.',
+    joinedAt: Date.now() - 1000 * 60 * 60 * 24 * 220,
+    products: [],
+    services: [],
+  },
+}
