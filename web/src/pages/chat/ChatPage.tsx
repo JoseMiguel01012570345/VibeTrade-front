@@ -3,6 +3,7 @@ import {
   type MouseEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -31,6 +32,8 @@ import {
 } from "./components/composer/ChatComposerSection";
 import { ChatMessageList } from "./components/messages/ChatMessageList";
 import { formatFileSize, inferDocKind } from "./lib/chatAttachments";
+import { createChatVoiceRecorderSession } from "./lib/chatWavesurferRecorder";
+import { ensureMicPermission } from "./lib/voiceRecording";
 import { ChatRightRail } from "./components/rail/ChatRightRail";
 import type { RouteSheet } from "./domain/routeSheetTypes";
 import { RouteSheetFormModal } from "./components/modals/RouteSheetFormModal";
@@ -84,10 +87,10 @@ export function ChatPage() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const draftInputRef = useRef<HTMLInputElement | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordChunksRef = useRef<Blob[]>([]);
-  const recordStartRef = useRef(0);
-  const recordTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voiceRecorderContainerRef = useRef<HTMLDivElement | null>(null);
+  const voiceSessionRef = useRef<ReturnType<
+    typeof createChatVoiceRecorderSession
+  > | null>(null);
 
   const [recording, setRecording] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
@@ -186,20 +189,13 @@ export function ChatPage() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [thread?.messages?.length]);
 
-  useEffect(() => {
-    return () => {
-      if (recordTickRef.current) clearInterval(recordTickRef.current);
-      const mr = mediaRecorderRef.current;
-      if (mr && mr.state !== "inactive") {
-        mr.stream.getTracks().forEach((t) => t.stop());
-      }
-    };
-  }, []);
-
   const selectedIds = useMemo(
     () => Object.keys(selected).filter((id) => selected[id]),
     [selected],
   );
+
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
 
   const selectedOrdered = useMemo(() => {
     if (!thread) return [];
@@ -226,6 +222,104 @@ export function ChatPage() {
   useEffect(() => {
     if (blockTextWithVoiceAndFiles) setDraft("");
   }, [blockTextWithVoiceAndFiles]);
+
+  function stopVoiceRecording() {
+    voiceSessionRef.current?.stop();
+  }
+
+  async function startVoiceRecording() {
+    if (thread?.chatActionsLocked === true) return;
+    const ok = await ensureMicPermission();
+    if (!ok) {
+      toast.error(
+        "No se pudo acceder al micrófono. Permití el permiso y usá HTTPS o localhost.",
+      );
+      return;
+    }
+    setRecordSecs(0);
+    setRecording(true);
+  }
+
+  useLayoutEffect(() => {
+    if (!recording) {
+      voiceSessionRef.current = null;
+      return;
+    }
+    const el = voiceRecorderContainerRef.current;
+    if (!el || !threadId) {
+      setRecording(false);
+      return;
+    }
+
+    let cancelled = false;
+    setRecordSecs(0);
+
+    const session = createChatVoiceRecorderSession(el, {
+      onProgressSec: (s) => {
+        if (!cancelled) setRecordSecs(s);
+      },
+      onStartFailed: () => {
+        if (!cancelled) {
+          toast.error("No se pudo acceder al micrófono");
+          setRecording(false);
+          setRecordSecs(0);
+        }
+      },
+      onEnd: (blob, seconds) => {
+        if (cancelled) return;
+        if (blob.size < 32) {
+          toast.error(
+            "No se grabó audio útil. Mantené pulsado un poco más el micrófono.",
+          );
+          setRecording(false);
+          setRecordSecs(0);
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const hasOtherStuff =
+          pendingDocsRef.current.length > 0 ||
+          pendingImagesRef.current.length > 0 ||
+          draftRef.current.trim().length > 0 ||
+          pendingAudioRef.current !== null;
+        if (!hasOtherStuff) {
+          const replyToIds = selectedIdsRef.current;
+          sendAudio(
+            threadId,
+            { url, seconds },
+            replyToIds.length ? { replyToIds } : undefined,
+          );
+          setSelected({});
+          toast.success("Nota de voz enviada");
+        } else {
+          setPendingAudio((prev) => {
+            if (prev) revokeBlob(prev.url);
+            return { url, seconds };
+          });
+          toast.success("Nota de voz añadida al envío");
+        }
+        setRecording(false);
+        setRecordSecs(0);
+      },
+    });
+
+    voiceSessionRef.current = session;
+    void session.start();
+
+    return () => {
+      cancelled = true;
+      voiceSessionRef.current = null;
+      session.destroy();
+    };
+  }, [recording, threadId, sendAudio]);
+
+  function toggleVoiceRecording() {
+    if (!recording && thread?.chatActionsLocked === true) return;
+    if (recording) {
+      stopVoiceRecording();
+    } else {
+      void startVoiceRecording();
+    }
+  }
 
   if (!threadId || threadId === "demo") return null;
   if (!thread) {
@@ -298,10 +392,14 @@ export function ChatPage() {
     }
 
     if (hasVoice && !voiceEmbeddedInDocs && !voiceEmbeddedInImages) {
-      sendAudio(thread.id, {
-        url: pendingAudio!.url,
-        seconds: pendingAudio!.seconds,
-      });
+      sendAudio(
+        thread.id,
+        {
+          url: pendingAudio!.url,
+          seconds: pendingAudio!.seconds,
+        },
+        replyIds.length ? { replyToIds: replyIds } : undefined,
+      );
     }
 
     setPendingDocs([]);
@@ -319,78 +417,6 @@ export function ChatPage() {
     pendingAudio !== null;
 
   const canSend = !recording && hasComposeToSend && !chatActionsLocked;
-
-  function stopVoiceRecording() {
-    const mr = mediaRecorderRef.current;
-    if (mr && mr.state !== "inactive") mr.stop();
-  }
-
-  async function startVoiceRecording() {
-    if (chatActionsLocked) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      recordChunksRef.current = [];
-      const mr = new MediaRecorder(stream);
-      mediaRecorderRef.current = mr;
-      mr.ondataavailable = (ev) => {
-        if (ev.data.size > 0) recordChunksRef.current.push(ev.data);
-      };
-      mr.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(recordChunksRef.current, {
-          type: mr.mimeType || "audio/webm",
-        });
-        const url = URL.createObjectURL(blob);
-        const seconds = Math.max(
-          1,
-          Math.round((Date.now() - recordStartRef.current) / 1000),
-        );
-        if (threadId) {
-          const hasOtherStuff =
-            pendingDocsRef.current.length > 0 ||
-            pendingImagesRef.current.length > 0 ||
-            draftRef.current.trim().length > 0 ||
-            pendingAudioRef.current !== null;
-          if (!hasOtherStuff) {
-            sendAudio(threadId, { url, seconds });
-            setSelected({});
-            toast.success("Nota de voz enviada");
-          } else {
-            setPendingAudio((prev) => {
-              if (prev) revokeBlob(prev.url);
-              return { url, seconds };
-            });
-            toast.success("Nota de voz añadida al envío");
-          }
-        }
-        setRecording(false);
-        setRecordSecs(0);
-        if (recordTickRef.current) {
-          clearInterval(recordTickRef.current);
-          recordTickRef.current = null;
-        }
-        mediaRecorderRef.current = null;
-      };
-      recordStartRef.current = Date.now();
-      mr.start(250);
-      setRecording(true);
-      setRecordSecs(0);
-      recordTickRef.current = setInterval(() => {
-        setRecordSecs(Math.floor((Date.now() - recordStartRef.current) / 1000));
-      }, 400);
-    } catch {
-      toast.error("No se pudo acceder al micrófono");
-    }
-  }
-
-  function toggleVoiceRecording() {
-    if (!recording && chatActionsLocked) return;
-    if (recording) {
-      stopVoiceRecording();
-    } else {
-      void startVoiceRecording();
-    }
-  }
 
   return (
     <div className="container vt-page vt-chat-page">
@@ -522,6 +548,7 @@ export function ChatPage() {
               pendingAudio={pendingAudio}
               recording={recording}
               recordSecs={recordSecs}
+              voiceRecorderContainerRef={voiceRecorderContainerRef}
               blockTextWithVoiceAndFiles={blockTextWithVoiceAndFiles}
               hasComposeToSend={hasComposeToSend}
               canSend={canSend}
@@ -565,6 +592,7 @@ export function ChatPage() {
               id: me.id,
               name: me.name,
               trustScore: me.trustScore,
+              avatarUrl: me.avatarUrl,
             }}
             seller={store}
             participantsFocusEpoch={participantsEpoch}

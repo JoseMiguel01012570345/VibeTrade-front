@@ -45,7 +45,11 @@ export function MessageBody({
         {hasThread && <ChatReplyQuotes quotes={m.replyQuotes!} inThread />}
         <ImageGrid images={m.images} onOpen={onImageOpen} />
         {m.embeddedAudio ? (
-          <AudioMicro url={m.embeddedAudio.url} seconds={m.embeddedAudio.seconds} />
+          <AudioMicro
+            url={m.embeddedAudio.url}
+            seconds={m.embeddedAudio.seconds}
+            isMine={isMine}
+          />
         ) : null}
         {m.caption ? (
           <div className="m-0 break-normal text-sm leading-snug text-[var(--text)] [overflow-wrap:break-word]">{m.caption}</div>
@@ -53,7 +57,22 @@ export function MessageBody({
       </div>
     )
   }
-  if (m.type === 'audio') return <AudioMicro url={m.url} seconds={m.seconds} />
+  if (m.type === 'audio') {
+    const hasThread = m.replyQuotes && m.replyQuotes.length > 0
+    return (
+      <div
+        className={cn(
+          'flex min-w-0 w-full flex-col gap-2 overflow-hidden',
+          hasThread && ytThread,
+        )}
+      >
+        {hasThread && <ChatReplyQuotes quotes={m.replyQuotes!} inThread />}
+        <div className={cn('min-w-0 w-full', hasThread && 'pt-0.5')}>
+          <AudioMicro url={m.url} seconds={m.seconds} isMine={isMine} />
+        </div>
+      </div>
+    )
+  }
   if (m.type === 'docs') {
     const hasThread = m.replyQuotes && m.replyQuotes.length > 0
     return (
@@ -61,7 +80,11 @@ export function MessageBody({
         {hasThread && <ChatReplyQuotes quotes={m.replyQuotes!} inThread />}
         <DocGrid documents={m.documents} isMine={isMine} />
         {m.embeddedAudio ? (
-          <AudioMicro url={m.embeddedAudio.url} seconds={m.embeddedAudio.seconds} />
+          <AudioMicro
+            url={m.embeddedAudio.url}
+            seconds={m.embeddedAudio.seconds}
+            isMine={isMine}
+          />
         ) : null}
         {m.caption ? (
           <div className="m-0 break-normal text-sm leading-snug text-[var(--text)] [overflow-wrap:break-word]">{m.caption}</div>

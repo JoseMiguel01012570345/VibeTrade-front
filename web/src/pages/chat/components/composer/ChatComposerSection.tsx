@@ -1,4 +1,4 @@
-import type { ChangeEvent, Dispatch, RefObject, SetStateAction } from 'react'
+import type { ChangeEvent, Dispatch, Ref, RefObject, SetStateAction } from 'react'
 import toast from 'react-hot-toast'
 import {
   FileText,
@@ -49,6 +49,7 @@ type Props = {
   pendingAudio: { url: string; seconds: number } | null
   recording: boolean
   recordSecs: number
+  voiceRecorderContainerRef: Ref<HTMLDivElement>
   blockTextWithVoiceAndFiles: boolean
   hasComposeToSend: boolean
   canSend: boolean
@@ -84,6 +85,7 @@ export function ChatComposerSection({
   pendingAudio,
   recording,
   recordSecs,
+  voiceRecorderContainerRef,
   blockTextWithVoiceAndFiles,
   hasComposeToSend,
   canSend,
@@ -304,11 +306,29 @@ export function ChatComposerSection({
         )}
         {recording && (
           <div
-            className="flex items-center gap-2 rounded-[10px] bg-[color-mix(in_oklab,#ef4444_10%,var(--surface))] px-2.5 py-1.5 text-[13px] font-semibold text-[#b91c1c]"
+            className="flex flex-col gap-2 rounded-[14px] border border-[color-mix(in_oklab,var(--primary)_38%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] p-2.5 shadow-[0_1px_0_rgba(15,23,42,0.04)]"
             role="status"
           >
-            <span className="h-2 w-2 animate-[vt-rec-dot_1s_ease-in-out_infinite] rounded-full bg-[#ef4444]" />
-            Grabando… {recordSecs}s — tocá de nuevo para enviar
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-[color-mix(in_oklab,var(--primary)_55%,transparent)] opacity-45" />
+                <span className="relative inline-flex size-2 rounded-full bg-[var(--primary)]" />
+              </span>
+              <span className="min-w-0 truncate text-[12px] font-semibold text-[var(--text)]">
+                Grabando nota de voz
+              </span>
+              <span className="ml-auto shrink-0 font-mono text-[13px] font-bold tabular-nums text-[var(--primary)]">
+                {formatVoiceDur(recordSecs)}
+              </span>
+            </div>
+            <div
+              ref={voiceRecorderContainerRef}
+              className="min-h-[50px] w-full overflow-hidden rounded-[10px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))]"
+              aria-hidden
+            />
+            <p className="text-[11px] leading-snug text-[var(--muted)]">
+              Tocá el botón cuadrado para terminar y enviar.
+            </p>
           </div>
         )}
         <div className="flex items-center gap-2.5">
@@ -375,7 +395,7 @@ export function ChatComposerSection({
             className={cn(
               'grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[#111b21]',
               recording &&
-                'animate-[vt-rec-pulse_1.2s_ease-in-out_infinite] bg-[color-mix(in_oklab,#ef4444_18%,var(--surface))] text-[#b91c1c] hover:bg-[color-mix(in_oklab,#ef4444_18%,var(--surface))] hover:text-[#b91c1c]',
+                'animate-[vt-rec-pulse_1.2s_ease-in-out_infinite] bg-[color-mix(in_oklab,var(--primary)_22%,var(--surface))] text-[var(--primary)] hover:bg-[color-mix(in_oklab,var(--primary)_22%,var(--surface))] hover:text-[var(--primary-2)]',
             )}
             disabled={chatActionsLocked && !recording}
             aria-label={recording ? 'Detener y enviar nota de voz' : 'Grabar nota de voz'}

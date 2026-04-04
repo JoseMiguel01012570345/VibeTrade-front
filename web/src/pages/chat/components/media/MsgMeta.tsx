@@ -14,7 +14,8 @@ export function MsgMeta({ at, read }: { at: number; read?: boolean }) {
         <span
           className={cn(
             'inline-flex items-center',
-            read ? 'text-[color-mix(in_oklab,var(--good)_85%,var(--muted))]' : 'text-[var(--muted)]',
+            read && 'text-[color-mix(in_oklab,var(--good)_85%,var(--muted))]',
+            !read && 'text-[var(--muted)]',
           )}
           title={read ? 'Leído' : 'Enviado'}
           aria-label={read ? 'Leído' : 'Enviado'}

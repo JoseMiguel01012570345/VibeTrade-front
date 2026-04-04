@@ -28,7 +28,7 @@ type Props = {
   actionsLocked?: boolean
   storeName: string
   buyerName: string
-  buyer: { id: string; name: string; trustScore: number }
+  buyer: { id: string; name: string; trustScore: number; avatarUrl?: string }
   seller: StoreBadge
   participantsFocusEpoch?: number
   focusRouteId?: string | null

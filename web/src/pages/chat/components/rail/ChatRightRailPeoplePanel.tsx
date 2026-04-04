@@ -20,10 +20,14 @@ export function ChatRightRailPeoplePanel({ bodyClassName, participants }: Props)
               data-chat-interactive
             >
               <span
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[color-mix(in_oklab,var(--primary)_18%,transparent)] text-[15px] font-black text-[var(--text)]"
+                className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-[color-mix(in_oklab,var(--primary)_18%,transparent)] text-[15px] font-black text-[var(--text)]"
                 aria-hidden
               >
-                {p.name.slice(0, 1).toUpperCase()}
+                {p.avatarUrl ? (
+                  <img src={p.avatarUrl} alt="" className="absolute inset-0 size-full object-cover" />
+                ) : (
+                  p.name.slice(0, 1).toUpperCase()
+                )}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-extrabold leading-tight">{p.name}</div>

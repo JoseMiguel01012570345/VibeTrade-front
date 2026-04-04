@@ -98,6 +98,7 @@ export type Message =
       seconds: number
       at: number
       read?: boolean
+      replyQuotes?: ReplyQuote[]
     }
   | {
       id: string
@@ -181,7 +182,11 @@ export type MarketState = {
   ensureThreadForOffer: (offerId: string, opts?: { buyerId?: string }) => string
   syncThreadBuyerQa: (threadId: string, buyerId: string) => void
   sendText: (threadId: string, text: string, replyToIds?: string[]) => void
-  sendAudio: (threadId: string, payload: { url: string; seconds: number }) => void
+  sendAudio: (
+    threadId: string,
+    payload: { url: string; seconds: number },
+    options?: { replyToIds?: string[] },
+  ) => void
   sendDocument: (
     threadId: string,
     payload: { name: string; size: string; kind: 'pdf' | 'doc' | 'other'; url: string },

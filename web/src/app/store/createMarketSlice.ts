@@ -641,10 +641,11 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
       })
     },
 
-    sendAudio: (threadId, payload) => {
+    sendAudio: (threadId, payload, options) => {
       set((s) => {
         const th = s.threads[threadId]
         if (!th || threadIsActionLocked(th)) return s
+        const replyQuotes = collectReplyQuotes(th, options?.replyToIds)
         const m: Message = {
           id: uid('m'),
           from: 'me',
@@ -653,6 +654,7 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
           seconds: Math.max(1, Math.round(payload.seconds)),
           at: Date.now(),
           read: false,
+          ...(replyQuotes && replyQuotes.length ? { replyQuotes } : {}),
         }
         return { ...s, threads: { ...s.threads, [threadId]: { ...th, messages: [...th.messages, m] } } }
       })
