@@ -105,7 +105,7 @@ export function MerchandiseLineEditor({
           inputId={p('tipoEmbalaje')}
         />
         <Field
-          label="Condiciones para devolver"
+          label="Condiciones para devolver y garantias"
           value={line.devolucionesDesc}
           multiline
           onChange={(v) => onChange({ ...line, devolucionesDesc: v })}

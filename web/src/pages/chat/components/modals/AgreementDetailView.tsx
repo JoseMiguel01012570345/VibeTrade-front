@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { cn } from '../../../../lib/cn'
+import { useEffect, useState } from "react";
+import { cn } from "../../../../lib/cn";
 import {
   agreementDeclaresMerchandise,
   agreementDeclaresService,
@@ -8,10 +8,10 @@ import {
   type MerchandiseLine,
   type MerchandiseSectionMeta,
   type TradeAgreement,
-} from '../../domain/tradeAgreementTypes'
-import { hasMerchandise } from '../../domain/tradeAgreementValidation'
-import { ServiceItemPreview } from './serviceConfig/ServiceItemPreview'
-import type { RouteSheet } from '../../domain/routeSheetTypes'
+} from "../../domain/tradeAgreementTypes";
+import { hasMerchandise } from "../../domain/tradeAgreementValidation";
+import { ServiceItemPreview } from "./serviceConfig/ServiceItemPreview";
+import type { RouteSheet } from "../../domain/routeSheetTypes";
 import {
   agrDetailBlock,
   agrDetailCard,
@@ -26,30 +26,30 @@ import {
   fieldLabel,
   linkRutaRow,
   linkRutaSelect,
-} from '../../styles/formModalStyles'
+} from "../../styles/formModalStyles";
 
 function Row({ label, value }: { label: string; value: string }) {
-  if (!value.trim()) return null
+  if (!value.trim()) return null;
   return (
     <div className={agrDetailRow}>
       <div className={agrDetailLabel}>{label}</div>
       <div className={agrDetailValue}>{value}</div>
     </div>
-  )
+  );
 }
 
 function legacyMerchandiseMetaHasContent(m?: MerchandiseSectionMeta): boolean {
-  if (!m) return false
-  return Object.values(m).some((v) => (v ?? '').trim() !== '')
+  if (!m) return false;
+  return Object.values(m).some((v) => (v ?? "").trim() !== "");
 }
 
 function MerchandiseBlock({ lines }: { lines: MerchandiseLine[] }) {
-  if (!lines.length) return null
+  if (!lines.length) return null;
   return (
     <div className={agrDetailBlock}>
       <div className={agrDetailH}>Mercancías</div>
       {lines.map((raw, i) => {
-        const line = normalizeMerchandiseLine(raw)
+        const line = normalizeMerchandiseLine(raw);
         return (
           <div key={i} className={agrDetailCard}>
             <div className={agrDetailSub}>Ítem {i + 1}</div>
@@ -61,15 +61,24 @@ function MerchandiseBlock({ lines }: { lines: MerchandiseLine[] }) {
             <Row label="Impuestos" value={line.impuestos} />
             <Row label="Moneda" value={line.moneda} />
             <Row label="Tipo de embalaje" value={line.tipoEmbalaje} />
-            <Row label="Condiciones de devolución" value={line.devolucionesDesc} />
-            <Row label="Quién paga envío de devolución" value={line.devolucionQuienPaga} />
+            <Row
+              label="Condiciones para devolver y garantias"
+              value={line.devolucionesDesc}
+            />
+            <Row
+              label="Quién paga envío de devolución"
+              value={line.devolucionQuienPaga}
+            />
             <Row label="Plazos (devolución)" value={line.devolucionPlazos} />
-            <Row label="Regulaciones, aduanas, restricciones, permisos" value={line.regulaciones} />
+            <Row
+              label="Regulaciones, aduanas, restricciones, permisos"
+              value={line.regulaciones}
+            />
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
 
 export function AgreementDetailView({
@@ -79,28 +88,28 @@ export function AgreementDetailView({
   onLinkRouteSheet,
   linkActionsDisabled = false,
 }: {
-  a: TradeAgreement
-  onOpenRouteSheet?: (routeSheetId: string) => void
-  routeSheets?: RouteSheet[]
-  onLinkRouteSheet?: (agreementId: string, routeSheetId: string) => void
-  linkActionsDisabled?: boolean
+  a: TradeAgreement;
+  onOpenRouteSheet?: (routeSheetId: string) => void;
+  routeSheets?: RouteSheet[];
+  onLinkRouteSheet?: (agreementId: string, routeSheetId: string) => void;
+  linkActionsDisabled?: boolean;
 }) {
-  const m = a.merchandiseMeta ?? undefined
-  const services = normalizeAgreementServices(a)
-  const showMerch = agreementDeclaresMerchandise(a)
-  const showService = agreementDeclaresService(a)
-  const hasGoods = hasMerchandise({ merchandise: a.merchandise })
+  const m = a.merchandiseMeta ?? undefined;
+  const services = normalizeAgreementServices(a);
+  const showMerch = agreementDeclaresMerchandise(a);
+  const showService = agreementDeclaresService(a);
+  const hasGoods = hasMerchandise({ merchandise: a.merchandise });
 
-  const [pickId, setPickId] = useState(a.routeSheetId ?? '')
+  const [pickId, setPickId] = useState(a.routeSheetId ?? "");
   useEffect(() => {
-    setPickId(a.routeSheetId ?? '')
-  }, [a.id, a.routeSheetId])
+    setPickId(a.routeSheetId ?? "");
+  }, [a.id, a.routeSheetId]);
 
   const linkedTitle = a.routeSheetId
     ? routeSheets.find((r) => r.id === a.routeSheetId)?.titulo
-    : undefined
+    : undefined;
   /** Una vez vinculada una hoja, no se permite cambiar la elección desde este panel. */
-  const linkUiLocked = !!a.routeSheetId
+  const linkUiLocked = !!a.routeSheetId;
 
   return (
     <div className={agrDetailRoot}>
@@ -111,14 +120,16 @@ export function AgreementDetailView({
           <div className={agrDetailH}>Hoja de ruta</div>
           {onLinkRouteSheet ? (
             routeSheets.length === 0 ? (
-              <p className={cn('vt-muted', agrDetailHint)}>
-                No hay hojas de ruta en este chat. Creá una en la pestaña Rutas y volvé para vincularla.
+              <p className={cn("vt-muted", agrDetailHint)}>
+                No hay hojas de ruta en este chat. Creá una en la pestaña Rutas
+                y volvé para vincularla.
               </p>
             ) : (
               <>
                 {linkActionsDisabled ? (
-                  <p className={cn('vt-muted', agrDetailHint, 'mb-2')}>
-                    La vinculación de hojas de ruta no está disponible hasta registrar el pago en el chat.
+                  <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
+                    La vinculación de hojas de ruta no está disponible hasta
+                    registrar el pago en el chat.
                   </p>
                 ) : null}
                 <div className={linkRutaRow}>
@@ -145,7 +156,7 @@ export function AgreementDetailView({
                       linkActionsDisabled ||
                       linkUiLocked ||
                       !pickId ||
-                      pickId === (a.routeSheetId ?? '')
+                      pickId === (a.routeSheetId ?? "")
                     }
                     onClick={() => {
                       if (
@@ -154,15 +165,15 @@ export function AgreementDetailView({
                         linkUiLocked ||
                         linkActionsDisabled
                       )
-                        return
-                      onLinkRouteSheet(a.id, pickId)
+                        return;
+                      onLinkRouteSheet(a.id, pickId);
                     }}
                   >
                     Vincular
                   </button>
                 </div>
                 {linkUiLocked ? (
-                  <p className={cn('vt-muted', agrDetailHint, 'mt-1.5')}>
+                  <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
                     La hoja vinculada no se puede cambiar desde aquí.
                   </p>
                 ) : null}
@@ -170,7 +181,7 @@ export function AgreementDetailView({
             )
           ) : null}
           {a.routeSheetId && linkedTitle ? (
-            <p className={cn('vt-muted', agrDetailHint)}>
+            <p className={cn("vt-muted", agrDetailHint)}>
               Vinculada a: <strong>{linkedTitle}</strong>
             </p>
           ) : null}
@@ -184,7 +195,7 @@ export function AgreementDetailView({
             </button>
           ) : null}
           {a.routeSheetUrl ? (
-            <div className={cn(agrDetailRow, 'mt-2.5')}>
+            <div className={cn(agrDetailRow, "mt-2.5")}>
               <div className={agrDetailLabel}>Enlace externo</div>
               <a
                 href={a.routeSheetUrl}
@@ -203,14 +214,23 @@ export function AgreementDetailView({
 
       {showMerch && legacyMerchandiseMetaHasContent(m) ? (
         <div className={agrDetailBlock}>
-          <div className={agrDetailH}>Mercancías · condiciones generales (acuerdo anterior)</div>
-          <p className={cn('vt-muted', agrDetailHint, 'mb-2')}>
-            Estos datos eran comunes a todo el bloque; en acuerdos nuevos van por cada ítem.
+          <div className={agrDetailH}>
+            Mercancías · condiciones generales (acuerdo anterior)
+          </div>
+          <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
+            Estos datos eran comunes a todo el bloque; en acuerdos nuevos van
+            por cada ítem.
           </p>
           <Row label="Moneda" value={m!.moneda} />
           <Row label="Tipo de embalaje" value={m!.tipoEmbalaje} />
-          <Row label="Condiciones de devolución" value={m!.devolucionesDesc} />
-          <Row label="Quién paga envío de devolución" value={m!.devolucionQuienPaga} />
+          <Row
+            label="Condiciones para devolver y garantias"
+            value={m!.devolucionesDesc}
+          />
+          <Row
+            label="Quién paga envío de devolución"
+            value={m!.devolucionQuienPaga}
+          />
           <Row label="Plazos (devolución)" value={m!.devolucionPlazos} />
           <Row
             label="Regulaciones, aduanas, restricciones, permisos"
@@ -233,5 +253,5 @@ export function AgreementDetailView({
         </div>
       ) : null}
     </div>
-  )
+  );
 }
