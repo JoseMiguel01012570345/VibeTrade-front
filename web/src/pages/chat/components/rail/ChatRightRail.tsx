@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { FileText, Megaphone, Route, Users } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
 import type { StoreBadge, ThreadChatCarrier } from '../../../../app/store/useMarketStore'
 import { useMarketStore } from '../../../../app/store/useMarketStore'
 import { cn } from '../../../../lib/cn'
@@ -63,6 +64,12 @@ export function ChatRightRail({
   const linkAgreementToRouteSheet = useMarketStore((s) => s.linkAgreementToRouteSheet)
   const unlinkAgreementFromRouteSheet = useMarketStore((s) => s.unlinkAgreementFromRouteSheet)
   const deleteRouteSheet = useMarketStore((s) => s.deleteRouteSheet)
+  const routeOfferForThread = useMarketStore(
+    useShallow((s) => {
+      const th = s.threads[threadId]
+      return th ? s.routeOfferPublic[th.offerId] : undefined
+    }),
+  )
   const [publishModalOpen, setPublishModalOpen] = useState(false)
   const [tab, setTab] = useState<'contracts' | 'routes' | 'people'>('contracts')
   const [cFilter, setCFilter] = useState<ContractFilter>('all')
@@ -90,10 +97,11 @@ export function ChatRightRail({
 
   const hasAcceptedContract = useMemo(() => contracts.some((c) => c.status === 'accepted'), [contracts])
 
-  const routeSheetsUnpublished = useMemo(
-    () => routeSheets.filter((r) => !r.publicadaPlataforma).length,
-    [routeSheets],
-  )
+  const allTramosConfirmedOnOffer = useMemo(() => {
+    const ro = routeOfferForThread
+    if (!ro?.tramos?.length) return false
+    return ro.tramos.every((t) => t.assignment?.status === 'confirmed')
+  }, [routeOfferForThread])
 
   const linkedRouteSheetIds = useMemo(() => {
     const s = new Set<string>()
@@ -104,8 +112,14 @@ export function ChatRightRail({
   }, [contracts])
 
   const routeSheetsEligibleToPublish = useMemo(
-    () => routeSheets.filter((r) => !r.publicadaPlataforma && linkedRouteSheetIds.has(r.id)),
-    [routeSheets, linkedRouteSheetIds],
+    () =>
+      routeSheets.filter((r) => {
+        if (!linkedRouteSheetIds.has(r.id)) return false
+        if (!r.publicadaPlataforma) return true
+        if (routeOfferForThread?.routeSheetId !== r.id) return false
+        return !allTramosConfirmedOnOffer
+      }),
+    [routeSheets, linkedRouteSheetIds, routeOfferForThread, allTramosConfirmedOnOffer],
   )
 
   const displayContracts = useMemo(() => {
@@ -131,12 +145,22 @@ export function ChatRightRail({
       return
     }
     if (routeSheetsEligibleToPublish.length === 0) {
-      if (routeSheetsUnpublished > 0) {
+      const unpublishedButUnlinked = routeSheets.some(
+        (r) => !r.publicadaPlataforma && !linkedRouteSheetIds.has(r.id),
+      )
+      if (unpublishedButUnlinked) {
         toast.error(
           'Solo podés publicar hojas vinculadas a un acuerdo. Abrí el contrato en Contratos y usá «Vincular».',
         )
+      } else if (
+        routeSheets.some((r) => r.publicadaPlataforma && linkedRouteSheetIds.has(r.id)) &&
+        allTramosConfirmedOnOffer
+      ) {
+        toast('No hay hojas para republicar: todos los tramos tienen transportista confirmado.', {
+          icon: 'ℹ️',
+        })
       } else {
-        toast('Las hojas de ruta de este chat ya están publicadas en la plataforma', { icon: 'ℹ️' })
+        toast('Las hojas de ruta de este chat ya están publicadas en la plataforma.', { icon: 'ℹ️' })
       }
       setTab('contracts')
       return
@@ -151,7 +175,9 @@ export function ChatRightRail({
       return
     }
     publishRouteSheetsToPlatform(threadId, allowed)
-    toast.success(`Publicado en la plataforma (${allowed.length} hoja${allowed.length === 1 ? '' : 's'}) — demo`)
+    toast.success(
+      `Listo (${allowed.length} hoja${allowed.length === 1 ? '' : 's'}) — publicación o republicación en demo`,
+    )
   }
 
   function openRouteFromContract(rid: string) {
@@ -185,8 +211,8 @@ export function ChatRightRail({
             Publicar en la plataforma
           </button>
           <p className="mb-0 mt-2 text-[11px] leading-snug text-[var(--muted)]">
-            Solo se publican hojas ya vinculadas a un acuerdo (desde la pestaña Contratos). Creá la hoja en Rutas,
-            vinculala al contrato y luego publicá (demo).
+            Publicá por primera vez o republicá mientras falten tramos por cubrir con transportista confirmado.
+            Siempre con la hoja vinculada a un acuerdo (Contratos → Vincular). Demo.
           </p>
         </div>
         <div className="flex shrink-0 border-b border-[var(--border)]">

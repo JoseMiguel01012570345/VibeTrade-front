@@ -9,7 +9,15 @@ import {
 } from '../../pages/chat/domain/routeSheetValidation'
 import type { RouteSheet, RouteStop } from '../../pages/chat/domain/routeSheetTypes'
 import type { StoreCatalog, StoreProduct, StoreService } from '../../pages/chat/domain/storeCatalogTypes'
-import type { MarketState, Message, Offer, StoreBadge, Thread } from './marketStoreTypes'
+import type {
+  MarketState,
+  Message,
+  Offer,
+  RouteOfferPublicState,
+  RouteOfferTramoPublic,
+  StoreBadge,
+  Thread,
+} from './marketStoreTypes'
 import {
   threadHasAcceptedAgreement,
   threadHasAcceptedAgreementUnpaid,
@@ -29,6 +37,68 @@ import { demoOffers, demoStoreCatalogs, demoStores } from './marketStoreSeed'
 function isOwnerOfStore(stores: Record<string, StoreBadge>, storeId: string, ownerUserId: string): boolean {
   const b = stores[storeId]
   return !!b?.ownerUserId && b.ownerUserId === ownerUserId
+}
+
+/** Tras editar la hoja en el hilo, mantiene asignaciones de transportistas en la oferta pública del feed. */
+function routeOfferPublicAfterSheetEdit(
+  prev: Record<string, RouteOfferPublicState>,
+  threadId: string,
+  routeSheetId: string,
+  sheet: RouteSheet,
+): Record<string, RouteOfferPublicState> {
+  let next = prev
+  let touched = false
+  for (const oid of Object.keys(prev)) {
+    const ro = prev[oid]
+    if (ro.threadId !== threadId || ro.routeSheetId !== routeSheetId) continue
+    const assignByStop = new Map(ro.tramos.map((t) => [t.stopId, t.assignment]))
+    const tramos: RouteOfferTramoPublic[] = sheet.paradas.map((p) => ({
+      stopId: p.id,
+      orden: p.orden,
+      origenLine: p.origen,
+      destinoLine: p.destino,
+      cargaEnTramo: p.cargaEnTramo,
+      tipoMercanciaCarga: p.tipoMercanciaCarga,
+      tipoMercanciaDescarga: p.tipoMercanciaDescarga,
+      tipoVehiculoRequerido: p.tipoVehiculoRequerido,
+      tiempoRecogidaEstimado: p.tiempoRecogidaEstimado,
+      tiempoEntregaEstimado: p.tiempoEntregaEstimado,
+      precioTransportista: p.precioTransportista,
+      notas: p.notas,
+      requisitosEspeciales: p.requisitosEspeciales,
+      telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+      assignment: assignByStop.get(p.id),
+    }))
+    if (!touched) {
+      next = { ...prev }
+      touched = true
+    }
+    next[oid] = {
+      ...ro,
+      routeTitle: sheet.titulo,
+      mercanciasResumen: sheet.mercanciasResumen,
+      notasGenerales: sheet.notasGenerales,
+      hojaEstado: sheet.estado,
+      tramos,
+    }
+  }
+  return next
+}
+
+function routeOfferTramosAllConfirmed(ro: RouteOfferPublicState | undefined): boolean {
+  if (!ro?.tramos?.length) return false
+  return ro.tramos.every((t) => t.assignment?.status === 'confirmed')
+}
+
+/** Bloquea borrar la hoja si algún tramo tiene transportista ya aceptado (confirmado). Las suscripciones solo pendientes no impiden eliminar. */
+function routeSheetHasConfirmedCarriers(
+  routeOfferPublic: Record<string, RouteOfferPublicState>,
+  th: Thread,
+  routeSheetId: string,
+): boolean {
+  const ro = routeOfferPublic[th.offerId]
+  if (!ro || ro.routeSheetId !== routeSheetId) return false
+  return ro.tramos.some((t) => t.assignment?.status === 'confirmed')
 }
 
 export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
@@ -426,7 +496,8 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
             const routeSheets = [...th0.routeSheets]
             routeSheets[rsI] = newRs
             let chatCarriers = [...(th0.chatCarriers ?? [])]
-            if (!chatCarriers.some((c) => c.id === asg.userId)) {
+            const hadCarrier = chatCarriers.some((c) => c.id === asg.userId)
+            if (!hadCarrier) {
               chatCarriers.push({
                 id: asg.userId,
                 name: asg.displayName,
@@ -435,6 +506,19 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
                 vehicleLabel: asg.vehicleLabel?.trim() || 'No indicada en la suscripción',
                 tramoLabel: `Tramo ${tr.orden} (${tr.origenLine} → ${tr.destinoLine})`,
               })
+            }
+            let routeSheetEditAcksOut = th0.routeSheetEditAcks
+            if (!hadCarrier) {
+              const sheetAck = th0.routeSheetEditAcks?.[ro.routeSheetId]
+              if (sheetAck && sheetAck.byCarrier[asg.userId] === undefined) {
+                routeSheetEditAcksOut = {
+                  ...(th0.routeSheetEditAcks ?? {}),
+                  [ro.routeSheetId]: {
+                    ...sheetAck,
+                    byCarrier: { ...sheetAck.byCarrier, [asg.userId]: 'pending' },
+                  },
+                }
+              }
             }
             const sysOk: Message = {
               id: uid('m'),
@@ -449,6 +533,9 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
                 ...th0,
                 routeSheets,
                 chatCarriers,
+                ...(routeSheetEditAcksOut !== th0.routeSheetEditAcks ?
+                  { routeSheetEditAcks: routeSheetEditAcksOut }
+                : {}),
                 messages: [...th0.messages, sysOk],
               },
             }
@@ -471,6 +558,102 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
           ...s,
           routeOfferPublic: { ...s.routeOfferPublic, [offerId]: { ...ro, tramos: nextTramos } },
           threads,
+        }
+      })
+      return ok
+    },
+
+    respondRouteSheetEdit: (threadId, routeSheetId, carrierUserId, accept) => {
+      let ok = false
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th?.routeSheets || threadIsActionLocked(th)) return s
+        const ack = th.routeSheetEditAcks?.[routeSheetId]
+        if (!ack || ack.byCarrier[carrierUserId] !== 'pending') return s
+        if (!th.chatCarriers?.some((c) => c.id === carrierUserId)) return s
+        const carrier = th.chatCarriers.find((c) => c.id === carrierUserId)
+        if (!carrier) return s
+        const sheet = th.routeSheets.find((r) => r.id === routeSheetId)
+        if (!sheet) return s
+        const nextByCarrier = {
+          ...ack.byCarrier,
+          [carrierUserId]: accept ? ('accepted' as const) : ('rejected' as const),
+        }
+        const now = Date.now()
+        const nextAcks = {
+          ...(th.routeSheetEditAcks ?? {}),
+          [routeSheetId]: { ...ack, byCarrier: nextByCarrier },
+        }
+
+        if (accept) {
+          const sys: Message = {
+            id: uid('m'),
+            from: 'system',
+            type: 'text',
+            text: `${carrier.name} aceptó los cambios en la hoja de ruta «${sheet.titulo}».`,
+            at: now,
+          }
+          ok = true
+          return {
+            ...s,
+            threads: {
+              ...s.threads,
+              [threadId]: {
+                ...th,
+                routeSheetEditAcks: nextAcks,
+                messages: [...th.messages, sys],
+              },
+            },
+          }
+        }
+
+        const ro0 = s.routeOfferPublic[th.offerId]
+        const stopIdsToClear = new Set<string>()
+        let routeOfferPublic = s.routeOfferPublic
+        if (ro0 && ro0.routeSheetId === routeSheetId) {
+          for (const t of ro0.tramos) {
+            if (t.assignment?.userId === carrierUserId) stopIdsToClear.add(t.stopId)
+          }
+          const nextTramos = ro0.tramos.map((t) =>
+            t.assignment?.userId === carrierUserId ? { ...t, assignment: undefined } : t,
+          )
+          routeOfferPublic = { ...s.routeOfferPublic, [th.offerId]: { ...ro0, tramos: nextTramos } }
+        }
+        const paradas = sheet.paradas.map((p) =>
+          stopIdsToClear.has(p.id) ? { ...p, telefonoTransportista: undefined } : p,
+        )
+        const updatedSheet: RouteSheet = { ...sheet, paradas, actualizadoEn: now }
+        const rsIdx = th.routeSheets.findIndex((r) => r.id === routeSheetId)
+        const routeSheets = [...th.routeSheets]
+        routeSheets[rsIdx] = updatedSheet
+        routeOfferPublic = routeOfferPublicAfterSheetEdit(
+          routeOfferPublic,
+          threadId,
+          routeSheetId,
+          updatedSheet,
+        )
+        const nextCarriers = (th.chatCarriers ?? []).filter((c) => c.id !== carrierUserId)
+        const sys: Message = {
+          id: uid('m'),
+          from: 'system',
+          type: 'text',
+          text: `${carrier.name} rechazó los cambios en «${sheet.titulo}». Queda liberado su tramo en la oferta pública (demo).`,
+          at: now,
+        }
+        ok = true
+        return {
+          ...s,
+          routeOfferPublic,
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...th,
+              routeSheets,
+              chatCarriers: nextCarriers,
+              routeSheetEditAcks: nextAcks,
+              messages: [...th.messages, sys],
+            },
+          },
         }
       })
       return ok
@@ -594,12 +777,48 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
         }
         const list = [...th.routeSheets]
         list[idx] = sheet
+        const carriers = th.chatCarriers ?? []
+        let routeSheetEditAcks = th.routeSheetEditAcks ?? {}
+        if (carriers.length > 0) {
+          const prevRev = routeSheetEditAcks[routeSheetId]?.revision ?? 0
+          routeSheetEditAcks = {
+            ...routeSheetEditAcks,
+            [routeSheetId]: {
+              revision: prevRev + 1,
+              byCarrier: Object.fromEntries(carriers.map((c) => [c.id, 'pending' as const])),
+            },
+          }
+        } else if (routeSheetEditAcks[routeSheetId]) {
+          const { [routeSheetId]: _removed, ...rest } = routeSheetEditAcks
+          routeSheetEditAcks = rest
+        }
+        const sysEdit: Message = {
+          id: uid('m'),
+          from: 'system',
+          type: 'text',
+          text:
+            carriers.length > 0 ?
+              `Hoja de ruta «${titulo}» editada. Los transportistas en este hilo pueden aceptar o rechazar los cambios en la pestaña Rutas.`
+            : `Hoja de ruta «${titulo}» editada.`,
+          at: now,
+        }
         ok = true
         return {
           ...s,
+          routeOfferPublic: routeOfferPublicAfterSheetEdit(
+            s.routeOfferPublic,
+            threadId,
+            routeSheetId,
+            sheet,
+          ),
           threads: {
             ...s.threads,
-            [threadId]: { ...th, routeSheets: list },
+            [threadId]: {
+              ...th,
+              routeSheets: list,
+              routeSheetEditAcks,
+              messages: [...th.messages, sysEdit],
+            },
           },
         }
       })
@@ -656,19 +875,45 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
         const sheets = th?.routeSheets
         if (!th || threadIsActionLocked(th) || !sheets?.length) return s
         const linked = routeSheetIdsLinkedToContracts(th)
-        const allowed = new Set([...idSet].filter((id) => linked.has(id)))
-        if (allowed.size === 0) return s
+        const allowedArr = [...idSet].filter((id) => linked.has(id))
+        if (allowedArr.length === 0) return s
+        const ro = s.routeOfferPublic[th.offerId]
         const now = Date.now()
-        const list = sheets.map((rs) =>
-          allowed.has(rs.id) && !rs.publicadaPlataforma
-            ? { ...rs, publicadaPlataforma: true, actualizadoEn: now }
-            : rs,
-        )
+        const extraMsgs: Message[] = []
+        const list = sheets.map((rs) => {
+          if (!allowedArr.includes(rs.id)) return rs
+          if (!rs.publicadaPlataforma) {
+            extraMsgs.push({
+              id: uid('m'),
+              from: 'system',
+              type: 'text',
+              text: `Hoja de ruta «${rs.titulo}» publicada en la plataforma. Los transportistas pueden suscribirse por tramo (demo).`,
+              at: now,
+            })
+            return { ...rs, publicadaPlataforma: true, actualizadoEn: now }
+          }
+          if (ro?.routeSheetId === rs.id && !routeOfferTramosAllConfirmed(ro)) {
+            extraMsgs.push({
+              id: uid('m'),
+              from: 'system',
+              type: 'text',
+              text: `Hoja de ruta «${rs.titulo}» republicada en la plataforma mientras queden tramos por cubrir (demo).`,
+              at: now,
+            })
+            return { ...rs, actualizadoEn: now }
+          }
+          return rs
+        })
+        if (extraMsgs.length === 0) return s
         return {
           ...s,
           threads: {
             ...s.threads,
-            [threadId]: { ...th, routeSheets: list },
+            [threadId]: {
+              ...th,
+              routeSheets: list,
+              messages: [...th.messages, ...extraMsgs],
+            },
           },
         }
       })
@@ -761,11 +1006,19 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
         if (!th?.routeSheets?.length || threadIsActionLocked(th)) return s
         const sheet = th.routeSheets.find((r) => r.id === routeSheetId)
         if (!sheet) return s
-        if (sheet.publicadaPlataforma) return s
+        if (routeSheetHasConfirmedCarriers(s.routeOfferPublic, th, routeSheetId)) return s
         const list = th.routeSheets.filter((r) => r.id !== routeSheetId)
         const contracts = (th.contracts ?? []).map((c) =>
           c.routeSheetId === routeSheetId ? { ...c, routeSheetId: undefined } : c,
         )
+        let routeOfferPublic = s.routeOfferPublic
+        const ro = s.routeOfferPublic[th.offerId]
+        if (ro?.routeSheetId === routeSheetId) {
+          routeOfferPublic = { ...s.routeOfferPublic }
+          delete routeOfferPublic[th.offerId]
+        }
+        const routeSheetEditAcks = { ...(th.routeSheetEditAcks ?? {}) }
+        delete routeSheetEditAcks[routeSheetId]
         const sys: Message = {
           id: uid('m'),
           from: 'system',
@@ -776,12 +1029,14 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
         ok = true
         return {
           ...s,
+          routeOfferPublic,
           threads: {
             ...s.threads,
             [threadId]: {
               ...th,
               routeSheets: list,
               contracts,
+              routeSheetEditAcks,
               messages: [...th.messages, sys],
             },
           },

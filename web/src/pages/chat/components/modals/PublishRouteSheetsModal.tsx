@@ -12,16 +12,13 @@ import {
 type Props = {
   open: boolean
   onClose: () => void
-  /** Solo se pueden publicar hojas aún no publicadas. */
+  /** Hojas elegibles: primer alta o republicación (según filtro del rail). */
   routeSheets: RouteSheet[]
   onConfirm: (routeSheetIds: string[]) => void
 }
 
 export function PublishRouteSheetsModal({ open, onClose, routeSheets, onConfirm }: Props) {
-  const candidatas = useMemo(
-    () => routeSheets.filter((r) => !r.publicadaPlataforma),
-    [routeSheets],
-  )
+  const candidatas = useMemo(() => routeSheets, [routeSheets])
   const [selected, setSelected] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
@@ -51,12 +48,12 @@ export function PublishRouteSheetsModal({ open, onClose, routeSheets, onConfirm 
       <div className={modalShellNarrow}>
         <div className="vt-modal-title">Publicar en la plataforma</div>
         <div className={modalSub}>
-          Solo aparecen hojas aún no publicadas y vinculadas a un acuerdo. Vinculá desde el detalle del contrato
-          si falta alguna.
+          Incluye publicación inicial y republicación mientras la oferta tenga tramos libres o sin confirmar.
+          Vinculá desde Contratos si falta alguna.
         </div>
         <div className={modalFormBody}>
           {candidatas.length === 0 ? (
-            <p className="vt-muted">No hay hojas pendientes de publicar.</p>
+            <p className="vt-muted">No hay hojas disponibles para publicar o republicar.</p>
           ) : (
             <ul className={publishRutaList}>
               {candidatas.map((r) => (
@@ -68,7 +65,10 @@ export function PublishRouteSheetsModal({ open, onClose, routeSheets, onConfirm 
                       onChange={() => toggle(r.id)}
                     />
                     <span className={publishRutaTitle}>{r.titulo}</span>
-                    <span className="vt-muted">{r.paradas.length} tramo{r.paradas.length === 1 ? '' : 's'}</span>
+                    <span className="vt-muted">
+                      {r.paradas.length} tramo{r.paradas.length === 1 ? '' : 's'}
+                      {r.publicadaPlataforma ? ' · Republicar' : ''}
+                    </span>
                   </label>
                 </li>
               ))}

@@ -103,6 +103,8 @@ export type RouteOfferTramoPublic = {
   precioTransportista?: string
   notas?: string
   requisitosEspeciales?: string
+  /** Teléfono por tramo en la hoja (vendedor o post-validación de suscripción). */
+  telefonoTransportista?: string
   assignment?: RouteOfferTramoAssignment
 }
 
@@ -198,6 +200,12 @@ export type Message =
       read?: boolean
     }
 
+/** Tras editar la hoja: cada transportista en el hilo debe acusar recibo (demo). */
+export type RouteSheetEditAckState = {
+  revision: number
+  byCarrier: Record<string, 'pending' | 'accepted' | 'rejected'>
+}
+
 export type Thread = {
   id: string
   offerId: string
@@ -213,6 +221,8 @@ export type Thread = {
   /** Comprador mostrado en integrantes cuando el hilo es vista logística (p. ej. demo cooperativa). */
   demoBuyer?: { id: string; name: string; trustScore: number; avatarUrl?: string }
   chatCarriers?: ThreadChatCarrier[]
+  /** Acuses por hoja (se reinicia al guardar ediciones con transportistas en el hilo). */
+  routeSheetEditAcks?: Record<string, RouteSheetEditAckState>
 }
 
 export function threadHasAcceptedAgreement(th: Thread): boolean {
@@ -291,6 +301,13 @@ export type MarketState = {
   ) => boolean
   /** Vendedor/comprador del hilo: acepta o rechaza la suscripción pendiente al tramo. */
   validateRouteOfferTramo: (offerId: string, stopId: string, accept: boolean) => boolean
+  /** Transportista validado en el hilo: acepta o rechaza una versión editada de la hoja. */
+  respondRouteSheetEdit: (
+    threadId: string,
+    routeSheetId: string,
+    carrierUserId: string,
+    accept: boolean,
+  ) => boolean
 
   /** Tiendas creadas por el usuario (vendedor) — flow-ui perfil. */
   createOwnerStore: (ownerUserId: string, values: OwnerStoreFormValues) => string | null

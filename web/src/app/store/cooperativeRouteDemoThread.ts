@@ -200,6 +200,7 @@ export function getInitialRouteOfferPublic(): Record<string, RouteOfferPublicSta
         precioTransportista: p.precioTransportista,
         notas: p.notas,
         requisitosEspeciales: p.requisitosEspeciales,
+        telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
         assignment:
           i === 0 ?
             {

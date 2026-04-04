@@ -1,5 +1,7 @@
 import toast from 'react-hot-toast'
-import { Check, ChevronRight, MapPin, Pencil, Trash2 } from 'lucide-react'
+import { Check, ChevronRight, MapPin, Pencil, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react'
+import { useAppStore } from '../../../../app/store/useAppStore'
+import { useMarketStore } from '../../../../app/store/useMarketStore'
 import { cn } from '../../../../lib/cn'
 import type { RouteSheet } from '../../domain/routeSheetTypes'
 import { routeStatusLabel, tramoResumenLinea } from '../../domain/routeSheetTypes'
@@ -33,6 +35,23 @@ export function ChatRightRailRoutesPanel({
   toggleRouteStop,
   deleteRouteSheet,
 }: Props) {
+  const me = useAppStore((s) => s.me)
+  const offerId = useMarketStore((s) => s.threads[threadId]?.offerId ?? '')
+  const routeOffer = useMarketStore((s) => (offerId ? s.routeOfferPublic[offerId] : undefined))
+  const routeSheetEditAcks = useMarketStore((s) => s.threads[threadId]?.routeSheetEditAcks)
+  const chatCarriers = useMarketStore((s) => s.threads[threadId]?.chatCarriers)
+  const respondRouteSheetEdit = useMarketStore((s) => s.respondRouteSheetEdit)
+
+  const selSheetHasConfirmedCarriers =
+    !!selRoute &&
+    routeOffer?.routeSheetId === selRoute.id &&
+    routeOffer.tramos.some((t) => t.assignment?.status === 'confirmed')
+
+  const myCarrierAck =
+    selRoute && me.id && chatCarriers?.some((c) => c.id === me.id) ?
+      routeSheetEditAcks?.[selRoute.id]?.byCarrier[me.id]
+    : undefined
+
   return (
     <div className={bodyClassName}>
       <button
@@ -66,17 +85,17 @@ export function ChatRightRailRoutesPanel({
               className="vt-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
               disabled={actionsLocked}
               title={
-                actionsLocked
-                  ? 'No disponible hasta registrar el pago'
-                  : selRoute.publicadaPlataforma
-                    ? 'Editar hoja (también publicada: p. ej. contacto por tramo)'
-                    : 'Editar hoja de ruta'
+                actionsLocked ?
+                  'No disponible hasta registrar el pago'
+                : selRoute.publicadaPlataforma ?
+                  'Editar: se notifica en el chat y los transportistas pueden aceptar o rechazar (demo)'
+                : 'Editar hoja de ruta'
               }
               onClick={() => onEditRouteSheet(selRoute)}
             >
               <Pencil size={14} aria-hidden /> Editar
             </button>
-            {!selRoute.publicadaPlataforma ? (
+            {!selSheetHasConfirmedCarriers ? (
               <button
                 type="button"
                 className="vt-btn inline-flex items-center gap-1.5 border-[color-mix(in_oklab,#dc2626_28%,var(--border))] bg-[color-mix(in_oklab,#dc2626_6%,var(--surface))] px-2.5 py-1.5 text-xs text-[color-mix(in_oklab,#dc2626_88%,var(--text))] hover:bg-[color-mix(in_oklab,#dc2626_10%,var(--surface))]"
@@ -84,7 +103,7 @@ export function ChatRightRailRoutesPanel({
                 title={
                   actionsLocked
                     ? 'No disponible hasta registrar el pago'
-                    : 'Eliminar esta hoja (no disponible si ya está publicada en la plataforma)'
+                    : 'Eliminar si no hay transportistas con tramo ya aceptado; las solicitudes pendientes no lo impiden'
                 }
                 onClick={() => {
                   if (
@@ -98,7 +117,7 @@ export function ChatRightRailRoutesPanel({
                     toast.success('Hoja de ruta eliminada')
                     setSelRouteId(null)
                   } else {
-                    toast.error('No se puede eliminar una hoja ya publicada en la plataforma.')
+                    toast.error('No se puede eliminar: hay al menos un transportista con tramo confirmado en esta oferta.')
                   }
                 }}
               >
@@ -107,6 +126,48 @@ export function ChatRightRailRoutesPanel({
             ) : null}
           </div>
           <div className="mb-1.5 text-[15px] font-black">{selRoute.titulo}</div>
+          {myCarrierAck === 'pending' && routeSheetEditAcks?.[selRoute.id] ? (
+            <div className="mb-3 rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] px-3 py-2.5">
+              <div className="text-xs font-extrabold leading-snug">
+                Cambios en la hoja (revisión {routeSheetEditAcks[selRoute.id].revision})
+              </div>
+              <p className="vt-muted mb-2 mt-1 text-[11px] leading-snug">
+                El vendedor editó la hoja. Como transportista en este hilo, podés aceptarla o rechazarla.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="vt-btn vt-btn-primary inline-flex items-center gap-1 px-2.5 py-1.5 text-xs"
+                  disabled={actionsLocked}
+                  onClick={() => {
+                    const ok = respondRouteSheetEdit(threadId, selRoute.id, me.id, true)
+                    if (ok) toast.success('Aceptaste la versión actual de la hoja')
+                    else toast.error('No se pudo registrar la aceptación')
+                  }}
+                >
+                  <ThumbsUp size={14} aria-hidden /> Aceptar cambios
+                </button>
+                <button
+                  type="button"
+                  className="vt-btn inline-flex items-center gap-1 border-[color-mix(in_oklab,#dc2626_28%,var(--border))] px-2.5 py-1.5 text-xs"
+                  disabled={actionsLocked}
+                  onClick={() => {
+                    const ok = respondRouteSheetEdit(threadId, selRoute.id, me.id, false)
+                    if (ok) toast('Rechazaste los cambios; tu tramo queda libre en la oferta (demo)', { icon: 'ℹ️' })
+                    else toast.error('No se pudo registrar el rechazo')
+                  }}
+                >
+                  <ThumbsDown size={14} aria-hidden /> Rechazar
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {myCarrierAck === 'accepted' ? (
+            <p className="vt-muted mb-2 text-[11px]">Confirmaste la última versión de esta hoja.</p>
+          ) : null}
+          {myCarrierAck === 'rejected' ? (
+            <p className="vt-muted mb-2 text-[11px]">Rechazaste la última edición de esta hoja.</p>
+          ) : null}
           {selRoute.publicadaPlataforma ? (
             <div className={cn(statusPillOk, 'mb-2 inline-block')}>En plataforma</div>
           ) : null}

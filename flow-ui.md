@@ -217,7 +217,27 @@ La hoja de ruta contempla el formulario siguiente:
 
 Una vez emitido esta hoja ruta y aprobada entre las partes, procede a ser publicada y la plataforma le muestra a sus transportistas esta hoja de ruta, estos se suscriben con un boton de "Suscribirse" en la oferta seleccionando un vehiculo que tengan en su catalago y espera a ser aprobado por los integrantes del chat comprador/vendedor y de ser aprobado este entra automaticamente en el chat.
 
-- **Visualización:** La hoja de ruta se renderiza como un objeto interactivo en la oferta del transportista, y este objeto siempre puede ser consultado por el transportista en el chat
+DONE----------------------------------------
+
+### Flujo ilustrado en la demo: cooperación A→B→C y cuenta transportista
+
+Secuencia de negocio que la aplicación de muestra permite recorrer de punta a punta (en entorno de demostración, sin operación real en servidor):
+
+1. **Perfil del transportista principal:** El usuario **Jhosef** actúa como transportista y tiene su propio negocio (**Transportes Jhosef**) con un servicio de flete en catálogo (corredor NEA–Litoral / Rosario, referencia de flota, etc.), consultable desde **Perfil → tiendas**.
+2. **Segundo transportista en la operación:** Coexiste otro operador de transporte de demostración (**Benedetti Logística**), con catálogo propio; en la historia de la ruta representa al conductor ya asignado al primer tramo.
+3. **Prioridad en el feed:** Quien navega como transportista ve en **Inicio** primero la oferta vinculada a la **hoja de ruta ya publicada** por el negocio vendedor (AgroNorte, en el marco de una compra acordada), y debajo otras publicaciones afines a flete o logística. Desde esa tarjeta puede abrir el detalle de la oferta y **postularse** a un tramo.
+4. **Ficha de la oferta de ruta:** El detalle presenta al negocio que publica la carga, con mensaje e imagen acorde al servicio (por ejemplo imagen tipo camión), y etiquetas que dejan claro que es una hoja de ruta dirigida a transportistas. En **Inicio** pueden existir atajos hacia esa ficha y hacia el chat de la operación.
+5. **Resumen de la hoja antes de decidir:** Tanto en la tarjeta del feed como en la ficha, quien consulta la oferta ve un **resumen de la hoja**: título, tramos (origen y destino por etapa), mercancías y notas si aplican. **En cada tramo**, cuando ya hay un número de contacto acordado o cargado en la hoja, se muestra de forma explícita el **teléfono de ese tramo**. Si aún no hubo contacto registrado para esa etapa, esa línea no aparece. Cuando un transportista ya está asignado o en validación, además se ve su **nombre**, **\*\***datos de **unidad**\*\*\***\* y una **referencia de confianza\*\* asociada al perfil.
+6. **Postulación por tramo:** El transportista elige un **tramo libre**. La solicitud queda **pendiente de decisión** de vendedor y comprador en el chat; ellos pueden **aceptarla o rechazarla**. Si la aceptan, el tramo queda **asignado y validado**, el contacto queda reflejado en la hoja del chat, la persona pasa a **Integrantes** del hilo y el sistema deja constancia en la conversación.
+7. **Ejemplo de dos etapas:** El tramo Posadas→Corrientes parte con **María Benedetti** ya validada; el tramo Corrientes→Rosario queda **abierto** para que **Jhosef** postule y, en la demo, se simule la aceptación por comprador y vendedor. Hecho eso, Jhosef figura entre **Integrantes** y el teléfono correspondiente aparece en la hoja de ese tramo.
+8. **Quién es el comprador en el chat:** En la lista de participantes del hilo de esa operación de compra figura la compradora **Laura Méndez**; Jhosef sólo accede plenamente al chat operativo una vez validada su participación en un tramo, según las reglas de la demo.
+9. **Ajustes posteriores por el vendedor:** El vendedor puede seguir editando la hoja de ruta desde el panel del chat, incluido el **teléfono de contacto por tramo**, para corregir o actualizar datos operativos. Cada vez que se edita la hoja de ruta los transportistas pueden aceptar o rechazar, en caso de rechazar salen del chat.
+
+10. **Coherencia del teléfono entre hoja pública y hoja del chat:** El número que ve el transportista en el resumen público (feed y ficha) es el mismo criterio de negocio que en la hoja del hilo: primero prevalece lo que el vendedor dejó **registrado en la hoja por tramo**; si ese dato aún no está cargado pero ya hay una **postulación** (en revisión o ya aprobada), se muestra el **teléfono aportado por quien se postuló**. Cada vez que el vendedor **guarda cambios** en la hoja en el chat, el resumen visible para transportistas **se actualiza** para reflejar esos tramos y teléfonos.
+
+- **Consulta continua:** La hoja de ruta completa sigue disponible como objeto consultable dentro de la oferta y del chat para quien participa como transportista.
+
+DONE----------------------------------------
 
 DONE----------------------------------------
 

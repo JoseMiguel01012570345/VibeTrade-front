@@ -49,7 +49,6 @@ function AssignmentBlock({ a }: { a: RouteOfferTramoAssignment }) {
           </span>
         : <span className="text-[10px] font-bold text-[color-mix(in_oklab,var(--good)_90%,var(--muted))]">Validado</span>}
       </div>
-      <div className="mt-1 font-mono text-[10px] text-[var(--muted)]">{a.phone}</div>
       <div className="mt-1 flex items-center gap-2">
         <MicroTrustBar score={a.trustScore} />
       </div>
@@ -58,6 +57,14 @@ function AssignmentBlock({ a }: { a: RouteOfferTramoAssignment }) {
       : null}
     </div>
   )
+}
+
+function tramoPhoneLine(telefonoHoja: string | undefined, telefonoAsignacion: string | undefined): string | null {
+  const h = telefonoHoja?.trim()
+  const a = telefonoAsignacion?.trim()
+  if (h) return h
+  if (a) return a
+  return null
 }
 
 function tramoLine(origen: string, destino: string): string {
@@ -149,25 +156,34 @@ export function RouteOfferPreview({ state, compact, className }: Props) {
       : null}
 
       <ul className={cn('m-0 list-none p-0', compact ? 'mt-2 space-y-2' : 'mt-3 space-y-3')}>
-        {state.tramos.map((t) => (
-          <li
-            key={t.stopId}
-            className="border-t border-dashed border-[color-mix(in_oklab,var(--border)_70%,transparent)] pt-2 first:border-t-0 first:pt-0"
-          >
-            <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-              <span className="text-[11px] font-black text-[var(--muted)]">Tramo {t.orden}</span>
-              <span className={cn('min-w-0 font-bold text-[var(--text)]', compact ? 'text-[11px]' : 'text-[12px]')}>
-                {tramoLine(t.origenLine, t.destinoLine)}
-              </span>
-            </div>
-            <TramoPublicDetails t={t} compact={!!compact} />
-            {t.assignment ?
-              <div className={compact ? 'mt-1.5' : 'mt-2'}>
-                <AssignmentBlock a={t.assignment} />
+        {state.tramos.map((t) => {
+          const telTramo = tramoPhoneLine(t.telefonoTransportista, t.assignment?.phone)
+          return (
+            <li
+              key={t.stopId}
+              className="border-t border-dashed border-[color-mix(in_oklab,var(--border)_70%,transparent)] pt-2 first:border-t-0 first:pt-0"
+            >
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                <span className="text-[11px] font-black text-[var(--muted)]">Tramo {t.orden}</span>
+                <span className={cn('min-w-0 font-bold text-[var(--text)]', compact ? 'text-[11px]' : 'text-[12px]')}>
+                  {tramoLine(t.origenLine, t.destinoLine)}
+                </span>
               </div>
-            : <div className="vt-muted mt-1.5 text-[11px] font-semibold">Libre — podés suscribirte a este tramo</div>}
-          </li>
-        ))}
+              {telTramo ?
+                <div className={cn('mt-1', compact ? 'text-[10px]' : 'text-[11px]')}>
+                  <span className="font-extrabold text-[var(--muted)]">Teléfono del tramo: </span>
+                  <span className="font-mono font-bold tabular-nums text-[var(--text)]">{telTramo}</span>
+                </div>
+              : null}
+              <TramoPublicDetails t={t} compact={!!compact} />
+              {t.assignment ?
+                <div className={compact ? 'mt-1.5' : 'mt-2'}>
+                  <AssignmentBlock a={t.assignment} />
+                </div>
+              : <div className="vt-muted mt-1.5 text-[11px] font-semibold">Libre — podés suscribirte a este tramo</div>}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
