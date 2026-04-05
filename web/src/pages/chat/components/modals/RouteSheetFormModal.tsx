@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { cn } from '../../../../lib/cn'
 import { ModalFormField as Field } from './ModalFormField'
-import { cloneTramoFromPrevious, emptyTramo } from '../../lib/routeSheetTramoFormUtils'
+import { emptyTramo, expandChainedTramoOrigins } from '../../lib/routeSheetTramoFormUtils'
 import {
   agrDetailSub,
   detailsBlock,
@@ -60,6 +60,13 @@ type Props = {
 
 type MapPick = { tramoIndex: number; punto: 'origen' | 'destino' }
 
+/** En el formulario, el origen del tramo i&gt;0 no se guarda en el estado: se deriva del destino del tramo i−1. */
+function clearDerivedOriginsInForm(tramos: RouteTramoFormInput[]): RouteTramoFormInput[] {
+  return tramos.map((t, i) =>
+    i === 0 ? t : { ...t, origen: '', origenLat: '', origenLng: '' },
+  )
+}
+
 function tramosToLimpios(tramos: RouteTramoFormInput[]): RouteTramoFormInput[] {
   return tramos.map((p) => ({
     origen: p.origen.trim(),
@@ -113,15 +120,16 @@ export function RouteSheetFormModal({
       const ro = routeOfferRef.current
       const offerMap =
         ro?.routeSheetId === rs.id ? new Map(ro.tramos.map((t) => [t.stopId, t])) : undefined
-      const tramosInit =
+      const tramosInitRaw =
         rs.paradas.length > 0
           ? routeStopsToFormInputs(rs.paradas, routeSheetLegacyHead(rs), offerMap)
           : [emptyTramo(), emptyTramo()]
+      const tramosInit = clearDerivedOriginsInForm(tramosInitRaw)
       setTitulo(rs.titulo)
       setMerc(rs.mercanciasResumen)
       setNotasG(rs.notasGenerales ?? '')
       setTramos(tramosInit)
-      const limpios0 = tramosToLimpios(tramosInit)
+      const limpios0 = expandChainedTramoOrigins(tramosToLimpios(tramosInit))
       const draft0: RouteSheetCreatePayload = {
         titulo: rs.titulo.trim(),
         mercanciasResumen: rs.mercanciasResumen.trim(),
@@ -150,6 +158,7 @@ export function RouteSheetFormModal({
   if (!open) return null
 
   function openMapPicker(tramoIndex: number, punto: 'origen' | 'destino') {
+    if (punto === 'origen' && tramoIndex > 0) return
     const t = tramos[tramoIndex]
     if (!t) return
     setMapCoordError(undefined)
@@ -193,7 +202,7 @@ export function RouteSheetFormModal({
   function trySubmit() {
     const t = titulo.trim()
     const m = merc.trim()
-    const limpios = tramosToLimpios(tramos)
+    const limpios = expandChainedTramoOrigins(tramosToLimpios(tramos))
     const draft: RouteSheetCreatePayload = {
       titulo: t,
       mercanciasResumen: m,
@@ -233,11 +242,8 @@ export function RouteSheetFormModal({
     })
   }
 
-  function addTramoClonedFromLast() {
-    setTramos((prev) => {
-      const last = prev[prev.length - 1]
-      return [...prev, cloneTramoFromPrevious(last ?? emptyTramo())]
-    })
+  function addTramoAfterLast() {
+    setTramos((prev) => [...prev, emptyTramo()])
     setFormErrors({})
   }
 
@@ -266,7 +272,8 @@ export function RouteSheetFormModal({
           </div>
           <div className={modalSub}>
             Todos los campos son obligatorios. Tiempos estimados y precio del tramo deben ser números (ej. horas o
-            monto). Las coordenadas se cargan desde el botón del mapa.
+            monto). Las coordenadas se cargan desde el botón del mapa. A partir del segundo tramo, el origen coincide con
+            el destino del tramo anterior (solo editable ahí).
           </div>
           <div className={modalFormBody}>
             <Field
@@ -295,6 +302,11 @@ export function RouteSheetFormModal({
               ) : null}
               {tramos.map((p, i) => {
                 const te = err.tramos?.[i]
+                const prevStop = i > 0 ? tramos[i - 1] : null
+                const origenLocked = i > 0
+                const origenNombre = origenLocked ? (prevStop?.destino ?? '') : p.origen
+                const origenLatShown = origenLocked ? (prevStop?.destinoLat ?? '') : (p.origenLat ?? '')
+                const origenLngShown = origenLocked ? (prevStop?.destinoLng ?? '') : (p.origenLng ?? '')
                 return (
                   <div key={i} className={rutaTramoCard}>
                     <div className={rutaTramoHead}>
@@ -317,8 +329,12 @@ export function RouteSheetFormModal({
                     <div className={rutaTramoGrid}>
                       <Field
                         label="Origen"
-                        value={p.origen}
-                        onChange={(v) => updateTramo(i, { origen: v })}
+                        value={origenNombre}
+                        onChange={(v) => {
+                          if (origenLocked) return
+                          updateTramo(i, { origen: v })
+                        }}
+                        readOnly={origenLocked}
                         error={te?.origen}
                         placeholder="Ubicación de origen"
                         inputId={`ruta-tramo-${i}-origen`}
@@ -332,10 +348,22 @@ export function RouteSheetFormModal({
                         inputId={`ruta-tramo-${i}-destino`}
                       />
                     </div>
+                    {origenLocked ? (
+                      <p className="vt-muted mb-2 text-[11px] leading-snug">
+                        Mismo lugar y coordenadas que el <b>destino del tramo {i}</b>. Para cambiarlos, editá ese
+                        destino o sus coordenadas en el mapa.
+                      </p>
+                    ) : null}
                     <div className={rutaCoordsRow}>
                       <button
                         type="button"
                         className={rutaMapBtn}
+                        disabled={origenLocked}
+                        title={
+                          origenLocked
+                            ? 'El origen toma las coordenadas del destino del tramo anterior'
+                            : undefined
+                        }
                         onClick={() => openMapPicker(i, 'origen')}
                       >
                         <MapPin size={14} /> Coordenadas origen (mapa)
@@ -351,11 +379,16 @@ export function RouteSheetFormModal({
                     {te?.coordOrigen ? (
                       <div className={fieldError} role="alert">
                         {te.coordOrigen}
+                        {origenLocked ? (
+                          <span className="block pt-1 text-[11px] font-normal opacity-90">
+                            Si falta el mapa del origen, cargá las coordenadas de <b>destino</b> del tramo {i}.
+                          </span>
+                        ) : null}
                       </div>
                     ) : null}
-                    {(p.origenLat || p.origenLng) ? (
+                    {(origenLatShown || origenLngShown) ? (
                       <div className={rutaCoordsHint}>
-                        Origen: {p.origenLat ?? '—'}, {p.origenLng ?? '—'}
+                        Origen: {origenLatShown || '—'}, {origenLngShown || '—'}
                       </div>
                     ) : null}
                     {te?.coordDestino ? (
@@ -415,8 +448,8 @@ export function RouteSheetFormModal({
                         ))}
                       </select>
                       <p className="vt-muted mt-1 text-[11px] leading-snug">
-                        Elegí un contacto ya registrado (integrantes del hilo o suscripciones a la oferta). Si no hay
-                        ninguno, primero validá suscripciones en la ficha de la oferta.
+                        Sólo podés elegir teléfonos de transportistas que ya estén en el chat (integrantes del hilo). Si
+                        falta alguien, validá su suscripción para que entre al hilo antes de cargar el número acá.
                       </p>
                       {te?.telefonoTransportista ? (
                         <span className={fieldError} role="alert">
@@ -489,8 +522,8 @@ export function RouteSheetFormModal({
                   </div>
                 )
               })}
-              <button type="button" className="vt-btn" onClick={addTramoClonedFromLast}>
-                + Tramo (copia del último)
+              <button type="button" className="vt-btn" onClick={addTramoAfterLast}>
+                + Agregar tramo
               </button>
             </div>
 

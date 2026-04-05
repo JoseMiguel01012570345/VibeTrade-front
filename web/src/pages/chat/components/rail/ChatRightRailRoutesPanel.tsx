@@ -181,7 +181,11 @@ export function ChatRightRailRoutesPanel({
                   disabled={actionsLocked}
                   onClick={() => {
                     const ok = respondRouteSheetEdit(threadId, selRoute.id, me.id, false)
-                    if (ok) toast('Rechazaste los cambios; tu tramo queda libre en la oferta (demo)', { icon: 'ℹ️' })
+                    if (ok) {
+                      toast.success(
+                        'Rechazaste la edición de la hoja. Seguís en el chat; tus tramos quedan libres en la oferta (demo).',
+                      )
+                    }
                     else toast.error('No se pudo registrar el rechazo')
                   }}
                 >

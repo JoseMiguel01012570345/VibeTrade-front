@@ -12,6 +12,7 @@ type Props = {
   placeholder?: string
   rows?: number
   inputMode?: HTMLAttributes<HTMLInputElement>['inputMode']
+  readOnly?: boolean
 }
 
 export function ModalFormField({
@@ -24,30 +25,34 @@ export function ModalFormField({
   placeholder,
   rows,
   inputMode,
+  readOnly = false,
 }: Props) {
   const errId = inputId ? `${inputId}-err` : undefined
+  const readOnlyCls = readOnly ? 'cursor-default bg-black/[0.04] dark:bg-white/[0.06]' : ''
   return (
     <label className={fieldRootWithInvalid(!!error)}>
       <span className={fieldLabel}>{label}</span>
       {multiline ? (
         <textarea
           id={inputId}
-          className={cn('vt-input', textareaMin)}
+          className={cn('vt-input', textareaMin, readOnlyCls)}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={rows ?? 2}
           placeholder={placeholder}
+          readOnly={readOnly}
           aria-invalid={!!error}
           aria-describedby={error ? errId : undefined}
         />
       ) : (
         <input
           id={inputId}
-          className="vt-input"
+          className={cn('vt-input', readOnlyCls)}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           inputMode={inputMode}
+          readOnly={readOnly}
           aria-invalid={!!error}
           aria-describedby={error ? errId : undefined}
         />

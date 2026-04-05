@@ -107,6 +107,70 @@ function routeSheetHasConfirmedCarriers(
   return ro.tramos.some((t) => t.assignment?.status === 'confirmed')
 }
 
+/** Huella del tramo para saber si un transportista debe volver a acusar la hoja. */
+function routeStopAckFingerprint(p: RouteStop): string {
+  return JSON.stringify({
+    orden: p.orden,
+    origen: (p.origen ?? '').trim(),
+    destino: (p.destino ?? '').trim(),
+    olat: (p.origenLat ?? '').trim(),
+    olng: (p.origenLng ?? '').trim(),
+    dlat: (p.destinoLat ?? '').trim(),
+    dlng: (p.destinoLng ?? '').trim(),
+    t1: (p.tiempoRecogidaEstimado ?? '').trim(),
+    t2: (p.tiempoEntregaEstimado ?? '').trim(),
+    pr: (p.precioTransportista ?? '').trim(),
+    tel: (p.telefonoTransportista ?? '').trim(),
+    cg: (p.cargaEnTramo ?? '').trim(),
+    tmc: (p.tipoMercanciaCarga ?? '').trim(),
+    tmd: (p.tipoMercanciaDescarga ?? '').trim(),
+    no: (p.notas ?? '').trim(),
+    re: (p.responsabilidadEmbalaje ?? '').trim(),
+    rq: (p.requisitosEspeciales ?? '').trim(),
+    ve: (p.tipoVehiculoRequerido ?? '').trim(),
+  })
+}
+
+/** Transportistas con asignación confirmada cuyo tramo (mismo stopId) cambió o desapareció de la hoja. */
+function carrierUserIdsAffectedByRouteSheetParadas(
+  ro: RouteOfferPublicState | undefined,
+  routeSheetId: string,
+  existingSheet: RouteSheet,
+  newParadas: RouteStop[],
+): Set<string> {
+  const affected = new Set<string>()
+  if (!ro || ro.routeSheetId !== routeSheetId) return affected
+
+  const oldById = new Map(existingSheet.paradas.map((p) => [p.id, p]))
+  const newById = new Map(newParadas.map((p) => [p.id, p]))
+
+  for (const t of ro.tramos) {
+    const a = t.assignment
+    if (!a || a.status !== 'confirmed') continue
+    const oldP = oldById.get(t.stopId)
+    const newP = newById.get(t.stopId)
+    if (!oldP || !newP) {
+      affected.add(a.userId)
+      continue
+    }
+    if (routeStopAckFingerprint(oldP) !== routeStopAckFingerprint(newP)) {
+      affected.add(a.userId)
+    }
+  }
+  return affected
+}
+
+/** userIds con al menos un tramo confirmado en esta oferta (misma hoja). */
+function confirmedCarrierIdsOnOffer(ro: RouteOfferPublicState | undefined, routeSheetId: string): Set<string> {
+  const ids = new Set<string>()
+  if (!ro || ro.routeSheetId !== routeSheetId) return ids
+  for (const t of ro.tramos) {
+    const a = t.assignment
+    if (a?.status === 'confirmed') ids.add(a.userId)
+  }
+  return ids
+}
+
 export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
   const offers: Record<string, Offer> = Object.fromEntries(demoOffers.map((o) => [o.id, o]))
 
@@ -585,23 +649,47 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
               )
             }
             let routeSheetEditAcksOut = th0.routeSheetEditAcks
-            if (!hadCarrier) {
-              const sheetAck = th0.routeSheetEditAcks?.[ro.routeSheetId]
-              if (sheetAck && sheetAck.byCarrier[asg.userId] === undefined) {
-                routeSheetEditAcksOut = {
-                  ...(th0.routeSheetEditAcks ?? {}),
-                  [ro.routeSheetId]: {
-                    ...sheetAck,
-                    byCarrier: { ...sheetAck.byCarrier, [asg.userId]: 'pending' },
-                  },
+            const sheetId = ro.routeSheetId
+            const prevAck = sheetId ? th0.routeSheetEditAcks?.[sheetId] : undefined
+            const prevByCarrier = { ...(prevAck?.byCarrier ?? {}) }
+            const hadOtherConfirmedTramo = ro.tramos.some(
+              (t) =>
+                t.stopId !== stopId &&
+                t.assignment?.userId === asg.userId &&
+                t.assignment?.status === 'confirmed',
+            )
+            if (sheetId && hadOtherConfirmedTramo) {
+              for (const t of ro.tramos) {
+                const u = t.assignment?.userId
+                if (t.assignment?.status === 'confirmed' && u && prevByCarrier[u] === undefined) {
+                  prevByCarrier[u] = 'accepted'
                 }
+              }
+              prevByCarrier[asg.userId] = 'pending'
+              routeSheetEditAcksOut = {
+                ...(th0.routeSheetEditAcks ?? {}),
+                [sheetId]: {
+                  revision: (prevAck?.revision ?? 0) + 1,
+                  byCarrier: prevByCarrier,
+                },
+              }
+            } else if (sheetId && !hadCarrier && prevAck && prevByCarrier[asg.userId] === undefined) {
+              routeSheetEditAcksOut = {
+                ...(th0.routeSheetEditAcks ?? {}),
+                [sheetId]: {
+                  ...prevAck,
+                  byCarrier: { ...prevByCarrier, [asg.userId]: 'pending' },
+                },
               }
             }
             const sysOk: Message = {
               id: uid('m'),
               from: 'system',
               type: 'text',
-              text: `Suscripción validada: ${asg.displayName} queda asignado al tramo ${tr.orden}.`,
+              text:
+                hadOtherConfirmedTramo ?
+                  `Suscripción validada: ${asg.displayName} queda asignado al tramo ${tr.orden}. Al incorporar otro tramo, debe aceptar o rechazar la hoja de ruta en la pestaña Rutas (demo). Se le notifica también en la interfaz.`
+                : `Suscripción validada: ${asg.displayName} queda asignado al tramo ${tr.orden}. Notificación al transportista: revisar la hoja en el chat (pestaña Rutas).`,
               at: Date.now(),
             }
             threads = {
@@ -709,12 +797,20 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
           routeSheetId,
           updatedSheet,
         )
-        const nextCarriers = (th.chatCarriers ?? []).filter((c) => c.id !== carrierUserId)
+        const nextChatCarriers = (th.chatCarriers ?? []).map((c) =>
+          c.id !== carrierUserId ?
+            c
+          : {
+              ...c,
+              tramoLabel:
+                'Integrante del hilo — sin tramo asignado en la oferta tras rechazar la edición de la hoja (demo)',
+            },
+        )
         const sys: Message = {
           id: uid('m'),
           from: 'system',
           type: 'text',
-          text: `${carrier.name} rechazó los cambios en «${sheet.titulo}». Queda liberado su tramo en la oferta pública (demo).`,
+          text: `${carrier.name} rechazó los cambios en «${sheet.titulo}». Sus tramos quedan libres en la oferta pública; permanece en el chat como integrante (demo).`,
           at: now,
         }
         ok = true
@@ -726,7 +822,7 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
             [threadId]: {
               ...th,
               routeSheets,
-              chatCarriers: nextCarriers,
+              chatCarriers: nextChatCarriers,
               routeSheetEditAcks: nextAcks,
               messages: [...th.messages, sys],
             },
@@ -862,28 +958,35 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
         }
         const list = [...th.routeSheets]
         list[idx] = sheet
-        const carriers = th.chatCarriers ?? []
+        const ro0 = th.offerId ? s.routeOfferPublic[th.offerId] : undefined
+        const affectedCarriers = carrierUserIdsAffectedByRouteSheetParadas(ro0, routeSheetId, existing, paradas)
+        const assignedOnSheet = confirmedCarrierIdsOnOffer(ro0, routeSheetId)
+
         let routeSheetEditAcks = th.routeSheetEditAcks ?? {}
-        if (carriers.length > 0) {
-          const prevRev = routeSheetEditAcks[routeSheetId]?.revision ?? 0
+        if (affectedCarriers.size > 0 && assignedOnSheet.size > 0) {
+          const prevAck = routeSheetEditAcks[routeSheetId]
+          const prevBy = prevAck?.byCarrier ?? {}
+          const prevRev = prevAck?.revision ?? 0
+          const nextBy: Record<string, 'pending' | 'accepted' | 'rejected'> = {}
+          for (const uid of assignedOnSheet) {
+            if (affectedCarriers.has(uid)) {
+              nextBy[uid] = 'pending'
+            } else {
+              nextBy[uid] = prevBy[uid] === 'pending' ? 'pending' : (prevBy[uid] ?? 'accepted')
+            }
+          }
           routeSheetEditAcks = {
             ...routeSheetEditAcks,
-            [routeSheetId]: {
-              revision: prevRev + 1,
-              byCarrier: Object.fromEntries(carriers.map((c) => [c.id, 'pending' as const])),
-            },
+            [routeSheetId]: { revision: prevRev + 1, byCarrier: nextBy },
           }
-        } else if (routeSheetEditAcks[routeSheetId]) {
-          const { [routeSheetId]: _removed, ...rest } = routeSheetEditAcks
-          routeSheetEditAcks = rest
         }
         const sysEdit: Message = {
           id: uid('m'),
           from: 'system',
           type: 'text',
           text:
-            carriers.length > 0 ?
-              `Hoja de ruta «${titulo}» editada. Los transportistas en este hilo pueden aceptar o rechazar los cambios en la pestaña Rutas.`
+            affectedCarriers.size > 0 ?
+              `Hoja de ruta «${titulo}» editada. Los transportistas cuyo tramo cambió deben aceptar o rechazar la versión actual en la pestaña Rutas (demo).`
             : `Hoja de ruta «${titulo}» editada.`,
           at: now,
         }

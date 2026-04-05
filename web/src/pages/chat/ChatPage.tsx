@@ -43,7 +43,11 @@ import {
   TrustRiskEditConfirmModal,
 } from "./components/modals/TrustRiskEditConfirmModal";
 import { AgreementDeleteRouteSheetsModal } from "./components/modals/AgreementDeleteRouteSheetsModal";
-import { agreementDeleteBlockedByRouteSheetInvariant } from "./domain/routeSheetOfferGuards";
+import {
+  agreementDeleteBlockedByRouteSheetInvariant,
+  confirmedStopIdsForCarrier,
+  tramoNotifyLineFromOffer,
+} from "./domain/routeSheetOfferGuards";
 import { buildRegisteredTransportistaPhoneOptions } from "./domain/routeSheetRegisteredPhones";
 import { tradeAgreementToDraft } from "./domain/tradeAgreementTypes";
 import "./chat.css";
@@ -198,6 +202,32 @@ export function ChatPage() {
     syncThreadBuyerQa(threadId, me.id);
   }, [me.id, syncThreadBuyerQa, threadId]);
 
+  const prevCarrierStopsRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    if (!thread || me.role !== "carrier") {
+      prevCarrierStopsRef.current = null;
+      return;
+    }
+    if (
+      !routeOfferForThisThread ||
+      routeOfferForThisThread.threadId !== thread.id
+    ) {
+      prevCarrierStopsRef.current = null;
+      return;
+    }
+    const now = confirmedStopIdsForCarrier(routeOfferForThisThread, me.id);
+    const prev = prevCarrierStopsRef.current;
+    prevCarrierStopsRef.current = now;
+    if (prev === null) return;
+    for (const sid of now) {
+      if (!prev.has(sid)) {
+        toast.success(
+          `Te asignaron a ${tramoNotifyLineFromOffer(routeOfferForThisThread, sid)}. Revisá la hoja en Rutas.`,
+        );
+      }
+    }
+  }, [thread?.id, me.id, me.role, routeOfferForThisThread]);
+
   useEffect(() => {
     if (thread?.chatActionsLocked) setSelected({});
   }, [thread?.chatActionsLocked]);
@@ -227,6 +257,11 @@ export function ChatPage() {
     const a = thread.contracts.find((c) => c.id === agreementBeingEditedId);
     return a ? tradeAgreementToDraft(a) : null;
   }, [agreementBeingEditedId, thread?.contracts]);
+
+  const transportistaPhoneOptions = useMemo(
+    () => buildRegisteredTransportistaPhoneOptions(thread?.chatCarriers),
+    [thread?.chatCarriers],
+  );
 
   useEffect(() => {
     if (selectedIds.length > 0) draftInputRef.current?.focus();
@@ -347,13 +382,15 @@ export function ChatPage() {
     );
   }
 
+  const carrierInThreadIntegrantes = thread.chatCarriers?.some((c) => c.id === me.id) ?? false;
   const carrierBlockedFromRouteChat =
     me.role === "carrier" &&
     routeOfferForThisThread &&
     routeOfferForThisThread.threadId === thread.id &&
     !routeOfferForThisThread.tramos.some(
       (t) => t.assignment?.userId === me.id && t.assignment.status === "confirmed",
-    );
+    ) &&
+    !carrierInThreadIntegrantes;
 
   if (carrierBlockedFromRouteChat) {
     return (
@@ -403,16 +440,6 @@ export function ChatPage() {
     trustScore: me.trustScore,
     avatarUrl: me.avatarUrl,
   };
-
-  const transportistaPhoneOptions = useMemo(
-    () =>
-      buildRegisteredTransportistaPhoneOptions(
-        thread.chatCarriers,
-        routeOfferForThisThread,
-        routeSheetBeingEdited?.id,
-      ),
-    [thread.chatCarriers, routeOfferForThisThread, routeSheetBeingEdited?.id],
-  );
 
   function toggleSelectRow(e: MouseEvent, id: string) {
     if (chatActionsLocked) return;

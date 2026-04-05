@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, MessageSquareText, ShoppingCart } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../../app/store/useAppStore'
 import { useMarketStore } from '../../app/store/useMarketStore'
 import { RouteOfferPreview } from './RouteOfferPreview'
+import { confirmedStopIdsForCarrier, tramoNotifyLineFromOffer } from '../chat/domain/routeSheetOfferGuards'
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -25,6 +26,7 @@ export function OfferPage() {
   const offer = useMarketStore((s) => (offerId ? s.offers[offerId] : undefined))
   const stores = useMarketStore((s) => s.stores)
   const routeOffer = useMarketStore((s) => (offerId ? s.routeOfferPublic[offerId] : undefined))
+  const threads = useMarketStore((s) => s.threads)
   const subscribeRouteOfferTramo = useMarketStore((s) => s.subscribeRouteOfferTramo)
   const validateRouteOfferTramo = useMarketStore((s) => s.validateRouteOfferTramo)
   const ask = useMarketStore((s) => s.ask)
@@ -58,6 +60,35 @@ export function OfferPage() {
       ),
     [routeOffer, me.id],
   )
+
+  const threadForThisOffer = useMemo(
+    () => (offerId ? Object.values(threads).find((t) => t.offerId === offerId) : undefined),
+    [threads, offerId],
+  )
+  const carrierInChatThread = useMemo(
+    () => !!threadForThisOffer?.chatCarriers?.some((c) => c.id === me.id),
+    [threadForThisOffer, me.id],
+  )
+  const canOpenRouteChat = carrierConfirmedOnRoute || carrierInChatThread
+
+  const prevCarrierStopsOfferRef = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    if (!routeOffer || me.role !== 'carrier') {
+      prevCarrierStopsOfferRef.current = null
+      return
+    }
+    const now = confirmedStopIdsForCarrier(routeOffer, me.id)
+    const prev = prevCarrierStopsOfferRef.current
+    prevCarrierStopsOfferRef.current = now
+    if (prev === null) return
+    for (const sid of now) {
+      if (!prev.has(sid)) {
+        toast.success(
+          `Te asignaron a ${tramoNotifyLineFromOffer(routeOffer, sid)}. Podés abrir el chat de la operación.`,
+        )
+      }
+    }
+  }, [routeOffer, me.id, me.role])
 
   if (!offerId || !offer) {
     return (
@@ -194,15 +225,17 @@ export function OfferPage() {
                         <button
                           type="button"
                           className="vt-btn"
-                          disabled={!carrierConfirmedOnRoute}
+                          disabled={!canOpenRouteChat}
                           title={
-                            carrierConfirmedOnRoute ?
+                            canOpenRouteChat ?
                               'Abrir el chat de la operación'
-                            : 'Disponible cuando una de tus suscripciones a esta ruta esté validada'
+                            : 'Disponible con tramo validado o si ya figurás como integrante del hilo'
                           }
                           onClick={() => {
-                            if (!carrierConfirmedOnRoute) {
-                              toast.error('El chat se habilita cuando el vendedor o el comprador aceptan tu suscripción.')
+                            if (!canOpenRouteChat) {
+                              toast.error(
+                                'El chat se habilita con tramo validado o cuando ya sos integrante del hilo de esta oferta.',
+                              )
                               return
                             }
                             const threadId = ensureThreadForOffer(offer.id, { buyerId: me.id })
@@ -212,9 +245,16 @@ export function OfferPage() {
                           Ir al chat de la operación
                         </button>
                       </div>
-                      {!carrierConfirmedOnRoute ?
+                      {!canOpenRouteChat ?
                         <p className="text-[12px] leading-snug text-[var(--muted)]">
-                          El botón de chat permanece deshabilitado hasta que tu tramo quede <strong>validado</strong>.
+                          El botón de chat permanece deshabilitado hasta que tu tramo quede <strong>validado</strong>{' '}
+                          o hasta que figures en el hilo como transportista.
+                        </p>
+                      : null}
+                      {canOpenRouteChat && !carrierConfirmedOnRoute && carrierInChatThread ?
+                        <p className="text-[12px] leading-snug text-[var(--muted)]">
+                          Abrís el chat como integrante del hilo aunque no tengas un tramo confirmado en este momento
+                          (demo).
                         </p>
                       : null}
                     </div>

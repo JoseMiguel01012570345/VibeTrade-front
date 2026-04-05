@@ -1,4 +1,4 @@
-import type { RouteOfferPublicState, ThreadChatCarrier } from '../../../app/store/marketStoreTypes'
+import type { ThreadChatCarrier } from '../../../app/store/marketStoreTypes'
 
 export type TransportistaPhoneOption = { value: string; label: string }
 
@@ -7,13 +7,11 @@ function normTelKey(phone: string): string {
 }
 
 /**
- * Teléfonos “registrados” para el formulario de hoja: integrantes del chat y postulantes/asignados
- * en la oferta pública cuando corresponde a esta hoja.
+ * Teléfonos elegibles en el formulario de hoja: sólo transportistas que ya figuran como integrantes del hilo
+ * (`chatCarriers`), no postulantes sólo en la oferta pública.
  */
 export function buildRegisteredTransportistaPhoneOptions(
   chatCarriers: ThreadChatCarrier[] | undefined,
-  routeOffer: RouteOfferPublicState | undefined,
-  routeSheetId: string | undefined,
 ): TransportistaPhoneOption[] {
   const byNorm = new Map<string, TransportistaPhoneOption>()
   function add(phone: string | undefined, name: string) {
@@ -24,12 +22,6 @@ export function buildRegisteredTransportistaPhoneOptions(
   }
   for (const c of chatCarriers ?? []) {
     add(c.phone, c.name)
-  }
-  if (routeSheetId && routeOffer?.routeSheetId === routeSheetId) {
-    for (const t of routeOffer.tramos) {
-      const a = t.assignment
-      if (a) add(a.phone, a.displayName)
-    }
   }
   return [...byNorm.values()].sort((a, b) => a.label.localeCompare(b.label, 'es'))
 }

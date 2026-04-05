@@ -54,3 +54,22 @@ export function agreementDeleteBlockedByRouteSheetInvariant(
   if (contractCount === 0) return routeSheetCount > 0
   return routeSheetCount > contractCount - 1
 }
+
+/** Tramos de la oferta con asignación confirmada para el transportista. */
+export function confirmedStopIdsForCarrier(
+  ro: RouteOfferPublicState | undefined,
+  userId: string,
+): Set<string> {
+  const out = new Set<string>()
+  if (!ro) return out
+  for (const t of ro.tramos) {
+    if (t.assignment?.userId === userId && t.assignment.status === 'confirmed') out.add(t.stopId)
+  }
+  return out
+}
+
+export function tramoNotifyLineFromOffer(ro: RouteOfferPublicState | undefined, stopId: string): string {
+  const t = ro?.tramos.find((x) => x.stopId === stopId)
+  if (!t) return 'un tramo nuevo'
+  return `Tramo ${t.orden} (${t.origenLine} → ${t.destinoLine})`
+}

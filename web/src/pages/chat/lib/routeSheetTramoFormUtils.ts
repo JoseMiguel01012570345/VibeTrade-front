@@ -22,25 +22,18 @@ export function emptyTramo(): RouteTramoFormInput {
   }
 }
 
-/** Copia los valores del tramo anterior para prellenar uno nuevo (mismo recorrido / datos repetidos). */
-export function cloneTramoFromPrevious(prev: RouteTramoFormInput): RouteTramoFormInput {
-  return {
-    origen: prev.origen ?? '',
-    destino: prev.destino ?? '',
-    origenLat: prev.origenLat ?? '',
-    origenLng: prev.origenLng ?? '',
-    destinoLat: prev.destinoLat ?? '',
-    destinoLng: prev.destinoLng ?? '',
-    tiempoRecogidaEstimado: prev.tiempoRecogidaEstimado ?? '',
-    tiempoEntregaEstimado: prev.tiempoEntregaEstimado ?? '',
-    precioTransportista: prev.precioTransportista ?? '',
-    cargaEnTramo: prev.cargaEnTramo ?? '',
-    tipoMercanciaCarga: prev.tipoMercanciaCarga ?? '',
-    tipoMercanciaDescarga: prev.tipoMercanciaDescarga ?? '',
-    notas: prev.notas ?? '',
-    responsabilidadEmbalaje: prev.responsabilidadEmbalaje ?? '',
-    requisitosEspeciales: prev.requisitosEspeciales ?? '',
-    tipoVehiculoRequerido: prev.tipoVehiculoRequerido ?? '',
-    telefonoTransportista: prev.telefonoTransportista ?? '',
-  }
+/**
+ * Tras limpiar cada fila con `tramosToLimpios`, asigna origen del tramo i al destino ya normalizado del tramo i−1.
+ */
+export function expandChainedTramoOrigins(tramos: RouteTramoFormInput[]): RouteTramoFormInput[] {
+  return tramos.map((t, i) => {
+    if (i === 0) return t
+    const prev = tramos[i - 1]
+    return {
+      ...t,
+      origen: prev.destino.trim(),
+      origenLat: (prev.destinoLat ?? '').trim(),
+      origenLng: (prev.destinoLng ?? '').trim(),
+    }
+  })
 }

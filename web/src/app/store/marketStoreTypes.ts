@@ -200,7 +200,10 @@ export type Message =
       read?: boolean
     }
 
-/** Tras editar la hoja: cada transportista en el hilo debe acusar recibo (demo). */
+/**
+ * Tras editar la hoja: transportistas con tramo confirmado que cambió (o nueva asignación a otro tramo) quedan en
+ * `pending` hasta aceptar/rechazar (demo; alineado a flow-id / flow-ui).
+ */
 export type RouteSheetEditAckState = {
   revision: number
   byCarrier: Record<string, 'pending' | 'accepted' | 'rejected'>
@@ -304,7 +307,10 @@ export type MarketState = {
   ) => boolean
   /** Vendedor/comprador del hilo: acepta o rechaza la suscripción pendiente al tramo. */
   validateRouteOfferTramo: (offerId: string, stopId: string, accept: boolean) => boolean
-  /** Transportista validado en el hilo: acepta o rechaza una versión editada de la hoja. */
+  /**
+   * Transportista en el hilo: acepta o rechaza una versión editada de la hoja.
+   * Si rechaza, libera sus tramos en la oferta pero sigue figurando en el chat (demo).
+   */
   respondRouteSheetEdit: (
     threadId: string,
     routeSheetId: string,
