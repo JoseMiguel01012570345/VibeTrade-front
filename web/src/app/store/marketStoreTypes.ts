@@ -278,7 +278,10 @@ export type MarketState = {
   emitTradeAgreement: (threadId: string, draft: TradeAgreementDraft) => string | null
   /** Si `pending_buyer` o `rejected` (en ese caso pasa otra vez a pendiente). Emisor = tienda del hilo. */
   updatePendingTradeAgreement: (threadId: string, agreementId: string, draft: TradeAgreementDraft) => boolean
+  /** Sólo si el acuerdo no está aceptado y, tras el borrado, hojas ≤ acuerdos. */
+  deleteTradeAgreement: (threadId: string, agreementId: string) => boolean
   respondTradeAgreement: (threadId: string, agreementId: string, response: 'accept' | 'reject') => void
+  /** Sólo si la cantidad de hojas es estrictamente menor que la de acuerdos (y hay acuerdo aceptado en la demo). */
   createRouteSheet: (threadId: string, payload: RouteSheetCreatePayload) => string | null
   updateRouteSheet: (threadId: string, routeSheetId: string, payload: RouteSheetCreatePayload) => boolean
   setRouteSheetStatus: (threadId: string, routeSheetId: string, estado: RouteSheetStatus) => void

@@ -24,6 +24,7 @@ export type { ContractFilter } from './chatRailStyles'
 
 type Props = {
   threadId: string
+  threadStoreId: string
   contracts: TradeAgreement[]
   routeSheets: RouteSheet[]
   actionsLocked?: boolean
@@ -37,13 +38,16 @@ type Props = {
   onOpenNewRouteSheet: () => void
   onEditRouteSheet: (sheet: RouteSheet) => void
   toggleRouteStop: (threadId: string, routeSheetId: string, stopId: string) => void
-  /** Acuerdos `pending_buyer` o `rejected` emitidos por la tienda (no aceptados). */
-  onEditPendingAgreement?: (agreement: TradeAgreement) => void
+  /** Vendedor (dueño de la tienda del hilo) puede pedir editar acuerdo; ChatPage muestra el aviso de confianza. */
+  onRequestEditAgreement?: (agreement: TradeAgreement) => void
+  isActingSeller?: boolean
+  onDeleteAgreement?: (agreement: TradeAgreement) => void
   chatCarriers?: ThreadChatCarrier[]
 }
 
 export function ChatRightRail({
   threadId,
+  threadStoreId,
   contracts,
   routeSheets,
   actionsLocked = false,
@@ -57,7 +61,9 @@ export function ChatRightRail({
   onOpenNewRouteSheet,
   onEditRouteSheet,
   toggleRouteStop,
-  onEditPendingAgreement,
+  onRequestEditAgreement,
+  isActingSeller = false,
+  onDeleteAgreement,
   chatCarriers,
 }: Props) {
   const publishRouteSheetsToPlatform = useMarketStore((s) => s.publishRouteSheetsToPlatform)
@@ -124,9 +130,9 @@ export function ChatRightRail({
 
   const displayContracts = useMemo(() => {
     if (cFilter === 'all') return contracts
-    if (cFilter === 'store') return contracts.filter((c) => c.issuerLabel === storeName)
+    if (cFilter === 'store') return contracts.filter((c) => c.issuedByStoreId === threadStoreId)
     return contracts.filter((c) => c.status === 'pending_buyer' || c.respondedAt != null)
-  }, [contracts, cFilter, storeName])
+  }, [contracts, cFilter, threadStoreId])
 
   const selRoute = selRouteId ? routeSheets.find((r) => r.id === selRouteId) : undefined
   const agreementForDetail = selContract
@@ -263,10 +269,13 @@ export function ChatRightRail({
             routeSheets={routeSheets}
             actionsLocked={actionsLocked}
             threadId={threadId}
+            threadStoreId={threadStoreId}
             linkAgreementToRouteSheet={linkAgreementToRouteSheet}
             unlinkAgreementFromRouteSheet={unlinkAgreementFromRouteSheet}
             openRouteFromContract={openRouteFromContract}
-            onEditPendingAgreement={onEditPendingAgreement}
+            onRequestEditAgreement={onRequestEditAgreement}
+            isActingSeller={isActingSeller}
+            onDeleteAgreement={onDeleteAgreement}
           />
         )}
 
@@ -275,6 +284,7 @@ export function ChatRightRail({
             bodyClassName={RAIL_BODY}
             actionsLocked={actionsLocked}
             hasAcceptedContract={hasAcceptedContract}
+            agreementCount={contracts.length}
             routeSheets={routeSheets}
             selRoute={selRoute}
             setSelRouteId={setSelRouteId}
@@ -283,6 +293,7 @@ export function ChatRightRail({
             onEditRouteSheet={onEditRouteSheet}
             toggleRouteStop={toggleRouteStop}
             deleteRouteSheet={deleteRouteSheet}
+            routeOffer={routeOfferForThread}
           />
         )}
 

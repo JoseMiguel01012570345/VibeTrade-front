@@ -3,8 +3,13 @@ import { Check, ChevronRight, MapPin, Pencil, ThumbsDown, ThumbsUp, Trash2 } fro
 import { useAppStore } from '../../../../app/store/useAppStore'
 import { useMarketStore } from '../../../../app/store/useMarketStore'
 import { cn } from '../../../../lib/cn'
+import type { RouteOfferPublicState } from '../../../../app/store/marketStoreTypes'
 import type { RouteSheet } from '../../domain/routeSheetTypes'
 import { routeStatusLabel, tramoResumenLinea } from '../../domain/routeSheetTypes'
+import {
+  effectiveTramoContactPhone,
+  sheetPreviewContactLine,
+} from '../../domain/routeSheetOfferGuards'
 import { railItemClass } from './chatRailStyles'
 import { statusPillOk, statusPillPending } from '../../styles/formModalStyles'
 
@@ -12,6 +17,8 @@ type Props = {
   bodyClassName: string
   actionsLocked: boolean
   hasAcceptedContract: boolean
+  /** Cantidad de acuerdos en el hilo: no puede haber más hojas que acuerdos. */
+  agreementCount: number
   routeSheets: RouteSheet[]
   selRoute: RouteSheet | undefined
   setSelRouteId: (id: string | null) => void
@@ -20,12 +27,14 @@ type Props = {
   onEditRouteSheet: (sheet: RouteSheet) => void
   toggleRouteStop: (threadId: string, routeSheetId: string, stopId: string) => void
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean
+  routeOffer: RouteOfferPublicState | undefined
 }
 
 export function ChatRightRailRoutesPanel({
   bodyClassName,
   actionsLocked,
   hasAcceptedContract,
+  agreementCount,
   routeSheets,
   selRoute,
   setSelRouteId,
@@ -34,36 +43,47 @@ export function ChatRightRailRoutesPanel({
   onEditRouteSheet,
   toggleRouteStop,
   deleteRouteSheet,
+  routeOffer,
 }: Props) {
   const me = useAppStore((s) => s.me)
   const offerId = useMarketStore((s) => s.threads[threadId]?.offerId ?? '')
-  const routeOffer = useMarketStore((s) => (offerId ? s.routeOfferPublic[offerId] : undefined))
+  const routeOfferFromStore = useMarketStore((s) => (offerId ? s.routeOfferPublic[offerId] : undefined))
+  const routeOfferResolved = routeOffer ?? routeOfferFromStore
   const routeSheetEditAcks = useMarketStore((s) => s.threads[threadId]?.routeSheetEditAcks)
   const chatCarriers = useMarketStore((s) => s.threads[threadId]?.chatCarriers)
   const respondRouteSheetEdit = useMarketStore((s) => s.respondRouteSheetEdit)
 
   const selSheetHasConfirmedCarriers =
     !!selRoute &&
-    routeOffer?.routeSheetId === selRoute.id &&
-    routeOffer.tramos.some((t) => t.assignment?.status === 'confirmed')
+    routeOfferResolved?.routeSheetId === selRoute.id &&
+    routeOfferResolved.tramos.some((t) => t.assignment?.status === 'confirmed')
+
+  const routeSheetCapReached = routeSheets.length >= agreementCount
 
   const myCarrierAck =
     selRoute && me.id && chatCarriers?.some((c) => c.id === me.id) ?
       routeSheetEditAcks?.[selRoute.id]?.byCarrier[me.id]
     : undefined
 
+  const sheetEditBlockedByCarrierAck =
+    !!selRoute &&
+    !!routeSheetEditAcks?.[selRoute.id] &&
+    Object.values(routeSheetEditAcks[selRoute.id].byCarrier).some((v) => v === 'pending')
+
   return (
     <div className={bodyClassName}>
       <button
         type="button"
         className="vt-btn vt-btn-primary mb-3 flex w-full justify-center gap-2"
-        disabled={actionsLocked || !hasAcceptedContract}
+        disabled={actionsLocked || !hasAcceptedContract || routeSheetCapReached}
         title={
           actionsLocked
             ? 'No disponible hasta registrar el pago en el chat'
             : !hasAcceptedContract
               ? 'Necesitás al menos un contrato aceptado para crear una hoja de ruta'
-              : undefined
+              : routeSheetCapReached
+                ? 'No podés tener más hojas de ruta que acuerdos: emití otro acuerdo o eliminá una hoja'
+                : undefined
         }
         onClick={onOpenNewRouteSheet}
       >
@@ -83,10 +103,12 @@ export function ChatRightRailRoutesPanel({
             <button
               type="button"
               className="vt-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
-              disabled={actionsLocked}
+              disabled={actionsLocked || sheetEditBlockedByCarrierAck}
               title={
                 actionsLocked ?
                   'No disponible hasta registrar el pago'
+                : sheetEditBlockedByCarrierAck ?
+                  'Esperá a que todos los transportistas en el hilo acepten o rechacen la última edición'
                 : selRoute.publicadaPlataforma ?
                   'Editar: se notifica en el chat y los transportistas pueden aceptar o rechazar (demo)'
                 : 'Editar hoja de ruta'
@@ -95,6 +117,12 @@ export function ChatRightRailRoutesPanel({
             >
               <Pencil size={14} aria-hidden /> Editar
             </button>
+            {sheetEditBlockedByCarrierAck ? (
+              <p className="vt-muted w-full text-[11px] leading-snug">
+                Hay revisión pendiente: no podés guardar otra edición hasta que cada transportista en el hilo{' '}
+                <strong className="text-[var(--text)]">acepte o rechace</strong> esta versión de la hoja.
+              </p>
+            ) : null}
             {!selSheetHasConfirmedCarriers ? (
               <button
                 type="button"
@@ -252,12 +280,19 @@ export function ChatRightRailRoutesPanel({
                   </div>
                 ) : null}
                 {p.notas ? <div className="mt-1 text-xs text-[var(--muted)]">{p.notas}</div> : null}
-                {p.telefonoTransportista ? (
-                  <div className="mt-1 text-xs font-semibold text-[var(--text)]">
-                    <span className="text-[var(--muted)]">Contacto tramo: </span>
-                    {p.telefonoTransportista}
-                  </div>
-                ) : null}
+                {(() => {
+                  const ot =
+                    routeOfferResolved?.routeSheetId === selRoute.id ?
+                      routeOfferResolved.tramos.find((t) => t.stopId === p.id)
+                    : undefined
+                  const tel = effectiveTramoContactPhone(p, ot)
+                  return tel ? (
+                    <div className="mt-1 text-xs font-semibold text-[var(--text)]">
+                      <span className="text-[var(--muted)]">Contacto tramo: </span>
+                      {tel}
+                    </div>
+                  ) : null
+                })()}
               </li>
             ))}
           </ul>
@@ -286,6 +321,15 @@ export function ChatRightRailRoutesPanel({
                     </span>
                   ) : null}
                 </div>
+                {(() => {
+                  const line = sheetPreviewContactLine(r, routeOfferResolved)
+                  return line ? (
+                    <div className="mt-1 line-clamp-2 text-left text-[10px] font-semibold leading-snug text-[var(--text)]">
+                      <span className="text-[var(--muted)]">Contacto: </span>
+                      {line}
+                    </div>
+                  ) : null
+                })()}
                 <ChevronRight
                   size={16}
                   className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-45"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { cn } from '../../../../lib/cn'
 import { ModalFormField as Field } from './ModalFormField'
@@ -39,6 +39,11 @@ import {
   routeSheetFormErrorCount,
   validateRouteCoordPair,
 } from '../../domain/routeSheetValidation'
+import type { RouteOfferPublicState } from '../../../../app/store/marketStoreTypes'
+import {
+  phoneSelectOptions,
+  type TransportistaPhoneOption,
+} from '../../domain/routeSheetRegisteredPhones'
 
 export type RouteSheetFormPayload = RouteSheetCreatePayload
 
@@ -46,12 +51,45 @@ type Props = {
   open: boolean
   onClose: () => void
   initialRouteSheet?: RouteSheet | null
+  /** Oferta pública del hilo: completa teléfonos de tramo desde asignaciones aunque la parada aún no los tenga. */
+  routeOfferForSheet?: RouteOfferPublicState | undefined
+  /** Teléfonos de transportistas ya registrados en el hilo / oferta (selector por tramo). */
+  transportistaPhoneOptions?: TransportistaPhoneOption[]
   onSubmit: (p: RouteSheetFormPayload) => boolean
 }
 
 type MapPick = { tramoIndex: number; punto: 'origen' | 'destino' }
 
-export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit }: Props) {
+function tramosToLimpios(tramos: RouteTramoFormInput[]): RouteTramoFormInput[] {
+  return tramos.map((p) => ({
+    origen: p.origen.trim(),
+    destino: p.destino.trim(),
+    origenLat: p.origenLat?.trim() ?? '',
+    origenLng: p.origenLng?.trim() ?? '',
+    destinoLat: p.destinoLat?.trim() ?? '',
+    destinoLng: p.destinoLng?.trim() ?? '',
+    tiempoRecogidaEstimado: p.tiempoRecogidaEstimado?.trim() ?? '',
+    tiempoEntregaEstimado: p.tiempoEntregaEstimado?.trim() ?? '',
+    precioTransportista: p.precioTransportista?.trim() ?? '',
+    cargaEnTramo: p.cargaEnTramo?.trim() ?? '',
+    tipoMercanciaCarga: p.tipoMercanciaCarga?.trim() ?? '',
+    tipoMercanciaDescarga: p.tipoMercanciaDescarga?.trim() ?? '',
+    notas: p.notas?.trim() ?? '',
+    responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() ?? '',
+    requisitosEspeciales: p.requisitosEspeciales?.trim() ?? '',
+    tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() ?? '',
+    telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+  }))
+}
+
+export function RouteSheetFormModal({
+  open,
+  onClose,
+  initialRouteSheet,
+  routeOfferForSheet,
+  transportistaPhoneOptions = [],
+  onSubmit,
+}: Props) {
   const [titulo, setTitulo] = useState('')
   const [merc, setMerc] = useState('')
   const [notasG, setNotasG] = useState('')
@@ -61,6 +99,9 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
   const [mapLng, setMapLng] = useState('')
   const [mapCoordError, setMapCoordError] = useState<string | undefined>(undefined)
   const [formErrors, setFormErrors] = useState<RouteSheetFormErrors>({})
+  const routeOfferRef = useRef(routeOfferForSheet)
+  routeOfferRef.current = routeOfferForSheet
+  const editBaselineJsonRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -69,15 +110,36 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
     setMapCoordError(undefined)
     if (initialRouteSheet) {
       const rs = initialRouteSheet
+      const ro = routeOfferRef.current
+      const offerMap =
+        ro?.routeSheetId === rs.id ? new Map(ro.tramos.map((t) => [t.stopId, t])) : undefined
+      const tramosInit =
+        rs.paradas.length > 0
+          ? routeStopsToFormInputs(rs.paradas, routeSheetLegacyHead(rs), offerMap)
+          : [emptyTramo(), emptyTramo()]
       setTitulo(rs.titulo)
       setMerc(rs.mercanciasResumen)
       setNotasG(rs.notasGenerales ?? '')
-      setTramos(
-        rs.paradas.length > 0
-          ? routeStopsToFormInputs(rs.paradas, routeSheetLegacyHead(rs))
-          : [emptyTramo(), emptyTramo()],
-      )
+      setTramos(tramosInit)
+      const limpios0 = tramosToLimpios(tramosInit)
+      const draft0: RouteSheetCreatePayload = {
+        titulo: rs.titulo.trim(),
+        mercanciasResumen: rs.mercanciasResumen.trim(),
+        paradas: limpios0,
+        notasGenerales: (rs.notasGenerales ?? '').trim(),
+      }
+      const err0 = getRouteSheetFormErrors(draft0)
+      if (hasRouteSheetFormErrors(err0)) {
+        editBaselineJsonRef.current = null
+      } else {
+        const persisted0: RouteSheetCreatePayload = {
+          ...draft0,
+          paradas: normalizeRouteSheetParadas(limpios0),
+        }
+        editBaselineJsonRef.current = JSON.stringify(persisted0)
+      }
     } else {
+      editBaselineJsonRef.current = null
       setTitulo('')
       setMerc('')
       setNotasG('')
@@ -131,24 +193,7 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
   function trySubmit() {
     const t = titulo.trim()
     const m = merc.trim()
-    const limpios: RouteTramoFormInput[] = tramos.map((p) => ({
-      origen: p.origen.trim(),
-      destino: p.destino.trim(),
-      origenLat: p.origenLat?.trim() ?? '',
-      origenLng: p.origenLng?.trim() ?? '',
-      destinoLat: p.destinoLat?.trim() ?? '',
-      destinoLng: p.destinoLng?.trim() ?? '',
-      tiempoRecogidaEstimado: p.tiempoRecogidaEstimado?.trim() ?? '',
-      tiempoEntregaEstimado: p.tiempoEntregaEstimado?.trim() ?? '',
-      precioTransportista: p.precioTransportista?.trim() ?? '',
-      cargaEnTramo: p.cargaEnTramo?.trim() ?? '',
-      tipoMercanciaCarga: p.tipoMercanciaCarga?.trim() ?? '',
-      tipoMercanciaDescarga: p.tipoMercanciaDescarga?.trim() ?? '',
-      notas: p.notas?.trim() ?? '',
-      responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() ?? '',
-      requisitosEspeciales: p.requisitosEspeciales?.trim() ?? '',
-      tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() ?? '',
-    }))
+    const limpios = tramosToLimpios(tramos)
     const draft: RouteSheetCreatePayload = {
       titulo: t,
       mercanciasResumen: m,
@@ -163,10 +208,17 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
       return
     }
     const paradasFinal = normalizeRouteSheetParadas(limpios)
-    const persisted = onSubmit({
+    const payload: RouteSheetCreatePayload = {
       ...draft,
       paradas: paradasFinal,
-    })
+    }
+    if (initialRouteSheet && editBaselineJsonRef.current !== null) {
+      if (JSON.stringify(payload) === editBaselineJsonRef.current) {
+        toast.error('No hay cambios para guardar.')
+        return
+      }
+    }
+    const persisted = onSubmit(payload)
     if (!persisted) return
     setFormErrors({})
     onClose()
@@ -342,14 +394,36 @@ export function RouteSheetFormModal({ open, onClose, initialRouteSheet, onSubmit
                       error={te?.tipoVehiculoRequerido}
                       inputId={`ruta-tramo-${i}-veh`}
                     />
-                    <Field
-                      label="Teléfono del transportista asignado (este tramo)"
-                      value={p.telefonoTransportista ?? ''}
-                      onChange={(v) => updateTramo(i, { telefonoTransportista: v })}
-                      placeholder="Ej. +54 9 11 1234-5678"
-                      error={te?.telefonoTransportista}
-                      inputId={`ruta-tramo-${i}-tel`}
-                    />
+                    <label className={fieldRootWithInvalid(!!te?.telefonoTransportista)}>
+                      <span className={fieldLabel}>Teléfono del transportista (este tramo)</span>
+                      <select
+                        id={`ruta-tramo-${i}-tel`}
+                        className="vt-input"
+                        value={p.telefonoTransportista ?? ''}
+                        onChange={(e) =>
+                          updateTramo(i, {
+                            telefonoTransportista: e.target.value.trim() || undefined,
+                          })
+                        }
+                        aria-invalid={!!te?.telefonoTransportista}
+                      >
+                        <option value="">— Ninguno —</option>
+                        {phoneSelectOptions(transportistaPhoneOptions, p.telefonoTransportista ?? '').map((opt) => (
+                          <option key={`${i}-${opt.value}`} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="vt-muted mt-1 text-[11px] leading-snug">
+                        Elegí un contacto ya registrado (integrantes del hilo o suscripciones a la oferta). Si no hay
+                        ninguno, primero validá suscripciones en la ficha de la oferta.
+                      </p>
+                      {te?.telefonoTransportista ? (
+                        <span className={fieldError} role="alert">
+                          {te.telefonoTransportista}
+                        </span>
+                      ) : null}
+                    </label>
                     <div className={rutaTramoGrid}>
                       <Field
                         label="Tiempo estimado recogida (horas, número)"

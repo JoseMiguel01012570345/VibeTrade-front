@@ -1,5 +1,5 @@
 import toast from 'react-hot-toast'
-import { ChevronRight, ExternalLink, MapPin } from 'lucide-react'
+import { ChevronRight, ExternalLink, MapPin, Trash2 } from 'lucide-react'
 import { agreementDeclaresMerchandise, type TradeAgreement } from '../../domain/tradeAgreementTypes'
 import { hasMerchandise } from '../../domain/tradeAgreementValidation'
 import type { RouteSheet } from '../../domain/routeSheetTypes'
@@ -25,10 +25,13 @@ type Props = {
   routeSheets: RouteSheet[]
   actionsLocked: boolean
   threadId: string
+  threadStoreId: string
   linkAgreementToRouteSheet: (threadId: string, agreementId: string, routeSheetId: string) => boolean
   unlinkAgreementFromRouteSheet: (threadId: string, agreementId: string) => boolean
   openRouteFromContract: (routeId: string) => void
-  onEditPendingAgreement?: (agreement: TradeAgreement) => void
+  onRequestEditAgreement?: (agreement: TradeAgreement) => void
+  isActingSeller?: boolean
+  onDeleteAgreement?: (agreement: TradeAgreement) => void
 }
 
 export function ChatRightRailContractsPanel({
@@ -44,10 +47,13 @@ export function ChatRightRailContractsPanel({
   routeSheets,
   actionsLocked,
   threadId,
+  threadStoreId,
   linkAgreementToRouteSheet,
   unlinkAgreementFromRouteSheet,
   openRouteFromContract,
-  onEditPendingAgreement,
+  onRequestEditAgreement,
+  isActingSeller = false,
+  onDeleteAgreement,
 }: Props) {
   return (
     <div className={bodyClassName}>
@@ -74,27 +80,52 @@ export function ChatRightRailContractsPanel({
           </button>
           {agreementForDetail.status === 'accepted' ? (
             <p className="mb-2.5 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_92%,transparent)] px-2.5 py-2 text-[12px] leading-snug text-[var(--muted)]">
-              Este acuerdo fue <strong className="text-[var(--text)]">aceptado por las partes</strong>; su texto ya
-              no puede modificarse. Si hace falta otro entendimiento, emití un <strong>nuevo</strong> acuerdo desde el
-              chat.
+              Este acuerdo está <strong className="text-[var(--text)]">aceptado</strong>. Si el vendedor lo modifica,
+              vuelve a estar pendiente hasta nueva respuesta del comprador (el comprador puede rechazarlo y{' '}
+              <strong className="text-[var(--text)]">permanece en el chat</strong>).
             </p>
           ) : null}
-          {(agreementForDetail.status === 'pending_buyer' || agreementForDetail.status === 'rejected') &&
+          {isActingSeller &&
           !actionsLocked &&
-          agreementForDetail.issuerLabel === storeName &&
-          onEditPendingAgreement ? (
-            <div className="mb-2.5">
-              <button
-                type="button"
-                className="vt-btn vt-btn-sm"
-                onClick={() => onEditPendingAgreement(agreementForDetail)}
-              >
-                Editar acuerdo
-              </button>
-              <p className="vt-muted mt-1.5 text-[11px] leading-snug">
-                {agreementForDetail.status === 'rejected'
-                  ? 'Tras guardar, el acuerdo volverá a quedar pendiente para que el comprador lo acepte o rechace.'
-                  : 'Podés corregir el texto mientras el comprador no lo haya aceptado.'}
+          agreementForDetail.issuedByStoreId === threadStoreId &&
+          onRequestEditAgreement ? (
+            <div className="mb-2.5 flex flex-col gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="vt-btn vt-btn-sm"
+                  disabled={agreementForDetail.sellerEditBlockedUntilBuyerResponse === true}
+                  title={
+                    agreementForDetail.sellerEditBlockedUntilBuyerResponse ?
+                      'Esperá la respuesta del comprador a la última versión antes de volver a editar'
+                    : undefined
+                  }
+                  onClick={() => onRequestEditAgreement(agreementForDetail)}
+                >
+                  Editar acuerdo
+                </button>
+                {agreementForDetail.status !== 'accepted' && onDeleteAgreement ? (
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-sm inline-flex items-center gap-1 border-[color-mix(in_oklab,#dc2626_28%,var(--border))] bg-[color-mix(in_oklab,#dc2626_6%,var(--surface))] text-[color-mix(in_oklab,#dc2626_88%,var(--text))]"
+                    onClick={() => onDeleteAgreement(agreementForDetail)}
+                    title="No disponible si el acuerdo ya fue aceptado"
+                  >
+                    <Trash2 size={14} aria-hidden /> Eliminar
+                  </button>
+                ) : null}
+              </div>
+              <p className="vt-muted text-[11px] leading-snug">
+                {agreementForDetail.sellerEditBlockedUntilBuyerResponse ?
+                  <>
+                    Ya enviaste cambios: no podés editar de nuevo hasta que el comprador{' '}
+                    <strong className="text-[var(--text)]">acepte o rechace</strong> esta versión en el chat.
+                  </>
+                : agreementForDetail.status === 'accepted' ?
+                  'Antes de abrir el formulario verás un aviso: editar puede impactar en tu barra de confianza.'
+                : agreementForDetail.status === 'rejected' ?
+                  'Tras guardar, el acuerdo volverá a quedar pendiente para que el comprador lo acepte o rechace.'
+                : 'Podés corregir el texto; el comprador deberá aceptar o rechazar los cambios si el acuerdo ya estaba aceptado, o seguirá pendiente si aún no lo aceptó.'}
               </p>
             </div>
           ) : null}

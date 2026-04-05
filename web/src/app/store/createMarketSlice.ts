@@ -91,6 +91,12 @@ function routeOfferTramosAllConfirmed(ro: RouteOfferPublicState | undefined): bo
 }
 
 /** Bloquea borrar la hoja si algún tramo tiene transportista ya aceptado (confirmado). Las suscripciones solo pendientes no impiden eliminar. */
+function routeSheetHasPendingCarrierAck(th: Thread, routeSheetId: string): boolean {
+  const ack = th.routeSheetEditAcks?.[routeSheetId]
+  if (!ack) return false
+  return Object.values(ack.byCarrier).some((v) => v === 'pending')
+}
+
 function routeSheetHasConfirmedCarriers(
   routeOfferPublic: Record<string, RouteOfferPublicState>,
   th: Thread,
@@ -283,10 +289,18 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
         const idx = list.findIndex((c) => c.id === agreementId)
         if (idx < 0) return s
         const ag = list[idx]
-        if (ag.status !== 'pending_buyer' && ag.status !== 'rejected') return s
+        if (ag.status !== 'pending_buyer' && ag.status !== 'rejected' && ag.status !== 'accepted') return s
         if (ag.issuedByStoreId !== th.storeId) return s
+        if (ag.sellerEditBlockedUntilBuyerResponse) return s
         applied = true
         const wasRejected = ag.status === 'rejected'
+        const wasAccepted = ag.status === 'accepted'
+        let nextRouteSheetId = ag.routeSheetId
+        let unlinkedByRevise = false
+        if (ag.routeSheetId && !routeSheetHasConfirmedCarriers(s.routeOfferPublic, th, ag.routeSheetId)) {
+          nextRouteSheetId = undefined
+          unlinkedByRevise = true
+        }
         const nextContracts = [...list]
         nextContracts[idx] = {
           ...ag,
@@ -298,15 +312,31 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
             : [],
           services: draft.includeService ? draft.services : [],
           service: undefined,
+          routeSheetId: nextRouteSheetId,
           status: 'pending_buyer',
           respondedAt: undefined,
+          sellerEditBlockedUntilBuyerResponse: true,
         }
         const nextMessages = th.messages.map((m) =>
           m.type === 'agreement' && m.agreementId === agreementId ? { ...m, title } : m,
         )
-        const sysText = wasRejected
-          ? `El vendedor revisó el acuerdo «${title}» tras el rechazo; volvió a quedar pendiente de respuesta del comprador.`
-          : `El vendedor actualizó el acuerdo «${title}» (sigue pendiente de respuesta del comprador).`
+        let sysText: string
+        if (wasAccepted) {
+          sysText = `El vendedor modificó el acuerdo «${title}», que estaba aceptado: vuelve a estar pendiente de aceptación del comprador, quien puede aceptarlo o rechazarlo sin abandonar el chat.`
+          if (unlinkedByRevise) {
+            sysText += ` Se desvinculó la hoja de ruta del acuerdo porque en esa hoja aún no había transportistas con tramo confirmado.`
+          }
+        } else if (wasRejected) {
+          sysText = `El vendedor revisó el acuerdo «${title}» tras el rechazo; volvió a quedar pendiente de respuesta del comprador.`
+          if (unlinkedByRevise) {
+            sysText += ` Se desvinculó la hoja de ruta vinculada (sin transportistas confirmados en esa hoja).`
+          }
+        } else {
+          sysText = `El vendedor actualizó el acuerdo «${title}» (sigue pendiente de respuesta del comprador).`
+          if (unlinkedByRevise) {
+            sysText += ` Se desvinculó la hoja de ruta vinculada (sin transportistas confirmados en esa hoja).`
+          }
+        }
         const sys: Message = {
           id: uid('m'),
           from: 'system',
@@ -330,6 +360,45 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
       return applied
     },
 
+    deleteTradeAgreement: (threadId, agreementId) => {
+      let ok = false
+      set((s) => {
+        const th = s.threads[threadId]
+        if (!th || threadIsActionLocked(th)) return s
+        const list = th.contracts ?? []
+        const idx = list.findIndex((c) => c.id === agreementId)
+        if (idx < 0) return s
+        const ag = list[idx]
+        if (ag.status === 'accepted') return s
+        if (ag.issuedByStoreId !== th.storeId) return s
+        const sheetCount = th.routeSheets?.length ?? 0
+        if (sheetCount > list.length - 1) return s
+        const title = ag.title
+        const nextContracts = list.filter((c) => c.id !== agreementId)
+        const sys: Message = {
+          id: uid('m'),
+          from: 'system',
+          type: 'text',
+          text: `Se eliminó el acuerdo «${title}» del hilo (no aplica a acuerdos ya aceptados).`,
+          at: Date.now(),
+        }
+        ok = true
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...th,
+              contracts: nextContracts,
+              messages: [...th.messages, sys],
+              routeSheets: th.routeSheets ?? [],
+            },
+          },
+        }
+      })
+      return ok
+    },
+
     respondTradeAgreement: (threadId, agreementId, response) => {
       set((s) => {
         const th = s.threads[threadId]
@@ -344,11 +413,12 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
           ...ag,
           status: response === 'accept' ? 'accepted' : 'rejected',
           respondedAt: Date.now(),
+          sellerEditBlockedUntilBuyerResponse: false,
         }
         const sysText =
           response === 'accept'
-            ? `Acuerdo «${ag.title}» aceptado por ambas partes. No puede derogarse; pueden emitirse nuevos contratos adicionales.`
-            : `Acuerdo «${ag.title}» rechazado por el comprador.`
+            ? `Acuerdo «${ag.title}» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.`
+            : `Acuerdo «${ag.title}» rechazado por el comprador. El comprador permanece en el chat; pueden seguir negociando o el vendedor puede enviar una nueva versión.`
         const sys: Message = {
           id: uid('m'),
           from: 'system',
@@ -497,6 +567,7 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
             routeSheets[rsI] = newRs
             let chatCarriers = [...(th0.chatCarriers ?? [])]
             const hadCarrier = chatCarriers.some((c) => c.id === asg.userId)
+            const tramoDesc = `Tramo ${tr.orden} (${tr.origenLine} → ${tr.destinoLine})`
             if (!hadCarrier) {
               chatCarriers.push({
                 id: asg.userId,
@@ -504,8 +575,14 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
                 phone: asg.phone,
                 trustScore: asg.trustScore,
                 vehicleLabel: asg.vehicleLabel?.trim() || 'No indicada en la suscripción',
-                tramoLabel: `Tramo ${tr.orden} (${tr.origenLine} → ${tr.destinoLine})`,
+                tramoLabel: tramoDesc,
               })
+            } else {
+              chatCarriers = chatCarriers.map((c) =>
+                c.id !== asg.userId ? c
+                : c.tramoLabel.includes(`Tramo ${tr.orden} (`) ? c
+                : { ...c, tramoLabel: `${c.tramoLabel} · ${tramoDesc}` },
+              )
             }
             let routeSheetEditAcksOut = th0.routeSheetEditAcks
             if (!hadCarrier) {
@@ -663,6 +740,9 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
       const th0 = get().threads[threadId]
       if (threadIsActionLocked(th0)) return null
       if (!th0 || !threadHasAcceptedAgreement(th0)) return null
+      const nContracts = th0.contracts?.length ?? 0
+      const nSheets = th0.routeSheets?.length ?? 0
+      if (nSheets >= nContracts) return null
       if (hasRouteSheetFormErrors(getRouteSheetFormErrors(payload))) return null
       const paradasNorm = normalizeRouteSheetParadas(payload.paradas)
       if (paradasNorm.length === 0) return null
@@ -709,6 +789,9 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
       set((s) => {
         const th = s.threads[threadId]
         if (!th || threadIsActionLocked(th)) return s
+        const nc = th.contracts?.length ?? 0
+        const ns = th.routeSheets?.length ?? 0
+        if (ns >= nc) return s
         return {
           ...s,
           threads: {
@@ -724,7 +807,9 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
     },
 
     updateRouteSheet: (threadId, routeSheetId, payload) => {
-      if (threadIsActionLocked(get().threads[threadId])) return false
+      const thGuard = get().threads[threadId]
+      if (threadIsActionLocked(thGuard)) return false
+      if (thGuard && routeSheetHasPendingCarrierAck(thGuard, routeSheetId)) return false
       if (hasRouteSheetFormErrors(getRouteSheetFormErrors(payload))) return false
       const paradasNorm = normalizeRouteSheetParadas(payload.paradas)
       if (paradasNorm.length === 0) return false

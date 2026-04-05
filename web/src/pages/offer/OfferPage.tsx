@@ -127,12 +127,15 @@ export function OfferPage() {
                   <div className="mt-3 rounded-[14px] border border-[color-mix(in_oklab,var(--primary)_28%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] p-3.5">
                     <div className="text-sm font-black tracking-tight">Suscribirme a un tramo</div>
                     <p className="vt-muted mt-1.5 text-[13px] leading-snug">
-                      Elegí un tramo libre y enviá la solicitud. El vendedor y el comprador deben{' '}
+                      Elegí un tramo libre y enviá la solicitud. Podés suscribirte a <strong>más de un tramo</strong> en
+                      la misma hoja; cada uno se valida por separado. El vendedor y el comprador deben{' '}
                       <strong>validar</strong> la suscripción antes de que puedas entrar al chat operativo de la ruta.
                     </p>
                     {carrierPendingOnRoute ?
                       <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_8%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
-                        Tenés una solicitud pendiente de validación. Cuando te acepten, se habilitará el acceso al chat.
+                        Tenés al menos una solicitud pendiente de validación. Mientras tanto podés pedir otro tramo si
+                        sigue libre; cuando te acepten en cualquiera de ellos podés habilitar el chat (según reglas de
+                        la demo).
                       </p>
                     : null}
                     {carrierConfirmedOnRoute ?

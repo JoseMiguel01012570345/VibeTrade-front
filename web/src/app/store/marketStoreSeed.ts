@@ -32,7 +32,8 @@ export const demoStores: Record<string, StoreBadge> = {
     categories: ['Mercancías', 'Cosechas'],
     transportIncluded: false,
     trustScore: 88,
-    ownerUserId: DEMO_SELLER_AGRONORTE_USER_ID,
+    /** En la demo el usuario `me` actúa como dueño de esta tienda en el hilo de compra (malanga / ruta). */
+    ownerUserId: 'me',
   },
   s2: {
     id: 's2',

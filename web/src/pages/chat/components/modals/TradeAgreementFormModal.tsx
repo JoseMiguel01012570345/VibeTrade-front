@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { cn } from '../../../../lib/cn'
 import { onBackdropPointerClose } from '../../lib/modalClose'
@@ -58,17 +58,19 @@ export function TradeAgreementFormModal({
   const [configOpen, setConfigOpen] = useState(false)
   const [configId, setConfigId] = useState<string | null>(null)
   const isEdit = !!editingAgreementId
+  const editBaselineJsonRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (open) {
-      setDraft(
-        initialDraft
-          ? (JSON.parse(JSON.stringify(initialDraft)) as TradeAgreementDraft)
-          : defaultAgreementDraft(),
-      )
+      const d = initialDraft
+        ? (JSON.parse(JSON.stringify(initialDraft)) as TradeAgreementDraft)
+        : defaultAgreementDraft()
+      setDraft(d)
       setErrors({})
       setConfigOpen(false)
       setConfigId(null)
+      editBaselineJsonRef.current =
+        editingAgreementId && initialDraft ? JSON.stringify(d) : null
     }
   }, [open, initialDraft, editingAgreementId])
 
@@ -122,6 +124,12 @@ export function TradeAgreementFormModal({
       const n = validationErrorCount(e)
       toast.error(`Revisá el formulario (${n} error${n === 1 ? '' : 'es'})`)
       return
+    }
+    if (isEdit && editBaselineJsonRef.current !== null) {
+      if (JSON.stringify(draft) === editBaselineJsonRef.current) {
+        toast.error('No hay cambios para guardar.')
+        return
+      }
     }
     if (onSubmit(draft)) onClose()
   }

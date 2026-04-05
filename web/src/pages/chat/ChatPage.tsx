@@ -38,6 +38,13 @@ import { ChatRightRail } from "./components/rail/ChatRightRail";
 import type { RouteSheet } from "./domain/routeSheetTypes";
 import { RouteSheetFormModal } from "./components/modals/RouteSheetFormModal";
 import { TradeAgreementFormModal } from "./components/modals/TradeAgreementFormModal";
+import {
+  SELLER_TRUST_PENALTY_ON_EDIT,
+  TrustRiskEditConfirmModal,
+} from "./components/modals/TrustRiskEditConfirmModal";
+import { AgreementDeleteRouteSheetsModal } from "./components/modals/AgreementDeleteRouteSheetsModal";
+import { agreementDeleteBlockedByRouteSheetInvariant } from "./domain/routeSheetOfferGuards";
+import { buildRegisteredTransportistaPhoneOptions } from "./domain/routeSheetRegisteredPhones";
 import { tradeAgreementToDraft } from "./domain/tradeAgreementTypes";
 import "./chat.css";
 
@@ -52,6 +59,7 @@ export function ChatPage() {
   const syncThreadBuyerQa = useMarketStore((s) => s.syncThreadBuyerQa);
   const emitTradeAgreement = useMarketStore((s) => s.emitTradeAgreement);
   const updatePendingTradeAgreement = useMarketStore((s) => s.updatePendingTradeAgreement);
+  const deleteTradeAgreement = useMarketStore((s) => s.deleteTradeAgreement);
   const respondTradeAgreement = useMarketStore((s) => s.respondTradeAgreement);
   const createRouteSheet = useMarketStore((s) => s.createRouteSheet);
   const updateRouteSheet = useMarketStore((s) => s.updateRouteSheet);
@@ -87,6 +95,13 @@ export function ChatPage() {
   const [participantsEpoch, setParticipantsEpoch] = useState(0);
   const [focusRouteId, setFocusRouteId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [trustConfirm, setTrustConfirm] = useState<
+    null | { kind: "agreement"; agreementId: string } | { kind: "routeSheet"; sheet: RouteSheet }
+  >(null);
+  const [agreementDeleteSheetsModal, setAgreementDeleteSheetsModal] = useState<
+    null | { agreementId: string; title: string }
+  >(null);
+  const trustPenaltyNextSave = useRef<"none" | "agreement" | "routeSheet">("none");
   const listRef = useRef<HTMLDivElement | null>(null);
   const draftInputRef = useRef<HTMLInputElement | null>(null);
   const voiceRecorderContainerRef = useRef<HTMLDivElement | null>(null);
@@ -367,13 +382,37 @@ export function ChatPage() {
   }
 
   const store = thread.store;
+  const isActingSeller =
+    !!store.ownerUserId &&
+    (store.ownerUserId === me.id ||
+      (thread.purchaseMode === true && me.role === "seller"));
   const chatActionsLocked = thread.chatActionsLocked === true;
+
+  function applySellerTrustPenaltyIfQueued() {
+    const q = trustPenaltyNextSave.current;
+    trustPenaltyNextSave.current = "none";
+    if (q === "none") return;
+    setTrustScore(Math.max(-10_000, me.trustScore - SELLER_TRUST_PENALTY_ON_EDIT));
+    toast(`Tu barra de confianza se ajustó en −${SELLER_TRUST_PENALTY_ON_EDIT} por modificar un ${q === "agreement" ? "acuerdo" : "hoja de ruta"} (demo).`, {
+      icon: "⚠️",
+    });
+  }
   const buyerForRail = thread.demoBuyer ?? {
     id: me.id,
     name: me.name,
     trustScore: me.trustScore,
     avatarUrl: me.avatarUrl,
   };
+
+  const transportistaPhoneOptions = useMemo(
+    () =>
+      buildRegisteredTransportistaPhoneOptions(
+        thread.chatCarriers,
+        routeOfferForThisThread,
+        routeSheetBeingEdited?.id,
+      ),
+    [thread.chatCarriers, routeOfferForThisThread, routeSheetBeingEdited?.id],
+  );
 
   function toggleSelectRow(e: MouseEvent, id: string) {
     if (chatActionsLocked) return;
@@ -625,6 +664,7 @@ export function ChatPage() {
           ) : null}
           <ChatRightRail
             threadId={thread.id}
+            threadStoreId={thread.storeId}
             contracts={thread.contracts ?? []}
             routeSheets={thread.routeSheets ?? []}
             actionsLocked={chatActionsLocked}
@@ -643,20 +683,68 @@ export function ChatPage() {
                 );
                 return;
               }
+              const nAg = thread.contracts?.length ?? 0;
+              const nSh = thread.routeSheets?.length ?? 0;
+              if (nSh >= nAg) {
+                toast.error(
+                  "No podés tener más hojas de ruta que acuerdos. Emití otro acuerdo o eliminá una hoja existente.",
+                );
+                return;
+              }
               setRouteSheetBeingEdited(null);
               setShowRouteSheetForm(true);
               setRailOpen(true);
             }}
             onEditRouteSheet={(sheet) => {
-              setRouteSheetBeingEdited(sheet);
-              setShowRouteSheetForm(true);
-              setRailOpen(true);
+              const ack = thread.routeSheetEditAcks?.[sheet.id];
+              if (
+                ack &&
+                Object.values(ack.byCarrier).some((v) => v === "pending")
+              ) {
+                toast.error(
+                  "No podés editar de nuevo hasta que los transportistas del hilo acepten o rechacen la última versión de la hoja.",
+                );
+                return;
+              }
+              if (isActingSeller) setTrustConfirm({ kind: "routeSheet", sheet });
+              else {
+                setRouteSheetBeingEdited(sheet);
+                setShowRouteSheetForm(true);
+                setRailOpen(true);
+              }
             }}
             toggleRouteStop={toggleRouteStop}
-            onEditPendingAgreement={(ag) => {
-              if (ag.status !== "pending_buyer" && ag.status !== "rejected") return;
-              setAgreementBeingEditedId(ag.id);
-              setShowAgreementForm(true);
+            isActingSeller={isActingSeller}
+            onRequestEditAgreement={(ag) => {
+              if (!isActingSeller) return;
+              if (ag.sellerEditBlockedUntilBuyerResponse) {
+                toast.error(
+                  "Ya enviaste cambios en este acuerdo. Esperá la respuesta del comprador (aceptar o rechazar) antes de volver a editar.",
+                );
+                return;
+              }
+              setTrustConfirm({ kind: "agreement", agreementId: ag.id });
+            }}
+            onDeleteAgreement={(ag) => {
+              const contracts = thread.contracts ?? [];
+              const sheets = thread.routeSheets ?? [];
+              if (agreementDeleteBlockedByRouteSheetInvariant(contracts.length, sheets.length)) {
+                setAgreementDeleteSheetsModal({ agreementId: ag.id, title: ag.title });
+                return;
+              }
+              if (
+                !globalThis.confirm(
+                  `¿Eliminar el acuerdo «${ag.title}»? No podés eliminar acuerdos ya aceptados.`,
+                )
+              )
+                return;
+              const ok = deleteTradeAgreement(thread.id, ag.id);
+              if (ok) toast.success("Acuerdo eliminado");
+              else {
+                toast.error(
+                  "No se pudo eliminar el acuerdo (aceptado, bloqueo del hilo o más hojas que acuerdos permitidos).",
+                );
+              }
             }}
           />
         </div>
@@ -664,9 +752,40 @@ export function ChatPage() {
 
       <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
 
+      <AgreementDeleteRouteSheetsModal
+        open={agreementDeleteSheetsModal !== null}
+        threadId={thread.id}
+        agreementId={agreementDeleteSheetsModal?.agreementId ?? ""}
+        agreementTitle={agreementDeleteSheetsModal?.title ?? ""}
+        onClose={() => setAgreementDeleteSheetsModal(null)}
+        onAgreementDeleted={() => setAgreementDeleteSheetsModal(null)}
+      />
+
+      <TrustRiskEditConfirmModal
+        open={trustConfirm !== null}
+        subjectLabel={trustConfirm?.kind === "routeSheet" ? "hoja de ruta" : "acuerdo"}
+        onClose={() => setTrustConfirm(null)}
+        onConfirm={() => {
+          const t = trustConfirm;
+          setTrustConfirm(null);
+          if (!t) return;
+          if (t.kind === "agreement") {
+            setAgreementBeingEditedId(t.agreementId);
+            setShowAgreementForm(true);
+            trustPenaltyNextSave.current = "agreement";
+          } else {
+            setRouteSheetBeingEdited(t.sheet);
+            setShowRouteSheetForm(true);
+            setRailOpen(true);
+            trustPenaltyNextSave.current = "routeSheet";
+          }
+        }}
+      />
+
       <TradeAgreementFormModal
         open={showAgreementForm}
         onClose={() => {
+          trustPenaltyNextSave.current = "none";
           setShowAgreementForm(false);
           setAgreementBeingEditedId(null);
         }}
@@ -681,11 +800,10 @@ export function ChatPage() {
               agreementBeingEditedId,
               draft,
             );
-            if (ok) toast.success("Acuerdo actualizado");
-            else
-              toast.error(
-                "No se pudo guardar: solo se editan acuerdos pendientes o rechazados (no los ya aceptados).",
-              );
+            if (ok) {
+              toast.success("Acuerdo actualizado");
+              applySellerTrustPenaltyIfQueued();
+            } else toast.error("No se pudo guardar el acuerdo.");
             return ok;
           }
           const id = emitTradeAgreement(thread.id, draft);
@@ -701,7 +819,10 @@ export function ChatPage() {
       <RouteSheetFormModal
         open={showRouteSheetForm}
         initialRouteSheet={routeSheetBeingEdited}
+        routeOfferForSheet={routeOfferForThisThread}
+        transportistaPhoneOptions={transportistaPhoneOptions}
         onClose={() => {
+          trustPenaltyNextSave.current = "none";
           setShowRouteSheetForm(false);
           setRouteSheetBeingEdited(null);
         }}
@@ -712,7 +833,8 @@ export function ChatPage() {
               routeSheetBeingEdited.id,
               payload,
             );
-            if (!ok) {
+            if (ok) applySellerTrustPenaltyIfQueued();
+            else {
               toast.error(
                 "No se pudo guardar: revisá título, mercancías y al menos un tramo con origen y destino",
               );
@@ -724,6 +846,12 @@ export function ChatPage() {
             if (!threadHasAcceptedAgreement(thread)) {
               toast.error(
                 "Necesitás al menos un contrato aceptado para crear una hoja de ruta.",
+              );
+            } else if (
+              (thread.routeSheets?.length ?? 0) >= (thread.contracts?.length ?? 0)
+            ) {
+              toast.error(
+                "No podés tener más hojas de ruta que acuerdos. Emití otro acuerdo o eliminá una hoja.",
               );
             } else {
               toast.error(

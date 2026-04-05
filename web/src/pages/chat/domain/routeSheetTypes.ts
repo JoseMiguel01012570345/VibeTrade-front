@@ -138,31 +138,42 @@ export function routeSheetLegacyHead(rs: RouteSheet): RouteSheetLegacyHead | und
   }
 }
 
+type OfferTramoPhoneHint = {
+  telefonoTransportista?: string
+  assignment?: { phone?: string } | null
+}
+
 /** Convierte paradas persistidas al formato del formulario de alta/edición. */
 export function routeStopsToFormInputs(
   paradas: RouteStop[],
   legacyHead?: RouteSheetLegacyHead | null,
+  offerTramosByStopId?: Map<string, OfferTramoPhoneHint>,
 ): RouteTramoFormInput[] {
   const L = legacyHead ?? {}
-  return paradas.map((p) => ({
-    origen: p.origen?.trim() || p.lugar?.trim() || '',
-    destino: p.destino?.trim() || '',
-    origenLat: p.origenLat ?? '',
-    origenLng: p.origenLng ?? '',
-    destinoLat: p.destinoLat ?? '',
-    destinoLng: p.destinoLng ?? '',
-    tiempoRecogidaEstimado: p.tiempoRecogidaEstimado ?? '',
-    tiempoEntregaEstimado: p.tiempoEntregaEstimado ?? '',
-    precioTransportista: p.precioTransportista ?? '',
-    cargaEnTramo: p.cargaEnTramo ?? '',
-    tipoMercanciaCarga: p.tipoMercanciaCarga ?? '',
-    tipoMercanciaDescarga: p.tipoMercanciaDescarga ?? '',
-    notas: p.notas ?? '',
-    responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() || L.responsabilidadEmbalaje?.trim() || '',
-    requisitosEspeciales: p.requisitosEspeciales?.trim() || L.requisitosEspeciales?.trim() || '',
-    tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || L.tipoVehiculoRequerido?.trim() || '',
-    telefonoTransportista: p.telefonoTransportista?.trim() || '',
-  }))
+  return paradas.map((p) => {
+    const ot = offerTramosByStopId?.get(p.id)
+    const telFromStop = p.telefonoTransportista?.trim() || ''
+    const telFromOffer = ot?.telefonoTransportista?.trim() || ot?.assignment?.phone?.trim() || ''
+    return {
+      origen: p.origen?.trim() || p.lugar?.trim() || '',
+      destino: p.destino?.trim() || '',
+      origenLat: p.origenLat ?? '',
+      origenLng: p.origenLng ?? '',
+      destinoLat: p.destinoLat ?? '',
+      destinoLng: p.destinoLng ?? '',
+      tiempoRecogidaEstimado: p.tiempoRecogidaEstimado ?? '',
+      tiempoEntregaEstimado: p.tiempoEntregaEstimado ?? '',
+      precioTransportista: p.precioTransportista ?? '',
+      cargaEnTramo: p.cargaEnTramo ?? '',
+      tipoMercanciaCarga: p.tipoMercanciaCarga ?? '',
+      tipoMercanciaDescarga: p.tipoMercanciaDescarga ?? '',
+      notas: p.notas ?? '',
+      responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() || L.responsabilidadEmbalaje?.trim() || '',
+      requisitosEspeciales: p.requisitosEspeciales?.trim() || L.requisitosEspeciales?.trim() || '',
+      tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || L.tipoVehiculoRequerido?.trim() || '',
+      telefonoTransportista: telFromStop || telFromOffer,
+    }
+  })
 }
 
 export function routeStatusLabel(s: RouteSheetStatus): string {

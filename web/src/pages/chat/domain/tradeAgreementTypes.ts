@@ -124,6 +124,11 @@ export type TradeAgreement = {
   issuerLabel: string;
   status: AgreementStatus;
   respondedAt?: number;
+  /**
+   * Tras una edición del vendedor, no puede volver a editar hasta que el comprador acepte o rechace esta versión.
+   * Se limpia al responder el comprador.
+   */
+  sellerEditBlockedUntilBuyerResponse?: boolean;
   /** Si el acuerdo declara el bloque de mercancías (al menos uno de mercancías/servicio debe ser true). */
   includeMerchandise: boolean;
   /** Si el acuerdo declara el bloque de servicios. */
