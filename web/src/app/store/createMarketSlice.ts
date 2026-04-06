@@ -31,9 +31,6 @@ import {
   threadIsActionLocked,
   uid,
 } from './marketStoreHelpers'
-import { cooperativeRouteDemoThread, getInitialRouteOfferPublic } from './cooperativeRouteDemoThread'
-import { demoOffers, demoStoreCatalogs, demoStores } from './marketStoreSeed'
-
 function isOwnerOfStore(stores: Record<string, StoreBadge>, storeId: string, ownerUserId: string): boolean {
   const b = stores[storeId]
   return !!b?.ownerUserId && b.ownerUserId === ownerUserId
@@ -171,16 +168,13 @@ function confirmedCarrierIdsOnOffer(ro: RouteOfferPublicState | undefined, route
   return ids
 }
 
-export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
-  const offers: Record<string, Offer> = Object.fromEntries(demoOffers.map((o) => [o.id, o]))
-
-  return {
-    stores: demoStores,
-    offers,
-    offerIds: demoOffers.map((o) => o.id),
-    storeCatalogs: demoStoreCatalogs,
-    threads: { [cooperativeRouteDemoThread.id]: cooperativeRouteDemoThread },
-    routeOfferPublic: getInitialRouteOfferPublic(),
+export const createMarketSlice: StateCreator<MarketState> = (set, get) => ({
+    stores: {},
+    offers: {},
+    offerIds: [],
+    storeCatalogs: {},
+    threads: {},
+    routeOfferPublic: {},
 
     ask: (offerId, askedBy, question) => {
       const qaId = uid('qa')
@@ -1541,6 +1535,4 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => {
       }))
       return true
     },
-  }
-
-}
+})

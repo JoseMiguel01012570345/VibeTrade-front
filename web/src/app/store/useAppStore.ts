@@ -17,7 +17,7 @@ export type UserRole = 'seller' | 'carrier'
 
 export type SocialNetworkId = 'instagram' | 'telegram' | 'x'
 
-/** Usuario / enlace tal como lo guardó el usuario (demo). */
+/** Enlaces de perfil guardados por el usuario. */
 export type ProfileSocialLinks = Partial<Record<SocialNetworkId, string>>
 
 export type User = {
@@ -42,8 +42,10 @@ type NotificationItem = {
 type AppState = {
   /** Sesión iniciada (p. ej. tras verificar OTP). La barra de confianza solo aplica al usuario autenticado. */
   isSessionActive: boolean
+  /** Usuario de prueba local; el resto del catálogo viene del API. */
   me: User
-  /** @handles u otra cadena guardada desde el perfil (demo). */
+  /** Nombres mostrados para otros ids (bootstrap / Mocks del backend). */
+  profileDisplayNames: Record<string, string>
   profileSocialLinks: ProfileSocialLinks
   trustThreshold: number
   lastThresholdState: 'above' | 'below'
@@ -86,6 +88,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     role: 'carrier',
     trustScore: 72,
   },
+  profileDisplayNames: {},
   profileSocialLinks: {},
   trustThreshold: 0,
   lastThresholdState: 'above',

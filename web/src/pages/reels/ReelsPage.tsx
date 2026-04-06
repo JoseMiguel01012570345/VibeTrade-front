@@ -4,12 +4,12 @@ import { Bookmark, MessageCircle, Send, ThumbsUp, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../../app/store/useAppStore'
 import { cn } from '../../lib/cn'
-import { ReelCommentsPanel, type ReelComment } from './ReelCommentsPanel'
 import {
-  DEMO_REELS,
-  INITIAL_COMMENTS,
-  INITIAL_REEL_LIKE_COUNTS,
-} from './reelsDemoData'
+  getReelsInitialComments,
+  getReelsInitialLikeCounts,
+  getReelsItems,
+} from '../../utils/reels/reelsBootstrapState'
+import { ReelCommentsPanel, type ReelComment } from './ReelCommentsPanel'
 
 function uid(prefix: string) {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`
@@ -49,17 +49,18 @@ export function ReelsPage() {
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [reelLikes, dispatchReelLike] = useReducer(reelLikeReducer, {
     liked: {},
-    counts: { ...INITIAL_REEL_LIKE_COUNTS },
+    counts: { ...getReelsInitialLikeCounts() },
   })
   const [commentsByReel, setCommentsByReel] = useState<Record<string, ReelComment[]>>(() => ({
-    ...INITIAL_COMMENTS,
+    ...getReelsInitialComments(),
   }))
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const isAnimatingRef = useRef(false)
 
   const reels = useMemo(() => {
-    if (storeFilter) return DEMO_REELS.filter((r) => r.storeId === storeFilter)
-    return DEMO_REELS
+    const all = getReelsItems()
+    if (storeFilter) return all.filter((r) => r.storeId === storeFilter)
+    return all
   }, [storeFilter])
 
   useEffect(() => {
@@ -179,6 +180,7 @@ export function ReelsPage() {
         ref={viewportRef}
         aria-label="Reels"
       >
+        {reels.length > 0 ? (
         <div
           className="h-full will-change-transform transition-transform duration-[520ms] ease-[ease]"
           style={{ transform: `translateY(-${idx * 100}%)` }}
@@ -283,6 +285,16 @@ export function ReelsPage() {
             </div>
           ))}
         </div>
+        ) : (
+          <div className="flex h-full min-h-[240px] items-center justify-center bg-[var(--surface)] px-6 text-center">
+            <div>
+              <p className="text-lg font-semibold text-[var(--text)]">Aún no hay reels</p>
+              <p className="mt-2 text-sm text-[var(--muted)]">
+                Cuando haya contenido, podrás verlo aquí.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <ReelCommentsPanel
@@ -300,7 +312,7 @@ export function ReelsPage() {
           <div className="vt-modal">
             <div className="vt-modal-title">Compartir</div>
             <div className="vt-modal-body">
-              Lista de contactos registrados (demo):
+              Lista de contactos registrados:
               <div className="mt-3 flex flex-wrap gap-2.5">
                 {['María', 'Carlos', 'Lucía', 'Pedro'].map((c) => (
                   <button

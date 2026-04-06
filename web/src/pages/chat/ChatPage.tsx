@@ -59,7 +59,6 @@ export function ChatPage() {
   const setTrustScore = useAppStore((s) => s.setTrustScore);
   const pushNotification = useAppStore((s) => s.pushNotification);
 
-  const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer);
   const syncThreadBuyerQa = useMarketStore((s) => s.syncThreadBuyerQa);
   const emitTradeAgreement = useMarketStore((s) => s.emitTradeAgreement);
   const updatePendingTradeAgreement = useMarketStore((s) => s.updatePendingTradeAgreement);
@@ -191,14 +190,7 @@ export function ChatPage() {
   }, []);
 
   useEffect(() => {
-    if (threadId === "demo") {
-      const real = ensureThreadForOffer("o1", { buyerId: me.id });
-      nav(`/chat/${real}`, { replace: true });
-    }
-  }, [ensureThreadForOffer, me.id, nav, threadId]);
-
-  useEffect(() => {
-    if (!threadId || threadId === "demo") return;
+    if (!threadId) return;
     syncThreadBuyerQa(threadId, me.id);
   }, [me.id, syncThreadBuyerQa, threadId]);
 
@@ -373,7 +365,7 @@ export function ChatPage() {
     }
   }
 
-  if (!threadId || threadId === "demo") return null;
+  if (!threadId) return null;
   if (!thread) {
     return (
       <div className="container vt-page">

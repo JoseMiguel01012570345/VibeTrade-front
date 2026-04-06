@@ -22,7 +22,6 @@ export function OfferPage() {
   const { offerId } = useParams()
   const nav = useNavigate()
   const me = useAppStore((s) => s.me)
-  const pushNotification = useAppStore((s) => s.pushNotification)
   const offer = useMarketStore((s) => (offerId ? s.offers[offerId] : undefined))
   const stores = useMarketStore((s) => s.stores)
   const routeOffer = useMarketStore((s) => (offerId ? s.routeOfferPublic[offerId] : undefined))
@@ -30,7 +29,6 @@ export function OfferPage() {
   const subscribeRouteOfferTramo = useMarketStore((s) => s.subscribeRouteOfferTramo)
   const validateRouteOfferTramo = useMarketStore((s) => s.validateRouteOfferTramo)
   const ask = useMarketStore((s) => s.ask)
-  const answer = useMarketStore((s) => s.answer)
   const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer)
 
   const openTramos = useMemo(
@@ -314,21 +312,8 @@ export function OfferPage() {
                 onClick={() => {
                   const question = window.prompt('Escribe tu pregunta')
                   if (!question) return
-                  const qaId = ask(
-                    offer.id,
-                    { id: me.id, name: me.name, trustScore: me.trustScore },
-                    question.trim(),
-                  )
+                  ask(offer.id, { id: me.id, name: me.name, trustScore: me.trustScore }, question.trim())
                   toast.success('Pregunta enviada')
-                  window.setTimeout(() => {
-                    answer(offer.id, qaId, 'Podemos coordinar disponibilidad. Gracias por tu consulta.')
-                    toast('Respuesta del negocio', { icon: '💬' })
-                    pushNotification({
-                      kind: 'qa_reply',
-                      title: 'Respuesta a tu pregunta',
-                      body: `${store.name}: Podemos coordinar disponibilidad. Gracias por tu consulta.`,
-                    })
-                  }, 1500)
                 }}
               >
                 <MessageSquareText size={16} /> Preguntar

@@ -18,7 +18,7 @@ import { cn } from '../../lib/cn'
 import { useMarketStore } from '../../app/store/useMarketStore'
 import type { StoreBadge } from '../../app/store/marketStoreTypes'
 import type { StoreCatalog, StoreProduct, StoreService } from '../chat/domain/storeCatalogTypes'
-import { reelsForStore } from '../reels/reelsDemoData'
+import { reelsForStore } from '../../utils/reels/reelsBootstrapState'
 
 type StoreScreen = 'hub' | 'catalog' | 'products' | 'services' | 'feed' | 'reels'
 

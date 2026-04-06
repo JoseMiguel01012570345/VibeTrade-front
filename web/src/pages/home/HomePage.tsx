@@ -3,14 +3,10 @@ import { Link } from 'react-router-dom'
 import { useAppStore } from '../../app/store/useAppStore'
 import type { Offer } from '../../app/store/useMarketStore'
 import { useMarketStore } from '../../app/store/useMarketStore'
-import {
-  COOPERATIVE_DEMO_OFFER_ID,
-  COOPERATIVE_DEMO_THREAD_ID,
-} from '../../app/store/cooperativeRouteDemoThread'
 import { RouteOfferPreview } from '../offer/RouteOfferPreview'
 
-/** Ofertas que un transportista suele buscar en el feed (rutas publicadas, fletes, logística). */
-const CARRIER_FEED_TAG = /hoja de ruta|transporte|flete|logístic|fulfillment|cadena|demo-ruta|para transport/i
+/** Ofertas que un transportista suele buscar en el feed (rutas, fletes, logística). */
+const CARRIER_FEED_TAG = /hoja de ruta|transporte|flete|logístic|fulfillment|cadena|para transport/i
 
 export function HomePage() {
   const me = useAppStore((s) => s.me)
@@ -19,25 +15,10 @@ export function HomePage() {
   const stores = useMarketStore((s) => s.stores)
   const routeOfferPublic = useMarketStore((s) => s.routeOfferPublic)
 
-  const carrierCanOpenDemoChat = useMemo(() => {
-    if (me.role !== 'carrier') return true
-    const ro = routeOfferPublic[COOPERATIVE_DEMO_OFFER_ID]
-    if (!ro) return true
-    return ro.tramos.some(
-      (t) => t.assignment?.userId === me.id && t.assignment.status === 'confirmed',
-    )
-  }, [me.role, me.id, routeOfferPublic])
-
   const items = useMemo(() => {
     const list = offerIds.map((id) => offers[id]).filter(Boolean) as Offer[]
     if (me.role !== 'carrier') return list
-    const demo = list.find((o) => o.id === COOPERATIVE_DEMO_OFFER_ID)
-    const rest = list.filter((o) => {
-      if (o.id === COOPERATIVE_DEMO_OFFER_ID) return false
-      if (o.storeId === 's_jhosef') return false
-      return o.tags.some((t) => CARRIER_FEED_TAG.test(t))
-    })
-    return demo ? [demo, ...rest] : rest
+    return list.filter((o) => o.tags.some((t) => CARRIER_FEED_TAG.test(t)))
   }, [offerIds, offers, me.role])
 
   return (
@@ -48,29 +29,11 @@ export function HomePage() {
           <div className="vt-muted">
             {me.role === 'carrier' ? (
               <>
-                Feed para vos como transportista: primero las <strong>hojas de ruta</strong> abiertas a suscripción y
-                luego ofertas de flete y logística (demo).
+                Feed para transportistas: ofertas de <strong>flete</strong>, <strong>logística</strong> y afines.
               </>
             ) : (
-              <>Scroll con ofertas afines a tus intereses (demo).</>
+              <>Explorá ofertas publicadas en la plataforma.</>
             )}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[13px]">
-            <span className="font-bold text-[var(--text)]">Demo logística A→B→C:</span>
-            <Link className="font-extrabold text-[var(--primary)]" to={`/offer/${COOPERATIVE_DEMO_OFFER_ID}`}>
-              Oferta + suscripción transportista
-            </Link>
-            {carrierCanOpenDemoChat ?
-              <Link className="font-extrabold text-[var(--primary)]" to={`/chat/${COOPERATIVE_DEMO_THREAD_ID}`}>
-                Chat precargado
-              </Link>
-            : <Link
-                className="font-extrabold text-[var(--primary)]"
-                to={`/offer/${COOPERATIVE_DEMO_OFFER_ID}`}
-                title="Suscribite y esperá la validación para acceder al chat"
-              >
-                Chat tras validar suscripción
-              </Link>}
           </div>
         </div>
       </div>

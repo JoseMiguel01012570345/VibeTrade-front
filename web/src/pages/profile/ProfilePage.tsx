@@ -22,7 +22,6 @@ import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
 import { type SocialNetworkId, useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
-import { DEMO_SELLER_AGRONORTE_USER_ID } from "../../app/store/marketStoreSeed";
 import { onBackdropPointerClose } from "../chat/lib/modalClose";
 import {
   fieldLabel,
@@ -31,17 +30,7 @@ import {
   modalSub,
 } from "../chat/styles/formModalStyles";
 import { ProfileStoresSection } from "./ProfileStoresSection";
-import { REEL_TITLES_BY_ID } from "../reels/reelsDemoData";
-
-const REEL_TITLES = REEL_TITLES_BY_ID;
-
-/** Nombres para mostrar en perfiles demo (ids de participantes del chat). */
-const DEMO_PROFILE_NAMES: Record<string, string> = {
-  u_demo_carrier_maria: "María Benedetti",
-  u_demo_buyer_laura: "Laura Méndez",
-  [DEMO_SELLER_AGRONORTE_USER_ID]: "AgroNorte SRL",
-  me: "Jhosef",
-};
+import { reelTitlesById } from "../../utils/reels/reelsBootstrapState";
 
 function isValidEmail(value: string): boolean {
   const t = value.trim();
@@ -136,6 +125,7 @@ export function ProfilePage() {
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
   const stores = useMarketStore((s) => s.stores);
+  const profileDisplayNames = useAppStore((s) => s.profileDisplayNames);
   const profileSocialLinks = useAppStore((s) => s.profileSocialLinks);
   const setMeAvatarUrl = useAppStore((s) => s.setMeAvatarUrl);
   const setMeName = useAppStore((s) => s.setMeName);
@@ -150,8 +140,10 @@ export function ProfilePage() {
     return Object.values(stores).filter((b) => b.ownerUserId === resolvedProfileUserId);
   }, [stores, resolvedProfileUserId]);
 
+  const reelTitles = useMemo(() => reelTitlesById(), []);
+
   const profileDisplayName =
-    isMe ? me.name : (DEMO_PROFILE_NAMES[resolvedProfileUserId] ?? `Usuario ${resolvedProfileUserId}`);
+    isMe ? me.name : (profileDisplayNames[resolvedProfileUserId] ?? `Usuario ${resolvedProfileUserId}`);
 
   const [tab, setTab] = useState<"account" | "reels" | "stores">("account");
   const [socialModal, setSocialModal] = useState<SocialNetworkId | null>(null);
@@ -570,7 +562,7 @@ export function ProfilePage() {
                     <Save size={16} aria-hidden />
                     <div>
                       <div className="font-black tracking-[-0.02em]">
-                        {REEL_TITLES[id] ?? id}
+                        {reelTitles[id] ?? id}
                       </div>
                       <div className="vt-muted">ID: {id}</div>
                     </div>
