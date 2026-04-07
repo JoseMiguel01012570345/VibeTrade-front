@@ -7,7 +7,9 @@ import {
 } from "react";
 import { Plus } from "lucide-react";
 import toast from "react-hot-toast";
+import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
+import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
 import {
   emptyStoreProductInput,
   emptyStoreServiceInput,
@@ -55,6 +57,47 @@ export function ProfileStoresSection({
     () => Object.values(stores).filter((b) => b.ownerUserId === ownerUserId),
     [stores, ownerUserId],
   );
+
+  const me = useAppStore((s) => s.me);
+  const storeIdsKey = useMemo(
+    () => myStores.map((b) => b.id).sort((a, b) => a.localeCompare(b)).join(","),
+    [myStores],
+  );
+
+  /** Bootstrap deja `storeCatalogs` vacío; hidratar aquí para previews sin pasar por /store/:id. */
+  useEffect(() => {
+    if (myStores.length === 0 || !me.id) return;
+    const missing = myStores.filter(
+      (b) => useMarketStore.getState().storeCatalogs[b.id] === undefined,
+    );
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    void (async () => {
+      await Promise.all(
+        missing.map(async (b) => {
+          try {
+            const data = await fetchStoreDetail(b.id, { userId: me.id });
+            if (cancelled) return;
+            useMarketStore.setState((s) => {
+              if (s.storeCatalogs[b.id] !== undefined) return s;
+              return {
+                ...s,
+                stores: { ...s.stores, [b.id]: data.store },
+                storeCatalogs: { ...s.storeCatalogs, [b.id]: data.catalog },
+              };
+            });
+          } catch {
+            /* detalle opcional; la tarjeta sigue sin preview */
+          }
+        }),
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [storeIdsKey, me.id]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editStoreId, setEditStoreId] = useState<string | null>(null);
