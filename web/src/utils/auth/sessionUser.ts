@@ -14,9 +14,9 @@ export type SessionUserJson = {
 export function userFromSessionJson(j: SessionUserJson): User {
   return {
     id: j.id,
-    name: j.name,
-    email: j.email,
-    phone: j.phone,
+    name: typeof j.name === 'string' ? j.name : '',
+    email: typeof j.email === 'string' ? j.email : '',
+    phone: typeof j.phone === 'string' ? j.phone : '',
     avatarUrl: j.avatarUrl,
     trustScore: typeof j.trustScore === 'number' ? j.trustScore : 50,
   }

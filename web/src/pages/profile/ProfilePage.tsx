@@ -138,6 +138,9 @@ export function ProfilePage() {
   const isMe = userId === "me" || userId === me.id;
   const resolvedProfileUserId = isMe ? me.id : (userId ?? me.id);
 
+  const safeName = me.name ?? "";
+  const safeEmail = me.email ?? "";
+
   const storesForProfile = useMemo(() => {
     return Object.values(stores).filter((b) => b.ownerUserId === resolvedProfileUserId);
   }, [stores, resolvedProfileUserId]);
@@ -145,13 +148,13 @@ export function ProfilePage() {
   const reelTitles = useMemo(() => reelTitlesById(), []);
 
   const profileDisplayName =
-    isMe ? me.name : (profileDisplayNames[resolvedProfileUserId] ?? `Usuario ${resolvedProfileUserId}`);
+    isMe ? safeName : (profileDisplayNames[resolvedProfileUserId] ?? `Usuario ${resolvedProfileUserId}`);
 
   const [tab, setTab] = useState<"account" | "reels" | "stores">("account");
   const [socialModal, setSocialModal] = useState<SocialNetworkId | null>(null);
   const [socialDraft, setSocialDraft] = useState("");
-  const [nameDraft, setNameDraft] = useState(me.name);
-  const [emailDraft, setEmailDraft] = useState(me.email);
+  const [nameDraft, setNameDraft] = useState(safeName);
+  const [emailDraft, setEmailDraft] = useState(safeEmail);
   const [avatarDraftUrl, setAvatarDraftUrl] = useState<string | null>(null);
   const avatarDraftRef = useRef<string | null>(null);
   const profileAvatarInputRef = useRef<HTMLInputElement>(null);
@@ -168,16 +171,17 @@ export function ProfilePage() {
   );
 
   useEffect(() => {
-    setNameDraft(me.name);
-  }, [me.name]);
+    setNameDraft(safeName);
+  }, [safeName]);
 
   useEffect(() => {
-    setEmailDraft(me.email);
-  }, [me.email]);
+    setEmailDraft(safeEmail);
+  }, [safeEmail]);
 
   useEffect(() => {
-    if (tab === "stores" && storesForProfile.length === 0) setTab("account");
-  }, [tab, storesForProfile.length]);
+    if (tab === "stores" && storesForProfile.length === 0 && !isMe)
+      setTab("account");
+  }, [tab, storesForProfile.length, isMe]);
 
   const savedIds = useMemo(
     () => Object.keys(saved).filter((id) => saved[id]),
@@ -221,12 +225,12 @@ export function ProfilePage() {
     });
   }
 
-  const letter = (isMe ? me.name : (userId ?? "U")).slice(0, 1).toUpperCase();
+  const letter = (isMe ? safeName : (userId ?? "U")).slice(0, 1).toUpperCase() || "?";
 
-  const nameDirty = isMe && nameDraft.trim() !== me.name.trim();
+  const nameDirty = isMe && nameDraft.trim() !== safeName.trim();
   const emailDirty =
     isMe &&
-    emailDraft.trim().toLowerCase() !== me.email.trim().toLowerCase();
+    emailDraft.trim().toLowerCase() !== safeEmail.trim().toLowerCase();
   const profileAvatarDirty = isMe && avatarDraftUrl !== null;
   const profileAvatarDisplayUrl = avatarDraftUrl ?? me.avatarUrl;
 
@@ -312,7 +316,7 @@ export function ProfilePage() {
               Mis Reels
             </button>
           : null}
-          {storesForProfile.length > 0 ?
+          {isMe || storesForProfile.length > 0 ?
             <button
               type="button"
               className={cn(
@@ -444,7 +448,11 @@ export function ProfilePage() {
                 <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                   <Phone size={14} /> Teléfono (obligatorio)
                 </span>
-                <input className="vt-input" defaultValue={me.phone} disabled />
+                <input
+                  className="vt-input"
+                  defaultValue={me.phone ?? ""}
+                  disabled
+                />
               </label>
 
               <div className="flex flex-col gap-2">
@@ -558,7 +566,7 @@ export function ProfilePage() {
           </div>
         )}
 
-        {tab === "stores" && storesForProfile.length > 0 ?
+        {tab === "stores" && (isMe || storesForProfile.length > 0) ?
           <ProfileStoresSection ownerUserId={resolvedProfileUserId} canEdit={isMe} />
         : null}
 

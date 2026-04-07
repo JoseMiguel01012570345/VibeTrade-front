@@ -49,7 +49,7 @@ export function AppShell() {
               const active = tabIsActive(pathname, t)
               const Icon = t.icon
               const profileTab = t.to === '/profile/me'
-              const profileLetter = me.name.slice(0, 1).toUpperCase()
+              const profileLetter = (me.name ?? '?').slice(0, 1).toUpperCase()
               return (
                 <Link
                   key={t.to}
