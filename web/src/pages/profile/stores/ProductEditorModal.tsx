@@ -20,6 +20,7 @@ import {
 } from "../../chat/styles/formModalStyles";
 import { cn } from "../../../lib/cn";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
+import { readFileAsDataUrl } from "../../../utils/media/dataUrl";
 import {
   newAttachmentId,
   productPhotoSlotsFromUrls,
@@ -54,23 +55,30 @@ export function ProductEditorModal({
   const photoOk = photoSlots.length >= 1;
 
   function onPickProductPhoto(e: ChangeEvent<HTMLInputElement>) {
-    const input = e.currentTarget;
-    const picked = input.files ? Array.from(input.files) : [];
-    input.value = "";
-    if (!picked.length) return;
-    const added: ProductPhotoSlot[] = [];
-    for (const file of picked) {
-      if (!file.type.startsWith("image/")) {
-        toast.error(`No es imagen: ${file.name}`);
-        continue;
+    void (async () => {
+      const input = e.currentTarget;
+      const picked = input.files ? Array.from(input.files) : [];
+      input.value = "";
+      if (!picked.length) return;
+      const added: ProductPhotoSlot[] = [];
+      for (const file of picked) {
+        if (!file.type.startsWith("image/")) {
+          toast.error(`No es imagen: ${file.name}`);
+          continue;
+        }
+        try {
+          const dataUrl = await readFileAsDataUrl(file);
+          added.push({
+            id: newAttachmentId(),
+            url: dataUrl,
+            fileName: file.name,
+          });
+        } catch {
+          toast.error(`No se pudo leer: ${file.name}`);
+        }
       }
-      added.push({
-        id: newAttachmentId(),
-        url: URL.createObjectURL(file),
-        fileName: file.name,
-      });
-    }
-    if (added.length) setPhotoSlots((prev) => [...prev, ...added]);
+      if (added.length) setPhotoSlots((prev) => [...prev, ...added]);
+    })();
   }
 
   function removeProductPhoto(slotId: string) {

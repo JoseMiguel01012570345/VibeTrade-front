@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
+import { readFileAsDataUrl } from "../../utils/media/dataUrl";
 import {
   emptyStoreProductInput,
   emptyStoreServiceInput,
@@ -146,21 +147,28 @@ export function ProfileStoresSection({
 
   function onStoreAvatarPick(storeId: string) {
     return (e: ChangeEvent<HTMLInputElement>) => {
-      const input = e.currentTarget;
-      const picked = input.files ? Array.from(input.files) : [];
-      input.value = "";
-      const file = picked[0];
-      if (!file) return;
-      if (!file.type.startsWith("image/")) {
-        toast.error("Elegí un archivo de imagen.");
-        return;
-      }
-      setAvatarDrafts((prev) => {
-        const oldDraft = prev[storeId];
-        if (oldDraft) revokeIfBlob(oldDraft);
-        return { ...prev, [storeId]: URL.createObjectURL(file) };
-      });
-      toast.success("Revisá la imagen y tocá Guardar foto para confirmar.");
+      void (async () => {
+        const input = e.currentTarget;
+        const picked = input.files ? Array.from(input.files) : [];
+        input.value = "";
+        const file = picked[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+          toast.error("Elegí un archivo de imagen.");
+          return;
+        }
+        try {
+          const dataUrl = await readFileAsDataUrl(file);
+          setAvatarDrafts((prev) => {
+            const oldDraft = prev[storeId];
+            if (oldDraft) revokeIfBlob(oldDraft);
+            return { ...prev, [storeId]: dataUrl };
+          });
+          toast.success("Revisá la imagen y tocá Guardar foto para confirmar.");
+        } catch {
+          toast.error("No se pudo leer la imagen.");
+        }
+      })();
     };
   }
 

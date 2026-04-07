@@ -1,5 +1,6 @@
 import type { OwnerStoreFormValues, StoreBadge } from "../../../app/store/marketStoreTypes";
 import type { StoreCustomAttachment } from "../../chat/domain/storeCatalogTypes";
+import { revokeObjectUrlIfNeeded } from "../../../utils/media/dataUrl";
 
 export type ProductPhotoSlot = { id: string; url: string; fileName: string };
 
@@ -33,14 +34,9 @@ export function fileToKind(file: File): StoreCustomAttachment["kind"] {
   return "other";
 }
 
+/** Revoca solo `blob:` locales; data URLs no usan revoke. */
 export function revokeIfBlob(url: string) {
-  if (url.startsWith("blob:")) {
-    try {
-      URL.revokeObjectURL(url);
-    } catch {
-      /* noop */
-    }
-  }
+  revokeObjectUrlIfNeeded(url);
 }
 
 export function ownerStoreToFormValues(

@@ -33,6 +33,7 @@ import {
 import { ProfileStoresSection } from "./ProfileStoresSection";
 import { reelTitlesById } from "../../utils/reels/reelsBootstrapState";
 import { logoutWebApp } from "../../utils/auth/logoutWebApp";
+import { readFileAsDataUrl } from "../../utils/media/dataUrl";
 
 function isValidEmail(value: string): boolean {
   const t = value.trim();
@@ -193,7 +194,7 @@ export function ProfilePage() {
     setSocialModal(net);
   }
 
-  function onProfileAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+  async function onProfileAvatarChange(e: ChangeEvent<HTMLInputElement>) {
     const input = e.currentTarget;
     const picked = input.files ? Array.from(input.files) : [];
     input.value = "";
@@ -203,11 +204,16 @@ export function ProfilePage() {
       toast.error("Elegí un archivo de imagen.");
       return;
     }
-    setAvatarDraftUrl((prev) => {
-      revokeBlobUrlLocal(prev);
-      return URL.createObjectURL(file);
-    });
-    toast.success("Revisá la imagen y tocá Guardar para confirmar.");
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setAvatarDraftUrl((prev) => {
+        revokeBlobUrlLocal(prev);
+        return dataUrl;
+      });
+      toast.success("Revisá la imagen y tocá Guardar para confirmar.");
+    } catch {
+      toast.error("No se pudo leer la imagen.");
+    }
   }
 
   function saveProfileAvatar() {

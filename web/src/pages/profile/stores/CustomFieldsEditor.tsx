@@ -10,6 +10,7 @@ import {
   fieldRootWithInvalid,
   textareaMin,
 } from "../../chat/styles/formModalStyles";
+import { readFileAsDataUrl } from "../../../utils/media/dataUrl";
 import { fileToKind, newAttachmentId, revokeIfBlob } from "./helpers";
 
 type Props = Readonly<{
@@ -24,22 +25,29 @@ export function CustomFieldsEditor({ fields, onChange, showValidation }: Props) 
   }
 
   function addAttachments(idx: number, fileList: FileList | File[] | null) {
-    let files: File[] = [];
-    if (fileList != null) {
-      files = Array.isArray(fileList) ? fileList : Array.from(fileList);
-    }
-    if (!files.length) return;
-    const row = fields[idx];
-    const list = [...(row.attachments ?? [])];
-    for (const file of files) {
-      list.push({
-        id: newAttachmentId(),
-        url: URL.createObjectURL(file),
-        fileName: file.name,
-        kind: fileToKind(file),
-      });
-    }
-    patchField(idx, { attachments: list });
+    void (async () => {
+      let files: File[] = [];
+      if (fileList != null) {
+        files = Array.isArray(fileList) ? fileList : Array.from(fileList);
+      }
+      if (!files.length) return;
+      const row = fields[idx];
+      const list = [...(row.attachments ?? [])];
+      for (const file of files) {
+        try {
+          const dataUrl = await readFileAsDataUrl(file);
+          list.push({
+            id: newAttachmentId(),
+            url: dataUrl,
+            fileName: file.name,
+            kind: fileToKind(file),
+          });
+        } catch {
+          /* omitir archivo fallido */
+        }
+      }
+      patchField(idx, { attachments: list });
+    })();
   }
 
   function removeAttachment(idx: number, attachmentId: string) {
