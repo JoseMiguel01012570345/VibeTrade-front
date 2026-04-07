@@ -1,4 +1,10 @@
-import { FileText, Plus, Upload, X } from "lucide-react";
+import { useState } from "react";
+import { FileText, Loader2, Plus, Upload, X } from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  ProtectedMediaAnchor,
+  ProtectedMediaImg,
+} from "../../../components/media/ProtectedMediaImg";
 import { cn } from "../../../lib/cn";
 import type { StoreCustomField } from "../../chat/domain/storeCatalogTypes";
 import {
@@ -10,16 +16,43 @@ import {
   fieldRootWithInvalid,
   textareaMin,
 } from "../../chat/styles/formModalStyles";
-import { readFileAsDataUrl } from "../../../utils/media/dataUrl";
 import { fileToKind, newAttachmentId, revokeIfBlob } from "./helpers";
+import {
+  isProtectedMediaUrl,
+  mediaApiUrl,
+  releaseMediaObjectUrl,
+  uploadMedia,
+} from "../../../utils/media/mediaClient";
 
 type Props = Readonly<{
   fields: StoreCustomField[];
   onChange: (next: StoreCustomField[]) => void;
   showValidation?: boolean;
+  /** true mientras corre la subida de archivos (overlay en el padre). */
+  onUploadingChange?: (busy: boolean) => void;
 }>;
 
-export function CustomFieldsEditor({ fields, onChange, showValidation }: Props) {
+export function CustomFieldsEditor({
+  fields,
+  onChange,
+  showValidation,
+  onUploadingChange,
+}: Props) {
+  /** Cantidad de archivos en subida por fila (placeholders con spinner). */
+  const [pendingByField, setPendingByField] = useState<Record<number, number>>(
+    {},
+  );
+
+  function bumpPending(idx: number, delta: number) {
+    setPendingByField((p) => {
+      const next = { ...p };
+      const v = (next[idx] ?? 0) + delta;
+      if (v <= 0) delete next[idx];
+      else next[idx] = v;
+      return next;
+    });
+  }
+
   function patchField(idx: number, patch: Partial<StoreCustomField>) {
     onChange(fields.map((c, i) => (i === idx ? { ...c, ...patch } : c)));
   }
@@ -31,36 +64,55 @@ export function CustomFieldsEditor({ fields, onChange, showValidation }: Props) 
         files = Array.isArray(fileList) ? fileList : Array.from(fileList);
       }
       if (!files.length) return;
-      const row = fields[idx];
-      const list = [...(row.attachments ?? [])];
-      for (const file of files) {
-        try {
-          const dataUrl = await readFileAsDataUrl(file);
-          list.push({
-            id: newAttachmentId(),
-            url: dataUrl,
-            fileName: file.name,
-            kind: fileToKind(file),
-          });
-        } catch {
-          /* omitir archivo fallido */
+      bumpPending(idx, files.length);
+      onUploadingChange?.(true);
+      try {
+        const row = fields[idx];
+        const list = [...(row.attachments ?? [])];
+        for (const file of files) {
+          try {
+            const uploaded = await uploadMedia(file);
+            const url = mediaApiUrl(uploaded.id);
+            list.push({
+              id: newAttachmentId(),
+              url,
+              fileName: file.name,
+              kind: fileToKind(file),
+            });
+          } catch (e) {
+            const msg =
+              e instanceof Error && e.message
+                ? e.message
+                : `No se pudo subir: ${file.name}`;
+            toast.error(msg);
+          } finally {
+            bumpPending(idx, -1);
+          }
         }
+        patchField(idx, { attachments: list });
+      } finally {
+        onUploadingChange?.(false);
       }
-      patchField(idx, { attachments: list });
     })();
   }
 
   function removeAttachment(idx: number, attachmentId: string) {
     const row = fields[idx];
     const hit = row.attachments?.find((a) => a.id === attachmentId);
-    if (hit) revokeIfBlob(hit.url);
+    if (hit) {
+      if (isProtectedMediaUrl(hit.url)) releaseMediaObjectUrl(hit.url);
+      revokeIfBlob(hit.url);
+    }
     const nextAtt = row.attachments?.filter((a) => a.id !== attachmentId);
     patchField(idx, { attachments: nextAtt?.length ? nextAtt : undefined });
   }
 
   function removeField(idx: number) {
     const row = fields[idx];
-    row.attachments?.forEach((a) => revokeIfBlob(a.url));
+    row.attachments?.forEach((a) => {
+      if (isProtectedMediaUrl(a.url)) releaseMediaObjectUrl(a.url);
+      revokeIfBlob(a.url);
+    });
     onChange(fields.filter((_, i) => i !== idx));
   }
 
@@ -93,11 +145,12 @@ export function CustomFieldsEditor({ fields, onChange, showValidation }: Props) 
           const hasPreview = !!(
             cf.title.trim() ||
             cf.body.trim() ||
-            (cf.attachments?.length ?? 0) > 0
+            (cf.attachments?.length ?? 0) > 0 ||
+            (pendingByField[idx] ?? 0) > 0
           );
           return (
             <div
-              key={idx}
+              key={`${idx}-${cf.title}`}
               className="rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3"
             >
               <label className={fieldRootWithInvalid(titleInvalid)}>
@@ -180,29 +233,29 @@ export function CustomFieldsEditor({ fields, onChange, showValidation }: Props) 
                       {cf.attachmentNote}
                     </p>
                   ) : null}
-                  {(cf.attachments?.length ?? 0) > 0 ? (
+                  {(cf.attachments?.length ?? 0) > 0 ||
+                  (pendingByField[idx] ?? 0) > 0 ? (
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {cf.attachments!.map((att) => (
+                      {cf.attachments?.map((att) => (
                         <div
                           key={att.id}
                           className="relative rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_85%,transparent)] p-1.5"
                         >
                           {att.kind === "image" ? (
-                            <img
+                            <ProtectedMediaImg
                               src={att.url}
                               alt=""
+                              wrapperClassName="mx-auto block max-w-[140px]"
                               className="mx-auto max-h-28 max-w-[140px] rounded object-contain"
                             />
                           ) : (
-                            <a
+                            <ProtectedMediaAnchor
                               href={att.url}
-                              target="_blank"
-                              rel="noreferrer"
                               className="flex max-w-[180px] items-center gap-2 text-[12px] font-semibold text-[var(--primary)]"
                             >
                               <FileText size={18} aria-hidden />
                               <span className="truncate">{att.fileName}</span>
-                            </a>
+                            </ProtectedMediaAnchor>
                           )}
                           <button
                             type="button"
@@ -213,6 +266,22 @@ export function CustomFieldsEditor({ fields, onChange, showValidation }: Props) 
                           >
                             <X size={14} />
                           </button>
+                        </div>
+                      ))}
+                      {Array.from({
+                        length: pendingByField[idx] ?? 0,
+                      }).map((_, pi) => (
+                        <div
+                          key={`pending-${idx}-${pi}`}
+                          className="relative flex min-h-[7rem] min-w-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-4"
+                        >
+                          <Loader2
+                            className="h-6 w-6 animate-spin text-[var(--muted)]"
+                            aria-hidden
+                          />
+                          <span className="text-[10px] font-semibold text-[var(--muted)]">
+                            Subiendo…
+                          </span>
                         </div>
                       ))}
                     </div>

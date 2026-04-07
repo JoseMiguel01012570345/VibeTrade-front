@@ -4,6 +4,7 @@ import { cn } from '../../lib/cn'
 import { useAppStore } from '../store/useAppStore'
 import { TrustBar } from '../widgets/TrustBar'
 import { NotificationsBell } from '../widgets/NotificationsBell'
+import { ProtectedMediaImg } from '../../components/media/ProtectedMediaImg'
 
 const tabs = [
   { to: '/home', label: 'Home', icon: Home },
@@ -72,9 +73,10 @@ export function AppShell() {
                       aria-hidden
                     >
                       {me.avatarUrl ? (
-                        <img
+                        <ProtectedMediaImg
                           src={me.avatarUrl}
                           alt=""
+                          wrapperClassName="h-full w-full"
                           className="h-full w-full object-cover"
                         />
                       ) : (

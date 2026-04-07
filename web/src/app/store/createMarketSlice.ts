@@ -1487,6 +1487,22 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => ({
       return true
     },
 
+    setOwnerStoreServicePublished: (storeId, ownerUserId, serviceId, published) => {
+      const s = get()
+      if (!isOwnerOfStore(s.stores, storeId, ownerUserId)) return false
+      const cat = s.storeCatalogs[storeId]
+      if (!cat) return false
+      const idx = cat.services.findIndex((x) => x.id === serviceId)
+      if (idx < 0) return false
+      const services = [...cat.services]
+      services[idx] = { ...services[idx], published }
+      set((prev) => ({
+        ...prev,
+        storeCatalogs: { ...prev.storeCatalogs, [storeId]: { ...cat, services } },
+      }))
+      return true
+    },
+
     addOwnerStoreService: (storeId, ownerUserId, input) => {
       const s = get()
       if (!isOwnerOfStore(s.stores, storeId, ownerUserId)) return null

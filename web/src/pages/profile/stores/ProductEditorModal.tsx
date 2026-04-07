@@ -1,6 +1,6 @@
 import { type ChangeEvent, useId, useState } from "react";
 import toast from "react-hot-toast";
-import { Upload, X } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import type { MerchandiseCondition } from "../../chat/domain/tradeAgreementTypes";
 import type { StoreProduct } from "../../chat/domain/storeCatalogTypes";
 import {
@@ -19,8 +19,11 @@ import {
   textareaMin,
 } from "../../chat/styles/formModalStyles";
 import { cn } from "../../../lib/cn";
+import { UploadBlockingOverlay } from "../../../components/UploadBlockingOverlay";
+import { ProtectedMediaImg } from "../../../components/media/ProtectedMediaImg";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
-import { readFileAsDataUrl } from "../../../utils/media/dataUrl";
+import { assertEntityPayloadUnderLimit } from "../../../utils/media/payloadLimits";
+import { uploadMedia, mediaApiUrl, isProtectedMediaUrl, releaseMediaObjectUrl } from "../../../utils/media/mediaClient";
 import {
   newAttachmentId,
   productPhotoSlotsFromUrls,
@@ -49,10 +52,12 @@ export function ProductEditorModal({
     productPhotoSlotsFromUrls(initial.photoUrls),
   );
   const [showVal, setShowVal] = useState(false);
-
-  if (!open) return null;
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [photoPendingCount, setPhotoPendingCount] = useState(0);
 
   const photoOk = photoSlots.length >= 1;
+
+  if (!open) return null;
 
   function onPickProductPhoto(e: ChangeEvent<HTMLInputElement>) {
     void (async () => {
@@ -60,43 +65,79 @@ export function ProductEditorModal({
       const picked = input.files ? Array.from(input.files) : [];
       input.value = "";
       if (!picked.length) return;
-      const added: ProductPhotoSlot[] = [];
+      const imageFiles = picked.filter((f) => f.type.startsWith("image/"));
       for (const file of picked) {
         if (!file.type.startsWith("image/")) {
           toast.error(`No es imagen: ${file.name}`);
-          continue;
-        }
-        try {
-          const dataUrl = await readFileAsDataUrl(file);
-          added.push({
-            id: newAttachmentId(),
-            url: dataUrl,
-            fileName: file.name,
-          });
-        } catch {
-          toast.error(`No se pudo leer: ${file.name}`);
         }
       }
-      if (added.length) setPhotoSlots((prev) => [...prev, ...added]);
+      if (!imageFiles.length) return;
+      setPhotoPendingCount(imageFiles.length);
+      setUploadBusy(true);
+      try {
+        const added: ProductPhotoSlot[] = [];
+        for (const file of imageFiles) {
+          try {
+            const uploaded = await uploadMedia(file);
+            const url = mediaApiUrl(uploaded.id);
+            added.push({
+              id: newAttachmentId(),
+              url,
+              fileName: file.name,
+            });
+          } catch (e) {
+            const msg =
+              e instanceof Error && e.message
+                ? e.message
+                : `No se pudo subir: ${file.name}`;
+            toast.error(msg);
+          } finally {
+            setPhotoPendingCount((c) => Math.max(0, c - 1));
+          }
+        }
+        if (!added.length) return;
+        const candidateUrls = [...photoSlots.map((p) => p.url), ...added.map((a) => a.url)];
+        const candidateSnapshot = { ...form, photoUrls: candidateUrls };
+        const limitErr = assertEntityPayloadUnderLimit(
+          candidateSnapshot,
+          "Este producto",
+        );
+        if (limitErr) {
+          toast.error(limitErr);
+          return;
+        }
+        setPhotoSlots((prev) => [...prev, ...added]);
+      } finally {
+        setUploadBusy(false);
+        setPhotoPendingCount(0);
+      }
     })();
   }
 
   function removeProductPhoto(slotId: string) {
     setPhotoSlots((prev) => {
       const slot = prev.find((p) => p.id === slotId);
-      if (slot) revokeIfBlob(slot.url);
+      if (slot) {
+        if (isProtectedMediaUrl(slot.url)) releaseMediaObjectUrl(slot.url);
+        revokeIfBlob(slot.url);
+      }
       return prev.filter((p) => p.id !== slotId);
     });
   }
 
   function clearAllProductPhotos() {
     setPhotoSlots((prev) => {
-      prev.forEach((p) => revokeIfBlob(p.url));
+      prev.forEach((p) => {
+        if (isProtectedMediaUrl(p.url)) releaseMediaObjectUrl(p.url);
+        revokeIfBlob(p.url);
+      });
       return [];
     });
   }
 
   return (
+    <>
+      <UploadBlockingOverlay active={uploadBusy} />
     <div
       className="vt-modal-backdrop"
       role="dialog"
@@ -333,10 +374,14 @@ export function ProductEditorModal({
                 </button>
               ) : null}
             </div>
-            {photoSlots.length ? (
+            {photoSlots.length > 0 || photoPendingCount > 0 ? (
               <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5">
                 <div className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                  Vista previa ({photoSlots.length})
+                  Vista previa ({photoSlots.length}
+                  {photoPendingCount > 0
+                    ? ` · subiendo ${photoPendingCount}`
+                    : ""}
+                  )
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {photoSlots.map((slot) => (
@@ -344,9 +389,10 @@ export function ProductEditorModal({
                       key={slot.id}
                       className="relative w-[calc(50%-4px)] min-[480px]:w-[140px] shrink-0 overflow-hidden rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_88%,transparent)]"
                     >
-                      <img
+                      <ProtectedMediaImg
                         src={slot.url}
                         alt=""
+                        wrapperClassName="w-full"
                         className="aspect-square w-full object-cover"
                       />
                       <div
@@ -366,13 +412,43 @@ export function ProductEditorModal({
                       </button>
                     </div>
                   ))}
+                  {Array.from({ length: photoPendingCount }).map((_, i) => (
+                    <div
+                      key={`photo-pending-${i}`}
+                      className="relative flex aspect-square w-[calc(50%-4px)] min-[480px]:w-[140px] shrink-0 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))]"
+                    >
+                      <Loader2
+                        className="h-7 w-7 animate-spin text-[var(--muted)]"
+                        aria-hidden
+                      />
+                      <span className="px-1 text-[9px] font-semibold text-[var(--muted)]">
+                        Subiendo…
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : null}
           </div>
           <CustomFieldsEditor
             fields={form.customFields}
-            onChange={(cf) => setForm((f) => ({ ...f, customFields: cf }))}
+            onUploadingChange={setUploadBusy}
+            onChange={(cf) => {
+              const candidate = { ...form, customFields: cf };
+              const payload = {
+                ...candidate,
+                photoUrls: photoSlots.map((p) => p.url),
+              };
+              const limitErr = assertEntityPayloadUnderLimit(
+                payload,
+                "Este producto",
+              );
+              if (limitErr) {
+                toast.error(limitErr);
+                return;
+              }
+              setForm({ ...form, customFields: cf });
+            }}
             showValidation={showVal}
           />
         </div>
@@ -394,6 +470,14 @@ export function ProductEditorModal({
                 setShowVal(true);
                 return;
               }
+              const limitErr = assertEntityPayloadUnderLimit(
+                snapshot,
+                "Este producto",
+              );
+              if (limitErr) {
+                toast.error(limitErr);
+                return;
+              }
               setShowVal(false);
               onSave(snapshot);
               onClose();
@@ -404,5 +488,6 @@ export function ProductEditorModal({
         </div>
       </div>
     </div>
+    </>
   );
 }

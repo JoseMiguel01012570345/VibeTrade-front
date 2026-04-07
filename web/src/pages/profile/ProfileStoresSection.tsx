@@ -5,12 +5,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
+import { UploadBlockingOverlay } from "../../components/UploadBlockingOverlay";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
-import { readFileAsDataUrl } from "../../utils/media/dataUrl";
+import { mediaApiUrl, uploadMedia } from "../../utils/media/mediaClient";
 import {
   emptyStoreProductInput,
   emptyStoreServiceInput,
@@ -45,6 +46,9 @@ export function ProfileStoresSection({
   );
   const setOwnerStoreProductPublished = useMarketStore(
     (s) => s.setOwnerStoreProductPublished,
+  );
+  const setOwnerStoreServicePublished = useMarketStore(
+    (s) => s.setOwnerStoreServicePublished,
   );
   const addOwnerStoreService = useMarketStore((s) => s.addOwnerStoreService);
   const updateOwnerStoreService = useMarketStore(
@@ -112,6 +116,11 @@ export function ProfileStoresSection({
   } | null>(null);
   const [avatarDrafts, setAvatarDrafts] = useState<Record<string, string>>({});
   const avatarDraftsRef = useRef<Record<string, string>>({});
+  const [storeAvatarUploadBusy, setStoreAvatarUploadBusy] = useState(false);
+  const [storesReloadBusy, setStoresReloadBusy] = useState(false);
+  const [catalogReloadBusyId, setCatalogReloadBusyId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     avatarDraftsRef.current = avatarDrafts;
@@ -157,16 +166,24 @@ export function ProfileStoresSection({
           toast.error("Elegí un archivo de imagen.");
           return;
         }
+        setStoreAvatarUploadBusy(true);
         try {
-          const dataUrl = await readFileAsDataUrl(file);
+          const uploaded = await uploadMedia(file);
+          const url = mediaApiUrl(uploaded.id);
           setAvatarDrafts((prev) => {
             const oldDraft = prev[storeId];
             if (oldDraft) revokeIfBlob(oldDraft);
-            return { ...prev, [storeId]: dataUrl };
+            return { ...prev, [storeId]: url };
           });
           toast.success("Revisá la imagen y tocá Guardar foto para confirmar.");
-        } catch {
-          toast.error("No se pudo leer la imagen.");
+        } catch (err) {
+          const msg =
+            err instanceof Error && err.message
+              ? err.message
+              : "No se pudo subir la imagen.";
+          toast.error(msg);
+        } finally {
+          setStoreAvatarUploadBusy(false);
         }
       })();
     };
@@ -197,6 +214,51 @@ export function ProfileStoresSection({
     }
   }
 
+  async function reloadStoreCatalog(storeId: string) {
+    if (!me.id) return;
+    setCatalogReloadBusyId(storeId);
+    try {
+      const data = await fetchStoreDetail(storeId, { userId: me.id });
+      useMarketStore.setState((s) => ({
+        ...s,
+        stores: { ...s.stores, [storeId]: data.store },
+        storeCatalogs: { ...s.storeCatalogs, [storeId]: data.catalog },
+      }));
+      toast.success("Catálogo actualizado");
+    } catch {
+      toast.error("No se pudo actualizar el catálogo");
+    } finally {
+      setCatalogReloadBusyId(null);
+    }
+  }
+
+  async function reloadAllMyStores() {
+    if (myStores.length === 0 || !me.id) return;
+    setStoresReloadBusy(true);
+    try {
+      const pairs = await Promise.all(
+        myStores.map(async (b) => {
+          const data = await fetchStoreDetail(b.id, { userId: me.id });
+          return [b.id, data] as const;
+        }),
+      );
+      useMarketStore.setState((s) => {
+        const nextStores = { ...s.stores };
+        const nextCats = { ...s.storeCatalogs };
+        for (const [id, data] of pairs) {
+          nextStores[id] = data.store;
+          nextCats[id] = data.catalog;
+        }
+        return { ...s, stores: nextStores, storeCatalogs: nextCats };
+      });
+      toast.success("Tiendas actualizadas");
+    } catch {
+      toast.error("No se pudieron actualizar las tiendas");
+    } finally {
+      setStoresReloadBusy(false);
+    }
+  }
+
   function discardStoreAvatarDraft(storeId: string) {
     setAvatarDrafts((p) => {
       const url = p[storeId];
@@ -210,7 +272,24 @@ export function ProfileStoresSection({
   if (!canEdit) {
     return (
       <div className="vt-card vt-card-pad">
-        <div className="vt-h2">Tiendas</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="vt-h2">Tiendas</div>
+          <button
+            type="button"
+            className="vt-btn vt-btn-ghost vt-btn-sm inline-flex items-center gap-1"
+            disabled={storesReloadBusy || myStores.length === 0}
+            title="Recargar todas las tiendas desde el servidor"
+            aria-label="Recargar todas las tiendas"
+            onClick={() => void reloadAllMyStores()}
+          >
+            <RefreshCw
+              size={14}
+              className={storesReloadBusy ? "animate-spin" : ""}
+              aria-hidden
+            />
+            Recargar
+          </button>
+        </div>
         <p className="vt-muted mt-1.5 max-w-[640px] text-[13px] leading-snug">
           Tiendas públicas de este usuario: podés abrir cada una para ver catálogo, publicaciones y reels como cualquier
           visitante.
@@ -229,7 +308,14 @@ export function ProfileStoresSection({
                   }).format(cat.joinedAt)
                 : "—";
               return (
-                <VisitorStoreSummaryCard key={b.id} store={b} catalog={cat} joinedLabel={joined} />
+                <VisitorStoreSummaryCard
+                  key={b.id}
+                  store={b}
+                  catalog={cat}
+                  joinedLabel={joined}
+                  onReloadCatalog={() => void reloadStoreCatalog(b.id)}
+                  catalogReloadBusy={catalogReloadBusyId === b.id}
+                />
               );
             })}
           </div>}
@@ -238,6 +324,11 @@ export function ProfileStoresSection({
   }
 
   return (
+    <>
+      <UploadBlockingOverlay
+        active={storeAvatarUploadBusy}
+        message="Subiendo imagen de tienda…"
+      />
     <div className="vt-card vt-card-pad">
       <datalist id="store-cat-hints">
         {SUGGESTED_CATEGORIES.map((c) => (
@@ -247,7 +338,24 @@ export function ProfileStoresSection({
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="vt-h2">Mis tiendas</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="vt-h2">Mis tiendas</div>
+            <button
+              type="button"
+              className="vt-btn vt-btn-ghost vt-btn-sm inline-flex items-center gap-1"
+              disabled={storesReloadBusy || myStores.length === 0}
+              title="Recargar todas las tiendas desde el servidor"
+              aria-label="Recargar todas las tiendas"
+              onClick={() => void reloadAllMyStores()}
+            >
+              <RefreshCw
+                size={14}
+                className={storesReloadBusy ? "animate-spin" : ""}
+                aria-hidden
+              />
+              Recargar
+            </button>
+          </div>
           <p className="vt-muted mt-1.5 max-w-[640px] text-[13px] leading-snug">
             Podés configurar una o más tiendas: nombre, categorías, descripción
             del catálogo, estado de verificación (solo puede validarlo soporte),
@@ -288,6 +396,8 @@ export function ProfileStoresSection({
                 joinedLabel={joined}
                 avatarDisplayUrl={avatarDrafts[b.id] ?? b.avatarUrl}
                 storeAvatarDirty={Boolean(avatarDrafts[b.id])}
+                catalogReloadBusy={catalogReloadBusyId === b.id}
+                onReloadStoreCatalog={() => void reloadStoreCatalog(b.id)}
                 onEditDetails={() => setEditStoreId(b.id)}
                 onRequestDeleteStore={() => {
                   if (
@@ -345,6 +455,24 @@ export function ProfileStoresSection({
                   if (removeOwnerStoreService(b.id, ownerUserId, serviceId))
                     toast.success("Servicio quitado");
                   else toast.error("No se pudo quitar");
+                }}
+                onToggleServicePublished={(serviceId, published) => {
+                  if (
+                    setOwnerStoreServicePublished(
+                      b.id,
+                      ownerUserId,
+                      serviceId,
+                      published,
+                    )
+                  ) {
+                    toast.success(
+                      published
+                        ? "Servicio publicado en la tienda"
+                        : "Servicio oculto de la tienda",
+                    );
+                  } else {
+                    toast.error("No se pudo actualizar");
+                  }
                 }}
               />
             );
@@ -443,6 +571,7 @@ export function ProfileStoresSection({
           initial={
             serviceEditing
               ? {
+                  published: serviceEditing.published !== false,
                   category: serviceEditing.category,
                   tipoServicio: serviceEditing.tipoServicio,
                   descripcion: serviceEditing.descripcion,
@@ -477,5 +606,6 @@ export function ProfileStoresSection({
         />
       ) : null}
     </div>
+    </>
   );
 }

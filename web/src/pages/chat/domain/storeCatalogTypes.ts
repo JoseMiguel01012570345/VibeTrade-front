@@ -252,6 +252,7 @@ export function emptyStoreProductInput(): Omit<StoreProduct, 'id' | 'storeId'> {
 /** Valores iniciales del formulario de servicio (perfil / ficha). */
 export function emptyStoreServiceInput(): Omit<StoreService, 'id' | 'storeId'> {
   return {
+    published: false,
     category: '',
     tipoServicio: '',
     descripcion: '',

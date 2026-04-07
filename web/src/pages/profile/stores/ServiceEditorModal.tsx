@@ -1,5 +1,7 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { UploadBlockingOverlay } from "../../../components/UploadBlockingOverlay";
+import { assertEntityPayloadUnderLimit } from "../../../utils/media/payloadLimits";
 import { HelpCircle } from "lucide-react";
 import type { StoreService } from "../../chat/domain/storeCatalogTypes";
 import {
@@ -36,12 +38,16 @@ export function ServiceEditorModal({
   onClose,
   onSave,
 }: Props) {
-  const [form, setForm] = useState(initial);
+  const [form, setForm] = useState(() => ({
+    ...initial,
+    published: initial.published !== false,
+  }));
   const [riesgosText, setRiesgosText] = useState(
     initial.riesgos.items.join("\n"),
   );
   const [depText, setDepText] = useState(initial.dependencias.items.join("\n"));
   const [showVal, setShowVal] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
 
   if (!open) return null;
 
@@ -49,6 +55,8 @@ export function ServiceEditorModal({
   const depLines = fixSplitLines(depText);
 
   return (
+    <>
+      <UploadBlockingOverlay active={uploadBusy} />
     <div
       className="vt-modal-backdrop"
       role="dialog"
@@ -105,6 +113,16 @@ export function ServiceEditorModal({
               }
               rows={4}
             />
+          </label>
+          <label className={checkRow}>
+            <input
+              type="checkbox"
+              checked={form.published !== false}
+              onChange={(e) =>
+                setForm({ ...form, published: e.target.checked })
+              }
+            />
+            <span>Publicar en la vitrina de la tienda</span>
           </label>
           <label className={checkRow}>
             <input
@@ -273,7 +291,19 @@ export function ServiceEditorModal({
           </label>
           <CustomFieldsEditor
             fields={form.customFields}
-            onChange={(cf) => setForm((f) => ({ ...f, customFields: cf }))}
+            onUploadingChange={setUploadBusy}
+            onChange={(cf) => {
+              const next = { ...form, customFields: cf };
+              const limitErr = assertEntityPayloadUnderLimit(
+                next,
+                "Este servicio",
+              );
+              if (limitErr) {
+                toast.error(limitErr);
+                return;
+              }
+              setForm(next);
+            }}
             showValidation={showVal}
           />
         </div>
@@ -313,6 +343,7 @@ export function ServiceEditorModal({
               setShowVal(false);
               const snapshot: Omit<StoreService, "id" | "storeId"> = {
                 ...form,
+                published: form.published !== false,
                 riesgos: {
                   enabled: form.riesgos.enabled && riesgosItems.length > 0,
                   items: riesgosItems,
@@ -327,6 +358,14 @@ export function ServiceEditorModal({
                   texto: form.garantias.texto,
                 },
               };
+              const limitErr = assertEntityPayloadUnderLimit(
+                snapshot,
+                "Este servicio",
+              );
+              if (limitErr) {
+                toast.error(limitErr);
+                return;
+              }
               onSave(snapshot);
               onClose();
             }}
@@ -336,5 +375,6 @@ export function ServiceEditorModal({
         </div>
       </div>
     </div>
+    </>
   );
 }

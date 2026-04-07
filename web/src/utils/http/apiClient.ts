@@ -7,7 +7,10 @@ export function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   headers.set('X-Timezone', timeZone)
   const token = getSessionToken()
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  if (init?.body != null && !headers.has('Content-Type')) {
+  // Never set Content-Type for FormData: the runtime must send multipart boundary.
+  const body = init?.body
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
+  if (body != null && !isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
   return fetch(input, { ...init, headers })

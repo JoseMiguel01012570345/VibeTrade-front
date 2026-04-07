@@ -9,6 +9,7 @@ import {
   Package,
   Pencil,
   Plus,
+  RefreshCw,
   Save,
   Store,
   Trash2,
@@ -16,7 +17,12 @@ import {
   Wrench,
 } from "lucide-react";
 import type { StoreBadge } from "../../../app/store/marketStoreTypes";
-import type { StoreCatalog, StoreProduct } from "../../chat/domain/storeCatalogTypes";
+import { ProtectedMediaImg } from "../../../components/media/ProtectedMediaImg";
+import type {
+  StoreCatalog,
+  StoreProduct,
+  StoreService,
+} from "../../chat/domain/storeCatalogTypes";
 
 type Props = Readonly<{
   store: StoreBadge;
@@ -37,6 +43,10 @@ type Props = Readonly<{
   onAddService: () => void;
   onEditService: (serviceId: string) => void;
   onRemoveService: (serviceId: string) => void;
+  onToggleServicePublished: (serviceId: string, published: boolean) => void;
+  /** Recarga catálogo desde el servidor (vitrina + listas). */
+  onReloadStoreCatalog: () => void;
+  catalogReloadBusy?: boolean;
 }>;
 
 export function OwnerStoreCard({
@@ -57,11 +67,12 @@ export function OwnerStoreCard({
   onAddService,
   onEditService,
   onRemoveService,
+  onToggleServicePublished,
+  onReloadStoreCatalog,
+  catalogReloadBusy = false,
 }: Props) {
   return (
-    <div
-      className="rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] p-3.5"
-    >
+    <div className="rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] p-3.5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 flex-1 gap-3">
           <input
@@ -78,17 +89,14 @@ export function OwnerStoreCard({
             title="Tocar para subir foto de la tienda"
           >
             {avatarDisplayUrl ? (
-              <img
+              <ProtectedMediaImg
                 src={avatarDisplayUrl}
                 alt=""
+                wrapperClassName="h-full w-full"
                 className="h-full w-full object-cover"
               />
             ) : (
-              <Store
-                size={22}
-                className="text-[var(--muted)]"
-                aria-hidden
-              />
+              <Store size={22} className="text-[var(--muted)]" aria-hidden />
             )}
           </label>
           <div className="min-w-0 flex-1">
@@ -146,10 +154,7 @@ export function OwnerStoreCard({
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link
-            className="vt-btn vt-btn-sm no-underline"
-            to={`/store/${b.id}`}
-          >
+          <Link className="vt-btn vt-btn-sm no-underline" to={`/store/${b.id}`}>
             Ver tienda
           </Link>
           <button
@@ -171,6 +176,8 @@ export function OwnerStoreCard({
 
       <StoreProductListSection
         cat={cat}
+        catalogReloadBusy={catalogReloadBusy}
+        onReload={onReloadStoreCatalog}
         onAdd={onAddProduct}
         onEdit={onEditProduct}
         onRemove={onRemoveProduct}
@@ -179,9 +186,12 @@ export function OwnerStoreCard({
 
       <StoreServiceListSection
         cat={cat}
+        catalogReloadBusy={catalogReloadBusy}
+        onReload={onReloadStoreCatalog}
         onAdd={onAddService}
         onEdit={onEditService}
         onRemove={onRemoveService}
+        onTogglePublished={onToggleServicePublished}
       />
     </div>
   );
@@ -193,17 +203,38 @@ function StoreProductListSection({
   onEdit,
   onRemove,
   onTogglePublished,
+  onReload,
+  catalogReloadBusy,
 }: Readonly<{
   cat: StoreCatalog | undefined;
   onAdd: () => void;
   onEdit: (id: string) => void;
   onRemove: (id: string) => void;
   onTogglePublished: (id: string, published: boolean) => void;
+  onReload: () => void;
+  catalogReloadBusy: boolean;
 }>) {
   return (
     <div className="mt-3 border-t border-[var(--border)] pt-3">
-      <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
-        Productos
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
+          Productos
+        </span>
+        <button
+          type="button"
+          className="vt-btn vt-btn-ghost vt-btn-sm inline-flex items-center gap-1"
+          disabled={catalogReloadBusy}
+          title="Recargar lista de productos"
+          aria-label="Recargar productos"
+          onClick={onReload}
+        >
+          <RefreshCw
+            size={14}
+            className={catalogReloadBusy ? "animate-spin" : ""}
+            aria-hidden
+          />
+          Recargar
+        </button>
       </div>
       {cat && cat.products.length > 0 ? (
         <ul className="mb-2 space-y-1.5 text-[13px]">
@@ -286,33 +317,80 @@ function StoreServiceListSection({
   onAdd,
   onEdit,
   onRemove,
+  onTogglePublished,
+  onReload,
+  catalogReloadBusy,
 }: Readonly<{
   cat: StoreCatalog | undefined;
   onAdd: () => void;
   onEdit: (id: string) => void;
   onRemove: (id: string) => void;
+  onTogglePublished: (id: string, published: boolean) => void;
+  onReload: () => void;
+  catalogReloadBusy: boolean;
 }>) {
   return (
     <div className="mt-3 border-t border-[var(--border)] pt-3">
-      <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
-        Servicios
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
+          Servicios
+        </span>
+        <button
+          type="button"
+          className="vt-btn vt-btn-ghost vt-btn-sm inline-flex items-center gap-1"
+          disabled={catalogReloadBusy}
+          title="Recargar lista de servicios"
+          aria-label="Recargar servicios"
+          onClick={onReload}
+        >
+          <RefreshCw
+            size={14}
+            className={catalogReloadBusy ? "animate-spin" : ""}
+            aria-hidden
+          />
+          Recargar
+        </button>
       </div>
       {cat && cat.services.length > 0 ? (
         <ul className="mb-2 space-y-1.5 text-[13px]">
-          {cat.services.map((sv) => (
+          {cat.services.map((sv: StoreService) => {
+            const pub = sv.published !== false;
+            return (
             <li
               key={sv.id}
               className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[var(--surface)] px-2 py-1.5"
             >
-              <span className="inline-flex min-w-0 items-center gap-2">
-                <Wrench
-                  size={14}
-                  className="shrink-0 opacity-70"
-                  aria-hidden
-                />
+              <span className="inline-flex min-w-0 flex-wrap items-center gap-2">
+                <Wrench size={14} className="shrink-0 opacity-70" aria-hidden />
                 <span className="truncate font-bold">{sv.tipoServicio}</span>
+                {pub ? (
+                  <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-[color-mix(in_oklab,var(--good)_14%,transparent)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-green-900">
+                    <BadgeCheck size={12} aria-hidden /> Publicado
+                  </span>
+                ) : (
+                  <span className="vt-muted inline-flex shrink-0 items-center rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide">
+                    Borrador
+                  </span>
+                )}
               </span>
-              <span className="flex gap-1">
+              <span className="flex flex-wrap gap-1">
+                <button
+                  type="button"
+                  className="vt-btn vt-btn-ghost vt-btn-sm inline-flex items-center gap-1"
+                  onClick={() => {
+                    onTogglePublished(sv.id, !pub);
+                  }}
+                >
+                  {pub ? (
+                    <>
+                      <EyeOff size={14} aria-hidden /> Ocultar
+                    </>
+                  ) : (
+                    <>
+                      <Globe size={14} aria-hidden /> Publicar
+                    </>
+                  )}
+                </button>
                 <button
                   type="button"
                   className="vt-btn vt-btn-ghost vt-btn-sm"
@@ -329,7 +407,8 @@ function StoreServiceListSection({
                 </button>
               </span>
             </li>
-          ))}
+          );
+          })}
         </ul>
       ) : (
         <p className="vt-muted mb-2 text-xs">Sin servicios en catálogo.</p>

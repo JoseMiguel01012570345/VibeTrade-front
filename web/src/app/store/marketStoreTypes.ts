@@ -336,6 +336,12 @@ export type MarketState = {
     productId: string,
     published: boolean,
   ) => boolean
+  setOwnerStoreServicePublished: (
+    storeId: string,
+    ownerUserId: string,
+    serviceId: string,
+    published: boolean,
+  ) => boolean
   addOwnerStoreService: (storeId: string, ownerUserId: string, service: StoreServiceInput) => string | null
   updateOwnerStoreService: (
     storeId: string,

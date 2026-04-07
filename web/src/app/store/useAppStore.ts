@@ -29,6 +29,10 @@ export type User = {
   phone: string
   avatarUrl?: string
   trustScore: number
+  /** Cuentas persistidas en servidor (también reflejadas en `profileSocialLinks`). */
+  instagram?: string
+  telegram?: string
+  xAccount?: string
 }
 
 const guestMe: User = {
@@ -161,7 +165,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   applySessionUser: (user) =>
     set((s) => {
       revokeBlobUrl(s.me.avatarUrl)
-      return { me: { ...user } }
+      const nextMe: User = { ...s.me, ...user }
+      const profileSocialLinks: ProfileSocialLinks = {}
+      if (nextMe.instagram) profileSocialLinks.instagram = nextMe.instagram
+      if (nextMe.telegram) profileSocialLinks.telegram = nextMe.telegram
+      if (nextMe.xAccount) profileSocialLinks.x = nextMe.xAccount
+      return { me: nextMe, profileSocialLinks }
     }),
 
   resetSessionProfile: () =>

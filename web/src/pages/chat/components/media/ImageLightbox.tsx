@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { ProtectedMediaImg } from '../../../../components/media/ProtectedMediaImg'
 
 export function ImageLightbox({ url, onClose }: { url: string | null; onClose: () => void }) {
   useEffect(() => {
@@ -27,12 +28,14 @@ export function ImageLightbox({ url, onClose }: { url: string | null; onClose: (
       >
         ×
       </button>
-      <img
-        src={url}
-        alt=""
-        className="max-h-[min(100%,92vh)] max-w-[min(100%,96vw)] cursor-default rounded-xl object-contain"
-        onClick={(e) => e.stopPropagation()}
-      />
+      <span onClick={(e) => e.stopPropagation()}>
+        <ProtectedMediaImg
+          src={url}
+          alt=""
+          wrapperClassName="max-h-[min(100%,92vh)] max-w-[min(100%,96vw)]"
+          className="max-h-[min(100%,92vh)] max-w-[min(100%,96vw)] cursor-default rounded-xl object-contain"
+        />
+      </span>
     </div>
   )
 }

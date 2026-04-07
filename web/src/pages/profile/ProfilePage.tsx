@@ -33,7 +33,12 @@ import {
 import { ProfileStoresSection } from "./ProfileStoresSection";
 import { reelTitlesById } from "../../utils/reels/reelsBootstrapState";
 import { logoutWebApp } from "../../utils/auth/logoutWebApp";
-import { readFileAsDataUrl } from "../../utils/media/dataUrl";
+import { patchProfile, patchProfileAvatar } from "../../utils/auth/patchProfile";
+import { userFromSessionJson } from "../../utils/auth/sessionUser";
+import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
+import { mediaApiUrl, uploadMedia } from "../../utils/media/mediaClient";
+import { UploadBlockingOverlay } from "../../components/UploadBlockingOverlay";
+import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 
 function isValidEmail(value: string): boolean {
   const t = value.trim();
@@ -80,6 +85,7 @@ function UserAvatarBadge({
   sizeClass,
   title,
   onPickClick,
+  onPreviewClick,
   interactive,
 }: {
   avatarUrl?: string;
@@ -87,12 +93,18 @@ function UserAvatarBadge({
   sizeClass: string;
   title: string;
   onPickClick?: () => void;
+  onPreviewClick?: () => void;
   interactive?: boolean;
 }) {
   const inner = (
     <>
       {avatarUrl ? (
-        <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+        <ProtectedMediaImg
+          src={avatarUrl}
+          alt=""
+          wrapperClassName="h-full w-full"
+          className="h-full w-full object-cover"
+        />
       ) : (
         <span className="text-lg font-black text-white">{fallbackLetter}</span>
       )}
@@ -100,23 +112,57 @@ function UserAvatarBadge({
   );
 
   const shellClass = cn(
-    "grid place-items-center overflow-hidden rounded-[18px] bg-gradient-to-br from-[var(--primary)] to-violet-600 text-white",
+    "relative grid place-items-center overflow-hidden rounded-[18px] bg-gradient-to-br from-[var(--primary)] to-violet-600 text-white",
     sizeClass,
     interactive &&
-      "cursor-pointer ring-offset-2 transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]",
+      "ring-offset-2 transition hover:opacity-95 focus-within:outline-none focus-within:ring-2 focus-within:ring-[var(--primary)]",
   );
 
   if (interactive && onPickClick) {
+    const canPreview = Boolean(avatarUrl) && Boolean(onPreviewClick);
     return (
-      <button
-        type="button"
-        className={shellClass}
-        title={title}
-        aria-label={title}
-        onClick={onPickClick}
-      >
+      <div className={shellClass}>
         {inner}
-      </button>
+        {canPreview ? (
+          <>
+            <span
+              className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[rgba(2,6,23,0.18)] via-transparent to-transparent"
+              aria-hidden
+            />
+            <button
+              type="button"
+              className="absolute inset-0 z-[1] cursor-zoom-in"
+              onClick={() => onPreviewClick?.()}
+              aria-label="Ver foto de perfil"
+              title="Ver foto de perfil"
+            />
+            <button
+              type="button"
+              className={cn(
+                "absolute bottom-1 right-1 z-[2] grid h-7 w-7 place-items-center rounded-full",
+                "border border-white/25 bg-[rgba(2,6,23,0.45)] text-white backdrop-blur-[8px]",
+                "hover:bg-[rgba(2,6,23,0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPickClick();
+              }}
+              aria-label="Cambiar foto"
+              title="Cambiar foto"
+            >
+              <Camera size={14} aria-hidden />
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="absolute inset-0 z-[1]"
+            onClick={onPickClick}
+            aria-label={title}
+            title={title}
+          />
+        )}
+      </div>
     );
   }
 
@@ -130,10 +176,7 @@ export function ProfilePage() {
   const stores = useMarketStore((s) => s.stores);
   const profileDisplayNames = useAppStore((s) => s.profileDisplayNames);
   const profileSocialLinks = useAppStore((s) => s.profileSocialLinks);
-  const setMeAvatarUrl = useAppStore((s) => s.setMeAvatarUrl);
-  const setMeName = useAppStore((s) => s.setMeName);
-  const setMeEmail = useAppStore((s) => s.setMeEmail);
-  const setProfileSocialLink = useAppStore((s) => s.setProfileSocialLink);
+  const applySessionUser = useAppStore((s) => s.applySessionUser);
   const saved = useAppStore((s) => s.savedReels);
 
   const isMe = userId === "me" || userId === me.id;
@@ -159,6 +202,7 @@ export function ProfilePage() {
   const [avatarDraftUrl, setAvatarDraftUrl] = useState<string | null>(null);
   const avatarDraftRef = useRef<string | null>(null);
   const profileAvatarInputRef = useRef<HTMLInputElement>(null);
+  const [profileUploadBusy, setProfileUploadBusy] = useState(false);
 
   useEffect(() => {
     avatarDraftRef.current = avatarDraftUrl;
@@ -204,24 +248,48 @@ export function ProfilePage() {
       toast.error("Elegí un archivo de imagen.");
       return;
     }
+    setProfileUploadBusy(true);
     try {
-      const dataUrl = await readFileAsDataUrl(file);
+      const uploaded = await uploadMedia(file);
+      const url = mediaApiUrl(uploaded.id);
       setAvatarDraftUrl((prev) => {
         revokeBlobUrlLocal(prev);
-        return dataUrl;
+        return url;
       });
       toast.success("Revisá la imagen y tocá Guardar para confirmar.");
-    } catch {
-      toast.error("No se pudo leer la imagen.");
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.message
+          ? err.message
+          : "No se pudo subir la imagen.";
+      toast.error(msg);
+    } finally {
+      setProfileUploadBusy(false);
     }
   }
 
-  function saveProfileAvatar() {
+  async function saveProfileAvatar() {
     if (!avatarDraftUrl) return;
-    setMeAvatarUrl(avatarDraftUrl);
-    avatarDraftRef.current = null;
-    setAvatarDraftUrl(null);
-    toast.success("Foto de perfil guardada");
+    if (!avatarDraftUrl.startsWith("/api/v1/media/")) {
+      toast.error("Guardá de nuevo: la foto debe subirse al servidor.");
+      return;
+    }
+    setProfileUploadBusy(true);
+    try {
+      const userJson = await patchProfileAvatar(avatarDraftUrl);
+      applySessionUser(userFromSessionJson(userJson));
+      avatarDraftRef.current = null;
+      setAvatarDraftUrl(null);
+      toast.success("Foto de perfil guardada");
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.message
+          ? err.message
+          : "No se pudo guardar la foto de perfil.";
+      toast.error(msg);
+    } finally {
+      setProfileUploadBusy(false);
+    }
   }
 
   function discardProfileAvatarDraft() {
@@ -239,31 +307,74 @@ export function ProfilePage() {
     emailDraft.trim().toLowerCase() !== safeEmail.trim().toLowerCase();
   const profileAvatarDirty = isMe && avatarDraftUrl !== null;
   const profileAvatarDisplayUrl = avatarDraftUrl ?? me.avatarUrl;
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
 
-  function saveDisplayName() {
+  async function saveDisplayName() {
     const t = nameDraft.trim();
     if (t.length < 2) {
       toast.error("El nombre debe tener al menos 2 caracteres.");
       return;
     }
-    setMeName(t);
-    toast.success("Nombre guardado");
+    try {
+      const userJson = await patchProfile({ name: t });
+      applySessionUser(userFromSessionJson(userJson));
+      toast.success("Nombre guardado");
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.message
+          ? err.message
+          : "No se pudo guardar el nombre.";
+      toast.error(msg);
+    }
   }
 
-  function saveEmailField() {
+  async function saveEmailField() {
     const t = emailDraft.trim();
     if (!isValidEmail(t)) {
       toast.error("Ingresá un email válido.");
       return;
     }
-    setMeEmail(t);
-    toast.success("Email guardado");
+    try {
+      const userJson = await patchProfile({ email: t });
+      applySessionUser(userFromSessionJson(userJson));
+      toast.success("Email guardado");
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.message
+          ? err.message
+          : "No se pudo guardar el email.";
+      toast.error(msg);
+    }
   }
 
   const socialModalMeta = socialModal ? SOCIAL_META[socialModal] : null;
 
+  async function saveSocialFromModal() {
+    if (!socialModal) return;
+    const t = socialDraft.trim();
+    try {
+      const userJson = await patchProfile(
+        socialModal === "instagram"
+          ? { instagram: t }
+          : socialModal === "telegram"
+            ? { telegram: t }
+            : { xAccount: t },
+      );
+      applySessionUser(userFromSessionJson(userJson));
+      setSocialModal(null);
+      toast.success("Enlace guardado");
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.message
+          ? err.message
+          : "No se pudo guardar el enlace.";
+      toast.error(msg);
+    }
+  }
+
   return (
     <div className="container vt-page">
+      <UploadBlockingOverlay active={profileUploadBusy} message="Procesando imagen…" />
       <input
         ref={profileAvatarInputRef}
         type="file"
@@ -348,9 +459,12 @@ export function ProfilePage() {
                   avatarUrl={profileAvatarDisplayUrl}
                   fallbackLetter={letter}
                   sizeClass="h-[88px] w-[88px] shrink-0 text-2xl"
-                  title="Cambiar foto de perfil"
+                  title="Elegir foto de perfil"
                   interactive
                   onPickClick={() => profileAvatarInputRef.current?.click()}
+                  onPreviewClick={() =>
+                    setAvatarPreviewUrl(profileAvatarDisplayUrl ?? null)
+                  }
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <div>
@@ -650,9 +764,7 @@ export function ProfilePage() {
                 type="button"
                 className="vt-btn vt-btn-primary"
                 onClick={() => {
-                  setProfileSocialLink(socialModal, socialDraft);
-                  setSocialModal(null);
-                  toast.success("Enlace guardado");
+                  void saveSocialFromModal();
                 }}
               >
                 Guardar
@@ -661,6 +773,11 @@ export function ProfilePage() {
           </div>
         </div>
       ) : null}
+
+      <ImageLightbox
+        url={avatarPreviewUrl}
+        onClose={() => setAvatarPreviewUrl(null)}
+      />
     </div>
   );
 }

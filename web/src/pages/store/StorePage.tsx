@@ -21,6 +21,10 @@ import type { StoreBadge } from '../../app/store/marketStoreTypes'
 import type { StoreCatalog, StoreProduct, StoreService } from '../chat/domain/storeCatalogTypes'
 import { reelsForStore } from '../../utils/reels/reelsBootstrapState'
 import { fetchStoreDetail } from '../../utils/market/fetchStoreDetail'
+import {
+  ProtectedMediaAnchor,
+  ProtectedMediaImg,
+} from '../../components/media/ProtectedMediaImg'
 
 type StoreScreen = 'hub' | 'catalog' | 'products' | 'services' | 'feed' | 'reels'
 
@@ -33,7 +37,12 @@ function ProductDetailCard({ p }: { p: StoreProduct }) {
       <div className="grid min-[640px]:grid-cols-[160px_1fr]">
         <div className="relative min-h-[120px] bg-[color-mix(in_oklab,var(--bg)_75%,var(--surface))]">
           {p.photoUrls[0] ? (
-            <img src={p.photoUrls[0]} alt={p.name} className="absolute inset-0 h-full w-full object-cover" />
+            <ProtectedMediaImg
+              src={p.photoUrls[0]}
+              alt={p.name}
+              wrapperClassName="absolute inset-0 h-full w-full"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
           ) : (
             <div className="grid h-full min-h-[120px] place-items-center text-[var(--muted)]">
               <Package size={28} aria-hidden />
@@ -52,9 +61,18 @@ function ProductDetailCard({ p }: { p: StoreProduct }) {
               <div className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">Más fotos</div>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {p.photoUrls.slice(1).map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border border-[var(--border)]">
-                    <img src={url} alt="" className="h-16 w-16 object-cover sm:h-20 sm:w-20" />
-                  </a>
+                  <ProtectedMediaAnchor
+                    key={i}
+                    href={url}
+                    className="block overflow-hidden rounded-lg border border-[var(--border)]"
+                  >
+                    <ProtectedMediaImg
+                      src={url}
+                      alt=""
+                      wrapperClassName="block h-16 w-16 sm:h-20 sm:w-20"
+                      className="h-16 w-16 object-cover sm:h-20 sm:w-20"
+                    />
+                  </ProtectedMediaAnchor>
                 ))}
               </div>
             </div>
@@ -112,19 +130,22 @@ function ProductDetailCard({ p }: { p: StoreProduct }) {
                       <div className="mt-2 flex flex-wrap gap-2">
                         {f.attachments.map((att) =>
                           att.kind === 'image' ? (
-                            <a key={att.id} href={att.url} target="_blank" rel="noreferrer" className="block">
-                              <img src={att.url} alt={att.fileName} className="max-h-32 max-w-[160px] rounded border border-[var(--border)] object-contain" />
-                            </a>
+                            <ProtectedMediaAnchor key={att.id} href={att.url} className="block">
+                              <ProtectedMediaImg
+                                src={att.url}
+                                alt={att.fileName}
+                                wrapperClassName="block max-w-[160px]"
+                                className="max-h-32 max-w-[160px] rounded border border-[var(--border)] object-contain"
+                              />
+                            </ProtectedMediaAnchor>
                           ) : (
-                            <a
+                            <ProtectedMediaAnchor
                               key={att.id}
                               href={att.url}
-                              target="_blank"
-                              rel="noreferrer"
                               className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[12px] font-semibold text-[var(--primary)]"
                             >
                               {att.fileName}
-                            </a>
+                            </ProtectedMediaAnchor>
                           ),
                         )}
                       </div>
@@ -210,19 +231,22 @@ function ServiceDetailCard({ s }: { s: StoreService }) {
                       <div className="mt-2 flex flex-wrap gap-2">
                         {f.attachments.map((att) =>
                           att.kind === 'image' ? (
-                            <a key={att.id} href={att.url} target="_blank" rel="noreferrer" className="block">
-                              <img src={att.url} alt={att.fileName} className="max-h-32 max-w-[160px] rounded border border-[var(--border)] object-contain" />
-                            </a>
+                            <ProtectedMediaAnchor key={att.id} href={att.url} className="block">
+                              <ProtectedMediaImg
+                                src={att.url}
+                                alt={att.fileName}
+                                wrapperClassName="block max-w-[160px]"
+                                className="max-h-32 max-w-[160px] rounded border border-[var(--border)] object-contain"
+                              />
+                            </ProtectedMediaAnchor>
                           ) : (
-                            <a
+                            <ProtectedMediaAnchor
                               key={att.id}
                               href={att.url}
-                              target="_blank"
-                              rel="noreferrer"
                               className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_88%,var(--surface))] px-2 py-1 text-[12px] font-semibold text-[var(--primary)]"
                             >
                               {att.fileName}
-                            </a>
+                            </ProtectedMediaAnchor>
                           ),
                         )}
                       </div>
@@ -252,10 +276,11 @@ function StoreIdentityBlock({
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           {store.avatarUrl ? (
-            <img
+            <ProtectedMediaImg
               src={store.avatarUrl}
               alt=""
-              className="mt-0.5 h-14 w-14 shrink-0 rounded-[16px] border border-[var(--border)] object-cover"
+              wrapperClassName="mt-0.5 h-14 w-14 shrink-0"
+              className="h-14 w-14 rounded-[16px] border border-[var(--border)] object-cover"
             />
           ) : null}
           <div className="min-w-0">
@@ -439,7 +464,12 @@ export function StorePage() {
     >
       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_60%,var(--surface))]">
         {store.avatarUrl ? (
-          <img src={store.avatarUrl} alt="" className="h-full w-full rounded-[10px] object-cover" />
+          <ProtectedMediaImg
+            src={store.avatarUrl}
+            alt=""
+            wrapperClassName="h-full w-full"
+            className="h-full w-full rounded-[10px] object-cover"
+          />
         ) : (
           <Store size={22} className="text-[var(--muted)]" aria-hidden />
         )}
@@ -613,7 +643,12 @@ export function StorePage() {
                       >
                         <div className="relative h-[88px] bg-[color-mix(in_oklab,var(--bg)_75%,var(--surface))]">
                           {p.photoUrls[0] ? (
-                            <img src={p.photoUrls[0]} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                            <ProtectedMediaImg
+                              src={p.photoUrls[0]}
+                              alt=""
+                              wrapperClassName="absolute inset-0 h-full w-full"
+                              className="absolute inset-0 h-full w-full object-cover"
+                            />
                           ) : (
                             <div className="grid h-full place-items-center text-[var(--muted)]">
                               <Package size={22} aria-hidden />
@@ -676,7 +711,12 @@ export function StorePage() {
                         to={`/reels?store=${encodeURIComponent(storeId)}&reel=${encodeURIComponent(r.id)}`}
                         className="group relative h-[124px] w-[88px] shrink-0 snap-start overflow-hidden rounded-[12px] border border-[var(--border)] no-underline"
                       >
-                        <img src={r.cover} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-[1.03]" />
+                        <ProtectedMediaImg
+                          src={r.cover}
+                          alt=""
+                          wrapperClassName="absolute inset-0 h-full w-full"
+                          className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-[1.03]"
+                        />
                         <div className="absolute inset-0 bg-gradient-to-t from-[rgba(2,6,23,0.85)] via-transparent to-transparent" />
                         <div className="absolute bottom-1.5 left-1.5 right-1.5 z-[1]">
                           <div className="line-clamp-2 text-[10px] font-extrabold leading-tight text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
@@ -779,7 +819,12 @@ export function StorePage() {
                     to={`/offer/${o.id}`}
                     className="col-span-12 grid min-[720px]:col-span-6 grid-cols-[120px_1fr] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]"
                   >
-                    <img src={o.imageUrl} alt={o.title} className="block h-full min-h-[90px] w-[120px] object-cover" />
+                    <ProtectedMediaImg
+                      src={o.imageUrl}
+                      alt={o.title}
+                      wrapperClassName="block h-full min-h-[90px] w-[120px]"
+                      className="block h-full min-h-[90px] w-[120px] object-cover"
+                    />
                     <div className="px-3 py-2.5">
                       <div className="font-black tracking-[-0.02em]">{o.title}</div>
                       <div className="vt-muted">{o.price}</div>
@@ -812,9 +857,10 @@ export function StorePage() {
                     className="group overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] no-underline"
                   >
                     <div className="relative aspect-[9/14] bg-[color-mix(in_oklab,var(--bg)_65%,var(--surface))]">
-                      <img
+                      <ProtectedMediaImg
                         src={r.cover}
                         alt=""
+                        wrapperClassName="absolute inset-0 h-full w-full"
                         className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-[1.03]"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-[rgba(2,6,23,0.82)] via-transparent to-transparent" />

@@ -4,20 +4,30 @@ import {
   Calendar,
   CheckCircle2,
   Package,
+  RefreshCw,
   Store,
   Truck,
   Wrench,
 } from 'lucide-react'
 import type { StoreBadge } from '../../../app/store/marketStoreTypes'
+import { ProtectedMediaImg } from '../../../components/media/ProtectedMediaImg'
 import type { StoreCatalog } from '../../chat/domain/storeCatalogTypes'
 
 type Props = Readonly<{
   store: StoreBadge
   catalog: StoreCatalog | undefined
   joinedLabel: string
+  onReloadCatalog?: () => void
+  catalogReloadBusy?: boolean
 }>
 
-export function VisitorStoreSummaryCard({ store: b, catalog: cat, joinedLabel: joined }: Props) {
+export function VisitorStoreSummaryCard({
+  store: b,
+  catalog: cat,
+  joinedLabel: joined,
+  onReloadCatalog,
+  catalogReloadBusy = false,
+}: Props) {
   const publishedProducts = (cat?.products ?? []).filter((p) => p.published)
   const publishedServices = (cat?.services ?? []).filter((s) => s.published !== false)
 
@@ -27,7 +37,12 @@ export function VisitorStoreSummaryCard({ store: b, catalog: cat, joinedLabel: j
         <div className="flex min-w-0 flex-1 gap-3">
           <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
             {b.avatarUrl ?
-              <img src={b.avatarUrl} alt="" className="h-full w-full object-cover" />
+              <ProtectedMediaImg
+                src={b.avatarUrl}
+                alt=""
+                wrapperClassName="h-full w-full"
+                className="h-full w-full object-cover"
+              />
             : <Store size={22} className="text-[var(--muted)]" aria-hidden />}
           </div>
           <div className="min-w-0">
@@ -63,8 +78,26 @@ export function VisitorStoreSummaryCard({ store: b, catalog: cat, joinedLabel: j
 
       <div className="mt-3 grid grid-cols-1 gap-2 border-t border-[var(--border)] pt-3 min-[480px]:grid-cols-2">
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2">
-          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-            <Package size={12} aria-hidden /> Vitrina · productos
+          <div className="flex items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+              <Package size={12} aria-hidden /> Vitrina · productos
+            </div>
+            {onReloadCatalog ?
+              <button
+                type="button"
+                className="vt-btn vt-btn-ghost vt-btn-sm inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5"
+                disabled={catalogReloadBusy}
+                title="Recargar catálogo (vitrina)"
+                aria-label="Recargar vitrina de productos"
+                onClick={onReloadCatalog}
+              >
+                <RefreshCw
+                  size={12}
+                  className={catalogReloadBusy ? "animate-spin" : ""}
+                  aria-hidden
+                />
+              </button>
+            : null}
           </div>
           <div className="mt-1 text-sm font-bold">{publishedProducts.length} publicado{publishedProducts.length === 1 ? '' : 's'}</div>
           {publishedProducts.length > 0 ?
@@ -81,8 +114,26 @@ export function VisitorStoreSummaryCard({ store: b, catalog: cat, joinedLabel: j
           : <p className="vt-muted mt-1 text-[12px]">Sin productos en vitrina.</p>}
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2">
-          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-            <Wrench size={12} aria-hidden /> Vitrina · servicios
+          <div className="flex items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+              <Wrench size={12} aria-hidden /> Vitrina · servicios
+            </div>
+            {onReloadCatalog ?
+              <button
+                type="button"
+                className="vt-btn vt-btn-ghost vt-btn-sm inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5"
+                disabled={catalogReloadBusy}
+                title="Recargar catálogo (vitrina)"
+                aria-label="Recargar vitrina de servicios"
+                onClick={onReloadCatalog}
+              >
+                <RefreshCw
+                  size={12}
+                  className={catalogReloadBusy ? "animate-spin" : ""}
+                  aria-hidden
+                />
+              </button>
+            : null}
           </div>
           <div className="mt-1 text-sm font-bold">{publishedServices.length} publicado{publishedServices.length === 1 ? '' : 's'}</div>
           {publishedServices.length > 0 ?
