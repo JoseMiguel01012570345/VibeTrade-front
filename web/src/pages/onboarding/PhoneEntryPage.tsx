@@ -1,27 +1,52 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Phone } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { CountrySelect } from './CountrySelect'
 import { COUNTRIES, type Country } from './countries'
+import { apiFetch } from '../../utils/http/apiClient'
+import type { OnboardingMode } from './OnboardingWelcomePage'
+
+type PhoneLocationState = {
+  mode?: OnboardingMode
+}
 
 export function PhoneEntryPage() {
   const nav = useNavigate()
+  const loc = useLocation()
+  const mode = (loc.state as PhoneLocationState | null)?.mode ?? 'register'
+
   const [country, setCountry] = useState<Country>(COUNTRIES[0])
   const [number, setNumber] = useState('')
+  const [sending, setSending] = useState(false)
 
   const phone = useMemo(() => {
     const digits = number.replace(/[^\d]/g, '')
     return `${country.dial} ${digits}`
   }, [country.dial, number])
 
-  const canSend = number.replace(/[^\d]/g, '').length >= 7
+  const canSend = number.replace(/[^\d]/g, '').length >= 7 && !sending
+
+  const heading =
+    mode === 'login' ? 'Iniciar sesión' : 'Crear tu cuenta'
+  const lead =
+    mode === 'login' ?
+      'Ingresá el número con el que te registraste. Te enviaremos un código por SMS.'
+    : 'Ingresá tu número. Te enviaremos un código por SMS para verificarlo y crear tu perfil.'
 
   return (
     <div className="container vt-page">
       <div className="mx-auto mt-[18px] flex w-full max-w-[520px] flex-col gap-3.5">
         <div className="flex flex-col gap-1.5">
-          <h1 className="vt-h1">Verificación de teléfono</h1>
-          <div className="vt-muted">Te enviaremos un SMS con tu código de verificación.</div>
+          <button
+            type="button"
+            className="self-start border-0 bg-transparent px-0 text-sm font-extrabold text-[var(--primary)] underline-offset-2 hover:underline"
+            onClick={() => nav('/onboarding')}
+          >
+            ← Volver a opciones
+          </button>
+          <h1 className="vt-h1">{heading}</h1>
+          <div className="vt-muted">{lead}</div>
         </div>
 
         <div className="vt-card vt-card-pad bg-[var(--surface)]">
@@ -58,15 +83,46 @@ export function PhoneEntryPage() {
             <button
               className="vt-btn vt-btn-primary w-full px-3 py-3"
               disabled={!canSend}
-              onClick={() => nav('/onboarding/otp', { state: { phone } })}
+              onClick={() => {
+                void (async () => {
+                  setSending(true)
+                  try {
+                    const res = await apiFetch('/api/v1/auth/request-code', {
+                      method: 'POST',
+                      body: JSON.stringify({ phone }),
+                    })
+                    if (!res.ok) {
+                      toast.error('No se pudo enviar el código. ¿Backend en marcha?')
+                      return
+                    }
+                    const json = (await res.json()) as {
+                      codeLength: number
+                      devMockCode?: string | null
+                    }
+                    nav('/onboarding/otp', {
+                      state: {
+                        phone,
+                        mode,
+                        codeLength: json.codeLength,
+                        devHint: json.devMockCode ?? undefined,
+                      },
+                    })
+                  } finally {
+                    setSending(false)
+                  }
+                })()
+              }}
             >
-              Enviar código
+              {sending ? 'Enviando…' : 'Enviar código'}
             </button>
           </div>
         </div>
 
         <div className="flex justify-center">
-          <div className="vt-pill">Demo: tu OTP válido es 123456</div>
+          <div className="vt-pill max-w-[520px] text-center text-xs leading-relaxed text-[var(--muted)]">
+            El código es de un solo uso. En entornos de desarrollo puede mostrarse como{' '}
+            <span className="font-black text-[var(--text)]">devMockCode</span> en la respuesta del servidor.
+          </div>
         </div>
       </div>
     </div>

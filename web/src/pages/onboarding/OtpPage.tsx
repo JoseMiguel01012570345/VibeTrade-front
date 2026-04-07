@@ -4,21 +4,43 @@ import toast from 'react-hot-toast'
 import { cn } from '../../lib/cn'
 import { useAppStore } from '../../app/store/useAppStore'
 import { OtpInput } from './OtpInput'
+import { apiFetch } from '../../utils/http/apiClient'
+import { setSessionToken } from '../../utils/http/sessionToken'
+import { userFromSessionJson, type SessionUserJson } from '../../utils/auth/sessionUser'
+import type { OnboardingMode } from './OnboardingWelcomePage'
 
 function fmt(n: number) {
   const s = String(n).padStart(2, '0')
   return `00:${s}`
 }
 
+type OtpLocationState = {
+  phone?: string
+  mode?: OnboardingMode
+  codeLength?: number
+  devHint?: string | null
+}
+
 export function OtpPage() {
   const nav = useNavigate()
   const loc = useLocation()
   const setSessionActive = useAppStore((s) => s.setSessionActive)
-  const phone = (loc.state as { phone?: string } | null)?.phone ?? ''
+  const applySessionUser = useAppStore((s) => s.applySessionUser)
+
+  const state = loc.state as OtpLocationState | null
+  const phone = state?.phone ?? ''
+  const mode = state?.mode ?? 'register'
+  const codeLength = typeof state?.codeLength === 'number' && state.codeLength > 0 ? state.codeLength : 6
+  const devHint = state?.devHint ?? ''
 
   const [otp, setOtp] = useState('')
   const [err, setErr] = useState(false)
+  const [busy, setBusy] = useState(false)
   const [seconds, setSeconds] = useState(59)
+
+  useEffect(() => {
+    if (!phone) nav('/onboarding/phone', { replace: true })
+  }, [nav, phone])
 
   useEffect(() => {
     const t = window.setInterval(() => setSeconds((s) => (s <= 0 ? 0 : s - 1)), 1000)
@@ -31,17 +53,30 @@ export function OtpPage() {
     return 'Reenviar código'
   }, [canResend, seconds])
 
-  function verify(code: string) {
-    const ok = code === '123456'
-    if (!ok) {
-      setErr(true)
-      window.setTimeout(() => setErr(false), 450)
-      return
+  async function verify(code: string) {
+    setBusy(true)
+    try {
+      const res = await apiFetch('/api/v1/auth/verify', {
+        method: 'POST',
+        body: JSON.stringify({ phone, code }),
+      })
+      if (!res.ok) {
+        setErr(true)
+        window.setTimeout(() => setErr(false), 450)
+        return
+      }
+      const json = (await res.json()) as { sessionToken: string; user: SessionUserJson }
+      setSessionToken(json.sessionToken)
+      applySessionUser(userFromSessionJson(json.user))
+      toast.success(mode === 'register' ? 'Cuenta verificada' : 'Sesión iniciada')
+      setSessionActive(true)
+      nav('/home', { replace: true })
+    } finally {
+      setBusy(false)
     }
-    toast.success('Teléfono verificado')
-    setSessionActive(true)
-    nav('/home', { replace: true })
   }
+
+  if (!phone) return null
 
   return (
     <div className="container vt-page">
@@ -49,16 +84,29 @@ export function OtpPage() {
         <div className="flex flex-col gap-1.5">
           <h1 className="vt-h1">Verificá tu PIN</h1>
           <div className="vt-muted">
-            Ingresá el código enviado por SMS{phone ? ` a ${phone}` : ''}.
+            {mode === 'register' ?
+              'Ingresá el código enviado por SMS para completar tu registro'
+            : 'Ingresá el código enviado por SMS para iniciar sesión'}
+            {phone ? ` a ${phone}` : ''}.
           </div>
+          {devHint ?
+            <div className="rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_50%,var(--surface))] px-3 py-2 text-xs text-[var(--muted)]">
+              <span className="font-extrabold text-[var(--text)]">Dev:</span> código actual{' '}
+              <span className="font-black tracking-wide text-[var(--text)]">{devHint}</span>
+            </div>
+          : null}
         </div>
 
         <div className="vt-card vt-card-pad bg-[var(--surface)]">
           <div className="vt-col">
-            <OtpInput value={otp} length={6} error={err} onChange={setOtp} onComplete={verify} />
+            <OtpInput value={otp} length={codeLength} error={err} onChange={setOtp} onComplete={verify} />
 
-            <button className="vt-btn vt-btn-primary w-full px-3 py-3" onClick={() => verify(otp)}>
-              Continuar
+            <button
+              className="vt-btn vt-btn-primary w-full px-3 py-3"
+              disabled={busy}
+              onClick={() => void verify(otp)}
+            >
+              {busy ? 'Verificando…' : 'Continuar'}
             </button>
 
             <button
@@ -71,8 +119,35 @@ export function OtpPage() {
               type="button"
               onClick={() => {
                 if (!canResend) return
-                setSeconds(59)
-                toast('Código reenviado')
+                void (async () => {
+                  const res = await apiFetch('/api/v1/auth/request-code', {
+                    method: 'POST',
+                    body: JSON.stringify({ phone }),
+                  })
+                  if (!res.ok) {
+                    toast.error('No se pudo reenviar el código')
+                    return
+                  }
+                  const json = (await res.json()) as {
+                    codeLength?: number
+                    devMockCode?: string | null
+                  }
+                  setSeconds(59)
+                  toast('Código reenviado')
+                  nav(loc.pathname, {
+                    replace: true,
+                    state: {
+                      phone,
+                      mode,
+                      codeLength:
+                        typeof json.codeLength === 'number' && json.codeLength > 0 ?
+                          json.codeLength
+                        : codeLength,
+                      devHint: json.devMockCode ?? undefined,
+                    },
+                  })
+                  setOtp('')
+                })()
               }}
             >
               {helper}
@@ -81,7 +156,11 @@ export function OtpPage() {
         </div>
 
         <div className="flex justify-center">
-          <button className="vt-btn" onClick={() => nav('/onboarding/phone')}>
+          <button
+            type="button"
+            className="vt-btn"
+            onClick={() => nav('/onboarding/phone', { state: { mode } })}
+          >
             Cambiar número
           </button>
         </div>

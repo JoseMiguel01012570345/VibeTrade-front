@@ -1,33 +1,42 @@
 import { create } from 'zustand'
 
 const SESSION_STORAGE_KEY = 'vt_session_active'
+const SESSION_TOKEN_KEY = 'vt_session_token'
 
+/** Sesión válida solo si coexisten bandera y token (evita estado a medias tras F5). */
 function readSessionActive(): boolean {
   try {
-    return typeof sessionStorage !== 'undefined' && sessionStorage.getItem(SESSION_STORAGE_KEY) === '1'
+    if (typeof sessionStorage === 'undefined') return false
+    return (
+      sessionStorage.getItem(SESSION_STORAGE_KEY) === '1' &&
+      !!sessionStorage.getItem(SESSION_TOKEN_KEY)
+    )
   } catch {
     return false
   }
 }
-
-/**
- * Rol operativo en perfil: vendedor o transportista. Todos son compradores por defecto (no se elige en el select).
- */
-export type UserRole = 'seller' | 'carrier'
 
 export type SocialNetworkId = 'instagram' | 'telegram' | 'x'
 
 /** Enlaces de perfil guardados por el usuario. */
 export type ProfileSocialLinks = Partial<Record<SocialNetworkId, string>>
 
+/** Perfil global sin rol operativo: comprador/vendedor/transportista solo en el contexto de cada chat. */
 export type User = {
   id: string
   name: string
   email: string
   phone: string
   avatarUrl?: string
-  role: UserRole
   trustScore: number
+}
+
+const guestMe: User = {
+  id: 'guest',
+  name: '',
+  email: '',
+  phone: '',
+  trustScore: 0,
 }
 
 type NotificationItem = {
@@ -54,7 +63,6 @@ type AppState = {
 
   setSessionActive: (active: boolean) => void
   setTrustScore: (score: number) => void
-  setRole: (role: UserRole) => void
   setMeAvatarUrl: (url: string | undefined) => void
   setMeName: (name: string) => void
   setMeEmail: (email: string) => void
@@ -62,6 +70,8 @@ type AppState = {
   pushNotification: (n: Omit<NotificationItem, 'id' | 'createdAt' | 'read'>) => void
   markAllRead: () => void
   toggleSavedReel: (reelId: string) => void
+  applySessionUser: (user: User) => void
+  resetSessionProfile: () => void
 }
 
 function uid(prefix: string) {
@@ -80,14 +90,7 @@ function revokeBlobUrl(url: string | undefined) {
 
 export const useAppStore = create<AppState>((set, get) => ({
   isSessionActive: readSessionActive(),
-  me: {
-    id: 'me',
-    name: 'Jhosef',
-    email: 'demo@vibetrade.app',
-    phone: '+54 11 5555-5555',
-    role: 'carrier',
-    trustScore: 72,
-  },
+  me: { ...guestMe },
   profileDisplayNames: {},
   profileSocialLinks: {},
   trustThreshold: 0,
@@ -112,8 +115,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       lastThresholdState: score < threshold ? 'below' : 'above',
     }))
   },
-
-  setRole: (role) => set((s) => ({ me: { ...s.me, role } })),
 
   setMeAvatarUrl: (url) =>
     set((s) => {
@@ -156,5 +157,22 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleSavedReel: (reelId) =>
     set((s) => ({ savedReels: { ...s.savedReels, [reelId]: !s.savedReels[reelId] } })),
+
+  applySessionUser: (user) =>
+    set((s) => {
+      revokeBlobUrl(s.me.avatarUrl)
+      return { me: { ...user } }
+    }),
+
+  resetSessionProfile: () =>
+    set((s) => {
+      revokeBlobUrl(s.me.avatarUrl)
+      return {
+        me: { ...guestMe },
+        notifications: [],
+        savedReels: {},
+        profileSocialLinks: {},
+      }
+    }),
 }))
 

@@ -42,6 +42,7 @@ export function ReelsPage() {
   const reelFocusId = searchParams.get('reel')
 
   const me = useAppStore((s) => s.me)
+  const isSessionActive = useAppStore((s) => s.isSessionActive)
   const savedReels = useAppStore((s) => s.savedReels)
   const toggleSavedReel = useAppStore((s) => s.toggleSavedReel)
   const [idx, setIdx] = useState(0)
@@ -78,7 +79,7 @@ export function ReelsPage() {
     setIdx(0)
   }, [storeFilter, reelFocusId, reels])
 
-  const canPublish = me.role === 'seller' || me.role === 'carrier'
+  const canPublish = isSessionActive && me.id !== 'guest'
   const currentReel = reels.length ? reels[Math.min(idx, reels.length - 1)] : undefined
 
   function addComment(text: string, parentId: string | null) {

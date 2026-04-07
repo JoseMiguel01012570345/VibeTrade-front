@@ -50,6 +50,7 @@ import {
 } from "./domain/routeSheetOfferGuards";
 import { buildRegisteredTransportistaPhoneOptions } from "./domain/routeSheetRegisteredPhones";
 import { tradeAgreementToDraft } from "./domain/tradeAgreementTypes";
+import { userHasTransportService } from "../../utils/user/transportEligibility";
 import "./chat.css";
 
 export function ChatPage() {
@@ -85,6 +86,12 @@ export function ChatPage() {
   const sendImages = useMarketStore((s) => s.sendImages);
   const markThreadPaymentCompleted = useMarketStore(
     (s) => s.markThreadPaymentCompleted,
+  );
+  const stores = useMarketStore((s) => s.stores);
+  const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
+  const hasTransportService = useMemo(
+    () => userHasTransportService(me.id, stores, storeCatalogs),
+    [me.id, stores, storeCatalogs],
   );
 
   const [draft, setDraft] = useState("");
@@ -196,7 +203,14 @@ export function ChatPage() {
 
   const prevCarrierStopsRef = useRef<Set<string> | null>(null);
   useEffect(() => {
-    if (!thread || me.role !== "carrier") {
+    if (!thread) {
+      prevCarrierStopsRef.current = null;
+      return;
+    }
+    const listedAsCarrier =
+      thread.chatCarriers?.some((c) => c.id === me.id) ?? false;
+    const carrierContext = hasTransportService || listedAsCarrier;
+    if (!carrierContext) {
       prevCarrierStopsRef.current = null;
       return;
     }
@@ -218,7 +232,13 @@ export function ChatPage() {
         );
       }
     }
-  }, [thread?.id, me.id, me.role, routeOfferForThisThread]);
+  }, [
+    thread?.id,
+    me.id,
+    hasTransportService,
+    routeOfferForThisThread,
+    thread?.chatCarriers,
+  ]);
 
   useEffect(() => {
     if (thread?.chatActionsLocked) setSelected({});
@@ -376,7 +396,7 @@ export function ChatPage() {
 
   const carrierInThreadIntegrantes = thread.chatCarriers?.some((c) => c.id === me.id) ?? false;
   const carrierBlockedFromRouteChat =
-    me.role === "carrier" &&
+    hasTransportService &&
     routeOfferForThisThread &&
     routeOfferForThisThread.threadId === thread.id &&
     !routeOfferForThisThread.tramos.some(
@@ -412,9 +432,7 @@ export function ChatPage() {
 
   const store = thread.store;
   const isActingSeller =
-    !!store.ownerUserId &&
-    (store.ownerUserId === me.id ||
-      (thread.purchaseMode === true && me.role === "seller"));
+    !!store.ownerUserId && store.ownerUserId === me.id;
   const chatActionsLocked = thread.chatActionsLocked === true;
 
   function applySellerTrustPenaltyIfQueued() {

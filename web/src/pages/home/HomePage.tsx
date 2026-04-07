@@ -4,22 +4,26 @@ import { useAppStore } from '../../app/store/useAppStore'
 import type { Offer } from '../../app/store/useMarketStore'
 import { useMarketStore } from '../../app/store/useMarketStore'
 import { RouteOfferPreview } from '../offer/RouteOfferPreview'
-
-/** Ofertas que un transportista suele buscar en el feed (rutas, fletes, logística). */
-const CARRIER_FEED_TAG = /hoja de ruta|transporte|flete|logístic|fulfillment|cadena|para transport/i
+import { isTransportFeedOffer, userHasTransportService } from '../../utils/user/transportEligibility'
 
 export function HomePage() {
   const me = useAppStore((s) => s.me)
   const offerIds = useMarketStore((s) => s.offerIds)
   const offers = useMarketStore((s) => s.offers)
   const stores = useMarketStore((s) => s.stores)
+  const storeCatalogs = useMarketStore((s) => s.storeCatalogs)
   const routeOfferPublic = useMarketStore((s) => s.routeOfferPublic)
+
+  const hasTransportService = useMemo(
+    () => userHasTransportService(me.id, stores, storeCatalogs),
+    [me.id, stores, storeCatalogs],
+  )
 
   const items = useMemo(() => {
     const list = offerIds.map((id) => offers[id]).filter(Boolean) as Offer[]
-    if (me.role !== 'carrier') return list
-    return list.filter((o) => o.tags.some((t) => CARRIER_FEED_TAG.test(t)))
-  }, [offerIds, offers, me.role])
+    if (!hasTransportService) return list
+    return list.filter((o) => isTransportFeedOffer(o))
+  }, [offerIds, offers, hasTransportService])
 
   return (
     <div className="container vt-page">
@@ -27,9 +31,10 @@ export function HomePage() {
         <div>
           <h1 className="vt-h1">Ofertas</h1>
           <div className="vt-muted">
-            {me.role === 'carrier' ? (
+            {hasTransportService ? (
               <>
-                Feed para transportistas: ofertas de <strong>flete</strong>, <strong>logística</strong> y afines.
+                Feed para transportistas: ofertas de <strong>flete</strong>, <strong>logística</strong> y afines (solo
+                ves este feed si tenés al menos un <strong>servicio de transporte</strong> publicado en tu tienda).
               </>
             ) : (
               <>Explorá ofertas publicadas en la plataforma.</>

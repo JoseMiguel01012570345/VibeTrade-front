@@ -5,10 +5,12 @@ import { Toaster } from 'react-hot-toast'
 import App from './App.tsx'
 import './index.css'
 import { bootstrapWebApp } from './utils/bootstrap/bootstrapWebApp'
+import { restoreAuthSession } from './utils/auth/restoreAuthSession'
 
 async function start() {
   try {
     await bootstrapWebApp()
+    await restoreAuthSession()
   } catch {
     /* toast en bootstrapWebApp */
   }

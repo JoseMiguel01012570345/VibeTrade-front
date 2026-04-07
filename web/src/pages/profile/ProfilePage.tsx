@@ -12,6 +12,7 @@ import {
   CreditCard,
   ExternalLink,
   Image as ImageIcon,
+  LogOut,
   Mail,
   Phone,
   Save,
@@ -31,6 +32,7 @@ import {
 } from "../chat/styles/formModalStyles";
 import { ProfileStoresSection } from "./ProfileStoresSection";
 import { reelTitlesById } from "../../utils/reels/reelsBootstrapState";
+import { logoutWebApp } from "../../utils/auth/logoutWebApp";
 
 function isValidEmail(value: string): boolean {
   const t = value.trim();
@@ -531,6 +533,24 @@ export function ProfilePage() {
                   </div>
                   <button type="button" className="vt-btn">
                     Configurar
+                  </button>
+                </div>
+              )}
+
+              {isMe && (
+                <div className="mt-6 flex flex-col gap-2 border-t border-[var(--border)] pt-5">
+                  <button
+                    type="button"
+                    className="vt-btn inline-flex items-center justify-center gap-2 border-[color-mix(in_oklab,var(--bad)_45%,var(--border))] text-[var(--bad)]"
+                    onClick={() => {
+                      void (async () => {
+                        await logoutWebApp();
+                        nav("/onboarding/phone", { replace: true });
+                        toast.success("Sesión cerrada");
+                      })();
+                    }}
+                  >
+                    <LogOut size={16} aria-hidden /> Cerrar sesión
                   </button>
                 </div>
               )}

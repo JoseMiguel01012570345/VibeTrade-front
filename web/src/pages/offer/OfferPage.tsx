@@ -6,6 +6,7 @@ import { useAppStore } from '../../app/store/useAppStore'
 import { useMarketStore } from '../../app/store/useMarketStore'
 import { RouteOfferPreview } from './RouteOfferPreview'
 import { confirmedStopIdsForCarrier, tramoNotifyLineFromOffer } from '../chat/domain/routeSheetOfferGuards'
+import { userActsAsCarrierOnTransportOffer } from '../../utils/user/transportEligibility'
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -24,6 +25,7 @@ export function OfferPage() {
   const me = useAppStore((s) => s.me)
   const offer = useMarketStore((s) => (offerId ? s.offers[offerId] : undefined))
   const stores = useMarketStore((s) => s.stores)
+  const storeCatalogs = useMarketStore((s) => s.storeCatalogs)
   const routeOffer = useMarketStore((s) => (offerId ? s.routeOfferPublic[offerId] : undefined))
   const threads = useMarketStore((s) => s.threads)
   const subscribeRouteOfferTramo = useMarketStore((s) => s.subscribeRouteOfferTramo)
@@ -69,9 +71,13 @@ export function OfferPage() {
   )
   const canOpenRouteChat = carrierConfirmedOnRoute || carrierInChatThread
 
+  const actingAsCarrierOnThisOffer =
+    offer &&
+    userActsAsCarrierOnTransportOffer(me.id, stores, storeCatalogs, offer, !!routeOffer)
+
   const prevCarrierStopsOfferRef = useRef<Set<string> | null>(null)
   useEffect(() => {
-    if (!routeOffer || me.role !== 'carrier') {
+    if (!routeOffer || !actingAsCarrierOnThisOffer) {
       prevCarrierStopsOfferRef.current = null
       return
     }
@@ -86,7 +92,7 @@ export function OfferPage() {
         )
       }
     }
-  }, [routeOffer, me.id, me.role])
+  }, [routeOffer, me.id, actingAsCarrierOnThisOffer])
 
   if (!offerId || !offer) {
     return (
@@ -152,7 +158,7 @@ export function OfferPage() {
             {routeOffer ?
               <>
                 <RouteOfferPreview state={routeOffer} className="mt-1" />
-                {me.role === 'carrier' ?
+                {actingAsCarrierOnThisOffer ?
                   <div className="mt-3 rounded-[14px] border border-[color-mix(in_oklab,var(--primary)_28%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] p-3.5">
                     <div className="text-sm font-black tracking-tight">Suscribirme a un tramo</div>
                     <p className="vt-muted mt-1.5 text-[13px] leading-snug">
@@ -320,14 +326,14 @@ export function OfferPage() {
               </button>
               <button
                 className="vt-btn vt-btn-primary"
-                disabled={me.role === 'carrier' && !!routeOffer}
+                disabled={!!actingAsCarrierOnThisOffer && !!routeOffer}
                 title={
-                  me.role === 'carrier' && routeOffer ?
+                  actingAsCarrierOnThisOffer && routeOffer ?
                     'Como transportista: suscribite a un tramo y esperá la validación para usar el chat de la ruta.'
                   : undefined
                 }
                 onClick={() => {
-                  if (me.role === 'carrier' && routeOffer) {
+                  if (actingAsCarrierOnThisOffer && routeOffer) {
                     toast.error('Usá la suscripción al tramo; el chat se habilita tras la validación.')
                     return
                   }

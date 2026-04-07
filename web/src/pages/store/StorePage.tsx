@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useAppStore } from '../../app/store/useAppStore'
 import {
   AlertTriangle,
   ArrowLeft,
@@ -19,6 +20,7 @@ import { useMarketStore } from '../../app/store/useMarketStore'
 import type { StoreBadge } from '../../app/store/marketStoreTypes'
 import type { StoreCatalog, StoreProduct, StoreService } from '../chat/domain/storeCatalogTypes'
 import { reelsForStore } from '../../utils/reels/reelsBootstrapState'
+import { fetchStoreDetail } from '../../utils/market/fetchStoreDetail'
 
 type StoreScreen = 'hub' | 'catalog' | 'products' | 'services' | 'feed' | 'reels'
 
@@ -316,21 +318,77 @@ function StoreIdentityBlock({
 export function StorePage() {
   const { storeId } = useParams()
   const nav = useNavigate()
+  const me = useAppStore((s) => s.me)
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined))
   const catalog = useMarketStore((s) => (storeId ? s.storeCatalogs[storeId] : undefined))
   const offers = useMarketStore((s) => s.offers)
   const offerIds = useMarketStore((s) => s.offerIds)
 
   const [screen, setScreen] = useState<StoreScreen>('hub')
+  const [detailStatus, setDetailStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [loadNonce, setLoadNonce] = useState(0)
 
   useEffect(() => {
     setScreen('hub')
   }, [storeId])
 
+  useEffect(() => {
+    if (!storeId) return
+    if (!useMarketStore.getState().stores[storeId]) return
+    let cancelled = false
+    setDetailStatus('loading')
+    void (async () => {
+      try {
+        const data = await fetchStoreDetail(storeId, { userId: me.id })
+        if (cancelled) return
+        useMarketStore.setState((s) => ({
+          stores: { ...s.stores, [storeId]: data.store },
+          storeCatalogs: { ...s.storeCatalogs, [storeId]: data.catalog },
+        }))
+        setDetailStatus('ready')
+      } catch {
+        if (!cancelled) setDetailStatus('error')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [storeId, me.id, loadNonce])
+
   if (!storeId || !store) {
     return (
       <div className="container vt-page">
         <div className="vt-card vt-card-pad">Tienda no encontrada.</div>
+      </div>
+    )
+  }
+
+  if (detailStatus === 'loading') {
+    return (
+      <div className="container vt-page">
+        <div className="vt-card vt-card-pad flex flex-col items-center justify-center gap-2 py-20 text-center">
+          <div className="text-lg font-black tracking-[-0.02em]">Cargando tienda…</div>
+          <div className="max-w-[360px] text-sm text-[var(--muted)]">
+            Obteniendo catálogo y datos públicos según tu perfil.
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (detailStatus === 'error') {
+    return (
+      <div className="container vt-page">
+        <div className="vt-card vt-card-pad flex flex-col items-center gap-4 py-16 text-center">
+          <div className="font-bold">No se pudieron cargar los datos de la tienda.</div>
+          <button
+            type="button"
+            className="vt-btn vt-btn-primary"
+            onClick={() => setLoadNonce((n) => n + 1)}
+          >
+            Reintentar
+          </button>
+        </div>
       </div>
     )
   }
