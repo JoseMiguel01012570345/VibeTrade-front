@@ -1,10 +1,4 @@
-import {
-  type ChangeEvent,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -33,10 +27,14 @@ import {
 import { ProfileStoresSection } from "./ProfileStoresSection";
 import { reelTitlesById } from "../../utils/reels/reelsBootstrapState";
 import { logoutWebApp } from "../../utils/auth/logoutWebApp";
-import { patchProfile, patchProfileAvatar } from "../../utils/auth/patchProfile";
+import {
+  patchProfile,
+  patchProfileAvatar,
+} from "../../utils/auth/patchProfile";
 import { userFromSessionJson } from "../../utils/auth/sessionUser";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { mediaApiUrl, uploadMedia } from "../../utils/media/mediaClient";
+import { ConfirmModal } from "../../components/ConfirmModal";
 import { UploadBlockingOverlay } from "../../components/UploadBlockingOverlay";
 import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 import {
@@ -191,13 +189,17 @@ export function ProfilePage() {
   const safeEmail = me.email ?? "";
 
   const storesForProfile = useMemo(() => {
-    return Object.values(stores).filter((b) => b.ownerUserId === resolvedProfileUserId);
+    return Object.values(stores).filter(
+      (b) => b.ownerUserId === resolvedProfileUserId,
+    );
   }, [stores, resolvedProfileUserId]);
 
   const reelTitles = useMemo(() => reelTitlesById(), []);
 
-  const profileDisplayName =
-    isMe ? safeName : (profileDisplayNames[resolvedProfileUserId] ?? `Usuario ${resolvedProfileUserId}`);
+  const profileDisplayName = isMe
+    ? safeName
+    : (profileDisplayNames[resolvedProfileUserId] ??
+      `Usuario ${resolvedProfileUserId}`);
 
   const [socialModal, setSocialModal] = useState<SocialNetworkId | null>(null);
   const [socialDraft, setSocialDraft] = useState("");
@@ -208,6 +210,8 @@ export function ProfilePage() {
   const profileAvatarInputRef = useRef<HTMLInputElement>(null);
   const [profileUploadBusy, setProfileUploadBusy] = useState(false);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
 
   const tab: ProfileSection =
     sectionParam && isProfileSection(sectionParam) ? sectionParam : "account";
@@ -316,12 +320,12 @@ export function ProfilePage() {
     });
   }
 
-  const letter = (isMe ? safeName : (userId ?? "U")).slice(0, 1).toUpperCase() || "?";
+  const letter =
+    (isMe ? safeName : (userId ?? "U")).slice(0, 1).toUpperCase() || "?";
 
   const nameDirty = isMe && nameDraft.trim() !== safeName.trim();
   const emailDirty =
-    isMe &&
-    emailDraft.trim().toLowerCase() !== safeEmail.trim().toLowerCase();
+    isMe && emailDraft.trim().toLowerCase() !== safeEmail.trim().toLowerCase();
   const profileAvatarDirty = isMe && avatarDraftUrl !== null;
   const profileAvatarDisplayUrl = avatarDraftUrl ?? me.avatarUrl;
 
@@ -393,14 +397,15 @@ export function ProfilePage() {
   }
 
   if (sectionParam && !isProfileSection(sectionParam)) {
-    return (
-      <Navigate to={profileSectionPath(userId, "account")} replace />
-    );
+    return <Navigate to={profileSectionPath(userId, "account")} replace />;
   }
 
   return (
     <div className="container vt-page">
-      <UploadBlockingOverlay active={profileUploadBusy} message="Procesando imagen…" />
+      <UploadBlockingOverlay
+        active={profileUploadBusy}
+        message="Procesando imagen…"
+      />
       <input
         ref={profileAvatarInputRef}
         type="file"
@@ -445,7 +450,7 @@ export function ProfilePage() {
           >
             Cuenta
           </Link>
-          {isMe ?
+          {isMe ? (
             <Link
               to={profileSectionPath(userId, "reels")}
               className={cn(
@@ -456,8 +461,8 @@ export function ProfilePage() {
             >
               Mis Reels
             </Link>
-          : null}
-          {isMe || storesForProfile.length > 0 ?
+          ) : null}
+          {isMe || storesForProfile.length > 0 ? (
             <Link
               to={profileSectionPath(userId, "stores")}
               className={cn(
@@ -468,7 +473,7 @@ export function ProfilePage() {
             >
               Tiendas
             </Link>
-          : null}
+          ) : null}
         </div>
 
         {tab === "account" && (
@@ -593,7 +598,7 @@ export function ProfilePage() {
                 </span>
                 <input
                   className="vt-input"
-                  defaultValue={me.phone ?? ""}
+                  defaultValue={"+" + (me.phone ?? "")}
                   disabled
                 />
               </label>
@@ -693,13 +698,7 @@ export function ProfilePage() {
                   <button
                     type="button"
                     className="vt-btn inline-flex items-center justify-center gap-2 border-[color-mix(in_oklab,var(--bad)_45%,var(--border))] text-[var(--bad)]"
-                    onClick={() => {
-                      void (async () => {
-                        await logoutWebApp();
-                        nav("/onboarding/phone", { replace: true });
-                        toast.success("Sesión cerrada");
-                      })();
-                    }}
+                    onClick={() => setLogoutConfirmOpen(true)}
                   >
                     <LogOut size={16} aria-hidden /> Cerrar sesión
                   </button>
@@ -709,9 +708,12 @@ export function ProfilePage() {
           </div>
         )}
 
-        {tab === "stores" && (isMe || storesForProfile.length > 0) ?
-          <ProfileStoresSection ownerUserId={resolvedProfileUserId} canEdit={isMe} />
-        : null}
+        {tab === "stores" && (isMe || storesForProfile.length > 0) ? (
+          <ProfileStoresSection
+            ownerUserId={resolvedProfileUserId}
+            canEdit={isMe}
+          />
+        ) : null}
 
         {tab === "reels" && (
           <div className="vt-card vt-card-pad">
@@ -796,6 +798,29 @@ export function ProfilePage() {
           </div>
         </div>
       ) : null}
+
+      <ConfirmModal
+        open={logoutConfirmOpen}
+        title="¿Cerrar sesión?"
+        message="Vas a salir de tu cuenta en este dispositivo. Podés volver a iniciar sesión cuando quieras."
+        cancelLabel="Cancelar"
+        confirmLabel="Cerrar sesión"
+        confirmBusy={logoutBusy}
+        onCancel={() => setLogoutConfirmOpen(false)}
+        onConfirm={() => {
+          void (async () => {
+            setLogoutBusy(true);
+            try {
+              await logoutWebApp();
+              setLogoutConfirmOpen(false);
+              nav("/onboarding/phone", { replace: true });
+              toast.success("Sesión cerrada");
+            } finally {
+              setLogoutBusy(false);
+            }
+          })();
+        }}
+      />
 
       <ImageLightbox
         url={avatarPreviewUrl}

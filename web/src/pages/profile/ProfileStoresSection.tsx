@@ -7,20 +7,18 @@ import { UploadBlockingOverlay } from "../../components/UploadBlockingOverlay";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
 import { mediaApiUrl, uploadMedia } from "../../utils/media/mediaClient";
 import {
-  emptyStoreProductInput,
-  emptyStoreServiceInput,
-} from "../chat/domain/storeCatalogTypes";
-import {
   DEFAULT_CATALOG_CATEGORIES,
   fetchCatalogCategories,
 } from "../../utils/market/fetchCatalogCategories";
 import { OwnerStoreCard } from "./stores/OwnerStoreCard";
 import { VisitorStoreSummaryCard } from "./stores/VisitorStoreSummaryCard";
-import { ProductEditorModal } from "./stores/ProductEditorModal";
-import { ServiceEditorModal } from "./stores/ServiceEditorModal";
 import { StoreFormModal } from "./stores/StoreFormModal";
 import { ownerStoreToFormValues, revokeIfBlob } from "./stores/helpers";
 import { ConfirmDeleteModal } from "../../components/ConfirmDeleteModal";
+import {
+  matchesCategoryFilter,
+  matchesNameQuery,
+} from "../../utils/market/nameCategoryFilter";
 
 export function ProfileStoresSection({
   ownerUserId,
@@ -35,31 +33,33 @@ export function ProfileStoresSection({
   const createOwnerStore = useMarketStore((s) => s.createOwnerStore);
   const updateOwnerStore = useMarketStore((s) => s.updateOwnerStore);
   const deleteOwnerStore = useMarketStore((s) => s.deleteOwnerStore);
-  const addOwnerStoreProduct = useMarketStore((s) => s.addOwnerStoreProduct);
-  const updateOwnerStoreProduct = useMarketStore(
-    (s) => s.updateOwnerStoreProduct,
-  );
-  const removeOwnerStoreProduct = useMarketStore(
-    (s) => s.removeOwnerStoreProduct,
-  );
-  const setOwnerStoreProductPublished = useMarketStore(
-    (s) => s.setOwnerStoreProductPublished,
-  );
-  const setOwnerStoreServicePublished = useMarketStore(
-    (s) => s.setOwnerStoreServicePublished,
-  );
-  const addOwnerStoreService = useMarketStore((s) => s.addOwnerStoreService);
-  const updateOwnerStoreService = useMarketStore(
-    (s) => s.updateOwnerStoreService,
-  );
-  const removeOwnerStoreService = useMarketStore(
-    (s) => s.removeOwnerStoreService,
-  );
-
   const myStores = useMemo(
     () => Object.values(stores).filter((b) => b.ownerUserId === ownerUserId),
     [stores, ownerUserId],
   );
+
+  const [storeListNameQ, setStoreListNameQ] = useState("");
+  const [storeListCategory, setStoreListCategory] = useState("");
+
+  const storeListCategoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const b of myStores) {
+      for (const c of b.categories) {
+        const t = c.trim();
+        if (t) set.add(t);
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, "es"));
+  }, [myStores]);
+
+  const filteredMyStores = useMemo(() => {
+    return myStores.filter((b) => {
+      if (!matchesNameQuery(b.name, storeListNameQ)) return false;
+      const sel = storeListCategory.trim();
+      if (!sel) return true;
+      return b.categories.some((c) => matchesCategoryFilter(c, sel));
+    });
+  }, [myStores, storeListNameQ, storeListCategory]);
 
   const me = useAppStore((s) => s.me);
   const storeIdsKey = useMemo(
@@ -108,14 +108,6 @@ export function ProfileStoresSection({
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editStoreId, setEditStoreId] = useState<string | null>(null);
-  const [productCtx, setProductCtx] = useState<{
-    storeId: string;
-    productId?: string;
-  } | null>(null);
-  const [serviceCtx, setServiceCtx] = useState<{
-    storeId: string;
-    serviceId?: string;
-  } | null>(null);
   const [avatarDrafts, setAvatarDrafts] = useState<Record<string, string>>({});
   const avatarDraftsRef = useRef<Record<string, string>>({});
   const [storeAvatarUploadBusy, setStoreAvatarUploadBusy] = useState(false);
@@ -124,10 +116,7 @@ export function ProfileStoresSection({
     null,
   );
   const [deleteTarget, setDeleteTarget] = useState<
-    | null
-    | { kind: "store"; storeId: string; storeName: string }
-    | { kind: "product"; storeId: string; productId: string; storeName: string }
-    | { kind: "service"; storeId: string; serviceId: string; storeName: string }
+    null | { kind: "store"; storeId: string; storeName: string }
   >(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [catalogCategories, setCatalogCategories] = useState<string[]>(() => [
@@ -164,22 +153,6 @@ export function ProfileStoresSection({
 
   const editingBadge = editStoreId ? stores[editStoreId] : undefined;
   const editingCat = editStoreId ? storeCatalogs[editStoreId] : undefined;
-
-  const productStoreId = productCtx?.storeId;
-  const productEditing =
-    productStoreId && productCtx?.productId
-      ? storeCatalogs[productStoreId]?.products.find(
-          (p) => p.id === productCtx.productId,
-        )
-      : undefined;
-
-  const serviceStoreId = serviceCtx?.storeId;
-  const serviceEditing =
-    serviceStoreId && serviceCtx?.serviceId
-      ? storeCatalogs[serviceStoreId]?.services.find(
-          (x) => x.id === serviceCtx.serviceId,
-        )
-      : undefined;
 
   function onStoreAvatarPick(storeId: string) {
     return (e: ChangeEvent<HTMLInputElement>) => {
@@ -318,8 +291,8 @@ export function ProfileStoresSection({
           </button>
         </div>
         <p className="vt-muted mt-1.5 max-w-[640px] text-[13px] leading-snug">
-          Tiendas públicas de este usuario: podés abrir cada una para ver
-          catálogo, publicaciones y reels como cualquier visitante.
+          Tiendas públicas de este usuario: tocá una tarjeta para ver el
+          catálogo y la vitrina.
         </p>
         <div className="vt-divider my-3" />
         {myStores.length === 0 ? (
@@ -327,8 +300,43 @@ export function ProfileStoresSection({
             Este usuario no tiene tiendas vinculadas en la demo.
           </p>
         ) : (
+          <>
+            <div className="mb-3 flex flex-col gap-2 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-end">
+              <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)]">
+                Buscar por nombre
+                <input
+                  type="search"
+                  className="vt-input"
+                  placeholder="Nombre de la tienda…"
+                  value={storeListNameQ}
+                  onChange={(e) => setStoreListNameQ(e.target.value)}
+                  aria-label="Filtrar tiendas por nombre"
+                />
+              </label>
+              <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
+                Categoría
+                <select
+                  className="vt-input"
+                  value={storeListCategory}
+                  onChange={(e) => setStoreListCategory(e.target.value)}
+                  aria-label="Filtrar tiendas por categoría"
+                >
+                  <option value="">Todas</option>
+                  {storeListCategoryOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {filteredMyStores.length === 0 ? (
+              <p className="vt-muted text-[13px]">
+                Ninguna tienda coincide con el filtro.
+              </p>
+            ) : null}
           <div className="flex flex-col gap-3">
-            {myStores.map((b) => {
+            {filteredMyStores.map((b) => {
               const cat = storeCatalogs[b.id];
               const joined = cat
                 ? new Intl.DateTimeFormat("es", {
@@ -349,6 +357,7 @@ export function ProfileStoresSection({
               );
             })}
           </div>
+          </>
         )}
       </div>
     );
@@ -362,23 +371,11 @@ export function ProfileStoresSection({
       />
       <ConfirmDeleteModal
         open={deleteTarget !== null}
-        title={
-          deleteTarget?.kind === "store"
-            ? "Eliminar tienda"
-            : deleteTarget?.kind === "product"
-              ? "Eliminar producto"
-              : deleteTarget?.kind === "service"
-                ? "Eliminar servicio"
-                : "Eliminar"
-        }
+        title={deleteTarget?.kind === "store" ? "Eliminar tienda" : "Eliminar"}
         message={
           deleteTarget?.kind === "store"
             ? `¿Eliminar la tienda «${deleteTarget.storeName}» y su catálogo?`
-            : deleteTarget?.kind === "product"
-              ? `¿Eliminar este producto de la tienda «${deleteTarget.storeName}»?`
-              : deleteTarget?.kind === "service"
-                ? `¿Eliminar este servicio de la tienda «${deleteTarget.storeName}»?`
-                : "¿Confirmás eliminar?"
+            : "¿Confirmás eliminar?"
         }
         confirmBusy={deleteBusy}
         onCancel={() => {
@@ -403,30 +400,6 @@ export function ProfileStoresSection({
                 toast.success("Tienda eliminada");
                 setDeleteTarget(null);
               } else toast.error("No se pudo eliminar");
-              return;
-            }
-            if (deleteTarget.kind === "product") {
-              const ok = removeOwnerStoreProduct(
-                deleteTarget.storeId,
-                ownerUserId,
-                deleteTarget.productId,
-              );
-              if (ok) {
-                toast.success("Producto quitado");
-                setDeleteTarget(null);
-              } else toast.error("No se pudo quitar");
-              return;
-            }
-            if (deleteTarget.kind === "service") {
-              const ok = removeOwnerStoreService(
-                deleteTarget.storeId,
-                ownerUserId,
-                deleteTarget.serviceId,
-              );
-              if (ok) {
-                toast.success("Servicio quitado");
-                setDeleteTarget(null);
-              } else toast.error("No se pudo quitar");
             }
           } finally {
             setDeleteBusy(false);
@@ -461,11 +434,9 @@ export function ProfileStoresSection({
               </button>
             </div>
             <p className="vt-muted mt-1.5 max-w-[640px] text-[13px] leading-snug">
-              Podés configurar una o más tiendas: nombre, categorías,
-              descripción del catálogo, estado de verificación (solo puede
-              validarlo soporte), fecha de alta en la plataforma y transporte.
-              En cada tienda añadí productos y servicios con el detalle del
-              perfil de negocio.
+              Configurá nombre, categorías, descripción del catálogo, verificación
+              (soporte), transporte y foto. Para cargar o editar productos y
+              servicios abrí la tienda desde la tarjeta.
             </p>
           </div>
           <button
@@ -483,8 +454,43 @@ export function ProfileStoresSection({
             Todavía no creaste tiendas. Usá «Nueva tienda» para empezar.
           </p>
         ) : (
+          <>
+            <div className="mb-3 flex flex-col gap-2 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-end">
+              <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)]">
+                Buscar por nombre
+                <input
+                  type="search"
+                  className="vt-input"
+                  placeholder="Nombre de la tienda…"
+                  value={storeListNameQ}
+                  onChange={(e) => setStoreListNameQ(e.target.value)}
+                  aria-label="Filtrar tiendas por nombre"
+                />
+              </label>
+              <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
+                Categoría
+                <select
+                  className="vt-input"
+                  value={storeListCategory}
+                  onChange={(e) => setStoreListCategory(e.target.value)}
+                  aria-label="Filtrar tiendas por categoría"
+                >
+                  <option value="">Todas</option>
+                  {storeListCategoryOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {filteredMyStores.length === 0 ? (
+              <p className="vt-muted mb-3 text-[13px]">
+                Ninguna tienda coincide con el filtro.
+              </p>
+            ) : null}
           <div className="flex flex-col gap-3">
-            {myStores.map((b) => {
+            {filteredMyStores.map((b) => {
               const cat = storeCatalogs[b.id];
               const joined = cat
                 ? new Intl.DateTimeFormat("es", {
@@ -501,8 +507,6 @@ export function ProfileStoresSection({
                   joinedLabel={joined}
                   avatarDisplayUrl={avatarDrafts[b.id] ?? b.avatarUrl}
                   storeAvatarDirty={Boolean(avatarDrafts[b.id])}
-                  catalogReloadBusy={catalogReloadBusyId === b.id}
-                  onReloadStoreCatalog={() => void reloadStoreCatalog(b.id)}
                   onEditDetails={() => setEditStoreId(b.id)}
                   onRequestDeleteStore={() => {
                     setDeleteTarget({
@@ -514,70 +518,11 @@ export function ProfileStoresSection({
                   onAvatarFileChange={onStoreAvatarPick(b.id)}
                   onSaveStoreAvatar={() => saveStoreAvatar(b.id)}
                   onDiscardStoreAvatar={() => discardStoreAvatarDraft(b.id)}
-                  onAddProduct={() => setProductCtx({ storeId: b.id })}
-                  onEditProduct={(productId) =>
-                    setProductCtx({ storeId: b.id, productId })
-                  }
-                  onRemoveProduct={(productId) => {
-                    setDeleteTarget({
-                      kind: "product",
-                      storeId: b.id,
-                      productId,
-                      storeName: b.name,
-                    });
-                  }}
-                  onToggleProductPublished={(productId, published) => {
-                    if (
-                      setOwnerStoreProductPublished(
-                        b.id,
-                        ownerUserId,
-                        productId,
-                        published,
-                      )
-                    ) {
-                      toast.success(
-                        published
-                          ? "Producto publicado en la tienda"
-                          : "Producto oculto de la tienda",
-                      );
-                    } else {
-                      toast.error("No se pudo actualizar");
-                    }
-                  }}
-                  onAddService={() => setServiceCtx({ storeId: b.id })}
-                  onEditService={(serviceId) =>
-                    setServiceCtx({ storeId: b.id, serviceId })
-                  }
-                  onRemoveService={(serviceId) => {
-                    setDeleteTarget({
-                      kind: "service",
-                      storeId: b.id,
-                      serviceId,
-                      storeName: b.name,
-                    });
-                  }}
-                  onToggleServicePublished={(serviceId, published) => {
-                    if (
-                      setOwnerStoreServicePublished(
-                        b.id,
-                        ownerUserId,
-                        serviceId,
-                        published,
-                      )
-                    ) {
-                      toast.success(
-                        published
-                          ? "Servicio publicado en la tienda"
-                          : "Servicio oculto de la tienda",
-                      );
-                    } else {
-                      toast.error("No se pudo actualizar");
-                    }
-                  }}
                 />
               );
             })}
           </div>
+          </>
         )}
 
         {createOpen ? (
@@ -626,95 +571,6 @@ export function ProfileStoresSection({
           />
         ) : null}
 
-        {productCtx ? (
-          <ProductEditorModal
-            key={`${productCtx.storeId}-${productCtx.productId ?? "new"}`}
-            open
-            title={productEditing ? "Editar producto" : "Añadir producto"}
-            initial={
-              productEditing
-                ? {
-                    category: productEditing.category,
-                    name: productEditing.name,
-                    model: productEditing.model,
-                    shortDescription: productEditing.shortDescription,
-                    mainBenefit: productEditing.mainBenefit,
-                    technicalSpecs: productEditing.technicalSpecs,
-                    condition: productEditing.condition,
-                    price: productEditing.price,
-                    taxesShippingInstall: productEditing.taxesShippingInstall,
-                    availability: productEditing.availability,
-                    warrantyReturn: productEditing.warrantyReturn,
-                    contentIncluded: productEditing.contentIncluded,
-                    usageConditions: productEditing.usageConditions,
-                    photoUrls: productEditing.photoUrls,
-                    published: productEditing.published,
-                    customFields: productEditing.customFields.length
-                      ? productEditing.customFields
-                      : [],
-                  }
-                : emptyStoreProductInput()
-            }
-            onClose={() => setProductCtx(null)}
-            onSave={(input) => {
-              if (productCtx.productId) {
-                updateOwnerStoreProduct(
-                  productCtx.storeId,
-                  ownerUserId,
-                  productCtx.productId,
-                  input,
-                );
-                toast.success("Producto actualizado");
-              } else {
-                addOwnerStoreProduct(productCtx.storeId, ownerUserId, input);
-                toast.success("Producto añadido");
-              }
-            }}
-          />
-        ) : null}
-
-        {serviceCtx ? (
-          <ServiceEditorModal
-            key={`${serviceCtx.storeId}-${serviceCtx.serviceId ?? "new"}`}
-            open
-            title={serviceEditing ? "Editar servicio" : "Añadir servicio"}
-            initial={
-              serviceEditing
-                ? {
-                    published: serviceEditing.published !== false,
-                    category: serviceEditing.category,
-                    tipoServicio: serviceEditing.tipoServicio,
-                    descripcion: serviceEditing.descripcion,
-                    riesgos: { ...serviceEditing.riesgos },
-                    incluye: serviceEditing.incluye,
-                    noIncluye: serviceEditing.noIncluye,
-                    dependencias: { ...serviceEditing.dependencias },
-                    entregables: serviceEditing.entregables,
-                    garantias: { ...serviceEditing.garantias },
-                    propIntelectual: serviceEditing.propIntelectual,
-                    customFields: serviceEditing.customFields.length
-                      ? serviceEditing.customFields
-                      : [],
-                  }
-                : emptyStoreServiceInput()
-            }
-            onClose={() => setServiceCtx(null)}
-            onSave={(input) => {
-              if (serviceCtx.serviceId) {
-                updateOwnerStoreService(
-                  serviceCtx.storeId,
-                  ownerUserId,
-                  serviceCtx.serviceId,
-                  input,
-                );
-                toast.success("Servicio actualizado");
-              } else {
-                addOwnerStoreService(serviceCtx.storeId, ownerUserId, input);
-                toast.success("Servicio añadido");
-              }
-            }}
-          />
-        ) : null}
       </div>
     </>
   );

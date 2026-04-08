@@ -32,7 +32,13 @@ export function VisitorStoreSummaryCard({
   const publishedServices = (cat?.services ?? []).filter((s) => s.published !== false)
 
   return (
-    <div className="rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] p-3.5">
+    <div className="relative overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
+      <Link
+        to={`/store/${b.id}`}
+        className="absolute inset-0 z-[1] rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+        aria-label={`Abrir tienda ${b.name}`}
+      />
+      <div className="relative z-[2] p-3.5 pointer-events-none">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-1 gap-3">
           <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
@@ -71,12 +77,9 @@ export function VisitorStoreSummaryCard({
             <div className="vt-muted mt-1 text-xs">{b.categories.join(' · ')}</div>
           </div>
         </div>
-        <Link className="vt-btn vt-btn-sm no-underline shrink-0" to={`/store/${b.id}`}>
-          Ver tienda
-        </Link>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 gap-2 border-t border-[var(--border)] pt-3 min-[480px]:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-2 border-t border-[var(--border)] pt-3 min-[480px]:grid-cols-2 pointer-events-auto">
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2">
           <div className="flex items-center justify-between gap-1.5">
             <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
@@ -151,10 +154,11 @@ export function VisitorStoreSummaryCard({
         </div>
       </div>
 
-      <p className="vt-muted mt-2 flex items-start gap-1.5 text-[11px] leading-snug">
+      <p className="vt-muted mt-2 flex items-start gap-1.5 text-[11px] leading-snug pointer-events-none">
         <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[var(--good)]" aria-hidden />
-        La ficha completa (catálogo, feed y reels) está en la vista pública de la tienda.
+        Tocá la tarjeta para ver el catálogo y la vitrina pública de la tienda.
       </p>
+      </div>
     </div>
   )
 }
