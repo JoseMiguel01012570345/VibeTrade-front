@@ -39,9 +39,11 @@ export function AppShell() {
       <div className="sticky top-0 z-50 overflow-visible border-b border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_65%,transparent)] pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-[10px]">
         <div className="container flex items-center justify-between gap-3 pb-2.5">
           <div className="min-w-0 flex-1">{isSessionActive ? <TrustBar /> : null}</div>
-          <div className="shrink-0 self-center">
-            <NotificationsBell />
-          </div>
+          {!isOnboarding ? (
+            <div className="shrink-0 self-center">
+              <NotificationsBell />
+            </div>
+          ) : null}
         </div>
       </div>
 

@@ -23,10 +23,17 @@ type Props = Readonly<{
   title: string;
   initial: OwnerStoreFormValues;
   onClose: () => void;
-  onSave: (v: OwnerStoreFormValues) => void;
+  /** Devuelve true solo si se persistió en el store; si es false, el modal permanece abierto (p. ej. nombre duplicado). */
+  onSave: (v: OwnerStoreFormValues) => boolean;
 }>;
 
-export function StoreFormModal({ open, title, initial, onClose, onSave }: Props) {
+export function StoreFormModal({
+  open,
+  title,
+  initial,
+  onClose,
+  onSave,
+}: Props) {
   const [name, setName] = useState(initial.name);
   const [categoriesStr, setCategoriesStr] = useState(
     initial.categories.join(", "),
@@ -124,8 +131,7 @@ export function StoreFormModal({ open, title, initial, onClose, onSave }: Props)
                 return;
               }
               setShowVal(false);
-              onSave(payload);
-              onClose();
+              if (onSave(payload)) onClose();
             }}
           >
             Guardar

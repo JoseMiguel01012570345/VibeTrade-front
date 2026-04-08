@@ -36,6 +36,10 @@ function isOwnerOfStore(stores: Record<string, StoreBadge>, storeId: string, own
   return !!b?.ownerUserId && b.ownerUserId === ownerUserId
 }
 
+function normStoreName(raw: string): string {
+  return raw.replace(/\s+/g, ' ').trim().toLowerCase()
+}
+
 /** Tras editar la hoja en el hilo, mantiene asignaciones de transportistas en la oferta pública del feed. */
 function routeOfferPublicAfterSheetEdit(
   prev: Record<string, RouteOfferPublicState>,
@@ -1348,6 +1352,9 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => ({
     createOwnerStore: (ownerUserId, values) => {
       const name = values.name.trim()
       if (!name) return null
+      const normalized = normStoreName(name)
+      const existing = Object.values(get().stores).find((x) => normStoreName(x.name) === normalized)
+      if (existing) return null
       const cats = values.categories.map((c) => c.trim()).filter(Boolean)
       const id = uid('ust')
       const badge: StoreBadge = {
@@ -1379,6 +1386,16 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => ({
       const st = s.stores[storeId]
       const cat = s.storeCatalogs[storeId]
       if (!st || !cat) return false
+      if (patch.name !== undefined) {
+        const candidate = patch.name.trim()
+        const normalized = normStoreName(candidate)
+        if (normalized) {
+          const clash = Object.values(s.stores).find(
+            (x) => x.id !== storeId && normStoreName(x.name) === normalized,
+          )
+          if (clash) return false
+        }
+      }
       set((prev) => {
         const nextBadge: StoreBadge = {
           ...st,

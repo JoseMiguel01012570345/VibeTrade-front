@@ -18,7 +18,19 @@ export async function saveMarketWorkspace(data: MarketSerializableSlice): Promis
   })
   if (!res.ok) {
     const t = await res.text().catch(() => '')
+    if (res.status === 409 && t) {
+      const j = tryParseJsonBody(t)
+      if (j?.message) throw new Error(j.message)
+    }
     throw new Error(t || `PUT market failed: ${res.status}`)
+  }
+}
+
+function tryParseJsonBody(s: string): { message?: string } | null {
+  try {
+    return JSON.parse(s) as { message?: string }
+  } catch {
+    return null
   }
 }
 
@@ -35,7 +47,11 @@ export function subscribeMarketPersistence(store: {
         const now = Date.now()
         if (now - lastPersistErrorToastAt > 15_000) {
           lastPersistErrorToastAt = now
-          toast.error('No se pudo guardar el catálogo en el servidor. Si recargás, podés perder cambios.')
+          const msg =
+            e instanceof Error && e.message && !e.message.startsWith('PUT market failed')
+              ? e.message
+              : 'No se pudo guardar el catálogo en el servidor. Si recargás, podés perder cambios.'
+          toast.error(msg)
         }
       })
     }, 600)
