@@ -42,7 +42,6 @@ export function CustomFieldsEditor({
   const [pendingByField, setPendingByField] = useState<Record<number, number>>(
     {},
   );
-
   function bumpPending(idx: number, delta: number) {
     setPendingByField((p) => {
       const next = { ...p };
@@ -148,9 +147,10 @@ export function CustomFieldsEditor({
             (cf.attachments?.length ?? 0) > 0 ||
             (pendingByField[idx] ?? 0) > 0
           );
+          // key={idx}: no usar cf.title en la key (cada tecla remontaba el input).
           return (
             <div
-              key={`${idx}-${cf.title}`}
+              key={idx}
               className="rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3"
             >
               <label className={fieldRootWithInvalid(titleInvalid)}>

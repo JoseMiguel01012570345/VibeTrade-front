@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Camera,
@@ -39,6 +39,11 @@ import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { mediaApiUrl, uploadMedia } from "../../utils/media/mediaClient";
 import { UploadBlockingOverlay } from "../../components/UploadBlockingOverlay";
 import { ImageLightbox } from "../chat/components/media/ImageLightbox";
+import {
+  isProfileSection,
+  profileSectionPath,
+  type ProfileSection,
+} from "../../utils/navigation/profilePaths";
 
 function isValidEmail(value: string): boolean {
   const t = value.trim();
@@ -170,7 +175,7 @@ function UserAvatarBadge({
 }
 
 export function ProfilePage() {
-  const { userId } = useParams();
+  const { userId, section: sectionParam } = useParams();
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
   const stores = useMarketStore((s) => s.stores);
@@ -194,7 +199,6 @@ export function ProfilePage() {
   const profileDisplayName =
     isMe ? safeName : (profileDisplayNames[resolvedProfileUserId] ?? `Usuario ${resolvedProfileUserId}`);
 
-  const [tab, setTab] = useState<"account" | "reels" | "stores">("account");
   const [socialModal, setSocialModal] = useState<SocialNetworkId | null>(null);
   const [socialDraft, setSocialDraft] = useState("");
   const [nameDraft, setNameDraft] = useState(safeName);
@@ -203,6 +207,10 @@ export function ProfilePage() {
   const avatarDraftRef = useRef<string | null>(null);
   const profileAvatarInputRef = useRef<HTMLInputElement>(null);
   const [profileUploadBusy, setProfileUploadBusy] = useState(false);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+
+  const tab: ProfileSection =
+    sectionParam && isProfileSection(sectionParam) ? sectionParam : "account";
 
   useEffect(() => {
     avatarDraftRef.current = avatarDraftUrl;
@@ -224,9 +232,18 @@ export function ProfilePage() {
   }, [safeEmail]);
 
   useEffect(() => {
-    if (tab === "stores" && storesForProfile.length === 0 && !isMe)
-      setTab("account");
-  }, [tab, storesForProfile.length, isMe]);
+    if (!userId) return;
+    if (tab === "stores" && storesForProfile.length === 0 && !isMe) {
+      nav(profileSectionPath(userId, "account"), { replace: true });
+    }
+  }, [tab, storesForProfile.length, isMe, userId, nav]);
+
+  useEffect(() => {
+    if (!userId) return;
+    if (tab === "reels" && !isMe) {
+      nav(profileSectionPath(userId, "account"), { replace: true });
+    }
+  }, [tab, isMe, userId, nav]);
 
   const savedIds = useMemo(
     () => Object.keys(saved).filter((id) => saved[id]),
@@ -307,7 +324,6 @@ export function ProfilePage() {
     emailDraft.trim().toLowerCase() !== safeEmail.trim().toLowerCase();
   const profileAvatarDirty = isMe && avatarDraftUrl !== null;
   const profileAvatarDisplayUrl = avatarDraftUrl ?? me.avatarUrl;
-  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
 
   async function saveDisplayName() {
     const t = nameDraft.trim();
@@ -372,6 +388,16 @@ export function ProfilePage() {
     }
   }
 
+  if (!userId) {
+    return <Navigate to="/home" replace />;
+  }
+
+  if (sectionParam && !isProfileSection(sectionParam)) {
+    return (
+      <Navigate to={profileSectionPath(userId, "account")} replace />
+    );
+  }
+
   return (
     <div className="container vt-page">
       <UploadBlockingOverlay active={profileUploadBusy} message="Procesando imagen…" />
@@ -409,42 +435,39 @@ export function ProfilePage() {
         </div>
 
         <div className="flex gap-2.5">
-          <button
-            type="button"
+          <Link
+            to={profileSectionPath(userId, "account")}
             className={cn(
-              "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black",
+              "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-center font-black no-underline",
               tab === "account" &&
                 "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
             )}
-            onClick={() => setTab("account")}
           >
             Cuenta
-          </button>
+          </Link>
           {isMe ?
-            <button
-              type="button"
+            <Link
+              to={profileSectionPath(userId, "reels")}
               className={cn(
-                "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black",
+                "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-center font-black no-underline",
                 tab === "reels" &&
                   "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
               )}
-              onClick={() => setTab("reels")}
             >
               Mis Reels
-            </button>
+            </Link>
           : null}
           {isMe || storesForProfile.length > 0 ?
-            <button
-              type="button"
+            <Link
+              to={profileSectionPath(userId, "stores")}
               className={cn(
-                "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 font-black",
+                "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-center font-black no-underline",
                 tab === "stores" &&
                   "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
               )}
-              onClick={() => setTab("stores")}
             >
               Tiendas
-            </button>
+            </Link>
           : null}
         </div>
 

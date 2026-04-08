@@ -13,6 +13,8 @@ type Props = {
   rows?: number
   inputMode?: HTMLAttributes<HTMLInputElement>['inputMode']
   readOnly?: boolean
+  /** id de &lt;datalist&gt; con sugerencias (p. ej. categorías del API). */
+  list?: string
 }
 
 export function ModalFormField({
@@ -26,6 +28,7 @@ export function ModalFormField({
   rows,
   inputMode,
   readOnly = false,
+  list,
 }: Props) {
   const errId = inputId ? `${inputId}-err` : undefined
   const readOnlyCls = readOnly ? 'cursor-default bg-black/[0.04] dark:bg-white/[0.06]' : ''
@@ -53,6 +56,7 @@ export function ModalFormField({
           placeholder={placeholder}
           inputMode={inputMode}
           readOnly={readOnly}
+          list={list}
           aria-invalid={!!error}
           aria-describedby={error ? errId : undefined}
         />

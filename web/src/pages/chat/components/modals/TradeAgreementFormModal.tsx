@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
+import {
+  DEFAULT_CATALOG_CATEGORIES,
+  fetchCatalogCategories,
+} from '../../../../utils/market/fetchCatalogCategories'
 import { cn } from '../../../../lib/cn'
 import { onBackdropPointerClose } from '../../lib/modalClose'
 import {
@@ -57,8 +61,25 @@ export function TradeAgreementFormModal({
   const [errors, setErrors] = useState<TradeAgreementFormErrors>({})
   const [configOpen, setConfigOpen] = useState(false)
   const [configId, setConfigId] = useState<string | null>(null)
+  const [agrCategoryHints, setAgrCategoryHints] = useState<string[]>(() => [...DEFAULT_CATALOG_CATEGORIES])
   const isEdit = !!editingAgreementId
   const editBaselineJsonRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const cats = await fetchCatalogCategories()
+        if (!cancelled && cats.length > 0) setAgrCategoryHints(cats)
+      } catch {
+        /* fallback DEFAULT_CATALOG_CATEGORIES */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   useEffect(() => {
     if (open) {
@@ -160,6 +181,11 @@ export function TradeAgreementFormModal({
         </div>
 
         <div className={modalFormBody}>
+          <datalist id="agr-cat-hints">
+            {agrCategoryHints.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
           <Field
             label="Título del acuerdo"
             value={draft.title}
@@ -219,6 +245,7 @@ export function TradeAgreementFormModal({
                   onRemove={() => removeLine(i)}
                   canRemove={draft.merchandise.length > 1}
                   sellerCatalog={sellerCatalog}
+                  categoryListId="agr-cat-hints"
                 />
               ))
             ) : (
@@ -344,6 +371,7 @@ export function TradeAgreementFormModal({
         <ServiceConfigWizard
           open={configOpen && !!configItem}
           initial={configItem}
+          categoryListId="agr-cat-hints"
           onClose={() => {
             setConfigOpen(false)
             setConfigId(null)

@@ -1,11 +1,4 @@
-export const SUGGESTED_CATEGORIES = [
-  "Cosechas",
-  "Insumos",
-  "Mercancías",
-  "Alimentos",
-  "B2B",
-  "Servicios",
-  "Asesoría",
-  "Logística",
-  "Transportista",
-] as const;
+import { DEFAULT_CATALOG_CATEGORIES } from "../../../utils/market/fetchCatalogCategories";
+
+/** @deprecated Preferir categorías cargadas desde GET /api/v1/market/catalog-categories */
+export const SUGGESTED_CATEGORIES = DEFAULT_CATALOG_CATEGORIES;

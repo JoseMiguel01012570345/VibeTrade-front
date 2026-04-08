@@ -35,9 +35,11 @@ type Props = {
   initial: ServiceItem
   onSave: (item: ServiceItem) => void
   onClose: () => void
+  /** id de &lt;datalist&gt; con categorías permitidas (GET /api/v1/market/catalog-categories). */
+  categoryListId?: string
 }
 
-export function ServiceConfigWizard({ open, initial, onSave, onClose }: Props) {
+export function ServiceConfigWizard({ open, initial, onSave, onClose, categoryListId }: Props) {
   const [sv, setSv] = useState<ServiceItem>(emptyServiceItem())
   const [step, setStep] = useState(0)
   const [timeOpen, setTimeOpen] = useState(false)
@@ -156,6 +158,7 @@ export function ServiceConfigWizard({ open, initial, onSave, onClose }: Props) {
               value={sv.tipoServicio}
               onChange={(v) => setSv((s) => ({ ...s, tipoServicio: v }))}
               inputId="wiz-sv-tipo"
+              list={categoryListId}
             />
           ) : null}
 

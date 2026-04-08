@@ -16,7 +16,10 @@ import {
   emptyStoreProductInput,
   emptyStoreServiceInput,
 } from "../chat/domain/storeCatalogTypes";
-import { SUGGESTED_CATEGORIES } from "./stores/constants";
+import {
+  DEFAULT_CATALOG_CATEGORIES,
+  fetchCatalogCategories,
+} from "../../utils/market/fetchCatalogCategories";
 import { OwnerStoreCard } from "./stores/OwnerStoreCard";
 import { VisitorStoreSummaryCard } from "./stores/VisitorStoreSummaryCard";
 import { ProductEditorModal } from "./stores/ProductEditorModal";
@@ -121,6 +124,24 @@ export function ProfileStoresSection({
   const [catalogReloadBusyId, setCatalogReloadBusyId] = useState<string | null>(
     null,
   );
+  const [catalogCategories, setCatalogCategories] = useState<string[]>(() => [
+    ...DEFAULT_CATALOG_CATEGORIES,
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const cats = await fetchCatalogCategories();
+        if (!cancelled && cats.length > 0) setCatalogCategories(cats);
+      } catch {
+        /* DEFAULT_CATALOG_CATEGORIES */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     avatarDraftsRef.current = avatarDrafts;
@@ -331,7 +352,7 @@ export function ProfileStoresSection({
       />
     <div className="vt-card vt-card-pad">
       <datalist id="store-cat-hints">
-        {SUGGESTED_CATEGORIES.map((c) => (
+        {catalogCategories.map((c) => (
           <option key={c} value={c} />
         ))}
       </datalist>

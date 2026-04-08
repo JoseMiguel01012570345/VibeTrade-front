@@ -73,6 +73,7 @@ export function StoreFormModal({ open, title, initial, onClose, onSave }: Props)
             <span className={fieldLabel}>Categorías (separadas por coma)</span>
             <input
               className="vt-input"
+              list="store-cat-hints"
               value={categoriesStr}
               onChange={(e) => setCategoriesStr(e.target.value)}
               placeholder="Ej: Mercancías, Cosechas"

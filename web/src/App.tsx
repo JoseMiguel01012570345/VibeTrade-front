@@ -1,4 +1,11 @@
-import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import {
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 import { useAppStore } from "./app/store/useAppStore";
 import { AppShell } from "./app/shell/AppShell";
 import { ChatListPage } from "./pages/chat/ChatListPage";
@@ -33,6 +40,13 @@ function RootRedirect() {
   );
 }
 
+/** `/profile/:userId` → `/profile/:userId/account` */
+function ProfileDefaultRedirect() {
+  const { userId } = useParams();
+  if (!userId) return <Navigate to="/home" replace />;
+  return <Navigate to={`/profile/${userId}/account`} replace />;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -52,7 +66,8 @@ export default function App() {
           <Route path="/chat/:threadId" element={<ChatPage />} />
           <Route path="/reels" element={<ReelsPage />} />
 
-          <Route path="/profile/:userId" element={<ProfilePage />} />
+          <Route path="/profile/:userId" element={<ProfileDefaultRedirect />} />
+          <Route path="/profile/:userId/:section" element={<ProfilePage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
 
           <Route path="*" element={<Navigate to="/home" replace />} />

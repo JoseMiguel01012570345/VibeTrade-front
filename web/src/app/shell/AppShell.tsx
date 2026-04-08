@@ -11,7 +11,13 @@ const tabs = [
   { to: '/reels', label: 'Reels', icon: PlaySquare },
   /** Lista en `/chat`; `activePrefix` mantiene el tab activo dentro de un hilo. */
   { to: '/chat', label: 'Chat', icon: MessageCircle, activePrefix: '/chat' },
-  { to: '/profile/me', label: 'Perfil', icon: User },
+  /** Cuenta / Reels / Tiendas viven bajo `/profile/me/...`. */
+  {
+    to: '/profile/me/account',
+    label: 'Perfil',
+    icon: User,
+    activePrefix: '/profile/me',
+  },
 ] as const
 
 function tabIsActive(pathname: string, t: (typeof tabs)[number]) {
@@ -49,7 +55,7 @@ export function AppShell() {
             {tabs.map((t) => {
               const active = tabIsActive(pathname, t)
               const Icon = t.icon
-              const profileTab = t.to === '/profile/me'
+              const profileTab = 'activePrefix' in t && t.activePrefix === '/profile/me'
               const profileLetter = (me.name ?? '?').slice(0, 1).toUpperCase()
               return (
                 <Link

@@ -19,6 +19,7 @@ export function MerchandiseLineEditor({
   lineIndex,
   errors,
   sellerCatalog,
+  categoryListId,
 }: {
   line: MerchandiseLine
   onChange: (next: MerchandiseLine) => void
@@ -27,6 +28,8 @@ export function MerchandiseLineEditor({
   lineIndex: number
   errors?: Partial<Record<keyof MerchandiseLine, string>>
   sellerCatalog?: StoreCatalog | null
+  /** Sugerencias para el campo «Tipo» (mismas categorías que productos/servicios). */
+  categoryListId?: string
 }) {
   const p = (k: keyof MerchandiseLine) => `agr-m-${lineIndex}-${k}`
   const anchorProducts =
@@ -83,6 +86,7 @@ export function MerchandiseLineEditor({
           onChange={(v) => onChange({ ...line, tipo: v })}
           error={errors?.tipo}
           inputId={p('tipo')}
+          list={categoryListId}
         />
         <Field
           label="Cantidad"
