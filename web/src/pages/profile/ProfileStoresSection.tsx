@@ -10,6 +10,7 @@ import {
   DEFAULT_CATALOG_CATEGORIES,
   fetchCatalogCategories,
 } from "../../utils/market/fetchCatalogCategories";
+import { VtSelect } from "../../components/VtSelect";
 import { OwnerStoreCard } from "./stores/OwnerStoreCard";
 import { VisitorStoreSummaryCard } from "./stores/VisitorStoreSummaryCard";
 import { StoreFormModal } from "./stores/StoreFormModal";
@@ -315,19 +316,19 @@ export function ProfileStoresSection({
               </label>
               <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
                 Categoría
-                <select
-                  className="vt-input"
+                <VtSelect
                   value={storeListCategory}
-                  onChange={(e) => setStoreListCategory(e.target.value)}
-                  aria-label="Filtrar tiendas por categoría"
-                >
-                  <option value="">Todas</option>
-                  {storeListCategoryOptions.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setStoreListCategory}
+                  ariaLabel="Filtrar tiendas por categoría"
+                  placeholder="Todas"
+                  options={[
+                    { value: "", label: "Todas" },
+                    ...storeListCategoryOptions.map((c) => ({
+                      value: c,
+                      label: c,
+                    })),
+                  ]}
+                />
               </label>
             </div>
             {filteredMyStores.length === 0 ? (
@@ -469,19 +470,19 @@ export function ProfileStoresSection({
               </label>
               <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
                 Categoría
-                <select
-                  className="vt-input"
+                <VtSelect
                   value={storeListCategory}
-                  onChange={(e) => setStoreListCategory(e.target.value)}
-                  aria-label="Filtrar tiendas por categoría"
-                >
-                  <option value="">Todas</option>
-                  {storeListCategoryOptions.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setStoreListCategory}
+                  ariaLabel="Filtrar tiendas por categoría"
+                  placeholder="Todas"
+                  options={[
+                    { value: "", label: "Todas" },
+                    ...storeListCategoryOptions.map((c) => ({
+                      value: c,
+                      label: c,
+                    })),
+                  ]}
+                />
               </label>
             </div>
             {filteredMyStores.length === 0 ? (
@@ -530,6 +531,7 @@ export function ProfileStoresSection({
             key="create-store"
             open
             title="Nueva tienda"
+            categoryOptions={catalogCategories}
             initial={{
               name: "",
               categories: [],
@@ -556,6 +558,7 @@ export function ProfileStoresSection({
             key={`edit-store-${editStoreId}`}
             open
             title="Editar tienda"
+            categoryOptions={catalogCategories}
             initial={ownerStoreToFormValues(editingBadge, editingCat.pitch)}
             onClose={() => setEditStoreId(null)}
             onSave={(v) => {

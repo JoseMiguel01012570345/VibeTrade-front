@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import type { OwnerStoreFormValues } from "../../../app/store/marketStoreTypes";
+import { X } from "lucide-react";
 import {
   PROFILE_DESC_MIN,
   PROFILE_TITLE_MIN,
@@ -17,11 +18,13 @@ import {
   textareaMin,
 } from "../../chat/styles/formModalStyles";
 import { cn } from "../../../lib/cn";
+import { VtSelect } from "../../../components/VtSelect";
 
 type Props = Readonly<{
   open: boolean;
   title: string;
   initial: OwnerStoreFormValues;
+  categoryOptions: string[];
   onClose: () => void;
   /** Devuelve true solo si se persistió en el store; si es false, el modal permanece abierto (p. ej. nombre duplicado). */
   onSave: (v: OwnerStoreFormValues) => boolean;
@@ -31,26 +34,31 @@ export function StoreFormModal({
   open,
   title,
   initial,
+  categoryOptions,
   onClose,
   onSave,
 }: Props) {
   const [name, setName] = useState(initial.name);
-  const [categoriesStr, setCategoriesStr] = useState(
-    initial.categories.join(", "),
-  );
+  const [categories, setCategories] = useState<string[]>(initial.categories);
   const [pitch, setPitch] = useState(initial.categoryPitch);
   const [transport, setTransport] = useState(initial.transportIncluded);
   const [showVal, setShowVal] = useState(false);
 
-  if (!open) return null;
-
-  const categoriesDraft = categoriesStr
-    .split(",")
-    .map((c) => c.trim())
-    .filter(Boolean);
+  const categoriesDraft = categories;
   const catInvalid =
     showVal && !categoriesDraft.some((c) => c.length >= PROFILE_TITLE_MIN);
   const pitchInvalid = showVal && pitch.trim().length < PROFILE_DESC_MIN;
+
+  const categorySelectOptions = useMemo(() => {
+    const set = new Set(categoriesDraft.map((c) => c.trim()).filter(Boolean));
+    return categoryOptions
+      .map((c) => c.trim())
+      .filter(Boolean)
+      .filter((c) => !set.has(c))
+      .sort((a, b) => a.localeCompare(b, "es"));
+  }, [categoryOptions, categoriesDraft]);
+
+  if (!open) return null;
 
   return (
     <div
@@ -77,14 +85,45 @@ export function StoreFormModal({
             />
           </label>
           <label className={fieldRootWithInvalid(catInvalid)}>
-            <span className={fieldLabel}>Categorías (separadas por coma)</span>
-            <input
-              className="vt-input"
-              list="store-cat-hints"
-              value={categoriesStr}
-              onChange={(e) => setCategoriesStr(e.target.value)}
-              placeholder="Ej: Mercancías, Cosechas"
-            />
+            <span className={fieldLabel}>Categorías</span>
+            <div className="flex flex-col gap-2">
+              <VtSelect
+                value=""
+                onChange={(v) => {
+                  const t = v.trim();
+                  if (!t) return;
+                  setCategories((prev) => (prev.includes(t) ? prev : [...prev, t]));
+                }}
+                ariaLabel="Añadir categoría"
+                placeholder="Añadir categoría…"
+                options={[
+                  { value: "", label: "Añadir categoría…", disabled: true },
+                  ...categorySelectOptions.map((c) => ({ value: c, label: c })),
+                ]}
+              />
+              {categoriesDraft.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {categoriesDraft.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-2.5 py-1 text-[12px] font-semibold"
+                      onClick={() => {
+                        setCategories((prev) => prev.filter((x) => x !== c));
+                      }}
+                      aria-label={`Quitar categoría ${c}`}
+                      title="Quitar"
+                    >
+                      {c} <X size={14} className="opacity-70" aria-hidden />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="vt-muted text-[12px]">
+                  Elegí una o más categorías desde el desplegable.
+                </div>
+              )}
+            </div>
           </label>
           <label className={fieldRootWithInvalid(pitchInvalid)}>
             <span className={fieldLabel}>
@@ -114,13 +153,9 @@ export function StoreFormModal({
             type="button"
             className="vt-btn vt-btn-primary"
             onClick={() => {
-              const categories = categoriesStr
-                .split(",")
-                .map((c) => c.trim())
-                .filter(Boolean);
               const payload = {
                 name: name.trim(),
-                categories,
+                categories: categoriesDraft,
                 categoryPitch: pitch,
                 transportIncluded: transport,
               };

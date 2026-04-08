@@ -16,6 +16,7 @@ import {
 import { cn } from "../../lib/cn";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import type { StoreBadge } from "../../app/store/marketStoreTypes";
+import { VtSelect } from "../../components/VtSelect";
 import {
   emptyStoreProductInput,
   emptyStoreServiceInput,
@@ -94,19 +95,18 @@ function ProductFiltersCard({
           onChange={(e) => onProductNameQ(e.target.value)}
           aria-label="Filtrar productos por nombre o modelo"
         />
-        <select
-          className="vt-input sm:w-48"
-          value={productCategory}
-          onChange={(e) => onProductCategory(e.target.value)}
-          aria-label="Filtrar productos por categoría"
-        >
-          <option value="">Todas las categorías</option>
-          {productCategories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+        <div className="sm:w-48">
+          <VtSelect
+            value={productCategory}
+            onChange={onProductCategory}
+            ariaLabel="Filtrar productos por categoría"
+            placeholder="Todas las categorías"
+            options={[
+              { value: "", label: "Todas las categorías" },
+              ...productCategories.map((c) => ({ value: c, label: c })),
+            ]}
+          />
+        </div>
       </div>
     </div>
   );
@@ -143,19 +143,18 @@ function ServiceFiltersCard({
           onChange={(e) => onServiceNameQ(e.target.value)}
           aria-label="Filtrar servicios por nombre o tipo"
         />
-        <select
-          className="vt-input sm:w-48"
-          value={serviceCategory}
-          onChange={(e) => onServiceCategory(e.target.value)}
-          aria-label="Filtrar servicios por categoría"
-        >
-          <option value="">Todas las categorías</option>
-          {serviceCategories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+        <div className="sm:w-48">
+          <VtSelect
+            value={serviceCategory}
+            onChange={onServiceCategory}
+            ariaLabel="Filtrar servicios por categoría"
+            placeholder="Todas las categorías"
+            options={[
+              { value: "", label: "Todas las categorías" },
+              ...serviceCategories.map((c) => ({ value: c, label: c })),
+            ]}
+          />
+        </div>
       </div>
     </div>
   );
@@ -205,19 +204,18 @@ function VitrinaFiltersCard({
               onChange={(e) => onProductNameQ(e.target.value)}
               aria-label="Filtrar productos por nombre o modelo"
             />
-            <select
-              className="vt-input sm:w-48"
-              value={productCategory}
-              onChange={(e) => onProductCategory(e.target.value)}
-              aria-label="Filtrar productos por categoría"
-            >
-              <option value="">Todas las categorías</option>
-              {productCategories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <div className="sm:w-48">
+              <VtSelect
+                value={productCategory}
+                onChange={onProductCategory}
+                ariaLabel="Filtrar productos por categoría"
+                placeholder="Todas las categorías"
+                options={[
+                  { value: "", label: "Todas las categorías" },
+                  ...productCategories.map((c) => ({ value: c, label: c })),
+                ]}
+              />
+            </div>
           </div>
         </div>
         <div>
@@ -231,19 +229,18 @@ function VitrinaFiltersCard({
               onChange={(e) => onServiceNameQ(e.target.value)}
               aria-label="Filtrar servicios por nombre"
             />
-            <select
-              className="vt-input sm:w-48"
-              value={serviceCategory}
-              onChange={(e) => onServiceCategory(e.target.value)}
-              aria-label="Filtrar servicios por categoría"
-            >
-              <option value="">Todas las categorías</option>
-              {serviceCategories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <div className="sm:w-48">
+              <VtSelect
+                value={serviceCategory}
+                onChange={onServiceCategory}
+                ariaLabel="Filtrar servicios por categoría"
+                placeholder="Todas las categorías"
+                options={[
+                  { value: "", label: "Todas las categorías" },
+                  ...serviceCategories.map((c) => ({ value: c, label: c })),
+                ]}
+              />
+            </div>
           </div>
         </div>
       </div>

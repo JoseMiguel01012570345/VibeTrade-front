@@ -3,6 +3,7 @@ import { useAppStore } from '../../app/store/useAppStore'
 import { useMarketStore } from '../../app/store/useMarketStore'
 import type { ReelComment } from '../../pages/reels/ReelCommentsPanel'
 import { apiFetch } from '../http/apiClient'
+import { getSessionToken } from '../http/sessionToken'
 import { setMarketHydrating, subscribeMarketPersistence } from '../market/marketPersistence'
 import { setReelsBootstrap } from '../reels/reelsBootstrapState'
 import type { BootstrapResponse } from './bootstrapTypes'
@@ -32,6 +33,26 @@ function normalizeReelsComments(comments: Record<string, ReelComment[]>) {
 }
 
 export async function bootstrapWebApp(): Promise<void> {
+  const token = getSessionToken()
+  const active = useAppStore.getState().isSessionActive
+  if (!token || !active) {
+    // No sesión: evitar pegarle al backend. El SessionGate llevará a onboarding.
+    // Dejamos estado consistente (vacío) sin iniciar persistencia.
+    setMarketHydrating(true)
+    useMarketStore.setState({
+      stores: {},
+      offers: {},
+      offerIds: [],
+      storeCatalogs: {},
+      threads: {},
+      routeOfferPublic: {},
+    })
+    setMarketHydrating(false)
+    useAppStore.setState({ profileDisplayNames: {} })
+    setReelsBootstrap({ items: [], initialComments: {}, initialLikeCounts: {} })
+    return
+  }
+
   const res = await apiFetch('/api/v1/bootstrap')
   if (!res.ok) {
     const msg = `No se pudo cargar datos (${res.status}). ¿Está el backend en marcha?`

@@ -9,8 +9,8 @@ import { restoreAuthSession } from './utils/auth/restoreAuthSession'
 
 async function start() {
   try {
-    await bootstrapWebApp()
     await restoreAuthSession()
+    await bootstrapWebApp()
   } catch {
     /* toast en bootstrapWebApp */
   }

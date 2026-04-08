@@ -6,6 +6,7 @@ import { useAppStore } from '../../app/store/useAppStore'
 import { OtpInput } from './OtpInput'
 import { apiFetch } from '../../utils/http/apiClient'
 import { setSessionToken } from '../../utils/http/sessionToken'
+import { bootstrapWebApp } from '../../utils/bootstrap/bootstrapWebApp'
 import { userFromSessionJson, type SessionUserJson } from '../../utils/auth/sessionUser'
 import type { OnboardingMode } from './OnboardingWelcomePage'
 
@@ -70,6 +71,8 @@ export function OtpPage() {
       applySessionUser(userFromSessionJson(json.user))
       toast.success(mode === 'register' ? 'Cuenta verificada' : 'Sesión iniciada')
       setSessionActive(true)
+      // Hydrate user-scoped workspace immediately after login.
+      await bootstrapWebApp()
       nav('/home', { replace: true })
     } finally {
       setBusy(false)
