@@ -536,6 +536,7 @@ export function ProfileStoresSection({
               categories: [],
               categoryPitch: "",
               transportIncluded: false,
+              location: undefined,
             }}
             onClose={() => setCreateOpen(false)}
             onSave={(v) => {

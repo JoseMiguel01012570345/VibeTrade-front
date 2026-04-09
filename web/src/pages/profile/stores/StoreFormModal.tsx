@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import type { OwnerStoreFormValues } from "../../../app/store/marketStoreTypes";
-import { X } from "lucide-react";
+import type {
+  OwnerStoreFormValues,
+  StoreLocationPoint,
+} from "../../../app/store/marketStoreTypes";
+import { MapPin, X } from "lucide-react";
 import {
   PROFILE_DESC_MIN,
   PROFILE_TITLE_MIN,
@@ -19,6 +22,7 @@ import {
 } from "../../chat/styles/formModalStyles";
 import { cn } from "../../../lib/cn";
 import { VtSelect } from "../../../components/VtSelect";
+import { StoreLocationMapModal } from "./StoreLocationMapModal";
 
 type Props = Readonly<{
   open: boolean;
@@ -42,6 +46,10 @@ export function StoreFormModal({
   const [categories, setCategories] = useState<string[]>(initial.categories);
   const [pitch, setPitch] = useState(initial.categoryPitch);
   const [transport, setTransport] = useState(initial.transportIncluded);
+  const [location, setLocation] = useState<StoreLocationPoint | undefined>(
+    initial.location,
+  );
+  const [mapOpen, setMapOpen] = useState(false);
   const [showVal, setShowVal] = useState(false);
 
   const categoriesDraft = categories;
@@ -144,6 +152,28 @@ export function StoreFormModal({
             />
             <span>Transporte incluido en las ofertas de esta tienda</span>
           </label>
+          <div>
+            <span className={fieldLabel}>Ubicación (opcional)</span>
+            <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                className="vt-btn vt-btn-ghost inline-flex items-center gap-2 self-start"
+                onClick={() => setMapOpen(true)}
+              >
+                <MapPin size={18} className="text-[var(--primary)]" aria-hidden />
+                {location ? "Cambiar ubicación en mapa" : "Elegir en mapa"}
+              </button>
+              {location ? (
+                <span className="vt-muted text-[12px]">
+                  {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+                </span>
+              ) : (
+                <span className="vt-muted text-[12px]">
+                  Sin pin: no se muestra mapa en la tienda.
+                </span>
+              )}
+            </div>
+          </div>
         </div>
         <div className="vt-modal-actions">
           <button type="button" className="vt-btn" onClick={onClose}>
@@ -153,11 +183,12 @@ export function StoreFormModal({
             type="button"
             className="vt-btn vt-btn-primary"
             onClick={() => {
-              const payload = {
+              const payload: OwnerStoreFormValues = {
                 name: name.trim(),
                 categories: categoriesDraft,
                 categoryPitch: pitch,
                 transportIncluded: transport,
+                location,
               };
               const err = validateOwnerStoreForm(payload);
               if (err) {
@@ -173,6 +204,12 @@ export function StoreFormModal({
           </button>
         </div>
       </div>
+      <StoreLocationMapModal
+        open={mapOpen}
+        initial={location}
+        onClose={() => setMapOpen(false)}
+        onSave={(p) => setLocation(p)}
+      />
     </div>
   );
 }

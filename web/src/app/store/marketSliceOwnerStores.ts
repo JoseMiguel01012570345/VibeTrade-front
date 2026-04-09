@@ -35,6 +35,7 @@ createOwnerStore: (ownerUserId, values) => {
     transportIncluded: values.transportIncluded,
     trustScore: 65,
     ownerUserId,
+    ...(values.location ? { location: values.location } : {}),
   }
   const catalog: StoreCatalog = {
     pitch: values.categoryPitch.trim(),
@@ -67,7 +68,7 @@ updateOwnerStore: (storeId, ownerUserId, patch) => {
     }
   }
   set((prev) => {
-    const nextBadge: StoreBadge = {
+    let nextBadge: StoreBadge = {
       ...st,
       ...(patch.name !== undefined ? { name: patch.name.trim() || st.name } : {}),
       ...(patch.categories !== undefined
@@ -86,6 +87,14 @@ updateOwnerStore: (storeId, ownerUserId, patch) => {
                 : patch.avatarUrl,
           }
         : {}),
+    }
+    if ('location' in patch) {
+      if (patch.location === undefined) {
+        const { location: _removed, ...rest } = nextBadge
+        nextBadge = rest as StoreBadge
+      } else {
+        nextBadge = { ...nextBadge, location: patch.location }
+      }
     }
     const nextCat: StoreCatalog =
       patch.categoryPitch !== undefined ? { ...cat, pitch: patch.categoryPitch } : cat

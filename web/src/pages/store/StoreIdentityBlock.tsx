@@ -3,6 +3,7 @@ import { cn } from "../../lib/cn";
 import type { StoreBadge } from "../../app/store/marketStoreTypes";
 import type { StoreCatalog } from "../chat/domain/storeCatalogTypes";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
+import { StoreLocationPreview } from "./StoreLocationPreview";
 
 export function StoreIdentityBlock({
   store,
@@ -85,6 +86,10 @@ export function StoreIdentityBlock({
           </span>
         ) : null}
       </div>
+
+      {store.location ? (
+        <StoreLocationPreview location={store.location} />
+      ) : null}
     </div>
   );
 }

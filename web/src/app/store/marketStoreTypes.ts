@@ -14,6 +14,12 @@ export type {
   RouteStop,
 } from '../../pages/chat/domain/routeSheetTypes'
 
+/** Pin WGS84 (misma forma en workspace JSON y API). */
+export type StoreLocationPoint = {
+  lat: number
+  lng: number
+}
+
 export type StoreBadge = {
   id: string
   name: string
@@ -24,6 +30,8 @@ export type StoreBadge = {
   trustScore: number
   /** Si existe, la tienda fue creada desde el perfil y solo ese usuario puede editarla. */
   ownerUserId?: string
+  /** Ubicación opcional mostrada en la ficha pública de la tienda. */
+  location?: StoreLocationPoint
 }
 
 /** Alta de tienda desde perfil (flow-ui: nombre, categorías, descripción, transporte). */
@@ -32,6 +40,8 @@ export type OwnerStoreFormValues = {
   categories: string[]
   categoryPitch: string
   transportIncluded: boolean
+  /** Opcional: pin en mapa (OpenStreetMap). */
+  location?: StoreLocationPoint
 }
 
 /** Parcial permitido al actualizar tienda (incl. imagen de vitrina). */
