@@ -1,12 +1,10 @@
 import type { StoreBadge } from "../../app/store/marketStoreTypes";
-import type { VitrinaListMode } from "../../pages/store/storePageTypes";
 import { apiFetch } from "../http/apiClient";
 import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage } from "../http/apiErrorMessage";
 
 export type StoreSearchParams = {
   name?: string;
   category?: string;
-  vitrinaMode?: VitrinaListMode;
   /** Centro del usuario (WGS84). */
   lat?: number;
   lng?: number;
@@ -30,7 +28,6 @@ export async function searchStores(params: StoreSearchParams): Promise<StoreSear
   const qs = new URLSearchParams();
   if (params.name) qs.set("name", params.name);
   if (params.category) qs.set("category", params.category);
-  if (params.vitrinaMode) qs.set("vitrinaMode", params.vitrinaMode);
   if (typeof params.lat === "number") qs.set("lat", String(params.lat));
   if (typeof params.lng === "number") qs.set("lng", String(params.lng));
   if (typeof params.km === "number") qs.set("km", String(params.km));

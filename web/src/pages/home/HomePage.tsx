@@ -14,7 +14,6 @@ import {
   isTransportFeedOffer,
   userHasTransportService,
 } from "../../utils/user/transportEligibility";
-import type { VitrinaListMode } from "../store/storePageTypes";
 import { StoreSearchResultCard } from "./StoreSearchResultCard";
 
 function OffersTab({
@@ -95,8 +94,6 @@ function StoresTab({
   setStoreNameQ,
   storeCategory,
   setStoreCategory,
-  vitrinaMode,
-  setVitrinaMode,
   km,
   setKm,
   catOptions,
@@ -108,8 +105,6 @@ function StoresTab({
   setStoreNameQ: (v: string) => void;
   storeCategory: string;
   setStoreCategory: (v: string) => void;
-  vitrinaMode: VitrinaListMode;
-  setVitrinaMode: (v: VitrinaListMode) => void;
   km: string;
   setKm: (v: string) => void;
   catOptions: string[];
@@ -141,20 +136,6 @@ function StoresTab({
             options={[
               { value: "", label: "Todas" },
               ...catOptions.map((c) => ({ value: c, label: c })),
-            ]}
-          />
-        </label>
-        <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
-          <span>Vitrina</span>
-          <VtSelect
-            value={vitrinaMode}
-            onChange={(v) => setVitrinaMode(v as VitrinaListMode)}
-            ariaLabel="Filtrar por vitrina"
-            placeholder="Ambos"
-            options={[
-              { value: "both", label: "Productos o servicios" },
-              { value: "products", label: "Solo productos" },
-              { value: "services", label: "Solo servicios" },
             ]}
           />
         </label>
@@ -242,7 +223,6 @@ export function HomePage() {
 
   const [storeNameQ, setStoreNameQ] = useState("");
   const [storeCategory, setStoreCategory] = useState("");
-  const [vitrinaMode, setVitrinaMode] = useState<VitrinaListMode>("both");
   const [km, setKm] = useState("");
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [catOptions, setCatOptions] = useState<string[]>([]);
@@ -280,7 +260,6 @@ export function HomePage() {
           const list = await searchStores({
             name: storeNameQ.trim() || undefined,
             category: storeCategory.trim() || undefined,
-            vitrinaMode,
             lat: useDistance ? geo.lat : undefined,
             lng: useDistance ? geo.lng : undefined,
             km: useDistance ? kmNum : undefined,
@@ -299,7 +278,7 @@ export function HomePage() {
       cancelled = true;
       globalThis.clearTimeout(t);
     };
-  }, [tab, storeNameQ, storeCategory, vitrinaMode, km, geo]);
+  }, [tab, storeNameQ, storeCategory, km, geo]);
 
   let subtitle = "Buscá tiendas por nombre, categoría, vitrina y distancia.";
   if (tab === "offers") {
@@ -346,8 +325,6 @@ export function HomePage() {
           setStoreNameQ={setStoreNameQ}
           storeCategory={storeCategory}
           setStoreCategory={setStoreCategory}
-          vitrinaMode={vitrinaMode}
-          setVitrinaMode={setVitrinaMode}
           km={km}
           setKm={setKm}
           catOptions={catOptions}
