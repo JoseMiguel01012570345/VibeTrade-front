@@ -1,11 +1,15 @@
 import { Wrench } from "lucide-react";
-import type { StoreService } from "../chat/domain/storeCatalogTypes";
+import {
+  catalogMonedasList,
+  type StoreService,
+} from "../chat/domain/storeCatalogTypes";
 import {
   ProtectedMediaAnchor,
   ProtectedMediaImg,
 } from "../../components/media/ProtectedMediaImg";
 
 export function ServiceDetailCard({ s }: { s: StoreService }) {
+  const monedas = catalogMonedasList(s);
   return (
     <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3.5">
       <div className="flex items-start gap-2">
@@ -21,6 +25,11 @@ export function ServiceDetailCard({ s }: { s: StoreService }) {
           <div className="mt-1 font-black tracking-[-0.02em]">
             {s.tipoServicio}
           </div>
+          {monedas.length > 0 ? (
+            <div className="mt-1.5 text-[12px] font-bold text-[var(--muted)]">
+              Moneda: {monedas.join(" · ")}
+            </div>
+          ) : null}
           <p className="vt-muted mt-2 text-[13px] leading-snug">
             {s.descripcion}
           </p>

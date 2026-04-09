@@ -2,7 +2,10 @@ import { type ChangeEvent, useId, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Loader2, Upload, X } from "lucide-react";
 import type { MerchandiseCondition } from "../../chat/domain/tradeAgreementTypes";
-import type { StoreProduct } from "../../chat/domain/storeCatalogTypes";
+import {
+  catalogMonedasList,
+  type StoreProduct,
+} from "../../chat/domain/storeCatalogTypes";
 import {
   PROFILE_DESC_MIN,
   PROFILE_LINE_MIN,
@@ -20,6 +23,7 @@ import {
 } from "../../chat/styles/formModalStyles";
 import { cn } from "../../../lib/cn";
 import { VtSelect } from "../../../components/VtSelect";
+import { VtMultiSelect } from "../../../components/VtMultiSelect";
 import { UploadBlockingOverlay } from "../../../components/UploadBlockingOverlay";
 import { ProtectedMediaImg } from "../../../components/media/ProtectedMediaImg";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
@@ -43,6 +47,8 @@ type Props = Readonly<{
   initial: Omit<StoreProduct, "id" | "storeId">;
   /** Categorías del backend (GET /api/v1/market/catalog-categories). */
   categoryOptions?: string[];
+  /** Monedas del backend (GET /api/v1/market/currencies). */
+  currencyOptions?: string[];
   onClose: () => void;
   onSave: (v: Omit<StoreProduct, "id" | "storeId">) => void;
 }>;
@@ -52,6 +58,7 @@ export function ProductEditorModal({
   title,
   initial,
   categoryOptions = [],
+  currencyOptions = [],
   onClose,
   onSave,
 }: Props) {
@@ -72,6 +79,21 @@ export function ProductEditorModal({
     if (form.category.trim()) merged.add(form.category.trim());
     return [...merged].sort((a, b) => a.localeCompare(b, "es"));
   }, [categoryOptions, form.category]);
+
+  /** Lista para el precio (única) y para monedas aceptadas (múltiple); incluye CUP. */
+  const allCurrencyCodes = useMemo(() => {
+    const merged = new Set<string>(
+      currencyOptions.map((c) => c.trim()).filter(Boolean),
+    );
+    merged.add("CUP");
+    const mp = (form.monedaPrecio ?? "").trim();
+    if (mp) merged.add(mp);
+    for (const c of form.monedas ?? []) {
+      const t = c.trim();
+      if (t) merged.add(t);
+    }
+    return [...merged].sort((a, b) => a.localeCompare(b, "es"));
+  }, [currencyOptions, form.monedaPrecio, form.monedas]);
 
   if (!open) return null;
 
@@ -233,16 +255,47 @@ export function ProductEditorModal({
                 />
               </label>
               <label
-                className={cn(
-                  fieldRootWithInvalid(showVal && !form.price.trim()),
-                  "min-[560px]:col-span-2",
-                )}
+                className={fieldRootWithInvalid(showVal && !form.price.trim())}
               >
                 <span className={fieldLabel}>Precio</span>
                 <input
                   className="vt-input"
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
+                />
+              </label>
+              <label className={fieldRootWithInvalid(false)}>
+                <span className={fieldLabel}>Tipo de moneda</span>
+                <VtSelect
+                  value={form.monedaPrecio ?? ""}
+                  onChange={(v) => setForm({ ...form, monedaPrecio: v })}
+                  ariaLabel="Tipo de moneda del precio"
+                  placeholder="Sin especificar"
+                  options={[
+                    { value: "", label: "Sin especificar" },
+                    ...allCurrencyCodes.map((c) => ({
+                      value: c,
+                      label: c,
+                    })),
+                  ]}
+                />
+              </label>
+              <label
+                className={cn(
+                  fieldRootWithInvalid(false),
+                  "min-[560px]:col-span-2",
+                )}
+              >
+                <span className={fieldLabel}>Moneda aceptada</span>
+                <VtMultiSelect
+                  value={form.monedas ?? []}
+                  onChange={(monedas) => setForm({ ...form, monedas })}
+                  ariaLabel="Monedas aceptadas para el pago"
+                  placeholder="Sin especificar"
+                  options={allCurrencyCodes.map((c) => ({
+                    value: c,
+                    label: c,
+                  }))}
                 />
               </label>
             </div>
@@ -493,9 +546,12 @@ export function ProductEditorModal({
               type="button"
               className="vt-btn vt-btn-primary"
               onClick={() => {
+                const monedas = catalogMonedasList({ monedas: form.monedas });
                 const snapshot = {
                   ...form,
                   photoUrls: photoSlots.map((p) => p.url),
+                  monedaPrecio: (form.monedaPrecio ?? "").trim() || undefined,
+                  monedas: monedas.length ? monedas : undefined,
                 };
                 const err = validateProductForm(snapshot);
                 if (err) {

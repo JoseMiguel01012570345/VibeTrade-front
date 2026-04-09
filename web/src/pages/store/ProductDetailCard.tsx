@@ -1,11 +1,16 @@
 import { Package } from "lucide-react";
-import type { StoreProduct } from "../chat/domain/storeCatalogTypes";
+import {
+  catalogMonedasList,
+  type StoreProduct,
+} from "../chat/domain/storeCatalogTypes";
 import {
   ProtectedMediaAnchor,
   ProtectedMediaImg,
 } from "../../components/media/ProtectedMediaImg";
 
 export function ProductDetailCard({ p }: { p: StoreProduct }) {
+  const monedasAceptadas = catalogMonedasList(p);
+  const precioMoneda = p.monedaPrecio?.trim();
   return (
     <div className="overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
       <div className="grid min-[640px]:grid-cols-[160px_1fr]">
@@ -38,7 +43,22 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
           </div>
           <div className="mt-2 text-sm font-bold text-[color-mix(in_oklab,var(--primary)_90%,var(--text))]">
             {p.price}
+            {precioMoneda ? (
+              <span className="ml-1.5 font-semibold text-[var(--muted)]">
+                · {precioMoneda}
+              </span>
+            ) : null}
           </div>
+          {monedasAceptadas.length > 0 &&
+          !(
+            precioMoneda &&
+            monedasAceptadas.length === 1 &&
+            monedasAceptadas[0] === precioMoneda
+          ) ? (
+            <div className="mt-1 text-[11px] font-semibold leading-snug text-[var(--muted)]">
+              Moneda aceptada: {monedasAceptadas.join(" · ")}
+            </div>
+          ) : null}
           {p.photoUrls.length > 1 ? (
             <div className="mt-2">
               <div className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">

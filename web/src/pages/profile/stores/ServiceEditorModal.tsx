@@ -3,7 +3,10 @@ import toast from "react-hot-toast";
 import { UploadBlockingOverlay } from "../../../components/UploadBlockingOverlay";
 import { assertEntityPayloadUnderLimit } from "../../../utils/media/payloadLimits";
 import { HelpCircle } from "lucide-react";
-import type { StoreService } from "../../chat/domain/storeCatalogTypes";
+import {
+  catalogMonedasList,
+  type StoreService,
+} from "../../chat/domain/storeCatalogTypes";
 import {
   PROFILE_DESC_MIN,
   PROFILE_TITLE_MIN,
@@ -21,6 +24,7 @@ import {
 } from "../../chat/styles/formModalStyles";
 import { cn } from "../../../lib/cn";
 import { VtSelect } from "../../../components/VtSelect";
+import { VtMultiSelect } from "../../../components/VtMultiSelect";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { fixSplitLines } from "./helpers";
 
@@ -30,6 +34,8 @@ type Props = Readonly<{
   initial: Omit<StoreService, "id" | "storeId">;
   /** Categorías del backend (GET /api/v1/market/catalog-categories). */
   categoryOptions?: string[];
+  /** Monedas del backend (GET /api/v1/market/currencies). */
+  currencyOptions?: string[];
   onClose: () => void;
   onSave: (v: Omit<StoreService, "id" | "storeId">) => void;
 }>;
@@ -39,6 +45,7 @@ export function ServiceEditorModal({
   title,
   initial,
   categoryOptions = [],
+  currencyOptions = [],
   onClose,
   onSave,
 }: Props) {
@@ -59,6 +66,17 @@ export function ServiceEditorModal({
     if (form.category.trim()) merged.add(form.category.trim());
     return [...merged].sort((a, b) => a.localeCompare(b, "es"));
   }, [categoryOptions, form.category]);
+
+  const currencySelectOptions = useMemo(() => {
+    const merged = new Set<string>(
+      currencyOptions.map((c) => c.trim()).filter(Boolean),
+    );
+    for (const c of form.monedas ?? []) {
+      const t = c.trim();
+      if (t) merged.add(t);
+    }
+    return [...merged].sort((a, b) => a.localeCompare(b, "es"));
+  }, [currencyOptions, form.monedas]);
 
   if (!open) return null;
 
@@ -118,6 +136,19 @@ export function ServiceEditorModal({
                   onChange={(e) =>
                     setForm({ ...form, tipoServicio: e.target.value })
                   }
+                />
+              </label>
+              <label className={fieldRootWithInvalid(false)}>
+                <span className={fieldLabel}>Monedas aceptadas</span>
+                <VtMultiSelect
+                  value={form.monedas ?? []}
+                  onChange={(monedas) => setForm({ ...form, monedas })}
+                  ariaLabel="Tipos de moneda aceptados"
+                  placeholder="Sin especificar"
+                  options={currencySelectOptions.map((c) => ({
+                    value: c,
+                    label: c,
+                  }))}
                 />
               </label>
             </div>
@@ -354,8 +385,10 @@ export function ServiceEditorModal({
                   return;
                 }
                 setShowVal(false);
+                const monedas = catalogMonedasList({ monedas: form.monedas });
                 const snapshot: Omit<StoreService, "id" | "storeId"> = {
                   ...form,
+                  monedas: monedas.length ? monedas : undefined,
                   published: form.published !== false,
                   riesgos: {
                     enabled: form.riesgos.enabled && riesgosItems.length > 0,

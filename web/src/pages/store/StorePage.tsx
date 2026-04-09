@@ -5,6 +5,7 @@ import { useAppStore } from "../../app/store/useAppStore";
 import { ArrowLeft, LayoutGrid } from "lucide-react";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import {
+  catalogMonedasList,
   emptyStoreProductInput,
   emptyStoreServiceInput,
   mergeStoreCatalogWithLocalExtras,
@@ -12,6 +13,7 @@ import {
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
 import { setMarketHydrating } from "../../utils/market/marketPersistence";
 import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
+import { fetchCurrencies } from "../../utils/market/fetchCurrencies";
 import { ConfirmDeleteModal } from "../../components/ConfirmDeleteModal";
 import { ScrollToTopFab } from "../../components/ScrollToTopFab";
 import { ProductEditorModal } from "../profile/stores/ProductEditorModal";
@@ -57,6 +59,7 @@ import {
 } from "./storePageUtils";
 
 const EMPTY_CATEGORY_HINTS: string[] = [];
+const EMPTY_CURRENCY_HINTS: string[] = [];
 
 export function StorePage() {
   const { storeId } = useParams();
@@ -133,6 +136,7 @@ export function StorePage() {
   const [catalogDeleteBusy, setCatalogDeleteBusy] = useState(false);
   const [catalogReloadBusy, setCatalogReloadBusy] = useState(false);
   const [catalogCategories, setCatalogCategories] = useState<string[]>();
+  const [catalogCurrencies, setCatalogCurrencies] = useState<string[]>();
 
   useEffect(() => {
     let cancelled = false;
@@ -142,6 +146,21 @@ export function StorePage() {
         if (!cancelled && cats.length > 0) setCatalogCategories(cats);
       } catch {
         /* keep default */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const cur = await fetchCurrencies();
+        if (!cancelled && cur.length > 0) setCatalogCurrencies(cur);
+      } catch {
+        /* keep default; los modales añaden CUP igualmente */
       }
     })();
     return () => {
@@ -404,6 +423,7 @@ export function StorePage() {
   );
 
   const catHints = catalogCategories ?? EMPTY_CATEGORY_HINTS;
+  const currencyHints = catalogCurrencies ?? EMPTY_CURRENCY_HINTS;
 
   const productCategoryFilterOptions = useMemo(
     () =>
@@ -1060,6 +1080,7 @@ export function StorePage() {
             open
             title={productEditing ? "Editar producto" : "Añadir producto"}
             categoryOptions={catHints}
+            currencyOptions={currencyHints}
             initial={
               productEditing
                 ? {
@@ -1071,6 +1092,8 @@ export function StorePage() {
                     technicalSpecs: productEditing.technicalSpecs,
                     condition: productEditing.condition,
                     price: productEditing.price,
+                    monedaPrecio: productEditing.monedaPrecio ?? "",
+                    monedas: catalogMonedasList(productEditing),
                     taxesShippingInstall: productEditing.taxesShippingInstall,
                     availability: productEditing.availability,
                     warrantyReturn: productEditing.warrantyReturn,
@@ -1119,12 +1142,14 @@ export function StorePage() {
             open
             title={serviceEditing ? "Editar servicio" : "Añadir servicio"}
             categoryOptions={catHints}
+            currencyOptions={currencyHints}
             initial={
               serviceEditing
                 ? {
                     published: serviceEditing.published !== false,
                     category: serviceEditing.category,
                     tipoServicio: serviceEditing.tipoServicio,
+                    monedas: catalogMonedasList(serviceEditing),
                     descripcion: serviceEditing.descripcion,
                     riesgos: { ...serviceEditing.riesgos },
                     incluye: serviceEditing.incluye,

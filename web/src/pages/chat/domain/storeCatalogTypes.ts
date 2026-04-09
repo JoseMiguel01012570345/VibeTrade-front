@@ -30,6 +30,12 @@ export type StoreProduct = {
   technicalSpecs: string
   condition: MerchandiseCondition
   price: string
+  /** Moneda en la que está expresado el precio (una sola); opcional. */
+  monedaPrecio?: string
+  /** Códigos de moneda aceptados (p. ej. USD, CUP); opcional. */
+  monedas?: string[]
+  /** @deprecated Persistencia antigua; preferir `monedas`. */
+  moneda?: string
   /** Impuestos, envío o instalación — texto según flow-ui */
   taxesShippingInstall?: string
   availability: string
@@ -49,6 +55,10 @@ export type StoreService = {
   published?: boolean
   category: string
   tipoServicio: string
+  /** Códigos de moneda aceptados (p. ej. USD, CUP); opcional. */
+  monedas?: string[]
+  /** @deprecated Persistencia antigua; preferir `monedas`. */
+  moneda?: string
   descripcion: string
   riesgos: { enabled: boolean; items: string[] }
   incluye: string
@@ -71,6 +81,28 @@ export type StoreCatalog = {
 
 function norm(s: string): string {
   return s.trim()
+}
+
+/** Lista normalizada de monedas de ficha (soporta `monedas` o `moneda` legado). */
+export function catalogMonedasList(item: {
+  monedas?: string[]
+  moneda?: string
+}): string[] {
+  const raw = item.monedas
+  if (Array.isArray(raw) && raw.length > 0) {
+    const u = [...new Set(raw.map((x) => String(x).trim()).filter(Boolean))]
+    u.sort((a, b) => a.localeCompare(b, 'es'))
+    return u
+  }
+  const legacy = typeof item.moneda === 'string' ? item.moneda.trim() : ''
+  return legacy ? [legacy] : []
+}
+
+function catalogMonedasMerchandiseString(item: {
+  monedas?: string[]
+  moneda?: string
+}): string {
+  return catalogMonedasList(item).join(', ')
 }
 
 function pickLine(a: string, b: string): string {
@@ -110,11 +142,17 @@ export function storeProductToMerchandiseDefaults(p: StoreProduct): MerchandiseL
     .filter(Boolean)
     .join('\n')
 
+  const monedaLine =
+    norm(p.monedaPrecio ?? '') !== ''
+      ? (p.monedaPrecio ?? '').trim()
+      : catalogMonedasMerchandiseString(p)
+
   return {
     ...emptyMerchandiseLine(),
     tipo,
     cantidad: '',
     valorUnitario: p.price,
+    moneda: monedaLine,
     estado: p.condition,
     impuestos: p.taxesShippingInstall ?? '',
     devolucionesDesc: p.warrantyReturn,
@@ -190,6 +228,7 @@ export function mergeServiceItemWithStoreService(item: ServiceItem, s: StoreServ
     noIncluye: pickLine(item.noIncluye, s.noIncluye),
     entregables: pickLine(item.entregables, s.entregables),
     propIntelectual: pickLine(item.propIntelectual, s.propIntelectual),
+    moneda: pickLine(item.moneda, catalogMonedasMerchandiseString(s)),
     riesgos: mergeListBlock(item.riesgos.enabled, item.riesgos.items, s.riesgos),
     dependencias: mergeListBlock(item.dependencias.enabled, item.dependencias.items, s.dependencias),
     garantias: mergeGarantias(item.garantias, s.garantias),
@@ -259,6 +298,8 @@ export function emptyStoreProductInput(): Omit<StoreProduct, 'id' | 'storeId'> {
     technicalSpecs: '',
     condition: 'nuevo',
     price: '',
+    monedaPrecio: '',
+    monedas: [],
     taxesShippingInstall: '',
     availability: '',
     warrantyReturn: '',
@@ -276,6 +317,7 @@ export function emptyStoreServiceInput(): Omit<StoreService, 'id' | 'storeId'> {
     published: false,
     category: '',
     tipoServicio: '',
+    monedas: [],
     descripcion: '',
     riesgos: { enabled: false, items: [] },
     incluye: '',
