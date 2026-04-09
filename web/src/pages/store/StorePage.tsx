@@ -53,6 +53,7 @@ import type {
   StoreFilterSection,
   StoreScreen,
   StoreSectionFilters,
+  VitrinaListMode,
 } from "./storePageTypes";
 import { emptyStoreSectionFilters } from "./storePageTypes";
 import {
@@ -749,6 +750,9 @@ export function StorePage() {
           : "Servicios";
 
   const vitrinaFiltersProps = {
+    vitrinaListMode: fv.vitrinaListMode,
+    onVitrinaListMode: (v: VitrinaListMode) =>
+      patchSection("vitrina", { vitrinaListMode: v }),
     productNameQ: fv.productNameQ,
     onProductNameQ: (q: string) => patchSection("vitrina", { productNameQ: q }),
     productCategory: fv.productCategoryQ,
@@ -772,6 +776,21 @@ export function StorePage() {
     onPriceCeiling: (v: number) => handlePriceCeilingChange("vitrina", v),
     priceSliderMax: sliderMaxVitrina,
   };
+
+  const showVitrinaProductList =
+    fv.vitrinaListMode !== "services" && vitrinaPublishedProducts.length > 0;
+  const showVitrinaServiceList =
+    fv.vitrinaListMode !== "products" && vitrinaPublishedServices.length > 0;
+  const vitrinaVisibleListsEmpty =
+    (fv.vitrinaListMode !== "services"
+      ? vitrinaPublishedProducts.length === 0
+      : true) &&
+    (fv.vitrinaListMode !== "products"
+      ? vitrinaPublishedServices.length === 0
+      : true);
+  const vitrinaNoPublishedAtAll =
+    (fv.vitrinaListMode !== "services" ? publishedProducts.length === 0 : true) &&
+    (fv.vitrinaListMode !== "products" ? publishedServices.length === 0 : true);
 
   const catalogProductTile = (
     <button
@@ -917,7 +936,7 @@ export function StorePage() {
               </div>
               <VitrinaFiltersCard {...vitrinaFiltersProps} />
 
-              {vitrinaPublishedProducts.length > 0 ? (
+              {showVitrinaProductList ? (
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
@@ -939,7 +958,7 @@ export function StorePage() {
                 </div>
               ) : null}
 
-              {vitrinaPublishedServices.length > 0 ? (
+              {showVitrinaServiceList ? (
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
@@ -961,11 +980,9 @@ export function StorePage() {
                 </div>
               ) : null}
 
-              {vitrinaPublishedProducts.length === 0 &&
-              vitrinaPublishedServices.length === 0 ? (
+              {vitrinaVisibleListsEmpty ? (
                 <p className="vt-muted rounded-xl border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-3 text-[13px] leading-snug">
-                  {publishedProducts.length === 0 &&
-                  publishedServices.length === 0
+                  {vitrinaNoPublishedAtAll
                     ? "Esta tienda aún no tiene contenido publicado en vitrina."
                     : "Ningún resultado con los filtros actuales. Probá otro nombre o categoría."}
                 </p>

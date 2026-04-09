@@ -3,7 +3,7 @@ import type { StoreCustomField } from '../chat/domain/storeCatalogTypes'
 import type { StoreProduct, StoreService } from '../chat/domain/storeCatalogTypes'
 
 export const PROFILE_TITLE_MIN = 2
-export const PROFILE_DESC_MIN = 8
+export const PROFILE_DESC_MIN = 1
 /** Mínimo para textos cortos tipo «no aplica» o notas. */
 export const PROFILE_LINE_MIN = 3
 

@@ -1,11 +1,15 @@
 import { VtSelect } from "../../components/VtSelect";
+import { cn } from "../../lib/cn";
 import { PriceRangeMinMaxControls } from "./PriceRangeMinMaxControls";
 import {
   PRODUCT_CONDITION_FILTER_OPTIONS,
   type PriceSort,
+  type VitrinaListMode,
 } from "./storePageTypes";
 
 export function VitrinaFiltersCard({
+  vitrinaListMode,
+  onVitrinaListMode,
   productNameQ,
   onProductNameQ,
   productCategory,
@@ -26,6 +30,8 @@ export function VitrinaFiltersCard({
   onPriceCeiling,
   priceSliderMax,
 }: Readonly<{
+  vitrinaListMode: VitrinaListMode;
+  onVitrinaListMode: (v: VitrinaListMode) => void;
   productNameQ: string;
   onProductNameQ: (v: string) => void;
   productCategory: string;
@@ -46,6 +52,9 @@ export function VitrinaFiltersCard({
   onPriceCeiling: (v: number) => void;
   priceSliderMax: number;
 }>) {
+  const showProducts = vitrinaListMode !== "services";
+  const showServices = vitrinaListMode !== "products";
+
   return (
     <div className="vt-card vt-card-pad">
       <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
@@ -57,66 +66,96 @@ export function VitrinaFiltersCard({
         detectados en el texto.
       </p>
       <div className="vt-divider my-3" />
-      <div className="grid gap-4 min-[640px]:grid-cols-2">
-        <div>
-          <div className="text-xs font-bold text-[var(--muted)]">Productos</div>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <input
-              type="search"
-              className="vt-input min-w-0 flex-1"
-              placeholder="Nombre o modelo…"
-              value={productNameQ}
-              onChange={(e) => onProductNameQ(e.target.value)}
-              aria-label="Filtrar productos por nombre o modelo"
-            />
-            <div className="sm:w-48">
-              <VtSelect
-                value={productCategory}
-                onChange={onProductCategory}
-                ariaLabel="Filtrar productos por categoría"
-                placeholder="Todas las categorías"
-                options={[
-                  { value: "", label: "Todas las categorías" },
-                  ...productCategories.map((c) => ({ value: c, label: c })),
-                ]}
-              />
+      <div className="max-w-md">
+        <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+          Mostrar en catálogo
+        </div>
+        <div className="mt-2">
+          <VtSelect
+            value={vitrinaListMode}
+            onChange={(v) => onVitrinaListMode(v as VitrinaListMode)}
+            ariaLabel="Mostrar productos, servicios o ambos"
+            placeholder="Vista"
+            options={[
+              { value: "both", label: "Productos y servicios" },
+              { value: "products", label: "Solo productos" },
+              { value: "services", label: "Solo servicios" },
+            ]}
+          />
+        </div>
+      </div>
+      <div className="vt-divider my-3" />
+      <div
+        className={cn(
+          "grid gap-4",
+          showProducts && showServices && "min-[640px]:grid-cols-2",
+        )}
+      >
+        {showProducts ? (
+          <div>
+            <div className="text-xs font-bold text-[var(--muted)]">
+              Productos
             </div>
-            <div className="sm:w-48">
-              <VtSelect
-                value={productCondition}
-                onChange={onProductCondition}
-                ariaLabel="Filtrar productos por estado"
-                placeholder="Todos los estados"
-                options={[...PRODUCT_CONDITION_FILTER_OPTIONS]}
+            <div className="mt-2 flex flex-col gap-2">
+              <input
+                type="search"
+                className="vt-input w-full min-w-0"
+                placeholder="Nombre o modelo…"
+                value={productNameQ}
+                onChange={(e) => onProductNameQ(e.target.value)}
+                aria-label="Filtrar productos por nombre o modelo"
               />
+              <div className="grid gap-2 min-[480px]:grid-cols-2">
+                <VtSelect
+                  value={productCategory}
+                  onChange={onProductCategory}
+                  ariaLabel="Filtrar productos por categoría"
+                  placeholder="Todas las categorías"
+                  options={[
+                    { value: "", label: "Todas las categorías" },
+                    ...productCategories.map((c) => ({ value: c, label: c })),
+                  ]}
+                />
+                <VtSelect
+                  value={productCondition}
+                  onChange={onProductCondition}
+                  ariaLabel="Filtrar productos por estado"
+                  placeholder="Todos los estados"
+                  options={[...PRODUCT_CONDITION_FILTER_OPTIONS]}
+                />
+              </div>
             </div>
           </div>
-        </div>
-        <div>
-          <div className="text-xs font-bold text-[var(--muted)]">Servicios</div>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <input
-              type="search"
-              className="vt-input min-w-0 flex-1"
-              placeholder="Nombre o tipo…"
-              value={serviceNameQ}
-              onChange={(e) => onServiceNameQ(e.target.value)}
-              aria-label="Filtrar servicios por nombre"
-            />
-            <div className="sm:w-48">
-              <VtSelect
-                value={serviceCategory}
-                onChange={onServiceCategory}
-                ariaLabel="Filtrar servicios por categoría"
-                placeholder="Todas las categorías"
-                options={[
-                  { value: "", label: "Todas las categorías" },
-                  ...serviceCategories.map((c) => ({ value: c, label: c })),
-                ]}
+        ) : null}
+        {showServices ? (
+          <div>
+            <div className="text-xs font-bold text-[var(--muted)]">
+              Servicios
+            </div>
+            <div className="mt-2 flex flex-col gap-2">
+              <input
+                type="search"
+                className="vt-input w-full min-w-0"
+                placeholder="Nombre o tipo…"
+                value={serviceNameQ}
+                onChange={(e) => onServiceNameQ(e.target.value)}
+                aria-label="Filtrar servicios por nombre"
               />
+              <div className="min-[480px]:max-w-md">
+                <VtSelect
+                  value={serviceCategory}
+                  onChange={onServiceCategory}
+                  ariaLabel="Filtrar servicios por categoría"
+                  placeholder="Todas las categorías"
+                  options={[
+                    { value: "", label: "Todas las categorías" },
+                    ...serviceCategories.map((c) => ({ value: c, label: c })),
+                  ]}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
       </div>
       <div className="vt-divider my-3" />
       <div className="grid gap-3 min-[560px]:grid-cols-2">

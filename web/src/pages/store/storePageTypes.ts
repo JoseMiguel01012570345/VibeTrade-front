@@ -5,6 +5,9 @@ export type StoreFilterSection = "vitrina" | "products" | "services";
 
 export type PriceSort = "none" | "asc" | "desc";
 
+/** Qué listados mostrar en la vitrina (filtro de vista). */
+export type VitrinaListMode = "products" | "services" | "both";
+
 /** Filtros de una sección (vitrina, pestaña productos o pestaña servicios). */
 export type StoreSectionFilters = {
   productNameQ: string;
@@ -15,6 +18,8 @@ export type StoreSectionFilters = {
   priceSort: PriceSort;
   priceFloor: number | null;
   priceCeiling: number | null;
+  /** Solo aplica en vitrina; en otras secciones se ignora. */
+  vitrinaListMode: VitrinaListMode;
 };
 
 export function emptyStoreSectionFilters(): StoreSectionFilters {
@@ -27,6 +32,7 @@ export function emptyStoreSectionFilters(): StoreSectionFilters {
     priceSort: "none",
     priceFloor: null,
     priceCeiling: null,
+    vitrinaListMode: "both",
   };
 }
 
