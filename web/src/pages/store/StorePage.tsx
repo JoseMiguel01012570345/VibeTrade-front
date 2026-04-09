@@ -3,26 +3,18 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAppStore } from "../../app/store/useAppStore";
 import {
-  AlertTriangle,
   ArrowLeft,
-  Calendar,
-  CheckCircle2,
   ChevronRight,
   LayoutGrid,
   Package,
-  Truck,
   Wrench,
 } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useMarketStore } from "../../app/store/useMarketStore";
-import type { StoreBadge } from "../../app/store/marketStoreTypes";
-import { VtSelect } from "../../components/VtSelect";
 import {
   emptyStoreProductInput,
   emptyStoreServiceInput,
-  type StoreCatalog,
-  type StoreProduct,
-  type StoreService,
+  mergeStoreCatalogWithLocalExtras,
 } from "../chat/domain/storeCatalogTypes";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
 import {
@@ -38,611 +30,26 @@ import {
 } from "./StoreOwnerCatalogLists";
 import {
   matchesCategoryFilter,
+  matchesConditionFilter,
   matchesNameQuery,
 } from "../../utils/market/nameCategoryFilter";
 import {
-  ProtectedMediaAnchor,
-  ProtectedMediaImg,
-} from "../../components/media/ProtectedMediaImg";
-
-type StoreScreen = "catalog" | "vitrina" | "products" | "services";
-
-function uniqueSorted(cats: string[]): string[] {
-  return [...new Set(cats.map((c) => c.trim()).filter(Boolean))].sort((a, b) =>
-    a.localeCompare(b, "es"),
-  );
-}
-
-function screenFromPathname(pathname: string, storeId: string): StoreScreen {
-  const base = `/store/${storeId}`;
-  if (!pathname.startsWith(base)) return "catalog";
-  const tail = pathname.slice(base.length);
-  if (tail === "" || tail === "/") return "catalog";
-  if (tail === "/vitrina") return "vitrina";
-  if (tail === "/products") return "products";
-  if (tail === "/services") return "services";
-  return "catalog";
-}
-
-function ProductFiltersCard({
-  productNameQ,
-  onProductNameQ,
-  productCategory,
-  onProductCategory,
-  productCategories,
-}: Readonly<{
-  productNameQ: string;
-  onProductNameQ: (v: string) => void;
-  productCategory: string;
-  onProductCategory: (v: string) => void;
-  productCategories: string[];
-}>) {
-  return (
-    <div className="vt-card vt-card-pad">
-      <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-        Filtrar productos
-      </div>
-      <p className="vt-muted mt-1 text-[12px] leading-snug">
-        Por nombre, modelo o categoría.
-      </p>
-      <div className="vt-divider my-3" />
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          type="search"
-          className="vt-input min-w-0 flex-1"
-          placeholder="Nombre o modelo…"
-          value={productNameQ}
-          onChange={(e) => onProductNameQ(e.target.value)}
-          aria-label="Filtrar productos por nombre o modelo"
-        />
-        <div className="sm:w-48">
-          <VtSelect
-            value={productCategory}
-            onChange={onProductCategory}
-            ariaLabel="Filtrar productos por categoría"
-            placeholder="Todas las categorías"
-            options={[
-              { value: "", label: "Todas las categorías" },
-              ...productCategories.map((c) => ({ value: c, label: c })),
-            ]}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ServiceFiltersCard({
-  serviceNameQ,
-  onServiceNameQ,
-  serviceCategory,
-  onServiceCategory,
-  serviceCategories,
-}: Readonly<{
-  serviceNameQ: string;
-  onServiceNameQ: (v: string) => void;
-  serviceCategory: string;
-  onServiceCategory: (v: string) => void;
-  serviceCategories: string[];
-}>) {
-  return (
-    <div className="vt-card vt-card-pad">
-      <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-        Filtrar servicios
-      </div>
-      <p className="vt-muted mt-1 text-[12px] leading-snug">
-        Por nombre, tipo o categoría.
-      </p>
-      <div className="vt-divider my-3" />
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          type="search"
-          className="vt-input min-w-0 flex-1"
-          placeholder="Nombre o tipo…"
-          value={serviceNameQ}
-          onChange={(e) => onServiceNameQ(e.target.value)}
-          aria-label="Filtrar servicios por nombre o tipo"
-        />
-        <div className="sm:w-48">
-          <VtSelect
-            value={serviceCategory}
-            onChange={onServiceCategory}
-            ariaLabel="Filtrar servicios por categoría"
-            placeholder="Todas las categorías"
-            options={[
-              { value: "", label: "Todas las categorías" },
-              ...serviceCategories.map((c) => ({ value: c, label: c })),
-            ]}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function VitrinaFiltersCard({
-  productNameQ,
-  onProductNameQ,
-  productCategory,
-  onProductCategory,
-  productCategories,
-  serviceNameQ,
-  onServiceNameQ,
-  serviceCategory,
-  onServiceCategory,
-  serviceCategories,
-}: Readonly<{
-  productNameQ: string;
-  onProductNameQ: (v: string) => void;
-  productCategory: string;
-  onProductCategory: (v: string) => void;
-  productCategories: string[];
-  serviceNameQ: string;
-  onServiceNameQ: (v: string) => void;
-  serviceCategory: string;
-  onServiceCategory: (v: string) => void;
-  serviceCategories: string[];
-}>) {
-  return (
-    <div className="vt-card vt-card-pad">
-      <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-        Filtrar vitrina
-      </div>
-      <p className="vt-muted mt-1 text-[12px] leading-snug">
-        Por nombre y categoría. Aplica a productos y servicios mostrados abajo.
-      </p>
-      <div className="vt-divider my-3" />
-      <div className="grid gap-4 min-[640px]:grid-cols-2">
-        <div>
-          <div className="text-xs font-bold text-[var(--muted)]">Productos</div>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <input
-              type="search"
-              className="vt-input min-w-0 flex-1"
-              placeholder="Nombre o modelo…"
-              value={productNameQ}
-              onChange={(e) => onProductNameQ(e.target.value)}
-              aria-label="Filtrar productos por nombre o modelo"
-            />
-            <div className="sm:w-48">
-              <VtSelect
-                value={productCategory}
-                onChange={onProductCategory}
-                ariaLabel="Filtrar productos por categoría"
-                placeholder="Todas las categorías"
-                options={[
-                  { value: "", label: "Todas las categorías" },
-                  ...productCategories.map((c) => ({ value: c, label: c })),
-                ]}
-              />
-            </div>
-          </div>
-        </div>
-        <div>
-          <div className="text-xs font-bold text-[var(--muted)]">Servicios</div>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <input
-              type="search"
-              className="vt-input min-w-0 flex-1"
-              placeholder="Nombre o tipo…"
-              value={serviceNameQ}
-              onChange={(e) => onServiceNameQ(e.target.value)}
-              aria-label="Filtrar servicios por nombre"
-            />
-            <div className="sm:w-48">
-              <VtSelect
-                value={serviceCategory}
-                onChange={onServiceCategory}
-                ariaLabel="Filtrar servicios por categoría"
-                placeholder="Todas las categorías"
-                options={[
-                  { value: "", label: "Todas las categorías" },
-                  ...serviceCategories.map((c) => ({ value: c, label: c })),
-                ]}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const backRowBtnClass =
-  "vt-btn z-[2] shrink-0 border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]";
-
-function ProductDetailCard({ p }: { p: StoreProduct }) {
-  return (
-    <div className="overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
-      <div className="grid min-[640px]:grid-cols-[160px_1fr]">
-        <div className="relative min-h-[120px] bg-[color-mix(in_oklab,var(--bg)_75%,var(--surface))]">
-          {p.photoUrls[0] ? (
-            <ProtectedMediaImg
-              src={p.photoUrls[0]}
-              alt={p.name}
-              wrapperClassName="absolute inset-0 h-full w-full"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          ) : (
-            <div className="grid h-full min-h-[120px] place-items-center text-[var(--muted)]">
-              <Package size={28} aria-hidden />
-            </div>
-          )}
-        </div>
-        <div className="p-3.5">
-          <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-            {p.category}
-          </div>
-          <div className="mt-1 text-base font-black tracking-[-0.02em]">
-            {p.name}
-            {p.model ? (
-              <span className="font-bold text-[var(--muted)]">
-                {" "}
-                · {p.model}
-              </span>
-            ) : null}
-          </div>
-          <div className="mt-2 text-sm font-bold text-[color-mix(in_oklab,var(--primary)_90%,var(--text))]">
-            {p.price}
-          </div>
-          {p.photoUrls.length > 1 ? (
-            <div className="mt-2">
-              <div className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Más fotos
-              </div>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {p.photoUrls.slice(1).map((url, i) => (
-                  <ProtectedMediaAnchor
-                    key={i}
-                    href={url}
-                    className="block overflow-hidden rounded-lg border border-[var(--border)]"
-                  >
-                    <ProtectedMediaImg
-                      src={url}
-                      alt=""
-                      wrapperClassName="block h-16 w-16 sm:h-20 sm:w-20"
-                      className="h-16 w-16 object-cover sm:h-20 sm:w-20"
-                    />
-                  </ProtectedMediaAnchor>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          <dl className="mt-3 space-y-2 text-[13px] leading-snug">
-            <div>
-              <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Descripción breve
-              </dt>
-              <dd>{p.shortDescription}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Beneficio principal
-              </dt>
-              <dd>{p.mainBenefit}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Características técnicas
-              </dt>
-              <dd className="whitespace-pre-wrap">{p.technicalSpecs}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Estado
-              </dt>
-              <dd className="capitalize">{p.condition}</dd>
-            </div>
-            {p.taxesShippingInstall ? (
-              <div>
-                <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                  Impuestos / envío / instalación
-                </dt>
-                <dd>{p.taxesShippingInstall}</dd>
-              </div>
-            ) : null}
-            <div>
-              <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Disponibilidad
-              </dt>
-              <dd>{p.availability}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Garantía y devolución
-              </dt>
-              <dd className="whitespace-pre-wrap">{p.warrantyReturn}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Contenido incluido
-              </dt>
-              <dd className="whitespace-pre-wrap">{p.contentIncluded}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Condiciones de uso
-              </dt>
-              <dd className="whitespace-pre-wrap">{p.usageConditions}</dd>
-            </div>
-            {p.customFields.length > 0 ? (
-              <div className="border-t border-[var(--border)] pt-2">
-                <dt className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                  Otros campos
-                </dt>
-                {p.customFields.map((f, i) => (
-                  <dd key={i} className="mb-3 last:mb-0">
-                    <span className="font-bold">{f.title}</span>
-                    {f.body ? (
-                      <p className="mt-0.5 whitespace-pre-wrap leading-snug">
-                        {f.body}
-                      </p>
-                    ) : null}
-                    {f.attachmentNote ? (
-                      <p className="vt-muted mt-0.5 text-[12px]">
-                        {f.attachmentNote}
-                      </p>
-                    ) : null}
-                    {f.attachments && f.attachments.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {f.attachments.map((att) =>
-                          att.kind === "image" ? (
-                            <ProtectedMediaAnchor
-                              key={att.id}
-                              href={att.url}
-                              className="block"
-                            >
-                              <ProtectedMediaImg
-                                src={att.url}
-                                alt={att.fileName}
-                                wrapperClassName="block max-w-[160px]"
-                                className="max-h-32 max-w-[160px] rounded border border-[var(--border)] object-contain"
-                              />
-                            </ProtectedMediaAnchor>
-                          ) : (
-                            <ProtectedMediaAnchor
-                              key={att.id}
-                              href={att.url}
-                              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[12px] font-semibold text-[var(--primary)]"
-                            >
-                              {att.fileName}
-                            </ProtectedMediaAnchor>
-                          ),
-                        )}
-                      </div>
-                    ) : null}
-                  </dd>
-                ))}
-              </div>
-            ) : null}
-          </dl>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ServiceDetailCard({ s }: { s: StoreService }) {
-  return (
-    <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3.5">
-      <div className="flex items-start gap-2">
-        <Wrench
-          size={20}
-          className="mt-0.5 shrink-0 text-[var(--muted)]"
-          aria-hidden
-        />
-        <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-            {s.category}
-          </div>
-          <div className="mt-1 font-black tracking-[-0.02em]">
-            {s.tipoServicio}
-          </div>
-          <p className="vt-muted mt-2 text-[13px] leading-snug">
-            {s.descripcion}
-          </p>
-          <dl className="mt-3 space-y-2 text-[13px] leading-snug">
-            {s.riesgos.enabled && s.riesgos.items.length > 0 ? (
-              <div>
-                <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                  Riesgos
-                </dt>
-                <dd>
-                  <ul className="m-0 list-disc pl-4">
-                    {s.riesgos.items.map((x, i) => (
-                      <li key={i}>{x}</li>
-                    ))}
-                  </ul>
-                </dd>
-              </div>
-            ) : null}
-            <div>
-              <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Qué incluye
-              </dt>
-              <dd className="whitespace-pre-wrap">{s.incluye}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Qué no incluye
-              </dt>
-              <dd className="whitespace-pre-wrap">{s.noIncluye}</dd>
-            </div>
-            {s.dependencias.enabled && s.dependencias.items.length > 0 ? (
-              <div>
-                <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                  Dependencias
-                </dt>
-                <dd>
-                  <ul className="m-0 list-disc pl-4">
-                    {s.dependencias.items.map((x, i) => (
-                      <li key={i}>{x}</li>
-                    ))}
-                  </ul>
-                </dd>
-              </div>
-            ) : null}
-            <div>
-              <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Qué se entrega
-              </dt>
-              <dd className="whitespace-pre-wrap">{s.entregables}</dd>
-            </div>
-            {s.garantias.enabled ? (
-              <div>
-                <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                  Garantías
-                </dt>
-                <dd className="whitespace-pre-wrap">{s.garantias.texto}</dd>
-              </div>
-            ) : null}
-            <div>
-              <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                Propiedad intelectual
-              </dt>
-              <dd className="whitespace-pre-wrap">{s.propIntelectual}</dd>
-            </div>
-            {s.customFields.length > 0 ? (
-              <div className="border-t border-[var(--border)] pt-2">
-                <dt className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                  Otros campos
-                </dt>
-                {s.customFields.map((f, i) => (
-                  <dd key={i} className="mb-3 last:mb-0">
-                    <span className="font-bold">{f.title}</span>
-                    {f.body ? (
-                      <p className="mt-0.5 whitespace-pre-wrap leading-snug">
-                        {f.body}
-                      </p>
-                    ) : null}
-                    {f.attachmentNote ? (
-                      <p className="vt-muted mt-0.5 text-[12px]">
-                        {f.attachmentNote}
-                      </p>
-                    ) : null}
-                    {f.attachments && f.attachments.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {f.attachments.map((att) =>
-                          att.kind === "image" ? (
-                            <ProtectedMediaAnchor
-                              key={att.id}
-                              href={att.url}
-                              className="block"
-                            >
-                              <ProtectedMediaImg
-                                src={att.url}
-                                alt={att.fileName}
-                                wrapperClassName="block max-w-[160px]"
-                                className="max-h-32 max-w-[160px] rounded border border-[var(--border)] object-contain"
-                              />
-                            </ProtectedMediaAnchor>
-                          ) : (
-                            <ProtectedMediaAnchor
-                              key={att.id}
-                              href={att.url}
-                              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_88%,var(--surface))] px-2 py-1 text-[12px] font-semibold text-[var(--primary)]"
-                            >
-                              {att.fileName}
-                            </ProtectedMediaAnchor>
-                          ),
-                        )}
-                      </div>
-                    ) : null}
-                  </dd>
-                ))}
-              </div>
-            ) : null}
-          </dl>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StoreIdentityBlock({
-  store,
-  catalog,
-  joinedLabel,
-}: {
-  store: StoreBadge;
-  catalog: StoreCatalog | undefined;
-  joinedLabel: string | null;
-}) {
-  return (
-    <div className="vt-card vt-card-pad">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
-          {store.avatarUrl ? (
-            <ProtectedMediaImg
-              src={store.avatarUrl}
-              alt=""
-              wrapperClassName="mt-0.5 h-14 w-14 shrink-0"
-              className="h-14 w-14 rounded-[16px] border border-[var(--border)] object-cover"
-            />
-          ) : null}
-          <div className="min-w-0">
-            <div className="text-[22px] font-black tracking-[-0.03em]">
-              {store.name}
-            </div>
-            <div className="vt-muted mt-1">{store.categories.join(" · ")}</div>
-            {catalog?.pitch ? (
-              <p className="mt-2 max-w-[720px] text-[13px] leading-snug text-[var(--text)]">
-                {catalog.pitch}
-              </p>
-            ) : null}
-            {joinedLabel ? (
-              <div className="vt-muted mt-2 inline-flex items-center gap-2 text-xs font-bold">
-                <Calendar size={14} aria-hidden /> En la plataforma desde{" "}
-                {joinedLabel}
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <div>
-          {store.verified ? (
-            <span
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-2.5 py-2 text-xs font-black",
-                "bg-[color-mix(in_oklab,var(--good)_12%,transparent)] text-[color-mix(in_oklab,var(--good)_85%,var(--text))]",
-              )}
-            >
-              <CheckCircle2 size={16} /> Verificado
-            </span>
-          ) : (
-            <span
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-2.5 py-2 text-xs font-black",
-                "bg-[color-mix(in_oklab,var(--bad)_10%,transparent)] text-[color-mix(in_oklab,var(--bad)_80%,var(--text))]",
-              )}
-            >
-              <AlertTriangle size={16} /> No verificado
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-        <span
-          className={cn(
-            "inline-flex items-center gap-2 rounded-full border px-2.5 py-2 text-xs font-black",
-            store.transportIncluded
-              ? "border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))]"
-              : "border-[color-mix(in_oklab,#d97706_40%,var(--border))] bg-[color-mix(in_oklab,#d97706_14%,var(--surface))] text-[var(--text)]",
-          )}
-        >
-          <Truck size={16} /> Transporte{" "}
-          {store.transportIncluded ? "incluido" : "NO incluido"}
-        </span>
-        {!store.transportIncluded ? (
-          <span className="vt-muted text-[13px]">
-            Etiqueta explícita para evitar dudas en el chat: el transporte no
-            forma parte de la oferta salvo que se negocie en el acuerdo.
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
+  MAX_REASONABLE_PRICE,
+  compareParsedPricesWithTieBreak,
+  maxPriceFromProducts,
+  maxPriceFromServices,
+  parseProductPriceNumber,
+  serviceComparablePrice,
+} from "../../utils/market/parseProductPrice";
+import { ProductDetailCard } from "./ProductDetailCard";
+import { ProductFiltersCard } from "./ProductFiltersCard";
+import { ServiceDetailCard } from "./ServiceDetailCard";
+import { ServiceFiltersCard } from "./ServiceFiltersCard";
+import { StoreIdentityBlock } from "./StoreIdentityBlock";
+import { VitrinaFiltersCard } from "./VitrinaFiltersCard";
+import { backRowBtnClass } from "./storePageStyles";
+import type { PriceSort, StoreScreen } from "./storePageTypes";
+import { screenFromPathname, uniqueSorted } from "./storePageUtils";
 
 export function StorePage() {
   const { storeId } = useParams();
@@ -684,8 +91,12 @@ export function StorePage() {
 
   const [productNameQ, setProductNameQ] = useState("");
   const [productCategoryQ, setProductCategoryQ] = useState("");
+  const [productConditionQ, setProductConditionQ] = useState("");
   const [serviceNameQ, setServiceNameQ] = useState("");
   const [serviceCategoryQ, setServiceCategoryQ] = useState("");
+  const [priceSort, setPriceSort] = useState<PriceSort>("none");
+  const [priceFloor, setPriceFloor] = useState<number | null>(null);
+  const [priceCeiling, setPriceCeiling] = useState<number | null>(null);
   const [detailStatus, setDetailStatus] = useState<
     "loading" | "ready" | "error"
   >("loading");
@@ -726,6 +137,7 @@ export function StorePage() {
     setProductCtx(null);
     setServiceCtx(null);
     setCatalogDeleteTarget(null);
+    setProductConditionQ("");
   }, [storeId]);
 
   const screen = useMemo(
@@ -744,7 +156,13 @@ export function StorePage() {
         if (cancelled) return;
         useMarketStore.setState((s) => ({
           stores: { ...s.stores, [storeId]: data.store },
-          storeCatalogs: { ...s.storeCatalogs, [storeId]: data.catalog },
+          storeCatalogs: {
+            ...s.storeCatalogs,
+            [storeId]: mergeStoreCatalogWithLocalExtras(
+              s.storeCatalogs[storeId],
+              data.catalog,
+            ),
+          },
         }));
         setDetailStatus("ready");
       } catch {
@@ -765,6 +183,94 @@ export function StorePage() {
     [catalog],
   );
 
+  const allCatalogProducts = useMemo(() => catalog?.products ?? [], [catalog]);
+  const allCatalogServices = useMemo(() => catalog?.services ?? [], [catalog]);
+
+  const publishedProductMax = useMemo(
+    () => maxPriceFromProducts(publishedProducts),
+    [publishedProducts],
+  );
+  const publishedServiceMax = useMemo(
+    () => maxPriceFromServices(publishedServices),
+    [publishedServices],
+  );
+  const publishedOfferMax = useMemo(
+    () => Math.max(publishedProductMax, publishedServiceMax),
+    [publishedProductMax, publishedServiceMax],
+  );
+
+  const ownerProductMax = useMemo(
+    () => maxPriceFromProducts(allCatalogProducts),
+    [allCatalogProducts],
+  );
+  const ownerServiceMax = useMemo(
+    () => maxPriceFromServices(allCatalogServices),
+    [allCatalogServices],
+  );
+
+  const activePriceSliderMax = useMemo(() => {
+    const raw =
+      screen === "vitrina"
+        ? publishedOfferMax
+        : screen === "products" && isOwner
+          ? ownerProductMax
+          : screen === "products" && !isOwner
+            ? publishedProductMax
+            : screen === "services" && isOwner
+              ? ownerServiceMax
+              : screen === "services" && !isOwner
+                ? publishedServiceMax
+                : publishedOfferMax;
+    if (!Number.isFinite(raw) || raw <= 0) return 0;
+    return Math.min(raw, MAX_REASONABLE_PRICE);
+  }, [
+    screen,
+    isOwner,
+    publishedOfferMax,
+    publishedProductMax,
+    publishedServiceMax,
+    ownerProductMax,
+    ownerServiceMax,
+  ]);
+
+  useEffect(() => {
+    if (activePriceSliderMax <= 0) {
+      setPriceFloor(null);
+      setPriceCeiling(null);
+      return;
+    }
+    setPriceFloor((prev) =>
+      prev == null || prev < 0 ? 0 : prev > activePriceSliderMax ? 0 : prev,
+    );
+    setPriceCeiling((prev) => {
+      if (prev == null || prev > activePriceSliderMax)
+        return activePriceSliderMax;
+      return prev;
+    });
+  }, [activePriceSliderMax]);
+
+  function handlePriceFloorChange(v: number) {
+    const max = Math.min(activePriceSliderMax, MAX_REASONABLE_PRICE);
+    const safe = Math.max(0, Math.min(Number.isFinite(v) ? v : 0, max));
+    setPriceFloor(safe);
+    setPriceCeiling((c) => {
+      const cap = c ?? max;
+      if (safe > cap) return safe;
+      return c;
+    });
+  }
+
+  function handlePriceCeilingChange(v: number) {
+    const max = Math.min(activePriceSliderMax, MAX_REASONABLE_PRICE);
+    const safe = Math.max(0, Math.min(Number.isFinite(v) ? v : max, max));
+    setPriceCeiling(safe);
+    setPriceFloor((f) => {
+      const fl = f ?? 0;
+      if (safe < fl) return safe;
+      return f;
+    });
+  }
+
   const productCategoryOptions = useMemo(
     () => uniqueSorted(publishedProducts.map((p) => p.category)),
     [publishedProducts],
@@ -774,18 +280,53 @@ export function StorePage() {
     [publishedServices],
   );
 
-  const filteredPublishedProducts = useMemo(
+  const filteredPublishedProductsBase = useMemo(
     () =>
       publishedProducts.filter(
         (p) =>
           (matchesNameQuery(p.name, productNameQ) ||
             matchesNameQuery(p.model ?? "", productNameQ)) &&
-          matchesCategoryFilter(p.category, productCategoryQ),
+          matchesCategoryFilter(p.category, productCategoryQ) &&
+          matchesConditionFilter(p.condition, productConditionQ),
       ),
-    [publishedProducts, productNameQ, productCategoryQ],
+    [publishedProducts, productNameQ, productCategoryQ, productConditionQ],
   );
 
-  const filteredPublishedServices = useMemo(
+  const filteredPublishedProducts = useMemo(() => {
+    let list = filteredPublishedProductsBase;
+    const floor = priceFloor ?? 0;
+    const cap = priceCeiling ?? activePriceSliderMax;
+    if (activePriceSliderMax > 0) {
+      list = list.filter((p) => {
+        const n = parseProductPriceNumber(p.price);
+        if (n == null) return true;
+        return n >= floor && n <= cap;
+      });
+    }
+    if (priceSort === "asc" || priceSort === "desc") {
+      const order = priceSort;
+      list = [...list].sort((a, b) =>
+        compareParsedPricesWithTieBreak(
+          parseProductPriceNumber(a.price),
+          parseProductPriceNumber(b.price),
+          order,
+          () =>
+            order === "asc"
+              ? a.name.localeCompare(b.name, "es")
+              : b.name.localeCompare(a.name, "es"),
+        ),
+      );
+    }
+    return list;
+  }, [
+    filteredPublishedProductsBase,
+    activePriceSliderMax,
+    priceFloor,
+    priceCeiling,
+    priceSort,
+  ]);
+
+  const filteredPublishedServicesBase = useMemo(
     () =>
       publishedServices.filter(
         (s) =>
@@ -796,8 +337,39 @@ export function StorePage() {
     [publishedServices, serviceNameQ, serviceCategoryQ],
   );
 
-  const allCatalogProducts = useMemo(() => catalog?.products ?? [], [catalog]);
-  const allCatalogServices = useMemo(() => catalog?.services ?? [], [catalog]);
+  const filteredPublishedServices = useMemo(() => {
+    let list = filteredPublishedServicesBase;
+    const floor = priceFloor ?? 0;
+    const cap = priceCeiling ?? activePriceSliderMax;
+    if (activePriceSliderMax > 0) {
+      list = list.filter((s) => {
+        const n = serviceComparablePrice(s);
+        if (n == null) return true;
+        return n >= floor && n <= cap;
+      });
+    }
+    if (priceSort === "asc" || priceSort === "desc") {
+      const order = priceSort;
+      list = [...list].sort((a, b) =>
+        compareParsedPricesWithTieBreak(
+          serviceComparablePrice(a),
+          serviceComparablePrice(b),
+          order,
+          () =>
+            order === "asc"
+              ? a.tipoServicio.localeCompare(b.tipoServicio, "es")
+              : b.tipoServicio.localeCompare(a.tipoServicio, "es"),
+        ),
+      );
+    }
+    return list;
+  }, [
+    filteredPublishedServicesBase,
+    activePriceSliderMax,
+    priceFloor,
+    priceCeiling,
+    priceSort,
+  ]);
 
   const ownerProductCategoryOptions = useMemo(
     () => uniqueSorted(allCatalogProducts.map((p) => p.category)),
@@ -808,18 +380,71 @@ export function StorePage() {
     [allCatalogServices],
   );
 
-  const filteredOwnerProducts = useMemo(
+  const productCategoryFilterOptions = useMemo(
+    () =>
+      uniqueSorted([
+        ...catalogCategories,
+        ...(isOwner ? ownerProductCategoryOptions : productCategoryOptions),
+      ]),
+    [catalogCategories, isOwner, ownerProductCategoryOptions, productCategoryOptions],
+  );
+
+  const serviceCategoryFilterOptions = useMemo(
+    () =>
+      uniqueSorted([
+        ...catalogCategories,
+        ...(isOwner ? ownerServiceCategoryOptions : serviceCategoryOptions),
+      ]),
+    [catalogCategories, isOwner, ownerServiceCategoryOptions, serviceCategoryOptions],
+  );
+
+  const filteredOwnerProductsBase = useMemo(
     () =>
       allCatalogProducts.filter(
         (p) =>
           (matchesNameQuery(p.name, productNameQ) ||
             matchesNameQuery(p.model ?? "", productNameQ)) &&
-          matchesCategoryFilter(p.category, productCategoryQ),
+          matchesCategoryFilter(p.category, productCategoryQ) &&
+          matchesConditionFilter(p.condition, productConditionQ),
       ),
-    [allCatalogProducts, productNameQ, productCategoryQ],
+    [allCatalogProducts, productNameQ, productCategoryQ, productConditionQ],
   );
 
-  const filteredOwnerServices = useMemo(
+  const filteredOwnerProducts = useMemo(() => {
+    let list = filteredOwnerProductsBase;
+    const floor = priceFloor ?? 0;
+    const cap = priceCeiling ?? activePriceSliderMax;
+    if (activePriceSliderMax > 0) {
+      list = list.filter((p) => {
+        const n = parseProductPriceNumber(p.price);
+        if (n == null) return true;
+        return n >= floor && n <= cap;
+      });
+    }
+    if (priceSort === "asc" || priceSort === "desc") {
+      const order = priceSort;
+      list = [...list].sort((a, b) =>
+        compareParsedPricesWithTieBreak(
+          parseProductPriceNumber(a.price),
+          parseProductPriceNumber(b.price),
+          order,
+          () =>
+            order === "asc"
+              ? a.name.localeCompare(b.name, "es")
+              : b.name.localeCompare(a.name, "es"),
+        ),
+      );
+    }
+    return list;
+  }, [
+    filteredOwnerProductsBase,
+    activePriceSliderMax,
+    priceFloor,
+    priceCeiling,
+    priceSort,
+  ]);
+
+  const filteredOwnerServicesBase = useMemo(
     () =>
       allCatalogServices.filter(
         (s) =>
@@ -829,6 +454,40 @@ export function StorePage() {
       ),
     [allCatalogServices, serviceNameQ, serviceCategoryQ],
   );
+
+  const filteredOwnerServices = useMemo(() => {
+    let list = filteredOwnerServicesBase;
+    const floor = priceFloor ?? 0;
+    const cap = priceCeiling ?? activePriceSliderMax;
+    if (activePriceSliderMax > 0) {
+      list = list.filter((s) => {
+        const n = serviceComparablePrice(s);
+        if (n == null) return true;
+        return n >= floor && n <= cap;
+      });
+    }
+    if (priceSort === "asc" || priceSort === "desc") {
+      const order = priceSort;
+      list = [...list].sort((a, b) =>
+        compareParsedPricesWithTieBreak(
+          serviceComparablePrice(a),
+          serviceComparablePrice(b),
+          order,
+          () =>
+            order === "asc"
+              ? a.tipoServicio.localeCompare(b.tipoServicio, "es")
+              : b.tipoServicio.localeCompare(a.tipoServicio, "es"),
+        ),
+      );
+    }
+    return list;
+  }, [
+    filteredOwnerServicesBase,
+    activePriceSliderMax,
+    priceFloor,
+    priceCeiling,
+    priceSort,
+  ]);
 
   const joinedLabel = catalog
     ? new Intl.DateTimeFormat("es", {
@@ -899,7 +558,7 @@ export function StorePage() {
     nav(-1);
   }
 
-  const ownerId = store.ownerUserId;
+  const ownerId = store.ownerUserId as string;
 
   async function reloadStoreCatalogFromServer() {
     if (!storeId || !me.id) return;
@@ -909,7 +568,13 @@ export function StorePage() {
       useMarketStore.setState((s) => ({
         ...s,
         stores: { ...s.stores, [sid]: data.store },
-        storeCatalogs: { ...s.storeCatalogs, [sid]: data.catalog },
+        storeCatalogs: {
+          ...s.storeCatalogs,
+          [sid]: mergeStoreCatalogWithLocalExtras(
+            s.storeCatalogs[sid],
+            data.catalog,
+          ),
+        },
       }));
       toast.success("Catálogo actualizado");
     } catch {
@@ -943,12 +608,21 @@ export function StorePage() {
     onProductNameQ: setProductNameQ,
     productCategory: productCategoryQ,
     onProductCategory: setProductCategoryQ,
-    productCategories: productCategoryOptions,
+    productCategories: productCategoryFilterOptions,
+    productCondition: productConditionQ,
+    onProductCondition: setProductConditionQ,
     serviceNameQ,
     onServiceNameQ: setServiceNameQ,
     serviceCategory: serviceCategoryQ,
     onServiceCategory: setServiceCategoryQ,
-    serviceCategories: serviceCategoryOptions,
+    serviceCategories: serviceCategoryFilterOptions,
+    priceSort,
+    onPriceSort: setPriceSort,
+    priceFloor,
+    priceCeiling,
+    onPriceFloor: handlePriceFloorChange,
+    onPriceCeiling: handlePriceCeilingChange,
+    priceSliderMax: publishedOfferMax,
   };
 
   const catalogProductTile = (
@@ -1089,8 +763,8 @@ export function StorePage() {
                   Vitrina pública
                 </div>
                 <p className="vt-muted mt-1 max-w-[720px] text-[13px] leading-snug">
-                  Vista rápida de productos y servicios publicados en vitrina.
-                  Usá los filtros para acotar.
+                  Fichas completas de productos y servicios publicados en
+                  vitrina. Usá los filtros para acotar.
                 </p>
               </div>
               <VitrinaFiltersCard {...vitrinaFiltersProps} />
@@ -1109,37 +783,9 @@ export function StorePage() {
                       Ver todos
                     </button>
                   </div>
-                  <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {filteredPublishedProducts.slice(0, 14).map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => goTo("products")}
-                        className="flex w-[148px] shrink-0 snap-start flex-col overflow-hidden rounded-[12px] border border-[var(--border)] bg-[var(--surface)] text-left transition-colors hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))]"
-                      >
-                        <div className="relative h-[88px] bg-[color-mix(in_oklab,var(--bg)_75%,var(--surface))]">
-                          {p.photoUrls[0] ? (
-                            <ProtectedMediaImg
-                              src={p.photoUrls[0]}
-                              alt=""
-                              wrapperClassName="absolute inset-0 h-full w-full"
-                              className="absolute inset-0 h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="grid h-full place-items-center text-[var(--muted)]">
-                              <Package size={22} aria-hidden />
-                            </div>
-                          )}
-                        </div>
-                        <div className="p-2">
-                          <div className="line-clamp-2 text-[12px] font-bold leading-snug">
-                            {p.name}
-                          </div>
-                          <div className="vt-muted mt-0.5 truncate text-[11px] font-semibold">
-                            {p.price}
-                          </div>
-                        </div>
-                      </button>
+                  <div className="flex flex-col gap-3">
+                    {filteredPublishedProducts.map((p) => (
+                      <ProductDetailCard key={p.id} p={p} />
                     ))}
                   </div>
                 </div>
@@ -1159,30 +805,9 @@ export function StorePage() {
                       Ver todos
                     </button>
                   </div>
-                  <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {filteredPublishedServices.slice(0, 14).map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => goTo("services")}
-                        className="min-w-[min(100%,200px)] shrink-0 snap-start rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-3 py-2 text-left transition-colors hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))]"
-                      >
-                        <div className="flex items-start gap-2">
-                          <Wrench
-                            size={16}
-                            className="mt-0.5 shrink-0 text-[var(--muted)]"
-                            aria-hidden
-                          />
-                          <span className="min-w-0">
-                            <span className="block text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                              {s.category}
-                            </span>
-                            <span className="mt-0.5 block text-[13px] font-bold leading-snug">
-                              {s.tipoServicio}
-                            </span>
-                          </span>
-                        </div>
-                      </button>
+                  <div className="flex flex-col gap-3">
+                    {filteredPublishedServices.map((s) => (
+                      <ServiceDetailCard key={s.id} s={s} />
                     ))}
                   </div>
                 </div>
@@ -1208,9 +833,16 @@ export function StorePage() {
               onProductNameQ={setProductNameQ}
               productCategory={productCategoryQ}
               onProductCategory={setProductCategoryQ}
-              productCategories={
-                isOwner ? ownerProductCategoryOptions : productCategoryOptions
-              }
+              productCategories={productCategoryFilterOptions}
+              productCondition={productConditionQ}
+              onProductCondition={setProductConditionQ}
+              priceSort={priceSort}
+              onPriceSort={setPriceSort}
+              priceFloor={priceFloor}
+              priceCeiling={priceCeiling}
+              onPriceFloor={handlePriceFloorChange}
+              onPriceCeiling={handlePriceCeilingChange}
+              priceSliderMax={activePriceSliderMax}
             />
             <div className="vt-card vt-card-pad">
               {isOwner ? (
@@ -1290,9 +922,14 @@ export function StorePage() {
               onServiceNameQ={setServiceNameQ}
               serviceCategory={serviceCategoryQ}
               onServiceCategory={setServiceCategoryQ}
-              serviceCategories={
-                isOwner ? ownerServiceCategoryOptions : serviceCategoryOptions
-              }
+              serviceCategories={serviceCategoryFilterOptions}
+              priceSort={priceSort}
+              onPriceSort={setPriceSort}
+              priceFloor={priceFloor}
+              priceCeiling={priceCeiling}
+              onPriceFloor={handlePriceFloorChange}
+              onPriceCeiling={handlePriceCeilingChange}
+              priceSliderMax={activePriceSliderMax}
             />
             <div className="vt-card vt-card-pad">
               {isOwner ? (
@@ -1426,6 +1063,7 @@ export function StorePage() {
             key={`${sid}-product-${productCtx.productId ?? "new"}`}
             open
             title={productEditing ? "Editar producto" : "Añadir producto"}
+            categoryOptions={catalogCategories}
             initial={
               productEditing
                 ? {
@@ -1461,8 +1099,17 @@ export function StorePage() {
                 );
                 toast.success("Producto actualizado");
               } else {
-                addOwnerStoreProduct(sid, ownerId, input);
-                toast.success("Producto añadido");
+                const pid = addOwnerStoreProduct(sid, ownerId, input);
+                if (pid) {
+                  toast.success("Producto añadido");
+                  setProductNameQ("");
+                  setProductCategoryQ("");
+                  setProductConditionQ("");
+                } else {
+                  toast.error(
+                    "No se pudo añadir el producto. Revisá que seas el dueño o recargá la tienda.",
+                  );
+                }
               }
             }}
           />
@@ -1473,6 +1120,7 @@ export function StorePage() {
             key={`${sid}-service-${serviceCtx.serviceId ?? "new"}`}
             open
             title={serviceEditing ? "Editar servicio" : "Añadir servicio"}
+            categoryOptions={catalogCategories}
             initial={
               serviceEditing
                 ? {
@@ -1504,8 +1152,16 @@ export function StorePage() {
                 );
                 toast.success("Servicio actualizado");
               } else {
-                addOwnerStoreService(sid, ownerId, input);
-                toast.success("Servicio añadido");
+                const newId = addOwnerStoreService(sid, ownerId, input);
+                if (newId) {
+                  toast.success("Servicio añadido");
+                  setServiceNameQ("");
+                  setServiceCategoryQ("");
+                } else {
+                  toast.error(
+                    "No se pudo añadir el servicio. Revisá que seas el dueño o recargá la tienda.",
+                  );
+                }
               }
             }}
           />

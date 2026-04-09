@@ -1,0 +1,99 @@
+import { VtSelect } from "../../components/VtSelect";
+import { PriceRangeMinMaxControls } from "./PriceRangeMinMaxControls";
+import type { PriceSort } from "./storePageTypes";
+
+export function ServiceFiltersCard({
+  serviceNameQ,
+  onServiceNameQ,
+  serviceCategory,
+  onServiceCategory,
+  serviceCategories,
+  priceSort,
+  onPriceSort,
+  priceFloor,
+  priceCeiling,
+  onPriceFloor,
+  onPriceCeiling,
+  priceSliderMax,
+}: Readonly<{
+  serviceNameQ: string;
+  onServiceNameQ: (v: string) => void;
+  serviceCategory: string;
+  onServiceCategory: (v: string) => void;
+  serviceCategories: string[];
+  priceSort: PriceSort;
+  onPriceSort: (v: PriceSort) => void;
+  priceFloor: number | null;
+  priceCeiling: number | null;
+  onPriceFloor: (v: number) => void;
+  onPriceCeiling: (v: number) => void;
+  priceSliderMax: number;
+}>) {
+  return (
+    <div className="vt-card vt-card-pad">
+      <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+        Filtrar servicios
+      </div>
+      <p className="vt-muted mt-1 text-[12px] leading-snug">
+        Por nombre, tipo, categoría y precio inferido del texto.
+      </p>
+      <div className="vt-divider my-3" />
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          type="search"
+          className="vt-input min-w-0 flex-1"
+          placeholder="Nombre o tipo…"
+          value={serviceNameQ}
+          onChange={(e) => onServiceNameQ(e.target.value)}
+          aria-label="Filtrar servicios por nombre o tipo"
+        />
+        <div className="sm:w-48">
+          <VtSelect
+            value={serviceCategory}
+            onChange={onServiceCategory}
+            ariaLabel="Filtrar servicios por categoría"
+            placeholder="Todas las categorías"
+            options={[
+              { value: "", label: "Todas las categorías" },
+              ...serviceCategories.map((c) => ({ value: c, label: c })),
+            ]}
+          />
+        </div>
+      </div>
+      <div className="vt-divider my-3" />
+      <div className="grid gap-3 min-[560px]:grid-cols-2">
+        <div>
+          <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+            Orden por precio
+          </div>
+          <div className="mt-2">
+            <VtSelect
+              value={priceSort}
+              onChange={(v) => onPriceSort(v as PriceSort)}
+              ariaLabel="Ordenar servicios por precio estimado"
+              placeholder="Orden"
+              options={[
+                { value: "none", label: "Sin orden por precio" },
+                { value: "asc", label: "Precio: menor a mayor" },
+                { value: "desc", label: "Precio: mayor a menor" },
+              ]}
+            />
+          </div>
+        </div>
+        <div>
+          <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+            Rango de precio (0 — máximo del catálogo)
+          </div>
+          <PriceRangeMinMaxControls
+            priceSliderMax={priceSliderMax}
+            priceFloor={priceFloor}
+            priceCeiling={priceCeiling}
+            onPriceFloor={onPriceFloor}
+            onPriceCeiling={onPriceCeiling}
+            helperText="El precio se estima desde el texto de la ficha (p. ej. importes en la descripción). Sin número detectable: no se excluye por rango."
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

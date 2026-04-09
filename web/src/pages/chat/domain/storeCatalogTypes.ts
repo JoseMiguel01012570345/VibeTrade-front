@@ -227,6 +227,27 @@ export function findStoreService(catalog: StoreCatalog | undefined, id: string |
   return catalog.services.find((x) => x.id === id)
 }
 
+/**
+ * Tras `fetchStoreDetail`, conserva en memoria ítems que aún no están en la respuesta del servidor
+ * (p. ej. alta reciente antes de que termine el PUT del workspace).
+ */
+export function mergeStoreCatalogWithLocalExtras(
+  existing: StoreCatalog | undefined,
+  incoming: StoreCatalog,
+): StoreCatalog {
+  if (!existing) return incoming
+  const inProductIds = new Set(incoming.products.map((p) => p.id))
+  const inServiceIds = new Set(incoming.services.map((s) => s.id))
+  const extraProducts = existing.products.filter((p) => !inProductIds.has(p.id))
+  const extraServices = existing.services.filter((s) => !inServiceIds.has(s.id))
+  if (extraProducts.length === 0 && extraServices.length === 0) return incoming
+  return {
+    ...incoming,
+    products: [...incoming.products, ...extraProducts],
+    services: [...incoming.services, ...extraServices],
+  }
+}
+
 /** Valores iniciales del formulario de producto (perfil / ficha). */
 export function emptyStoreProductInput(): Omit<StoreProduct, 'id' | 'storeId'> {
   return {

@@ -1,4 +1,4 @@
-import { type ChangeEvent, useId, useState } from "react";
+import { type ChangeEvent, useId, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Loader2, Upload, X } from "lucide-react";
 import type { MerchandiseCondition } from "../../chat/domain/tradeAgreementTypes";
@@ -19,6 +19,8 @@ import {
   textareaMin,
 } from "../../chat/styles/formModalStyles";
 import { cn } from "../../../lib/cn";
+import { VtSelect } from "../../../components/VtSelect";
+import { DEFAULT_CATALOG_CATEGORIES } from "../../../utils/market/fetchCatalogCategories";
 import { UploadBlockingOverlay } from "../../../components/UploadBlockingOverlay";
 import { ProtectedMediaImg } from "../../../components/media/ProtectedMediaImg";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
@@ -35,6 +37,8 @@ type Props = Readonly<{
   open: boolean;
   title: string;
   initial: Omit<StoreProduct, "id" | "storeId">;
+  /** Categorías del backend (GET /api/v1/market/catalog-categories). */
+  categoryOptions?: string[];
   onClose: () => void;
   onSave: (v: Omit<StoreProduct, "id" | "storeId">) => void;
 }>;
@@ -43,6 +47,7 @@ export function ProductEditorModal({
   open,
   title,
   initial,
+  categoryOptions = [],
   onClose,
   onSave,
 }: Props) {
@@ -56,6 +61,16 @@ export function ProductEditorModal({
   const [photoPendingCount, setPhotoPendingCount] = useState(0);
 
   const photoOk = photoSlots.length >= 1;
+
+  const categorySelectOptions = useMemo(() => {
+    const base =
+      categoryOptions.length > 0 ? categoryOptions : [...DEFAULT_CATALOG_CATEGORIES];
+    const merged = new Set(
+      base.map((c) => c.trim()).filter(Boolean),
+    );
+    if (form.category.trim()) merged.add(form.category.trim());
+    return [...merged].sort((a, b) => a.localeCompare(b, "es"));
+  }, [categoryOptions, form.category]);
 
   if (!open) return null;
 
@@ -157,11 +172,18 @@ export function ProductEditorModal({
               )}
             >
               <span className={fieldLabel}>Categoría</span>
-              <input
-                className="vt-input"
-                list="store-cat-hints"
+              <VtSelect
                 value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                onChange={(v) => setForm({ ...form, category: v })}
+                ariaLabel="Categoría del producto"
+                placeholder="Seleccionar categoría"
+                options={[
+                  { value: "", label: "Seleccionar categoría" },
+                  ...categorySelectOptions.map((c) => ({
+                    value: c,
+                    label: c,
+                  })),
+                ]}
               />
             </label>
             <label
@@ -186,20 +208,22 @@ export function ProductEditorModal({
             </label>
             <label className={fieldRootWithInvalid(false)}>
               <span className={fieldLabel}>Estado</span>
-              <select
-                className="vt-input"
+              <VtSelect
                 value={form.condition}
-                onChange={(e) =>
+                onChange={(v) =>
                   setForm({
                     ...form,
-                    condition: e.target.value as MerchandiseCondition,
+                    condition: v as MerchandiseCondition,
                   })
                 }
-              >
-                <option value="nuevo">Nuevo</option>
-                <option value="usado">Usado</option>
-                <option value="reacondicionado">Reacondicionado</option>
-              </select>
+                ariaLabel="Estado del producto"
+                placeholder="Estado"
+                options={[
+                  { value: "nuevo", label: "Nuevo" },
+                  { value: "usado", label: "Usado" },
+                  { value: "reacondicionado", label: "Reacondicionado" },
+                ]}
+              />
             </label>
             <label
               className={cn(

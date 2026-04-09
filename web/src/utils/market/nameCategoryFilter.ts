@@ -14,3 +14,13 @@ export function matchesCategoryFilter(
   if (!s) return true;
   return itemCategory.trim() === s;
 }
+
+/** Producto: `nuevo` | `usado` | `reacondicionado`. Vacío = sin filtro. */
+export function matchesConditionFilter(
+  condition: string,
+  selectedCondition: string,
+): boolean {
+  const s = selectedCondition.trim();
+  if (!s) return true;
+  return condition.trim() === s;
+}
