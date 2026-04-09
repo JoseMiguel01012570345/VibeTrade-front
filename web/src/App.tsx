@@ -19,6 +19,7 @@ import { StorePage } from "./pages/store/StorePage";
 import { OtpPage } from "./pages/onboarding/OtpPage";
 import { OnboardingWelcomePage } from "./pages/onboarding/OnboardingWelcomePage";
 import { PhoneEntryPage } from "./pages/onboarding/PhoneEntryPage";
+import { StoresSearchPage } from "./pages/stores/StoresSearchPage";
 
 function SessionGate() {
   const isSessionActive = useAppStore((s) => s.isSessionActive);
@@ -35,9 +36,7 @@ function SessionGate() {
 
 function RootRedirect() {
   const isSessionActive = useAppStore((s) => s.isSessionActive);
-  return (
-    <Navigate to={isSessionActive ? "/home" : "/onboarding"} replace />
-  );
+  return <Navigate to={isSessionActive ? "/home" : "/onboarding"} replace />;
 }
 
 /** `/profile/:userId` → `/profile/:userId/account` */
@@ -59,6 +58,7 @@ export default function App() {
           <Route path="/onboarding/otp" element={<OtpPage />} />
 
           <Route path="/home" element={<HomePage />} />
+          <Route path="/stores" element={<StoresSearchPage />} />
           <Route path="/offer/:offerId" element={<OfferPage />} />
           <Route path="/store/:storeId" element={<StorePage />} />
           <Route path="/store/:storeId/vitrina" element={<StorePage />} />

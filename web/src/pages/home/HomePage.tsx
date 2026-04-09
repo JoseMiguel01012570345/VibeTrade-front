@@ -1,20 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAppStore } from "../../app/store/useAppStore";
 import type { Offer } from "../../app/store/useMarketStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { RouteOfferPreview } from "../offer/RouteOfferPreview";
-import { VtSelect } from "../../components/VtSelect";
-import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
-import {
-  searchStores,
-  type StoreSearchItem,
-} from "../../utils/market/searchStores";
 import {
   isTransportFeedOffer,
   userHasTransportService,
 } from "../../utils/user/transportEligibility";
-import { StoreSearchResultCard } from "./StoreSearchResultCard";
 
 function OffersTab({
   items,
@@ -89,116 +82,7 @@ function OffersTab({
   );
 }
 
-function StoresTab({
-  storeNameQ,
-  setStoreNameQ,
-  storeCategory,
-  setStoreCategory,
-  km,
-  setKm,
-  catOptions,
-  setGeo,
-  storeSearchStatus,
-  storeResults,
-}: Readonly<{
-  storeNameQ: string;
-  setStoreNameQ: (v: string) => void;
-  storeCategory: string;
-  setStoreCategory: (v: string) => void;
-  km: string;
-  setKm: (v: string) => void;
-  catOptions: string[];
-  setGeo: (v: { lat: number; lng: number } | null) => void;
-  storeSearchStatus: "idle" | "loading" | "ready" | "error";
-  storeResults: StoreSearchItem[];
-}>) {
-  return (
-    <div className="vt-card vt-card-pad">
-      <div className="mb-3 flex flex-col gap-2 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-end">
-        <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)]">
-          <span>Buscar por nombre</span>
-          <input
-            type="search"
-            className="vt-input"
-            placeholder="Nombre de la tienda…"
-            value={storeNameQ}
-            onChange={(e) => setStoreNameQ(e.target.value)}
-            aria-label="Buscar tiendas por nombre"
-          />
-        </label>
-        <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
-          <span>Categoría</span>
-          <VtSelect
-            value={storeCategory}
-            onChange={setStoreCategory}
-            ariaLabel="Filtrar tiendas por categoría"
-            placeholder="Todas"
-            options={[
-              { value: "", label: "Todas" },
-              ...catOptions.map((c) => ({ value: c, label: c })),
-            ]}
-          />
-        </label>
-        <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-44">
-          <span>Radio (km)</span>
-          <input
-            inputMode="decimal"
-            className="vt-input"
-            placeholder="Ej: 10"
-            value={km}
-            onChange={(e) => {
-              const next = e.target.value;
-              setKm(next);
-              const kmNum = Number(next);
-              if (!Number.isFinite(kmNum) || kmNum <= 0) {
-                setGeo(null);
-                return;
-              }
-              if (!navigator.geolocation) return;
-              navigator.geolocation.getCurrentPosition(
-                (p) =>
-                  setGeo({
-                    lat: p.coords.latitude,
-                    lng: p.coords.longitude,
-                  }),
-                () => setGeo(null),
-                { enableHighAccuracy: true, timeout: 8000 },
-              );
-            }}
-            aria-label="Radio de búsqueda en km"
-          />
-        </label>
-      </div>
-
-      {storeSearchStatus === "loading" ? (
-        <div className="vt-muted text-[13px]">Buscando…</div>
-      ) : null}
-      {storeSearchStatus === "error" ? (
-        <div className="vt-muted text-[13px]">
-          No se pudo buscar tiendas. ¿Backend en marcha?
-        </div>
-      ) : null}
-      {storeSearchStatus === "ready" && storeResults.length === 0 ? (
-        <div className="vt-muted text-[13px]">
-          Ninguna tienda coincide con el filtro.
-        </div>
-      ) : null}
-      {storeSearchStatus === "ready" && storeResults.length > 0 ? (
-        <div className="mt-3 flex flex-col gap-3">
-          {storeResults.map((it) => (
-            <StoreSearchResultCard
-              key={it.store.id}
-              store={it.store}
-              publishedProducts={it.publishedProducts}
-              publishedServices={it.publishedServices}
-              distanceKm={it.distanceKm}
-            />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
+// StoresTab moved to /stores route (StoresSearchPage).
 
 export function HomePage() {
   const me = useAppStore((s) => s.me);
@@ -207,8 +91,6 @@ export function HomePage() {
   const stores = useMarketStore((s) => s.stores);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
   const routeOfferPublic = useMarketStore((s) => s.routeOfferPublic);
-
-  const [tab, setTab] = useState<"offers" | "stores">("offers");
 
   const hasTransportService = useMemo(
     () => userHasTransportService(me.id, stores, storeCatalogs),
@@ -221,118 +103,23 @@ export function HomePage() {
     return list.filter((o) => isTransportFeedOffer(o));
   }, [offerIds, offers, hasTransportService]) as Offer[];
 
-  const [storeNameQ, setStoreNameQ] = useState("");
-  const [storeCategory, setStoreCategory] = useState("");
-  const [km, setKm] = useState("");
-  const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
-  const [catOptions, setCatOptions] = useState<string[]>([]);
-  const [storeSearchStatus, setStoreSearchStatus] = useState<
-    "idle" | "loading" | "ready" | "error"
-  >("idle");
-  const [storeResults, setStoreResults] = useState<StoreSearchItem[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const list = await fetchCatalogCategories();
-        if (!cancelled) setCatOptions(list);
-      } catch {
-        if (!cancelled) setCatOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (tab !== "stores") return;
-    let cancelled = false;
-    setStoreSearchStatus("loading");
-    const t = globalThis.setTimeout(() => {
-      void (async () => {
-        try {
-          const kmNum = Number(km);
-          const useDistance =
-            geo != null && Number.isFinite(kmNum) && kmNum > 0;
-
-          const list = await searchStores({
-            name: storeNameQ.trim() || undefined,
-            category: storeCategory.trim() || undefined,
-            lat: useDistance ? geo.lat : undefined,
-            lng: useDistance ? geo.lng : undefined,
-            km: useDistance ? kmNum : undefined,
-            limit: 60,
-          });
-          if (cancelled) return;
-          setStoreResults(list);
-          setStoreSearchStatus("ready");
-        } catch {
-          if (cancelled) return;
-          setStoreSearchStatus("error");
-        }
-      })();
-    }, 250);
-    return () => {
-      cancelled = true;
-      globalThis.clearTimeout(t);
-    };
-  }, [tab, storeNameQ, storeCategory, km, geo]);
-
-  let subtitle = "Buscá tiendas por nombre, categoría, vitrina y distancia.";
-  if (tab === "offers") {
-    subtitle = hasTransportService
-      ? "Feed para transportistas: ofertas de flete, logística y afines (solo lo ves si tenés al menos un servicio de transporte publicado en tu tienda)."
-      : "Explorá ofertas publicadas en la plataforma.";
-  }
+  const subtitle = hasTransportService
+    ? "Feed para transportistas: ofertas de flete, logística y afines (solo lo ves si tenés al menos un servicio de transporte publicado en tu tienda)."
+    : "Explorá ofertas publicadas en la plataforma.";
 
   return (
     <div className="container vt-page">
       <div className="mb-3 mt-2 flex items-center justify-between gap-3">
         <div>
-          <h1 className="vt-h1">{tab === "offers" ? "Ofertas" : "Tiendas"}</h1>
+          <h1 className="vt-h1">Ofertas</h1>
           <div className="vt-muted">{subtitle}</div>
         </div>
-
-        <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            className={tab === "offers" ? "vt-btn vt-btn-primary" : "vt-btn"}
-            onClick={() => setTab("offers")}
-          >
-            Ofertas
-          </button>
-          <button
-            type="button"
-            className={tab === "stores" ? "vt-btn vt-btn-primary" : "vt-btn"}
-            onClick={() => setTab("stores")}
-          >
-            Tiendas
-          </button>
-        </div>
+        <Link className="vt-btn" to="/stores">
+          Ver tiendas
+        </Link>
       </div>
 
-      {tab === "offers" ? (
-        <OffersTab
-          items={items}
-          stores={stores}
-          routeOfferPublic={routeOfferPublic}
-        />
-      ) : (
-        <StoresTab
-          storeNameQ={storeNameQ}
-          setStoreNameQ={setStoreNameQ}
-          storeCategory={storeCategory}
-          setStoreCategory={setStoreCategory}
-          km={km}
-          setKm={setKm}
-          catOptions={catOptions}
-          setGeo={setGeo}
-          storeSearchStatus={storeSearchStatus}
-          storeResults={storeResults}
-        />
-      )}
+      <OffersTab items={items} stores={stores} routeOfferPublic={routeOfferPublic} />
     </div>
   );
 }

@@ -25,7 +25,7 @@ export function StoreSearchResultCard({
   return (
     <div className="relative overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
       <Link
-        to={`/store/${s.id}`}
+        to={`/store/${s.id}/vitrina`}
         className="absolute inset-0 z-[1] rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
         aria-label={`Abrir tienda ${s.name}`}
       />
