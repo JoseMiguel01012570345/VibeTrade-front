@@ -5,6 +5,7 @@ import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { UploadBlockingOverlay } from "../../components/UploadBlockingOverlay";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
+import { setMarketHydrating } from "../../utils/market/marketPersistence";
 import { mediaApiUrl, uploadMedia } from "../../utils/media/mediaClient";
 import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
 import { VtSelect } from "../../components/VtSelect";
@@ -85,14 +86,19 @@ export function ProfileStoresSection({
           try {
             const data = await fetchStoreDetail(b.id, { userId: me.id });
             if (cancelled) return;
-            useMarketStore.setState((s) => {
-              if (s.storeCatalogs[b.id] !== undefined) return s;
-              return {
-                ...s,
-                stores: { ...s.stores, [b.id]: data.store },
-                storeCatalogs: { ...s.storeCatalogs, [b.id]: data.catalog },
-              };
-            });
+            setMarketHydrating(true);
+            try {
+              useMarketStore.setState((s) => {
+                if (s.storeCatalogs[b.id] !== undefined) return s;
+                return {
+                  ...s,
+                  stores: { ...s.stores, [b.id]: data.store },
+                  storeCatalogs: { ...s.storeCatalogs, [b.id]: data.catalog },
+                };
+              });
+            } finally {
+              setMarketHydrating(false);
+            }
           } catch {
             /* detalle opcional; la tarjeta sigue sin preview */
           }
@@ -216,11 +222,16 @@ export function ProfileStoresSection({
     setCatalogReloadBusyId(storeId);
     try {
       const data = await fetchStoreDetail(storeId, { userId: me.id });
-      useMarketStore.setState((s) => ({
-        ...s,
-        stores: { ...s.stores, [storeId]: data.store },
-        storeCatalogs: { ...s.storeCatalogs, [storeId]: data.catalog },
-      }));
+      setMarketHydrating(true);
+      try {
+        useMarketStore.setState((s) => ({
+          ...s,
+          stores: { ...s.stores, [storeId]: data.store },
+          storeCatalogs: { ...s.storeCatalogs, [storeId]: data.catalog },
+        }));
+      } finally {
+        setMarketHydrating(false);
+      }
       toast.success("Catálogo actualizado");
     } catch {
       toast.error("No se pudo actualizar el catálogo");
@@ -239,15 +250,20 @@ export function ProfileStoresSection({
           return [b.id, data] as const;
         }),
       );
-      useMarketStore.setState((s) => {
-        const nextStores = { ...s.stores };
-        const nextCats = { ...s.storeCatalogs };
-        for (const [id, data] of pairs) {
-          nextStores[id] = data.store;
-          nextCats[id] = data.catalog;
-        }
-        return { ...s, stores: nextStores, storeCatalogs: nextCats };
-      });
+      setMarketHydrating(true);
+      try {
+        useMarketStore.setState((s) => {
+          const nextStores = { ...s.stores };
+          const nextCats = { ...s.storeCatalogs };
+          for (const [id, data] of pairs) {
+            nextStores[id] = data.store;
+            nextCats[id] = data.catalog;
+          }
+          return { ...s, stores: nextStores, storeCatalogs: nextCats };
+        });
+      } finally {
+        setMarketHydrating(false);
+      }
       toast.success("Tiendas actualizadas");
     } catch {
       toast.error("No se pudieron actualizar las tiendas");

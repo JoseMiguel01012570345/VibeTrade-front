@@ -10,6 +10,7 @@ import {
   mergeStoreCatalogWithLocalExtras,
 } from "../chat/domain/storeCatalogTypes";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
+import { setMarketHydrating } from "../../utils/market/marketPersistence";
 import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
 import { ConfirmDeleteModal } from "../../components/ConfirmDeleteModal";
 import { ScrollToTopFab } from "../../components/ScrollToTopFab";
@@ -166,23 +167,27 @@ export function StorePage() {
 
   useEffect(() => {
     if (!storeId) return;
-    if (!useMarketStore.getState().stores[storeId]) return;
     let cancelled = false;
     setDetailStatus("loading");
     void (async () => {
       try {
         const data = await fetchStoreDetail(storeId, { userId: me.id });
         if (cancelled) return;
-        useMarketStore.setState((s) => ({
-          stores: { ...s.stores, [storeId]: data.store },
-          storeCatalogs: {
-            ...s.storeCatalogs,
-            [storeId]: mergeStoreCatalogWithLocalExtras(
-              s.storeCatalogs[storeId],
-              data.catalog,
-            ),
-          },
-        }));
+        setMarketHydrating(true);
+        try {
+          useMarketStore.setState((s) => ({
+            stores: { ...s.stores, [storeId]: data.store },
+            storeCatalogs: {
+              ...s.storeCatalogs,
+              [storeId]: mergeStoreCatalogWithLocalExtras(
+                s.storeCatalogs[storeId],
+                data.catalog,
+              ),
+            },
+          }));
+        } finally {
+          setMarketHydrating(false);
+        }
         setDetailStatus("ready");
       } catch {
         if (!cancelled) setDetailStatus("error");
@@ -503,7 +508,7 @@ export function StorePage() {
     ? formatCatalogJoinedLabel(catalog.joinedAt)
     : null;
 
-  if (!storeId || !store) {
+  if (!storeId) {
     return (
       <div className="container vt-page">
         <div className="vt-card vt-card-pad">Tienda no encontrada.</div>
@@ -543,6 +548,15 @@ export function StorePage() {
             Reintentar
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // If we got here, we attempted loading and didn't error; if store is still missing, treat as not found.
+  if (!store) {
+    return (
+      <div className="container vt-page">
+        <div className="vt-card vt-card-pad">Tienda no encontrada.</div>
       </div>
     );
   }
