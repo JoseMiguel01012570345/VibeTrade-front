@@ -21,7 +21,6 @@ import {
 } from "../../chat/styles/formModalStyles";
 import { cn } from "../../../lib/cn";
 import { VtSelect } from "../../../components/VtSelect";
-import { DEFAULT_CATALOG_CATEGORIES } from "../../../utils/market/fetchCatalogCategories";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import { fixSplitLines } from "./helpers";
 
@@ -55,11 +54,8 @@ export function ServiceEditorModal({
   const [uploadBusy, setUploadBusy] = useState(false);
 
   const categorySelectOptions = useMemo(() => {
-    const base =
-      categoryOptions.length > 0 ? categoryOptions : [...DEFAULT_CATALOG_CATEGORIES];
-    const merged = new Set(
-      base.map((c) => c.trim()).filter(Boolean),
-    );
+    const base = categoryOptions.length > 0 ? categoryOptions : [];
+    const merged = new Set(base.map((c) => c.trim()).filter(Boolean));
     if (form.category.trim()) merged.add(form.category.trim());
     return [...merged].sort((a, b) => a.localeCompare(b, "es"));
   }, [categoryOptions, form.category]);

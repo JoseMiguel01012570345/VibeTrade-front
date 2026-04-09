@@ -3,6 +3,35 @@ import type {
   StoreSectionFilters,
 } from "./storePageTypes";
 
+export function pathForStoreScreen(
+  storeId: string,
+  screen: StoreScreen,
+): string {
+  const base = `/store/${storeId}`;
+  if (screen === "catalog") return base;
+  if (screen === "vitrina") return `${base}/vitrina`;
+  if (screen === "products") return `${base}/products`;
+  return `${base}/services`;
+}
+
+export function storeScreenHeaderTitle(
+  screen: StoreScreen,
+  storeName: string,
+): string {
+  if (screen === "catalog") return storeName;
+  if (screen === "vitrina") return "Vitrina";
+  if (screen === "products") return "Productos";
+  return "Servicios";
+}
+
+export function formatCatalogJoinedLabel(joinedAt: number): string {
+  return new Intl.DateTimeFormat("es", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(joinedAt);
+}
+
 /** Ajusta rango de precio al máximo del slider de esa sección (sin mezclar con otras vistas). */
 export function clampStoreSectionPriceRange(
   f: StoreSectionFilters,

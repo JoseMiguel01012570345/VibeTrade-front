@@ -6,10 +6,7 @@ import { useMarketStore } from "../../app/store/useMarketStore";
 import { UploadBlockingOverlay } from "../../components/UploadBlockingOverlay";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
 import { mediaApiUrl, uploadMedia } from "../../utils/media/mediaClient";
-import {
-  DEFAULT_CATALOG_CATEGORIES,
-  fetchCatalogCategories,
-} from "../../utils/market/fetchCatalogCategories";
+import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
 import { VtSelect } from "../../components/VtSelect";
 import { OwnerStoreCard } from "./stores/OwnerStoreCard";
 import { VisitorStoreSummaryCard } from "./stores/VisitorStoreSummaryCard";
@@ -117,13 +114,13 @@ export function ProfileStoresSection({
   const [catalogReloadBusyId, setCatalogReloadBusyId] = useState<string | null>(
     null,
   );
-  const [deleteTarget, setDeleteTarget] = useState<
-    null | { kind: "store"; storeId: string; storeName: string }
-  >(null);
+  const [deleteTarget, setDeleteTarget] = useState<null | {
+    kind: "store";
+    storeId: string;
+    storeName: string;
+  }>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
-  const [catalogCategories, setCatalogCategories] = useState<string[]>(() => [
-    ...DEFAULT_CATALOG_CATEGORIES,
-  ]);
+  const [catalogCategories, setCatalogCategories] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -131,9 +128,7 @@ export function ProfileStoresSection({
       try {
         const cats = await fetchCatalogCategories();
         if (!cancelled && cats.length > 0) setCatalogCategories(cats);
-      } catch {
-        /* DEFAULT_CATALOG_CATEGORIES */
-      }
+      } catch {}
     })();
     return () => {
       cancelled = true;
@@ -274,96 +269,96 @@ export function ProfileStoresSection({
   if (!canEdit) {
     return (
       <>
-      <div className="vt-card vt-card-pad">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="vt-h2">Tiendas</div>
-          <button
-            type="button"
-            className="vt-btn vt-btn-ghost vt-btn-sm inline-flex items-center gap-1"
-            disabled={storesReloadBusy || myStores.length === 0}
-            title="Recargar todas las tiendas desde el servidor"
-            aria-label="Recargar todas las tiendas"
-            onClick={() => void reloadAllMyStores()}
-          >
-            <RefreshCw
-              size={14}
-              className={storesReloadBusy ? "animate-spin" : ""}
-              aria-hidden
-            />
-            Recargar
-          </button>
-        </div>
-        <p className="vt-muted mt-1.5 max-w-[640px] text-[13px] leading-snug">
-          Tiendas públicas de este usuario: tocá una tarjeta para ver el
-          catálogo y la vitrina.
-        </p>
-        <div className="vt-divider my-3" />
-        {myStores.length === 0 ? (
-          <p className="vt-muted text-[13px]">
-            Este usuario no tiene tiendas vinculadas en la demo.
-          </p>
-        ) : (
-          <>
-            <div className="mb-3 flex flex-col gap-2 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-end">
-              <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)]">
-                Buscar por nombre
-                <input
-                  type="search"
-                  className="vt-input"
-                  placeholder="Nombre de la tienda…"
-                  value={storeListNameQ}
-                  onChange={(e) => setStoreListNameQ(e.target.value)}
-                  aria-label="Filtrar tiendas por nombre"
-                />
-              </label>
-              <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
-                Categoría
-                <VtSelect
-                  value={storeListCategory}
-                  onChange={setStoreListCategory}
-                  ariaLabel="Filtrar tiendas por categoría"
-                  placeholder="Todas"
-                  options={[
-                    { value: "", label: "Todas" },
-                    ...storeListCategoryOptions.map((c) => ({
-                      value: c,
-                      label: c,
-                    })),
-                  ]}
-                />
-              </label>
-            </div>
-            {filteredMyStores.length === 0 ? (
-              <p className="vt-muted text-[13px]">
-                Ninguna tienda coincide con el filtro.
-              </p>
-            ) : null}
-          <div className="flex flex-col gap-3">
-            {filteredMyStores.map((b) => {
-              const cat = storeCatalogs[b.id];
-              const joined = cat
-                ? new Intl.DateTimeFormat("es", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  }).format(cat.joinedAt)
-                : "—";
-              return (
-                <VisitorStoreSummaryCard
-                  key={b.id}
-                  store={b}
-                  catalog={cat}
-                  joinedLabel={joined}
-                  onReloadCatalog={() => void reloadStoreCatalog(b.id)}
-                  catalogReloadBusy={catalogReloadBusyId === b.id}
-                />
-              );
-            })}
+        <div className="vt-card vt-card-pad">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="vt-h2">Tiendas</div>
+            <button
+              type="button"
+              className="vt-btn vt-btn-ghost vt-btn-sm inline-flex items-center gap-1"
+              disabled={storesReloadBusy || myStores.length === 0}
+              title="Recargar todas las tiendas desde el servidor"
+              aria-label="Recargar todas las tiendas"
+              onClick={() => void reloadAllMyStores()}
+            >
+              <RefreshCw
+                size={14}
+                className={storesReloadBusy ? "animate-spin" : ""}
+                aria-hidden
+              />
+              Recargar
+            </button>
           </div>
-          </>
-        )}
-      </div>
-      <ScrollToTopFab />
+          <p className="vt-muted mt-1.5 max-w-[640px] text-[13px] leading-snug">
+            Tiendas públicas de este usuario: tocá una tarjeta para ver el
+            catálogo y la vitrina.
+          </p>
+          <div className="vt-divider my-3" />
+          {myStores.length === 0 ? (
+            <p className="vt-muted text-[13px]">
+              Este usuario no tiene tiendas vinculadas en la demo.
+            </p>
+          ) : (
+            <>
+              <div className="mb-3 flex flex-col gap-2 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-end">
+                <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)]">
+                  Buscar por nombre
+                  <input
+                    type="search"
+                    className="vt-input"
+                    placeholder="Nombre de la tienda…"
+                    value={storeListNameQ}
+                    onChange={(e) => setStoreListNameQ(e.target.value)}
+                    aria-label="Filtrar tiendas por nombre"
+                  />
+                </label>
+                <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
+                  Categoría
+                  <VtSelect
+                    value={storeListCategory}
+                    onChange={setStoreListCategory}
+                    ariaLabel="Filtrar tiendas por categoría"
+                    placeholder="Todas"
+                    options={[
+                      { value: "", label: "Todas" },
+                      ...storeListCategoryOptions.map((c) => ({
+                        value: c,
+                        label: c,
+                      })),
+                    ]}
+                  />
+                </label>
+              </div>
+              {filteredMyStores.length === 0 ? (
+                <p className="vt-muted text-[13px]">
+                  Ninguna tienda coincide con el filtro.
+                </p>
+              ) : null}
+              <div className="flex flex-col gap-3">
+                {filteredMyStores.map((b) => {
+                  const cat = storeCatalogs[b.id];
+                  const joined = cat
+                    ? new Intl.DateTimeFormat("es", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      }).format(cat.joinedAt)
+                    : "—";
+                  return (
+                    <VisitorStoreSummaryCard
+                      key={b.id}
+                      store={b}
+                      catalog={cat}
+                      joinedLabel={joined}
+                      onReloadCatalog={() => void reloadStoreCatalog(b.id)}
+                      catalogReloadBusy={catalogReloadBusyId === b.id}
+                    />
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+        <ScrollToTopFab />
       </>
     );
   }
@@ -439,9 +434,9 @@ export function ProfileStoresSection({
               </button>
             </div>
             <p className="vt-muted mt-1.5 max-w-[640px] text-[13px] leading-snug">
-              Configurá nombre, categorías, descripción del catálogo, verificación
-              (soporte), transporte y foto. Para cargar o editar productos y
-              servicios abrí la tienda desde la tarjeta.
+              Configurá nombre, categorías, descripción del catálogo,
+              verificación (soporte), transporte y foto. Para cargar o editar
+              productos y servicios abrí la tienda desde la tarjeta.
             </p>
           </div>
           <button
@@ -494,39 +489,39 @@ export function ProfileStoresSection({
                 Ninguna tienda coincide con el filtro.
               </p>
             ) : null}
-          <div className="flex flex-col gap-3">
-            {filteredMyStores.map((b) => {
-              const cat = storeCatalogs[b.id];
-              const joined = cat
-                ? new Intl.DateTimeFormat("es", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  }).format(cat.joinedAt)
-                : "—";
-              return (
-                <OwnerStoreCard
-                  key={b.id}
-                  store={b}
-                  catalog={cat}
-                  joinedLabel={joined}
-                  avatarDisplayUrl={avatarDrafts[b.id] ?? b.avatarUrl}
-                  storeAvatarDirty={Boolean(avatarDrafts[b.id])}
-                  onEditDetails={() => setEditStoreId(b.id)}
-                  onRequestDeleteStore={() => {
-                    setDeleteTarget({
-                      kind: "store",
-                      storeId: b.id,
-                      storeName: b.name,
-                    });
-                  }}
-                  onAvatarFileChange={onStoreAvatarPick(b.id)}
-                  onSaveStoreAvatar={() => saveStoreAvatar(b.id)}
-                  onDiscardStoreAvatar={() => discardStoreAvatarDraft(b.id)}
-                />
-              );
-            })}
-          </div>
+            <div className="flex flex-col gap-3">
+              {filteredMyStores.map((b) => {
+                const cat = storeCatalogs[b.id];
+                const joined = cat
+                  ? new Intl.DateTimeFormat("es", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    }).format(cat.joinedAt)
+                  : "—";
+                return (
+                  <OwnerStoreCard
+                    key={b.id}
+                    store={b}
+                    catalog={cat}
+                    joinedLabel={joined}
+                    avatarDisplayUrl={avatarDrafts[b.id] ?? b.avatarUrl}
+                    storeAvatarDirty={Boolean(avatarDrafts[b.id])}
+                    onEditDetails={() => setEditStoreId(b.id)}
+                    onRequestDeleteStore={() => {
+                      setDeleteTarget({
+                        kind: "store",
+                        storeId: b.id,
+                        storeName: b.name,
+                      });
+                    }}
+                    onAvatarFileChange={onStoreAvatarPick(b.id)}
+                    onSaveStoreAvatar={() => saveStoreAvatar(b.id)}
+                    onDiscardStoreAvatar={() => discardStoreAvatarDraft(b.id)}
+                  />
+                );
+              })}
+            </div>
           </>
         )}
 
@@ -577,7 +572,6 @@ export function ProfileStoresSection({
             }}
           />
         ) : null}
-
       </div>
       <ScrollToTopFab />
     </>

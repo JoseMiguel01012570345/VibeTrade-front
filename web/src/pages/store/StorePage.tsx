@@ -2,14 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAppStore } from "../../app/store/useAppStore";
-import {
-  ArrowLeft,
-  ChevronRight,
-  LayoutGrid,
-  Package,
-  Wrench,
-} from "lucide-react";
-import { cn } from "../../lib/cn";
+import { ArrowLeft, LayoutGrid } from "lucide-react";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import {
   emptyStoreProductInput,
@@ -17,10 +10,7 @@ import {
   mergeStoreCatalogWithLocalExtras,
 } from "../chat/domain/storeCatalogTypes";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
-import {
-  DEFAULT_CATALOG_CATEGORIES,
-  fetchCatalogCategories,
-} from "../../utils/market/fetchCatalogCategories";
+import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
 import { ConfirmDeleteModal } from "../../components/ConfirmDeleteModal";
 import { ScrollToTopFab } from "../../components/ScrollToTopFab";
 import { ProductEditorModal } from "../profile/stores/ProductEditorModal";
@@ -30,24 +20,23 @@ import {
   OwnerCatalogServiceList,
 } from "./StoreOwnerCatalogLists";
 import {
-  matchesCategoryFilter,
-  matchesConditionFilter,
-  matchesNameQuery,
-} from "../../utils/market/nameCategoryFilter";
-import {
   MAX_REASONABLE_PRICE,
-  compareParsedPricesWithTieBreak,
   maxPriceFromProducts,
   maxPriceFromServices,
-  parseProductPriceNumber,
-  serviceComparablePrice,
 } from "../../utils/market/parseProductPrice";
 import { ProductDetailCard } from "./ProductDetailCard";
 import { ProductFiltersCard } from "./ProductFiltersCard";
 import { ServiceDetailCard } from "./ServiceDetailCard";
 import { ServiceFiltersCard } from "./ServiceFiltersCard";
+import { StoreCatalogHubTile } from "./StoreCatalogHubTile";
 import { StoreIdentityBlock } from "./StoreIdentityBlock";
 import { VitrinaFiltersCard } from "./VitrinaFiltersCard";
+import {
+  applyProductPriceRangeAndSort,
+  applyServicePriceRangeAndSort,
+  filterProductsBySectionText,
+  filterServicesBySectionText,
+} from "./storePageCatalogFilters";
 import { backRowBtnClass } from "./storePageStyles";
 import type {
   PriceSort,
@@ -59,9 +48,14 @@ import type {
 import { emptyStoreSectionFilters } from "./storePageTypes";
 import {
   clampStoreSectionPriceRange,
+  formatCatalogJoinedLabel,
+  pathForStoreScreen,
   screenFromPathname,
+  storeScreenHeaderTitle,
   uniqueSorted,
 } from "./storePageUtils";
+
+const EMPTY_CATEGORY_HINTS: string[] = [];
 
 export function StorePage() {
   const { storeId } = useParams();
@@ -137,9 +131,7 @@ export function StorePage() {
   >(null);
   const [catalogDeleteBusy, setCatalogDeleteBusy] = useState(false);
   const [catalogReloadBusy, setCatalogReloadBusy] = useState(false);
-  const [catalogCategories, setCatalogCategories] = useState<string[]>(() => [
-    ...DEFAULT_CATALOG_CATEGORIES,
-  ]);
+  const [catalogCategories, setCatalogCategories] = useState<string[]>();
 
   useEffect(() => {
     let cancelled = false;
@@ -322,14 +314,7 @@ export function StorePage() {
   );
 
   const vitrinaPublishedProductsBase = useMemo(
-    () =>
-      publishedProducts.filter(
-        (p) =>
-          (matchesNameQuery(p.name, fv.productNameQ) ||
-            matchesNameQuery(p.model ?? "", fv.productNameQ)) &&
-          matchesCategoryFilter(p.category, fv.productCategoryQ) &&
-          matchesConditionFilter(p.condition, fv.productConditionQ),
-      ),
+    () => filterProductsBySectionText(publishedProducts, fv),
     [
       publishedProducts,
       fv.productNameQ,
@@ -338,94 +323,47 @@ export function StorePage() {
     ],
   );
 
-  const vitrinaPublishedProducts = useMemo(() => {
-    let list = vitrinaPublishedProductsBase;
-    const floor = fv.priceFloor ?? 0;
-    const cap = fv.priceCeiling ?? sliderMaxVitrina;
-    if (sliderMaxVitrina > 0) {
-      list = list.filter((p) => {
-        const n = parseProductPriceNumber(p.price);
-        if (n == null) return true;
-        return n >= floor && n <= cap;
-      });
-    }
-    if (fv.priceSort === "asc" || fv.priceSort === "desc") {
-      const order = fv.priceSort;
-      list = [...list].sort((a, b) =>
-        compareParsedPricesWithTieBreak(
-          parseProductPriceNumber(a.price),
-          parseProductPriceNumber(b.price),
-          order,
-          () =>
-            order === "asc"
-              ? a.name.localeCompare(b.name, "es")
-              : b.name.localeCompare(a.name, "es"),
-        ),
-      );
-    }
-    return list;
-  }, [
-    vitrinaPublishedProductsBase,
-    sliderMaxVitrina,
-    fv.priceFloor,
-    fv.priceCeiling,
-    fv.priceSort,
-  ]);
+  const vitrinaPublishedProducts = useMemo(
+    () =>
+      applyProductPriceRangeAndSort(vitrinaPublishedProductsBase, {
+        sliderMax: sliderMaxVitrina,
+        priceFloor: fv.priceFloor,
+        priceCeiling: fv.priceCeiling,
+        priceSort: fv.priceSort,
+      }),
+    [
+      vitrinaPublishedProductsBase,
+      sliderMaxVitrina,
+      fv.priceFloor,
+      fv.priceCeiling,
+      fv.priceSort,
+    ],
+  );
 
   const vitrinaPublishedServicesBase = useMemo(
-    () =>
-      publishedServices.filter(
-        (s) =>
-          (matchesNameQuery(s.tipoServicio, fv.serviceNameQ) ||
-            matchesNameQuery(s.descripcion, fv.serviceNameQ)) &&
-          matchesCategoryFilter(s.category, fv.serviceCategoryQ),
-      ),
+    () => filterServicesBySectionText(publishedServices, fv),
     [publishedServices, fv.serviceNameQ, fv.serviceCategoryQ],
   );
 
-  const vitrinaPublishedServices = useMemo(() => {
-    let list = vitrinaPublishedServicesBase;
-    const floor = fv.priceFloor ?? 0;
-    const cap = fv.priceCeiling ?? sliderMaxVitrina;
-    if (sliderMaxVitrina > 0) {
-      list = list.filter((s) => {
-        const n = serviceComparablePrice(s);
-        if (n == null) return true;
-        return n >= floor && n <= cap;
-      });
-    }
-    if (fv.priceSort === "asc" || fv.priceSort === "desc") {
-      const order = fv.priceSort;
-      list = [...list].sort((a, b) =>
-        compareParsedPricesWithTieBreak(
-          serviceComparablePrice(a),
-          serviceComparablePrice(b),
-          order,
-          () =>
-            order === "asc"
-              ? a.tipoServicio.localeCompare(b.tipoServicio, "es")
-              : b.tipoServicio.localeCompare(a.tipoServicio, "es"),
-        ),
-      );
-    }
-    return list;
-  }, [
-    vitrinaPublishedServicesBase,
-    sliderMaxVitrina,
-    fv.priceFloor,
-    fv.priceCeiling,
-    fv.priceSort,
-  ]);
+  const vitrinaPublishedServices = useMemo(
+    () =>
+      applyServicePriceRangeAndSort(vitrinaPublishedServicesBase, {
+        sliderMax: sliderMaxVitrina,
+        priceFloor: fv.priceFloor,
+        priceCeiling: fv.priceCeiling,
+        priceSort: fv.priceSort,
+      }),
+    [
+      vitrinaPublishedServicesBase,
+      sliderMaxVitrina,
+      fv.priceFloor,
+      fv.priceCeiling,
+      fv.priceSort,
+    ],
+  );
 
   const productsTabPublishedProductsBase = useMemo(
-    () =>
-      publishedProducts.filter(
-        (p) =>
-          (matchesNameQuery(p.name, fp.productNameQ) ||
-            matchesNameQuery(p.model ?? "", fp.productNameQ)) &&
-          matchesCategoryFilter(p.category, fp.productCategoryQ) &&
-          matchesConditionFilter(p.condition, fp.productConditionQ),
-      ),
+    () => filterProductsBySectionText(publishedProducts, fp),
     [
       publishedProducts,
       fp.productNameQ,
@@ -434,39 +372,22 @@ export function StorePage() {
     ],
   );
 
-  const productsTabPublishedProducts = useMemo(() => {
-    let list = productsTabPublishedProductsBase;
-    const floor = fp.priceFloor ?? 0;
-    const cap = fp.priceCeiling ?? sliderMaxProducts;
-    if (sliderMaxProducts > 0) {
-      list = list.filter((p) => {
-        const n = parseProductPriceNumber(p.price);
-        if (n == null) return true;
-        return n >= floor && n <= cap;
-      });
-    }
-    if (fp.priceSort === "asc" || fp.priceSort === "desc") {
-      const order = fp.priceSort;
-      list = [...list].sort((a, b) =>
-        compareParsedPricesWithTieBreak(
-          parseProductPriceNumber(a.price),
-          parseProductPriceNumber(b.price),
-          order,
-          () =>
-            order === "asc"
-              ? a.name.localeCompare(b.name, "es")
-              : b.name.localeCompare(a.name, "es"),
-        ),
-      );
-    }
-    return list;
-  }, [
-    productsTabPublishedProductsBase,
-    sliderMaxProducts,
-    fp.priceFloor,
-    fp.priceCeiling,
-    fp.priceSort,
-  ]);
+  const productsTabPublishedProducts = useMemo(
+    () =>
+      applyProductPriceRangeAndSort(productsTabPublishedProductsBase, {
+        sliderMax: sliderMaxProducts,
+        priceFloor: fp.priceFloor,
+        priceCeiling: fp.priceCeiling,
+        priceSort: fp.priceSort,
+      }),
+    [
+      productsTabPublishedProductsBase,
+      sliderMaxProducts,
+      fp.priceFloor,
+      fp.priceCeiling,
+      fp.priceSort,
+    ],
+  );
 
   const ownerProductCategoryOptions = useMemo(
     () => uniqueSorted(allCatalogProducts.map((p) => p.category)),
@@ -477,33 +398,38 @@ export function StorePage() {
     [allCatalogServices],
   );
 
+  const catHints = catalogCategories ?? EMPTY_CATEGORY_HINTS;
+
   const productCategoryFilterOptions = useMemo(
     () =>
       uniqueSorted([
-        ...catalogCategories,
+        ...catHints,
         ...(isOwner ? ownerProductCategoryOptions : productCategoryOptions),
       ]),
-    [catalogCategories, isOwner, ownerProductCategoryOptions, productCategoryOptions],
+    [
+      catHints,
+      isOwner,
+      ownerProductCategoryOptions,
+      productCategoryOptions,
+    ],
   );
 
   const serviceCategoryFilterOptions = useMemo(
     () =>
       uniqueSorted([
-        ...catalogCategories,
+        ...catHints,
         ...(isOwner ? ownerServiceCategoryOptions : serviceCategoryOptions),
       ]),
-    [catalogCategories, isOwner, ownerServiceCategoryOptions, serviceCategoryOptions],
+    [
+      catHints,
+      isOwner,
+      ownerServiceCategoryOptions,
+      serviceCategoryOptions,
+    ],
   );
 
   const productsTabOwnerProductsBase = useMemo(
-    () =>
-      allCatalogProducts.filter(
-        (p) =>
-          (matchesNameQuery(p.name, fp.productNameQ) ||
-            matchesNameQuery(p.model ?? "", fp.productNameQ)) &&
-          matchesCategoryFilter(p.category, fp.productCategoryQ) &&
-          matchesConditionFilter(p.condition, fp.productConditionQ),
-      ),
+    () => filterProductsBySectionText(allCatalogProducts, fp),
     [
       allCatalogProducts,
       fp.productNameQ,
@@ -512,136 +438,69 @@ export function StorePage() {
     ],
   );
 
-  const productsTabOwnerProducts = useMemo(() => {
-    let list = productsTabOwnerProductsBase;
-    const floor = fp.priceFloor ?? 0;
-    const cap = fp.priceCeiling ?? sliderMaxProducts;
-    if (sliderMaxProducts > 0) {
-      list = list.filter((p) => {
-        const n = parseProductPriceNumber(p.price);
-        if (n == null) return true;
-        return n >= floor && n <= cap;
-      });
-    }
-    if (fp.priceSort === "asc" || fp.priceSort === "desc") {
-      const order = fp.priceSort;
-      list = [...list].sort((a, b) =>
-        compareParsedPricesWithTieBreak(
-          parseProductPriceNumber(a.price),
-          parseProductPriceNumber(b.price),
-          order,
-          () =>
-            order === "asc"
-              ? a.name.localeCompare(b.name, "es")
-              : b.name.localeCompare(a.name, "es"),
-        ),
-      );
-    }
-    return list;
-  }, [
-    productsTabOwnerProductsBase,
-    sliderMaxProducts,
-    fp.priceFloor,
-    fp.priceCeiling,
-    fp.priceSort,
-  ]);
+  const productsTabOwnerProducts = useMemo(
+    () =>
+      applyProductPriceRangeAndSort(productsTabOwnerProductsBase, {
+        sliderMax: sliderMaxProducts,
+        priceFloor: fp.priceFloor,
+        priceCeiling: fp.priceCeiling,
+        priceSort: fp.priceSort,
+      }),
+    [
+      productsTabOwnerProductsBase,
+      sliderMaxProducts,
+      fp.priceFloor,
+      fp.priceCeiling,
+      fp.priceSort,
+    ],
+  );
 
   const servicesTabPublishedServicesBase = useMemo(
-    () =>
-      publishedServices.filter(
-        (s) =>
-          (matchesNameQuery(s.tipoServicio, fsv.serviceNameQ) ||
-            matchesNameQuery(s.descripcion, fsv.serviceNameQ)) &&
-          matchesCategoryFilter(s.category, fsv.serviceCategoryQ),
-      ),
+    () => filterServicesBySectionText(publishedServices, fsv),
     [publishedServices, fsv.serviceNameQ, fsv.serviceCategoryQ],
   );
 
-  const servicesTabPublishedServices = useMemo(() => {
-    let list = servicesTabPublishedServicesBase;
-    const floor = fsv.priceFloor ?? 0;
-    const cap = fsv.priceCeiling ?? sliderMaxServices;
-    if (sliderMaxServices > 0) {
-      list = list.filter((s) => {
-        const n = serviceComparablePrice(s);
-        if (n == null) return true;
-        return n >= floor && n <= cap;
-      });
-    }
-    if (fsv.priceSort === "asc" || fsv.priceSort === "desc") {
-      const order = fsv.priceSort;
-      list = [...list].sort((a, b) =>
-        compareParsedPricesWithTieBreak(
-          serviceComparablePrice(a),
-          serviceComparablePrice(b),
-          order,
-          () =>
-            order === "asc"
-              ? a.tipoServicio.localeCompare(b.tipoServicio, "es")
-              : b.tipoServicio.localeCompare(a.tipoServicio, "es"),
-        ),
-      );
-    }
-    return list;
-  }, [
-    servicesTabPublishedServicesBase,
-    sliderMaxServices,
-    fsv.priceFloor,
-    fsv.priceCeiling,
-    fsv.priceSort,
-  ]);
+  const servicesTabPublishedServices = useMemo(
+    () =>
+      applyServicePriceRangeAndSort(servicesTabPublishedServicesBase, {
+        sliderMax: sliderMaxServices,
+        priceFloor: fsv.priceFloor,
+        priceCeiling: fsv.priceCeiling,
+        priceSort: fsv.priceSort,
+      }),
+    [
+      servicesTabPublishedServicesBase,
+      sliderMaxServices,
+      fsv.priceFloor,
+      fsv.priceCeiling,
+      fsv.priceSort,
+    ],
+  );
 
   const servicesTabOwnerServicesBase = useMemo(
-    () =>
-      allCatalogServices.filter(
-        (s) =>
-          (matchesNameQuery(s.tipoServicio, fsv.serviceNameQ) ||
-            matchesNameQuery(s.descripcion, fsv.serviceNameQ)) &&
-          matchesCategoryFilter(s.category, fsv.serviceCategoryQ),
-      ),
+    () => filterServicesBySectionText(allCatalogServices, fsv),
     [allCatalogServices, fsv.serviceNameQ, fsv.serviceCategoryQ],
   );
 
-  const servicesTabOwnerServices = useMemo(() => {
-    let list = servicesTabOwnerServicesBase;
-    const floor = fsv.priceFloor ?? 0;
-    const cap = fsv.priceCeiling ?? sliderMaxServices;
-    if (sliderMaxServices > 0) {
-      list = list.filter((s) => {
-        const n = serviceComparablePrice(s);
-        if (n == null) return true;
-        return n >= floor && n <= cap;
-      });
-    }
-    if (fsv.priceSort === "asc" || fsv.priceSort === "desc") {
-      const order = fsv.priceSort;
-      list = [...list].sort((a, b) =>
-        compareParsedPricesWithTieBreak(
-          serviceComparablePrice(a),
-          serviceComparablePrice(b),
-          order,
-          () =>
-            order === "asc"
-              ? a.tipoServicio.localeCompare(b.tipoServicio, "es")
-              : b.tipoServicio.localeCompare(a.tipoServicio, "es"),
-        ),
-      );
-    }
-    return list;
-  }, [
-    servicesTabOwnerServicesBase,
-    sliderMaxServices,
-    fsv.priceFloor,
-    fsv.priceCeiling,
-    fsv.priceSort,
-  ]);
+  const servicesTabOwnerServices = useMemo(
+    () =>
+      applyServicePriceRangeAndSort(servicesTabOwnerServicesBase, {
+        sliderMax: sliderMaxServices,
+        priceFloor: fsv.priceFloor,
+        priceCeiling: fsv.priceCeiling,
+        priceSort: fsv.priceSort,
+      }),
+    [
+      servicesTabOwnerServicesBase,
+      sliderMaxServices,
+      fsv.priceFloor,
+      fsv.priceCeiling,
+      fsv.priceSort,
+    ],
+  );
 
   const joinedLabel = catalog
-    ? new Intl.DateTimeFormat("es", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }).format(catalog.joinedAt)
+    ? formatCatalogJoinedLabel(catalog.joinedAt)
     : null;
 
   if (!storeId || !store) {
@@ -689,16 +548,7 @@ export function StorePage() {
   }
 
   function goTo(next: StoreScreen) {
-    const base = `/store/${sid}`;
-    const path =
-      next === "catalog"
-        ? base
-        : next === "vitrina"
-          ? `${base}/vitrina`
-          : next === "products"
-            ? `${base}/products`
-            : `${base}/services`;
-    nav(path);
+    nav(pathForStoreScreen(sid, next));
   }
 
   function goBack() {
@@ -741,14 +591,7 @@ export function StorePage() {
       ? catalog.services.find((s) => s.id === serviceCtx.serviceId)
       : undefined;
 
-  const headerTitle =
-    screen === "catalog"
-      ? store.name
-      : screen === "vitrina"
-        ? "Vitrina"
-        : screen === "products"
-          ? "Productos"
-          : "Servicios";
+  const headerTitle = storeScreenHeaderTitle(screen, store.name);
 
   const vitrinaFiltersProps = {
     vitrinaListMode: fv.vitrinaListMode,
@@ -790,63 +633,25 @@ export function StorePage() {
       ? vitrinaPublishedServices.length === 0
       : true);
   const vitrinaNoPublishedAtAll =
-    (fv.vitrinaListMode !== "services" ? publishedProducts.length === 0 : true) &&
+    (fv.vitrinaListMode !== "services"
+      ? publishedProducts.length === 0
+      : true) &&
     (fv.vitrinaListMode !== "products" ? publishedServices.length === 0 : true);
 
   const catalogProductTile = (
-    <button
-      type="button"
+    <StoreCatalogHubTile
+      kind="products"
+      publishedCount={publishedProducts.length}
       onClick={() => goTo("products")}
-      className={cn(
-        "flex min-w-[min(100%,240px)] flex-1 snap-start flex-col gap-2 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4 text-left transition-colors",
-        "hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] hover:bg-[color-mix(in_oklab,var(--primary)_6%,var(--surface))]",
-      )}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))]">
-          <Package size={20} className="text-[var(--primary)]" aria-hidden />
-        </span>
-        <ChevronRight
-          size={18}
-          className="shrink-0 text-[var(--muted)]"
-          aria-hidden
-        />
-      </div>
-      <div>
-        <div className="font-black tracking-[-0.02em]">Productos</div>
-        <div className="vt-muted mt-1 text-[12px] leading-snug">
-          {publishedProducts.length} publicados en vitrina
-        </div>
-      </div>
-    </button>
+    />
   );
 
   const catalogServiceTile = (
-    <button
-      type="button"
+    <StoreCatalogHubTile
+      kind="services"
+      publishedCount={publishedServices.length}
       onClick={() => goTo("services")}
-      className={cn(
-        "flex min-w-[min(100%,240px)] flex-1 snap-start flex-col gap-2 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4 text-left transition-colors",
-        "hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] hover:bg-[color-mix(in_oklab,var(--primary)_6%,var(--surface))]",
-      )}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))]">
-          <Wrench size={20} className="text-[var(--primary)]" aria-hidden />
-        </span>
-        <ChevronRight
-          size={18}
-          className="shrink-0 text-[var(--muted)]"
-          aria-hidden
-        />
-      </div>
-      <div>
-        <div className="font-black tracking-[-0.02em]">Servicios</div>
-        <div className="vt-muted mt-1 text-[12px] leading-snug">
-          {publishedServices.length} publicados en vitrina
-        </div>
-      </div>
-    </button>
+    />
   );
 
   return (
@@ -854,7 +659,7 @@ export function StorePage() {
       <div className="flex flex-col gap-3.5">
         {isOwner ? (
           <datalist id="store-cat-hints">
-            {catalogCategories.map((c) => (
+            {catHints.map((c) => (
               <option key={c} value={c} />
             ))}
           </datalist>
@@ -997,7 +802,9 @@ export function StorePage() {
           <>
             <ProductFiltersCard
               productNameQ={fp.productNameQ}
-              onProductNameQ={(q) => patchSection("products", { productNameQ: q })}
+              onProductNameQ={(q) =>
+                patchSection("products", { productNameQ: q })
+              }
               productCategory={fp.productCategoryQ}
               onProductCategory={(q) =>
                 patchSection("products", { productCategoryQ: q })
@@ -1090,7 +897,9 @@ export function StorePage() {
           <>
             <ServiceFiltersCard
               serviceNameQ={fsv.serviceNameQ}
-              onServiceNameQ={(q) => patchSection("services", { serviceNameQ: q })}
+              onServiceNameQ={(q) =>
+                patchSection("services", { serviceNameQ: q })
+              }
               serviceCategory={fsv.serviceCategoryQ}
               onServiceCategory={(q) =>
                 patchSection("services", { serviceCategoryQ: q })
@@ -1236,7 +1045,7 @@ export function StorePage() {
             key={`${sid}-product-${productCtx.productId ?? "new"}`}
             open
             title={productEditing ? "Editar producto" : "Añadir producto"}
-            categoryOptions={catalogCategories}
+            categoryOptions={catHints}
             initial={
               productEditing
                 ? {
@@ -1295,7 +1104,7 @@ export function StorePage() {
             key={`${sid}-service-${serviceCtx.serviceId ?? "new"}`}
             open
             title={serviceEditing ? "Editar servicio" : "Añadir servicio"}
-            categoryOptions={catalogCategories}
+            categoryOptions={catHints}
             initial={
               serviceEditing
                 ? {

@@ -1,11 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import toast from 'react-hot-toast'
-import {
-  DEFAULT_CATALOG_CATEGORIES,
-  fetchCatalogCategories,
-} from '../../../../utils/market/fetchCatalogCategories'
-import { cn } from '../../../../lib/cn'
-import { onBackdropPointerClose } from '../../lib/modalClose'
+import { useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
+import { fetchCatalogCategories } from "../../../../utils/market/fetchCatalogCategories";
+import { cn } from "../../../../lib/cn";
+import { onBackdropPointerClose } from "../../lib/modalClose";
 import {
   checkRow,
   detailsBlock,
@@ -14,39 +11,42 @@ import {
   modalShellWide,
   modalSub,
   scopeRow,
-} from '../../styles/formModalStyles'
-import { MerchandiseLineEditor } from './MerchandiseLineEditor'
-import { ModalFormField as Field } from './ModalFormField'
-import type { MerchandiseLine, TradeAgreementDraft } from '../../domain/tradeAgreementTypes'
+} from "../../styles/formModalStyles";
+import { MerchandiseLineEditor } from "./MerchandiseLineEditor";
+import { ModalFormField as Field } from "./ModalFormField";
+import type {
+  MerchandiseLine,
+  TradeAgreementDraft,
+} from "../../domain/tradeAgreementTypes";
 import {
   defaultAgreementDraft,
   emptyMerchandiseLine,
   emptyServiceItem,
-} from '../../domain/tradeAgreementTypes'
-import type { TradeAgreementFormErrors } from '../../domain/tradeAgreementValidation'
+} from "../../domain/tradeAgreementTypes";
+import type { TradeAgreementFormErrors } from "../../domain/tradeAgreementValidation";
 import {
   hasValidationErrors,
   validateTradeAgreementDraft,
   validationErrorCount,
-} from '../../domain/tradeAgreementValidation'
-import type { StoreCatalog } from '../../domain/storeCatalogTypes'
-import { mergeServiceItemWithStoreService } from '../../domain/storeCatalogTypes'
-import { ServiceConfigWizard } from './serviceConfig/ServiceConfigWizard'
-import { ServiceItemPreview } from './serviceConfig/ServiceItemPreview'
-import { serviceItemSummaryLine } from './serviceConfig/serviceItemFormat'
+} from "../../domain/tradeAgreementValidation";
+import type { StoreCatalog } from "../../domain/storeCatalogTypes";
+import { mergeServiceItemWithStoreService } from "../../domain/storeCatalogTypes";
+import { ServiceConfigWizard } from "./serviceConfig/ServiceConfigWizard";
+import { ServiceItemPreview } from "./serviceConfig/ServiceItemPreview";
+import { serviceItemSummaryLine } from "./serviceConfig/serviceItemFormat";
 
 type Props = {
-  open: boolean
-  onClose: () => void
+  open: boolean;
+  onClose: () => void;
   /** Devolvé `true` si el guardado/emisión fue exitoso (se cierra el modal). */
-  onSubmit: (draft: TradeAgreementDraft) => boolean
-  storeName: string
+  onSubmit: (draft: TradeAgreementDraft) => boolean;
+  storeName: string;
   /** Catálogo del vendedor (productos/servicios de ficha) para anclar líneas del acuerdo. */
-  sellerCatalog?: StoreCatalog | null
+  sellerCatalog?: StoreCatalog | null;
   /** Modo edición: borrador desde acuerdo `pending_buyer` o `rejected` (al guardar, vuelve a pendiente). */
-  initialDraft?: TradeAgreementDraft | null
-  editingAgreementId?: string | null
-}
+  initialDraft?: TradeAgreementDraft | null;
+  editingAgreementId?: string | null;
+};
 
 export function TradeAgreementFormModal({
   open,
@@ -57,102 +57,110 @@ export function TradeAgreementFormModal({
   initialDraft = null,
   editingAgreementId = null,
 }: Props) {
-  const [draft, setDraft] = useState<TradeAgreementDraft>(() => defaultAgreementDraft())
-  const [errors, setErrors] = useState<TradeAgreementFormErrors>({})
-  const [configOpen, setConfigOpen] = useState(false)
-  const [configId, setConfigId] = useState<string | null>(null)
-  const [agrCategoryHints, setAgrCategoryHints] = useState<string[]>(() => [...DEFAULT_CATALOG_CATEGORIES])
-  const isEdit = !!editingAgreementId
-  const editBaselineJsonRef = useRef<string | null>(null)
+  const [draft, setDraft] = useState<TradeAgreementDraft>(() =>
+    defaultAgreementDraft(),
+  );
+  const [errors, setErrors] = useState<TradeAgreementFormErrors>({});
+  const [configOpen, setConfigOpen] = useState(false);
+  const [configId, setConfigId] = useState<string | null>(null);
+  const [agrCategoryHints, setAgrCategoryHints] = useState<string[]>([]);
+  const isEdit = !!editingAgreementId;
+  const editBaselineJsonRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!open) return
-    let cancelled = false
+    if (!open) return;
+    let cancelled = false;
     void (async () => {
       try {
-        const cats = await fetchCatalogCategories()
-        if (!cancelled && cats.length > 0) setAgrCategoryHints(cats)
-      } catch {
-        /* fallback DEFAULT_CATALOG_CATEGORIES */
-      }
-    })()
+        const cats = await fetchCatalogCategories();
+        if (!cancelled && cats.length > 0) setAgrCategoryHints(cats);
+      } catch {}
+    })();
     return () => {
-      cancelled = true
-    }
-  }, [open])
+      cancelled = true;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (open) {
       const d = initialDraft
         ? (JSON.parse(JSON.stringify(initialDraft)) as TradeAgreementDraft)
-        : defaultAgreementDraft()
-      setDraft(d)
-      setErrors({})
-      setConfigOpen(false)
-      setConfigId(null)
+        : defaultAgreementDraft();
+      setDraft(d);
+      setErrors({});
+      setConfigOpen(false);
+      setConfigId(null);
       editBaselineJsonRef.current =
-        editingAgreementId && initialDraft ? JSON.stringify(d) : null
+        editingAgreementId && initialDraft ? JSON.stringify(d) : null;
     }
-  }, [open, initialDraft, editingAgreementId])
+  }, [open, initialDraft, editingAgreementId]);
 
-  if (!open) return null
+  if (!open) return null;
 
-  const configItem = configId ? draft.services.find((s) => s.id === configId) : undefined
+  const configItem = configId
+    ? draft.services.find((s) => s.id === configId)
+    : undefined;
 
   function setMerchLine(i: number, line: MerchandiseLine) {
     setDraft((d) => {
-      const next = [...d.merchandise]
-      next[i] = line
-      return { ...d, merchandise: next }
-    })
+      const next = [...d.merchandise];
+      next[i] = line;
+      return { ...d, merchandise: next };
+    });
   }
 
   function addLine() {
-    setDraft((d) => ({ ...d, merchandise: [...d.merchandise, emptyMerchandiseLine()] }))
+    setDraft((d) => ({
+      ...d,
+      merchandise: [...d.merchandise, emptyMerchandiseLine()],
+    }));
   }
 
   function removeLine(i: number) {
     setDraft((d) => ({
       ...d,
       merchandise: d.merchandise.filter((_, j) => j !== i),
-    }))
+    }));
   }
 
   function addService() {
-    const item = emptyServiceItem()
-    setDraft((d) => ({ ...d, services: [...d.services, item] }))
-    setConfigId(item.id)
-    setConfigOpen(true)
+    const item = emptyServiceItem();
+    setDraft((d) => ({ ...d, services: [...d.services, item] }));
+    setConfigId(item.id);
+    setConfigOpen(true);
   }
 
   function removeService(id: string) {
-    setDraft((d) => ({ ...d, services: d.services.filter((s) => s.id !== id) }))
+    setDraft((d) => ({
+      ...d,
+      services: d.services.filter((s) => s.id !== id),
+    }));
     if (configId === id) {
-      setConfigId(null)
-      setConfigOpen(false)
+      setConfigId(null);
+      setConfigOpen(false);
     }
   }
 
   function openConfig(id: string) {
-    setConfigId(id)
-    setConfigOpen(true)
+    setConfigId(id);
+    setConfigOpen(true);
   }
 
   function trySubmit() {
-    const e = validateTradeAgreementDraft(draft)
-    setErrors(e)
+    const e = validateTradeAgreementDraft(draft);
+    setErrors(e);
     if (hasValidationErrors(e)) {
-      const n = validationErrorCount(e)
-      toast.error(`Revisá el formulario (${n} error${n === 1 ? '' : 'es'})`)
-      return
+      const n = validationErrorCount(e);
+      toast.error(`Revisá el formulario (${n} error${n === 1 ? "" : "es"})`);
+      return;
     }
     if (isEdit && editBaselineJsonRef.current !== null) {
       if (JSON.stringify(draft) === editBaselineJsonRef.current) {
-        toast.error('No hay cambios para guardar.')
-        return
+        toast.error("No hay cambios para guardar.");
+        return;
       }
     }
-    if (onSubmit(draft)) onClose()
+    if (onSubmit(draft)) onClose();
   }
 
   return (
@@ -164,18 +172,20 @@ export function TradeAgreementFormModal({
     >
       <div className={modalShellWide}>
         <div className="vt-modal-title">
-          {isEdit ? 'Editar acuerdo enviado' : 'Emitir acuerdo de compra'}
+          {isEdit ? "Editar acuerdo enviado" : "Emitir acuerdo de compra"}
         </div>
         <div className={modalSub}>
           {isEdit ? (
             <>
-              Podés guardar si el acuerdo está <b>pendiente</b> o fue <b>rechazado</b> (en ese caso volverá a
-              quedar pendiente para el comprador). Si ya fue <b>aceptado</b>, no se puede modificar.
+              Podés guardar si el acuerdo está <b>pendiente</b> o fue{" "}
+              <b>rechazado</b> (en ese caso volverá a quedar pendiente para el
+              comprador). Si ya fue <b>aceptado</b>, no se puede modificar.
             </>
           ) : (
             <>
-              Emitido por <b>{storeName}</b>. El comprador podrá aceptar o rechazar. Todos los campos
-              obligatorios deben completarse según el tipo de dato.
+              Emitido por <b>{storeName}</b>. El comprador podrá aceptar o
+              rechazar. Todos los campos obligatorios deben completarse según el
+              tipo de dato.
             </>
           )}
         </div>
@@ -195,7 +205,7 @@ export function TradeAgreementFormModal({
           />
 
           {errors.scope ? (
-            <div className={cn(fieldError, 'mb-2')} role="alert">
+            <div className={cn(fieldError, "mb-2")} role="alert">
               {errors.scope}
             </div>
           ) : null}
@@ -228,8 +238,12 @@ export function TradeAgreementFormModal({
               <span>Incluir servicios</span>
             </label>
           </div>
-          <p className="vt-muted" style={{ fontSize: 12, marginTop: 0, marginBottom: 12 }}>
-            Al menos uno debe estar marcado. Solo se validan los bloques que incluyas.
+          <p
+            className="vt-muted"
+            style={{ fontSize: 12, marginTop: 0, marginBottom: 12 }}
+          >
+            Al menos uno debe estar marcado. Solo se validan los bloques que
+            incluyas.
           </p>
 
           <details open={draft.includeMerchandise} className={detailsBlock}>
@@ -287,26 +301,35 @@ export function TradeAgreementFormModal({
                             </span>
                             <select
                               className="vt-input vt-btn-sm py-1.5"
-                              value={sv.linkedStoreServiceId ?? ''}
+                              value={sv.linkedStoreServiceId ?? ""}
                               onChange={(e) => {
-                                const id = e.target.value
+                                const id = e.target.value;
                                 if (!id) {
                                   setDraft((d) => ({
                                     ...d,
                                     services: d.services.map((s) =>
-                                      s.id === sv.id ? { ...s, linkedStoreServiceId: undefined } : s,
+                                      s.id === sv.id
+                                        ? {
+                                            ...s,
+                                            linkedStoreServiceId: undefined,
+                                          }
+                                        : s,
                                     ),
-                                  }))
-                                  return
+                                  }));
+                                  return;
                                 }
-                                const svc = sellerCatalog.services.find((x) => x.id === id)
-                                if (!svc) return
+                                const svc = sellerCatalog.services.find(
+                                  (x) => x.id === id,
+                                );
+                                if (!svc) return;
                                 setDraft((d) => ({
                                   ...d,
                                   services: d.services.map((s) =>
-                                    s.id === sv.id ? mergeServiceItemWithStoreService(s, svc) : s,
+                                    s.id === sv.id
+                                      ? mergeServiceItemWithStoreService(s, svc)
+                                      : s,
                                   ),
-                                }))
+                                }));
                               }}
                             >
                               <option value="">Sin anclar…</option>
@@ -318,7 +341,11 @@ export function TradeAgreementFormModal({
                             </select>
                           </label>
                         ) : null}
-                        <button type="button" className="vt-btn vt-btn-sm" onClick={() => openConfig(sv.id)}>
+                        <button
+                          type="button"
+                          className="vt-btn vt-btn-sm"
+                          onClick={() => openConfig(sv.id)}
+                        >
                           Configurar servicio
                         </button>
                         <button
@@ -339,7 +366,8 @@ export function TradeAgreementFormModal({
                       </div>
                     ) : (
                       <p className="vt-muted text-xs">
-                        Usá «Configurar servicio» para completar el asistente y generar la vista previa.
+                        Usá «Configurar servicio» para completar el asistente y
+                        generar la vista previa.
                       </p>
                     )}
                   </div>
@@ -351,7 +379,8 @@ export function TradeAgreementFormModal({
               </div>
             ) : (
               <p className="vt-muted" style={{ fontSize: 13 }}>
-                Marcá «Incluir servicios» para agregar y configurar servicios con el asistente.
+                Marcá «Incluir servicios» para agregar y configurar servicios
+                con el asistente.
               </p>
             )}
           </details>
@@ -361,8 +390,12 @@ export function TradeAgreementFormModal({
           <button type="button" className="vt-btn" onClick={onClose}>
             Cancelar
           </button>
-          <button type="button" className="vt-btn vt-btn-primary" onClick={trySubmit}>
-            {isEdit ? 'Guardar cambios' : 'Emitir acuerdo'}
+          <button
+            type="button"
+            className="vt-btn vt-btn-primary"
+            onClick={trySubmit}
+          >
+            {isEdit ? "Guardar cambios" : "Emitir acuerdo"}
           </button>
         </div>
       </div>
@@ -373,19 +406,19 @@ export function TradeAgreementFormModal({
           initial={configItem}
           categoryListId="agr-cat-hints"
           onClose={() => {
-            setConfigOpen(false)
-            setConfigId(null)
+            setConfigOpen(false);
+            setConfigId(null);
           }}
           onSave={(item) => {
             setDraft((d) => ({
               ...d,
               services: d.services.map((s) => (s.id === item.id ? item : s)),
-            }))
-            setConfigOpen(false)
-            setConfigId(null)
+            }));
+            setConfigOpen(false);
+            setConfigId(null);
           }}
         />
       ) : null}
     </div>
-  )
+  );
 }
