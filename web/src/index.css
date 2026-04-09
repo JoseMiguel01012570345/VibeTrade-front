@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @layer base {
   :root {
@@ -24,8 +24,8 @@
       Roboto,
       Helvetica,
       Arial,
-      'Apple Color Emoji',
-      'Segoe UI Emoji';
+      "Apple Color Emoji",
+      "Segoe UI Emoji";
     line-height: 1.5;
     font-weight: 400;
     color: var(--text);
@@ -73,8 +73,10 @@
   }
 }
 
+/* Contenido centrado al ~80% del ancho de pantalla (barra superior / nav inferior siguen full-bleed). */
 .container {
-  width: min(1100px, calc(100% - 32px));
+  width: 80%;
+  max-width: calc(100% - 32px);
   margin-inline: auto;
 }
 
@@ -244,7 +246,7 @@
 
   .vt-trust-fill::before,
   .vt-trust-fill::after {
-    content: '';
+    content: "";
     position: absolute;
     left: -80px;
     right: -80px;
@@ -277,17 +279,17 @@
     animation-duration: 820ms, 1200ms;
   }
 
-  .vt-trust-fill[data-moving='1']::before,
-  .vt-trust-fill[data-moving='1']::after {
+  .vt-trust-fill[data-moving="1"]::before,
+  .vt-trust-fill[data-moving="1"]::after {
     opacity: 0.74;
     filter: blur(0.08px);
   }
 
-  .vt-trust-fill[data-moving='1']::before {
+  .vt-trust-fill[data-moving="1"]::before {
     animation-duration: 750ms, 1400ms;
   }
 
-  .vt-trust-fill[data-moving='1']::after {
+  .vt-trust-fill[data-moving="1"]::after {
     animation-duration: 620ms, 1100ms;
   }
 
@@ -360,8 +362,8 @@ body:has(.vt-chat-page) {
 }
 
 .container.vt-chat-page {
-  width: min(1680px, calc(100% - 20px));
-  max-width: none;
+  width: 80%;
+  max-width: calc(100% - 20px);
   overflow: hidden;
   min-height: 0;
 }

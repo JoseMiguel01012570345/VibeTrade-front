@@ -16,6 +16,7 @@ import { VisitorStoreSummaryCard } from "./stores/VisitorStoreSummaryCard";
 import { StoreFormModal } from "./stores/StoreFormModal";
 import { ownerStoreToFormValues, revokeIfBlob } from "./stores/helpers";
 import { ConfirmDeleteModal } from "../../components/ConfirmDeleteModal";
+import { ScrollToTopFab } from "../../components/ScrollToTopFab";
 import {
   matchesCategoryFilter,
   matchesNameQuery,
@@ -272,6 +273,7 @@ export function ProfileStoresSection({
 
   if (!canEdit) {
     return (
+      <>
       <div className="vt-card vt-card-pad">
         <div className="flex flex-wrap items-center gap-2">
           <div className="vt-h2">Tiendas</div>
@@ -361,6 +363,8 @@ export function ProfileStoresSection({
           </>
         )}
       </div>
+      <ScrollToTopFab />
+      </>
     );
   }
 
@@ -575,6 +579,7 @@ export function ProfileStoresSection({
         ) : null}
 
       </div>
+      <ScrollToTopFab />
     </>
   );
 }

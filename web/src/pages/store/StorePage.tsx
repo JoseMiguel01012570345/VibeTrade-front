@@ -22,6 +22,7 @@ import {
   fetchCatalogCategories,
 } from "../../utils/market/fetchCatalogCategories";
 import { ConfirmDeleteModal } from "../../components/ConfirmDeleteModal";
+import { ScrollToTopFab } from "../../components/ScrollToTopFab";
 import { ProductEditorModal } from "../profile/stores/ProductEditorModal";
 import { ServiceEditorModal } from "../profile/stores/ServiceEditorModal";
 import {
@@ -988,6 +989,7 @@ export function StorePage() {
                 </p>
               ) : null}
             </div>
+            <ScrollToTopFab />
           </>
         ) : null}
 
