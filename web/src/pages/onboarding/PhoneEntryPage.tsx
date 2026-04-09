@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { CountrySelect } from './CountrySelect'
-import { COUNTRIES, type Country } from './countries'
+import type { Country } from './countries'
 import { apiFetch } from '../../utils/http/apiClient'
+import { fetchSignInCountries } from '../../utils/http/fetchSignInCountries'
 import type { OnboardingMode } from './OnboardingWelcomePage'
 
 type PhoneLocationState = {
@@ -16,16 +17,47 @@ export function PhoneEntryPage() {
   const loc = useLocation()
   const mode = (loc.state as PhoneLocationState | null)?.mode ?? 'register'
 
-  const [country, setCountry] = useState<Country>(COUNTRIES[0])
+  const [countries, setCountries] = useState<Country[]>([])
+  const [country, setCountry] = useState<Country | null>(null)
+  const [countriesStatus, setCountriesStatus] = useState<
+    'loading' | 'ok' | 'error'
+  >('loading')
   const [number, setNumber] = useState('')
   const [sending, setSending] = useState(false)
 
+  const loadCountries = useCallback(async () => {
+    setCountriesStatus('loading')
+    try {
+      const list = await fetchSignInCountries()
+      if (list.length === 0) {
+        setCountriesStatus('error')
+        toast.error('No hay países disponibles para registro.')
+        return
+      }
+      setCountries(list)
+      setCountry(list[0])
+      setCountriesStatus('ok')
+    } catch {
+      setCountriesStatus('error')
+      toast.error('No se pudieron cargar los países.')
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadCountries()
+  }, [loadCountries])
+
   const phone = useMemo(() => {
     const digits = number.replace(/[^\d]/g, '')
+    if (!country) return ''
     return `${country.dial} ${digits}`
-  }, [country.dial, number])
+  }, [country, number])
 
-  const canSend = number.replace(/[^\d]/g, '').length >= 7 && !sending
+  const canSend =
+    country != null &&
+    number.replace(/[^\d]/g, '').length >= 7 &&
+    !sending &&
+    countriesStatus === 'ok'
 
   const heading =
     mode === 'login' ? 'Iniciar sesión' : 'Crear tu cuenta'
@@ -53,7 +85,30 @@ export function PhoneEntryPage() {
           <div className="vt-col">
             <div>
               <div className="mb-1.5 text-xs font-extrabold text-[var(--muted)]">País</div>
-              <CountrySelect value={country} onChange={setCountry} />
+              {countriesStatus === 'loading' ? (
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm text-[var(--muted)]">
+                  Cargando países…
+                </div>
+              ) : countriesStatus === 'error' ? (
+                <div className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-3">
+                  <div className="text-sm text-[var(--muted)]">
+                    No se pudo obtener la lista de países.
+                  </div>
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-ghost vt-btn-sm self-start"
+                    onClick={() => void loadCountries()}
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              ) : country ? (
+                <CountrySelect
+                  countries={countries}
+                  value={country}
+                  onChange={setCountry}
+                />
+              ) : null}
             </div>
 
             <div>
@@ -64,7 +119,7 @@ export function PhoneEntryPage() {
                   aria-hidden="true"
                 >
                   <Phone size={16} />
-                  {country.dial}
+                  {country?.dial ?? '—'}
                 </div>
                 <input
                   className="vt-input vt-input-lg"
@@ -72,6 +127,7 @@ export function PhoneEntryPage() {
                   autoComplete="tel"
                   placeholder="11 5555 5555"
                   value={number}
+                  disabled={!country || countriesStatus !== 'ok'}
                   onChange={(e) => setNumber(e.target.value)}
                 />
               </div>

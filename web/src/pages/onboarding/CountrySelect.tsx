@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, Search } from 'lucide-react'
 import { cn } from '../../lib/cn'
-import { COUNTRIES, type Country } from './countries'
+import type { Country } from './countries'
 
 export function CountrySelect({
+  countries,
   value,
   onChange,
 }: {
+  countries: Country[]
   value: Country
   onChange: (c: Country) => void
 }) {
@@ -15,9 +17,11 @@ export function CountrySelect({
 
   const items = useMemo(() => {
     const s = q.trim().toLowerCase()
-    if (!s) return COUNTRIES
-    return COUNTRIES.filter((c) => `${c.name} ${c.dial} ${c.code}`.toLowerCase().includes(s))
-  }, [q])
+    if (!s) return countries
+    return countries.filter((c) =>
+      `${c.name} ${c.dial} ${c.code}`.toLowerCase().includes(s),
+    )
+  }, [countries, q])
 
   return (
     <div className="relative">
