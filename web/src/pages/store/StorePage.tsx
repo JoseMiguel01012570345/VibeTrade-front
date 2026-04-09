@@ -48,8 +48,18 @@ import { ServiceFiltersCard } from "./ServiceFiltersCard";
 import { StoreIdentityBlock } from "./StoreIdentityBlock";
 import { VitrinaFiltersCard } from "./VitrinaFiltersCard";
 import { backRowBtnClass } from "./storePageStyles";
-import type { PriceSort, StoreScreen } from "./storePageTypes";
-import { screenFromPathname, uniqueSorted } from "./storePageUtils";
+import type {
+  PriceSort,
+  StoreFilterSection,
+  StoreScreen,
+  StoreSectionFilters,
+} from "./storePageTypes";
+import { emptyStoreSectionFilters } from "./storePageTypes";
+import {
+  clampStoreSectionPriceRange,
+  screenFromPathname,
+  uniqueSorted,
+} from "./storePageUtils";
 
 export function StorePage() {
   const { storeId } = useParams();
@@ -89,14 +99,25 @@ export function StorePage() {
     [store, me.id],
   );
 
-  const [productNameQ, setProductNameQ] = useState("");
-  const [productCategoryQ, setProductCategoryQ] = useState("");
-  const [productConditionQ, setProductConditionQ] = useState("");
-  const [serviceNameQ, setServiceNameQ] = useState("");
-  const [serviceCategoryQ, setServiceCategoryQ] = useState("");
-  const [priceSort, setPriceSort] = useState<PriceSort>("none");
-  const [priceFloor, setPriceFloor] = useState<number | null>(null);
-  const [priceCeiling, setPriceCeiling] = useState<number | null>(null);
+  const [filtersBySection, setFiltersBySection] = useState<{
+    vitrina: StoreSectionFilters;
+    products: StoreSectionFilters;
+    services: StoreSectionFilters;
+  }>(() => ({
+    vitrina: emptyStoreSectionFilters(),
+    products: emptyStoreSectionFilters(),
+    services: emptyStoreSectionFilters(),
+  }));
+
+  function patchSection(
+    section: StoreFilterSection,
+    patch: Partial<StoreSectionFilters>,
+  ) {
+    setFiltersBySection((s) => ({
+      ...s,
+      [section]: { ...s[section], ...patch },
+    }));
+  }
   const [detailStatus, setDetailStatus] = useState<
     "loading" | "ready" | "error"
   >("loading");
@@ -137,7 +158,11 @@ export function StorePage() {
     setProductCtx(null);
     setServiceCtx(null);
     setCatalogDeleteTarget(null);
-    setProductConditionQ("");
+    setFiltersBySection({
+      vitrina: emptyStoreSectionFilters(),
+      products: emptyStoreSectionFilters(),
+      services: emptyStoreSectionFilters(),
+    });
   }, [storeId]);
 
   const screen = useMemo(
@@ -208,68 +233,82 @@ export function StorePage() {
     [allCatalogServices],
   );
 
-  const activePriceSliderMax = useMemo(() => {
-    const raw =
-      screen === "vitrina"
-        ? publishedOfferMax
-        : screen === "products" && isOwner
-          ? ownerProductMax
-          : screen === "products" && !isOwner
-            ? publishedProductMax
-            : screen === "services" && isOwner
-              ? ownerServiceMax
-              : screen === "services" && !isOwner
-                ? publishedServiceMax
-                : publishedOfferMax;
+  const sliderMaxVitrina = useMemo(() => {
+    const raw = publishedOfferMax;
     if (!Number.isFinite(raw) || raw <= 0) return 0;
     return Math.min(raw, MAX_REASONABLE_PRICE);
-  }, [
-    screen,
-    isOwner,
-    publishedOfferMax,
-    publishedProductMax,
-    publishedServiceMax,
-    ownerProductMax,
-    ownerServiceMax,
-  ]);
+  }, [publishedOfferMax]);
+
+  const sliderMaxProducts = useMemo(() => {
+    const raw = isOwner ? ownerProductMax : publishedProductMax;
+    if (!Number.isFinite(raw) || raw <= 0) return 0;
+    return Math.min(raw, MAX_REASONABLE_PRICE);
+  }, [isOwner, ownerProductMax, publishedProductMax]);
+
+  const sliderMaxServices = useMemo(() => {
+    const raw = isOwner ? ownerServiceMax : publishedServiceMax;
+    if (!Number.isFinite(raw) || raw <= 0) return 0;
+    return Math.min(raw, MAX_REASONABLE_PRICE);
+  }, [isOwner, ownerServiceMax, publishedServiceMax]);
 
   useEffect(() => {
-    if (activePriceSliderMax <= 0) {
-      setPriceFloor(null);
-      setPriceCeiling(null);
-      return;
-    }
-    setPriceFloor((prev) =>
-      prev == null || prev < 0 ? 0 : prev > activePriceSliderMax ? 0 : prev,
-    );
-    setPriceCeiling((prev) => {
-      if (prev == null || prev > activePriceSliderMax)
-        return activePriceSliderMax;
-      return prev;
-    });
-  }, [activePriceSliderMax]);
+    setFiltersBySection((s) => ({
+      ...s,
+      vitrina: clampStoreSectionPriceRange(s.vitrina, sliderMaxVitrina),
+    }));
+  }, [sliderMaxVitrina]);
 
-  function handlePriceFloorChange(v: number) {
-    const max = Math.min(activePriceSliderMax, MAX_REASONABLE_PRICE);
+  useEffect(() => {
+    setFiltersBySection((s) => ({
+      ...s,
+      products: clampStoreSectionPriceRange(s.products, sliderMaxProducts),
+    }));
+  }, [sliderMaxProducts]);
+
+  useEffect(() => {
+    setFiltersBySection((s) => ({
+      ...s,
+      services: clampStoreSectionPriceRange(s.services, sliderMaxServices),
+    }));
+  }, [sliderMaxServices]);
+
+  function sliderMaxFor(section: StoreFilterSection): number {
+    if (section === "vitrina") return sliderMaxVitrina;
+    if (section === "products") return sliderMaxProducts;
+    return sliderMaxServices;
+  }
+
+  function handlePriceFloorChange(section: StoreFilterSection, v: number) {
+    const max = Math.min(sliderMaxFor(section), MAX_REASONABLE_PRICE);
     const safe = Math.max(0, Math.min(Number.isFinite(v) ? v : 0, max));
-    setPriceFloor(safe);
-    setPriceCeiling((c) => {
-      const cap = c ?? max;
-      if (safe > cap) return safe;
-      return c;
+    setFiltersBySection((s) => {
+      const f = s[section];
+      const cap = f.priceCeiling ?? max;
+      const nextCeiling = safe > cap ? safe : f.priceCeiling;
+      return {
+        ...s,
+        [section]: { ...f, priceFloor: safe, priceCeiling: nextCeiling },
+      };
     });
   }
 
-  function handlePriceCeilingChange(v: number) {
-    const max = Math.min(activePriceSliderMax, MAX_REASONABLE_PRICE);
+  function handlePriceCeilingChange(section: StoreFilterSection, v: number) {
+    const max = Math.min(sliderMaxFor(section), MAX_REASONABLE_PRICE);
     const safe = Math.max(0, Math.min(Number.isFinite(v) ? v : max, max));
-    setPriceCeiling(safe);
-    setPriceFloor((f) => {
-      const fl = f ?? 0;
-      if (safe < fl) return safe;
-      return f;
+    setFiltersBySection((s) => {
+      const f = s[section];
+      const fl = f.priceFloor ?? 0;
+      const nextFloor = safe < fl ? safe : f.priceFloor;
+      return {
+        ...s,
+        [section]: { ...f, priceCeiling: safe, priceFloor: nextFloor },
+      };
     });
   }
+
+  const fv = filtersBySection.vitrina;
+  const fp = filtersBySection.products;
+  const fsv = filtersBySection.services;
 
   const productCategoryOptions = useMemo(
     () => uniqueSorted(publishedProducts.map((p) => p.category)),
@@ -280,31 +319,36 @@ export function StorePage() {
     [publishedServices],
   );
 
-  const filteredPublishedProductsBase = useMemo(
+  const vitrinaPublishedProductsBase = useMemo(
     () =>
       publishedProducts.filter(
         (p) =>
-          (matchesNameQuery(p.name, productNameQ) ||
-            matchesNameQuery(p.model ?? "", productNameQ)) &&
-          matchesCategoryFilter(p.category, productCategoryQ) &&
-          matchesConditionFilter(p.condition, productConditionQ),
+          (matchesNameQuery(p.name, fv.productNameQ) ||
+            matchesNameQuery(p.model ?? "", fv.productNameQ)) &&
+          matchesCategoryFilter(p.category, fv.productCategoryQ) &&
+          matchesConditionFilter(p.condition, fv.productConditionQ),
       ),
-    [publishedProducts, productNameQ, productCategoryQ, productConditionQ],
+    [
+      publishedProducts,
+      fv.productNameQ,
+      fv.productCategoryQ,
+      fv.productConditionQ,
+    ],
   );
 
-  const filteredPublishedProducts = useMemo(() => {
-    let list = filteredPublishedProductsBase;
-    const floor = priceFloor ?? 0;
-    const cap = priceCeiling ?? activePriceSliderMax;
-    if (activePriceSliderMax > 0) {
+  const vitrinaPublishedProducts = useMemo(() => {
+    let list = vitrinaPublishedProductsBase;
+    const floor = fv.priceFloor ?? 0;
+    const cap = fv.priceCeiling ?? sliderMaxVitrina;
+    if (sliderMaxVitrina > 0) {
       list = list.filter((p) => {
         const n = parseProductPriceNumber(p.price);
         if (n == null) return true;
         return n >= floor && n <= cap;
       });
     }
-    if (priceSort === "asc" || priceSort === "desc") {
-      const order = priceSort;
+    if (fv.priceSort === "asc" || fv.priceSort === "desc") {
+      const order = fv.priceSort;
       list = [...list].sort((a, b) =>
         compareParsedPricesWithTieBreak(
           parseProductPriceNumber(a.price),
@@ -319,37 +363,37 @@ export function StorePage() {
     }
     return list;
   }, [
-    filteredPublishedProductsBase,
-    activePriceSliderMax,
-    priceFloor,
-    priceCeiling,
-    priceSort,
+    vitrinaPublishedProductsBase,
+    sliderMaxVitrina,
+    fv.priceFloor,
+    fv.priceCeiling,
+    fv.priceSort,
   ]);
 
-  const filteredPublishedServicesBase = useMemo(
+  const vitrinaPublishedServicesBase = useMemo(
     () =>
       publishedServices.filter(
         (s) =>
-          (matchesNameQuery(s.tipoServicio, serviceNameQ) ||
-            matchesNameQuery(s.descripcion, serviceNameQ)) &&
-          matchesCategoryFilter(s.category, serviceCategoryQ),
+          (matchesNameQuery(s.tipoServicio, fv.serviceNameQ) ||
+            matchesNameQuery(s.descripcion, fv.serviceNameQ)) &&
+          matchesCategoryFilter(s.category, fv.serviceCategoryQ),
       ),
-    [publishedServices, serviceNameQ, serviceCategoryQ],
+    [publishedServices, fv.serviceNameQ, fv.serviceCategoryQ],
   );
 
-  const filteredPublishedServices = useMemo(() => {
-    let list = filteredPublishedServicesBase;
-    const floor = priceFloor ?? 0;
-    const cap = priceCeiling ?? activePriceSliderMax;
-    if (activePriceSliderMax > 0) {
+  const vitrinaPublishedServices = useMemo(() => {
+    let list = vitrinaPublishedServicesBase;
+    const floor = fv.priceFloor ?? 0;
+    const cap = fv.priceCeiling ?? sliderMaxVitrina;
+    if (sliderMaxVitrina > 0) {
       list = list.filter((s) => {
         const n = serviceComparablePrice(s);
         if (n == null) return true;
         return n >= floor && n <= cap;
       });
     }
-    if (priceSort === "asc" || priceSort === "desc") {
-      const order = priceSort;
+    if (fv.priceSort === "asc" || fv.priceSort === "desc") {
+      const order = fv.priceSort;
       list = [...list].sort((a, b) =>
         compareParsedPricesWithTieBreak(
           serviceComparablePrice(a),
@@ -364,11 +408,62 @@ export function StorePage() {
     }
     return list;
   }, [
-    filteredPublishedServicesBase,
-    activePriceSliderMax,
-    priceFloor,
-    priceCeiling,
-    priceSort,
+    vitrinaPublishedServicesBase,
+    sliderMaxVitrina,
+    fv.priceFloor,
+    fv.priceCeiling,
+    fv.priceSort,
+  ]);
+
+  const productsTabPublishedProductsBase = useMemo(
+    () =>
+      publishedProducts.filter(
+        (p) =>
+          (matchesNameQuery(p.name, fp.productNameQ) ||
+            matchesNameQuery(p.model ?? "", fp.productNameQ)) &&
+          matchesCategoryFilter(p.category, fp.productCategoryQ) &&
+          matchesConditionFilter(p.condition, fp.productConditionQ),
+      ),
+    [
+      publishedProducts,
+      fp.productNameQ,
+      fp.productCategoryQ,
+      fp.productConditionQ,
+    ],
+  );
+
+  const productsTabPublishedProducts = useMemo(() => {
+    let list = productsTabPublishedProductsBase;
+    const floor = fp.priceFloor ?? 0;
+    const cap = fp.priceCeiling ?? sliderMaxProducts;
+    if (sliderMaxProducts > 0) {
+      list = list.filter((p) => {
+        const n = parseProductPriceNumber(p.price);
+        if (n == null) return true;
+        return n >= floor && n <= cap;
+      });
+    }
+    if (fp.priceSort === "asc" || fp.priceSort === "desc") {
+      const order = fp.priceSort;
+      list = [...list].sort((a, b) =>
+        compareParsedPricesWithTieBreak(
+          parseProductPriceNumber(a.price),
+          parseProductPriceNumber(b.price),
+          order,
+          () =>
+            order === "asc"
+              ? a.name.localeCompare(b.name, "es")
+              : b.name.localeCompare(a.name, "es"),
+        ),
+      );
+    }
+    return list;
+  }, [
+    productsTabPublishedProductsBase,
+    sliderMaxProducts,
+    fp.priceFloor,
+    fp.priceCeiling,
+    fp.priceSort,
   ]);
 
   const ownerProductCategoryOptions = useMemo(
@@ -398,31 +493,36 @@ export function StorePage() {
     [catalogCategories, isOwner, ownerServiceCategoryOptions, serviceCategoryOptions],
   );
 
-  const filteredOwnerProductsBase = useMemo(
+  const productsTabOwnerProductsBase = useMemo(
     () =>
       allCatalogProducts.filter(
         (p) =>
-          (matchesNameQuery(p.name, productNameQ) ||
-            matchesNameQuery(p.model ?? "", productNameQ)) &&
-          matchesCategoryFilter(p.category, productCategoryQ) &&
-          matchesConditionFilter(p.condition, productConditionQ),
+          (matchesNameQuery(p.name, fp.productNameQ) ||
+            matchesNameQuery(p.model ?? "", fp.productNameQ)) &&
+          matchesCategoryFilter(p.category, fp.productCategoryQ) &&
+          matchesConditionFilter(p.condition, fp.productConditionQ),
       ),
-    [allCatalogProducts, productNameQ, productCategoryQ, productConditionQ],
+    [
+      allCatalogProducts,
+      fp.productNameQ,
+      fp.productCategoryQ,
+      fp.productConditionQ,
+    ],
   );
 
-  const filteredOwnerProducts = useMemo(() => {
-    let list = filteredOwnerProductsBase;
-    const floor = priceFloor ?? 0;
-    const cap = priceCeiling ?? activePriceSliderMax;
-    if (activePriceSliderMax > 0) {
+  const productsTabOwnerProducts = useMemo(() => {
+    let list = productsTabOwnerProductsBase;
+    const floor = fp.priceFloor ?? 0;
+    const cap = fp.priceCeiling ?? sliderMaxProducts;
+    if (sliderMaxProducts > 0) {
       list = list.filter((p) => {
         const n = parseProductPriceNumber(p.price);
         if (n == null) return true;
         return n >= floor && n <= cap;
       });
     }
-    if (priceSort === "asc" || priceSort === "desc") {
-      const order = priceSort;
+    if (fp.priceSort === "asc" || fp.priceSort === "desc") {
+      const order = fp.priceSort;
       list = [...list].sort((a, b) =>
         compareParsedPricesWithTieBreak(
           parseProductPriceNumber(a.price),
@@ -437,37 +537,37 @@ export function StorePage() {
     }
     return list;
   }, [
-    filteredOwnerProductsBase,
-    activePriceSliderMax,
-    priceFloor,
-    priceCeiling,
-    priceSort,
+    productsTabOwnerProductsBase,
+    sliderMaxProducts,
+    fp.priceFloor,
+    fp.priceCeiling,
+    fp.priceSort,
   ]);
 
-  const filteredOwnerServicesBase = useMemo(
+  const servicesTabPublishedServicesBase = useMemo(
     () =>
-      allCatalogServices.filter(
+      publishedServices.filter(
         (s) =>
-          (matchesNameQuery(s.tipoServicio, serviceNameQ) ||
-            matchesNameQuery(s.descripcion, serviceNameQ)) &&
-          matchesCategoryFilter(s.category, serviceCategoryQ),
+          (matchesNameQuery(s.tipoServicio, fsv.serviceNameQ) ||
+            matchesNameQuery(s.descripcion, fsv.serviceNameQ)) &&
+          matchesCategoryFilter(s.category, fsv.serviceCategoryQ),
       ),
-    [allCatalogServices, serviceNameQ, serviceCategoryQ],
+    [publishedServices, fsv.serviceNameQ, fsv.serviceCategoryQ],
   );
 
-  const filteredOwnerServices = useMemo(() => {
-    let list = filteredOwnerServicesBase;
-    const floor = priceFloor ?? 0;
-    const cap = priceCeiling ?? activePriceSliderMax;
-    if (activePriceSliderMax > 0) {
+  const servicesTabPublishedServices = useMemo(() => {
+    let list = servicesTabPublishedServicesBase;
+    const floor = fsv.priceFloor ?? 0;
+    const cap = fsv.priceCeiling ?? sliderMaxServices;
+    if (sliderMaxServices > 0) {
       list = list.filter((s) => {
         const n = serviceComparablePrice(s);
         if (n == null) return true;
         return n >= floor && n <= cap;
       });
     }
-    if (priceSort === "asc" || priceSort === "desc") {
-      const order = priceSort;
+    if (fsv.priceSort === "asc" || fsv.priceSort === "desc") {
+      const order = fsv.priceSort;
       list = [...list].sort((a, b) =>
         compareParsedPricesWithTieBreak(
           serviceComparablePrice(a),
@@ -482,11 +582,56 @@ export function StorePage() {
     }
     return list;
   }, [
-    filteredOwnerServicesBase,
-    activePriceSliderMax,
-    priceFloor,
-    priceCeiling,
-    priceSort,
+    servicesTabPublishedServicesBase,
+    sliderMaxServices,
+    fsv.priceFloor,
+    fsv.priceCeiling,
+    fsv.priceSort,
+  ]);
+
+  const servicesTabOwnerServicesBase = useMemo(
+    () =>
+      allCatalogServices.filter(
+        (s) =>
+          (matchesNameQuery(s.tipoServicio, fsv.serviceNameQ) ||
+            matchesNameQuery(s.descripcion, fsv.serviceNameQ)) &&
+          matchesCategoryFilter(s.category, fsv.serviceCategoryQ),
+      ),
+    [allCatalogServices, fsv.serviceNameQ, fsv.serviceCategoryQ],
+  );
+
+  const servicesTabOwnerServices = useMemo(() => {
+    let list = servicesTabOwnerServicesBase;
+    const floor = fsv.priceFloor ?? 0;
+    const cap = fsv.priceCeiling ?? sliderMaxServices;
+    if (sliderMaxServices > 0) {
+      list = list.filter((s) => {
+        const n = serviceComparablePrice(s);
+        if (n == null) return true;
+        return n >= floor && n <= cap;
+      });
+    }
+    if (fsv.priceSort === "asc" || fsv.priceSort === "desc") {
+      const order = fsv.priceSort;
+      list = [...list].sort((a, b) =>
+        compareParsedPricesWithTieBreak(
+          serviceComparablePrice(a),
+          serviceComparablePrice(b),
+          order,
+          () =>
+            order === "asc"
+              ? a.tipoServicio.localeCompare(b.tipoServicio, "es")
+              : b.tipoServicio.localeCompare(a.tipoServicio, "es"),
+        ),
+      );
+    }
+    return list;
+  }, [
+    servicesTabOwnerServicesBase,
+    sliderMaxServices,
+    fsv.priceFloor,
+    fsv.priceCeiling,
+    fsv.priceSort,
   ]);
 
   const joinedLabel = catalog
@@ -604,25 +749,28 @@ export function StorePage() {
           : "Servicios";
 
   const vitrinaFiltersProps = {
-    productNameQ,
-    onProductNameQ: setProductNameQ,
-    productCategory: productCategoryQ,
-    onProductCategory: setProductCategoryQ,
+    productNameQ: fv.productNameQ,
+    onProductNameQ: (q: string) => patchSection("vitrina", { productNameQ: q }),
+    productCategory: fv.productCategoryQ,
+    onProductCategory: (q: string) =>
+      patchSection("vitrina", { productCategoryQ: q }),
     productCategories: productCategoryFilterOptions,
-    productCondition: productConditionQ,
-    onProductCondition: setProductConditionQ,
-    serviceNameQ,
-    onServiceNameQ: setServiceNameQ,
-    serviceCategory: serviceCategoryQ,
-    onServiceCategory: setServiceCategoryQ,
+    productCondition: fv.productConditionQ,
+    onProductCondition: (q: string) =>
+      patchSection("vitrina", { productConditionQ: q }),
+    serviceNameQ: fv.serviceNameQ,
+    onServiceNameQ: (q: string) => patchSection("vitrina", { serviceNameQ: q }),
+    serviceCategory: fv.serviceCategoryQ,
+    onServiceCategory: (q: string) =>
+      patchSection("vitrina", { serviceCategoryQ: q }),
     serviceCategories: serviceCategoryFilterOptions,
-    priceSort,
-    onPriceSort: setPriceSort,
-    priceFloor,
-    priceCeiling,
-    onPriceFloor: handlePriceFloorChange,
-    onPriceCeiling: handlePriceCeilingChange,
-    priceSliderMax: publishedOfferMax,
+    priceSort: fv.priceSort,
+    onPriceSort: (v: PriceSort) => patchSection("vitrina", { priceSort: v }),
+    priceFloor: fv.priceFloor,
+    priceCeiling: fv.priceCeiling,
+    onPriceFloor: (v: number) => handlePriceFloorChange("vitrina", v),
+    onPriceCeiling: (v: number) => handlePriceCeilingChange("vitrina", v),
+    priceSliderMax: sliderMaxVitrina,
   };
 
   const catalogProductTile = (
@@ -769,7 +917,7 @@ export function StorePage() {
               </div>
               <VitrinaFiltersCard {...vitrinaFiltersProps} />
 
-              {filteredPublishedProducts.length > 0 ? (
+              {vitrinaPublishedProducts.length > 0 ? (
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
@@ -784,14 +932,14 @@ export function StorePage() {
                     </button>
                   </div>
                   <div className="flex flex-col gap-3">
-                    {filteredPublishedProducts.map((p) => (
+                    {vitrinaPublishedProducts.map((p) => (
                       <ProductDetailCard key={p.id} p={p} />
                     ))}
                   </div>
                 </div>
               ) : null}
 
-              {filteredPublishedServices.length > 0 ? (
+              {vitrinaPublishedServices.length > 0 ? (
                 <div>
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
@@ -806,15 +954,15 @@ export function StorePage() {
                     </button>
                   </div>
                   <div className="flex flex-col gap-3">
-                    {filteredPublishedServices.map((s) => (
+                    {vitrinaPublishedServices.map((s) => (
                       <ServiceDetailCard key={s.id} s={s} />
                     ))}
                   </div>
                 </div>
               ) : null}
 
-              {filteredPublishedProducts.length === 0 &&
-              filteredPublishedServices.length === 0 ? (
+              {vitrinaPublishedProducts.length === 0 &&
+              vitrinaPublishedServices.length === 0 ? (
                 <p className="vt-muted rounded-xl border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-3 text-[13px] leading-snug">
                   {publishedProducts.length === 0 &&
                   publishedServices.length === 0
@@ -829,20 +977,24 @@ export function StorePage() {
         {screen === "products" ? (
           <>
             <ProductFiltersCard
-              productNameQ={productNameQ}
-              onProductNameQ={setProductNameQ}
-              productCategory={productCategoryQ}
-              onProductCategory={setProductCategoryQ}
+              productNameQ={fp.productNameQ}
+              onProductNameQ={(q) => patchSection("products", { productNameQ: q })}
+              productCategory={fp.productCategoryQ}
+              onProductCategory={(q) =>
+                patchSection("products", { productCategoryQ: q })
+              }
               productCategories={productCategoryFilterOptions}
-              productCondition={productConditionQ}
-              onProductCondition={setProductConditionQ}
-              priceSort={priceSort}
-              onPriceSort={setPriceSort}
-              priceFloor={priceFloor}
-              priceCeiling={priceCeiling}
-              onPriceFloor={handlePriceFloorChange}
-              onPriceCeiling={handlePriceCeilingChange}
-              priceSliderMax={activePriceSliderMax}
+              productCondition={fp.productConditionQ}
+              onProductCondition={(q) =>
+                patchSection("products", { productConditionQ: q })
+              }
+              priceSort={fp.priceSort}
+              onPriceSort={(v) => patchSection("products", { priceSort: v })}
+              priceFloor={fp.priceFloor}
+              priceCeiling={fp.priceCeiling}
+              onPriceFloor={(v) => handlePriceFloorChange("products", v)}
+              onPriceCeiling={(v) => handlePriceCeilingChange("products", v)}
+              priceSliderMax={sliderMaxProducts}
             />
             <div className="vt-card vt-card-pad">
               {isOwner ? (
@@ -857,7 +1009,7 @@ export function StorePage() {
                     showSectionLabel={false}
                     className="mt-0 border-0 pt-0"
                     cat={catalog}
-                    productsOverride={filteredOwnerProducts}
+                    productsOverride={productsTabOwnerProducts}
                     catalogReloadBusy={catalogReloadBusy}
                     onReload={() => void reloadStoreCatalogFromServer()}
                     onAdd={() => setProductCtx({})}
@@ -893,9 +1045,9 @@ export function StorePage() {
                     el filtro de arriba).
                   </p>
                   <div className="vt-divider my-3" />
-                  {filteredPublishedProducts.length ? (
+                  {productsTabPublishedProducts.length ? (
                     <div className="flex flex-col gap-3">
-                      {filteredPublishedProducts.map((p) => (
+                      {productsTabPublishedProducts.map((p) => (
                         <ProductDetailCard key={p.id} p={p} />
                       ))}
                     </div>
@@ -918,18 +1070,20 @@ export function StorePage() {
         {screen === "services" ? (
           <>
             <ServiceFiltersCard
-              serviceNameQ={serviceNameQ}
-              onServiceNameQ={setServiceNameQ}
-              serviceCategory={serviceCategoryQ}
-              onServiceCategory={setServiceCategoryQ}
+              serviceNameQ={fsv.serviceNameQ}
+              onServiceNameQ={(q) => patchSection("services", { serviceNameQ: q })}
+              serviceCategory={fsv.serviceCategoryQ}
+              onServiceCategory={(q) =>
+                patchSection("services", { serviceCategoryQ: q })
+              }
               serviceCategories={serviceCategoryFilterOptions}
-              priceSort={priceSort}
-              onPriceSort={setPriceSort}
-              priceFloor={priceFloor}
-              priceCeiling={priceCeiling}
-              onPriceFloor={handlePriceFloorChange}
-              onPriceCeiling={handlePriceCeilingChange}
-              priceSliderMax={activePriceSliderMax}
+              priceSort={fsv.priceSort}
+              onPriceSort={(v) => patchSection("services", { priceSort: v })}
+              priceFloor={fsv.priceFloor}
+              priceCeiling={fsv.priceCeiling}
+              onPriceFloor={(v) => handlePriceFloorChange("services", v)}
+              onPriceCeiling={(v) => handlePriceCeilingChange("services", v)}
+              priceSliderMax={sliderMaxServices}
             />
             <div className="vt-card vt-card-pad">
               {isOwner ? (
@@ -944,7 +1098,7 @@ export function StorePage() {
                     showSectionLabel={false}
                     className="mt-0 border-0 pt-0"
                     cat={catalog}
-                    servicesOverride={filteredOwnerServices}
+                    servicesOverride={servicesTabOwnerServices}
                     catalogReloadBusy={catalogReloadBusy}
                     onReload={() => void reloadStoreCatalogFromServer()}
                     onAdd={() => setServiceCtx({})}
@@ -980,9 +1134,9 @@ export function StorePage() {
                     el filtro de arriba).
                   </p>
                   <div className="vt-divider my-3" />
-                  {filteredPublishedServices.length ? (
+                  {servicesTabPublishedServices.length ? (
                     <div className="flex flex-col gap-3">
-                      {filteredPublishedServices.map((s) => (
+                      {servicesTabPublishedServices.map((s) => (
                         <ServiceDetailCard key={s.id} s={s} />
                       ))}
                     </div>
@@ -1102,9 +1256,11 @@ export function StorePage() {
                 const pid = addOwnerStoreProduct(sid, ownerId, input);
                 if (pid) {
                   toast.success("Producto añadido");
-                  setProductNameQ("");
-                  setProductCategoryQ("");
-                  setProductConditionQ("");
+                  patchSection("products", {
+                    productNameQ: "",
+                    productCategoryQ: "",
+                    productConditionQ: "",
+                  });
                 } else {
                   toast.error(
                     "No se pudo añadir el producto. Revisá que seas el dueño o recargá la tienda.",
@@ -1155,8 +1311,10 @@ export function StorePage() {
                 const newId = addOwnerStoreService(sid, ownerId, input);
                 if (newId) {
                   toast.success("Servicio añadido");
-                  setServiceNameQ("");
-                  setServiceCategoryQ("");
+                  patchSection("services", {
+                    serviceNameQ: "",
+                    serviceCategoryQ: "",
+                  });
                 } else {
                   toast.error(
                     "No se pudo añadir el servicio. Revisá que seas el dueño o recargá la tienda.",

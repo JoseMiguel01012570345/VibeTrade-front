@@ -1,6 +1,7 @@
 import type { StoreBadge } from '../../app/store/marketStoreTypes'
 import type { StoreCatalog } from '../../pages/chat/domain/storeCatalogTypes'
 import { apiFetch } from '../http/apiClient'
+import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage } from '../http/apiErrorMessage'
 
 export type StoreDetailResponse = {
   store: StoreBadge
@@ -25,7 +26,7 @@ export async function fetchStoreDetail(
   )
   if (!res.ok) {
     const t = await res.text().catch(() => '')
-    throw new Error(t || `store detail ${res.status}`)
+    throw new Error(apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()))
   }
   return res.json() as Promise<StoreDetailResponse>
 }

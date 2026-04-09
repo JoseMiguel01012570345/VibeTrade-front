@@ -1,6 +1,7 @@
 import type { MarketState } from '../../app/store/marketStoreTypes'
 import toast from 'react-hot-toast'
 import { apiFetch } from '../http/apiClient'
+import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage, errorToUserMessage } from '../http/apiErrorMessage'
 import { marketDataSnapshot, type MarketSerializableSlice } from './marketSerializable'
 
 let hydrating = true
@@ -22,7 +23,7 @@ export async function saveMarketWorkspace(data: MarketSerializableSlice): Promis
       const j = tryParseJsonBody(t)
       if (j?.message) throw new Error(j.message)
     }
-    throw new Error(t || `PUT market failed: ${res.status}`)
+    throw new Error(apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()))
   }
 }
 
@@ -47,11 +48,7 @@ export function subscribeMarketPersistence(store: {
         const now = Date.now()
         if (now - lastPersistErrorToastAt > 15_000) {
           lastPersistErrorToastAt = now
-          const msg =
-            e instanceof Error && e.message && !e.message.startsWith('PUT market failed')
-              ? e.message
-              : 'No se pudo guardar el catálogo en el servidor. Si recargás, podés perder cambios.'
-          toast.error(msg)
+          toast.error(errorToUserMessage(e, 'No se pudo guardar el catálogo en el servidor. Si recargás, podés perder cambios.'))
         }
       })
     }, 600)
