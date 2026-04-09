@@ -98,6 +98,27 @@ export function catalogMonedasList(item: {
   return legacy ? [legacy] : []
 }
 
+/** Monedas aceptadas en ítem de servicio del acuerdo (array persistido o texto en `moneda`, p. ej. "USD, CUP"). */
+export function serviceItemAcceptedMonedas(sv: {
+  monedasAceptadas?: string[]
+  moneda: string
+}): string[] {
+  const raw = sv.monedasAceptadas
+  if (Array.isArray(raw) && raw.length > 0) {
+    const u = [...new Set(raw.map((x) => String(x).trim()).filter(Boolean))]
+    u.sort((a, b) => a.localeCompare(b, 'es'))
+    return u
+  }
+  const m = typeof sv.moneda === 'string' ? sv.moneda.trim() : ''
+  if (!m) return []
+  if (m.includes(',')) {
+    const u = [...new Set(m.split(',').map((x) => x.trim()).filter(Boolean))]
+    u.sort((a, b) => a.localeCompare(b, 'es'))
+    return u
+  }
+  return [m]
+}
+
 function catalogMonedasMerchandiseString(item: {
   monedas?: string[]
   moneda?: string
@@ -219,6 +240,15 @@ function mergeGarantias(
 
 /** Fusión servicio del acuerdo + ficha de servicio de la tienda (horarios y pagos del acuerdo se conservan). */
 export function mergeServiceItemWithStoreService(item: ServiceItem, s: StoreService): ServiceItem {
+  const catMonedas = catalogMonedasList(s)
+  const fromItem =
+    item.monedasAceptadas && item.monedasAceptadas.length > 0 ?
+      item.monedasAceptadas
+    : serviceItemAcceptedMonedas(item).length > 0 ?
+      serviceItemAcceptedMonedas(item)
+    : undefined
+  const mergedMonedas =
+    fromItem && fromItem.length > 0 ? fromItem : catMonedas.length > 0 ? catMonedas : undefined
   const next: ServiceItem = {
     ...item,
     linkedStoreServiceId: s.id,
@@ -228,6 +258,7 @@ export function mergeServiceItemWithStoreService(item: ServiceItem, s: StoreServ
     noIncluye: pickLine(item.noIncluye, s.noIncluye),
     entregables: pickLine(item.entregables, s.entregables),
     propIntelectual: pickLine(item.propIntelectual, s.propIntelectual),
+    monedasAceptadas: mergedMonedas,
     moneda: pickLine(item.moneda, catalogMonedasMerchandiseString(s)),
     riesgos: mergeListBlock(item.riesgos.enabled, item.riesgos.items, s.riesgos),
     dependencias: mergeListBlock(item.dependencias.enabled, item.dependencias.items, s.dependencias),

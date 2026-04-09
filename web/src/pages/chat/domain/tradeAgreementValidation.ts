@@ -5,6 +5,7 @@ import type {
 } from "./tradeAgreementTypes";
 import { coerceServiceSchedule } from "./tradeAgreementTypes";
 import { validateVigenciaRange } from "./serviceVigenciaDates";
+import { serviceItemAcceptedMonedas } from "./storeCatalogTypes";
 
 type MerchandiseHolder = { merchandise: MerchandiseLine[] };
 
@@ -448,8 +449,10 @@ export function validateServiceItem(sv: ServiceItem): string[] {
 
   const m1 = requireNonEmpty(sv.metodoPago, "Método de pago", false);
   if (m1) msgs.push(m1);
-  const m2 = requireNonEmpty(sv.moneda, "Moneda", false);
-  if (m2) msgs.push(m2);
+  const acc = serviceItemAcceptedMonedas(sv);
+  if (acc.length === 0) {
+    msgs.push("Indicá al menos una moneda aceptada para el pago.");
+  }
 
   const eMed = requireNonEmpty(
     sv.medicionCumplimiento,

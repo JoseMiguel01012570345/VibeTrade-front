@@ -59,9 +59,27 @@ export function OtpPage() {
     try {
       const res = await apiFetch('/api/v1/auth/verify', {
         method: 'POST',
-        body: JSON.stringify({ phone, code }),
+        body: JSON.stringify({ phone, code, mode }),
       })
       if (!res.ok) {
+        if (res.status === 400) {
+          let errPayload: { error?: string; message?: string } | null = null
+          try {
+            errPayload = (await res.json()) as {
+              error?: string
+              message?: string
+            }
+          } catch {
+            /* ignore */
+          }
+          if (errPayload?.error === 'phone_already_registered') {
+            toast.error(
+              errPayload.message ??
+                'Este número ya está registrado. Iniciá sesión si es tu cuenta.',
+            )
+            return
+          }
+        }
         setErr(true)
         window.setTimeout(() => setErr(false), 450)
         return
@@ -125,9 +143,29 @@ export function OtpPage() {
                 void (async () => {
                   const res = await apiFetch('/api/v1/auth/request-code', {
                     method: 'POST',
-                    body: JSON.stringify({ phone }),
+                    body: JSON.stringify({ phone, mode }),
                   })
                   if (!res.ok) {
+                    let errPayload: { error?: string; message?: string } | null =
+                      null
+                    try {
+                      errPayload = (await res.json()) as {
+                        error?: string
+                        message?: string
+                      }
+                    } catch {
+                      /* ignore */
+                    }
+                    if (
+                      res.status === 400 &&
+                      errPayload?.error === 'phone_already_registered'
+                    ) {
+                      toast.error(
+                        errPayload.message ??
+                          'Este número ya está registrado. Iniciá sesión si es tu cuenta.',
+                      )
+                      return
+                    }
                     toast.error('No se pudo reenviar el código')
                     return
                   }

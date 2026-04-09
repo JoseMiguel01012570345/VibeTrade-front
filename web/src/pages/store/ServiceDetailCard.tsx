@@ -27,7 +27,7 @@ export function ServiceDetailCard({ s }: { s: StoreService }) {
           </div>
           {monedas.length > 0 ? (
             <div className="mt-1.5 text-[12px] font-bold text-[var(--muted)]">
-              Moneda: {monedas.join(" · ")}
+              Monedas aceptadas: {monedas.join(" · ")}
             </div>
           ) : null}
           <p className="vt-muted mt-2 text-[13px] leading-snug">

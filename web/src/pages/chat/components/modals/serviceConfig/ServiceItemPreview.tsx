@@ -1,5 +1,6 @@
 import { CalendarClock, ClipboardList, CreditCard, Scale, ShieldAlert } from 'lucide-react'
 import type { ServiceItem } from '../../../domain/tradeAgreementTypes'
+import { serviceItemAcceptedMonedas } from '../../../domain/storeCatalogTypes'
 import { formatPaymentSummary } from './serviceItemFormat'
 import { ServiceScheduleReadView } from './ServiceScheduleReadView'
 
@@ -23,6 +24,7 @@ function Block({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export function ServiceItemPreview({ sv }: { sv: ServiceItem }) {
+  const monedasAceptadas = serviceItemAcceptedMonedas(sv)
   const t = sv.tiempo
   const vigencia =
     t.startDate && t.endDate
@@ -142,7 +144,9 @@ export function ServiceItemPreview({ sv }: { sv: ServiceItem }) {
         </div>
         <div className="grid gap-3 min-[480px]:grid-cols-2">
           <Block label="Método de pago">{sv.metodoPago || '—'}</Block>
-          <Block label="Moneda">{sv.moneda || '—'}</Block>
+          <Block label="Monedas aceptadas">
+            {monedasAceptadas.length > 0 ? monedasAceptadas.join(' · ') : '—'}
+          </Block>
         </div>
         <div className="mt-3 space-y-3 border-t border-[var(--border)] pt-3">
           <Block label="Medición del cumplimiento">{sv.medicionCumplimiento || '—'}</Block>

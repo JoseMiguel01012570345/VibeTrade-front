@@ -106,6 +106,9 @@ export type ServiceItem = {
   penalAtraso: { enabled: boolean; texto: string };
   terminacion: { enabled: boolean; causas: string[]; avisoDias: string };
   metodoPago: string;
+  /** Monedas aceptadas para el pago (p. ej. desde ficha de catálogo). */
+  monedasAceptadas?: string[];
+  /** Compatibilidad / resumen: suele ser `monedasAceptadas.join(', ')`. */
   moneda: string;
   medicionCumplimiento: string;
   penalIncumplimiento: string;
@@ -395,6 +398,7 @@ export function emptyServiceItem(): ServiceItem {
     penalAtraso: { enabled: false, texto: "" },
     terminacion: { enabled: false, causas: [], avisoDias: "" },
     metodoPago: "",
+    monedasAceptadas: undefined,
     moneda: "",
     medicionCumplimiento: "",
     penalIncumplimiento: "",
@@ -426,6 +430,13 @@ export function legacyServiceBlockToServiceItem(
   item.entregables = legacy.entregables;
   item.metodoPago = legacy.metodoPago;
   item.moneda = legacy.moneda;
+  const legM = legacy.moneda.trim();
+  item.monedasAceptadas =
+    legM.includes(",") ?
+      [...new Set(legM.split(",").map((x) => x.trim()).filter(Boolean))]
+    : legM ?
+      [legM]
+    : undefined;
   item.medicionCumplimiento = legacy.medicionCumplimiento;
   item.penalIncumplimiento = legacy.penalIncumplimiento;
   item.nivelResponsabilidad = legacy.nivelResponsabilidad;

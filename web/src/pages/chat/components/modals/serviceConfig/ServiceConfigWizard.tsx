@@ -1,7 +1,9 @@
 import { HelpCircle } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { cn } from '../../../../../lib/cn'
+import { VtMultiSelect } from '../../../../../components/VtMultiSelect'
+import { serviceItemAcceptedMonedas } from '../../../domain/storeCatalogTypes'
 import type { ServiceItem } from '../../../domain/tradeAgreementTypes'
 import { validateVigenciaRange } from '../../../domain/serviceVigenciaDates'
 import { validateServiceWizardAdvance } from '../../../domain/tradeAgreementValidation'
@@ -28,7 +30,7 @@ const STEPS = [
 ] as const
 
 const METODOS = ['Transferencia', 'Efectivo', 'Tarjeta', 'Mercado Pago', 'Otro']
-const MONEDAS = ['ARS', 'USD', 'EUR', 'Otro']
+const MONEDAS_BASE = ['ARS', 'USD', 'EUR', 'CUP', 'MLC', 'Otro'] as const
 
 type Props = {
   open: boolean
@@ -57,11 +59,23 @@ export function ServiceConfigWizard({ open, initial, onSave, onClose, categoryLi
     if (!wizardOpenRef.current) {
       const copy = JSON.parse(JSON.stringify(initial)) as ServiceItem
       copy.horarios = coerceServiceSchedule(copy.horarios)
+      const m = serviceItemAcceptedMonedas(copy)
+      copy.monedasAceptadas = m.length > 0 ? m : undefined
+      if (m.length > 0) copy.moneda = m.join(', ')
       setSv(copy)
       setStep(0)
       wizardOpenRef.current = true
     }
   }, [open, initial])
+
+  const monedaWizardOptions = useMemo(() => {
+    const merged = new Set<string>([...MONEDAS_BASE])
+    for (const c of serviceItemAcceptedMonedas(sv)) {
+      const t = c.trim()
+      if (t) merged.add(t)
+    }
+    return [...merged].sort((a, b) => a.localeCompare(b, 'es'))
+  }, [sv.monedasAceptadas, sv.moneda])
 
   if (!open) return null
 
@@ -98,8 +112,9 @@ export function ServiceConfigWizard({ open, initial, onSave, onClose, categoryLi
   }
 
   function finish() {
-    if (!sv.metodoPago.trim() || !sv.moneda.trim()) {
-      toast.error('Completá método de pago y moneda.')
+    const monedasSel = serviceItemAcceptedMonedas(sv)
+    if (!sv.metodoPago.trim() || monedasSel.length === 0) {
+      toast.error('Completá método de pago y al menos una moneda aceptada.')
       return
     }
     if (!sv.medicionCumplimiento.trim() || !sv.penalIncumplimiento.trim()) {
@@ -110,7 +125,12 @@ export function ServiceConfigWizard({ open, initial, onSave, onClose, categoryLi
       toast.error('Completá nivel de responsabilidad y propiedad intelectual.')
       return
     }
-    onSave({ ...sv, configured: true })
+    onSave({
+      ...sv,
+      monedasAceptadas: monedasSel,
+      moneda: monedasSel.join(', '),
+      configured: true,
+    })
     onClose()
   }
 
@@ -402,19 +422,20 @@ export function ServiceConfigWizard({ open, initial, onSave, onClose, categoryLi
                 </select>
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-[var(--muted)]">Moneda</span>
-                <select
-                  className="vt-input"
-                  value={sv.moneda}
-                  onChange={(e) => setSv((s) => ({ ...s, moneda: e.target.value }))}
-                >
-                  <option value="">Seleccionar…</option>
-                  {MONEDAS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
+                <span className="text-xs font-bold text-[var(--muted)]">Monedas aceptadas</span>
+                <VtMultiSelect
+                  value={serviceItemAcceptedMonedas(sv)}
+                  onChange={(monedas) =>
+                    setSv((s) => ({
+                      ...s,
+                      monedasAceptadas: monedas.length > 0 ? monedas : undefined,
+                      moneda: monedas.join(', '),
+                    }))
+                  }
+                  ariaLabel="Monedas aceptadas para el pago del servicio"
+                  placeholder="Seleccionar…"
+                  options={monedaWizardOptions.map((m) => ({ value: m, label: m }))}
+                />
               </label>
               <div className="min-[560px]:col-span-2">
                 <Field
