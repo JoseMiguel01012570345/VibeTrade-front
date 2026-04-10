@@ -98,6 +98,50 @@ export function catalogMonedasList(item: {
   return legacy ? [legacy] : []
 }
 
+/**
+ * Incluye la moneda del precio en la lista de monedas aceptadas si aún no está
+ * (misma moneda ignorando mayúsculas). Útil al elegir «tipo de moneda» del producto.
+ */
+export function mergeMonedaPrecioIntoMonedas(
+  monedas: string[] | undefined,
+  monedaPrecio: string | undefined,
+): string[] {
+  const mp = typeof monedaPrecio === 'string' ? monedaPrecio.trim() : ''
+  const base = [...(monedas ?? [])]
+    .map((x) => String(x).trim())
+    .filter(Boolean)
+  if (!mp) {
+    const u = [...new Set(base)]
+    u.sort((a, b) => a.localeCompare(b, 'es'))
+    return u
+  }
+  const up = mp.toUpperCase()
+  const next = base.some((c) => c.toUpperCase() === up) ? base : [...base, mp]
+  const u = [...new Set(next)]
+  u.sort((a, b) => a.localeCompare(b, 'es'))
+  return u
+}
+
+/**
+ * Quita la moneda del precio de la selección del multiselect para obtener solo lo elegido
+ * explícitamente (la moneda del precio se vuelve a unir al mostrar).
+ */
+export function stripMonedaPrecioFromSelection(
+  selected: string[],
+  monedaPrecio: string | undefined,
+): string[] {
+  const mp = typeof monedaPrecio === 'string' ? monedaPrecio.trim() : ''
+  const base = [...new Set(selected.map((x) => String(x).trim()).filter(Boolean))]
+  if (!mp) {
+    base.sort((a, b) => a.localeCompare(b, 'es'))
+    return base
+  }
+  const up = mp.toUpperCase()
+  const next = base.filter((c) => c.toUpperCase() !== up)
+  next.sort((a, b) => a.localeCompare(b, 'es'))
+  return next
+}
+
 /** Monedas aceptadas en ítem de servicio del acuerdo (array persistido o texto en `moneda`, p. ej. "USD, CUP"). */
 export function serviceItemAcceptedMonedas(sv: {
   monedasAceptadas?: string[]

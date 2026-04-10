@@ -18,6 +18,8 @@ export type StoreSectionFilters = {
   priceSort: PriceSort;
   priceFloor: number | null;
   priceCeiling: number | null;
+  /** Código de moneda aceptada (p. ej. USD, CUP); vacío = todas. */
+  acceptedMonedaQ: string;
   /** Solo aplica en vitrina; en otras secciones se ignora. */
   vitrinaListMode: VitrinaListMode;
 };
@@ -32,6 +34,7 @@ export function emptyStoreSectionFilters(): StoreSectionFilters {
     priceSort: "none",
     priceFloor: null,
     priceCeiling: null,
+    acceptedMonedaQ: "",
     vitrinaListMode: "both",
   };
 }

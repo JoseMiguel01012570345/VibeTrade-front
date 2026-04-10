@@ -29,6 +29,9 @@ export function VitrinaFiltersCard({
   onPriceFloor,
   onPriceCeiling,
   priceSliderMax,
+  acceptedMonedaQ,
+  onAcceptedMonedaQ,
+  acceptedMonedaOptions,
 }: Readonly<{
   vitrinaListMode: VitrinaListMode;
   onVitrinaListMode: (v: VitrinaListMode) => void;
@@ -51,6 +54,9 @@ export function VitrinaFiltersCard({
   onPriceFloor: (v: number) => void;
   onPriceCeiling: (v: number) => void;
   priceSliderMax: number;
+  acceptedMonedaQ: string;
+  onAcceptedMonedaQ: (v: string) => void;
+  acceptedMonedaOptions: string[];
 }>) {
   const showProducts = vitrinaListMode !== "services";
   const showServices = vitrinaListMode !== "products";
@@ -61,9 +67,9 @@ export function VitrinaFiltersCard({
         Filtrar vitrina
       </div>
       <p className="vt-muted mt-1 text-[12px] leading-snug">
-        Nombre, categoría y estado (productos) para productos y servicios. El
-        precio filtra ambos: productos por su precio; servicios por importes
-        detectados en el texto.
+        Nombre, categoría y estado (productos) para productos y servicios. Podés
+        acotar por moneda aceptada. El precio filtra ambos: productos por su
+        precio; servicios por importes detectados en el texto.
       </p>
       <div className="vt-divider my-3" />
       <div className="max-w-md">
@@ -156,6 +162,24 @@ export function VitrinaFiltersCard({
             </div>
           </div>
         ) : null}
+      </div>
+      <div className="vt-divider my-3" />
+      <div className="max-w-md">
+        <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+          Moneda aceptada
+        </div>
+        <div className="mt-2">
+          <VtSelect
+            value={acceptedMonedaQ}
+            onChange={onAcceptedMonedaQ}
+            ariaLabel="Filtrar por moneda aceptada en productos y servicios"
+            placeholder="Todas las monedas"
+            options={[
+              { value: "", label: "Todas las monedas" },
+              ...acceptedMonedaOptions.map((c) => ({ value: c, label: c })),
+            ]}
+          />
+        </div>
       </div>
       <div className="vt-divider my-3" />
       <div className="grid gap-3 min-[560px]:grid-cols-2">

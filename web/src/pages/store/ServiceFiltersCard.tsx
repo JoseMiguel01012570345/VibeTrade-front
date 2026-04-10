@@ -15,6 +15,9 @@ export function ServiceFiltersCard({
   onPriceFloor,
   onPriceCeiling,
   priceSliderMax,
+  acceptedMonedaQ,
+  onAcceptedMonedaQ,
+  acceptedMonedaOptions,
 }: Readonly<{
   serviceNameQ: string;
   onServiceNameQ: (v: string) => void;
@@ -28,6 +31,9 @@ export function ServiceFiltersCard({
   onPriceFloor: (v: number) => void;
   onPriceCeiling: (v: number) => void;
   priceSliderMax: number;
+  acceptedMonedaQ: string;
+  onAcceptedMonedaQ: (v: string) => void;
+  acceptedMonedaOptions: string[];
 }>) {
   return (
     <div className="vt-card vt-card-pad">
@@ -35,7 +41,7 @@ export function ServiceFiltersCard({
         Filtrar servicios
       </div>
       <p className="vt-muted mt-1 text-[12px] leading-snug">
-        Por nombre, tipo, categoría y precio inferido del texto.
+        Por nombre, tipo, categoría, moneda aceptada y precio inferido del texto.
       </p>
       <div className="vt-divider my-3" />
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -56,6 +62,18 @@ export function ServiceFiltersCard({
             options={[
               { value: "", label: "Todas las categorías" },
               ...serviceCategories.map((c) => ({ value: c, label: c })),
+            ]}
+          />
+        </div>
+        <div className="sm:w-48">
+          <VtSelect
+            value={acceptedMonedaQ}
+            onChange={onAcceptedMonedaQ}
+            ariaLabel="Filtrar servicios por moneda aceptada"
+            placeholder="Todas las monedas"
+            options={[
+              { value: "", label: "Todas las monedas" },
+              ...acceptedMonedaOptions.map((c) => ({ value: c, label: c })),
             ]}
           />
         </div>

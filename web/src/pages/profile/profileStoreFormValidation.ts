@@ -1,6 +1,10 @@
 import type { OwnerStoreFormValues } from '../../app/store/marketStoreTypes'
-import type { StoreCustomField } from '../chat/domain/storeCatalogTypes'
-import type { StoreProduct, StoreService } from '../chat/domain/storeCatalogTypes'
+import {
+  catalogMonedasList,
+  type StoreCustomField,
+  type StoreProduct,
+  type StoreService,
+} from '../chat/domain/storeCatalogTypes'
 
 export const PROFILE_TITLE_MIN = 2
 export const PROFILE_DESC_MIN = 1
@@ -47,6 +51,12 @@ export function validateProductForm(form: ProductFormSnapshot): string | null {
   if (norm(form.category).length < TITLE_MIN) return 'Completá la categoría.'
   if (norm(form.name).length < TITLE_MIN) return 'Completá el nombre del producto.'
   if (!norm(form.price)) return 'Completá el precio.'
+  if (!norm(form.monedaPrecio ?? '')) {
+    return 'Elegí la moneda del precio (tipo de moneda).'
+  }
+  if (catalogMonedasList(form).length < 1) {
+    return 'Indicá al menos una moneda aceptada para el pago.'
+  }
   if (norm(form.shortDescription).length < DESC_MIN) return `La descripción breve debe tener al menos ${DESC_MIN} caracteres.`
   if (norm(form.mainBenefit).length < DESC_MIN) return `El beneficio principal debe tener al menos ${DESC_MIN} caracteres.`
   if (norm(form.technicalSpecs).length < DESC_MIN) return `Las características técnicas deben tener al menos ${DESC_MIN} caracteres.`
@@ -76,6 +86,9 @@ export function validateServiceForm(
 ): string | null {
   if (norm(form.category).length < TITLE_MIN) return 'Completá la categoría.'
   if (norm(form.tipoServicio).length < TITLE_MIN) return 'Completá el tipo de servicio.'
+  if (catalogMonedasList(form).length < 1) {
+    return 'Indicá al menos una moneda aceptada para el pago.'
+  }
   if (norm(form.descripcion).length < DESC_MIN) return `La descripción del servicio debe tener al menos ${DESC_MIN} caracteres.`
 
   if (form.riesgos.enabled) {

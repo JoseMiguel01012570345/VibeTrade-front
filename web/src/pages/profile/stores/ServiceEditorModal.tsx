@@ -138,13 +138,21 @@ export function ServiceEditorModal({
                   }
                 />
               </label>
-              <label className={fieldRootWithInvalid(false)}>
+              <label
+                className={fieldRootWithInvalid(
+                  showVal &&
+                    catalogMonedasList({
+                      monedas: form.monedas,
+                      moneda: form.moneda,
+                    }).length < 1,
+                )}
+              >
                 <span className={fieldLabel}>Monedas aceptadas</span>
                 <VtMultiSelect
                   value={form.monedas ?? []}
                   onChange={(monedas) => setForm({ ...form, monedas })}
-                  ariaLabel="Tipos de moneda aceptados"
-                  placeholder="Sin especificar"
+                  ariaLabel="Monedas aceptadas para el pago (obligatorio)"
+                  placeholder="Elegí una o más…"
                   options={currencySelectOptions.map((c) => ({
                     value: c,
                     label: c,

@@ -4,6 +4,8 @@ import { Loader2, Upload, X } from "lucide-react";
 import type { MerchandiseCondition } from "../../chat/domain/tradeAgreementTypes";
 import {
   catalogMonedasList,
+  mergeMonedaPrecioIntoMonedas,
+  stripMonedaPrecioFromSelection,
   type StoreProduct,
 } from "../../chat/domain/storeCatalogTypes";
 import {
@@ -41,6 +43,15 @@ import {
   type ProductPhotoSlot,
 } from "./helpers";
 
+function initialMonedasExtras(
+  init: Omit<StoreProduct, "id" | "storeId">,
+): string[] {
+  return stripMonedaPrecioFromSelection(
+    catalogMonedasList(init),
+    init.monedaPrecio,
+  );
+}
+
 type Props = Readonly<{
   open: boolean;
   title: string;
@@ -64,6 +75,10 @@ export function ProductEditorModal({
 }: Props) {
   const photoInputId = useId();
   const [form, setForm] = useState(initial);
+  /** Monedas elegidas solo en el multiselect (sin la moneda del precio del select). */
+  const [monedasExtras, setMonedasExtras] = useState(() =>
+    initialMonedasExtras(initial),
+  );
   const [photoSlots, setPhotoSlots] = useState<ProductPhotoSlot[]>(() =>
     productPhotoSlotsFromUrls(initial.photoUrls),
   );
@@ -72,6 +87,11 @@ export function ProductEditorModal({
   const [photoPendingCount, setPhotoPendingCount] = useState(0);
 
   const photoOk = photoSlots.length >= 1;
+
+  const acceptedMonedasMerged = useMemo(
+    () => mergeMonedaPrecioIntoMonedas(monedasExtras, form.monedaPrecio),
+    [monedasExtras, form.monedaPrecio],
+  );
 
   const categorySelectOptions = useMemo(() => {
     const base = categoryOptions.length > 0 ? categoryOptions : [];
@@ -88,12 +108,12 @@ export function ProductEditorModal({
     merged.add("CUP");
     const mp = (form.monedaPrecio ?? "").trim();
     if (mp) merged.add(mp);
-    for (const c of form.monedas ?? []) {
+    for (const c of acceptedMonedasMerged) {
       const t = c.trim();
       if (t) merged.add(t);
     }
     return [...merged].sort((a, b) => a.localeCompare(b, "es"));
-  }, [currencyOptions, form.monedaPrecio, form.monedas]);
+  }, [currencyOptions, form.monedaPrecio, acceptedMonedasMerged]);
 
   if (!open) return null;
 
@@ -138,7 +158,11 @@ export function ProductEditorModal({
           ...photoSlots.map((p) => p.url),
           ...added.map((a) => a.url),
         ];
-        const candidateSnapshot = { ...form, photoUrls: candidateUrls };
+        const candidateSnapshot = {
+          ...form,
+          photoUrls: candidateUrls,
+          monedas: acceptedMonedasMerged,
+        };
         const limitErr = assertEntityPayloadUnderLimit(
           candidateSnapshot,
           "Este producto",
@@ -264,15 +288,19 @@ export function ProductEditorModal({
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
                 />
               </label>
-              <label className={fieldRootWithInvalid(false)}>
-                <span className={fieldLabel}>Tipo de moneda</span>
+              <label
+                className={fieldRootWithInvalid(
+                  showVal && !(form.monedaPrecio ?? "").trim(),
+                )}
+              >
+                <span className={fieldLabel}>Tipo de moneda (precio)</span>
                 <VtSelect
                   value={form.monedaPrecio ?? ""}
-                  onChange={(v) => setForm({ ...form, monedaPrecio: v })}
-                  ariaLabel="Tipo de moneda del precio"
-                  placeholder="Sin especificar"
+                  onChange={(v) => setForm((prev) => ({ ...prev, monedaPrecio: v }))}
+                  ariaLabel="Tipo de moneda del precio (obligatorio)"
+                  placeholder="Seleccionar…"
                   options={[
-                    { value: "", label: "Sin especificar" },
+                    { value: "", label: "Seleccionar moneda del precio…" },
                     ...allCurrencyCodes.map((c) => ({
                       value: c,
                       label: c,
@@ -282,16 +310,29 @@ export function ProductEditorModal({
               </label>
               <label
                 className={cn(
-                  fieldRootWithInvalid(false),
+                  fieldRootWithInvalid(
+                    showVal &&
+                      catalogMonedasList({
+                        monedas: acceptedMonedasMerged,
+                        moneda: form.moneda,
+                      }).length < 1,
+                  ),
                   "min-[560px]:col-span-2",
                 )}
               >
-                <span className={fieldLabel}>Moneda aceptada</span>
+                <span className={fieldLabel}>Monedas aceptadas</span>
                 <VtMultiSelect
-                  value={form.monedas ?? []}
-                  onChange={(monedas) => setForm({ ...form, monedas })}
-                  ariaLabel="Monedas aceptadas para el pago"
-                  placeholder="Sin especificar"
+                  value={acceptedMonedasMerged}
+                  onChange={(selected) =>
+                    setMonedasExtras(
+                      stripMonedaPrecioFromSelection(
+                        selected,
+                        form.monedaPrecio,
+                      ),
+                    )
+                  }
+                  ariaLabel="Monedas aceptadas para el pago (obligatorio)"
+                  placeholder="Elegí una o más…"
                   options={allCurrencyCodes.map((c) => ({
                     value: c,
                     label: c,
@@ -520,7 +561,11 @@ export function ProductEditorModal({
               fields={form.customFields}
               onUploadingChange={setUploadBusy}
               onChange={(cf) => {
-                const candidate = { ...form, customFields: cf };
+                const candidate = {
+                  ...form,
+                  customFields: cf,
+                  monedas: acceptedMonedasMerged,
+                };
                 const payload = {
                   ...candidate,
                   photoUrls: photoSlots.map((p) => p.url),
@@ -546,7 +591,10 @@ export function ProductEditorModal({
               type="button"
               className="vt-btn vt-btn-primary"
               onClick={() => {
-                const monedas = catalogMonedasList({ monedas: form.monedas });
+                const monedas = catalogMonedasList({
+                  monedas: acceptedMonedasMerged,
+                  moneda: form.moneda,
+                });
                 const snapshot = {
                   ...form,
                   photoUrls: photoSlots.map((p) => p.url),

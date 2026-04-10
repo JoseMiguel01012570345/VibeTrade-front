@@ -1,6 +1,7 @@
-import type {
-  StoreProduct,
-  StoreService,
+import {
+  catalogMonedasList,
+  type StoreProduct,
+  type StoreService,
 } from "../chat/domain/storeCatalogTypes";
 import {
   matchesCategoryFilter,
@@ -21,17 +22,67 @@ type StoreSectionFiltersLike = {
   productConditionQ: string;
   serviceNameQ: string;
   serviceCategoryQ: string;
+  acceptedMonedaQ: string;
 };
 
 export type ProductSectionFilterFields = Pick<
   StoreSectionFiltersLike,
-  "productNameQ" | "productCategoryQ" | "productConditionQ"
+  | "productNameQ"
+  | "productCategoryQ"
+  | "productConditionQ"
+  | "acceptedMonedaQ"
 >;
 
 export type ServiceSectionFilterFields = Pick<
   StoreSectionFiltersLike,
-  "serviceNameQ" | "serviceCategoryQ"
+  "serviceNameQ" | "serviceCategoryQ" | "acceptedMonedaQ"
 >;
+
+/** Monedas aceptadas + moneda del precio (si no está ya en la lista). */
+export function productCurrencyCodesForFilter(p: StoreProduct): string[] {
+  const list = catalogMonedasList(p);
+  const mp = p.monedaPrecio?.trim();
+  if (!mp) return list;
+  const up = mp.toUpperCase();
+  if (list.some((c) => c.trim().toUpperCase() === up)) return list;
+  return [...list, mp].sort((a, b) => a.localeCompare(b, "es"));
+}
+
+function matchesAcceptedMonedaFilter(
+  selected: string,
+  codes: string[],
+): boolean {
+  const t = selected.trim();
+  if (!t) return true;
+  const u = t.toUpperCase();
+  return codes.some((c) => c.trim().toUpperCase() === u);
+}
+
+/** Códigos únicos para el select (hints del API + catálogo). */
+export function collectCurrencyCodesForFilterOptions(
+  currencyHints: string[],
+  products: StoreProduct[],
+  services: StoreService[],
+): string[] {
+  const set = new Set<string>();
+  for (const c of currencyHints) {
+    const x = c.trim();
+    if (x) set.add(x);
+  }
+  for (const p of products) {
+    for (const x of productCurrencyCodesForFilter(p)) {
+      const t = x.trim();
+      if (t) set.add(t);
+    }
+  }
+  for (const s of services) {
+    for (const x of catalogMonedasList(s)) {
+      const t = x.trim();
+      if (t) set.add(t);
+    }
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, "es"));
+}
 
 export type PriceRangeSortOpts = {
   sliderMax: number;
@@ -49,7 +100,11 @@ export function filterProductsBySectionText(
       (matchesNameQuery(p.name, f.productNameQ) ||
         matchesNameQuery(p.model ?? "", f.productNameQ)) &&
       matchesCategoryFilter(p.category, f.productCategoryQ) &&
-      matchesConditionFilter(p.condition, f.productConditionQ),
+      matchesConditionFilter(p.condition, f.productConditionQ) &&
+      matchesAcceptedMonedaFilter(
+        f.acceptedMonedaQ,
+        productCurrencyCodesForFilter(p),
+      ),
   );
 }
 
@@ -61,7 +116,11 @@ export function filterServicesBySectionText(
     (s) =>
       (matchesNameQuery(s.tipoServicio, f.serviceNameQ) ||
         matchesNameQuery(s.descripcion, f.serviceNameQ)) &&
-      matchesCategoryFilter(s.category, f.serviceCategoryQ),
+      matchesCategoryFilter(s.category, f.serviceCategoryQ) &&
+      matchesAcceptedMonedaFilter(
+        f.acceptedMonedaQ,
+        catalogMonedasList(s),
+      ),
   );
 }
 

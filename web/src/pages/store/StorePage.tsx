@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAppStore } from "../../app/store/useAppStore";
-import { ArrowLeft, LayoutGrid } from "lucide-react";
+import { ArrowLeft, LayoutGrid, RefreshCw } from "lucide-react";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import {
   catalogMonedasList,
@@ -37,6 +37,7 @@ import { VitrinaFiltersCard } from "./VitrinaFiltersCard";
 import {
   applyProductPriceRangeAndSort,
   applyServicePriceRangeAndSort,
+  collectCurrencyCodesForFilterOptions,
   filterProductsBySectionText,
   filterServicesBySectionText,
 } from "./storePageCatalogFilters";
@@ -344,6 +345,7 @@ export function StorePage() {
       fv.productNameQ,
       fv.productCategoryQ,
       fv.productConditionQ,
+      fv.acceptedMonedaQ,
     ],
   );
 
@@ -366,7 +368,12 @@ export function StorePage() {
 
   const vitrinaPublishedServicesBase = useMemo(
     () => filterServicesBySectionText(publishedServices, fv),
-    [publishedServices, fv.serviceNameQ, fv.serviceCategoryQ],
+    [
+      publishedServices,
+      fv.serviceNameQ,
+      fv.serviceCategoryQ,
+      fv.acceptedMonedaQ,
+    ],
   );
 
   const vitrinaPublishedServices = useMemo(
@@ -393,6 +400,7 @@ export function StorePage() {
       fp.productNameQ,
       fp.productCategoryQ,
       fp.productConditionQ,
+      fp.acceptedMonedaQ,
     ],
   );
 
@@ -453,6 +461,36 @@ export function StorePage() {
     ],
   );
 
+  const vitrinaAcceptedMonedaOptions = useMemo(
+    () =>
+      collectCurrencyCodesForFilterOptions(
+        currencyHints,
+        publishedProducts,
+        publishedServices,
+      ),
+    [currencyHints, publishedProducts, publishedServices],
+  );
+
+  const productsTabAcceptedMonedaOptions = useMemo(
+    () =>
+      collectCurrencyCodesForFilterOptions(
+        currencyHints,
+        isOwner ? allCatalogProducts : publishedProducts,
+        [],
+      ),
+    [currencyHints, isOwner, allCatalogProducts, publishedProducts],
+  );
+
+  const servicesTabAcceptedMonedaOptions = useMemo(
+    () =>
+      collectCurrencyCodesForFilterOptions(
+        currencyHints,
+        [],
+        isOwner ? allCatalogServices : publishedServices,
+      ),
+    [currencyHints, isOwner, allCatalogServices, publishedServices],
+  );
+
   const productsTabOwnerProductsBase = useMemo(
     () => filterProductsBySectionText(allCatalogProducts, fp),
     [
@@ -460,6 +498,7 @@ export function StorePage() {
       fp.productNameQ,
       fp.productCategoryQ,
       fp.productConditionQ,
+      fp.acceptedMonedaQ,
     ],
   );
 
@@ -482,7 +521,12 @@ export function StorePage() {
 
   const servicesTabPublishedServicesBase = useMemo(
     () => filterServicesBySectionText(publishedServices, fsv),
-    [publishedServices, fsv.serviceNameQ, fsv.serviceCategoryQ],
+    [
+      publishedServices,
+      fsv.serviceNameQ,
+      fsv.serviceCategoryQ,
+      fsv.acceptedMonedaQ,
+    ],
   );
 
   const servicesTabPublishedServices = useMemo(
@@ -504,7 +548,12 @@ export function StorePage() {
 
   const servicesTabOwnerServicesBase = useMemo(
     () => filterServicesBySectionText(allCatalogServices, fsv),
-    [allCatalogServices, fsv.serviceNameQ, fsv.serviceCategoryQ],
+    [
+      allCatalogServices,
+      fsv.serviceNameQ,
+      fsv.serviceCategoryQ,
+      fsv.acceptedMonedaQ,
+    ],
   );
 
   const servicesTabOwnerServices = useMemo(
@@ -592,7 +641,7 @@ export function StorePage() {
   const ownerId = store.ownerUserId as string;
 
   async function reloadStoreCatalogFromServer() {
-    if (!storeId || !me.id) return;
+    if (!storeId) return;
     setCatalogReloadBusy(true);
     try {
       const data = await fetchStoreDetail(sid, { userId: me.id });
@@ -607,9 +656,9 @@ export function StorePage() {
           ),
         },
       }));
-      toast.success("Catálogo actualizado");
+      toast.success("Datos de la tienda actualizados");
     } catch {
-      toast.error("No se pudo actualizar el catálogo");
+      toast.error("No se pudieron actualizar los datos de la tienda");
     } finally {
       setCatalogReloadBusy(false);
     }
@@ -653,6 +702,10 @@ export function StorePage() {
     onPriceFloor: (v: number) => handlePriceFloorChange("vitrina", v),
     onPriceCeiling: (v: number) => handlePriceCeilingChange("vitrina", v),
     priceSliderMax: sliderMaxVitrina,
+    acceptedMonedaQ: fv.acceptedMonedaQ,
+    onAcceptedMonedaQ: (v: string) =>
+      patchSection("vitrina", { acceptedMonedaQ: v }),
+    acceptedMonedaOptions: vitrinaAcceptedMonedaOptions,
   };
 
   const showVitrinaProductList =
@@ -765,14 +818,33 @@ export function StorePage() {
               joinedLabel={joinedLabel}
             />
             <div className="vt-card vt-card-pad flex flex-col gap-4">
-              <div>
-                <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                  Vitrina pública
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+                    Vitrina pública
+                  </div>
+                  <p className="vt-muted mt-1 max-w-[720px] text-[13px] leading-snug">
+                    Fichas completas de productos y servicios publicados en
+                    vitrina. Usá los filtros para acotar.
+                  </p>
                 </div>
-                <p className="vt-muted mt-1 max-w-[720px] text-[13px] leading-snug">
-                  Fichas completas de productos y servicios publicados en
-                  vitrina. Usá los filtros para acotar.
-                </p>
+                <button
+                  type="button"
+                  className="vt-btn vt-btn-ghost vt-btn-sm inline-flex shrink-0 items-center gap-1.5"
+                  disabled={catalogReloadBusy}
+                  title="Recargar datos de la tienda desde el servidor"
+                  aria-label="Recargar vitrina"
+                  onClick={() => void reloadStoreCatalogFromServer()}
+                >
+                  <RefreshCw
+                    size={14}
+                    aria-hidden
+                    className={
+                      catalogReloadBusy ? "animate-spin" : ""
+                    }
+                  />
+                  Recargar
+                </button>
               </div>
               <VitrinaFiltersCard {...vitrinaFiltersProps} />
 
@@ -824,7 +896,7 @@ export function StorePage() {
                 <p className="vt-muted rounded-xl border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-3 text-[13px] leading-snug">
                   {vitrinaNoPublishedAtAll
                     ? "Esta tienda aún no tiene contenido publicado en vitrina."
-                    : "Ningún resultado con los filtros actuales. Probá otro nombre o categoría."}
+                    : "Ningún resultado con los filtros actuales. Probá otro nombre, categoría o moneda."}
                 </p>
               ) : null}
             </div>
@@ -855,6 +927,11 @@ export function StorePage() {
               onPriceFloor={(v) => handlePriceFloorChange("products", v)}
               onPriceCeiling={(v) => handlePriceCeilingChange("products", v)}
               priceSliderMax={sliderMaxProducts}
+              acceptedMonedaQ={fp.acceptedMonedaQ}
+              onAcceptedMonedaQ={(v) =>
+                patchSection("products", { acceptedMonedaQ: v })
+              }
+              acceptedMonedaOptions={productsTabAcceptedMonedaOptions}
             />
             <div className="vt-card vt-card-pad">
               {isOwner ? (
@@ -913,8 +990,8 @@ export function StorePage() {
                     </div>
                   ) : publishedProducts.length ? (
                     <p className="vt-muted rounded-xl border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-3 text-[13px] leading-snug">
-                      Ningún producto coincide con el filtro. Ajustá nombre o
-                      categoría.
+                      Ningún producto coincide con el filtro. Ajustá nombre,
+                      categoría o moneda.
                     </p>
                   ) : (
                     <p className="vt-muted rounded-xl border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-3 text-[13px] leading-snug">
@@ -946,6 +1023,11 @@ export function StorePage() {
               onPriceFloor={(v) => handlePriceFloorChange("services", v)}
               onPriceCeiling={(v) => handlePriceCeilingChange("services", v)}
               priceSliderMax={sliderMaxServices}
+              acceptedMonedaQ={fsv.acceptedMonedaQ}
+              onAcceptedMonedaQ={(v) =>
+                patchSection("services", { acceptedMonedaQ: v })
+              }
+              acceptedMonedaOptions={servicesTabAcceptedMonedaOptions}
             />
             <div className="vt-card vt-card-pad">
               {isOwner ? (
@@ -1004,8 +1086,8 @@ export function StorePage() {
                     </div>
                   ) : publishedServices.length ? (
                     <p className="vt-muted rounded-xl border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-3 text-[13px] leading-snug">
-                      Ningún servicio coincide con el filtro. Ajustá nombre o
-                      categoría.
+                      Ningún servicio coincide con el filtro. Ajustá nombre,
+                      categoría o moneda.
                     </p>
                   ) : (
                     <p className="vt-muted rounded-xl border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-3 text-[13px] leading-snug">
