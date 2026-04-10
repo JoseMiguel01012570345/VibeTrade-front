@@ -6,7 +6,7 @@ import { onBackdropPointerClose } from "../../chat/lib/modalClose";
 import { modalShellWide } from "../../chat/styles/formModalStyles";
 import "leaflet/dist/leaflet.css";
 
-const DEFAULT_CENTER: [number, number] = [-34.6037, -58.3816];
+const DEFAULT_CENTER: [number, number] = [22.526838, -81.128701];
 const ZOOM = 14;
 
 function MapClickHandler({
@@ -77,9 +77,7 @@ export function StoreLocationMapModal({
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <MapClickHandler
-              onPick={(lat, lng) => setPos({ lat, lng })}
-            />
+            <MapClickHandler onPick={(lat, lng) => setPos({ lat, lng })} />
             {pos ? (
               <Marker
                 position={[pos.lat, pos.lng]}
