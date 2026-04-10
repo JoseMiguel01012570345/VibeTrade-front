@@ -1,8 +1,11 @@
+import { VtMultiSelect } from "../../components/VtMultiSelect";
 import { VtSelect } from "../../components/VtSelect";
 import { cn } from "../../lib/cn";
 import { PriceRangeMinMaxControls } from "./PriceRangeMinMaxControls";
 import {
+  CATALOG_PUBLISHED_FILTER_OPTIONS,
   PRODUCT_CONDITION_FILTER_OPTIONS,
+  type CatalogPublishedFilter,
   type PriceSort,
   type VitrinaListMode,
 } from "./storePageTypes";
@@ -32,6 +35,9 @@ export function VitrinaFiltersCard({
   acceptedMonedaQ,
   onAcceptedMonedaQ,
   acceptedMonedaOptions,
+  showPublishedFilter,
+  catalogPublishedFilter,
+  onCatalogPublishedFilter,
 }: Readonly<{
   vitrinaListMode: VitrinaListMode;
   onVitrinaListMode: (v: VitrinaListMode) => void;
@@ -54,9 +60,12 @@ export function VitrinaFiltersCard({
   onPriceFloor: (v: number) => void;
   onPriceCeiling: (v: number) => void;
   priceSliderMax: number;
-  acceptedMonedaQ: string;
-  onAcceptedMonedaQ: (v: string) => void;
+  acceptedMonedaQ: readonly string[];
+  onAcceptedMonedaQ: (v: string[]) => void;
   acceptedMonedaOptions: string[];
+  showPublishedFilter: boolean;
+  catalogPublishedFilter: CatalogPublishedFilter;
+  onCatalogPublishedFilter: (v: CatalogPublishedFilter) => void;
 }>) {
   const showProducts = vitrinaListMode !== "services";
   const showServices = vitrinaListMode !== "products";
@@ -68,8 +77,8 @@ export function VitrinaFiltersCard({
       </div>
       <p className="vt-muted mt-1 text-[12px] leading-snug">
         Nombre, categoría y estado (productos) para productos y servicios. Podés
-        acotar por moneda aceptada. El precio filtra ambos: productos por su
-        precio; servicios por importes detectados en el texto.
+        acotar por una o varias monedas aceptadas. El precio filtra ambos: productos
+        por su precio; servicios por importes detectados en el texto.
       </p>
       <div className="vt-divider my-3" />
       <div className="max-w-md">
@@ -90,6 +99,27 @@ export function VitrinaFiltersCard({
           />
         </div>
       </div>
+      {showPublishedFilter ? (
+        <>
+          <div className="vt-divider my-3" />
+          <div className="max-w-md">
+            <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+              Publicación en vitrina
+            </div>
+            <div className="mt-2">
+              <VtSelect
+                value={catalogPublishedFilter}
+                onChange={(v) =>
+                  onCatalogPublishedFilter(v as CatalogPublishedFilter)
+                }
+                ariaLabel="Filtrar por publicados o borradores"
+                placeholder="Visibilidad"
+                options={[...CATALOG_PUBLISHED_FILTER_OPTIONS]}
+              />
+            </div>
+          </div>
+        </>
+      ) : null}
       <div className="vt-divider my-3" />
       <div
         className={cn(
@@ -166,18 +196,15 @@ export function VitrinaFiltersCard({
       <div className="vt-divider my-3" />
       <div className="max-w-md">
         <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-          Moneda aceptada
+          Monedas aceptadas
         </div>
         <div className="mt-2">
-          <VtSelect
+          <VtMultiSelect
             value={acceptedMonedaQ}
             onChange={onAcceptedMonedaQ}
-            ariaLabel="Filtrar por moneda aceptada en productos y servicios"
+            ariaLabel="Filtrar por monedas aceptadas en productos y servicios"
             placeholder="Todas las monedas"
-            options={[
-              { value: "", label: "Todas las monedas" },
-              ...acceptedMonedaOptions.map((c) => ({ value: c, label: c })),
-            ]}
+            options={acceptedMonedaOptions.map((c) => ({ value: c, label: c }))}
           />
         </div>
       </div>

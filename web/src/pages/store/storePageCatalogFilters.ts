@@ -13,7 +13,7 @@ import {
   parseProductPriceNumber,
   serviceComparablePrice,
 } from "../../utils/market/parseProductPrice";
-import type { PriceSort } from "./storePageTypes";
+import type { CatalogPublishedFilter, PriceSort } from "./storePageTypes";
 
 /** Minimal shape so callers can pass `StoreSectionFilters` without a circular import. */
 type StoreSectionFiltersLike = {
@@ -22,7 +22,8 @@ type StoreSectionFiltersLike = {
   productConditionQ: string;
   serviceNameQ: string;
   serviceCategoryQ: string;
-  acceptedMonedaQ: string;
+  acceptedMonedaQ: readonly string[];
+  catalogPublishedFilter: CatalogPublishedFilter;
 };
 
 export type ProductSectionFilterFields = Pick<
@@ -31,12 +32,33 @@ export type ProductSectionFilterFields = Pick<
   | "productCategoryQ"
   | "productConditionQ"
   | "acceptedMonedaQ"
+  | "catalogPublishedFilter"
 >;
 
 export type ServiceSectionFilterFields = Pick<
   StoreSectionFiltersLike,
-  "serviceNameQ" | "serviceCategoryQ" | "acceptedMonedaQ"
+  | "serviceNameQ"
+  | "serviceCategoryQ"
+  | "acceptedMonedaQ"
+  | "catalogPublishedFilter"
 >;
+
+export function isStoreProductPublished(p: StoreProduct): boolean {
+  return p.published === true;
+}
+
+export function isStoreServicePublished(s: StoreService): boolean {
+  return s.published !== false;
+}
+
+function matchesCatalogPublishedFilter(
+  mode: CatalogPublishedFilter,
+  isPublished: boolean,
+): boolean {
+  if (mode === "all") return true;
+  if (mode === "published") return isPublished;
+  return !isPublished;
+}
 
 /** Monedas aceptadas + moneda del precio (si no está ya en la lista). */
 export function productCurrencyCodesForFilter(p: StoreProduct): string[] {
@@ -49,13 +71,15 @@ export function productCurrencyCodesForFilter(p: StoreProduct): string[] {
 }
 
 function matchesAcceptedMonedaFilter(
-  selected: string,
+  selected: readonly string[],
   codes: string[],
 ): boolean {
-  const t = selected.trim();
-  if (!t) return true;
-  const u = t.toUpperCase();
-  return codes.some((c) => c.trim().toUpperCase() === u);
+  if (selected.length === 0) return true;
+  const wanted = new Set(
+    selected.map((s) => s.trim().toUpperCase()).filter(Boolean),
+  );
+  if (wanted.size === 0) return true;
+  return codes.some((c) => wanted.has(c.trim().toUpperCase()));
 }
 
 /** Códigos únicos para el select (hints del API + catálogo). */
@@ -97,6 +121,10 @@ export function filterProductsBySectionText(
 ): StoreProduct[] {
   return products.filter(
     (p) =>
+      matchesCatalogPublishedFilter(
+        f.catalogPublishedFilter,
+        isStoreProductPublished(p),
+      ) &&
       (matchesNameQuery(p.name, f.productNameQ) ||
         matchesNameQuery(p.model ?? "", f.productNameQ)) &&
       matchesCategoryFilter(p.category, f.productCategoryQ) &&
@@ -114,6 +142,10 @@ export function filterServicesBySectionText(
 ): StoreService[] {
   return services.filter(
     (s) =>
+      matchesCatalogPublishedFilter(
+        f.catalogPublishedFilter,
+        isStoreServicePublished(s),
+      ) &&
       (matchesNameQuery(s.tipoServicio, f.serviceNameQ) ||
         matchesNameQuery(s.descripcion, f.serviceNameQ)) &&
       matchesCategoryFilter(s.category, f.serviceCategoryQ) &&

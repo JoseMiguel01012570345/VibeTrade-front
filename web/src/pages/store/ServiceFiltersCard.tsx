@@ -1,6 +1,11 @@
+import { VtMultiSelect } from "../../components/VtMultiSelect";
 import { VtSelect } from "../../components/VtSelect";
 import { PriceRangeMinMaxControls } from "./PriceRangeMinMaxControls";
-import type { PriceSort } from "./storePageTypes";
+import {
+  CATALOG_PUBLISHED_FILTER_OPTIONS,
+  type CatalogPublishedFilter,
+  type PriceSort,
+} from "./storePageTypes";
 
 export function ServiceFiltersCard({
   serviceNameQ,
@@ -18,6 +23,9 @@ export function ServiceFiltersCard({
   acceptedMonedaQ,
   onAcceptedMonedaQ,
   acceptedMonedaOptions,
+  showPublishedFilter,
+  catalogPublishedFilter,
+  onCatalogPublishedFilter,
 }: Readonly<{
   serviceNameQ: string;
   onServiceNameQ: (v: string) => void;
@@ -31,9 +39,12 @@ export function ServiceFiltersCard({
   onPriceFloor: (v: number) => void;
   onPriceCeiling: (v: number) => void;
   priceSliderMax: number;
-  acceptedMonedaQ: string;
-  onAcceptedMonedaQ: (v: string) => void;
+  acceptedMonedaQ: readonly string[];
+  onAcceptedMonedaQ: (v: string[]) => void;
   acceptedMonedaOptions: string[];
+  showPublishedFilter: boolean;
+  catalogPublishedFilter: CatalogPublishedFilter;
+  onCatalogPublishedFilter: (v: CatalogPublishedFilter) => void;
 }>) {
   return (
     <div className="vt-card vt-card-pad">
@@ -41,7 +52,7 @@ export function ServiceFiltersCard({
         Filtrar servicios
       </div>
       <p className="vt-muted mt-1 text-[12px] leading-snug">
-        Por nombre, tipo, categoría, moneda aceptada y precio inferido del texto.
+        Por nombre, tipo, categoría, monedas aceptadas y precio inferido del texto.
       </p>
       <div className="vt-divider my-3" />
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -65,18 +76,28 @@ export function ServiceFiltersCard({
             ]}
           />
         </div>
-        <div className="sm:w-48">
-          <VtSelect
+        <div className="min-w-0 sm:w-52">
+          <VtMultiSelect
             value={acceptedMonedaQ}
             onChange={onAcceptedMonedaQ}
-            ariaLabel="Filtrar servicios por moneda aceptada"
+            ariaLabel="Filtrar servicios por monedas aceptadas"
             placeholder="Todas las monedas"
-            options={[
-              { value: "", label: "Todas las monedas" },
-              ...acceptedMonedaOptions.map((c) => ({ value: c, label: c })),
-            ]}
+            options={acceptedMonedaOptions.map((c) => ({ value: c, label: c }))}
           />
         </div>
+        {showPublishedFilter ? (
+          <div className="min-w-0 sm:w-56">
+            <VtSelect
+              value={catalogPublishedFilter}
+              onChange={(v) =>
+                onCatalogPublishedFilter(v as CatalogPublishedFilter)
+              }
+              ariaLabel="Filtrar servicios por publicación"
+              placeholder="Publicación"
+              options={[...CATALOG_PUBLISHED_FILTER_OPTIONS]}
+            />
+          </div>
+        ) : null}
       </div>
       <div className="vt-divider my-3" />
       <div className="grid gap-3 min-[560px]:grid-cols-2">

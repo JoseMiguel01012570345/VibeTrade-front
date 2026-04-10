@@ -1,101 +1,105 @@
-import type { MerchandiseCondition, MerchandiseLine, ServiceItem } from './tradeAgreementTypes'
-import { emptyMerchandiseLine } from './tradeAgreementTypes'
+import type {
+  MerchandiseCondition,
+  MerchandiseLine,
+  ServiceItem,
+} from "./tradeAgreementTypes";
+import { emptyMerchandiseLine } from "./tradeAgreementTypes";
 
 /** Archivo adjunto en un campo personalizado (URL de objeto o https persistente). */
 export type StoreCustomAttachment = {
-  id: string
-  url: string
-  fileName: string
+  id: string;
+  url: string;
+  fileName: string;
   /** image | pdf | other */
-  kind: 'image' | 'pdf' | 'other'
-}
+  kind: "image" | "pdf" | "other";
+};
 
 /** Campo libre con adjuntos (fotos / documentos + texto embebido) — flow-ui. */
 export type StoreCustomField = {
-  title: string
-  body: string
+  title: string;
+  body: string;
   /** Leyenda opcional junto a los adjuntos */
-  attachmentNote?: string
-  attachments?: StoreCustomAttachment[]
-}
+  attachmentNote?: string;
+  attachments?: StoreCustomAttachment[];
+};
 
 export type StoreProduct = {
-  id: string
-  storeId: string
-  category: string
-  name: string
-  model?: string
-  shortDescription: string
-  mainBenefit: string
-  technicalSpecs: string
-  condition: MerchandiseCondition
-  price: string
+  id: string;
+  storeId: string;
+  category: string;
+  name: string;
+  model?: string;
+  shortDescription: string;
+  mainBenefit: string;
+  technicalSpecs: string;
+  condition: MerchandiseCondition;
+  price: string;
   /** Moneda en la que está expresado el precio (una sola); opcional. */
-  monedaPrecio?: string
+  monedaPrecio?: string;
   /** Códigos de moneda aceptados (p. ej. USD, CUP); opcional. */
-  monedas?: string[]
+  monedas?: string[];
   /** @deprecated Persistencia antigua; preferir `monedas`. */
-  moneda?: string
+  moneda?: string;
   /** Impuestos, envío o instalación — texto según flow-ui */
-  taxesShippingInstall?: string
-  availability: string
-  warrantyReturn: string
-  contentIncluded: string
-  usageConditions: string
-  photoUrls: string[]
+  taxesShippingInstall?: string;
+  availability: string;
+  warrantyReturn: string;
+  contentIncluded: string;
+  usageConditions: string;
+  photoUrls: string[];
   /** Si es true, la ficha aparece en la vitrina pública de la tienda y puede anclarse en acuerdos como catálogo publicado. */
-  published: boolean
-  customFields: StoreCustomField[]
-}
+  published: boolean;
+  customFields: StoreCustomField[];
+};
 
 export type StoreService = {
-  id: string
-  storeId: string
+  id: string;
+  storeId: string;
   /** Si es `false`, la ficha no aparece en la vitrina pública de la tienda. Si falta, se trata como publicada. */
-  published?: boolean
-  category: string
-  tipoServicio: string
+  published?: boolean;
+  category: string;
+  tipoServicio: string;
   /** Códigos de moneda aceptados (p. ej. USD, CUP); opcional. */
-  monedas?: string[]
+  monedas?: string[];
   /** @deprecated Persistencia antigua; preferir `monedas`. */
-  moneda?: string
-  descripcion: string
-  riesgos: { enabled: boolean; items: string[] }
-  incluye: string
-  noIncluye: string
-  dependencias: { enabled: boolean; items: string[] }
-  entregables: string
-  garantias: { enabled: boolean; texto: string }
-  propIntelectual: string
-  customFields: StoreCustomField[]
-}
+  moneda?: string;
+  descripcion: string;
+  riesgos: { enabled: boolean; items: string[] };
+  incluye: string;
+  noIncluye: string;
+  dependencias: { enabled: boolean; items: string[] };
+  entregables: string;
+  garantias: { enabled: boolean; texto: string };
+  propIntelectual: string;
+  customFields: StoreCustomField[];
+};
 
 /** Catálogo configurado para una tienda (demo / futura persistencia). */
 export type StoreCatalog = {
   /** Texto: qué categorías de productos y servicios ofrece la tienda */
-  pitch: string
-  joinedAt: number
-  products: StoreProduct[]
-  services: StoreService[]
-}
+  pitch: string;
+  joinedAt: number;
+  products: StoreProduct[];
+  services: StoreService[];
+};
 
 function norm(s: string): string {
-  return s.trim()
+  return s.trim();
 }
 
 /** Lista normalizada de monedas de ficha (soporta `monedas` o `moneda` legado). */
 export function catalogMonedasList(item: {
-  monedas?: string[]
-  moneda?: string
+  monedas?: string[];
+  moneda?: string;
 }): string[] {
-  const raw = item.monedas
+  const raw = item.monedas;
   if (Array.isArray(raw) && raw.length > 0) {
-    const u = [...new Set(raw.map((x) => String(x).trim()).filter(Boolean))]
-    u.sort((a, b) => a.localeCompare(b, 'es'))
-    return u
+    const u = [...new Set(raw.map((x) => String(x).trim()).filter(Boolean))];
+    u.sort((a, b) => a.localeCompare(b, "es"));
+    return u;
   }
-  const legacy = typeof item.moneda === 'string' ? item.moneda.trim() : ''
-  return legacy ? [legacy] : []
+  const legacy = typeof item.moneda === "string" ? item.moneda.trim() : "";
+  return legacy ? [legacy] : [];
 }
 
 /**
@@ -106,20 +110,20 @@ export function mergeMonedaPrecioIntoMonedas(
   monedas: string[] | undefined,
   monedaPrecio: string | undefined,
 ): string[] {
-  const mp = typeof monedaPrecio === 'string' ? monedaPrecio.trim() : ''
+  const mp = typeof monedaPrecio === "string" ? monedaPrecio.trim() : "";
   const base = [...(monedas ?? [])]
     .map((x) => String(x).trim())
-    .filter(Boolean)
+    .filter(Boolean);
   if (!mp) {
-    const u = [...new Set(base)]
-    u.sort((a, b) => a.localeCompare(b, 'es'))
-    return u
+    const u = [...new Set(base)];
+    u.sort((a, b) => a.localeCompare(b, "es"));
+    return u;
   }
-  const up = mp.toUpperCase()
-  const next = base.some((c) => c.toUpperCase() === up) ? base : [...base, mp]
-  const u = [...new Set(next)]
-  u.sort((a, b) => a.localeCompare(b, 'es'))
-  return u
+  const up = mp.toUpperCase();
+  const next = base.some((c) => c.toUpperCase() === up) ? base : [...base, mp];
+  const u = [...new Set(next)];
+  u.sort((a, b) => a.localeCompare(b, "es"));
+  return u;
 }
 
 /**
@@ -130,63 +134,74 @@ export function stripMonedaPrecioFromSelection(
   selected: string[],
   monedaPrecio: string | undefined,
 ): string[] {
-  const mp = typeof monedaPrecio === 'string' ? monedaPrecio.trim() : ''
-  const base = [...new Set(selected.map((x) => String(x).trim()).filter(Boolean))]
+  const mp = typeof monedaPrecio === "string" ? monedaPrecio.trim() : "";
+  const base = [
+    ...new Set(selected.map((x) => String(x).trim()).filter(Boolean)),
+  ];
   if (!mp) {
-    base.sort((a, b) => a.localeCompare(b, 'es'))
-    return base
+    base.sort((a, b) => a.localeCompare(b, "es"));
+    return base;
   }
-  const up = mp.toUpperCase()
-  const next = base.filter((c) => c.toUpperCase() !== up)
-  next.sort((a, b) => a.localeCompare(b, 'es'))
-  return next
+  const up = mp.toUpperCase();
+  const next = base.filter((c) => c.toUpperCase() !== up);
+  next.sort((a, b) => a.localeCompare(b, "es"));
+  return next;
 }
 
 /** Monedas aceptadas en ítem de servicio del acuerdo (array persistido o texto en `moneda`, p. ej. "USD, CUP"). */
 export function serviceItemAcceptedMonedas(sv: {
-  monedasAceptadas?: string[]
-  moneda: string
+  monedasAceptadas?: string[];
+  moneda: string;
 }): string[] {
-  const raw = sv.monedasAceptadas
+  const raw = sv.monedasAceptadas;
   if (Array.isArray(raw) && raw.length > 0) {
-    const u = [...new Set(raw.map((x) => String(x).trim()).filter(Boolean))]
-    u.sort((a, b) => a.localeCompare(b, 'es'))
-    return u
+    const u = [...new Set(raw.map((x) => String(x).trim()).filter(Boolean))];
+    u.sort((a, b) => a.localeCompare(b, "es"));
+    return u;
   }
-  const m = typeof sv.moneda === 'string' ? sv.moneda.trim() : ''
-  if (!m) return []
-  if (m.includes(',')) {
-    const u = [...new Set(m.split(',').map((x) => x.trim()).filter(Boolean))]
-    u.sort((a, b) => a.localeCompare(b, 'es'))
-    return u
+  const m = typeof sv.moneda === "string" ? sv.moneda.trim() : "";
+  if (!m) return [];
+  if (m.includes(",")) {
+    const u = [
+      ...new Set(
+        m
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean),
+      ),
+    ];
+    u.sort((a, b) => a.localeCompare(b, "es"));
+    return u;
   }
-  return [m]
+  return [m];
 }
 
 function catalogMonedasMerchandiseString(item: {
-  monedas?: string[]
-  moneda?: string
+  monedas?: string[];
+  moneda?: string;
 }): string {
-  return catalogMonedasList(item).join(', ')
+  return catalogMonedasList(item).join(", ");
 }
 
 function pickLine(a: string, b: string): string {
-  return norm(a) !== '' ? a : b
+  return norm(a) !== "" ? a : b;
 }
 
 function appendDetailBlock(base: string, title: string, body: string): string {
-  const t = norm(body)
-  if (!t) return base
-  const prefix = norm(base)
-  const chunk = `${title}\n${t}`
-  if (!prefix) return chunk
-  if (prefix.includes(t)) return base
-  return `${prefix}\n\n${chunk}`
+  const t = norm(body);
+  if (!t) return base;
+  const prefix = norm(base);
+  const chunk = `${title}\n${t}`;
+  if (!prefix) return chunk;
+  if (prefix.includes(t)) return base;
+  return `${prefix}\n\n${chunk}`;
 }
 
 /** Valores por defecto del acuerdo inferidos desde la ficha de producto de la tienda. */
-export function storeProductToMerchandiseDefaults(p: StoreProduct): MerchandiseLine {
-  const tipo = [p.name, p.model].filter(Boolean).join(' — ')
+export function storeProductToMerchandiseDefaults(
+  p: StoreProduct,
+): MerchandiseLine {
+  const tipo = [p.name, p.model].filter(Boolean).join(" — ");
   const regulaciones = [
     p.category && `Categoría: ${p.category}`,
     p.shortDescription && `Descripción breve: ${p.shortDescription}`,
@@ -195,44 +210,46 @@ export function storeProductToMerchandiseDefaults(p: StoreProduct): MerchandiseL
     p.contentIncluded && `Contenido incluido: ${p.contentIncluded}`,
     p.usageConditions && `Condiciones de uso: ${p.usageConditions}`,
     ...p.customFields.map((f) => {
-      if (!norm(f.title)) return ''
-      const att =
-        f.attachments?.length ?
-          ` [Adjuntos: ${f.attachments.map((a) => a.fileName).join(', ')}]`
-        : ''
-      const note = f.attachmentNote ? ` (${f.attachmentNote})` : ''
-      return `${f.title}: ${f.body}${note}${att}`
+      if (!norm(f.title)) return "";
+      const att = f.attachments?.length
+        ? ` [Adjuntos: ${f.attachments.map((a) => a.fileName).join(", ")}]`
+        : "";
+      const note = f.attachmentNote ? ` (${f.attachmentNote})` : "";
+      return `${f.title}: ${f.body}${note}${att}`;
     }),
   ]
     .filter(Boolean)
-    .join('\n')
+    .join("\n");
 
   const monedaLine =
-    norm(p.monedaPrecio ?? '') !== ''
-      ? (p.monedaPrecio ?? '').trim()
-      : catalogMonedasMerchandiseString(p)
+    norm(p.monedaPrecio ?? "") !== ""
+      ? (p.monedaPrecio ?? "").trim()
+      : catalogMonedasMerchandiseString(p);
 
   return {
     ...emptyMerchandiseLine(),
     tipo,
-    cantidad: '',
+    cantidad: "",
     valorUnitario: p.price,
     moneda: monedaLine,
     estado: p.condition,
-    impuestos: p.taxesShippingInstall ?? '',
+    impuestos: p.taxesShippingInstall ?? "",
     devolucionesDesc: p.warrantyReturn,
-    tipoEmbalaje: '',
+    tipoEmbalaje: "",
     regulaciones,
-  }
+  };
 }
 
 /**
  * Fusión para el acuerdo: lo ya cargado en la línea del acuerdo tiene prioridad;
  * lo vacío se completa desde la ficha del catálogo (flow-ui).
  */
-export function mergeMerchandiseLineWithStoreProduct(line: MerchandiseLine, p: StoreProduct): MerchandiseLine {
-  const def = storeProductToMerchandiseDefaults(p)
-  const sameLink = line.linkedStoreProductId === p.id
+export function mergeMerchandiseLineWithStoreProduct(
+  line: MerchandiseLine,
+  p: StoreProduct,
+): MerchandiseLine {
+  const def = storeProductToMerchandiseDefaults(p);
+  const sameLink = line.linkedStoreProductId === p.id;
   const merged: MerchandiseLine = {
     ...line,
     linkedStoreProductId: p.id,
@@ -245,20 +262,31 @@ export function mergeMerchandiseLineWithStoreProduct(line: MerchandiseLine, p: S
     moneda: pickLine(line.moneda, def.moneda),
     tipoEmbalaje: pickLine(line.tipoEmbalaje, def.tipoEmbalaje),
     devolucionesDesc: pickLine(line.devolucionesDesc, def.devolucionesDesc),
-    devolucionQuienPaga: pickLine(line.devolucionQuienPaga, def.devolucionQuienPaga),
+    devolucionQuienPaga: pickLine(
+      line.devolucionQuienPaga,
+      def.devolucionQuienPaga,
+    ),
     devolucionPlazos: pickLine(line.devolucionPlazos, def.devolucionPlazos),
     regulaciones: pickLine(line.regulaciones, def.regulaciones),
-  }
+  };
 
-  if (norm(line.regulaciones) !== '' && norm(def.regulaciones) !== '' && line.regulaciones !== def.regulaciones) {
-    merged.regulaciones = appendDetailBlock(line.regulaciones, 'Detalle del catálogo', def.regulaciones)
+  if (
+    norm(line.regulaciones) !== "" &&
+    norm(def.regulaciones) !== "" &&
+    line.regulaciones !== def.regulaciones
+  ) {
+    merged.regulaciones = appendDetailBlock(
+      line.regulaciones,
+      "Detalle del catálogo",
+      def.regulaciones,
+    );
   }
 
   if (norm(p.availability) && !norm(merged.cantidad)) {
-    merged.cantidad = p.availability
+    merged.cantidad = p.availability;
   }
 
-  return merged
+  return merged;
 }
 
 function mergeListBlock(
@@ -266,33 +294,41 @@ function mergeListBlock(
   items: string[],
   catalog: { enabled: boolean; items: string[] },
 ): { enabled: boolean; items: string[] } {
-  if (enabled && items.length > 0) return { enabled, items }
-  const catItems = catalog.enabled ? catalog.items : []
-  if (catItems.length > 0) return { enabled: true, items: catItems }
-  return { enabled: false, items: [] }
+  if (enabled && items.length > 0) return { enabled, items };
+  const catItems = catalog.enabled ? catalog.items : [];
+  if (catItems.length > 0) return { enabled: true, items: catItems };
+  return { enabled: false, items: [] };
 }
 
 function mergeGarantias(
-  g: ServiceItem['garantias'],
-  catalog: StoreService['garantias'],
-): ServiceItem['garantias'] {
-  if (g.enabled && norm(g.texto)) return g
-  if (catalog.enabled && norm(catalog.texto)) return { enabled: true, texto: catalog.texto }
-  if (norm(g.texto)) return { enabled: true, texto: g.texto }
-  return { enabled: false, texto: '' }
+  g: ServiceItem["garantias"],
+  catalog: StoreService["garantias"],
+): ServiceItem["garantias"] {
+  if (g.enabled && norm(g.texto)) return g;
+  if (catalog.enabled && norm(catalog.texto))
+    return { enabled: true, texto: catalog.texto };
+  if (norm(g.texto)) return { enabled: true, texto: g.texto };
+  return { enabled: false, texto: "" };
 }
 
 /** Fusión servicio del acuerdo + ficha de servicio de la tienda (horarios y pagos del acuerdo se conservan). */
-export function mergeServiceItemWithStoreService(item: ServiceItem, s: StoreService): ServiceItem {
-  const catMonedas = catalogMonedasList(s)
+export function mergeServiceItemWithStoreService(
+  item: ServiceItem,
+  s: StoreService,
+): ServiceItem {
+  const catMonedas = catalogMonedasList(s);
   const fromItem =
-    item.monedasAceptadas && item.monedasAceptadas.length > 0 ?
-      item.monedasAceptadas
-    : serviceItemAcceptedMonedas(item).length > 0 ?
-      serviceItemAcceptedMonedas(item)
-    : undefined
+    item.monedasAceptadas && item.monedasAceptadas.length > 0
+      ? item.monedasAceptadas
+      : serviceItemAcceptedMonedas(item).length > 0
+        ? serviceItemAcceptedMonedas(item)
+        : undefined;
   const mergedMonedas =
-    fromItem && fromItem.length > 0 ? fromItem : catMonedas.length > 0 ? catMonedas : undefined
+    fromItem && fromItem.length > 0
+      ? fromItem
+      : catMonedas.length > 0
+        ? catMonedas
+        : undefined;
   const next: ServiceItem = {
     ...item,
     linkedStoreServiceId: s.id,
@@ -304,41 +340,66 @@ export function mergeServiceItemWithStoreService(item: ServiceItem, s: StoreServ
     propIntelectual: pickLine(item.propIntelectual, s.propIntelectual),
     monedasAceptadas: mergedMonedas,
     moneda: pickLine(item.moneda, catalogMonedasMerchandiseString(s)),
-    riesgos: mergeListBlock(item.riesgos.enabled, item.riesgos.items, s.riesgos),
-    dependencias: mergeListBlock(item.dependencias.enabled, item.dependencias.items, s.dependencias),
+    riesgos: mergeListBlock(
+      item.riesgos.enabled,
+      item.riesgos.items,
+      s.riesgos,
+    ),
+    dependencias: mergeListBlock(
+      item.dependencias.enabled,
+      item.dependencias.items,
+      s.dependencias,
+    ),
     garantias: mergeGarantias(item.garantias, s.garantias),
-  }
+  };
 
-  if (norm(item.descripcion) !== '' && norm(s.descripcion) !== '' && item.descripcion !== s.descripcion) {
-    next.descripcion = appendDetailBlock(item.descripcion, 'Descripción en catálogo', s.descripcion)
+  if (
+    norm(item.descripcion) !== "" &&
+    norm(s.descripcion) !== "" &&
+    item.descripcion !== s.descripcion
+  ) {
+    next.descripcion = appendDetailBlock(
+      item.descripcion,
+      "Descripción en catálogo",
+      s.descripcion,
+    );
   }
 
   const extra = s.customFields
     .map((f) => {
-      if (!norm(f.title)) return ''
-      const att =
-        f.attachments?.length ?
-          ` [Adjuntos: ${f.attachments.map((a) => a.fileName).join(', ')}]`
-        : ''
-      return `${f.title}: ${f.body}${att}`
+      if (!norm(f.title)) return "";
+      const att = f.attachments?.length
+        ? ` [Adjuntos: ${f.attachments.map((a) => a.fileName).join(", ")}]`
+        : "";
+      return `${f.title}: ${f.body}${att}`;
     })
     .filter(Boolean)
-    .join('\n')
+    .join("\n");
   if (extra) {
-    next.descripcion = appendDetailBlock(next.descripcion, 'Campos adicionales (catálogo)', extra)
+    next.descripcion = appendDetailBlock(
+      next.descripcion,
+      "Campos adicionales (catálogo)",
+      extra,
+    );
   }
 
-  return next
+  return next;
 }
 
-export function findStoreProduct(catalog: StoreCatalog | undefined, id: string | undefined): StoreProduct | undefined {
-  if (!catalog || !id) return undefined
-  return catalog.products.find((p) => p.id === id)
+export function findStoreProduct(
+  catalog: StoreCatalog | undefined,
+  id: string | undefined,
+): StoreProduct | undefined {
+  if (!catalog || !id) return undefined;
+  return catalog.products.find((p) => p.id === id);
 }
 
-export function findStoreService(catalog: StoreCatalog | undefined, id: string | undefined): StoreService | undefined {
-  if (!catalog || !id) return undefined
-  return catalog.services.find((x) => x.id === id)
+export function findStoreService(
+  catalog: StoreCatalog | undefined,
+  id: string | undefined,
+): StoreService | undefined {
+  if (!catalog || !id) return undefined;
+  return catalog.services.find((x) => x.id === id);
 }
 
 /**
@@ -349,58 +410,62 @@ export function mergeStoreCatalogWithLocalExtras(
   existing: StoreCatalog | undefined,
   incoming: StoreCatalog,
 ): StoreCatalog {
-  if (!existing) return incoming
-  const inProductIds = new Set(incoming.products.map((p) => p.id))
-  const inServiceIds = new Set(incoming.services.map((s) => s.id))
-  const extraProducts = existing.products.filter((p) => !inProductIds.has(p.id))
-  const extraServices = existing.services.filter((s) => !inServiceIds.has(s.id))
-  if (extraProducts.length === 0 && extraServices.length === 0) return incoming
+  if (!existing) return incoming;
+  const inProductIds = new Set(incoming.products.map((p) => p.id));
+  const inServiceIds = new Set(incoming.services.map((s) => s.id));
+  const extraProducts = existing.products.filter(
+    (p) => !inProductIds.has(p.id),
+  );
+  const extraServices = existing.services.filter(
+    (s) => !inServiceIds.has(s.id),
+  );
+  if (extraProducts.length === 0 && extraServices.length === 0) return incoming;
   return {
     ...incoming,
     products: [...incoming.products, ...extraProducts],
     services: [...incoming.services, ...extraServices],
-  }
+  };
 }
 
 /** Valores iniciales del formulario de producto (perfil / ficha). */
-export function emptyStoreProductInput(): Omit<StoreProduct, 'id' | 'storeId'> {
+export function emptyStoreProductInput(): Omit<StoreProduct, "id" | "storeId"> {
   return {
-    category: '',
-    name: '',
-    model: '',
-    shortDescription: '',
-    mainBenefit: '',
-    technicalSpecs: '',
-    condition: 'nuevo',
-    price: '',
-    monedaPrecio: '',
+    category: "",
+    name: "",
+    model: "",
+    shortDescription: "",
+    mainBenefit: "",
+    technicalSpecs: "",
+    condition: "nuevo",
+    price: "",
+    monedaPrecio: "",
     monedas: [],
-    taxesShippingInstall: '',
-    availability: '',
-    warrantyReturn: '',
-    contentIncluded: '',
-    usageConditions: '',
+    taxesShippingInstall: "",
+    availability: "",
+    warrantyReturn: "",
+    contentIncluded: "",
+    usageConditions: "",
     photoUrls: [],
     published: false,
     customFields: [],
-  }
+  };
 }
 
 /** Valores iniciales del formulario de servicio (perfil / ficha). */
-export function emptyStoreServiceInput(): Omit<StoreService, 'id' | 'storeId'> {
+export function emptyStoreServiceInput(): Omit<StoreService, "id" | "storeId"> {
   return {
     published: false,
-    category: '',
-    tipoServicio: '',
+    category: "",
+    tipoServicio: "",
     monedas: [],
-    descripcion: '',
+    descripcion: "",
     riesgos: { enabled: false, items: [] },
-    incluye: '',
-    noIncluye: '',
+    incluye: "",
+    noIncluye: "",
     dependencias: { enabled: false, items: [] },
-    entregables: '',
-    garantias: { enabled: false, texto: '' },
-    propIntelectual: '',
+    entregables: "",
+    garantias: { enabled: false, texto: "" },
+    propIntelectual: "",
     customFields: [],
-  }
+  };
 }

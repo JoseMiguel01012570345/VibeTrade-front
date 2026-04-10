@@ -43,6 +43,7 @@ import {
 } from "./storePageCatalogFilters";
 import { backRowBtnClass } from "./storePageStyles";
 import type {
+  CatalogPublishedFilter,
   PriceSort,
   StoreFilterSection,
   StoreScreen,
@@ -252,11 +253,27 @@ export function StorePage() {
     [allCatalogServices],
   );
 
+  const vitrinaPriceMax = useMemo(
+    () =>
+      isOwner
+        ? Math.max(
+            maxPriceFromProducts(allCatalogProducts),
+            maxPriceFromServices(allCatalogServices),
+          )
+        : publishedOfferMax,
+    [
+      isOwner,
+      allCatalogProducts,
+      allCatalogServices,
+      publishedOfferMax,
+    ],
+  );
+
   const sliderMaxVitrina = useMemo(() => {
-    const raw = publishedOfferMax;
+    const raw = vitrinaPriceMax;
     if (!Number.isFinite(raw) || raw <= 0) return 0;
     return Math.min(raw, MAX_REASONABLE_PRICE);
-  }, [publishedOfferMax]);
+  }, [vitrinaPriceMax]);
 
   const sliderMaxProducts = useMemo(() => {
     const raw = isOwner ? ownerProductMax : publishedProductMax;
@@ -329,6 +346,9 @@ export function StorePage() {
   const fp = filtersBySection.products;
   const fsv = filtersBySection.services;
 
+  const vitrinaProductSource = isOwner ? allCatalogProducts : publishedProducts;
+  const vitrinaServiceSource = isOwner ? allCatalogServices : publishedServices;
+
   const productCategoryOptions = useMemo(
     () => uniqueSorted(publishedProducts.map((p) => p.category)),
     [publishedProducts],
@@ -339,13 +359,14 @@ export function StorePage() {
   );
 
   const vitrinaPublishedProductsBase = useMemo(
-    () => filterProductsBySectionText(publishedProducts, fv),
+    () => filterProductsBySectionText(vitrinaProductSource, fv),
     [
-      publishedProducts,
+      vitrinaProductSource,
       fv.productNameQ,
       fv.productCategoryQ,
       fv.productConditionQ,
       fv.acceptedMonedaQ,
+      fv.catalogPublishedFilter,
     ],
   );
 
@@ -367,12 +388,13 @@ export function StorePage() {
   );
 
   const vitrinaPublishedServicesBase = useMemo(
-    () => filterServicesBySectionText(publishedServices, fv),
+    () => filterServicesBySectionText(vitrinaServiceSource, fv),
     [
-      publishedServices,
+      vitrinaServiceSource,
       fv.serviceNameQ,
       fv.serviceCategoryQ,
       fv.acceptedMonedaQ,
+      fv.catalogPublishedFilter,
     ],
   );
 
@@ -401,6 +423,7 @@ export function StorePage() {
       fp.productCategoryQ,
       fp.productConditionQ,
       fp.acceptedMonedaQ,
+      fp.catalogPublishedFilter,
     ],
   );
 
@@ -465,10 +488,10 @@ export function StorePage() {
     () =>
       collectCurrencyCodesForFilterOptions(
         currencyHints,
-        publishedProducts,
-        publishedServices,
+        vitrinaProductSource,
+        vitrinaServiceSource,
       ),
-    [currencyHints, publishedProducts, publishedServices],
+    [currencyHints, vitrinaProductSource, vitrinaServiceSource],
   );
 
   const productsTabAcceptedMonedaOptions = useMemo(
@@ -499,6 +522,7 @@ export function StorePage() {
       fp.productCategoryQ,
       fp.productConditionQ,
       fp.acceptedMonedaQ,
+      fp.catalogPublishedFilter,
     ],
   );
 
@@ -526,6 +550,7 @@ export function StorePage() {
       fsv.serviceNameQ,
       fsv.serviceCategoryQ,
       fsv.acceptedMonedaQ,
+      fsv.catalogPublishedFilter,
     ],
   );
 
@@ -553,6 +578,7 @@ export function StorePage() {
       fsv.serviceNameQ,
       fsv.serviceCategoryQ,
       fsv.acceptedMonedaQ,
+      fsv.catalogPublishedFilter,
     ],
   );
 
@@ -703,9 +729,13 @@ export function StorePage() {
     onPriceCeiling: (v: number) => handlePriceCeilingChange("vitrina", v),
     priceSliderMax: sliderMaxVitrina,
     acceptedMonedaQ: fv.acceptedMonedaQ,
-    onAcceptedMonedaQ: (v: string) =>
+    onAcceptedMonedaQ: (v: string[]) =>
       patchSection("vitrina", { acceptedMonedaQ: v }),
     acceptedMonedaOptions: vitrinaAcceptedMonedaOptions,
+    showPublishedFilter: isOwner,
+    catalogPublishedFilter: fv.catalogPublishedFilter,
+    onCatalogPublishedFilter: (v: CatalogPublishedFilter) =>
+      patchSection("vitrina", { catalogPublishedFilter: v }),
   };
 
   const showVitrinaProductList =
@@ -720,6 +750,7 @@ export function StorePage() {
       ? vitrinaPublishedServices.length === 0
       : true);
   const vitrinaNoPublishedAtAll =
+    fv.catalogPublishedFilter !== "draft" &&
     (fv.vitrinaListMode !== "services"
       ? publishedProducts.length === 0
       : true) &&
@@ -928,10 +959,15 @@ export function StorePage() {
               onPriceCeiling={(v) => handlePriceCeilingChange("products", v)}
               priceSliderMax={sliderMaxProducts}
               acceptedMonedaQ={fp.acceptedMonedaQ}
-              onAcceptedMonedaQ={(v) =>
+              onAcceptedMonedaQ={(v: string[]) =>
                 patchSection("products", { acceptedMonedaQ: v })
               }
               acceptedMonedaOptions={productsTabAcceptedMonedaOptions}
+              showPublishedFilter={isOwner}
+              catalogPublishedFilter={fp.catalogPublishedFilter}
+              onCatalogPublishedFilter={(v: CatalogPublishedFilter) =>
+                patchSection("products", { catalogPublishedFilter: v })
+              }
             />
             <div className="vt-card vt-card-pad">
               {isOwner ? (
@@ -1024,10 +1060,15 @@ export function StorePage() {
               onPriceCeiling={(v) => handlePriceCeilingChange("services", v)}
               priceSliderMax={sliderMaxServices}
               acceptedMonedaQ={fsv.acceptedMonedaQ}
-              onAcceptedMonedaQ={(v) =>
+              onAcceptedMonedaQ={(v: string[]) =>
                 patchSection("services", { acceptedMonedaQ: v })
               }
               acceptedMonedaOptions={servicesTabAcceptedMonedaOptions}
+              showPublishedFilter={isOwner}
+              catalogPublishedFilter={fsv.catalogPublishedFilter}
+              onCatalogPublishedFilter={(v: CatalogPublishedFilter) =>
+                patchSection("services", { catalogPublishedFilter: v })
+              }
             />
             <div className="vt-card vt-card-pad">
               {isOwner ? (
