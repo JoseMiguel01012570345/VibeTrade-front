@@ -9,7 +9,7 @@ import {
   saveMarketWorkspace,
   setMarketHydrating,
 } from "../../utils/market/marketPersistence";
-import { marketDataSnapshot } from "../../utils/market/marketSerializable";
+import { marketWorkspacePutPayload } from "../../utils/market/marketSerializable";
 import { mediaApiUrl, uploadMedia } from "../../utils/media/mediaClient";
 import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
 import { VtSelect } from "../../components/VtSelect";
@@ -35,6 +35,9 @@ export function ProfileStoresSection({
 }) {
   const stores = useMarketStore((s) => s.stores);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
+  const setWorkspacePersistStoreId = useMarketStore(
+    (s) => s.setWorkspacePersistStoreId,
+  );
   const createOwnerStore = useMarketStore((s) => s.createOwnerStore);
   const updateOwnerStore = useMarketStore((s) => s.updateOwnerStore);
   const deleteOwnerStore = useMarketStore((s) => s.deleteOwnerStore);
@@ -172,6 +175,11 @@ export function ProfileStoresSection({
 
   const editingBadge = editStoreId ? stores[editStoreId] : undefined;
   const editingCat = editStoreId ? storeCatalogs[editStoreId] : undefined;
+
+  useEffect(() => {
+    setWorkspacePersistStoreId(editStoreId);
+    return () => setWorkspacePersistStoreId(null);
+  }, [editStoreId, setWorkspacePersistStoreId]);
 
   function onStoreAvatarPick(storeId: string) {
     return (e: ChangeEvent<HTMLInputElement>) => {
@@ -606,7 +614,9 @@ export function ProfileStoresSection({
                 return false;
               }
               try {
-                await saveMarketWorkspace(marketDataSnapshot(useMarketStore.getState()));
+                await saveMarketWorkspace(
+                  marketWorkspacePutPayload(useMarketStore.getState()),
+                );
                 if (me.id) {
                   const data = await fetchStoreDetail(id, { userId: me.id });
                   setMarketHydrating(true);

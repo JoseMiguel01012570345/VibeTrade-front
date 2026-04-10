@@ -2,7 +2,7 @@ import type { MarketState } from '../../app/store/marketStoreTypes'
 import toast from 'react-hot-toast'
 import { apiFetch } from '../http/apiClient'
 import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage, errorToUserMessage } from '../http/apiErrorMessage'
-import { marketDataSnapshot, type MarketSerializableSlice } from './marketSerializable'
+import { marketWorkspacePutPayload, type MarketSerializableSlice } from './marketSerializable'
 
 let hydrating = true
 let persistTimer: ReturnType<typeof setTimeout> | undefined
@@ -42,7 +42,7 @@ export function subscribeMarketPersistence(store: {
     if (hydrating) return
     clearTimeout(persistTimer)
     persistTimer = setTimeout(() => {
-      void saveMarketWorkspace(marketDataSnapshot(state)).catch((e) => {
+      void saveMarketWorkspace(marketWorkspacePutPayload(state)).catch((e) => {
         console.error(e)
         // No spamear: si el payload es enorme (data URLs), el PUT puede fallar y el usuario cree que "se guardó".
         const now = Date.now()

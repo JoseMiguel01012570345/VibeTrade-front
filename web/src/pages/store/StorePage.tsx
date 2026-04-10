@@ -95,6 +95,18 @@ export function StorePage() {
   const setOwnerStoreServicePublished = useMarketStore(
     (s) => s.setOwnerStoreServicePublished,
   );
+  const setWorkspacePersistStoreId = useMarketStore(
+    (s) => s.setWorkspacePersistStoreId,
+  );
+
+  useEffect(() => {
+    if (!storeId) {
+      setWorkspacePersistStoreId(null);
+      return;
+    }
+    setWorkspacePersistStoreId(storeId);
+    return () => setWorkspacePersistStoreId(null);
+  }, [storeId, setWorkspacePersistStoreId]);
 
   const isOwner = useMemo(
     () => !!(store && me.id && store.ownerUserId === me.id),
@@ -1281,6 +1293,7 @@ export function StorePage() {
                     entregables: serviceEditing.entregables,
                     garantias: { ...serviceEditing.garantias },
                     propIntelectual: serviceEditing.propIntelectual,
+                    photoUrls: [...(serviceEditing.photoUrls ?? [])],
                     customFields: serviceEditing.customFields.length
                       ? serviceEditing.customFields
                       : [],

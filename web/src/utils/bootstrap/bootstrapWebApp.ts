@@ -46,6 +46,7 @@ export async function bootstrapWebApp(): Promise<void> {
       storeCatalogs: {},
       threads: {},
       routeOfferPublic: {},
+      workspacePersistStoreId: null,
     })
     setMarketHydrating(false)
     useAppStore.setState({ profileDisplayNames: {} })
@@ -69,6 +70,7 @@ export async function bootstrapWebApp(): Promise<void> {
     storeCatalogs: json.market.storeCatalogs,
     threads: json.market.threads,
     routeOfferPublic: json.market.routeOfferPublic,
+    workspacePersistStoreId: null,
   })
   setMarketHydrating(false)
 

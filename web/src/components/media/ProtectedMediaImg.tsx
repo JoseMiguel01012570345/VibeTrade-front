@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '../../lib/cn'
 import {
   fetchMediaObjectUrl,
@@ -41,6 +41,15 @@ export function ProtectedMediaImg({
     return Boolean(getCachedMediaObjectUrl(src))
   })
   const [fetchFailed, setFetchFailed] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+
+  /** Imágenes cacheadas pueden cargar antes de que `onLoad` se enlace; `complete` lo detecta. */
+  function syncLoadedIfImageComplete() {
+    queueMicrotask(() => {
+      const el = imgRef.current
+      if (el?.complete) setImgLoaded(true)
+    })
+  }
 
   useEffect(() => {
     setFetchFailed(false)
@@ -54,6 +63,7 @@ export function ProtectedMediaImg({
       setDisplaySrc(src)
       setFetching(false)
       setImgLoaded(false)
+      syncLoadedIfImageComplete()
       return
     }
     const cached = getCachedMediaObjectUrl(src)
@@ -74,6 +84,7 @@ export function ProtectedMediaImg({
           setDisplaySrc(obj)
           setFetching(false)
           setImgLoaded(false)
+          syncLoadedIfImageComplete()
         }
       } catch {
         if (active) {
@@ -104,6 +115,7 @@ export function ProtectedMediaImg({
     <span className={cn('relative inline-block max-w-full', wrapperClassName)}>
       {displaySrc ? (
         <img
+          ref={imgRef}
           src={displaySrc}
           alt={alt}
           className={cn(className, showSpinner && 'opacity-0')}

@@ -1,8 +1,15 @@
-import { useMemo, useState } from "react";
+import { type ChangeEvent, useId, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { HelpCircle, Loader2, Upload, X } from "lucide-react";
 import { UploadBlockingOverlay } from "../../../components/UploadBlockingOverlay";
+import { ProtectedMediaImg } from "../../../components/media/ProtectedMediaImg";
 import { assertEntityPayloadUnderLimit } from "../../../utils/media/payloadLimits";
-import { HelpCircle } from "lucide-react";
+import {
+  uploadMedia,
+  mediaApiUrl,
+  isProtectedMediaUrl,
+  releaseMediaObjectUrl,
+} from "../../../utils/media/mediaClient";
 import {
   catalogMonedasList,
   type StoreService,
@@ -26,7 +33,14 @@ import { cn } from "../../../lib/cn";
 import { VtSelect } from "../../../components/VtSelect";
 import { VtMultiSelect } from "../../../components/VtMultiSelect";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
-import { fixSplitLines } from "./helpers";
+import {
+  fixSplitLines,
+  newAttachmentId,
+  productPhotoSlotsFromUrls,
+  revokeIfBlob,
+  serviceCatalogImagePhotoUrlsFromSlots,
+  type ProductPhotoSlot,
+} from "./helpers";
 
 type Props = Readonly<{
   open: boolean;
@@ -49,6 +63,7 @@ export function ServiceEditorModal({
   onClose,
   onSave,
 }: Props) {
+  const photoInputId = useId();
   const [form, setForm] = useState(() => ({
     ...initial,
     published: initial.published !== false,
@@ -57,8 +72,92 @@ export function ServiceEditorModal({
     initial.riesgos.items.join("\n"),
   );
   const [depText, setDepText] = useState(initial.dependencias.items.join("\n"));
+  const [photoSlots, setPhotoSlots] = useState<ProductPhotoSlot[]>(() =>
+    productPhotoSlotsFromUrls(initial.photoUrls ?? []),
+  );
+  const [photoPendingCount, setPhotoPendingCount] = useState(0);
   const [showVal, setShowVal] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
+
+  function onPickServicePhoto(e: ChangeEvent<HTMLInputElement>) {
+    void (async () => {
+      const input = e.currentTarget;
+      const picked = input.files ? Array.from(input.files) : [];
+      input.value = "";
+      if (!picked.length) return;
+      const imageFiles = picked.filter((f) => f.type.startsWith("image/"));
+      for (const file of picked) {
+        if (!file.type.startsWith("image/")) {
+          toast.error(`No es imagen: ${file.name}`);
+        }
+      }
+      if (!imageFiles.length) return;
+      setPhotoPendingCount(imageFiles.length);
+      setUploadBusy(true);
+      try {
+        const added: ProductPhotoSlot[] = [];
+        for (const file of imageFiles) {
+          try {
+            const uploaded = await uploadMedia(file);
+            const url = mediaApiUrl(uploaded.id);
+            added.push({
+              id: newAttachmentId(),
+              url,
+              fileName: file.name,
+              contentKind: "image",
+            });
+          } catch (err) {
+            const msg =
+              err instanceof Error && err.message
+                ? err.message
+                : `No se pudo subir: ${file.name}`;
+            toast.error(msg);
+          } finally {
+            setPhotoPendingCount((c) => Math.max(0, c - 1));
+          }
+        }
+        if (!added.length) return;
+        const candidateUrls = [
+          ...serviceCatalogImagePhotoUrlsFromSlots(photoSlots),
+          ...added.map((a) => a.url),
+        ];
+        const candidateSnapshot = { ...form, photoUrls: candidateUrls };
+        const limitErr = assertEntityPayloadUnderLimit(
+          candidateSnapshot,
+          "Este servicio",
+        );
+        if (limitErr) {
+          toast.error(limitErr);
+          return;
+        }
+        setPhotoSlots((prev) => [...prev, ...added]);
+      } finally {
+        setUploadBusy(false);
+        setPhotoPendingCount(0);
+      }
+    })();
+  }
+
+  function removeServicePhoto(slotId: string) {
+    setPhotoSlots((prev) => {
+      const slot = prev.find((p) => p.id === slotId);
+      if (slot) {
+        if (isProtectedMediaUrl(slot.url)) releaseMediaObjectUrl(slot.url);
+        revokeIfBlob(slot.url);
+      }
+      return prev.filter((p) => p.id !== slotId);
+    });
+  }
+
+  function clearAllServicePhotos() {
+    setPhotoSlots((prev) => {
+      prev.forEach((p) => {
+        if (isProtectedMediaUrl(p.url)) releaseMediaObjectUrl(p.url);
+        revokeIfBlob(p.url);
+      });
+      return [];
+    });
+  }
 
   const categorySelectOptions = useMemo(() => {
     const base = categoryOptions.length > 0 ? categoryOptions : [];
@@ -338,11 +437,101 @@ export function ServiceEditorModal({
                 rows={3}
               />
             </label>
+            <div className={fieldRootWithInvalid(false)}>
+              <span className={fieldLabel}>Fotos del servicio (opcional)</span>
+              <p className="vt-muted mb-2 text-[11px] leading-snug">
+                Podés sumar varias imágenes; se muestran en la ficha pública y en la oferta.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  id={photoInputId}
+                  type="file"
+                  className="sr-only"
+                  accept="image/*"
+                  multiple
+                  onChange={onPickServicePhoto}
+                />
+                <label
+                  htmlFor={photoInputId}
+                  className="vt-btn vt-btn-sm inline-flex cursor-pointer items-center gap-2"
+                >
+                  <Upload size={16} aria-hidden /> Añadir fotos
+                </label>
+                {photoSlots.length ?
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-ghost vt-btn-sm text-[var(--muted)]"
+                    onClick={clearAllServicePhotos}
+                  >
+                    Quitar todas
+                  </button>
+                : null}
+              </div>
+              {photoSlots.length > 0 || photoPendingCount > 0 ?
+                <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+                    Vista previa ({photoSlots.length}
+                    {photoPendingCount > 0 ?
+                      ` · subiendo ${photoPendingCount}`
+                    : ""}
+                    )
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {photoSlots.map((slot) => (
+                      <div
+                        key={slot.id}
+                        className="relative w-[calc(50%-4px)] min-[480px]:w-[140px] shrink-0 overflow-hidden rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_88%,transparent)]"
+                      >
+                        <ProtectedMediaImg
+                          src={slot.url}
+                          alt=""
+                          wrapperClassName="w-full"
+                          className="aspect-square w-full object-cover"
+                        />
+                        <div
+                          className="truncate px-1.5 py-1 text-[10px] text-[var(--muted)]"
+                          title={slot.fileName}
+                        >
+                          {slot.fileName}
+                        </div>
+                        <button
+                          type="button"
+                          className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] shadow-sm hover:text-[#b91c1c]"
+                          title="Quitar esta foto"
+                          aria-label="Quitar esta foto"
+                          onClick={() => removeServicePhoto(slot.id)}
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    {Array.from({ length: photoPendingCount }).map((_, i) => (
+                      <div
+                        key={`svc-photo-pending-${i}`}
+                        className="relative flex aspect-square w-[calc(50%-4px)] min-[480px]:w-[140px] shrink-0 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))]"
+                      >
+                        <Loader2
+                          className="h-7 w-7 animate-spin text-[var(--muted)]"
+                          aria-hidden
+                        />
+                        <span className="px-1 text-[9px] font-semibold text-[var(--muted)]">
+                          Subiendo…
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              : null}
+            </div>
             <CustomFieldsEditor
               fields={form.customFields}
               onUploadingChange={setUploadBusy}
               onChange={(cf) => {
-                const next = { ...form, customFields: cf };
+                const next = {
+                  ...form,
+                  customFields: cf,
+                  photoUrls: serviceCatalogImagePhotoUrlsFromSlots(photoSlots),
+                };
                 const limitErr = assertEntityPayloadUnderLimit(
                   next,
                   "Este servicio",
@@ -351,7 +540,7 @@ export function ServiceEditorModal({
                   toast.error(limitErr);
                   return;
                 }
-                setForm(next);
+                setForm({ ...form, customFields: cf });
               }}
               showValidation={showVal}
             />
@@ -396,6 +585,7 @@ export function ServiceEditorModal({
                 const monedas = catalogMonedasList({ monedas: form.monedas });
                 const snapshot: Omit<StoreService, "id" | "storeId"> = {
                   ...form,
+                  photoUrls: serviceCatalogImagePhotoUrlsFromSlots(photoSlots),
                   monedas: monedas.length ? monedas : undefined,
                   published: form.published !== false,
                   riesgos: {

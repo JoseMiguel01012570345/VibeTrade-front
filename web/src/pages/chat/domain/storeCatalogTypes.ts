@@ -71,6 +71,8 @@ export type StoreService = {
   entregables: string;
   garantias: { enabled: boolean; texto: string };
   propIntelectual: string;
+  /** Imágenes de la ficha (mismo contrato que productos). */
+  photoUrls?: string[];
   customFields: StoreCustomField[];
 };
 
@@ -466,6 +468,7 @@ export function emptyStoreServiceInput(): Omit<StoreService, "id" | "storeId"> {
     entregables: "",
     garantias: { enabled: false, texto: "" },
     propIntelectual: "",
+    photoUrls: [],
     customFields: [],
   };
 }

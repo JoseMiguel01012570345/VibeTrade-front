@@ -13,6 +13,8 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => ({
   storeCatalogs: {},
   threads: {},
   routeOfferPublic: {},
+  workspacePersistStoreId: null,
+  setWorkspacePersistStoreId: (storeId) => set({ workspacePersistStoreId: storeId }),
 
   ...createOffersThreadsSlice(set, get),
   ...createRouteOfferPublicSlice(set, get),

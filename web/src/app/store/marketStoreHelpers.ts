@@ -88,7 +88,7 @@ export function syncOwnQaIntoMessages(
 ): Message[] {
   if (!buyerId) return prev
 
-  const ownQa = [...offer.qa]
+  const ownQa = [...(offer.qa ?? [])]
     .filter((q) => q.askedBy.id === buyerId)
     .sort((a, b) => a.createdAt - b.createdAt)
 
@@ -138,7 +138,7 @@ export function buildPurchaseThreadMessages(offer: Offer, buyerId: string | unde
 
   if (!buyerId) return messages
 
-  const ownQa = [...offer.qa]
+  const ownQa = [...(offer.qa ?? [])]
     .filter((q) => q.askedBy.id === buyerId)
     .sort((a, b) => a.createdAt - b.createdAt)
 

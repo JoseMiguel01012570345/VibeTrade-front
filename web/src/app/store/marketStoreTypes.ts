@@ -66,10 +66,17 @@ export type Offer = {
   storeId: string
   title: string
   price: string
-  location: string
+  /** Texto de vitrina: descripción corta (producto) o ficha de servicio. */
+  description?: string
+  /**
+   * Legado / demo: la ubicación de la oferta ya no viene del API (usar `stores[storeId].location`).
+   */
+  location?: string | StoreLocationPoint | null
   tags: string[]
   imageUrl: string
-  qa: QAItem[]
+  /** Galería (mismas URLs que catálogo); la primera suele coincidir con imageUrl. */
+  imageUrls?: string[]
+  qa?: QAItem[]
 }
 
 export type ReplyQuote = {
@@ -255,6 +262,12 @@ export type MarketState = {
   threads: Record<string, Thread>
   /** Ofertas de ruta publicada: tramos, suscripciones y validación (demo). */
   routeOfferPublic: Record<string, RouteOfferPublicState>
+  /**
+   * Si está definido, el PUT `/market/workspace` envía solo `stores` + `storeCatalogs` de esa tienda
+   * y objetos vacíos en offers / threads / routeOfferPublic (el servidor fusiona catálogos faltantes).
+   */
+  workspacePersistStoreId: string | null
+  setWorkspacePersistStoreId: (storeId: string | null) => void
 
   ask: (offerId: string, askedBy: { id: string; name: string; trustScore: number }, question: string) => string
   answer: (offerId: string, qaId: string, answer: string) => void

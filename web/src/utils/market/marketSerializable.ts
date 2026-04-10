@@ -16,3 +16,20 @@ export function marketDataSnapshot(s: MarketState): MarketSerializableSlice {
     routeOfferPublic: s.routeOfferPublic,
   }
 }
+
+/** Cuerpo del PUT `/market/workspace`: snapshot completo o solo la tienda en edición. */
+export function marketWorkspacePutPayload(s: MarketState): MarketSerializableSlice {
+  const id = s.workspacePersistStoreId
+  if (!id) return marketDataSnapshot(s)
+  const store = s.stores[id]
+  const catalog = s.storeCatalogs[id]
+  if (!store || !catalog) return marketDataSnapshot(s)
+  return {
+    stores: { [id]: store },
+    storeCatalogs: { [id]: catalog },
+    offers: {},
+    offerIds: [],
+    threads: {},
+    routeOfferPublic: {},
+  }
+}

@@ -1,8 +1,42 @@
 import type { OwnerStoreFormValues, StoreBadge } from "../../../app/store/marketStoreTypes";
 import type { StoreCustomAttachment } from "../../chat/domain/storeCatalogTypes";
+import { isProtectedMediaUrl } from "../../../utils/media/mediaClient";
 import { revokeObjectUrlIfNeeded } from "../../../utils/media/dataUrl";
 
-export type ProductPhotoSlot = { id: string; url: string; fileName: string };
+export type ProductPhotoSlot = {
+  id: string;
+  url: string;
+  fileName: string;
+  /** Si existe, viene del upload; si no, se infiere de la URL al hidratar. */
+  contentKind?: StoreCustomAttachment["kind"];
+};
+
+/** Clasificación heurística para URLs ya persistidas (p. ej. sin metadata en el slot). */
+export function inferCatalogMediaKindFromUrl(url: string): StoreCustomAttachment["kind"] {
+  const u = url.trim();
+  if (!u) return "other";
+  const lower = u.toLowerCase();
+  if (lower.startsWith("data:image/")) return "image";
+  if (lower.startsWith("data:application/pdf") || lower.includes("application/pdf")) return "pdf";
+  if (/\.(pdf)(\?|#|$)/i.test(lower)) return "pdf";
+  if (/\.(jpe?g|png|gif|webp|avif|svg)(\?|#|$)/i.test(lower)) return "image";
+  // Referencias internas: el servidor filtra por MimeType al persistir la ficha.
+  if (isProtectedMediaUrl(u)) return "image";
+  if (lower.startsWith("http://") || lower.startsWith("https://")) return "image";
+  return "other";
+}
+
+/** Solo URLs aptas para `photoUrls` de servicios (excluye PDFs y otros documentos). */
+export function serviceCatalogImagePhotoUrlsFromSlots(slots: ProductPhotoSlot[]): string[] {
+  return slots
+    .filter((s) => {
+      if (s.contentKind === "pdf" || s.contentKind === "other") return false;
+      const kind = s.contentKind ?? inferCatalogMediaKindFromUrl(s.url);
+      return kind === "image";
+    })
+    .map((s) => s.url.trim())
+    .filter(Boolean);
+}
 
 export function fixSplitLines(s: string): string[] {
   return s
@@ -19,6 +53,7 @@ export function productPhotoSlotsFromUrls(urls: string[]): ProductPhotoSlot[] {
       id: `product-photo-existing-${i}`,
       url,
       fileName: `Foto ${i + 1}`,
+      contentKind: inferCatalogMediaKindFromUrl(url),
     }));
 }
 

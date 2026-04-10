@@ -142,6 +142,7 @@ export function ProductEditorModal({
               id: newAttachmentId(),
               url,
               fileName: file.name,
+              contentKind: "image",
             });
           } catch (e) {
             const msg =

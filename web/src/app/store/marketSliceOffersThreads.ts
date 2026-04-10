@@ -44,7 +44,7 @@ ask: (offerId, askedBy, question) => {
           askedBy,
           createdAt: Date.now(),
         },
-        ...offer.qa,
+        ...(offer.qa ?? []),
       ],
     }
     return { ...s, offers: { ...s.offers, [offerId]: next } }
@@ -59,7 +59,7 @@ answer: (offerId, qaId, answerText) => {
     const store = s.stores[offer.storeId]
     const next: Offer = {
       ...offer,
-      qa: offer.qa.map((q) =>
+      qa: (offer.qa ?? []).map((q) =>
         q.id === qaId
           ? {
               ...q,

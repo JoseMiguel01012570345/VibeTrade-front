@@ -1,13 +1,9 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useAppStore } from "../../app/store/useAppStore";
-import type { Offer } from "../../app/store/useMarketStore";
+import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
+import type { Offer, StoreBadge } from "../../app/store/useMarketStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { RouteOfferPreview } from "../offer/RouteOfferPreview";
-import {
-  isTransportFeedOffer,
-  userHasTransportService,
-} from "../../utils/user/transportEligibility";
 
 function OffersTab({
   items,
@@ -15,7 +11,7 @@ function OffersTab({
   routeOfferPublic,
 }: Readonly<{
   items: Offer[];
-  stores: Record<string, { id: string; name: string }>;
+  stores: Record<string, StoreBadge>;
   routeOfferPublic: Record<string, unknown>;
 }>) {
   return (
@@ -32,10 +28,14 @@ function OffersTab({
               to={`/offer/${o.id}`}
               className="group block h-[190px] overflow-hidden bg-gray-200"
             >
-              <img
-                src={o.imageUrl}
+              <ProtectedMediaImg
+                src={
+                  o.imageUrl?.trim() ||
+                  (o.tags.includes("Servicio") ? "/tool.png" : undefined)
+                }
                 alt={o.title}
-                className="block h-full w-full scale-[1.02] object-cover transition-transform duration-[240ms] ease-out group-hover:scale-[1.06]"
+                wrapperClassName="block h-full w-full min-h-[190px]"
+                className="block h-full w-full min-h-[190px] scale-[1.02] object-cover transition-transform duration-[240ms] ease-out group-hover:scale-[1.06]"
               />
             </Link>
 
@@ -49,8 +49,11 @@ function OffersTab({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-2.5">
-                <div className="vt-muted">{o.location}</div>
+              {o.description?.trim() ?
+                <p className="vt-muted line-clamp-2 text-[13px] leading-snug">{o.description.trim()}</p>
+              : null}
+
+              <div className="flex items-center justify-end gap-2.5">
                 <Link
                   to={`/store/${store.id}`}
                   className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-2.5 py-1.5 text-xs font-extrabold text-[var(--text)]"
@@ -85,34 +88,23 @@ function OffersTab({
 // StoresTab moved to /stores route (StoresSearchPage).
 
 export function HomePage() {
-  const me = useAppStore((s) => s.me);
   const offerIds = useMarketStore((s) => s.offerIds);
   const offers = useMarketStore((s) => s.offers);
   const stores = useMarketStore((s) => s.stores);
-  const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
   const routeOfferPublic = useMarketStore((s) => s.routeOfferPublic);
 
-  const hasTransportService = useMemo(
-    () => userHasTransportService(me.id, stores, storeCatalogs),
-    [me.id, stores, storeCatalogs],
-  );
-
-  const items = useMemo(() => {
-    const list = offerIds.map((id) => offers[id]).filter(Boolean);
-    if (!hasTransportService) return list;
-    return list.filter((o) => isTransportFeedOffer(o));
-  }, [offerIds, offers, hasTransportService]) as Offer[];
-
-  const subtitle = hasTransportService
-    ? "Feed para transportistas: ofertas de flete, logística y afines (solo lo ves si tenés al menos un servicio de transporte publicado en tu tienda)."
-    : "Explorá ofertas publicadas en la plataforma.";
+  const items = useMemo((): Offer[] => {
+    return offerIds.map((id) => offers[id]).filter((o): o is Offer => o != null);
+  }, [offerIds, offers]);
 
   return (
     <div className="container vt-page">
       <div className="mb-3 mt-2 flex items-center justify-between gap-3">
         <div>
           <h1 className="vt-h1">Ofertas</h1>
-          <div className="vt-muted">{subtitle}</div>
+          <div className="vt-muted">
+            Explorá ofertas publicadas en la plataforma.
+          </div>
         </div>
         <Link className="vt-btn" to="/stores">
           Ver tiendas
