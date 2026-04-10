@@ -33,7 +33,7 @@ createOwnerStore: (ownerUserId, values) => {
     verified: false,
     categories: cats.length ? cats : ['Sin categoría'],
     transportIncluded: values.transportIncluded,
-    trustScore: 65,
+    trustScore: 80,
     ownerUserId,
     ...(values.location ? { location: values.location } : {}),
   }

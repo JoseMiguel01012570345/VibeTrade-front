@@ -12,6 +12,7 @@ import {
 import type { StoreBadge } from "../../../app/store/marketStoreTypes";
 import { ProtectedMediaImg } from "../../../components/media/ProtectedMediaImg";
 import type { StoreCatalog } from "../../chat/domain/storeCatalogTypes";
+import { StoreTrustMini } from "../../../components/StoreTrustMini";
 
 type Props = Readonly<{
   store: StoreBadge;
@@ -96,6 +97,9 @@ export function OwnerStoreCard({
                   <Truck size={12} aria-hidden /> Transporte:{" "}
                   {b.transportIncluded ? "incluido" : "no incluido"}
                 </span>
+              </div>
+              <div className="mt-2 max-w-[320px]">
+                <StoreTrustMini score={b.trustScore} />
               </div>
               {cat?.pitch ? (
                 <p className="mt-2 text-[13px] leading-snug">{cat.pitch}</p>

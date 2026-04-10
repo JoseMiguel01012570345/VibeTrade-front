@@ -31,7 +31,7 @@ type Props = Readonly<{
   categoryOptions: string[];
   onClose: () => void;
   /** Devuelve true solo si se persistió en el store; si es false, el modal permanece abierto (p. ej. nombre duplicado). */
-  onSave: (v: OwnerStoreFormValues) => boolean;
+  onSave: (v: OwnerStoreFormValues) => boolean | Promise<boolean>;
 }>;
 
 export function StoreFormModal({
@@ -182,7 +182,7 @@ export function StoreFormModal({
           <button
             type="button"
             className="vt-btn vt-btn-primary"
-            onClick={() => {
+            onClick={async () => {
               const payload: OwnerStoreFormValues = {
                 name: name.trim(),
                 categories: categoriesDraft,
@@ -197,7 +197,9 @@ export function StoreFormModal({
                 return;
               }
               setShowVal(false);
-              if (onSave(payload)) onClose();
+              const result = onSave(payload);
+              const ok = result instanceof Promise ? await result : result;
+              if (ok) onClose();
             }}
           >
             Guardar

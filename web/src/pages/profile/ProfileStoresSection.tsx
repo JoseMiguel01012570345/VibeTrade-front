@@ -5,7 +5,11 @@ import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { UploadBlockingOverlay } from "../../components/UploadBlockingOverlay";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
-import { setMarketHydrating } from "../../utils/market/marketPersistence";
+import {
+  saveMarketWorkspace,
+  setMarketHydrating,
+} from "../../utils/market/marketPersistence";
+import { marketDataSnapshot } from "../../utils/market/marketSerializable";
 import { mediaApiUrl, uploadMedia } from "../../utils/media/mediaClient";
 import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
 import { VtSelect } from "../../components/VtSelect";
@@ -19,6 +23,7 @@ import {
   matchesCategoryFilter,
   matchesNameQuery,
 } from "../../utils/market/nameCategoryFilter";
+import { mergeStoreCatalogWithLocalExtras } from "../chat/domain/storeCatalogTypes";
 
 export function ProfileStoresSection({
   ownerUserId,
@@ -40,6 +45,11 @@ export function ProfileStoresSection({
 
   const [storeListNameQ, setStoreListNameQ] = useState("");
   const [storeListCategory, setStoreListCategory] = useState("");
+  const [storeListTrustMin, setStoreListTrustMin] = useState("");
+
+  const TRUST_SCORE_MAX = 100;
+  // C# float.MinValue ~= -3.4028235e38; pedido: mínimo -float.min.
+  const TRUST_SCORE_FILTER_MIN = -3.402823466e38;
 
   const storeListCategoryOptions = useMemo(() => {
     const set = new Set<string>();
@@ -53,13 +63,19 @@ export function ProfileStoresSection({
   }, [myStores]);
 
   const filteredMyStores = useMemo(() => {
+    const trustMinNum = Number(storeListTrustMin);
+    const hasTrustMin =
+      storeListTrustMin.trim() !== "" && Number.isFinite(trustMinNum);
     return myStores.filter((b) => {
       if (!matchesNameQuery(b.name, storeListNameQ)) return false;
       const sel = storeListCategory.trim();
-      if (!sel) return true;
-      return b.categories.some((c) => matchesCategoryFilter(c, sel));
+      if (sel && !b.categories.some((c) => matchesCategoryFilter(c, sel))) {
+        return false;
+      }
+      if (hasTrustMin && !(b.trustScore >= trustMinNum)) return false;
+      return true;
     });
-  }, [myStores, storeListNameQ, storeListCategory]);
+  }, [myStores, storeListNameQ, storeListCategory, storeListTrustMin]);
 
   const me = useAppStore((s) => s.me);
   const storeIdsKey = useMemo(
@@ -317,7 +333,7 @@ export function ProfileStoresSection({
             <>
               <div className="mb-3 flex flex-col gap-2 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-end">
                 <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)]">
-                  Buscar por nombre
+                  <span>Buscar por nombre</span>
                   <input
                     type="search"
                     className="vt-input"
@@ -328,7 +344,7 @@ export function ProfileStoresSection({
                   />
                 </label>
                 <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
-                  Categoría
+                  <span>Categoría</span>
                   <VtSelect
                     value={storeListCategory}
                     onChange={setStoreListCategory}
@@ -341,6 +357,19 @@ export function ProfileStoresSection({
                         label: c,
                       })),
                     ]}
+                  />
+                </label>
+                <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-48">
+                  <span>Confianza mínima</span>
+                  <input
+                    inputMode="decimal"
+                    className="vt-input"
+                    placeholder="Ej: 80"
+                    value={storeListTrustMin}
+                    onChange={(e) => setStoreListTrustMin(e.target.value)}
+                    min={TRUST_SCORE_FILTER_MIN}
+                    max={TRUST_SCORE_MAX}
+                    aria-label="Filtrar tiendas por confianza mínima"
                   />
                 </label>
               </div>
@@ -473,7 +502,7 @@ export function ProfileStoresSection({
           <>
             <div className="mb-3 flex flex-col gap-2 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-end">
               <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)]">
-                Buscar por nombre
+                <span>Buscar por nombre</span>
                 <input
                   type="search"
                   className="vt-input"
@@ -484,7 +513,7 @@ export function ProfileStoresSection({
                 />
               </label>
               <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
-                Categoría
+                <span>Categoría</span>
                 <VtSelect
                   value={storeListCategory}
                   onChange={setStoreListCategory}
@@ -497,6 +526,19 @@ export function ProfileStoresSection({
                       label: c,
                     })),
                   ]}
+                />
+              </label>
+              <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-48">
+                <span>Confianza mínima</span>
+                <input
+                  inputMode="decimal"
+                  className="vt-input"
+                  placeholder="Ej: 80"
+                  value={storeListTrustMin}
+                  onChange={(e) => setStoreListTrustMin(e.target.value)}
+                  min={TRUST_SCORE_FILTER_MIN}
+                  max={TRUST_SCORE_MAX}
+                  aria-label="Filtrar mis tiendas por confianza mínima"
                 />
               </label>
             </div>
@@ -555,16 +597,43 @@ export function ProfileStoresSection({
               location: undefined,
             }}
             onClose={() => setCreateOpen(false)}
-            onSave={(v) => {
+            onSave={async (v) => {
               const id = createOwnerStore(ownerUserId, v);
-              if (id) {
-                toast.success("Tienda creada");
+              if (!id) {
+                toast.error(
+                  "No se pudo crear: ya existe una tienda en la plataforma con ese nombre.",
+                );
+                return false;
+              }
+              try {
+                await saveMarketWorkspace(marketDataSnapshot(useMarketStore.getState()));
+                if (me.id) {
+                  const data = await fetchStoreDetail(id, { userId: me.id });
+                  setMarketHydrating(true);
+                  try {
+                    useMarketStore.setState((s) => ({
+                      ...s,
+                      stores: { ...s.stores, [id]: data.store },
+                      storeCatalogs: {
+                        ...s.storeCatalogs,
+                        [id]: mergeStoreCatalogWithLocalExtras(
+                          s.storeCatalogs[id],
+                          data.catalog,
+                        ),
+                      },
+                    }));
+                  } finally {
+                    setMarketHydrating(false);
+                  }
+                }
+              } catch {
+                toast.error(
+                  "Tienda creada en el dispositivo, pero no se pudo confirmar en el servidor. Reintentá recargar.",
+                );
                 return true;
               }
-              toast.error(
-                "No se pudo crear: ya existe una tienda en la plataforma con ese nombre.",
-              );
-              return false;
+              toast.success("Tienda creada");
+              return true;
             }}
           />
         ) : null}

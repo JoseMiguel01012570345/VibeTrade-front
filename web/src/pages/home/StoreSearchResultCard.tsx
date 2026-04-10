@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { MapPin, Package, Store, Wrench } from "lucide-react";
 import type { StoreBadge } from "../../app/store/marketStoreTypes";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
+import { StoreTrustMini } from "../../components/StoreTrustMini";
 
 type Props = Readonly<{
   store: StoreBadge;
@@ -65,6 +66,9 @@ export function StoreSearchResultCard({
                     <MapPin size={12} aria-hidden /> {fmtKm(distanceKm)}
                   </span>
                 ) : null}
+              </div>
+              <div className="mt-2 max-w-[300px]">
+                <StoreTrustMini score={s.trustScore} />
               </div>
             </div>
           </div>

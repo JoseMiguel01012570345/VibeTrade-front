@@ -9,6 +9,7 @@ export function StoresSearchPage() {
   const [storeNameQ, setStoreNameQ] = useState("");
   const [storeCategory, setStoreCategory] = useState("");
   const [km, setKm] = useState("");
+  const [trustMin, setTrustMin] = useState("");
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [catOptions, setCatOptions] = useState<string[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -59,6 +60,15 @@ export function StoresSearchPage() {
       globalThis.clearTimeout(t);
     };
   }, [storeNameQ, storeCategory, km, geo]);
+
+  const TRUST_SCORE_MAX = 100;
+  const TRUST_SCORE_FILTER_MIN = -3.402823466e38;
+  const trustMinNum = Number(trustMin);
+  const filteredResults = results.filter((it) => {
+    if (trustMin.trim() === "") return true;
+    if (!Number.isFinite(trustMinNum)) return true;
+    return it.store.trustScore >= trustMinNum;
+  });
 
   return (
     <div className="container vt-page">
@@ -131,6 +141,20 @@ export function StoresSearchPage() {
               aria-label="Radio de búsqueda en km"
             />
           </label>
+
+          <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-44">
+            <span>Confianza mínima</span>
+            <input
+              inputMode="decimal"
+              className="vt-input"
+              placeholder="Ej: 80"
+              value={trustMin}
+              onChange={(e) => setTrustMin(e.target.value)}
+              min={TRUST_SCORE_FILTER_MIN}
+              max={TRUST_SCORE_MAX}
+              aria-label="Filtrar tiendas por confianza mínima"
+            />
+          </label>
         </div>
 
         {status === "loading" ? (
@@ -141,14 +165,14 @@ export function StoresSearchPage() {
             No se pudo buscar tiendas. ¿Backend en marcha?
           </div>
         ) : null}
-        {status === "ready" && results.length === 0 ? (
+        {status === "ready" && filteredResults.length === 0 ? (
           <div className="vt-muted text-[13px]">
             Ninguna tienda coincide con el filtro.
           </div>
         ) : null}
-        {status === "ready" && results.length > 0 ? (
+        {status === "ready" && filteredResults.length > 0 ? (
           <div className="mt-3 flex flex-col gap-3">
-            {results.map((it) => (
+            {filteredResults.map((it) => (
               <StoreSearchResultCard
                 key={it.store.id}
                 store={it.store}

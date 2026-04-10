@@ -4,6 +4,7 @@ import type { StoreBadge } from "../../app/store/marketStoreTypes";
 import type { StoreCatalog } from "../chat/domain/storeCatalogTypes";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { StoreLocationPreview } from "./StoreLocationPreview";
+import { StoreTrustMini } from "../../components/StoreTrustMini";
 
 export function StoreIdentityBlock({
   store,
@@ -85,6 +86,10 @@ export function StoreIdentityBlock({
             forma parte de la oferta salvo que se negocie en el acuerdo.
           </span>
         ) : null}
+      </div>
+
+      <div className="mt-3 max-w-sm">
+        <StoreTrustMini score={store.trustScore} />
       </div>
 
       {store.location ? (
