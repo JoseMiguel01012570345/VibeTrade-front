@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { AlertTriangle, Calendar, CheckCircle2, Truck } from "lucide-react";
 import { cn } from "../../lib/cn";
 import type { StoreBadge } from "../../app/store/marketStoreTypes";
 import type { StoreCatalog } from "../chat/domain/storeCatalogTypes";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
+import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 import { StoreLocationPreview } from "./StoreLocationPreview";
 import { StoreTrustMini } from "../../components/StoreTrustMini";
 
@@ -15,17 +17,30 @@ export function StoreIdentityBlock({
   catalog: StoreCatalog | undefined;
   joinedLabel: string | null;
 }>) {
+  const [avatarLightboxUrl, setAvatarLightboxUrl] = useState<string | null>(
+    null,
+  );
+
   return (
     <div className="vt-card vt-card-pad">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           {store.avatarUrl ? (
-            <ProtectedMediaImg
-              src={store.avatarUrl}
-              alt=""
-              wrapperClassName="mt-0.5 h-14 w-14 shrink-0"
-              className="h-14 w-14 rounded-[16px] border border-[var(--border)] object-cover"
-            />
+            <div className="relative mt-0.5 h-14 w-14 shrink-0">
+              <ProtectedMediaImg
+                src={store.avatarUrl}
+                alt=""
+                wrapperClassName="h-14 w-14"
+                className="h-14 w-14 rounded-[16px] border border-[var(--border)] object-cover"
+              />
+              <button
+                type="button"
+                className="absolute inset-0 z-[1] cursor-zoom-in rounded-[16px] bg-transparent"
+                aria-label="Ver imagen de la tienda ampliada"
+                title="Ver imagen ampliada"
+                onClick={() => setAvatarLightboxUrl(store.avatarUrl!)}
+              />
+            </div>
           ) : null}
           <div className="min-w-0">
             <div className="text-[22px] font-black tracking-[-0.03em]">
@@ -95,6 +110,11 @@ export function StoreIdentityBlock({
       {store.location ? (
         <StoreLocationPreview location={store.location} />
       ) : null}
+
+      <ImageLightbox
+        url={avatarLightboxUrl}
+        onClose={() => setAvatarLightboxUrl(null)}
+      />
     </div>
   );
 }

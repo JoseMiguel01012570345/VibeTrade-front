@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Package } from "lucide-react";
 import {
   catalogMonedasList,
@@ -7,8 +8,10 @@ import {
   ProtectedMediaAnchor,
   ProtectedMediaImg,
 } from "../../components/media/ProtectedMediaImg";
+import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 
 export function ProductDetailCard({ p }: { p: StoreProduct }) {
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const monedasAceptadas = catalogMonedasList(p);
   const precioMoneda = p.monedaPrecio?.trim();
   return (
@@ -16,12 +19,21 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
       <div className="grid min-[640px]:grid-cols-[160px_1fr]">
         <div className="relative min-h-[120px] bg-[color-mix(in_oklab,var(--bg)_75%,var(--surface))]">
           {p.photoUrls[0] ? (
-            <ProtectedMediaImg
-              src={p.photoUrls[0]}
-              alt={p.name}
-              wrapperClassName="absolute inset-0 h-full w-full"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+            <>
+              <ProtectedMediaImg
+                src={p.photoUrls[0]}
+                alt={p.name}
+                wrapperClassName="absolute inset-0 h-full w-full"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <button
+                type="button"
+                className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
+                aria-label="Ver foto ampliada"
+                title="Ver foto ampliada"
+                onClick={() => setLightboxUrl(p.photoUrls[0])}
+              />
+            </>
           ) : (
             <div className="grid h-full min-h-[120px] place-items-center text-[var(--muted)]">
               <Package size={28} aria-hidden />
@@ -66,10 +78,9 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
               </div>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {p.photoUrls.slice(1).map((url, i) => (
-                  <ProtectedMediaAnchor
+                  <div
                     key={i}
-                    href={url}
-                    className="block overflow-hidden rounded-lg border border-[var(--border)]"
+                    className="relative block overflow-hidden rounded-lg border border-[var(--border)]"
                   >
                     <ProtectedMediaImg
                       src={url}
@@ -77,7 +88,14 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
                       wrapperClassName="block h-16 w-16 sm:h-20 sm:w-20"
                       className="h-16 w-16 object-cover sm:h-20 sm:w-20"
                     />
-                  </ProtectedMediaAnchor>
+                    <button
+                      type="button"
+                      className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
+                      aria-label="Ver foto ampliada"
+                      title="Ver foto ampliada"
+                      onClick={() => setLightboxUrl(url)}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
@@ -161,10 +179,9 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
                       <div className="mt-2 flex flex-wrap gap-2">
                         {f.attachments.map((att) =>
                           att.kind === "image" ? (
-                            <ProtectedMediaAnchor
+                            <div
                               key={att.id}
-                              href={att.url}
-                              className="block"
+                              className="relative block max-w-[160px]"
                             >
                               <ProtectedMediaImg
                                 src={att.url}
@@ -172,7 +189,14 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
                                 wrapperClassName="block max-w-[160px]"
                                 className="max-h-32 max-w-[160px] rounded border border-[var(--border)] object-contain"
                               />
-                            </ProtectedMediaAnchor>
+                              <button
+                                type="button"
+                                className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
+                                aria-label={`Ver ${att.fileName} ampliada`}
+                                title="Ver imagen ampliada"
+                                onClick={() => setLightboxUrl(att.url)}
+                              />
+                            </div>
                           ) : (
                             <ProtectedMediaAnchor
                               key={att.id}
@@ -192,6 +216,11 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
           </dl>
         </div>
       </div>
+
+      <ImageLightbox
+        url={lightboxUrl}
+        onClose={() => setLightboxUrl(null)}
+      />
     </div>
   );
 }

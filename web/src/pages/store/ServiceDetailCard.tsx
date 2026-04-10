@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Wrench } from "lucide-react";
 import {
   catalogMonedasList,
@@ -7,8 +8,10 @@ import {
   ProtectedMediaAnchor,
   ProtectedMediaImg,
 } from "../../components/media/ProtectedMediaImg";
+import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 
 export function ServiceDetailCard({ s }: { s: StoreService }) {
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const monedas = catalogMonedasList(s);
   return (
     <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3.5">
@@ -116,10 +119,9 @@ export function ServiceDetailCard({ s }: { s: StoreService }) {
                       <div className="mt-2 flex flex-wrap gap-2">
                         {f.attachments.map((att) =>
                           att.kind === "image" ? (
-                            <ProtectedMediaAnchor
+                            <div
                               key={att.id}
-                              href={att.url}
-                              className="block"
+                              className="relative block max-w-[160px]"
                             >
                               <ProtectedMediaImg
                                 src={att.url}
@@ -127,7 +129,14 @@ export function ServiceDetailCard({ s }: { s: StoreService }) {
                                 wrapperClassName="block max-w-[160px]"
                                 className="max-h-32 max-w-[160px] rounded border border-[var(--border)] object-contain"
                               />
-                            </ProtectedMediaAnchor>
+                              <button
+                                type="button"
+                                className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
+                                aria-label={`Ver ${att.fileName} ampliada`}
+                                title="Ver imagen ampliada"
+                                onClick={() => setLightboxUrl(att.url)}
+                              />
+                            </div>
                           ) : (
                             <ProtectedMediaAnchor
                               key={att.id}
@@ -147,6 +156,11 @@ export function ServiceDetailCard({ s }: { s: StoreService }) {
           </dl>
         </div>
       </div>
+
+      <ImageLightbox
+        url={lightboxUrl}
+        onClose={() => setLightboxUrl(null)}
+      />
     </div>
   );
 }

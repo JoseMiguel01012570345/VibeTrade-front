@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, MessageSquareText, ShoppingCart } from "lucide-react";
 import toast from "react-hot-toast";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
+import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { RouteOfferPreview } from "./RouteOfferPreview";
@@ -50,6 +51,9 @@ export function OfferPage() {
     [routeOffer],
   );
   const [pickedStopId, setPickedStopId] = useState<string | null>(null);
+  const [galleryLightboxUrl, setGalleryLightboxUrl] = useState<string | null>(
+    null,
+  );
   const chosenStopId = pickedStopId ?? openTramos[0]?.stopId ?? "";
 
   const pendingValidations = useMemo(
@@ -139,6 +143,15 @@ export function OfferPage() {
 
   const qaList = useMemo(() => offer?.qa ?? [], [offer]);
 
+  const heroImageSrc = useMemo(() => {
+    if (!offer) return "";
+    return (
+      galleryUrls[0] ||
+      offer.imageUrl?.trim() ||
+      (offer.tags.includes("Servicio") ? "/tool.png" : "")
+    );
+  }, [offer, galleryUrls]);
+
   if (!offerId || !offer) {
     return (
       <div className="container vt-page">
@@ -159,26 +172,44 @@ export function OfferPage() {
           >
             <ArrowLeft size={16} />
           </button>
-          <ProtectedMediaImg
-            src={
-              galleryUrls[0] ||
-              offer.imageUrl?.trim() ||
-              (offer.tags.includes("Servicio") ? "/tool.png" : "")
-            }
-            alt={offer.title}
-            wrapperClassName="block h-[260px] w-full"
-            className="block h-[260px] w-full object-cover"
-          />
+          <div className="relative">
+            <ProtectedMediaImg
+              src={heroImageSrc}
+              alt={offer.title}
+              wrapperClassName="block h-[260px] w-full"
+              className="block h-[260px] w-full object-cover"
+            />
+            {heroImageSrc ? (
+              <button
+                type="button"
+                className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
+                aria-label="Ver imagen a pantalla completa"
+                title="Ver imagen a pantalla completa"
+                onClick={() => setGalleryLightboxUrl(heroImageSrc)}
+              />
+            ) : null}
+          </div>
           {galleryUrls.length > 1 ? (
             <div className="flex gap-2 overflow-x-auto border-t border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] px-3 py-2.5">
               {galleryUrls.slice(1).map((src, i) => (
-                <ProtectedMediaImg
+                <div
                   key={`${src}-${i}`}
-                  src={src}
-                  alt=""
-                  wrapperClassName="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-lg border border-[var(--border)]"
-                  className="h-[72px] w-[72px] object-cover"
-                />
+                  className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-lg border border-[var(--border)]"
+                >
+                  <ProtectedMediaImg
+                    src={src}
+                    alt=""
+                    wrapperClassName="h-[72px] w-[72px]"
+                    className="h-[72px] w-[72px] object-cover"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
+                    aria-label="Ver imagen a pantalla completa"
+                    title="Ver imagen a pantalla completa"
+                    onClick={() => setGalleryLightboxUrl(src)}
+                  />
+                </div>
               ))}
             </div>
           ) : null}
@@ -508,6 +539,11 @@ export function OfferPage() {
           </div>
         </div>
       </div>
+
+      <ImageLightbox
+        url={galleryLightboxUrl}
+        onClose={() => setGalleryLightboxUrl(null)}
+      />
     </div>
   );
 }
