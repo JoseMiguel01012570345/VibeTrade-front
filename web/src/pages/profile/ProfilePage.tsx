@@ -12,6 +12,7 @@ import {
   Save,
   Send,
   User,
+  Users,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
@@ -26,6 +27,7 @@ import {
   modalSub,
 } from "../chat/styles/formModalStyles";
 import { ProfileStoresSection } from "./ProfileStoresSection";
+import { ContactsModal } from "./ContactsModal";
 import { reelTitlesById } from "../../utils/reels/reelsBootstrapState";
 import { logoutWebApp } from "../../utils/auth/logoutWebApp";
 import {
@@ -219,6 +221,7 @@ export function ProfilePage() {
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
+  const [contactsModalOpen, setContactsModalOpen] = useState(false);
 
   const tab: ProfileSection =
     sectionParam && isProfileSection(sectionParam) ? sectionParam : "account";
@@ -643,6 +646,25 @@ export function ProfilePage() {
                 />
               </label>
 
+              {isMe ? (
+                <div className="flex flex-col gap-2">
+                  <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+                    <Users size={14} /> Agenda en la plataforma
+                  </div>
+                  <p className="vt-muted max-w-md text-[13px] leading-snug">
+                    Guardá números de otros usuarios registrados para verlos con
+                    nombre y teléfono del perfil.
+                  </p>
+                  <button
+                    type="button"
+                    className="vt-btn inline-flex w-fit items-center gap-2"
+                    onClick={() => setContactsModalOpen(true)}
+                  >
+                    <Users size={16} aria-hidden /> Contactos
+                  </button>
+                </div>
+              ) : null}
+
               <div className="flex flex-col gap-2">
                 <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                   <ExternalLink size={14} /> Multi-cuenta (Instagram / Telegram
@@ -851,6 +873,11 @@ export function ProfilePage() {
           </div>
         )}
       </div>
+
+      <ContactsModal
+        open={contactsModalOpen}
+        onClose={() => setContactsModalOpen(false)}
+      />
 
       {socialModal && socialModalMeta ? (
         <div
