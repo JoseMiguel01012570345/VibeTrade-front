@@ -25,6 +25,24 @@ function contactPhoneLabel(c: UserContact): string {
   return "—";
 }
 
+function formatContactAddedAt(iso: string | undefined): string {
+  if (!iso?.trim()) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  // Fecha en español y hora 12 h con AM/PM (no formato 24 h).
+  const datePart = new Intl.DateTimeFormat("es", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(d);
+  const timePart = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(d);
+  return `${datePart}, ${timePart}`;
+}
+
 type Props = Readonly<{
   open: boolean;
   onClose: () => void;
@@ -173,6 +191,11 @@ export function ContactsModal({ open, onClose }: Props) {
                     <div className="vt-muted mt-0.5 font-mono text-[12px]">
                       {contactPhoneLabel(c)}
                     </div>
+                    {formatContactAddedAt(c.createdAt) ? (
+                      <div className="mt-1 text-[11px] font-semibold text-[var(--muted)]">
+                        Añadido: {formatContactAddedAt(c.createdAt)}
+                      </div>
+                    ) : null}
                   </div>
                   <button
                     type="button"

@@ -6,6 +6,8 @@ export type UserContact = {
   displayName: string;
   phoneDisplay: string | null;
   phoneDigits: string | null;
+  /** ISO 8601 — cuándo se añadió el contacto (API actual). */
+  createdAt?: string;
 };
 
 export async function fetchContacts(): Promise<UserContact[]> {
