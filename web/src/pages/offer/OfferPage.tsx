@@ -12,6 +12,18 @@ import {
   tramoNotifyLineFromOffer,
 } from "../chat/domain/routeSheetOfferGuards";
 import { userActsAsCarrierOnTransportOffer } from "../../utils/user/transportEligibility";
+import { errorToUserMessage } from "../../utils/http/apiErrorMessage";
+
+function formatInquiryDate(ms: number): string {
+  try {
+    return new Intl.DateTimeFormat("es", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date(ms));
+  } catch {
+    return "";
+  }
+}
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -43,7 +55,7 @@ export function OfferPage() {
   const validateRouteOfferTramo = useMarketStore(
     (s) => s.validateRouteOfferTramo,
   );
-  const ask = useMarketStore((s) => s.ask);
+  const submitOfferQuestion = useMarketStore((s) => s.submitOfferQuestion);
   const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer);
 
   const openTramos = useMemo(
@@ -54,6 +66,7 @@ export function OfferPage() {
   const [galleryLightboxUrl, setGalleryLightboxUrl] = useState<string | null>(
     null,
   );
+  const [inquirySending, setInquirySending] = useState(false);
   const chosenStopId = pickedStopId ?? openTramos[0]?.stopId ?? "";
 
   const pendingValidations = useMemo(
@@ -450,19 +463,40 @@ export function OfferPage() {
 
             <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
               <button
+                type="button"
                 className="vt-btn"
+                disabled={inquirySending}
                 onClick={() => {
-                  const question = globalThis.prompt("Escribe tu pregunta");
-                  if (!question) return;
-                  ask(
-                    offer.id,
-                    { id: me.id, name: me.name, trustScore: me.trustScore },
-                    question.trim(),
-                  );
-                  toast.success("Pregunta enviada");
+                  void (async () => {
+                    const question = globalThis.prompt("Escribe tu pregunta");
+                    if (!question?.trim()) return;
+                    setInquirySending(true);
+                    try {
+                      await submitOfferQuestion(
+                        offer.id,
+                        {
+                          id: me.id,
+                          name: me.name,
+                          trustScore: me.trustScore,
+                        },
+                        question.trim(),
+                      );
+                      toast.success("Pregunta enviada");
+                    } catch (e) {
+                      toast.error(
+                        errorToUserMessage(
+                          e,
+                          "No se pudo enviar la pregunta. Probá de nuevo.",
+                        ),
+                      );
+                    } finally {
+                      setInquirySending(false);
+                    }
+                  })();
                 }}
               >
-                <MessageSquareText size={16} /> Preguntar
+                <MessageSquareText size={16} />{" "}
+                {inquirySending ? "Enviando…" : "Preguntar"}
               </button>
               <button
                 className="vt-btn vt-btn-primary"
@@ -516,7 +550,13 @@ export function OfferPage() {
                       helper="Indicador de confianza del usuario (tooltip/helper)."
                     />
                   </div>
-                  <div>{qa.question}</div>
+                  {typeof qa.createdAt === "number" &&
+                  Number.isFinite(qa.createdAt) ? (
+                    <div className="mb-1.5 text-xs font-normal text-[var(--muted)]">
+                      {formatInquiryDate(qa.createdAt)}
+                    </div>
+                  ) : null}
+                  <div className="font-normal">{qa.question}</div>
                 </div>
                 {qa.answer ? (
                   <div className="border-t border-dashed border-[var(--border)] pt-2.5 text-[var(--text)]">

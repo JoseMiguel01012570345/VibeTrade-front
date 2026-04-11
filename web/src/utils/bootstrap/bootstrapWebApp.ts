@@ -4,7 +4,7 @@ import { useMarketStore } from '../../app/store/useMarketStore'
 import type { ReelComment } from '../../pages/reels/ReelCommentsPanel'
 import { apiFetch } from '../http/apiClient'
 import { getSessionToken } from '../http/sessionToken'
-import { setMarketHydrating, subscribeMarketPersistence } from '../market/marketPersistence'
+import { setMarketHydrating } from '../market/marketPersistence'
 import { setReelsBootstrap } from '../reels/reelsBootstrapState'
 import type { BootstrapResponse } from './bootstrapTypes'
 
@@ -83,9 +83,4 @@ export async function bootstrapWebApp(): Promise<void> {
     items: normalizeReelsCovers(json.reels.items),
     initialComments: normalizeReelsComments(json.reels.initialComments),
   })
-
-  if (!persistenceStarted) {
-    persistenceStarted = true
-    subscribeMarketPersistence(useMarketStore)
-  }
 }

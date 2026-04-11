@@ -6,10 +6,9 @@ import { useMarketStore } from "../../app/store/useMarketStore";
 import { UploadBlockingOverlay } from "../../components/UploadBlockingOverlay";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
 import {
-  saveMarketWorkspace,
+  saveMarketStoreProfiles,
   setMarketHydrating,
 } from "../../utils/market/marketPersistence";
-import { marketWorkspacePutPayload } from "../../utils/market/marketSerializable";
 import { mediaApiUrl, uploadMedia } from "../../utils/media/mediaClient";
 import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
 import { VtSelect } from "../../components/VtSelect";
@@ -100,13 +99,13 @@ export function ProfileStoresSection({
 
     let cancelled = false;
     void (async () => {
-      await Promise.all(
-        missing.map(async (b) => {
-          try {
-            const data = await fetchStoreDetail(b.id, { userId: me.id });
-            if (cancelled) return;
-            setMarketHydrating(true);
+      setMarketHydrating(true);
+      try {
+        await Promise.all(
+          missing.map(async (b) => {
             try {
+              const data = await fetchStoreDetail(b.id, { userId: me.id });
+              if (cancelled) return;
               useMarketStore.setState((s) => {
                 if (s.storeCatalogs[b.id] !== undefined) return s;
                 return {
@@ -115,14 +114,14 @@ export function ProfileStoresSection({
                   storeCatalogs: { ...s.storeCatalogs, [b.id]: data.catalog },
                 };
               });
-            } finally {
-              setMarketHydrating(false);
+            } catch {
+              /* detalle opcional; la tarjeta sigue sin preview */
             }
-          } catch {
-            /* detalle opcional; la tarjeta sigue sin preview */
-          }
-        }),
-      );
+          }),
+        );
+      } finally {
+        setMarketHydrating(false);
+      }
     })();
 
     return () => {
@@ -228,6 +227,9 @@ export function ProfileStoresSection({
         const next = { ...p };
         delete next[storeId];
         return next;
+      });
+      void saveMarketStoreProfiles(useMarketStore.getState()).catch(() => {
+        toast.error("No se pudo guardar la imagen en el servidor.");
       });
       toast.success("Imagen de tienda guardada");
     } else {
@@ -614,9 +616,7 @@ export function ProfileStoresSection({
                 return false;
               }
               try {
-                await saveMarketWorkspace(
-                  marketWorkspacePutPayload(useMarketStore.getState()),
-                );
+                await saveMarketStoreProfiles(useMarketStore.getState());
                 if (me.id) {
                   const data = await fetchStoreDetail(id, { userId: me.id });
                   setMarketHydrating(true);
@@ -656,15 +656,23 @@ export function ProfileStoresSection({
             categoryOptions={catalogCategories}
             initial={ownerStoreToFormValues(editingBadge, editingCat.pitch)}
             onClose={() => setEditStoreId(null)}
-            onSave={(v) => {
-              if (updateOwnerStore(editStoreId, ownerUserId, v)) {
-                toast.success("Tienda actualizada");
+            onSave={async (v) => {
+              if (!updateOwnerStore(editStoreId, ownerUserId, v)) {
+                toast.error(
+                  "No se pudo guardar: ese nombre ya lo usa otra tienda.",
+                );
+                return false;
+              }
+              try {
+                await saveMarketStoreProfiles(useMarketStore.getState());
+              } catch {
+                toast.error(
+                  "Cambios locales listos, pero no se pudo sincronizar con el servidor.",
+                );
                 return true;
               }
-              toast.error(
-                "No se pudo guardar: ese nombre ya lo usa otra tienda.",
-              );
-              return false;
+              toast.success("Tienda actualizada");
+              return true;
             }}
           />
         ) : null}

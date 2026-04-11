@@ -11,7 +11,13 @@ import {
   mergeStoreCatalogWithLocalExtras,
 } from "../chat/domain/storeCatalogTypes";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
-import { setMarketHydrating } from "../../utils/market/marketPersistence";
+import {
+  deleteStoreProductApi,
+  deleteStoreServiceApi,
+  putStoreProduct,
+  putStoreService,
+  setMarketHydrating,
+} from "../../utils/market/marketPersistence";
 import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
 import { fetchCurrencies } from "../../utils/market/fetchCurrencies";
 import { ConfirmDeleteModal } from "../../components/ConfirmDeleteModal";
@@ -1003,22 +1009,37 @@ export function StorePage() {
                       setCatalogDeleteTarget({ kind: "product", productId })
                     }
                     onTogglePublished={(productId, published) => {
-                      if (
-                        setOwnerStoreProductPublished(
-                          sid,
-                          ownerId,
-                          productId,
-                          published,
-                        )
-                      ) {
-                        toast.success(
-                          published
-                            ? "Producto publicado en la tienda"
-                            : "Producto oculto de la tienda",
-                        );
-                      } else {
-                        toast.error("No se pudo actualizar");
-                      }
+                      void (async () => {
+                        if (
+                          !setOwnerStoreProductPublished(
+                            sid,
+                            ownerId,
+                            productId,
+                            published,
+                          )
+                        ) {
+                          toast.error("No se pudo actualizar");
+                          return;
+                        }
+                        const p = useMarketStore
+                          .getState()
+                          .storeCatalogs[sid]?.products.find(
+                            (x) => x.id === productId,
+                          );
+                        if (!p) return;
+                        try {
+                          await putStoreProduct(sid, p);
+                          toast.success(
+                            published
+                              ? "Producto publicado en la tienda"
+                              : "Producto oculto de la tienda",
+                          );
+                        } catch {
+                          toast.error(
+                            "No se pudo guardar en el servidor. Reintentá.",
+                          );
+                        }
+                      })();
                     }}
                   />
                 </>
@@ -1104,22 +1125,37 @@ export function StorePage() {
                       setCatalogDeleteTarget({ kind: "service", serviceId })
                     }
                     onTogglePublished={(serviceId, published) => {
-                      if (
-                        setOwnerStoreServicePublished(
-                          sid,
-                          ownerId,
-                          serviceId,
-                          published,
-                        )
-                      ) {
-                        toast.success(
-                          published
-                            ? "Servicio publicado en la tienda"
-                            : "Servicio oculto de la tienda",
-                        );
-                      } else {
-                        toast.error("No se pudo actualizar");
-                      }
+                      void (async () => {
+                        if (
+                          !setOwnerStoreServicePublished(
+                            sid,
+                            ownerId,
+                            serviceId,
+                            published,
+                          )
+                        ) {
+                          toast.error("No se pudo actualizar");
+                          return;
+                        }
+                        const svc = useMarketStore
+                          .getState()
+                          .storeCatalogs[sid]?.services.find(
+                            (x) => x.id === serviceId,
+                          );
+                        if (!svc) return;
+                        try {
+                          await putStoreService(sid, svc);
+                          toast.success(
+                            published
+                              ? "Servicio publicado en la tienda"
+                              : "Servicio oculto de la tienda",
+                          );
+                        } catch {
+                          toast.error(
+                            "No se pudo guardar en el servidor. Reintentá.",
+                          );
+                        }
+                      })();
                     }}
                   />
                 </>
@@ -1176,36 +1212,49 @@ export function StorePage() {
           }}
           onConfirm={() => {
             if (!catalogDeleteTarget || catalogDeleteBusy) return;
+            const target = catalogDeleteTarget;
             setCatalogDeleteBusy(true);
-            try {
-              if (catalogDeleteTarget.kind === "product") {
-                const ok = removeOwnerStoreProduct(
-                  sid,
-                  ownerId,
-                  catalogDeleteTarget.productId,
-                );
-                if (ok) {
+            void (async () => {
+              try {
+                if (target.kind === "product") {
+                  try {
+                    await deleteStoreProductApi(sid, target.productId);
+                  } catch {
+                    toast.error(
+                      "No se pudo eliminar en el servidor. Reintentá.",
+                    );
+                    return;
+                  }
+                  if (
+                    !removeOwnerStoreProduct(sid, ownerId, target.productId)
+                  ) {
+                    toast.error("No se pudo actualizar el estado local");
+                    return;
+                  }
                   toast.success("Producto quitado");
                   setCatalogDeleteTarget(null);
-                } else {
-                  toast.error("No se pudo quitar");
-                }
-              } else if (catalogDeleteTarget.kind === "service") {
-                const ok = removeOwnerStoreService(
-                  sid,
-                  ownerId,
-                  catalogDeleteTarget.serviceId,
-                );
-                if (ok) {
+                } else if (target.kind === "service") {
+                  try {
+                    await deleteStoreServiceApi(sid, target.serviceId);
+                  } catch {
+                    toast.error(
+                      "No se pudo eliminar en el servidor. Reintentá.",
+                    );
+                    return;
+                  }
+                  if (
+                    !removeOwnerStoreService(sid, ownerId, target.serviceId)
+                  ) {
+                    toast.error("No se pudo actualizar el estado local");
+                    return;
+                  }
                   toast.success("Servicio quitado");
                   setCatalogDeleteTarget(null);
-                } else {
-                  toast.error("No se pudo quitar");
                 }
+              } finally {
+                setCatalogDeleteBusy(false);
               }
-            } finally {
-              setCatalogDeleteBusy(false);
-            }
+            })();
           }}
         />
 
@@ -1244,29 +1293,53 @@ export function StorePage() {
             }
             onClose={() => setProductCtx(null)}
             onSave={(input) => {
-              if (productCtx.productId) {
-                updateOwnerStoreProduct(
-                  sid,
-                  ownerId,
-                  productCtx.productId,
-                  input,
-                );
-                toast.success("Producto actualizado");
-              } else {
-                const pid = addOwnerStoreProduct(sid, ownerId, input);
-                if (pid) {
-                  toast.success("Producto añadido");
-                  patchSection("products", {
-                    productNameQ: "",
-                    productCategoryQ: "",
-                    productConditionQ: "",
-                  });
-                } else {
+              void (async () => {
+                try {
+                  if (productCtx.productId) {
+                    const ok = updateOwnerStoreProduct(
+                      sid,
+                      ownerId,
+                      productCtx.productId,
+                      input,
+                    );
+                    if (!ok) {
+                      toast.error("No se pudo actualizar el producto.");
+                      return;
+                    }
+                    const p = useMarketStore
+                      .getState()
+                      .storeCatalogs[sid]?.products.find(
+                        (x) => x.id === productCtx.productId,
+                      );
+                    if (p) await putStoreProduct(sid, p);
+                    toast.success("Producto actualizado");
+                  } else {
+                    const pid = addOwnerStoreProduct(sid, ownerId, input);
+                    if (pid) {
+                      const p = useMarketStore
+                        .getState()
+                        .storeCatalogs[sid]?.products.find(
+                          (x) => x.id === pid,
+                        );
+                      if (p) await putStoreProduct(sid, p);
+                      toast.success("Producto añadido");
+                      patchSection("products", {
+                        productNameQ: "",
+                        productCategoryQ: "",
+                        productConditionQ: "",
+                      });
+                    } else {
+                      toast.error(
+                        "No se pudo añadir el producto. Revisá que seas el dueño o recargá la tienda.",
+                      );
+                    }
+                  }
+                } catch {
                   toast.error(
-                    "No se pudo añadir el producto. Revisá que seas el dueño o recargá la tienda.",
+                    "No se pudo guardar el producto en el servidor. Reintentá.",
                   );
                 }
-              }
+              })();
             }}
           />
         ) : null}
@@ -1302,28 +1375,52 @@ export function StorePage() {
             }
             onClose={() => setServiceCtx(null)}
             onSave={(input) => {
-              if (serviceCtx.serviceId) {
-                updateOwnerStoreService(
-                  sid,
-                  ownerId,
-                  serviceCtx.serviceId,
-                  input,
-                );
-                toast.success("Servicio actualizado");
-              } else {
-                const newId = addOwnerStoreService(sid, ownerId, input);
-                if (newId) {
-                  toast.success("Servicio añadido");
-                  patchSection("services", {
-                    serviceNameQ: "",
-                    serviceCategoryQ: "",
-                  });
-                } else {
+              void (async () => {
+                try {
+                  if (serviceCtx.serviceId) {
+                    const ok = updateOwnerStoreService(
+                      sid,
+                      ownerId,
+                      serviceCtx.serviceId,
+                      input,
+                    );
+                    if (!ok) {
+                      toast.error("No se pudo actualizar el servicio.");
+                      return;
+                    }
+                    const svc = useMarketStore
+                      .getState()
+                      .storeCatalogs[sid]?.services.find(
+                        (x) => x.id === serviceCtx.serviceId,
+                      );
+                    if (svc) await putStoreService(sid, svc);
+                    toast.success("Servicio actualizado");
+                  } else {
+                    const newId = addOwnerStoreService(sid, ownerId, input);
+                    if (newId) {
+                      const svc = useMarketStore
+                        .getState()
+                        .storeCatalogs[sid]?.services.find(
+                          (x) => x.id === newId,
+                        );
+                      if (svc) await putStoreService(sid, svc);
+                      toast.success("Servicio añadido");
+                      patchSection("services", {
+                        serviceNameQ: "",
+                        serviceCategoryQ: "",
+                      });
+                    } else {
+                      toast.error(
+                        "No se pudo añadir el servicio. Revisá que seas el dueño o recargá la tienda.",
+                      );
+                    }
+                  }
+                } catch {
                   toast.error(
-                    "No se pudo añadir el servicio. Revisá que seas el dueño o recargá la tienda.",
+                    "No se pudo guardar el servicio en el servidor. Reintentá.",
                   );
                 }
-              }
+              })();
             }}
           />
         ) : null}

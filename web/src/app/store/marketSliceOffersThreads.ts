@@ -1,7 +1,8 @@
 import type { TradeAgreement } from '../../pages/chat/domain/tradeAgreementTypes'
 import { normalizeMerchandiseLine } from '../../pages/chat/domain/tradeAgreementTypes'
 import { hasValidationErrors, validateTradeAgreementDraft } from '../../pages/chat/domain/tradeAgreementValidation'
-import type { Offer, Message, Thread } from './marketStoreTypes'
+import { postOfferInquiry } from '../../utils/market/marketPersistence'
+import type { MarketState, Offer, Message, QAItem, Thread } from './marketStoreTypes'
 import {
   threadHasAcceptedAgreement,
   threadHasAcceptedAgreementUnpaid,
@@ -14,10 +15,10 @@ import {
 } from './marketStoreHelpers'
 import { routeSheetHasConfirmedCarriers } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
-import type { MarketState } from './marketStoreTypes'
 
 export function createOffersThreadsSlice(set: MarketSliceSet, get: MarketSliceGet): Pick<MarketState,
   | 'ask'
+  | 'submitOfferQuestion'
   | 'answer'
   | 'ensureThreadForOffer'
   | 'syncThreadBuyerQa'
@@ -50,6 +51,35 @@ ask: (offerId, askedBy, question) => {
     return { ...s, offers: { ...s.offers, [offerId]: next } }
   })
   return qaId
+},
+
+submitOfferQuestion: async (offerId, askedBy, question) => {
+  const s = get()
+  if (!s.offers[offerId]) throw new Error('offer_not_found')
+  const created = await postOfferInquiry({
+    offerId,
+    question,
+    askedBy,
+    createdAt: Date.now(),
+  })
+  const item: QAItem = {
+    id: created.id,
+    question: created.question,
+    askedBy: created.askedBy,
+    createdAt: created.createdAt,
+  }
+  set((state) => {
+    const offer = state.offers[offerId]
+    if (!offer) return state
+    const nextOffer: Offer = {
+      ...offer,
+      qa: [item, ...(offer.qa ?? [])],
+    }
+    return {
+      ...state,
+      offers: { ...state.offers, [offerId]: nextOffer },
+    }
+  })
 },
 
 answer: (offerId, qaId, answerText) => {

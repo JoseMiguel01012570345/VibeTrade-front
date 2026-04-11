@@ -1,56 +1,152 @@
-import type { MarketState } from '../../app/store/marketStoreTypes'
-import toast from 'react-hot-toast'
-import { apiFetch } from '../http/apiClient'
-import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage, errorToUserMessage } from '../http/apiErrorMessage'
-import { marketWorkspacePutPayload, type MarketSerializableSlice } from './marketSerializable'
+import { useAppStore } from "../../app/store/useAppStore";
+import type { StoreProduct, StoreService } from "../../pages/chat/domain/storeCatalogTypes";
+import { apiFetch } from "../http/apiClient";
+import {
+  apiErrorTextToUserMessage,
+  defaultUnexpectedErrorMessage,
+} from "../http/apiErrorMessage";
+import type { MarketState } from "../../app/store/marketStoreTypes";
+import { storeProfileBodiesToPersist } from "./marketSerializable";
 
-let hydrating = true
-let persistTimer: ReturnType<typeof setTimeout> | undefined
-let lastPersistErrorToastAt = 0
+/** Reservado: antes coordinaba persistencia automática (deshabilitada). */
+export function setMarketHydrating(_value: boolean) {}
 
-export function setMarketHydrating(value: boolean) {
-  hydrating = value
+export type PostOfferInquiryBody = {
+  offerId: string;
+  question: string;
+  askedBy: { id: string; name: string; trustScore: number };
+  createdAt?: number;
+};
+
+export type PostOfferInquiryResponse = {
+  id: string;
+  question: string;
+  askedBy: { id: string; name: string; trustScore: number };
+  createdAt: number;
+};
+
+/** Añade una consulta pública; el servidor devuelve el ítem creado (id, createdAt). */
+export async function postOfferInquiry(
+  body: PostOfferInquiryBody,
+): Promise<PostOfferInquiryResponse> {
+  const res = await apiFetch("/api/v1/market/inquiries", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    if (res.status === 404 && t) {
+      const j = tryParseJsonBody(t);
+      if (j?.message) throw new Error(j.message);
+    }
+    throw new Error(
+      apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
+    );
+  }
+  return (await res.json()) as PostOfferInquiryResponse;
 }
 
-export async function saveMarketWorkspace(data: MarketSerializableSlice): Promise<void> {
-  const res = await apiFetch('/api/v1/market/workspace', {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    if (res.status === 409 && t) {
-      const j = tryParseJsonBody(t)
-      if (j?.message) throw new Error(j.message)
+/** Metadatos de tienda: un PUT por tienda, cuerpo = campos de la ficha (incl. `id`), sin `stores:{...}`. */
+export async function saveMarketStoreProfiles(state: MarketState): Promise<void> {
+  const app = useAppStore.getState();
+  if (!app.isSessionActive) return;
+  const ownerUserId = app.me.id === "guest" ? null : app.me.id;
+  const bodies = storeProfileBodiesToPersist(state, ownerUserId);
+  if (bodies.length === 0) return;
+  for (const badge of bodies) {
+    const res = await apiFetch("/api/v1/market/workspace/stores", {
+      method: "PUT",
+      body: JSON.stringify(badge),
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      if (res.status === 409 && t) {
+        const j = tryParseJsonBody(t);
+        if (j?.message) throw new Error(j.message);
+      }
+      throw new Error(
+        apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
+      );
     }
-    throw new Error(apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()))
+  }
+}
+
+/** Una sola ficha de producto (cuerpo = JSON del producto). */
+export async function putStoreProduct(
+  storeId: string,
+  product: StoreProduct,
+): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/market/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(product.id)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(product),
+    },
+  );
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(
+      apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
+    );
+  }
+}
+
+export async function deleteStoreProductApi(
+  storeId: string,
+  productId: string,
+): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/market/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}`,
+    { method: "DELETE" },
+  );
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(
+      apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
+    );
+  }
+}
+
+/** Una sola ficha de servicio. */
+export async function putStoreService(
+  storeId: string,
+  service: StoreService,
+): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/market/stores/${encodeURIComponent(storeId)}/services/${encodeURIComponent(service.id)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(service),
+    },
+  );
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(
+      apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
+    );
+  }
+}
+
+export async function deleteStoreServiceApi(
+  storeId: string,
+  serviceId: string,
+): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/market/stores/${encodeURIComponent(storeId)}/services/${encodeURIComponent(serviceId)}`,
+    { method: "DELETE" },
+  );
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(
+      apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
+    );
   }
 }
 
 function tryParseJsonBody(s: string): { message?: string } | null {
   try {
-    return JSON.parse(s) as { message?: string }
+    return JSON.parse(s) as { message?: string };
   } catch {
-    return null
+    return null;
   }
-}
-
-export function subscribeMarketPersistence(store: {
-  subscribe: (listener: (state: MarketState) => void) => () => void
-}): void {
-  store.subscribe((state) => {
-    if (hydrating) return
-    clearTimeout(persistTimer)
-    persistTimer = setTimeout(() => {
-      void saveMarketWorkspace(marketWorkspacePutPayload(state)).catch((e) => {
-        console.error(e)
-        // No spamear: si el payload es enorme (data URLs), el PUT puede fallar y el usuario cree que "se guardó".
-        const now = Date.now()
-        if (now - lastPersistErrorToastAt > 15_000) {
-          lastPersistErrorToastAt = now
-          toast.error(errorToUserMessage(e, 'No se pudo guardar el catálogo en el servidor. Si recargás, podés perder cambios.'))
-        }
-      })
-    }, 600)
-  })
 }

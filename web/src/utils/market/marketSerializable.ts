@@ -1,10 +1,15 @@
-import type { MarketState } from '../../app/store/marketStoreTypes'
+import type { MarketState, StoreBadge } from "../../app/store/marketStoreTypes";
 
-/** Parte del store que se persiste en el backend. */
+/** Forma del mercado en bootstrap / GET workspace (snapshot completo). */
 export type MarketSerializableSlice = Pick<
   MarketState,
-  'stores' | 'offers' | 'offerIds' | 'storeCatalogs' | 'threads' | 'routeOfferPublic'
->
+  | "stores"
+  | "offers"
+  | "offerIds"
+  | "storeCatalogs"
+  | "threads"
+  | "routeOfferPublic"
+>;
 
 export function marketDataSnapshot(s: MarketState): MarketSerializableSlice {
   return {
@@ -14,22 +19,39 @@ export function marketDataSnapshot(s: MarketState): MarketSerializableSlice {
     storeCatalogs: s.storeCatalogs,
     threads: s.threads,
     routeOfferPublic: s.routeOfferPublic,
-  }
+  };
 }
 
-/** Cuerpo del PUT `/market/workspace`: snapshot completo o solo la tienda en edición. */
-export function marketWorkspacePutPayload(s: MarketState): MarketSerializableSlice {
-  const id = s.workspacePersistStoreId
-  if (!id) return marketDataSnapshot(s)
-  const store = s.stores[id]
-  const catalog = s.storeCatalogs[id]
-  if (!store || !catalog) return marketDataSnapshot(s)
-  return {
-    stores: { [id]: store },
-    storeCatalogs: { [id]: catalog },
-    offers: {},
-    offerIds: [],
-    threads: {},
-    routeOfferPublic: {},
+/** Solo tiendas del usuario (no todo el mercado en memoria). */
+function filterOwnedStores(
+  s: MarketState,
+  ownerUserId: string | null,
+): Record<string, StoreBadge> {
+  const stores: Record<string, StoreBadge> = {};
+  if (!ownerUserId) return stores;
+  for (const [id, st] of Object.entries(s.stores)) {
+    if (st.ownerUserId === ownerUserId) {
+      stores[id] = st;
+    }
   }
+  return stores;
+}
+
+/**
+ * Tiendas cuyo perfil debe persistirse (PUT workspace/stores).
+ * El cliente envía cada una como JSON plano (campos de la tienda + `id`), sin `{ stores: {...} }`.
+ */
+export function storeProfileBodiesToPersist(
+  s: MarketState,
+  ownerUserId: string | null,
+): StoreBadge[] {
+  const persistId = s.workspacePersistStoreId;
+  if (persistId) {
+    const store = s.stores[persistId];
+    if (!store) return [];
+    if (ownerUserId && store.ownerUserId !== ownerUserId) return [];
+    return [store];
+  }
+  if (!ownerUserId) return [];
+  return Object.values(filterOwnedStores(s, ownerUserId));
 }

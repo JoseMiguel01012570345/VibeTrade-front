@@ -90,7 +90,7 @@ export function syncOwnQaIntoMessages(
 
   const ownQa = [...(offer.qa ?? [])]
     .filter((q) => q.askedBy.id === buyerId)
-    .sort((a, b) => a.createdAt - b.createdAt)
+    .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
 
   let next = [...prev]
   let t = next.length ? Math.max(...next.map((m) => m.at)) + 1 : Date.now()
@@ -140,7 +140,7 @@ export function buildPurchaseThreadMessages(offer: Offer, buyerId: string | unde
 
   const ownQa = [...(offer.qa ?? [])]
     .filter((q) => q.askedBy.id === buyerId)
-    .sort((a, b) => a.createdAt - b.createdAt)
+    .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
 
   for (const q of ownQa) {
     const tQ = base + seq++ * 1000
