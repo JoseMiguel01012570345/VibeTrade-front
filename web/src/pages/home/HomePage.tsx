@@ -1,10 +1,15 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { cn } from "../../lib/cn";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import type { Offer, StoreBadge } from "../../app/store/useMarketStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { RouteOfferPreview } from "../offer/RouteOfferPreview";
 import { OfferSaveButton } from "../offer/OfferSaveButton";
+import {
+  isToolPlaceholderUrl,
+  TOOL_PLACEHOLDER_SRC,
+} from "../../utils/market/toolPlaceholder";
 
 function OffersTab({
   items,
@@ -20,6 +25,10 @@ function OffersTab({
       {items.map((o) => {
         const store = stores[o.storeId];
         const routePreview = routeOfferPublic[o.id] as any;
+        const thumbSrc =
+          o.imageUrl?.trim() ||
+          (o.tags.includes("Servicio") ? TOOL_PLACEHOLDER_SRC : undefined);
+        const isToolPlaceholder = isToolPlaceholderUrl(thumbSrc);
         return (
           <div
             key={o.id}
@@ -28,16 +37,21 @@ function OffersTab({
             <div className="relative h-[190px] overflow-hidden bg-gray-200">
               <Link
                 to={`/offer/${o.id}`}
-                className="group block h-full overflow-hidden"
+                className={cn(
+                  "block h-full overflow-hidden",
+                  !isToolPlaceholder && "group",
+                )}
               >
                 <ProtectedMediaImg
-                  src={
-                    o.imageUrl?.trim() ||
-                    (o.tags.includes("Servicio") ? "/tool.png" : undefined)
-                  }
+                  src={thumbSrc}
                   alt={o.title}
                   wrapperClassName="block h-full w-full min-h-[190px]"
-                  className="block h-full w-full min-h-[190px] scale-[1.02] object-cover transition-transform duration-[240ms] ease-out group-hover:scale-[1.06]"
+                  className={cn(
+                    "block h-full w-full min-h-[190px] transition-transform duration-[240ms] ease-out",
+                    isToolPlaceholder
+                      ? "vt-img-tool-placeholder bg-gray-200 p-4 sm:p-5"
+                      : "scale-[1.02] object-cover group-hover:scale-[1.06]",
+                  )}
                 />
               </Link>
               <div className="pointer-events-auto absolute right-2 top-2 z-[2]">
@@ -55,9 +69,11 @@ function OffersTab({
                 </div>
               </div>
 
-              {o.description?.trim() ?
-                <p className="vt-muted line-clamp-2 text-[13px] leading-snug">{o.description.trim()}</p>
-              : null}
+              {o.description?.trim() ? (
+                <p className="vt-muted line-clamp-2 text-[13px] leading-snug">
+                  {o.description.trim()}
+                </p>
+              ) : null}
 
               <div className="flex items-center justify-end gap-2.5">
                 <Link
@@ -100,7 +116,9 @@ export function HomePage() {
   const routeOfferPublic = useMarketStore((s) => s.routeOfferPublic);
 
   const items = useMemo((): Offer[] => {
-    return offerIds.map((id) => offers[id]).filter((o): o is Offer => o != null);
+    return offerIds
+      .map((id) => offers[id])
+      .filter((o): o is Offer => o != null);
   }, [offerIds, offers]);
 
   return (
@@ -117,7 +135,11 @@ export function HomePage() {
         </Link>
       </div>
 
-      <OffersTab items={items} stores={stores} routeOfferPublic={routeOfferPublic} />
+      <OffersTab
+        items={items}
+        stores={stores}
+        routeOfferPublic={routeOfferPublic}
+      />
     </div>
   );
 }

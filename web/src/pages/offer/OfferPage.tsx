@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, MessageSquareText, ShoppingCart } from "lucide-react";
 import toast from "react-hot-toast";
+import { cn } from "../../lib/cn";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 import { useAppStore } from "../../app/store/useAppStore";
@@ -14,6 +15,10 @@ import {
 } from "../chat/domain/routeSheetOfferGuards";
 import { userActsAsCarrierOnTransportOffer } from "../../utils/user/transportEligibility";
 import { errorToUserMessage } from "../../utils/http/apiErrorMessage";
+import {
+  isToolPlaceholderUrl,
+  TOOL_PLACEHOLDER_SRC,
+} from "../../utils/market/toolPlaceholder";
 
 function formatInquiryDate(ms: number): string {
   try {
@@ -141,7 +146,7 @@ export function OfferPage() {
     if (!offer) return [];
     const main =
       offer.imageUrl?.trim() ||
-      (offer.tags.includes("Servicio") ? "/tool.png" : "");
+      (offer.tags.includes("Servicio") ? TOOL_PLACEHOLDER_SRC : "");
     const rest = (offer.imageUrls ?? [])
       .map((u) => String(u).trim())
       .filter(Boolean);
@@ -162,7 +167,7 @@ export function OfferPage() {
     return (
       galleryUrls[0] ||
       offer.imageUrl?.trim() ||
-      (offer.tags.includes("Servicio") ? "/tool.png" : "")
+      (offer.tags.includes("Servicio") ? TOOL_PLACEHOLDER_SRC : "")
     );
   }, [offer, galleryUrls]);
 
@@ -175,6 +180,8 @@ export function OfferPage() {
   }
 
   const store = stores[offer.storeId];
+
+  const heroIsToolPlaceholder = isToolPlaceholderUrl(heroImageSrc);
 
   return (
     <div className="container vt-page">
@@ -193,14 +200,24 @@ export function OfferPage() {
               className="border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
             />
           </div>
-          <div className="relative">
+          <div
+            className={cn(
+              "relative",
+              heroIsToolPlaceholder && "bg-gray-200",
+            )}
+          >
             <ProtectedMediaImg
               src={heroImageSrc}
               alt={offer.title}
               wrapperClassName="block h-[260px] w-full"
-              className="block h-[260px] w-full object-cover"
+              className={cn(
+                "block h-[260px] w-full",
+                heroIsToolPlaceholder
+                  ? "vt-img-tool-placeholder p-5 sm:p-7"
+                  : "object-cover",
+              )}
             />
-            {heroImageSrc ? (
+            {heroImageSrc && !heroIsToolPlaceholder ? (
               <button
                 type="button"
                 className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
@@ -212,26 +229,39 @@ export function OfferPage() {
           </div>
           {galleryUrls.length > 1 ? (
             <div className="flex gap-2 overflow-x-auto border-t border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] px-3 py-2.5">
-              {galleryUrls.slice(1).map((src, i) => (
-                <div
-                  key={`${src}-${i}`}
-                  className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-lg border border-[var(--border)]"
-                >
-                  <ProtectedMediaImg
-                    src={src}
-                    alt=""
-                    wrapperClassName="h-[72px] w-[72px]"
-                    className="h-[72px] w-[72px] object-cover"
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
-                    aria-label="Ver imagen a pantalla completa"
-                    title="Ver imagen a pantalla completa"
-                    onClick={() => setGalleryLightboxUrl(src)}
-                  />
-                </div>
-              ))}
+              {galleryUrls.slice(1).map((src, i) => {
+                const thumbIsTool = isToolPlaceholderUrl(src);
+                return (
+                  <div
+                    key={`${src}-${i}`}
+                    className={cn(
+                      "relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-lg border border-[var(--border)]",
+                      thumbIsTool && "bg-gray-200",
+                    )}
+                  >
+                    <ProtectedMediaImg
+                      src={src}
+                      alt=""
+                      wrapperClassName="h-[72px] w-[72px]"
+                      className={cn(
+                        "h-[72px] w-[72px]",
+                        thumbIsTool
+                          ? "vt-img-tool-placeholder p-1.5"
+                          : "object-cover",
+                      )}
+                    />
+                    {!thumbIsTool ? (
+                      <button
+                        type="button"
+                        className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
+                        aria-label="Ver imagen a pantalla completa"
+                        title="Ver imagen a pantalla completa"
+                        onClick={() => setGalleryLightboxUrl(src)}
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           ) : null}
           <div className="flex flex-col gap-3 p-3.5">

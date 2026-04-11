@@ -127,6 +127,16 @@
     @apply flex items-center gap-2.5;
   }
 
+  /**
+   * Placeholder `/tool.png`: mostrar la llave completa (object-contain) y recortar
+   * la esquina inferior derecha donde suele aparecer marca de imagen generada.
+   */
+  .vt-img-tool-placeholder {
+    object-fit: contain;
+    object-position: center center;
+    clip-path: inset(0 10% 12% 0);
+  }
+
   .vt-col {
     @apply flex flex-col gap-2.5;
   }

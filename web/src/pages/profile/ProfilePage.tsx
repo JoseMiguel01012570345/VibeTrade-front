@@ -43,6 +43,10 @@ import {
   profileSectionPath,
   type ProfileSection,
 } from "../../utils/navigation/profilePaths";
+import {
+  isToolPlaceholderUrl,
+  TOOL_PLACEHOLDER_SRC,
+} from "../../utils/market/toolPlaceholder";
 
 function isValidEmail(value: string): boolean {
   const t = value.trim();
@@ -755,8 +759,8 @@ export function ProfilePage() {
           <div className="vt-card vt-card-pad">
             <div className="vt-h2">Ofertas guardadas</div>
             <div className="vt-muted mt-1.5">
-              Tocá una tarjeta para abrir la oferta. Podés guardar desde el ícono
-              de marcador en el listado o en el detalle.
+              Tocá una tarjeta para abrir la oferta. Podés guardar desde el
+              ícono de marcador en el listado o en el detalle.
             </div>
             <div className="vt-divider my-3" />
             {savedOfferItems.length === 0 ? (
@@ -765,23 +769,32 @@ export function ProfilePage() {
               <div className="grid grid-cols-12 gap-3.5">
                 {savedOfferItems.map((o) => {
                   const store = stores[o.storeId];
+                  const thumbSrc =
+                    o.imageUrl?.trim() ||
+                    (o.tags.includes("Servicio")
+                      ? TOOL_PLACEHOLDER_SRC
+                      : undefined);
+                  const isToolPlaceholder = isToolPlaceholderUrl(thumbSrc);
                   return (
                     <Link
                       key={o.id}
                       to={`/offer/${o.id}`}
-                      className="vt-card group col-span-12 overflow-hidden min-[640px]:col-span-6 no-underline text-[var(--text)]"
+                      className={cn(
+                        "vt-card col-span-12 overflow-hidden min-[640px]:col-span-6 no-underline text-[var(--text)]",
+                        !isToolPlaceholder && "group",
+                      )}
                     >
                       <div className="relative h-[160px] overflow-hidden bg-gray-200">
                         <ProtectedMediaImg
-                          src={
-                            o.imageUrl?.trim() ||
-                            (o.tags.includes("Servicio")
-                              ? "/tool.png"
-                              : undefined)
-                          }
+                          src={thumbSrc}
                           alt={o.title}
                           wrapperClassName="block h-full w-full min-h-[160px]"
-                          className="block h-full w-full min-h-[160px] object-cover transition-transform duration-[240ms] ease-out group-hover:scale-[1.04]"
+                          className={cn(
+                            "block h-full w-full min-h-[160px] transition-transform duration-[240ms] ease-out",
+                            isToolPlaceholder
+                              ? "vt-img-tool-placeholder p-3 sm:p-4"
+                              : "object-cover group-hover:scale-[1.04]",
+                          )}
                         />
                       </div>
                       <div className="flex flex-col gap-2 p-3.5">
