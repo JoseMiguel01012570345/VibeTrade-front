@@ -8,8 +8,6 @@ import { setMarketHydrating } from '../market/marketPersistence'
 import { setReelsBootstrap } from '../reels/reelsBootstrapState'
 import type { BootstrapResponse } from './bootstrapTypes'
 
-let persistenceStarted = false
-
 function normalizeReelsCovers(items: BootstrapResponse['reels']['items']) {
   return items.map((r) => ({
     ...r,
@@ -49,7 +47,7 @@ export async function bootstrapWebApp(): Promise<void> {
       workspacePersistStoreId: null,
     })
     setMarketHydrating(false)
-    useAppStore.setState({ profileDisplayNames: {} })
+    useAppStore.setState({ profileDisplayNames: {}, savedOffers: {} })
     setReelsBootstrap({ items: [], initialComments: {}, initialLikeCounts: {} })
     return
   }
@@ -74,8 +72,10 @@ export async function bootstrapWebApp(): Promise<void> {
   })
   setMarketHydrating(false)
 
+  const savedIds = json.savedOfferIds ?? []
   useAppStore.setState({
     profileDisplayNames: json.profileDisplayNames ?? {},
+    savedOffers: Object.fromEntries(savedIds.map((id) => [id, true])),
   })
 
   setReelsBootstrap({

@@ -16,6 +16,7 @@ import {
 import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
 import { type SocialNetworkId, useAppStore } from "../../app/store/useAppStore";
+import type { Offer } from "../../app/store/marketStoreTypes";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { onBackdropPointerClose } from "../chat/lib/modalClose";
 import {
@@ -181,6 +182,8 @@ export function ProfilePage() {
   const profileSocialLinks = useAppStore((s) => s.profileSocialLinks);
   const applySessionUser = useAppStore((s) => s.applySessionUser);
   const saved = useAppStore((s) => s.savedReels);
+  const savedOffers = useAppStore((s) => s.savedOffers);
+  const offers = useMarketStore((s) => s.offers);
 
   const isMe = userId === "me" || userId === me.id;
   const resolvedProfileUserId = isMe ? me.id : (userId ?? me.id);
@@ -248,6 +251,27 @@ export function ProfilePage() {
       nav(profileSectionPath(userId, "account"), { replace: true });
     }
   }, [tab, isMe, userId, nav]);
+
+  useEffect(() => {
+    if (!userId) return;
+    if (tab === "saved" && !isMe) {
+      nav(profileSectionPath(userId, "account"), { replace: true });
+    }
+  }, [tab, isMe, userId, nav]);
+
+  const savedOfferIds = useMemo(
+    () => Object.keys(savedOffers).filter((id) => savedOffers[id]),
+    [savedOffers],
+  );
+
+  const savedOfferItems = useMemo((): Offer[] => {
+    const list = savedOfferIds
+      .map((id) => offers[id])
+      .filter((o): o is Offer => o != null);
+    return [...list].sort((a, b) =>
+      a.title.localeCompare(b.title, "es", { sensitivity: "base" }),
+    );
+  }, [savedOfferIds, offers]);
 
   const savedIds = useMemo(
     () => Object.keys(saved).filter((id) => saved[id]),
@@ -439,11 +463,11 @@ export function ProfilePage() {
           </div>
         </div>
 
-        <div className="flex gap-2.5">
+        <div className="flex flex-wrap gap-2.5">
           <Link
             to={profileSectionPath(userId, "account")}
             className={cn(
-              "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-center font-black no-underline",
+              "min-w-[calc(50%-6px)] flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-center font-black no-underline sm:min-w-0",
               tab === "account" &&
                 "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
             )}
@@ -454,7 +478,7 @@ export function ProfilePage() {
             <Link
               to={profileSectionPath(userId, "reels")}
               className={cn(
-                "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-center font-black no-underline",
+                "min-w-[calc(50%-6px)] flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-center font-black no-underline sm:min-w-0",
                 tab === "reels" &&
                   "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
               )}
@@ -462,11 +486,23 @@ export function ProfilePage() {
               Mis Reels
             </Link>
           ) : null}
+          {isMe ? (
+            <Link
+              to={profileSectionPath(userId, "saved")}
+              className={cn(
+                "min-w-[calc(50%-6px)] flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-center font-black no-underline sm:min-w-0",
+                tab === "saved" &&
+                  "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
+              )}
+            >
+              Guardados
+            </Link>
+          ) : null}
           {isMe || storesForProfile.length > 0 ? (
             <Link
               to={profileSectionPath(userId, "stores")}
               className={cn(
-                "flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-center font-black no-underline",
+                "min-w-[calc(50%-6px)] flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-center font-black no-underline sm:min-w-0",
                 tab === "stores" &&
                   "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
               )}
@@ -715,9 +751,65 @@ export function ProfilePage() {
           />
         ) : null}
 
+        {tab === "saved" && isMe ? (
+          <div className="vt-card vt-card-pad">
+            <div className="vt-h2">Ofertas guardadas</div>
+            <div className="vt-muted mt-1.5">
+              Tocá una tarjeta para abrir la oferta. Podés guardar desde el ícono
+              de marcador en el listado o en el detalle.
+            </div>
+            <div className="vt-divider my-3" />
+            {savedOfferItems.length === 0 ? (
+              <div className="vt-muted">Aún no guardaste ofertas.</div>
+            ) : (
+              <div className="grid grid-cols-12 gap-3.5">
+                {savedOfferItems.map((o) => {
+                  const store = stores[o.storeId];
+                  return (
+                    <Link
+                      key={o.id}
+                      to={`/offer/${o.id}`}
+                      className="vt-card group col-span-12 overflow-hidden min-[640px]:col-span-6 no-underline text-[var(--text)]"
+                    >
+                      <div className="relative h-[160px] overflow-hidden bg-gray-200">
+                        <ProtectedMediaImg
+                          src={
+                            o.imageUrl?.trim() ||
+                            (o.tags.includes("Servicio")
+                              ? "/tool.png"
+                              : undefined)
+                          }
+                          alt={o.title}
+                          wrapperClassName="block h-full w-full min-h-[160px]"
+                          className="block h-full w-full min-h-[160px] object-cover transition-transform duration-[240ms] ease-out group-hover:scale-[1.04]"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2 p-3.5">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <div className="font-black tracking-[-0.02em]">
+                            {o.title}
+                          </div>
+                          <div className="shrink-0 font-black text-[var(--text)]">
+                            {o.price}
+                          </div>
+                        </div>
+                        {store ? (
+                          <div className="text-xs font-extrabold text-[var(--muted)]">
+                            {store.name}
+                          </div>
+                        ) : null}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : null}
+
         {tab === "reels" && (
           <div className="vt-card vt-card-pad">
-            <div className="vt-h2">Guardados</div>
+            <div className="vt-h2">Reels guardados</div>
             <div className="vt-muted mt-1.5">
               Reels guardados desde la barra lateral de la experiencia
               inmersiva.

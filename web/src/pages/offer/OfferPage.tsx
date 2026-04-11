@@ -7,6 +7,7 @@ import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { RouteOfferPreview } from "./RouteOfferPreview";
+import { OfferSaveButton } from "./OfferSaveButton";
 import {
   confirmedStopIdsForCarrier,
   tramoNotifyLineFromOffer,
@@ -179,12 +180,19 @@ export function OfferPage() {
     <div className="container vt-page">
       <div className="flex flex-col gap-3.5">
         <div className="vt-card relative overflow-hidden">
-          <button
-            className="vt-btn absolute left-3 top-3 z-[2] border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
-            onClick={() => nav(-1)}
-          >
-            <ArrowLeft size={16} />
-          </button>
+          <div className="absolute left-3 right-3 top-3 z-[2] flex items-center justify-between gap-2">
+            <button
+              type="button"
+              className="vt-btn border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
+              onClick={() => nav(-1)}
+            >
+              <ArrowLeft size={16} />
+            </button>
+            <OfferSaveButton
+              offerId={offerId}
+              className="border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
+            />
+          </div>
           <div className="relative">
             <ProtectedMediaImg
               src={heroImageSrc}

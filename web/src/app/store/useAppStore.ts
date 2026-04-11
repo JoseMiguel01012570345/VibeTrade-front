@@ -64,6 +64,8 @@ type AppState = {
   lastThresholdState: 'above' | 'below'
   notifications: NotificationItem[]
   savedReels: Record<string, boolean>
+  /** IDs de ofertas guardadas (bootstrap + POST/DELETE `/api/v1/me/saved-offers`). */
+  savedOffers: Record<string, boolean>
 
   setSessionActive: (active: boolean) => void
   setTrustScore: (score: number) => void
@@ -74,6 +76,7 @@ type AppState = {
   pushNotification: (n: Omit<NotificationItem, 'id' | 'createdAt' | 'read'>) => void
   markAllRead: () => void
   toggleSavedReel: (reelId: string) => void
+  setSavedOffersFromIds: (ids: string[]) => void
   applySessionUser: (user: User) => void
   resetSessionProfile: () => void
 }
@@ -101,6 +104,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   lastThresholdState: 'above',
   notifications: [],
   savedReels: {},
+  savedOffers: {},
 
   setSessionActive: (active) => {
     try {
@@ -162,6 +166,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleSavedReel: (reelId) =>
     set((s) => ({ savedReels: { ...s.savedReels, [reelId]: !s.savedReels[reelId] } })),
 
+  setSavedOffersFromIds: (ids) =>
+    set({
+      savedOffers: Object.fromEntries(ids.map((id) => [id, true])),
+    }),
+
   applySessionUser: (user) =>
     set((s) => {
       revokeBlobUrl(s.me.avatarUrl)
@@ -170,7 +179,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (nextMe.instagram) profileSocialLinks.instagram = nextMe.instagram
       if (nextMe.telegram) profileSocialLinks.telegram = nextMe.telegram
       if (nextMe.xAccount) profileSocialLinks.x = nextMe.xAccount
-      return { me: nextMe, profileSocialLinks }
+      return { me: nextMe, profileSocialLinks, savedOffers: s.savedOffers }
     }),
 
   resetSessionProfile: () =>
@@ -180,6 +189,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         me: { ...guestMe },
         notifications: [],
         savedReels: {},
+        savedOffers: {},
         profileSocialLinks: {},
       }
     }),

@@ -6,4 +6,6 @@ export type BootstrapResponse = {
   reels: ReelsBootstrapPayload
   /** Nombres para rutas /profile/:id distintos del usuario de prueba local. */
   profileDisplayNames: Record<string, string>
+  /** Ids de producto/servicio guardados (servidor; excluye propias y rotos). */
+  savedOfferIds: string[]
 }

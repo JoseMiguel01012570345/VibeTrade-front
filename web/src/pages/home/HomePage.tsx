@@ -4,6 +4,7 @@ import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import type { Offer, StoreBadge } from "../../app/store/useMarketStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { RouteOfferPreview } from "../offer/RouteOfferPreview";
+import { OfferSaveButton } from "../offer/OfferSaveButton";
 
 function OffersTab({
   items,
@@ -24,20 +25,25 @@ function OffersTab({
             key={o.id}
             className="vt-card col-span-12 overflow-hidden min-[860px]:col-span-6"
           >
-            <Link
-              to={`/offer/${o.id}`}
-              className="group block h-[190px] overflow-hidden bg-gray-200"
-            >
-              <ProtectedMediaImg
-                src={
-                  o.imageUrl?.trim() ||
-                  (o.tags.includes("Servicio") ? "/tool.png" : undefined)
-                }
-                alt={o.title}
-                wrapperClassName="block h-full w-full min-h-[190px]"
-                className="block h-full w-full min-h-[190px] scale-[1.02] object-cover transition-transform duration-[240ms] ease-out group-hover:scale-[1.06]"
-              />
-            </Link>
+            <div className="relative h-[190px] overflow-hidden bg-gray-200">
+              <Link
+                to={`/offer/${o.id}`}
+                className="group block h-full overflow-hidden"
+              >
+                <ProtectedMediaImg
+                  src={
+                    o.imageUrl?.trim() ||
+                    (o.tags.includes("Servicio") ? "/tool.png" : undefined)
+                  }
+                  alt={o.title}
+                  wrapperClassName="block h-full w-full min-h-[190px]"
+                  className="block h-full w-full min-h-[190px] scale-[1.02] object-cover transition-transform duration-[240ms] ease-out group-hover:scale-[1.06]"
+                />
+              </Link>
+              <div className="pointer-events-auto absolute right-2 top-2 z-[2]">
+                <OfferSaveButton offerId={o.id} />
+              </div>
+            </div>
 
             <div className="flex flex-col gap-2.5 p-3.5">
               <div className="flex items-baseline justify-between gap-3">
