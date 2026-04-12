@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import type { Offer, StoreBadge } from "../../app/store/useMarketStore";
@@ -10,6 +11,12 @@ import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
 } from "../../utils/market/toolPlaceholder";
+import { fetchRecommendationBatch } from "../../utils/recommendations/recommendationsApi";
+import {
+  applyBottomRecommendationBatch,
+  applyTopRecommendationBatch,
+  trimBatchForPrepend,
+} from "./homeFeedMerge";
 
 function OffersTab({
   items,
@@ -114,6 +121,22 @@ export function HomePage() {
   const offers = useMarketStore((s) => s.offers);
   const stores = useMarketStore((s) => s.stores);
   const routeOfferPublic = useMarketStore((s) => s.routeOfferPublic);
+  const recommendationCursor = useMarketStore((s) => s.recommendationCursor);
+  const recommendationFeedStartIndex = useMarketStore(
+    (s) => s.recommendationFeedStartIndex,
+  );
+  const recommendationTotalAvailable = useMarketStore(
+    (s) => s.recommendationTotalAvailable,
+  );
+  const recommendationBatchSize = useMarketStore(
+    (s) => s.recommendationBatchSize,
+  );
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const loadPrevRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreInFlightRef = useRef(false);
+  const loadPrevInFlightRef = useRef(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadingPrev, setLoadingPrev] = useState(false);
 
   const items = useMemo((): Offer[] => {
     return offerIds
@@ -121,6 +144,127 @@ export function HomePage() {
       .filter((o): o is Offer => o != null);
   }, [offerIds, offers]);
 
+  useEffect(() => {
+    const bottomNode = loadMoreRef.current;
+    const topNode = loadPrevRef.current;
+    if (!bottomNode || recommendationTotalAvailable <= 0) return;
+
+    let disposed = false;
+
+    const obsBottom = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting || loadMoreInFlightRef.current) return;
+
+        loadMoreInFlightRef.current = true;
+        setLoadingMore(true);
+        void (async () => {
+          try {
+            const live = useMarketStore.getState();
+            const batch = await fetchRecommendationBatch(
+              live.recommendationCursor,
+              live.recommendationBatchSize || 50,
+            );
+            if (disposed) return;
+            if (batch.offerIds.length === 0) return;
+            useMarketStore.setState((state) => {
+              const patch = applyBottomRecommendationBatch(state, batch);
+              return patch ? { ...state, ...patch } : state;
+            });
+          } catch (e) {
+            if (!disposed) {
+              toast.error(
+                e instanceof Error && e.message
+                  ? e.message
+                  : "No se pudieron cargar más recomendaciones.",
+              );
+            }
+          } finally {
+            loadMoreInFlightRef.current = false;
+            if (!disposed) setLoadingMore(false);
+          }
+        })();
+      },
+      { rootMargin: "600px 0px" },
+    );
+
+    const obsTop = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting || loadPrevInFlightRef.current) return;
+        const fs0 = useMarketStore.getState().recommendationFeedStartIndex ?? 0;
+        if (fs0 <= 0) return;
+
+        loadPrevInFlightRef.current = true;
+        setLoadingPrev(true);
+        void (async () => {
+          const beforeH = document.documentElement.scrollHeight;
+          const beforeY = window.scrollY;
+          try {
+            const live = useMarketStore.getState();
+            const takeN = live.recommendationBatchSize || 50;
+            const feedStart = live.recommendationFeedStartIndex ?? 0;
+            if (feedStart <= 0) return;
+            const requestCursor = Math.max(0, feedStart - takeN);
+            const batchRaw = await fetchRecommendationBatch(
+              requestCursor,
+              takeN,
+            );
+            if (disposed) return;
+            const batch = trimBatchForPrepend(
+              batchRaw,
+              feedStart,
+              requestCursor,
+            );
+            if (batch.offerIds.length === 0) return;
+
+            useMarketStore.setState((state) => {
+              const patch = applyTopRecommendationBatch(
+                state,
+                batch,
+                requestCursor,
+              );
+              return patch ? { ...state, ...patch } : state;
+            });
+
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const delta = document.documentElement.scrollHeight - beforeH;
+                window.scrollTo(0, beforeY + delta);
+              });
+            });
+          } catch (e) {
+            if (!disposed) {
+              toast.error(
+                e instanceof Error && e.message
+                  ? e.message
+                  : "No se pudieron cargar ofertas anteriores.",
+              );
+            }
+          } finally {
+            loadPrevInFlightRef.current = false;
+            if (!disposed) setLoadingPrev(false);
+          }
+        })();
+      },
+      { rootMargin: "280px 0px 0px 0px" },
+    );
+
+    obsBottom.observe(bottomNode);
+    if (topNode) obsTop.observe(topNode);
+    return () => {
+      disposed = true;
+      obsBottom.disconnect();
+      obsTop.disconnect();
+    };
+  }, [
+    recommendationBatchSize,
+    recommendationCursor,
+    recommendationFeedStartIndex,
+    recommendationTotalAvailable,
+  ]);
+
+  console.log({ itemsLen: items.length });
   return (
     <div className="container vt-page">
       <div className="mb-3 mt-2 flex items-center justify-between gap-3">
@@ -135,11 +279,24 @@ export function HomePage() {
         </Link>
       </div>
 
+      <div ref={loadPrevRef} className="h-2 w-full" aria-hidden />
+      {loadingPrev ? (
+        <div className="py-2 text-center text-sm text-[var(--muted)]">
+          Cargando ofertas anteriores…
+        </div>
+      ) : null}
+
       <OffersTab
         items={items}
         stores={stores}
         routeOfferPublic={routeOfferPublic}
       />
+      <div ref={loadMoreRef} className="h-10" aria-hidden />
+      {loadingMore ? (
+        <div className="py-2 text-center text-sm text-[var(--muted)]">
+          Cargando más sugerencias…
+        </div>
+      ) : null}
     </div>
   );
 }

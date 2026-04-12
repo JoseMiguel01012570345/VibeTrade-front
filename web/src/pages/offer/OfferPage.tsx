@@ -19,6 +19,7 @@ import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
 } from "../../utils/market/toolPlaceholder";
+import { trackRecommendationInteraction } from "../../utils/recommendations/recommendationsApi";
 
 function formatInquiryDate(ms: number): string {
   try {
@@ -170,6 +171,11 @@ export function OfferPage() {
       (offer.tags.includes("Servicio") ? TOOL_PLACEHOLDER_SRC : "")
     );
   }, [offer, galleryUrls]);
+
+  useEffect(() => {
+    if (!offerId || !offer) return;
+    void trackRecommendationInteraction(offerId, "click").catch(() => undefined);
+  }, [offerId, offer]);
 
   if (!offerId || !offer) {
     return (
@@ -413,6 +419,10 @@ export function OfferPage() {
                               );
                               return;
                             }
+                            void trackRecommendationInteraction(
+                              offer.id,
+                              "chat_start",
+                            ).catch(() => undefined);
                             const threadId = ensureThreadForOffer(offer.id, {
                               buyerId: me.id,
                             });
@@ -551,6 +561,10 @@ export function OfferPage() {
                     );
                     return;
                   }
+                  void trackRecommendationInteraction(
+                    offer.id,
+                    "chat_start",
+                  ).catch(() => undefined);
                   const threadId = ensureThreadForOffer(offer.id, {
                     buyerId: me.id,
                   });

@@ -273,6 +273,14 @@ export type MarketState = {
   stores: Record<string, StoreBadge>;
   offers: Record<string, Offer>;
   offerIds: string[];
+  /**
+   * Índice en la lista ordenada del servidor de `offerIds[0]` (para paginar hacia arriba).
+   */
+  recommendationFeedStartIndex: number;
+  recommendationCursor: number;
+  recommendationTotalAvailable: number;
+  recommendationBatchSize: number;
+  recommendationThreshold: number;
   /** Catálogo de tienda (productos/servicios de ficha) por id de negocio — flow-ui perfil & acuerdos. */
   storeCatalogs: Record<string, StoreCatalog>;
   threads: Record<string, Thread>;
