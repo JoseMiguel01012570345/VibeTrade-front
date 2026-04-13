@@ -12,6 +12,7 @@ export type CatalogOfferPreview = {
   price?: string;
   currency?: string | null;
   acceptedCurrencies: string[];
+  photoUrls?: string[];
   tipoServicio?: string;
   shortDescription?: string;
   descripcion?: string;
@@ -115,6 +116,8 @@ function parseOfferPreview(raw: unknown): CatalogOfferPreview | null {
   const acc = o.acceptedCurrencies;
   const accArr = parseStringArray(acc);
   out.acceptedCurrencies = accArr;
+  const photos = parseStringArray(o.photoUrls);
+  if (photos.length) out.photoUrls = photos;
   if (typeof o.tipoServicio === "string") out.tipoServicio = o.tipoServicio;
   if (typeof o.shortDescription === "string")
     out.shortDescription = o.shortDescription;

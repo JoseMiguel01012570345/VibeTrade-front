@@ -2,6 +2,12 @@ import { Link } from "react-router-dom";
 import { ExternalLink, Package, Store, Wrench } from "lucide-react";
 import type { CatalogOfferPreview, CatalogSearchItem } from "../../utils/market/searchStores";
 import { StoreTrustMini } from "../../components/StoreTrustMini";
+import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
+import { cn } from "../../lib/cn";
+import {
+  isToolPlaceholderUrl,
+  TOOL_PLACEHOLDER_SRC,
+} from "../../utils/market/toolPlaceholder";
 
 type Props = Readonly<{
   item: CatalogSearchItem;
@@ -45,6 +51,11 @@ export function CatalogOfferSearchCard({ item }: Props) {
       ? offer.shortDescription
       : offer.descripcion;
   const accepted = offer.acceptedCurrencies ?? [];
+  const photos = (offer.photoUrls ?? []).map((x) => x.trim()).filter(Boolean);
+  const mainPhoto = photos[0] || "";
+  const thumbPhotos = photos.slice(1, 4);
+  const mainSrc = mainPhoto || TOOL_PLACEHOLDER_SRC;
+  const isTool = isToolPlaceholderUrl(mainSrc);
 
   return (
     <div className="relative overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
@@ -57,12 +68,72 @@ export function CatalogOfferSearchCard({ item }: Props) {
       <div className="relative z-[2] p-3.5 pointer-events-none">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-1 gap-3">
-            <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
-              {offer.kind === "product" ? (
-                <Package size={22} className="text-[var(--muted)]" aria-hidden />
-              ) : (
-                <Wrench size={22} className="text-[var(--muted)]" aria-hidden />
-              )}
+            <div className="shrink-0">
+              <div
+                className={cn(
+                  "relative h-[92px] w-[92px] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]",
+                  isTool && "bg-gray-200",
+                )}
+              >
+                {mainPhoto ? (
+                  <ProtectedMediaImg
+                    src={mainSrc}
+                    alt=""
+                    wrapperClassName="h-full w-full"
+                    className={cn(
+                      "h-full w-full",
+                      isTool
+                        ? "vt-img-tool-placeholder p-3"
+                        : "object-cover",
+                    )}
+                  />
+                ) : (
+                  <div className="grid h-full w-full place-items-center">
+                    {offer.kind === "product" ? (
+                      <Package
+                        size={22}
+                        className="text-[var(--muted)]"
+                        aria-hidden
+                      />
+                    ) : (
+                      <Wrench
+                        size={22}
+                        className="text-[var(--muted)]"
+                        aria-hidden
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+              {thumbPhotos.length ? (
+                <div className="mt-2 flex gap-1.5">
+                  {thumbPhotos.map((src, i) => {
+                    const s0 = src || TOOL_PLACEHOLDER_SRC;
+                    const tool = isToolPlaceholderUrl(s0);
+                    return (
+                      <div
+                        key={`${src}-${i}`}
+                        className={cn(
+                          "h-7 w-7 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)]",
+                          tool && "bg-gray-200",
+                        )}
+                      >
+                        <ProtectedMediaImg
+                          src={s0}
+                          alt=""
+                          wrapperClassName="h-full w-full"
+                          className={cn(
+                            "h-full w-full",
+                            tool
+                              ? "vt-img-tool-placeholder p-1"
+                              : "object-cover",
+                          )}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
             <div className="min-w-0">
               <div className="truncate text-base font-black tracking-[-0.02em]">
