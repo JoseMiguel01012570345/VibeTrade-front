@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Link, useLocation, useNavigationType } from "react-router-dom";
+import { Link, useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
@@ -18,7 +18,7 @@ import type { Offer, StoreBadge } from "../../app/store/useMarketStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { RouteOfferPreview } from "../offer/RouteOfferPreview";
 import { OfferSaveButton } from "../offer/OfferSaveButton";
-import { ChevronLeft, ChevronRight, Store } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Store } from "lucide-react";
 import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
@@ -359,11 +359,12 @@ function RecommendedStoresRow({
   );
 }
 
-// StoresTab moved to /stores route (StoresSearchPage).
+// Búsqueda de catálogo: ruta `/search` (barra en Home).
 
 export function HomePage() {
   const location = useLocation();
   const navigationType = useNavigationType();
+  const navigate = useNavigate();
 
   const offerIds = useMarketStore((s) => s.offerIds);
   const offers = useMarketStore((s) => s.offers);
@@ -599,16 +600,29 @@ export function HomePage() {
 
   return (
     <div className="container vt-page">
-      <div className="mb-3 mt-2 flex items-center justify-between gap-3">
-        <div>
+      <div className="mb-3 mt-2">
+        <div className="mb-3">
           <h1 className="vt-h1">Ofertas</h1>
           <div className="vt-muted">
             Explorá ofertas publicadas en la plataforma.
           </div>
         </div>
-        <Link className="vt-btn" to="/stores">
-          Ver tiendas
-        </Link>
+        <button
+          type="button"
+          className="flex w-full max-w-2xl items-center gap-3 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-left shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+          onClick={() => navigate("/search")}
+          aria-label="Abrir búsqueda de tiendas, productos y servicios"
+        >
+          <Search
+            size={20}
+            strokeWidth={2.25}
+            className="shrink-0 text-[var(--muted)]"
+            aria-hidden
+          />
+          <span className="truncate text-[14px] text-[var(--muted)]">
+            Buscar tiendas, productos o servicios…
+          </span>
+        </button>
       </div>
 
       <div ref={loadPrevRef} className="h-2 w-full shrink-0" aria-hidden />

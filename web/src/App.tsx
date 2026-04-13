@@ -19,6 +19,7 @@ import { StorePage } from "./pages/store/StorePage";
 import { OtpPage } from "./pages/onboarding/OtpPage";
 import { OnboardingWelcomePage } from "./pages/onboarding/OnboardingWelcomePage";
 import { PhoneEntryPage } from "./pages/onboarding/PhoneEntryPage";
+import { CatalogSearchPage } from "./pages/search/CatalogSearchPage";
 import { StoresSearchPage } from "./pages/stores/StoresSearchPage";
 
 function SessionGate() {
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/onboarding/otp" element={<OtpPage />} />
 
           <Route path="/home" element={<HomePage />} />
+          <Route path="/search" element={<CatalogSearchPage />} />
           <Route path="/stores" element={<StoresSearchPage />} />
           <Route path="/offer/:offerId" element={<OfferPage />} />
           <Route path="/store/:storeId" element={<StorePage />} />
