@@ -18,10 +18,10 @@ import type { CatalogPublishedFilter, PriceSort } from "./storePageTypes";
 /** Minimal shape so callers can pass `StoreSectionFilters` without a circular import. */
 type StoreSectionFiltersLike = {
   productNameQ: string;
-  productCategoryQ: string;
+  productCategoryQ: string[];
   productConditionQ: string;
   serviceNameQ: string;
-  serviceCategoryQ: string;
+  serviceCategoryQ: string[];
   acceptedMonedaQ: readonly string[];
   catalogPublishedFilter: CatalogPublishedFilter;
 };
@@ -127,7 +127,7 @@ export function filterProductsBySectionText(
       ) &&
       (matchesNameQuery(p.name, f.productNameQ) ||
         matchesNameQuery(p.model ?? "", f.productNameQ)) &&
-      matchesCategoryFilter(p.category, f.productCategoryQ) &&
+      matchesAnyCategoryFilter(p.category, f.productCategoryQ) &&
       matchesConditionFilter(p.condition, f.productConditionQ) &&
       matchesAcceptedMonedaFilter(
         f.acceptedMonedaQ,
@@ -148,12 +148,23 @@ export function filterServicesBySectionText(
       ) &&
       (matchesNameQuery(s.tipoServicio, f.serviceNameQ) ||
         matchesNameQuery(s.descripcion, f.serviceNameQ)) &&
-      matchesCategoryFilter(s.category, f.serviceCategoryQ) &&
+      matchesAnyCategoryFilter(s.category, f.serviceCategoryQ) &&
       matchesAcceptedMonedaFilter(
         f.acceptedMonedaQ,
         catalogMonedasList(s),
       ),
   );
+}
+
+function matchesAnyCategoryFilter(
+  itemCategory: string,
+  selected: readonly string[],
+): boolean {
+  if (selected.length === 0) return true;
+  for (const s of selected) {
+    if (matchesCategoryFilter(itemCategory, s)) return true;
+  }
+  return false;
 }
 
 export function applyProductPriceRangeAndSort(

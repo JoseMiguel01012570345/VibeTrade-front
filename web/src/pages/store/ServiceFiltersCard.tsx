@@ -10,8 +10,8 @@ import {
 export function ServiceFiltersCard({
   serviceNameQ,
   onServiceNameQ,
-  serviceCategory,
-  onServiceCategory,
+  serviceCategoryQ,
+  onServiceCategoryQ,
   serviceCategories,
   priceSort,
   onPriceSort,
@@ -29,8 +29,8 @@ export function ServiceFiltersCard({
 }: Readonly<{
   serviceNameQ: string;
   onServiceNameQ: (v: string) => void;
-  serviceCategory: string;
-  onServiceCategory: (v: string) => void;
+  serviceCategoryQ: readonly string[];
+  onServiceCategoryQ: (v: string[]) => void;
   serviceCategories: string[];
   priceSort: PriceSort;
   onPriceSort: (v: PriceSort) => void;
@@ -64,16 +64,13 @@ export function ServiceFiltersCard({
           onChange={(e) => onServiceNameQ(e.target.value)}
           aria-label="Filtrar servicios por nombre o tipo"
         />
-        <div className="sm:w-48">
-          <VtSelect
-            value={serviceCategory}
-            onChange={onServiceCategory}
+        <div className="min-w-0 sm:w-60">
+          <VtMultiSelect
+            value={serviceCategoryQ}
+            onChange={onServiceCategoryQ}
             ariaLabel="Filtrar servicios por categoría"
             placeholder="Todas las categorías"
-            options={[
-              { value: "", label: "Todas las categorías" },
-              ...serviceCategories.map((c) => ({ value: c, label: c })),
-            ]}
+            options={serviceCategories.map((c) => ({ value: c, label: c }))}
           />
         </div>
         <div className="min-w-0 sm:w-52">

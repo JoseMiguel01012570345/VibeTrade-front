@@ -11,7 +11,8 @@ import {
 } from "../../utils/market/marketPersistence";
 import { mediaApiUrl, uploadMedia } from "../../utils/media/mediaClient";
 import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
-import { VtSelect } from "../../components/VtSelect";
+import { VtMultiSelect } from "../../components/VtMultiSelect";
+import type { VtSelectOption } from "../../components/VtSelect";
 import { OwnerStoreCard } from "./stores/OwnerStoreCard";
 import { VisitorStoreSummaryCard } from "./stores/VisitorStoreSummaryCard";
 import { StoreFormModal } from "./stores/StoreFormModal";
@@ -46,7 +47,7 @@ export function ProfileStoresSection({
   );
 
   const [storeListNameQ, setStoreListNameQ] = useState("");
-  const [storeListCategory, setStoreListCategory] = useState("");
+  const [storeListCategories, setStoreListCategories] = useState<string[]>([]);
   const [storeListTrustMin, setStoreListTrustMin] = useState("");
 
   const TRUST_SCORE_MAX = 100;
@@ -64,20 +65,28 @@ export function ProfileStoresSection({
     return [...set].sort((a, b) => a.localeCompare(b, "es"));
   }, [myStores]);
 
+  const categoryFilterOptions: VtSelectOption[] = useMemo(
+    () => storeListCategoryOptions.map((c) => ({ value: c, label: c })),
+    [storeListCategoryOptions],
+  );
+
   const filteredMyStores = useMemo(() => {
     const trustMinNum = Number(storeListTrustMin);
     const hasTrustMin =
       storeListTrustMin.trim() !== "" && Number.isFinite(trustMinNum);
     return myStores.filter((b) => {
       if (!matchesNameQuery(b.name, storeListNameQ)) return false;
-      const sel = storeListCategory.trim();
-      if (sel && !b.categories.some((c) => matchesCategoryFilter(c, sel))) {
+      if (
+        storeListCategories.length > 0 &&
+        !storeListCategories.some((sel) =>
+          b.categories.some((c) => matchesCategoryFilter(c, sel)),
+        )
+      )
         return false;
-      }
       if (hasTrustMin && !(b.trustScore >= trustMinNum)) return false;
       return true;
     });
-  }, [myStores, storeListNameQ, storeListCategory, storeListTrustMin]);
+  }, [myStores, storeListNameQ, storeListCategories, storeListTrustMin]);
 
   const me = useAppStore((s) => s.me);
   const storeIdsKey = useMemo(
@@ -152,7 +161,9 @@ export function ProfileStoresSection({
       try {
         const cats = await fetchCatalogCategories();
         if (!cancelled && cats.length > 0) setCatalogCategories(cats);
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     })();
     return () => {
       cancelled = true;
@@ -353,20 +364,14 @@ export function ProfileStoresSection({
                     aria-label="Filtrar tiendas por nombre"
                   />
                 </label>
-                <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
-                  <span>Categoría</span>
-                  <VtSelect
-                    value={storeListCategory}
-                    onChange={setStoreListCategory}
-                    ariaLabel="Filtrar tiendas por categoría"
+                <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-72">
+                  <span>Categorías</span>
+                  <VtMultiSelect
+                    value={storeListCategories}
+                    onChange={setStoreListCategories}
+                    ariaLabel="Filtrar tiendas por categorías"
                     placeholder="Todas"
-                    options={[
-                      { value: "", label: "Todas" },
-                      ...storeListCategoryOptions.map((c) => ({
-                        value: c,
-                        label: c,
-                      })),
-                    ]}
+                    options={categoryFilterOptions}
                   />
                 </label>
                 <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-48">
@@ -522,20 +527,14 @@ export function ProfileStoresSection({
                   aria-label="Filtrar tiendas por nombre"
                 />
               </label>
-              <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
-                <span>Categoría</span>
-                <VtSelect
-                  value={storeListCategory}
-                  onChange={setStoreListCategory}
-                  ariaLabel="Filtrar tiendas por categoría"
+              <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-72">
+                <span>Categorías</span>
+                <VtMultiSelect
+                  value={storeListCategories}
+                  onChange={setStoreListCategories}
+                  ariaLabel="Filtrar tiendas por categorías"
                   placeholder="Todas"
-                  options={[
-                    { value: "", label: "Todas" },
-                    ...storeListCategoryOptions.map((c) => ({
-                      value: c,
-                      label: c,
-                    })),
-                  ]}
+                  options={categoryFilterOptions}
                 />
               </label>
               <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-48">

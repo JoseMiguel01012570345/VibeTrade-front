@@ -2,12 +2,13 @@ import {
   type FormEvent,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
-import { VtSelect } from "../../components/VtSelect";
 import { VtMultiSelect } from "../../components/VtMultiSelect";
+import type { VtSelectOption } from "../../components/VtSelect";
 import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
 import {
   searchCatalog,
@@ -42,11 +43,11 @@ function catalogItemKey(it: CatalogSearchItem, pageIndex: number): string {
   return `${it.kind}-${it.store.id}-p${pageIndex}`;
 }
 
-type SavedSearchStateV2 = {
-  v: 2;
+type SavedSearchStateV3 = {
+  v: 3;
   savedAt: number;
   storeNameQ: string;
-  storeCategory: string;
+  storeCategories: string[];
   kinds: CatalogSearchKind[];
   km: string;
   trustMin: string;
@@ -59,7 +60,7 @@ type SavedSearchStateV2 = {
   scrollY: number;
 };
 
-const SEARCH_STATE_KEY = "vt:catalogSearch:v2";
+const SEARCH_STATE_KEY = "vt:catalogSearch:v3";
 
 export function CatalogSearchPage() {
   const location = useLocation();
@@ -68,7 +69,7 @@ export function CatalogSearchPage() {
     (location.state as LocationState)?.initialQuery?.trim() ?? "";
 
   const [storeNameQ, setStoreNameQ] = useState(initialQ);
-  const [storeCategory, setStoreCategory] = useState("");
+  const [storeCategories, setStoreCategories] = useState<string[]>([]);
   const [kinds, setKinds] = useState<CatalogSearchKind[]>([
     "store",
     "product",
@@ -112,7 +113,7 @@ export function CatalogSearchPage() {
     }
 
     setStoreNameQ(saved.storeNameQ);
-    setStoreCategory(saved.storeCategory);
+    setStoreCategories(saved.storeCategories);
     setKinds(saved.kinds);
     setKm(saved.km);
     setTrustMin(saved.trustMin);
@@ -167,10 +168,10 @@ export function CatalogSearchPage() {
     if (!didRestore) return;
     const save = () => {
       saveSearchState({
-        v: 2,
+        v: 3,
         savedAt: Date.now(),
         storeNameQ,
-        storeCategory,
+        storeCategories,
         kinds,
         km,
         trustMin,
@@ -197,7 +198,7 @@ export function CatalogSearchPage() {
   }, [
     didRestore,
     storeNameQ,
-    storeCategory,
+    storeCategories,
     kinds,
     km,
     trustMin,
@@ -208,6 +209,11 @@ export function CatalogSearchPage() {
     pageIndex,
     totalCount,
   ]);
+
+  const categoryOptions: VtSelectOption[] = useMemo(
+    () => catOptions.map((c) => ({ value: c, label: c })),
+    [catOptions],
+  );
 
   const runSearch = useCallback(
     async (nextPageIndex: number) => {
@@ -236,7 +242,8 @@ export function CatalogSearchPage() {
         const offset = Math.max(0, nextPageIndex) * PAGE_SIZE;
         const { items, totalCount: total } = await searchCatalog({
           name: storeNameQ.trim() || undefined,
-          category: storeCategory.trim() || undefined,
+          category:
+            storeCategories.length > 0 ? storeCategories.join(",") : undefined,
           kinds,
           lat,
           lng,
@@ -260,7 +267,7 @@ export function CatalogSearchPage() {
         setStatus("error");
       }
     },
-    [storeNameQ, storeCategory, kinds, km, geo, setSearchParams],
+    [storeNameQ, storeCategories, kinds, km, geo, setSearchParams],
   );
 
   const onSubmitSearch = useCallback(
@@ -324,17 +331,14 @@ export function CatalogSearchPage() {
             />
           </label>
 
-          <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
-            <span>Categoría</span>
-            <VtSelect
-              value={storeCategory}
-              onChange={setStoreCategory}
-              ariaLabel="Filtrar por categoría"
+          <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-72">
+            <span>Categorías</span>
+            <VtMultiSelect
+              value={storeCategories}
+              onChange={setStoreCategories}
+              ariaLabel="Filtrar por categorías"
               placeholder="Todas"
-              options={[
-                { value: "", label: "Todas" },
-                ...catOptions.map((c) => ({ value: c, label: c })),
-              ]}
+              options={categoryOptions}
             />
           </label>
 
@@ -549,25 +553,59 @@ function buildPaginationModel(
   return dedup;
 }
 
-function loadSavedSearchState(): SavedSearchStateV2 | null {
+function loadSavedSearchState(): SavedSearchStateV3 | null {
   try {
     const raw = sessionStorage.getItem(SEARCH_STATE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as SavedSearchStateV2;
-    if (parsed?.v !== 2) return null;
-    if (!Array.isArray(parsed.results)) return null;
-    if (!Array.isArray(parsed.kinds)) return null;
-    if (typeof parsed.scrollY !== "number") return null;
+    const parsedUnknown: unknown = JSON.parse(raw);
+    const parsed =
+      parsedUnknown !== null &&
+      typeof parsedUnknown === "object" &&
+      !Array.isArray(parsedUnknown)
+        ? (parsedUnknown as Record<string, unknown>)
+        : null;
+    if (!parsed) return null;
+
+    const v = parsed.v;
+    const results = parsed.results;
+    const kinds = parsed.kinds;
+    const scrollY = parsed.scrollY;
+    if (!Array.isArray(results)) return null;
+    if (!Array.isArray(kinds)) return null;
+    if (typeof scrollY !== "number") return null;
+
+    // v3
+    if (v === 3) {
+      const storeCategoriesRaw = parsed.storeCategories;
+      if (!Array.isArray(storeCategoriesRaw)) return null;
+      const storeCategories = storeCategoriesRaw.filter(
+        (x): x is string => typeof x === "string" && x.trim().length > 0,
+      );
+      return {
+        ...(parsed as unknown as SavedSearchStateV3),
+        storeCategories,
+        results: normalizeCatalogSearchItems(results as CatalogSearchItem[]),
+      };
+    }
+
+    // v2 (compat): storeCategory string -> storeCategories[]
+    if (v !== 2) return null;
+    const sc =
+      typeof parsed.storeCategory === "string"
+        ? parsed.storeCategory.trim()
+        : "";
     return {
-      ...parsed,
-      results: normalizeCatalogSearchItems(parsed.results),
+      ...(parsed as unknown as SavedSearchStateV3),
+      v: 3,
+      storeCategories: sc ? [sc] : [],
+      results: normalizeCatalogSearchItems(results as CatalogSearchItem[]),
     };
   } catch {
     return null;
   }
 }
 
-function saveSearchState(s: SavedSearchStateV2): void {
+function saveSearchState(s: SavedSearchStateV3): void {
   try {
     sessionStorage.setItem(SEARCH_STATE_KEY, JSON.stringify(s));
   } catch {

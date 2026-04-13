@@ -11,8 +11,8 @@ import {
 export function ProductFiltersCard({
   productNameQ,
   onProductNameQ,
-  productCategory,
-  onProductCategory,
+  productCategoryQ,
+  onProductCategoryQ,
   productCategories,
   productCondition,
   onProductCondition,
@@ -32,8 +32,8 @@ export function ProductFiltersCard({
 }: Readonly<{
   productNameQ: string;
   onProductNameQ: (v: string) => void;
-  productCategory: string;
-  onProductCategory: (v: string) => void;
+  productCategoryQ: readonly string[];
+  onProductCategoryQ: (v: string[]) => void;
   productCategories: string[];
   productCondition: string;
   onProductCondition: (v: string) => void;
@@ -69,16 +69,13 @@ export function ProductFiltersCard({
           onChange={(e) => onProductNameQ(e.target.value)}
           aria-label="Filtrar productos por nombre o modelo"
         />
-        <div className="sm:w-48">
-          <VtSelect
-            value={productCategory}
-            onChange={onProductCategory}
+        <div className="min-w-0 sm:w-60">
+          <VtMultiSelect
+            value={productCategoryQ}
+            onChange={onProductCategoryQ}
             ariaLabel="Filtrar productos por categoría"
             placeholder="Todas las categorías"
-            options={[
-              { value: "", label: "Todas las categorías" },
-              ...productCategories.map((c) => ({ value: c, label: c })),
-            ]}
+            options={productCategories.map((c) => ({ value: c, label: c }))}
           />
         </div>
         <div className="sm:w-48">

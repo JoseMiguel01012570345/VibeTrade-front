@@ -14,10 +14,10 @@ export type CatalogPublishedFilter = "all" | "published" | "draft";
 /** Filtros de una sección (vitrina, pestaña productos o pestaña servicios). */
 export type StoreSectionFilters = {
   productNameQ: string;
-  productCategoryQ: string;
+  productCategoryQ: string[];
   productConditionQ: string;
   serviceNameQ: string;
-  serviceCategoryQ: string;
+  serviceCategoryQ: string[];
   priceSort: PriceSort;
   priceFloor: number | null;
   priceCeiling: number | null;
@@ -32,10 +32,10 @@ export type StoreSectionFilters = {
 export function emptyStoreSectionFilters(): StoreSectionFilters {
   return {
     productNameQ: "",
-    productCategoryQ: "",
+    productCategoryQ: [],
     productConditionQ: "",
     serviceNameQ: "",
-    serviceCategoryQ: "",
+    serviceCategoryQ: [],
     priceSort: "none",
     priceFloor: null,
     priceCeiling: null,

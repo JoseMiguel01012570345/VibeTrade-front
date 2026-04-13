@@ -726,8 +726,8 @@ export function StorePage() {
       patchSection("vitrina", { vitrinaListMode: v }),
     productNameQ: fv.productNameQ,
     onProductNameQ: (q: string) => patchSection("vitrina", { productNameQ: q }),
-    productCategory: fv.productCategoryQ,
-    onProductCategory: (q: string) =>
+    productCategoryQ: fv.productCategoryQ,
+    onProductCategoryQ: (q: string[]) =>
       patchSection("vitrina", { productCategoryQ: q }),
     productCategories: productCategoryFilterOptions,
     productCondition: fv.productConditionQ,
@@ -735,8 +735,8 @@ export function StorePage() {
       patchSection("vitrina", { productConditionQ: q }),
     serviceNameQ: fv.serviceNameQ,
     onServiceNameQ: (q: string) => patchSection("vitrina", { serviceNameQ: q }),
-    serviceCategory: fv.serviceCategoryQ,
-    onServiceCategory: (q: string) =>
+    serviceCategoryQ: fv.serviceCategoryQ,
+    onServiceCategoryQ: (q: string[]) =>
       patchSection("vitrina", { serviceCategoryQ: q }),
     serviceCategories: serviceCategoryFilterOptions,
     priceSort: fv.priceSort,
@@ -960,8 +960,8 @@ export function StorePage() {
               onProductNameQ={(q) =>
                 patchSection("products", { productNameQ: q })
               }
-              productCategory={fp.productCategoryQ}
-              onProductCategory={(q) =>
+              productCategoryQ={fp.productCategoryQ}
+              onProductCategoryQ={(q) =>
                 patchSection("products", { productCategoryQ: q })
               }
               productCategories={productCategoryFilterOptions}
@@ -1080,8 +1080,8 @@ export function StorePage() {
               onServiceNameQ={(q) =>
                 patchSection("services", { serviceNameQ: q })
               }
-              serviceCategory={fsv.serviceCategoryQ}
-              onServiceCategory={(q) =>
+              serviceCategoryQ={fsv.serviceCategoryQ}
+              onServiceCategoryQ={(q) =>
                 patchSection("services", { serviceCategoryQ: q })
               }
               serviceCategories={serviceCategoryFilterOptions}
@@ -1325,7 +1325,7 @@ export function StorePage() {
                       toast.success("Producto añadido");
                       patchSection("products", {
                         productNameQ: "",
-                        productCategoryQ: "",
+                        productCategoryQ: [],
                         productConditionQ: "",
                       });
                     } else {
@@ -1407,7 +1407,7 @@ export function StorePage() {
                       toast.success("Servicio añadido");
                       patchSection("services", {
                         serviceNameQ: "",
-                        serviceCategoryQ: "",
+                        serviceCategoryQ: [],
                       });
                     } else {
                       toast.error(

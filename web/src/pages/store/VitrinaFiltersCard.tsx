@@ -15,15 +15,15 @@ export function VitrinaFiltersCard({
   onVitrinaListMode,
   productNameQ,
   onProductNameQ,
-  productCategory,
-  onProductCategory,
+  productCategoryQ,
+  onProductCategoryQ,
   productCategories,
   productCondition,
   onProductCondition,
   serviceNameQ,
   onServiceNameQ,
-  serviceCategory,
-  onServiceCategory,
+  serviceCategoryQ,
+  onServiceCategoryQ,
   serviceCategories,
   priceSort,
   onPriceSort,
@@ -43,15 +43,15 @@ export function VitrinaFiltersCard({
   onVitrinaListMode: (v: VitrinaListMode) => void;
   productNameQ: string;
   onProductNameQ: (v: string) => void;
-  productCategory: string;
-  onProductCategory: (v: string) => void;
+  productCategoryQ: readonly string[];
+  onProductCategoryQ: (v: string[]) => void;
   productCategories: string[];
   productCondition: string;
   onProductCondition: (v: string) => void;
   serviceNameQ: string;
   onServiceNameQ: (v: string) => void;
-  serviceCategory: string;
-  onServiceCategory: (v: string) => void;
+  serviceCategoryQ: readonly string[];
+  onServiceCategoryQ: (v: string[]) => void;
   serviceCategories: string[];
   priceSort: PriceSort;
   onPriceSort: (v: PriceSort) => void;
@@ -142,15 +142,15 @@ export function VitrinaFiltersCard({
                 aria-label="Filtrar productos por nombre o modelo"
               />
               <div className="grid gap-2 min-[480px]:grid-cols-2">
-                <VtSelect
-                  value={productCategory}
-                  onChange={onProductCategory}
-                  ariaLabel="Filtrar productos por categoría"
+                <VtMultiSelect
+                  value={productCategoryQ}
+                  onChange={onProductCategoryQ}
+                  ariaLabel="Filtrar productos por categorías"
                   placeholder="Todas las categorías"
-                  options={[
-                    { value: "", label: "Todas las categorías" },
-                    ...productCategories.map((c) => ({ value: c, label: c })),
-                  ]}
+                  options={productCategories.map((c) => ({
+                    value: c,
+                    label: c,
+                  }))}
                 />
                 <VtSelect
                   value={productCondition}
@@ -178,15 +178,15 @@ export function VitrinaFiltersCard({
                 aria-label="Filtrar servicios por nombre"
               />
               <div className="min-[480px]:max-w-md">
-                <VtSelect
-                  value={serviceCategory}
-                  onChange={onServiceCategory}
-                  ariaLabel="Filtrar servicios por categoría"
+                <VtMultiSelect
+                  value={serviceCategoryQ}
+                  onChange={onServiceCategoryQ}
+                  ariaLabel="Filtrar servicios por categorías"
                   placeholder="Todas las categorías"
-                  options={[
-                    { value: "", label: "Todas las categorías" },
-                    ...serviceCategories.map((c) => ({ value: c, label: c })),
-                  ]}
+                  options={serviceCategories.map((c) => ({
+                    value: c,
+                    label: c,
+                  }))}
                 />
               </div>
             </div>
