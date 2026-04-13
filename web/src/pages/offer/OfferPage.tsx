@@ -47,6 +47,8 @@ export function OfferPage() {
   const { offerId } = useParams();
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
+  const isSessionActive = useAppStore((s) => s.isSessionActive);
+  const openAuthModal = useAppStore((s) => s.openAuthModal);
   const offer = useMarketStore((s) =>
     offerId ? s.offers[offerId] : undefined,
   );
@@ -555,6 +557,10 @@ export function OfferPage() {
                     : undefined
                 }
                 onClick={() => {
+                  if (!isSessionActive || me.id === "guest") {
+                    openAuthModal();
+                    return;
+                  }
                   if (actingAsCarrierOnThisOffer && routeOffer) {
                     toast.error(
                       "Usá la suscripción al tramo; el chat se habilita tras la validación.",

@@ -7,6 +7,7 @@ import { getSessionToken } from '../http/sessionToken'
 import { setMarketHydrating } from '../market/marketPersistence'
 import { setReelsBootstrap } from '../reels/reelsBootstrapState'
 import type { BootstrapResponse } from './bootstrapTypes'
+import { getOrCreateGuestId } from '../auth/guestId'
 
 function normalizeReelsCovers(items: BootstrapResponse['reels']['items']) {
   return items.map((r) => ({
@@ -33,32 +34,13 @@ function normalizeReelsComments(comments: Record<string, ReelComment[]>) {
 export async function bootstrapWebApp(): Promise<void> {
   const token = getSessionToken()
   const active = useAppStore.getState().isSessionActive
-  if (!token || !active) {
-    // No sesión: evitar pegarle al backend. El SessionGate llevará a onboarding.
-    // Dejamos estado consistente (vacío) sin iniciar persistencia.
-    setMarketHydrating(true)
-    useMarketStore.setState({
-      stores: {},
-      offers: {},
-      offerIds: [],
-      recommendationFeedStartIndex: 0,
-      recommendationCursor: 0,
-      recommendationTotalAvailable: 0,
-      recommendationBatchSize: 20,
-      recommendationThreshold: 0.35,
-      recommendationStoreStripAnchors: [],
-      storeCatalogs: {},
-      threads: {},
-      routeOfferPublic: {},
-      workspacePersistStoreId: null,
-    })
-    setMarketHydrating(false)
-    useAppStore.setState({ profileDisplayNames: {}, savedOffers: {} })
-    setReelsBootstrap({ items: [], initialComments: {}, initialLikeCounts: {} })
-    return
-  }
-
-  const res = await apiFetch('/api/v1/bootstrap')
+  const res = await apiFetch(
+    token && active
+      ? '/api/v1/bootstrap'
+      : `/api/v1/bootstrap/guest?${new URLSearchParams({
+          guestId: getOrCreateGuestId(),
+        }).toString()}`,
+  )
   if (!res.ok) {
     const msg = `No se pudo cargar datos (${res.status}). ¿Está el backend en marcha?`
     toast.error(msg)

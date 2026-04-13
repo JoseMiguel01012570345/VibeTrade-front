@@ -67,7 +67,12 @@ type AppState = {
   /** IDs de ofertas guardadas (bootstrap + POST/DELETE `/api/v1/me/saved-offers`). */
   savedOffers: Record<string, boolean>
 
+  /** Modal global de autenticación (login/registro). */
+  authModalOpen: boolean
+
   setSessionActive: (active: boolean) => void
+  openAuthModal: () => void
+  closeAuthModal: () => void
   setTrustScore: (score: number) => void
   setMeAvatarUrl: (url: string | undefined) => void
   setMeName: (name: string) => void
@@ -105,6 +110,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   notifications: [],
   savedReels: {},
   savedOffers: {},
+  authModalOpen: false,
 
   setSessionActive: (active) => {
     try {
@@ -115,6 +121,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     set({ isSessionActive: active })
   },
+
+  openAuthModal: () => set({ authModalOpen: true }),
+  closeAuthModal: () => set({ authModalOpen: false }),
 
   setTrustScore: (score) => {
     const threshold = get().trustThreshold
@@ -191,6 +200,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         savedReels: {},
         savedOffers: {},
         profileSocialLinks: {},
+        authModalOpen: false,
       }
     }),
 }))

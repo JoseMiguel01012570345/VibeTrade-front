@@ -13,6 +13,7 @@ import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { StoreTrustMini } from "../../components/StoreTrustMini";
 import { StoreLocationMiniMap } from "../../components/store/StoreLocationMiniMap";
 import type { StoreLocationPoint } from "../../app/store/marketStoreTypes";
+import type { RouteOfferPublicState } from "../../app/store/marketStoreTypes";
 import type { StoreCatalog } from "../../pages/chat/domain/storeCatalogTypes";
 import type { Offer, StoreBadge } from "../../app/store/useMarketStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
@@ -96,7 +97,7 @@ function OfferCardsChunk({
 }: Readonly<{
   items: Offer[];
   stores: Record<string, StoreBadge>;
-  routeOfferPublic: Record<string, unknown>;
+  routeOfferPublic: Partial<Record<string, RouteOfferPublicState>>;
 }>) {
   return (
     <div className="grid grid-cols-12 gap-3 md:gap-3.5">
@@ -104,7 +105,7 @@ function OfferCardsChunk({
         const store = stores[o.storeId];
         const descFull = o.description?.trim() ?? "";
         const descPreview = offerDescriptionPreview(descFull);
-        const routePreview = routeOfferPublic[o.id] as any;
+        const routePreview = routeOfferPublic[o.id];
         const thumbSrc =
           o.imageUrl?.trim() ||
           (o.tags.includes("Servicio") ? TOOL_PLACEHOLDER_SRC : undefined);

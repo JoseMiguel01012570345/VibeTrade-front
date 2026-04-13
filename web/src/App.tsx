@@ -26,8 +26,13 @@ function SessionGate() {
   const isSessionActive = useAppStore((s) => s.isSessionActive);
   const { pathname } = useLocation();
 
-  if (!isSessionActive && !pathname.startsWith("/onboarding")) {
-    return <Navigate to="/onboarding" replace />;
+  if (!isSessionActive) {
+    const blocked =
+      pathname.startsWith("/chat") ||
+      pathname.startsWith("/reels") ||
+      pathname.startsWith("/profile") ||
+      pathname.startsWith("/notifications");
+    if (blocked) return <Navigate to="/home" replace />;
   }
   if (isSessionActive && pathname.startsWith("/onboarding")) {
     return <Navigate to="/home" replace />;
@@ -36,8 +41,7 @@ function SessionGate() {
 }
 
 function RootRedirect() {
-  const isSessionActive = useAppStore((s) => s.isSessionActive);
-  return <Navigate to={isSessionActive ? "/home" : "/onboarding"} replace />;
+  return <Navigate to="/home" replace />;
 }
 
 /** `/profile/:userId` → `/profile/:userId/account` */
