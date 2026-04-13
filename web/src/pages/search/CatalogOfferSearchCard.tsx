@@ -21,7 +21,13 @@ function offerTitle(offer: CatalogOfferPreview): string {
 
 function offerSubtitle(offer: CatalogOfferPreview): string | null {
   if (offer.kind === "product") {
-    const bits = [offer.category, offer.price].filter(Boolean);
+    const priceText =
+      offer.price && offer.currency
+        ? `${offer.price} ${offer.currency}`
+        : offer.price || null;
+    const currencyText =
+      !priceText && offer.currency ? `Moneda: ${offer.currency}` : null;
+    const bits = [offer.category, priceText ?? currencyText].filter(Boolean);
     return bits.length ? bits.join(" · ") : null;
   }
   const bits = [offer.category].filter(Boolean);
@@ -38,6 +44,7 @@ export function CatalogOfferSearchCard({ item }: Props) {
     offer.kind === "product"
       ? offer.shortDescription
       : offer.descripcion;
+  const accepted = offer.acceptedCurrencies ?? [];
 
   return (
     <div className="relative overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
@@ -67,6 +74,30 @@ export function CatalogOfferSearchCard({ item }: Props) {
               {desc ? (
                 <div className="vt-muted mt-2 line-clamp-2 text-xs">{desc}</div>
               ) : null}
+
+              <div className="vt-muted mt-2 flex flex-col gap-1 text-xs">
+                {offer.kind === "product" ? (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="font-semibold text-[var(--text)]">
+                      Moneda:
+                    </span>
+                    <span>{offer.currency?.trim() || "—"}</span>
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="font-semibold text-[var(--text)]">
+                    Acepta:
+                  </span>
+                  {accepted.length ? (
+                    <span className="truncate">
+                      {accepted.slice(0, 6).join(", ")}
+                      {accepted.length > 6 ? "…" : ""}
+                    </span>
+                  ) : (
+                    <span>—</span>
+                  )}
+                </div>
+              </div>
 
               <div className="vt-muted mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--border)] pt-2 text-xs">
                 <span className="inline-flex items-center gap-1 font-semibold text-[var(--text)]">

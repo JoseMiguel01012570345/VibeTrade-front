@@ -5,11 +5,13 @@ import {
   useState,
 } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { VtSelect } from "../../components/VtSelect";
+import { VtMultiSelect } from "../../components/VtMultiSelect";
 import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
 import {
   searchCatalog,
+  type CatalogSearchKind,
   type CatalogSearchItem,
 } from "../../utils/market/searchStores";
 import { StoreSearchResultCard } from "../home/StoreSearchResultCard";
@@ -40,15 +42,41 @@ function catalogItemKey(it: CatalogSearchItem, pageIndex: number): string {
   return `${it.kind}-${it.store.id}-p${pageIndex}`;
 }
 
+type SavedSearchStateV2 = {
+  v: 2;
+  savedAt: number;
+  storeNameQ: string;
+  storeCategory: string;
+  kinds: CatalogSearchKind[];
+  km: string;
+  trustMin: string;
+  appliedTrustMin: string;
+  geo: { lat: number; lng: number } | null;
+  status: "idle" | "loading" | "ready" | "error";
+  results: CatalogSearchItem[];
+  pageIndex: number;
+  totalCount: number;
+  scrollY: number;
+};
+
+const SEARCH_STATE_KEY = "vt:catalogSearch:v2";
+
 export function CatalogSearchPage() {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialQ =
     (location.state as LocationState)?.initialQuery?.trim() ?? "";
 
   const [storeNameQ, setStoreNameQ] = useState(initialQ);
   const [storeCategory, setStoreCategory] = useState("");
+  const [kinds, setKinds] = useState<CatalogSearchKind[]>([
+    "store",
+    "product",
+    "service",
+  ]);
   const [km, setKm] = useState("");
   const [trustMin, setTrustMin] = useState("");
+  const [appliedTrustMin, setAppliedTrustMin] = useState("");
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [catOptions, setCatOptions] = useState<string[]>([]);
   const [visible, setVisible] = useState(false);
@@ -58,11 +86,67 @@ export function CatalogSearchPage() {
   const [results, setResults] = useState<CatalogSearchItem[]>([]);
   const [pageIndex, setPageIndex] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [didRestore, setDidRestore] = useState(false);
+  const [pendingRestoreScrollY, setPendingRestoreScrollY] = useState<
+    number | null
+  >(null);
+  const [didApplyPageFromRoute, setDidApplyPageFromRoute] = useState(false);
 
   useEffect(() => {
     const t = requestAnimationFrame(() => setVisible(true));
     return () => cancelAnimationFrame(t);
   }, []);
+
+  useEffect(() => {
+    if (didRestore) return;
+    const saved = loadSavedSearchState();
+    if (!saved) {
+      setDidRestore(true);
+      return;
+    }
+
+    // Si llegamos con un initialQuery explícito (p.ej. desde Home), preferimos ese flujo.
+    if (initialQ.trim()) {
+      setDidRestore(true);
+      return;
+    }
+
+    setStoreNameQ(saved.storeNameQ);
+    setStoreCategory(saved.storeCategory);
+    setKinds(saved.kinds);
+    setKm(saved.km);
+    setTrustMin(saved.trustMin);
+    setAppliedTrustMin(saved.appliedTrustMin);
+    setGeo(saved.geo);
+    setStatus(saved.status);
+    setResults(saved.results);
+    setPageIndex(saved.pageIndex);
+    setTotalCount(saved.totalCount);
+    setPendingRestoreScrollY(saved.scrollY);
+    setDidRestore(true);
+  }, [didRestore, initialQ]);
+
+  useEffect(() => {
+    if (!didRestore) return;
+    if (didApplyPageFromRoute) return;
+    const raw = (searchParams.get("page") ?? "").trim();
+    const n = Number(raw);
+    if (Number.isFinite(n) && n >= 1) {
+      setPageIndex(Math.max(0, Math.floor(n - 1)));
+    }
+    setDidApplyPageFromRoute(true);
+  }, [didRestore, didApplyPageFromRoute, searchParams]);
+
+  useEffect(() => {
+    if (pendingRestoreScrollY === null) return;
+    if (status !== "ready") return;
+    const y = pendingRestoreScrollY;
+    const t = requestAnimationFrame(() => {
+      window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior });
+      setPendingRestoreScrollY(null);
+    });
+    return () => cancelAnimationFrame(t);
+  }, [pendingRestoreScrollY, status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +162,52 @@ export function CatalogSearchPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!didRestore) return;
+    const save = () => {
+      saveSearchState({
+        v: 2,
+        savedAt: Date.now(),
+        storeNameQ,
+        storeCategory,
+        kinds,
+        km,
+        trustMin,
+        appliedTrustMin,
+        geo,
+        status,
+        results,
+        pageIndex,
+        totalCount,
+        scrollY: window.scrollY,
+      });
+    };
+
+    const onScroll = () => save();
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    // Guardado inicial cuando cambia algo importante (resultados/página/filtros).
+    save();
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      save();
+    };
+  }, [
+    didRestore,
+    storeNameQ,
+    storeCategory,
+    kinds,
+    km,
+    trustMin,
+    appliedTrustMin,
+    geo,
+    status,
+    results,
+    pageIndex,
+    totalCount,
+  ]);
 
   const runSearch = useCallback(
     async (nextPageIndex: number) => {
@@ -107,6 +237,7 @@ export function CatalogSearchPage() {
         const { items, totalCount: total } = await searchCatalog({
           name: storeNameQ.trim() || undefined,
           category: storeCategory.trim() || undefined,
+          kinds,
           lat,
           lng,
           km: kmArg,
@@ -117,31 +248,43 @@ export function CatalogSearchPage() {
         setTotalCount(total);
         setPageIndex(nextPageIndex);
         setStatus("ready");
+
+        setSearchParams((prev) => {
+          const p = new URLSearchParams(prev);
+          const page1 = Math.max(1, nextPageIndex + 1);
+          if (page1 === 1) p.delete("page");
+          else p.set("page", String(page1));
+          return p;
+        });
       } catch {
         setStatus("error");
       }
     },
-    [storeNameQ, storeCategory, km, geo],
+    [storeNameQ, storeCategory, kinds, km, geo, setSearchParams],
   );
 
   const onSubmitSearch = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
+      setAppliedTrustMin(trustMin);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       void runSearch(0);
     },
-    [runSearch],
+    [runSearch, trustMin],
   );
 
   const hasPrevPage = pageIndex > 0;
   const hasNextPage = (pageIndex + 1) * PAGE_SIZE < totalCount;
   const rangeFrom = totalCount === 0 ? 0 : pageIndex * PAGE_SIZE + 1;
   const rangeTo = Math.min((pageIndex + 1) * PAGE_SIZE, totalCount);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const currentPage = Math.min(totalPages, pageIndex + 1);
 
   const TRUST_SCORE_MAX = 100;
   const TRUST_SCORE_FILTER_MIN = -3.402823466e38;
-  const trustMinNum = Number(trustMin);
+  const trustMinNum = Number(appliedTrustMin);
   const filteredResults = results.filter((it) => {
-    if (trustMin.trim() === "") return true;
+    if (appliedTrustMin.trim() === "") return true;
     if (!Number.isFinite(trustMinNum)) return true;
     return it.store.trustScore >= trustMinNum;
   });
@@ -191,6 +334,27 @@ export function CatalogSearchPage() {
               options={[
                 { value: "", label: "Todas" },
                 ...catOptions.map((c) => ({ value: c, label: c })),
+              ]}
+            />
+          </label>
+
+          <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
+            <span>Tipo</span>
+            <VtMultiSelect
+              value={kinds}
+              onChange={(next) => {
+                const safe =
+                  next.length === 0
+                    ? (["store", "product", "service"] as CatalogSearchKind[])
+                    : (next as CatalogSearchKind[]);
+                setKinds(safe);
+              }}
+              ariaLabel="Filtrar por tipo"
+              placeholder="Todos"
+              options={[
+                { value: "store", label: "Tiendas" },
+                { value: "product", label: "Productos" },
+                { value: "service", label: "Servicios" },
               ]}
             />
           </label>
@@ -264,7 +428,7 @@ export function CatalogSearchPage() {
         ) : null}
         {status === "ready" && filteredResults.length > 0 ? (
           <>
-            <div className="mt-3 flex flex-col gap-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 min-[720px]:grid-cols-2 min-[1040px]:grid-cols-3">
               {filteredResults.map((it) => {
                 if (it.kind === "store") {
                   return (
@@ -286,25 +450,62 @@ export function CatalogSearchPage() {
               })}
             </div>
             {totalCount > PAGE_SIZE || pageIndex > 0 ? (
-              <div className="mt-4 flex flex-col gap-3 border-t border-[var(--border)] pt-3 text-[12px] text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
-                <span className="tabular-nums">
-                  {rangeFrom}–{rangeTo} de {totalCount}
-                </span>
-                <div className="flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-col gap-3 border-t border-[var(--border)] pt-3 text-[12px] text-[var(--muted)]">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="tabular-nums">
+                    {rangeFrom}–{rangeTo} de {totalCount}
+                  </span>
+                  <span className="tabular-nums">
+                    Página <b className="text-[var(--text)]">{currentPage}</b> de{" "}
+                    <b className="text-[var(--text)]">{totalPages}</b>
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     className="vt-btn vt-btn-sm vt-btn-ghost inline-flex items-center gap-1"
                     disabled={!hasPrevPage}
                     onClick={() => void runSearch(pageIndex - 1)}
+                    aria-label="Página anterior"
                   >
                     <ChevronLeft size={16} aria-hidden />
                     Anterior
                   </button>
+
+                  {buildPaginationModel(currentPage, totalPages).map((x, i) => {
+                    if (x === "…") {
+                      return (
+                        <span
+                          key={`dots-${currentPage}-${totalPages}-${i}`}
+                          className="px-2 text-[12px] text-[var(--muted)]"
+                        >
+                          …
+                        </span>
+                      );
+                    }
+                    const isActive = x === currentPage;
+                    return (
+                      <button
+                        key={`p-${x}`}
+                        type="button"
+                        className={`vt-btn vt-btn-sm ${
+                          isActive ? "" : "vt-btn-ghost"
+                        }`}
+                        aria-current={isActive ? "page" : undefined}
+                        onClick={() => void runSearch(x - 1)}
+                      >
+                        {x}
+                      </button>
+                    );
+                  })}
+
                   <button
                     type="button"
                     className="vt-btn vt-btn-sm vt-btn-ghost inline-flex items-center gap-1"
                     disabled={!hasNextPage}
                     onClick={() => void runSearch(pageIndex + 1)}
+                    aria-label="Página siguiente"
                   >
                     Siguiente
                     <ChevronRight size={16} aria-hidden />
@@ -317,4 +518,76 @@ export function CatalogSearchPage() {
       </div>
     </div>
   );
+}
+
+function buildPaginationModel(
+  currentPage: number,
+  totalPages: number,
+): Array<number | "…"> {
+  if (totalPages <= 1) return [1];
+  const clamp = (n: number) => Math.max(1, Math.min(totalPages, n));
+  const windowStart = clamp(currentPage - 2);
+  const windowEnd = clamp(currentPage + 2);
+  const out: Array<number | "…"> = [];
+
+  out.push(1);
+  if (windowStart > 2) out.push("…");
+  for (let p = Math.max(2, windowStart); p <= Math.min(totalPages - 1, windowEnd); p++) {
+    out.push(p);
+  }
+  if (windowEnd < totalPages - 1) out.push("…");
+  out.push(totalPages);
+
+  // Dedup por si la ventana toca extremos.
+  const dedup: Array<number | "…"> = [];
+  let prev: number | "…" | undefined;
+  for (const x of out) {
+    if (x === prev) continue;
+    dedup.push(x);
+    prev = x;
+  }
+  return dedup;
+}
+
+function loadSavedSearchState(): SavedSearchStateV2 | null {
+  try {
+    const raw = sessionStorage.getItem(SEARCH_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SavedSearchStateV2;
+    if (parsed?.v !== 2) return null;
+    if (!Array.isArray(parsed.results)) return null;
+    if (!Array.isArray(parsed.kinds)) return null;
+    if (typeof parsed.scrollY !== "number") return null;
+    return {
+      ...parsed,
+      results: normalizeCatalogSearchItems(parsed.results),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveSearchState(s: SavedSearchStateV2): void {
+  try {
+    sessionStorage.setItem(SEARCH_STATE_KEY, JSON.stringify(s));
+  } catch {
+    // ignore
+  }
+}
+
+function normalizeCatalogSearchItems(items: CatalogSearchItem[]): CatalogSearchItem[] {
+  return items.map((it) => {
+    const offer = it.offer;
+    if (!offer) return it;
+    const accepted = (offer as { acceptedCurrencies?: unknown })?.acceptedCurrencies;
+    const safeAccepted =
+      Array.isArray(accepted) ? accepted.filter((x) => typeof x === "string") : [];
+    return {
+      ...it,
+      offer: {
+        ...offer,
+        acceptedCurrencies: safeAccepted,
+      },
+    };
+  });
 }

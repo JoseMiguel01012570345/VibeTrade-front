@@ -10,6 +10,8 @@ export type CatalogOfferPreview = {
   name?: string;
   category?: string;
   price?: string;
+  currency?: string | null;
+  acceptedCurrencies: string[];
   tipoServicio?: string;
   shortDescription?: string;
   descripcion?: string;
@@ -34,6 +36,7 @@ export type CatalogSearchPageResult = {
 export type StoreSearchParams = {
   name?: string;
   category?: string;
+  kinds?: CatalogSearchKind[];
   lat?: number;
   lng?: number;
   km?: number;
@@ -103,10 +106,15 @@ function parseOfferPreview(raw: unknown): CatalogOfferPreview | null {
   const kind = o.kind;
   if (typeof id !== "string") return null;
   if (kind !== "product" && kind !== "service") return null;
-  const out: CatalogOfferPreview = { id, kind };
+  const out: CatalogOfferPreview = { id, kind, acceptedCurrencies: [] };
   if (typeof o.name === "string") out.name = o.name;
   if (typeof o.category === "string") out.category = o.category;
   if (typeof o.price === "string") out.price = o.price;
+  if (typeof o.currency === "string") out.currency = o.currency;
+  else if (o.currency === null) out.currency = null;
+  const acc = o.acceptedCurrencies;
+  const accArr = parseStringArray(acc);
+  out.acceptedCurrencies = accArr;
   if (typeof o.tipoServicio === "string") out.tipoServicio = o.tipoServicio;
   if (typeof o.shortDescription === "string")
     out.shortDescription = o.shortDescription;
@@ -127,19 +135,9 @@ function parseCatalogItem(raw: unknown): CatalogSearchItem | null {
     offerRaw === null || offerRaw === undefined
       ? null
       : parseOfferPreview(offerRaw);
-  const publishedProducts =
-    typeof o.publishedProducts === "number" && Number.isFinite(o.publishedProducts)
-      ? o.publishedProducts
-      : null;
-  const publishedServices =
-    typeof o.publishedServices === "number" &&
-    Number.isFinite(o.publishedServices)
-      ? o.publishedServices
-      : null;
-  const distanceKm =
-    typeof o.distanceKm === "number" && Number.isFinite(o.distanceKm)
-      ? o.distanceKm
-      : null;
+  const publishedProducts = parseFiniteNumber(o.publishedProducts);
+  const publishedServices = parseFiniteNumber(o.publishedServices);
+  const distanceKm = parseFiniteNumber(o.distanceKm);
   return {
     kind,
     store,
@@ -150,20 +148,24 @@ function parseCatalogItem(raw: unknown): CatalogSearchItem | null {
   };
 }
 
+function parseFiniteNumber(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
 /** Búsqueda unificada: tiendas, productos y servicios (`GET .../market/stores/search`). */
 export async function searchCatalog(
   params: StoreSearchParams,
 ): Promise<CatalogSearchPageResult> {
   const qs = new URLSearchParams();
-  if (params.name) qs.set("name", params.name);
-  if (params.category) qs.set("category", params.category);
-  if (typeof params.lat === "number") qs.set("lat", String(params.lat));
-  if (typeof params.lng === "number") qs.set("lng", String(params.lng));
-  if (typeof params.km === "number") qs.set("km", String(params.km));
-  if (typeof params.limit === "number") qs.set("limit", String(params.limit));
-  if (typeof params.offset === "number" && params.offset > 0) {
+  setIfTruthy(qs, "name", params.name);
+  setIfTruthy(qs, "category", params.category);
+  if (params.kinds?.length) qs.set("kinds", params.kinds.join(","));
+  setIfNumber(qs, "lat", params.lat);
+  setIfNumber(qs, "lng", params.lng);
+  setIfNumber(qs, "km", params.km);
+  setIfNumber(qs, "limit", params.limit);
+  if (typeof params.offset === "number" && params.offset > 0)
     qs.set("offset", String(params.offset));
-  }
 
   const res = await apiFetch(`/api/v1/market/stores/search?${qs.toString()}`);
   if (!res.ok) {
@@ -184,4 +186,12 @@ export async function searchCatalog(
   if (typeof json.limit === "number") limit = json.limit;
   else if (typeof params.limit === "number") limit = params.limit;
   return { items, totalCount, offset, limit };
+}
+
+function setIfTruthy(qs: URLSearchParams, k: string, v: unknown): void {
+  if (typeof v === "string" && v) qs.set(k, v);
+}
+
+function setIfNumber(qs: URLSearchParams, k: string, v: unknown): void {
+  if (typeof v === "number") qs.set(k, String(v));
 }
