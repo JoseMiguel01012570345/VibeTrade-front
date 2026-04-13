@@ -44,8 +44,9 @@ export async function bootstrapWebApp(): Promise<void> {
       recommendationFeedStartIndex: 0,
       recommendationCursor: 0,
       recommendationTotalAvailable: 0,
-      recommendationBatchSize: 50,
+      recommendationBatchSize: 20,
       recommendationThreshold: 0.35,
+      recommendationStoreStripAnchors: [],
       storeCatalogs: {},
       threads: {},
       routeOfferPublic: {},
@@ -64,6 +65,9 @@ export async function bootstrapWebApp(): Promise<void> {
     throw new Error(msg)
   }
   const json = (await res.json()) as BootstrapResponse
+  const bootOfferIds =
+    json.recommendations?.offerIds ?? json.market.offerIds ?? []
+  const bootStoreIds = json.recommendations?.recommendedStoreIds ?? []
 
   setMarketHydrating(true)
   useMarketStore.setState({
@@ -76,8 +80,12 @@ export async function bootstrapWebApp(): Promise<void> {
     recommendationFeedStartIndex: 0,
     recommendationCursor: json.recommendations?.nextCursor ?? 0,
     recommendationTotalAvailable: json.recommendations?.totalAvailable ?? json.market.offerIds.length,
-    recommendationBatchSize: json.recommendations?.batchSize ?? 50,
+    recommendationBatchSize: json.recommendations?.batchSize ?? 20,
     recommendationThreshold: json.recommendations?.threshold ?? 0.35,
+    recommendationStoreStripAnchors:
+      bootStoreIds.length > 0 && bootOfferIds.length > 0
+        ? [{ beforeOfferIndex: 0, storeIds: bootStoreIds }]
+        : [],
     storeCatalogs: json.market.storeCatalogs,
     threads: json.market.threads,
     routeOfferPublic: json.market.routeOfferPublic,

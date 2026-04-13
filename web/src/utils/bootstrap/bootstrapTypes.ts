@@ -6,6 +6,8 @@ export type RecommendationBatch = {
   offerIds: string[]
   /** Cuerpo de cada oferta del lote (misma forma que `market.offers`). */
   offers?: Record<string, Offer>
+  /** Tiendas ordenadas por relevancia en esta ventana (JSON: `recommendedStoreIds`). */
+  recommendedStoreIds?: string[]
   nextCursor: number
   totalAvailable: number
   batchSize: number

@@ -38,6 +38,8 @@ export type StoreBadge = {
   transportIncluded: boolean;
   avatarUrl?: string;
   trustScore: number;
+  /** Descripción corta del catálogo (pitch), alineada con `StoreRow.Pitch` / catálogo. */
+  pitch?: string;
   /** Si existe, la tienda fue creada desde el perfil y solo ese usuario puede editarla. */
   ownerUserId?: string;
   /** Ubicación opcional mostrada en la ficha pública de la tienda. */
@@ -269,6 +271,15 @@ export function threadHasAcceptedAgreementUnpaid(th: Thread): boolean {
   return threadHasAcceptedAgreement(th) && !th.paymentCompleted;
 }
 
+/**
+ * Tira de tiendas al **inicio** de un lote: se muestra justo antes de la oferta en índice `beforeOfferIndex`
+ * (0 = antes del primer ítem del feed).
+ */
+export type RecommendationStoreStripAnchor = {
+  beforeOfferIndex: number;
+  storeIds: string[];
+};
+
 export type MarketState = {
   stores: Record<string, StoreBadge>;
   offers: Record<string, Offer>;
@@ -281,6 +292,8 @@ export type MarketState = {
   recommendationTotalAvailable: number;
   recommendationBatchSize: number;
   recommendationThreshold: number;
+  /** Tiendas sugeridas al inicio de cada lote (orden por `beforeOfferIndex`). */
+  recommendationStoreStripAnchors: RecommendationStoreStripAnchor[];
   /** Catálogo de tienda (productos/servicios de ficha) por id de negocio — flow-ui perfil & acuerdos. */
   storeCatalogs: Record<string, StoreCatalog>;
   threads: Record<string, Thread>;

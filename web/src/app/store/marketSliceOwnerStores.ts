@@ -27,6 +27,7 @@ createOwnerStore: (ownerUserId, values) => {
   if (existing) return null
   const cats = values.categories.map((c) => c.trim()).filter(Boolean)
   const id = uid('ust')
+  const pitch = values.categoryPitch.trim()
   const badge: StoreBadge = {
     id,
     name,
@@ -35,6 +36,7 @@ createOwnerStore: (ownerUserId, values) => {
     transportIncluded: values.transportIncluded,
     trustScore: 80,
     ownerUserId,
+    ...(pitch ? { pitch } : {}),
     ...(values.location ? { location: values.location } : {}),
   }
   const catalog: StoreCatalog = {
@@ -98,6 +100,14 @@ updateOwnerStore: (storeId, ownerUserId, patch) => {
     }
     const nextCat: StoreCatalog =
       patch.categoryPitch !== undefined ? { ...cat, pitch: patch.categoryPitch } : cat
+    if (patch.categoryPitch !== undefined) {
+      const p = patch.categoryPitch.trim()
+      if (p) nextBadge = { ...nextBadge, pitch: p }
+      else {
+        const { pitch: _removedPitch, ...restBadge } = nextBadge
+        nextBadge = restBadge as StoreBadge
+      }
+    }
     return {
       ...prev,
       stores: { ...prev.stores, [storeId]: nextBadge },

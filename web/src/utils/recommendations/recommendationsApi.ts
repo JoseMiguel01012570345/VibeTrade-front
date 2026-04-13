@@ -7,7 +7,7 @@ import type { RecommendationBatch } from "../bootstrap/bootstrapTypes";
 
 export async function fetchRecommendationBatch(
   cursor: number,
-  take = 50,
+  take = 20,
 ): Promise<RecommendationBatch> {
   const qs = new URLSearchParams({
     cursor: String(Math.max(0, cursor)),
