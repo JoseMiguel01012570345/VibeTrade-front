@@ -12,9 +12,11 @@ import type { VtSelectOption } from "../../components/VtSelect";
 import { fetchCatalogCategories } from "../../utils/market/fetchCatalogCategories";
 import {
   searchCatalog,
+  fetchCatalogAutocomplete,
   type CatalogSearchKind,
   type CatalogSearchItem,
 } from "../../utils/market/searchStores";
+import { VtAutocompleteInput } from "../../components/VtAutocompleteInput";
 import { StoreSearchResultCard } from "../home/StoreSearchResultCard";
 import { CatalogOfferSearchCard } from "./CatalogOfferSearchCard";
 
@@ -44,7 +46,7 @@ function catalogItemKey(it: CatalogSearchItem, pageIndex: number): string {
 }
 
 type SavedSearchStateV3 = {
-  v: 3;
+  v: 4;
   savedAt: number;
   storeNameQ: string;
   storeCategories: string[];
@@ -55,12 +57,12 @@ type SavedSearchStateV3 = {
   geo: { lat: number; lng: number } | null;
   status: "idle" | "loading" | "ready" | "error";
   results: CatalogSearchItem[];
+  hasMore?: boolean;
   pageIndex: number;
-  totalCount: number;
   scrollY: number;
 };
 
-const SEARCH_STATE_KEY = "vt:catalogSearch:v3";
+const SEARCH_STATE_KEY = "vt:catalogSearch:v4";
 
 export function CatalogSearchPage() {
   const location = useLocation();
@@ -69,6 +71,7 @@ export function CatalogSearchPage() {
     (location.state as LocationState)?.initialQuery?.trim() ?? "";
 
   const [storeNameQ, setStoreNameQ] = useState(initialQ);
+  const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
   const [storeCategories, setStoreCategories] = useState<string[]>([]);
   const [kinds, setKinds] = useState<CatalogSearchKind[]>([
     "store",
@@ -85,13 +88,40 @@ export function CatalogSearchPage() {
     "idle",
   );
   const [results, setResults] = useState<CatalogSearchItem[]>([]);
+  const [hasMore, setHasMore] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
   const [didRestore, setDidRestore] = useState(false);
   const [pendingRestoreScrollY, setPendingRestoreScrollY] = useState<
     number | null
   >(null);
   const [didApplyPageFromRoute, setDidApplyPageFromRoute] = useState(false);
+
+  useEffect(() => {
+    const q = storeNameQ.trim();
+    if (q.length < 2) {
+      setNameSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const next = await fetchCatalogAutocomplete(
+            q,
+            { kinds, categories: storeCategories },
+            10,
+          );
+          if (!cancelled) setNameSuggestions(next);
+        } catch {
+          if (!cancelled) setNameSuggestions([]);
+        }
+      })();
+    }, 220);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [storeNameQ, kinds, storeCategories]);
 
   useEffect(() => {
     const t = requestAnimationFrame(() => setVisible(true));
@@ -121,8 +151,8 @@ export function CatalogSearchPage() {
     setGeo(saved.geo);
     setStatus(saved.status);
     setResults(saved.results);
+    setHasMore(saved.hasMore ?? false);
     setPageIndex(saved.pageIndex);
-    setTotalCount(saved.totalCount);
     setPendingRestoreScrollY(saved.scrollY);
     setDidRestore(true);
   }, [didRestore, initialQ]);
@@ -168,7 +198,7 @@ export function CatalogSearchPage() {
     if (!didRestore) return;
     const save = () => {
       saveSearchState({
-        v: 3,
+        v: 4,
         savedAt: Date.now(),
         storeNameQ,
         storeCategories,
@@ -179,8 +209,8 @@ export function CatalogSearchPage() {
         geo,
         status,
         results,
+        hasMore,
         pageIndex,
-        totalCount,
         scrollY: window.scrollY,
       });
     };
@@ -206,8 +236,8 @@ export function CatalogSearchPage() {
     geo,
     status,
     results,
+    hasMore,
     pageIndex,
-    totalCount,
   ]);
 
   const categoryOptions: VtSelectOption[] = useMemo(
@@ -216,7 +246,7 @@ export function CatalogSearchPage() {
   );
 
   const runSearch = useCallback(
-    async (nextPageIndex: number) => {
+    async (nextPageIndex: number, trustMinOverride?: string) => {
       setStatus("loading");
       try {
         const kmNum = Number(km.trim());
@@ -240,11 +270,17 @@ export function CatalogSearchPage() {
         }
 
         const offset = Math.max(0, nextPageIndex) * PAGE_SIZE;
-        const { items, totalCount: total } = await searchCatalog({
+        const trustText = (trustMinOverride ?? appliedTrustMin).trim();
+        const trustNum = Number(trustText);
+        const { items, hasMore: more } = await searchCatalog({
           name: storeNameQ.trim() || undefined,
           category:
             storeCategories.length > 0 ? storeCategories.join(",") : undefined,
           kinds,
+          trustMin:
+            trustText !== "" && Number.isFinite(trustNum)
+              ? trustNum
+              : undefined,
           lat,
           lng,
           km: kmArg,
@@ -252,7 +288,7 @@ export function CatalogSearchPage() {
           offset,
         });
         setResults(items);
-        setTotalCount(total);
+        setHasMore(more);
         setPageIndex(nextPageIndex);
         setStatus("ready");
 
@@ -267,34 +303,34 @@ export function CatalogSearchPage() {
         setStatus("error");
       }
     },
-    [storeNameQ, storeCategories, kinds, km, geo, setSearchParams],
+    [
+      storeNameQ,
+      storeCategories,
+      kinds,
+      km,
+      geo,
+      appliedTrustMin,
+      setSearchParams,
+    ],
   );
 
   const onSubmitSearch = useCallback(
     (e: FormEvent) => {
       e.preventDefault();
-      setAppliedTrustMin(trustMin);
+      const nextTrust = trustMin.trim();
+      setAppliedTrustMin(nextTrust);
       window.scrollTo({ top: 0, behavior: "smooth" });
-      void runSearch(0);
+      void runSearch(0, nextTrust);
     },
     [runSearch, trustMin],
   );
 
   const hasPrevPage = pageIndex > 0;
-  const hasNextPage = (pageIndex + 1) * PAGE_SIZE < totalCount;
-  const rangeFrom = totalCount === 0 ? 0 : pageIndex * PAGE_SIZE + 1;
-  const rangeTo = Math.min((pageIndex + 1) * PAGE_SIZE, totalCount);
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-  const currentPage = Math.min(totalPages, pageIndex + 1);
+  const hasNextPage = hasMore;
 
   const TRUST_SCORE_MAX = 100;
   const TRUST_SCORE_FILTER_MIN = -3.402823466e38;
-  const trustMinNum = Number(appliedTrustMin);
-  const filteredResults = results.filter((it) => {
-    if (appliedTrustMin.trim() === "") return true;
-    if (!Number.isFinite(trustMinNum)) return true;
-    return it.store.trustScore >= trustMinNum;
-  });
+  // trustMin ahora se aplica en backend/ES para que el page size sea real.
 
   return (
     <div
@@ -321,13 +357,12 @@ export function CatalogSearchPage() {
         >
           <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)]">
             <span>Buscar</span>
-            <input
-              type="search"
-              className="vt-input"
-              placeholder="Nombre, producto, servicio…"
+            <VtAutocompleteInput
               value={storeNameQ}
-              onChange={(e) => setStoreNameQ(e.target.value)}
-              aria-label="Buscar en catálogo"
+              onChange={setStoreNameQ}
+              options={nameSuggestions.map((s) => ({ value: s }))}
+              placeholder="Nombre, producto, servicio…"
+              ariaLabel="Buscar en catálogo"
             />
           </label>
 
@@ -409,7 +444,8 @@ export function CatalogSearchPage() {
         {status === "idle" ? (
           <div className="vt-muted text-[13px]">
             Elegí filtros y pulsá la{" "}
-            <span className="font-semibold text-[var(--text)]">lupa</span> para ver resultados.
+            <span className="font-semibold text-[var(--text)]">lupa</span> para
+            ver resultados.
           </div>
         ) : null}
         {status === "loading" ? (
@@ -420,20 +456,15 @@ export function CatalogSearchPage() {
             No se pudo buscar. ¿Backend en marcha?
           </div>
         ) : null}
-        {status === "ready" && results.length > 0 && filteredResults.length === 0 ? (
-          <div className="vt-muted text-[13px]">
-            Ningún resultado en esta página cumple la confianza mínima.
-          </div>
-        ) : null}
-        {status === "ready" && results.length === 0 && totalCount === 0 ? (
+        {status === "ready" && results.length === 0 ? (
           <div className="vt-muted text-[13px]">
             Sin resultados para esta búsqueda.
           </div>
         ) : null}
-        {status === "ready" && filteredResults.length > 0 ? (
+        {status === "ready" && results.length > 0 ? (
           <>
             <div className="mt-3 grid grid-cols-1 gap-3 min-[720px]:grid-cols-2 min-[1040px]:grid-cols-3">
-              {filteredResults.map((it) => {
+              {results.map((it) => {
                 if (it.kind === "store") {
                   return (
                     <StoreSearchResultCard
@@ -453,104 +484,34 @@ export function CatalogSearchPage() {
                 );
               })}
             </div>
-            {totalCount > PAGE_SIZE || pageIndex > 0 ? (
-              <div className="mt-4 flex flex-col gap-3 border-t border-[var(--border)] pt-3 text-[12px] text-[var(--muted)]">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="tabular-nums">
-                    {rangeFrom}–{rangeTo} de {totalCount}
-                  </span>
-                  <span className="tabular-nums">
-                    Página <b className="text-[var(--text)]">{currentPage}</b> de{" "}
-                    <b className="text-[var(--text)]">{totalPages}</b>
-                  </span>
-                </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="vt-btn vt-btn-sm vt-btn-ghost inline-flex items-center gap-1"
+                disabled={!hasPrevPage}
+                onClick={() => void runSearch(pageIndex - 1)}
+                aria-label="Página anterior"
+              >
+                <ChevronLeft size={16} aria-hidden />
+                Anterior
+              </button>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    className="vt-btn vt-btn-sm vt-btn-ghost inline-flex items-center gap-1"
-                    disabled={!hasPrevPage}
-                    onClick={() => void runSearch(pageIndex - 1)}
-                    aria-label="Página anterior"
-                  >
-                    <ChevronLeft size={16} aria-hidden />
-                    Anterior
-                  </button>
-
-                  {buildPaginationModel(currentPage, totalPages).map((x, i) => {
-                    if (x === "…") {
-                      return (
-                        <span
-                          key={`dots-${currentPage}-${totalPages}-${i}`}
-                          className="px-2 text-[12px] text-[var(--muted)]"
-                        >
-                          …
-                        </span>
-                      );
-                    }
-                    const isActive = x === currentPage;
-                    return (
-                      <button
-                        key={`p-${x}`}
-                        type="button"
-                        className={`vt-btn vt-btn-sm ${
-                          isActive ? "" : "vt-btn-ghost"
-                        }`}
-                        aria-current={isActive ? "page" : undefined}
-                        onClick={() => void runSearch(x - 1)}
-                      >
-                        {x}
-                      </button>
-                    );
-                  })}
-
-                  <button
-                    type="button"
-                    className="vt-btn vt-btn-sm vt-btn-ghost inline-flex items-center gap-1"
-                    disabled={!hasNextPage}
-                    onClick={() => void runSearch(pageIndex + 1)}
-                    aria-label="Página siguiente"
-                  >
-                    Siguiente
-                    <ChevronRight size={16} aria-hidden />
-                  </button>
-                </div>
-              </div>
-            ) : null}
+              <button
+                type="button"
+                className="vt-btn vt-btn-sm vt-btn-ghost inline-flex items-center gap-1"
+                disabled={!hasNextPage}
+                onClick={() => void runSearch(pageIndex + 1)}
+                aria-label="Página siguiente"
+              >
+                Siguiente
+                <ChevronRight size={16} aria-hidden />
+              </button>
+            </div>
           </>
         ) : null}
       </div>
     </div>
   );
-}
-
-function buildPaginationModel(
-  currentPage: number,
-  totalPages: number,
-): Array<number | "…"> {
-  if (totalPages <= 1) return [1];
-  const clamp = (n: number) => Math.max(1, Math.min(totalPages, n));
-  const windowStart = clamp(currentPage - 2);
-  const windowEnd = clamp(currentPage + 2);
-  const out: Array<number | "…"> = [];
-
-  out.push(1);
-  if (windowStart > 2) out.push("…");
-  for (let p = Math.max(2, windowStart); p <= Math.min(totalPages - 1, windowEnd); p++) {
-    out.push(p);
-  }
-  if (windowEnd < totalPages - 1) out.push("…");
-  out.push(totalPages);
-
-  // Dedup por si la ventana toca extremos.
-  const dedup: Array<number | "…"> = [];
-  let prev: number | "…" | undefined;
-  for (const x of out) {
-    if (x === prev) continue;
-    dedup.push(x);
-    prev = x;
-  }
-  return dedup;
 }
 
 function loadSavedSearchState(): SavedSearchStateV3 | null {
@@ -574,7 +535,21 @@ function loadSavedSearchState(): SavedSearchStateV3 | null {
     if (!Array.isArray(kinds)) return null;
     if (typeof scrollY !== "number") return null;
 
-    // v3
+    // v4
+    if (v === 4) {
+      const storeCategoriesRaw = parsed.storeCategories;
+      if (!Array.isArray(storeCategoriesRaw)) return null;
+      const storeCategories = storeCategoriesRaw.filter(
+        (x): x is string => typeof x === "string" && x.trim().length > 0,
+      );
+      return {
+        ...(parsed as unknown as SavedSearchStateV3),
+        storeCategories,
+        results: normalizeCatalogSearchItems(results as CatalogSearchItem[]),
+      };
+    }
+
+    // v3 (compat): sin hasMore explícito
     if (v === 3) {
       const storeCategoriesRaw = parsed.storeCategories;
       if (!Array.isArray(storeCategoriesRaw)) return null;
@@ -583,6 +558,8 @@ function loadSavedSearchState(): SavedSearchStateV3 | null {
       );
       return {
         ...(parsed as unknown as SavedSearchStateV3),
+        v: 4,
+        hasMore: false,
         storeCategories,
         results: normalizeCatalogSearchItems(results as CatalogSearchItem[]),
       };
@@ -596,7 +573,8 @@ function loadSavedSearchState(): SavedSearchStateV3 | null {
         : "";
     return {
       ...(parsed as unknown as SavedSearchStateV3),
-      v: 3,
+      v: 4,
+      hasMore: false,
       storeCategories: sc ? [sc] : [],
       results: normalizeCatalogSearchItems(results as CatalogSearchItem[]),
     };
@@ -613,13 +591,17 @@ function saveSearchState(s: SavedSearchStateV3): void {
   }
 }
 
-function normalizeCatalogSearchItems(items: CatalogSearchItem[]): CatalogSearchItem[] {
+function normalizeCatalogSearchItems(
+  items: CatalogSearchItem[],
+): CatalogSearchItem[] {
   return items.map((it) => {
     const offer = it.offer;
     if (!offer) return it;
-    const accepted = (offer as { acceptedCurrencies?: unknown })?.acceptedCurrencies;
-    const safeAccepted =
-      Array.isArray(accepted) ? accepted.filter((x) => typeof x === "string") : [];
+    const accepted = (offer as { acceptedCurrencies?: unknown })
+      ?.acceptedCurrencies;
+    const safeAccepted = Array.isArray(accepted)
+      ? accepted.filter((x) => typeof x === "string")
+      : [];
     return {
       ...it,
       offer: {

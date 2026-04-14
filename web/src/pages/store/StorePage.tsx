@@ -720,12 +720,41 @@ export function StorePage() {
 
   const headerTitle = storeScreenHeaderTitle(screen, store.name);
 
+  const vitrinaProductNameSuggestions = useMemo(() => {
+    const out: string[] = [];
+    for (const p of allCatalogProducts) {
+      if (!p) continue;
+      const n = (p.name ?? "").trim();
+      const m = (p.model ?? "").trim();
+      if (n) out.push(n);
+      if (m && m !== n) out.push(m);
+      const combo = `${n} ${m}`.trim();
+      if (combo && combo !== n && combo !== m) out.push(combo);
+    }
+    return uniqueSorted(out).slice(0, 250);
+  }, [allCatalogProducts]);
+
+  const vitrinaServiceNameSuggestions = useMemo(() => {
+    const out: string[] = [];
+    for (const s of allCatalogServices) {
+      if (!s) continue;
+      const t = (s.tipoServicio ?? "").trim();
+      const c = (s.category ?? "").trim();
+      if (t) out.push(t);
+      if (c && c !== t) out.push(c);
+      const combo = `${t} ${c}`.trim();
+      if (combo && combo !== t && combo !== c) out.push(combo);
+    }
+    return uniqueSorted(out).slice(0, 250);
+  }, [allCatalogServices]);
+
   const vitrinaFiltersProps = {
     vitrinaListMode: fv.vitrinaListMode,
     onVitrinaListMode: (v: VitrinaListMode) =>
       patchSection("vitrina", { vitrinaListMode: v }),
     productNameQ: fv.productNameQ,
     onProductNameQ: (q: string) => patchSection("vitrina", { productNameQ: q }),
+    productNameSuggestions: vitrinaProductNameSuggestions,
     productCategoryQ: fv.productCategoryQ,
     onProductCategoryQ: (q: string[]) =>
       patchSection("vitrina", { productCategoryQ: q }),
@@ -735,6 +764,7 @@ export function StorePage() {
       patchSection("vitrina", { productConditionQ: q }),
     serviceNameQ: fv.serviceNameQ,
     onServiceNameQ: (q: string) => patchSection("vitrina", { serviceNameQ: q }),
+    serviceNameSuggestions: vitrinaServiceNameSuggestions,
     serviceCategoryQ: fv.serviceCategoryQ,
     onServiceCategoryQ: (q: string[]) =>
       patchSection("vitrina", { serviceCategoryQ: q }),

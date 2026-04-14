@@ -1,5 +1,6 @@
 import { VtMultiSelect } from "../../components/VtMultiSelect";
 import { VtSelect } from "../../components/VtSelect";
+import { VtAutocompleteInput } from "../../components/VtAutocompleteInput";
 import { cn } from "../../lib/cn";
 import { PriceRangeMinMaxControls } from "./PriceRangeMinMaxControls";
 import {
@@ -15,6 +16,7 @@ export function VitrinaFiltersCard({
   onVitrinaListMode,
   productNameQ,
   onProductNameQ,
+  productNameSuggestions,
   productCategoryQ,
   onProductCategoryQ,
   productCategories,
@@ -22,6 +24,7 @@ export function VitrinaFiltersCard({
   onProductCondition,
   serviceNameQ,
   onServiceNameQ,
+  serviceNameSuggestions,
   serviceCategoryQ,
   onServiceCategoryQ,
   serviceCategories,
@@ -43,6 +46,7 @@ export function VitrinaFiltersCard({
   onVitrinaListMode: (v: VitrinaListMode) => void;
   productNameQ: string;
   onProductNameQ: (v: string) => void;
+  productNameSuggestions: string[];
   productCategoryQ: readonly string[];
   onProductCategoryQ: (v: string[]) => void;
   productCategories: string[];
@@ -50,6 +54,7 @@ export function VitrinaFiltersCard({
   onProductCondition: (v: string) => void;
   serviceNameQ: string;
   onServiceNameQ: (v: string) => void;
+  serviceNameSuggestions: string[];
   serviceCategoryQ: readonly string[];
   onServiceCategoryQ: (v: string[]) => void;
   serviceCategories: string[];
@@ -133,13 +138,12 @@ export function VitrinaFiltersCard({
               Productos
             </div>
             <div className="mt-2 flex flex-col gap-2">
-              <input
-                type="search"
-                className="vt-input w-full min-w-0"
-                placeholder="Nombre o modelo…"
+              <VtAutocompleteInput
                 value={productNameQ}
-                onChange={(e) => onProductNameQ(e.target.value)}
-                aria-label="Filtrar productos por nombre o modelo"
+                onChange={onProductNameQ}
+                options={productNameSuggestions.map((s) => ({ value: s }))}
+                placeholder="Nombre o modelo…"
+                ariaLabel="Filtrar productos por nombre o modelo"
               />
               <div className="grid gap-2 min-[480px]:grid-cols-2">
                 <VtMultiSelect
@@ -169,13 +173,12 @@ export function VitrinaFiltersCard({
               Servicios
             </div>
             <div className="mt-2 flex flex-col gap-2">
-              <input
-                type="search"
-                className="vt-input w-full min-w-0"
-                placeholder="Nombre o tipo…"
+              <VtAutocompleteInput
                 value={serviceNameQ}
-                onChange={(e) => onServiceNameQ(e.target.value)}
-                aria-label="Filtrar servicios por nombre"
+                onChange={onServiceNameQ}
+                options={serviceNameSuggestions.map((s) => ({ value: s }))}
+                placeholder="Nombre o tipo…"
+                ariaLabel="Filtrar servicios por nombre"
               />
               <div className="min-[480px]:max-w-md">
                 <VtMultiSelect
