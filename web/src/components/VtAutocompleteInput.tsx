@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import Fuse from "fuse.js";
 import { cn } from "../lib/cn";
 
 export type VtAutocompleteOption = {
@@ -9,6 +10,8 @@ export type VtAutocompleteOption = {
 function normalizeForMatch(s: string): string {
   return s.trim().toLowerCase();
 }
+
+type MatchMode = "substring" | "fuzzy";
 
 export function VtAutocompleteInput({
   value,
@@ -23,6 +26,7 @@ export function VtAutocompleteInput({
   maxVisibleOptions = 8,
   /** When false, all non-empty options are shown (e.g. server already matched the query). Default true narrows local lists with substring match. */
   filterOptionsLocally = true,
+  matchMode = "fuzzy",
 }: Readonly<{
   value: string;
   onChange: (v: string) => void;
@@ -35,6 +39,7 @@ export function VtAutocompleteInput({
   disabled?: boolean;
   maxVisibleOptions?: number;
   filterOptionsLocally?: boolean;
+  matchMode?: MatchMode;
 }>) {
   const listboxId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -42,20 +47,54 @@ export function VtAutocompleteInput({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
 
+  const fuse = useMemo(() => {
+    if (!filterOptionsLocally || matchMode !== "fuzzy") return null;
+    const items = options
+      .map((opt) => ({
+        opt,
+        hay: normalizeForMatch(opt.label ?? opt.value),
+      }))
+      .filter((x) => x.hay.length > 0);
+    return new Fuse(items, {
+      includeScore: true,
+      shouldSort: true,
+      threshold: 0.35,
+      ignoreLocation: true,
+      minMatchCharLength: 2,
+      keys: ["hay"],
+    });
+  }, [options, filterOptionsLocally, matchMode]);
+
   const visibleOptions = useMemo(() => {
     const q = normalizeForMatch(value);
     if (!q) return [];
+
+    if (filterOptionsLocally && matchMode === "fuzzy" && fuse) {
+      return fuse
+        .search(q, { limit: Math.max(1, maxVisibleOptions) })
+        .map((r) => r.item.opt);
+    }
+
     const out: VtAutocompleteOption[] = [];
     for (const opt of options) {
       if (!opt?.value) continue;
       const hay = normalizeForMatch(opt.label ?? opt.value);
       if (!hay) continue;
-      if (filterOptionsLocally && !hay.includes(q)) continue;
+      if (filterOptionsLocally) {
+        if (!hay.includes(q)) continue;
+      }
       out.push(opt);
       if (out.length >= Math.max(1, maxVisibleOptions)) break;
     }
     return out;
-  }, [options, value, maxVisibleOptions, filterOptionsLocally]);
+  }, [
+    options,
+    value,
+    maxVisibleOptions,
+    filterOptionsLocally,
+    matchMode,
+    fuse,
+  ]);
 
   const shouldShow = open && !disabled && visibleOptions.length > 0;
 
@@ -65,7 +104,8 @@ export function VtAutocompleteInput({
 
   useEffect(() => {
     return () => {
-      if (blurCloseTimerRef.current) window.clearTimeout(blurCloseTimerRef.current);
+      if (blurCloseTimerRef.current)
+        window.clearTimeout(blurCloseTimerRef.current);
     };
   }, []);
 
@@ -94,8 +134,12 @@ export function VtAutocompleteInput({
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => {
-          if (blurCloseTimerRef.current) window.clearTimeout(blurCloseTimerRef.current);
-          blurCloseTimerRef.current = window.setTimeout(() => setOpen(false), 140);
+          if (blurCloseTimerRef.current)
+            window.clearTimeout(blurCloseTimerRef.current);
+          blurCloseTimerRef.current = window.setTimeout(
+            () => setOpen(false),
+            140,
+          );
         }}
         onKeyDown={(e) => {
           if (!shouldShow) return;
@@ -155,4 +199,3 @@ export function VtAutocompleteInput({
     </div>
   );
 }
-

@@ -363,7 +363,7 @@ export function CatalogSearchPage() {
               options={nameSuggestions.map((s) => ({ value: s }))}
               placeholder="Nombre, producto, servicio…"
               ariaLabel="Buscar en catálogo"
-              filterOptionsLocally={false}
+              matchMode="fuzzy"
             />
           </label>
 
