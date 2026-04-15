@@ -21,6 +21,8 @@ export function VtAutocompleteInput({
   inputClassName,
   disabled,
   maxVisibleOptions = 8,
+  /** When false, all non-empty options are shown (e.g. server already matched the query). Default true narrows local lists with substring match. */
+  filterOptionsLocally = true,
 }: Readonly<{
   value: string;
   onChange: (v: string) => void;
@@ -32,6 +34,7 @@ export function VtAutocompleteInput({
   inputClassName?: string;
   disabled?: boolean;
   maxVisibleOptions?: number;
+  filterOptionsLocally?: boolean;
 }>) {
   const listboxId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -47,11 +50,12 @@ export function VtAutocompleteInput({
       if (!opt?.value) continue;
       const hay = normalizeForMatch(opt.label ?? opt.value);
       if (!hay) continue;
-      if (hay.includes(q)) out.push(opt);
+      if (filterOptionsLocally && !hay.includes(q)) continue;
+      out.push(opt);
       if (out.length >= Math.max(1, maxVisibleOptions)) break;
     }
     return out;
-  }, [options, value, maxVisibleOptions]);
+  }, [options, value, maxVisibleOptions, filterOptionsLocally]);
 
   const shouldShow = open && !disabled && visibleOptions.length > 0;
 
