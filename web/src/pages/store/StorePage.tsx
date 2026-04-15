@@ -279,12 +279,7 @@ export function StorePage() {
             maxPriceFromServices(allCatalogServices),
           )
         : publishedOfferMax,
-    [
-      isOwner,
-      allCatalogProducts,
-      allCatalogServices,
-      publishedOfferMax,
-    ],
+    [isOwner, allCatalogProducts, allCatalogServices, publishedOfferMax],
   );
 
   const sliderMaxVitrina = useMemo(() => {
@@ -480,12 +475,7 @@ export function StorePage() {
         ...catHints,
         ...(isOwner ? ownerProductCategoryOptions : productCategoryOptions),
       ]),
-    [
-      catHints,
-      isOwner,
-      ownerProductCategoryOptions,
-      productCategoryOptions,
-    ],
+    [catHints, isOwner, ownerProductCategoryOptions, productCategoryOptions],
   );
 
   const serviceCategoryFilterOptions = useMemo(
@@ -494,12 +484,7 @@ export function StorePage() {
         ...catHints,
         ...(isOwner ? ownerServiceCategoryOptions : serviceCategoryOptions),
       ]),
-    [
-      catHints,
-      isOwner,
-      ownerServiceCategoryOptions,
-      serviceCategoryOptions,
-    ],
+    [catHints, isOwner, ownerServiceCategoryOptions, serviceCategoryOptions],
   );
 
   const vitrinaAcceptedMonedaOptions = useMemo(
@@ -617,6 +602,34 @@ export function StorePage() {
     ],
   );
 
+  const vitrinaProductNameSuggestions = useMemo(() => {
+    const out: string[] = [];
+    for (const p of allCatalogProducts) {
+      if (!p) continue;
+      const n = (p.name ?? "").trim();
+      const m = (p.model ?? "").trim();
+      if (n) out.push(n);
+      if (m && m !== n) out.push(m);
+      const combo = `${n} ${m}`.trim();
+      if (combo && combo !== n && combo !== m) out.push(combo);
+    }
+    return uniqueSorted(out).slice(0, 250);
+  }, [allCatalogProducts]);
+
+  const vitrinaServiceNameSuggestions = useMemo(() => {
+    const out: string[] = [];
+    for (const s of allCatalogServices) {
+      if (!s) continue;
+      const t = (s.tipoServicio ?? "").trim();
+      const c = (s.category ?? "").trim();
+      if (t) out.push(t);
+      if (c && c !== t) out.push(c);
+      const combo = `${t} ${c}`.trim();
+      if (combo && combo !== t && combo !== c) out.push(combo);
+    }
+    return uniqueSorted(out).slice(0, 250);
+  }, [allCatalogServices]);
+
   const joinedLabel = catalog
     ? formatCatalogJoinedLabel(catalog.joinedAt)
     : null;
@@ -719,34 +732,6 @@ export function StorePage() {
       : undefined;
 
   const headerTitle = storeScreenHeaderTitle(screen, store.name);
-
-  const vitrinaProductNameSuggestions = useMemo(() => {
-    const out: string[] = [];
-    for (const p of allCatalogProducts) {
-      if (!p) continue;
-      const n = (p.name ?? "").trim();
-      const m = (p.model ?? "").trim();
-      if (n) out.push(n);
-      if (m && m !== n) out.push(m);
-      const combo = `${n} ${m}`.trim();
-      if (combo && combo !== n && combo !== m) out.push(combo);
-    }
-    return uniqueSorted(out).slice(0, 250);
-  }, [allCatalogProducts]);
-
-  const vitrinaServiceNameSuggestions = useMemo(() => {
-    const out: string[] = [];
-    for (const s of allCatalogServices) {
-      if (!s) continue;
-      const t = (s.tipoServicio ?? "").trim();
-      const c = (s.category ?? "").trim();
-      if (t) out.push(t);
-      if (c && c !== t) out.push(c);
-      const combo = `${t} ${c}`.trim();
-      if (combo && combo !== t && combo !== c) out.push(combo);
-    }
-    return uniqueSorted(out).slice(0, 250);
-  }, [allCatalogServices]);
 
   const vitrinaFiltersProps = {
     vitrinaListMode: fv.vitrinaListMode,
@@ -918,9 +903,7 @@ export function StorePage() {
                   <RefreshCw
                     size={14}
                     aria-hidden
-                    className={
-                      catalogReloadBusy ? "animate-spin" : ""
-                    }
+                    className={catalogReloadBusy ? "animate-spin" : ""}
                   />
                   Recargar
                 </button>
@@ -1053,9 +1036,9 @@ export function StorePage() {
                         }
                         const p = useMarketStore
                           .getState()
-                          .storeCatalogs[sid]?.products.find(
-                            (x) => x.id === productId,
-                          );
+                          .storeCatalogs[
+                            sid
+                          ]?.products.find((x) => x.id === productId);
                         if (!p) return;
                         try {
                           await putStoreProduct(sid, p);
@@ -1169,9 +1152,9 @@ export function StorePage() {
                         }
                         const svc = useMarketStore
                           .getState()
-                          .storeCatalogs[sid]?.services.find(
-                            (x) => x.id === serviceId,
-                          );
+                          .storeCatalogs[
+                            sid
+                          ]?.services.find((x) => x.id === serviceId);
                         if (!svc) return;
                         try {
                           await putStoreService(sid, svc);
@@ -1338,9 +1321,9 @@ export function StorePage() {
                     }
                     const p = useMarketStore
                       .getState()
-                      .storeCatalogs[sid]?.products.find(
-                        (x) => x.id === productCtx.productId,
-                      );
+                      .storeCatalogs[
+                        sid
+                      ]?.products.find((x) => x.id === productCtx.productId);
                     if (p) await putStoreProduct(sid, p);
                     toast.success("Producto actualizado");
                   } else {
@@ -1348,9 +1331,7 @@ export function StorePage() {
                     if (pid) {
                       const p = useMarketStore
                         .getState()
-                        .storeCatalogs[sid]?.products.find(
-                          (x) => x.id === pid,
-                        );
+                        .storeCatalogs[sid]?.products.find((x) => x.id === pid);
                       if (p) await putStoreProduct(sid, p);
                       toast.success("Producto añadido");
                       patchSection("products", {
@@ -1420,9 +1401,9 @@ export function StorePage() {
                     }
                     const svc = useMarketStore
                       .getState()
-                      .storeCatalogs[sid]?.services.find(
-                        (x) => x.id === serviceCtx.serviceId,
-                      );
+                      .storeCatalogs[
+                        sid
+                      ]?.services.find((x) => x.id === serviceCtx.serviceId);
                     if (svc) await putStoreService(sid, svc);
                     toast.success("Servicio actualizado");
                   } else {
@@ -1430,9 +1411,9 @@ export function StorePage() {
                     if (newId) {
                       const svc = useMarketStore
                         .getState()
-                        .storeCatalogs[sid]?.services.find(
-                          (x) => x.id === newId,
-                        );
+                        .storeCatalogs[
+                          sid
+                        ]?.services.find((x) => x.id === newId);
                       if (svc) await putStoreService(sid, svc);
                       toast.success("Servicio añadido");
                       patchSection("services", {
