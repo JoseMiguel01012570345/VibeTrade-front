@@ -2,6 +2,9 @@ import { getSessionToken } from './sessionToken'
 
 /** Cliente HTTP con cabecera de zona horaria (flow-ui) y Bearer si hay sesión. */
 export function apiFetch(input: string, init?: RequestInit): Promise<Response> {
+  const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim()
+  const base = apiBase ? apiBase.replace(/\/+$/, '') : ''
+
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC'
   const headers = new Headers(init?.headers)
   headers.set('X-Timezone', timeZone)
@@ -13,5 +16,7 @@ export function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   if (body != null && !isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
-  return fetch(input, { ...init, headers })
+
+  const url = base && !/^https?:\/\//i.test(input) ? `${base}${input.startsWith('/') ? '' : '/'}${input}` : input
+  return fetch(url, { ...init, headers })
 }
