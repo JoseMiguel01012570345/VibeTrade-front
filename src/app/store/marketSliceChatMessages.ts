@@ -9,6 +9,7 @@ import { useAppStore } from './useAppStore'
 
 export function createChatMessagesSlice(set: MarketSliceSet, get: MarketSliceGet): Pick<MarketState,
   | 'onChatMessageFromServer'
+  | 'onParticipantLeftFromServer'
   | 'onChatMessageStatusFromServer'
   | 'sendText'
   | 'sendAudio'
@@ -17,6 +18,28 @@ export function createChatMessagesSlice(set: MarketSliceSet, get: MarketSliceGet
   | 'sendDocsBundle'
 > {
   return {
+onParticipantLeftFromServer: (threadId, _userId, displayName) => {
+  const text = `${displayName} salió del chat`
+  const m: Message = {
+    id: `sys_leave_${uid('m')}`,
+    from: 'system',
+    type: 'text',
+    text,
+    at: Date.now(),
+  }
+  set((s) => {
+    const t = s.threads[threadId]
+    if (!t) return s
+    return {
+      ...s,
+      threads: {
+        ...s.threads,
+        [threadId]: { ...t, messages: normalizeThreadMessages([...t.messages, m]) },
+      },
+    }
+  })
+},
+
 onChatMessageFromServer: (threadId, dto: ChatMessageDto) => {
   const meId = useAppStore.getState().me.id
   const m = mapChatMessageDtoToMessage(dto, meId)

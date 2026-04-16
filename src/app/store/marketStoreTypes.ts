@@ -12,7 +12,7 @@ import type {
   RouteSheetCreatePayload,
   RouteSheetStatus,
 } from "../../pages/chat/domain/routeSheetTypes";
-import type { ChatMessageDto } from "../../utils/chat/chatApi";
+import type { ChatMessageDto, ChatThreadDto } from "../../utils/chat/chatApi";
 
 export type {
   TradeAgreement,
@@ -337,6 +337,14 @@ export type MarketState = {
   syncThreadBuyerQa: (threadId: string, buyerId: string) => void;
   /** Mergea mensaje desde SignalR (evita duplicados por id). */
   onChatMessageFromServer: (threadId: string, dto: ChatMessageDto) => void;
+  /** Nuevo hilo persistido: actualiza lista sin recargar (comprador y vendedor). */
+  onThreadCreatedFromServer: (dto: ChatThreadDto) => void;
+  /** Otro participante salió del chat (SignalR); mensaje de sistema en el hilo. */
+  onParticipantLeftFromServer: (
+    threadId: string,
+    userId: string,
+    displayName: string,
+  ) => void;
   onChatMessageStatusFromServer: (
     threadId: string,
     messageId: string,

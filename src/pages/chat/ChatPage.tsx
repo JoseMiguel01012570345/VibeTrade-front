@@ -13,6 +13,7 @@ import { cn } from "../../lib/cn";
 import {
   ArrowLeft,
   FileText,
+  LogOut,
   PanelRight,
   ShieldCheck,
   Users,
@@ -38,6 +39,7 @@ import { ChatRightRail } from "./components/rail/ChatRightRail";
 import type { RouteSheet } from "./domain/routeSheetTypes";
 import { RouteSheetFormModal } from "./components/modals/RouteSheetFormModal";
 import { TradeAgreementFormModal } from "./components/modals/TradeAgreementFormModal";
+import { ChatLeaveConfirmModal } from "./components/modals/ChatLeaveConfirmModal";
 import {
   SELLER_TRUST_PENALTY_ON_EDIT,
   TrustRiskEditConfirmModal,
@@ -56,7 +58,11 @@ import {
   fetchChatThread,
   patchChatMessageStatus,
 } from "../../utils/chat/chatApi";
-import { joinChatThread, leaveChatThread } from "../../utils/chat/chatRealtime";
+import {
+  disconnectFromChatThread,
+  joinChatThread,
+  notifyChatParticipantsUserLeft,
+} from "../../utils/chat/chatRealtime";
 import {
   mapChatMessageDtoToMessage,
   mergePersistedChatMessages,
@@ -118,6 +124,7 @@ export function ChatPage() {
   const [routeSheetBeingEdited, setRouteSheetBeingEdited] =
     useState<RouteSheet | null>(null);
   const [railOpen, setRailOpen] = useState(false);
+  const [showLeaveChatModal, setShowLeaveChatModal] = useState(false);
   const [participantsEpoch, setParticipantsEpoch] = useState(0);
   const [focusRouteId, setFocusRouteId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -276,7 +283,7 @@ export function ChatPage() {
     if (!threadId?.startsWith("cth_")) return;
     void joinChatThread(threadId);
     return () => {
-      void leaveChatThread(threadId);
+      void disconnectFromChatThread(threadId);
     };
   }, [threadId]);
 
@@ -672,6 +679,16 @@ export function ChatPage() {
                 >
                   <ArrowLeft size={16} />
                 </button>
+                {threadId?.startsWith("cth_") ? (
+                  <button
+                    type="button"
+                    className="vt-btn inline-flex items-center gap-1.5 text-[13px] text-[color-mix(in_oklab,#64748b_95%,var(--text))]"
+                    onClick={() => setShowLeaveChatModal(true)}
+                    title="Salir del chat y avisar a los demás participantes"
+                  >
+                    <LogOut size={16} aria-hidden /> Salir
+                  </button>
+                ) : null}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <div className="font-black tracking-[-0.03em]">
@@ -908,6 +925,18 @@ export function ChatPage() {
       </div>
 
       <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+
+      <ChatLeaveConfirmModal
+        open={showLeaveChatModal}
+        variant="page"
+        onClose={() => setShowLeaveChatModal(false)}
+        onConfirm={async () => {
+          if (threadId?.startsWith("cth_")) {
+            await notifyChatParticipantsUserLeft(threadId);
+          }
+          nav("/chat");
+        }}
+      />
 
       <AgreementDeleteRouteSheetsModal
         open={agreementDeleteSheetsModal !== null}

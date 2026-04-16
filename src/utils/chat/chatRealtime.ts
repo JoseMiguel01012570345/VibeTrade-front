@@ -2,7 +2,7 @@ import * as signalR from '@microsoft/signalr'
 import { useAppStore } from '../../app/store/useAppStore'
 import { useMarketStore } from '../../app/store/useMarketStore'
 import { getSessionToken } from '../http/sessionToken'
-import { patchChatMessageStatus, type ChatMessageDto } from './chatApi'
+import { patchChatMessageStatus, type ChatMessageDto, type ChatThreadDto } from './chatApi'
 
 let conn: signalR.HubConnection | null = null
 const joinedThreads = new Set<string>()
@@ -61,6 +61,24 @@ export function startChatRealtime(): void {
     },
   )
 
+  conn.on('threadCreated', (payload: { thread?: ChatThreadDto }) => {
+    const dto = payload?.thread
+    if (!dto?.id) return
+    useMarketStore.getState().onThreadCreatedFromServer(dto)
+  })
+
+  conn.on(
+    'participantLeft',
+    (payload: { threadId?: string; userId?: string; displayName?: string }) => {
+      if (!payload?.threadId || !payload.userId) return
+      useMarketStore.getState().onParticipantLeftFromServer(
+        payload.threadId,
+        payload.userId,
+        payload.displayName ?? '',
+      )
+    },
+  )
+
   conn.onreconnected(() => {
     void (async () => {
       if (!conn) return
@@ -103,11 +121,24 @@ export async function joinChatThread(threadId: string): Promise<void> {
   }
 }
 
-export async function leaveChatThread(threadId: string): Promise<void> {
+/** Solo deja el grupo SignalR del hilo (p. ej. al navegar). No avisa a otros. */
+export async function disconnectFromChatThread(threadId: string): Promise<void> {
   joinedThreads.delete(threadId)
   if (conn?.state === signalR.HubConnectionState.Connected) {
     try {
-      await conn.invoke('LeaveThread', threadId)
+      await conn.invoke('DisconnectFromThread', threadId)
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** Tras confirmar «Salir»: avisa a los demás y deja el grupo. */
+export async function notifyChatParticipantsUserLeft(threadId: string): Promise<void> {
+  joinedThreads.delete(threadId)
+  if (conn?.state === signalR.HubConnectionState.Connected) {
+    try {
+      await conn.invoke('NotifyOthersUserLeftChat', threadId)
     } catch {
       /* ignore */
     }

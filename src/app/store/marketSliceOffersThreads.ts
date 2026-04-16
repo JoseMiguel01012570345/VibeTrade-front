@@ -9,8 +9,9 @@ import {
   fetchChatThread,
   fetchChatThreadByOffer,
   type ChatMessageDto,
+  type ChatThreadDto,
 } from '../../utils/chat/chatApi'
-import { leaveChatThread } from '../../utils/chat/chatRealtime'
+import { disconnectFromChatThread } from '../../utils/chat/chatRealtime'
 import {
   mapChatMessageDtoToMessage,
   mergePersistedChatMessages,
@@ -38,6 +39,7 @@ export function createOffersThreadsSlice(set: MarketSliceSet, get: MarketSliceGe
   | 'answer'
   | 'ensureThreadForOffer'
   | 'syncThreadBuyerQa'
+  | 'onThreadCreatedFromServer'
   | 'emitTradeAgreement'
   | 'updatePendingTradeAgreement'
   | 'deleteTradeAgreement'
@@ -47,6 +49,30 @@ export function createOffersThreadsSlice(set: MarketSliceSet, get: MarketSliceGe
   | 'markThreadPaymentCompleted'
 > {
   return {
+onThreadCreatedFromServer: (dto: ChatThreadDto) => {
+  set((s) => {
+    if (s.threads[dto.id]) return s
+    const store = s.stores[dto.storeId]
+    if (!store) return s
+    return {
+      ...s,
+      threads: {
+        ...s.threads,
+        [dto.id]: {
+          id: dto.id,
+          offerId: dto.offerId,
+          storeId: dto.storeId,
+          store,
+          purchaseMode: dto.purchaseMode,
+          messages: [],
+          contracts: [],
+          routeSheets: [],
+        },
+      },
+    }
+  })
+},
+
 ask: (offerId, askedBy, question) => {
   const qaId = uid('qa')
   set((s) => {
@@ -552,7 +578,7 @@ recordChatExitFromList: (threadId) => {
 
 removeThreadFromList: async (threadId) => {
   if (threadId.startsWith('cth_')) {
-    void leaveChatThread(threadId)
+    void disconnectFromChatThread(threadId)
     if (getSessionToken()) {
       try {
         await deleteChatThread(threadId)

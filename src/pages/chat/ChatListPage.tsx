@@ -1,10 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { HelpCircle, LogOut, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { Message, Thread } from '../../app/store/useMarketStore'
 import { threadHasAcceptedAgreement, useMarketStore } from '../../app/store/useMarketStore'
 import { cn } from '../../lib/cn'
+import { notifyChatParticipantsUserLeft } from '../../utils/chat/chatRealtime'
+import { ChatLeaveConfirmModal } from './components/modals/ChatLeaveConfirmModal'
 import { messagePreviewLine } from './lib/chatAttachments'
 
 const PREMATURE_EXIT_TOOLTIP =
@@ -49,8 +51,9 @@ export function ChatListPage() {
   const offers = useMarketStore((s) => s.offers)
   const recordChatExitFromList = useMarketStore((s) => s.recordChatExitFromList)
   const removeThreadFromList = useMarketStore((s) => s.removeThreadFromList)
+  const [leaveModalThreadId, setLeaveModalThreadId] = useState<string | null>(null)
 
-  async function handleExitChat(threadId: string) {
+  async function runExitChatAfterConfirm(threadId: string) {
     const th = threads[threadId]
     if (!th) return
     const hadAccepted = threadHasAcceptedAgreement(th)
@@ -63,6 +66,9 @@ export function ChatListPage() {
       })
     } else {
       toast.success('Chat eliminado de tu lista. Sin acuerdo aceptado, sin impacto en tu confianza.')
+    }
+    if (threadId.startsWith('cth_')) {
+      await notifyChatParticipantsUserLeft(threadId)
     }
     await removeThreadFromList(threadId)
   }
@@ -84,6 +90,16 @@ export function ChatListPage() {
 
   return (
     <div className="container vt-page">
+      <ChatLeaveConfirmModal
+        open={leaveModalThreadId !== null}
+        variant="list"
+        onClose={() => setLeaveModalThreadId(null)}
+        onConfirm={async () => {
+          const id = leaveModalThreadId
+          if (!id) return
+          await runExitChatAfterConfirm(id)
+        }}
+      />
       <div className="mb-4">
         <h1 className="vt-h1">Chats</h1>
         <div className="vt-muted">
@@ -153,7 +169,7 @@ export function ChatListPage() {
                     type="button"
                     className="vt-btn my-2 mr-1 inline-flex shrink-0 items-center gap-1.5 self-center text-nowrap text-[13px]"
                     title="Quitar de tu lista: sin acuerdo aceptado, sin motivo ni impacto en confianza; con acuerdo aceptado, pedimos motivo"
-                    onClick={() => void handleExitChat(th.id)}
+                    onClick={() => setLeaveModalThreadId(th.id)}
                   >
                     <LogOut size={16} aria-hidden /> Salir
                   </button>

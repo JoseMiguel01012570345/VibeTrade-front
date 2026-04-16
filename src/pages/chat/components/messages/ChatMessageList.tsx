@@ -155,6 +155,16 @@ export function ChatMessageList({
                   />
                 </div>
               )}
+              {m.type === 'text' && !system && 'offerQaId' in m && m.offerQaId ? (
+                <div className="mb-2">
+                  <span
+                    className="inline-flex rounded-full border border-[color-mix(in_oklab,#d97706_40%,var(--border))] bg-[color-mix(in_oklab,#d97706_12%,var(--surface))] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[color-mix(in_oklab,#b45309_90%,var(--text))]"
+                    title="Visible en la ficha del producto o servicio"
+                  >
+                    Consulta pública
+                  </span>
+                </div>
+              ) : null}
               <MessageBody
                 m={m}
                 onImageOpen={setLightboxUrl}
@@ -189,7 +199,10 @@ export function ChatMessageList({
                 isMine={mine}
               />
               {'at' in m && (
-                <MsgMeta at={m.at} read={'read' in m ? m.read : undefined} />
+                <MsgMeta
+                  at={m.at}
+                  read={mine && 'read' in m ? m.read : undefined}
+                />
               )}
             </div>
           </div>
