@@ -23,6 +23,8 @@ export type PostOfferInquiryResponse = {
   question: string;
   askedBy: { id: string; name: string; trustScore: number };
   createdAt: number;
+  /** Presente si el servidor abrió el chat y dejó la consulta como mensaje (sesión + mismo usuario que askedBy). */
+  threadId?: string;
 };
 
 /** Añade una consulta pública; el servidor devuelve el ítem creado (id, createdAt). */

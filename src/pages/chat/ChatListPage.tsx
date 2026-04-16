@@ -50,7 +50,7 @@ export function ChatListPage() {
   const recordChatExitFromList = useMarketStore((s) => s.recordChatExitFromList)
   const removeThreadFromList = useMarketStore((s) => s.removeThreadFromList)
 
-  function handleExitChat(threadId: string) {
+  async function handleExitChat(threadId: string) {
     const th = threads[threadId]
     if (!th) return
     const hadAccepted = threadHasAcceptedAgreement(th)
@@ -64,7 +64,7 @@ export function ChatListPage() {
     } else {
       toast.success('Chat eliminado de tu lista. Sin acuerdo aceptado, sin impacto en tu confianza.')
     }
-    removeThreadFromList(threadId)
+    await removeThreadFromList(threadId)
   }
 
   const rows = useMemo(() => {
@@ -153,7 +153,7 @@ export function ChatListPage() {
                     type="button"
                     className="vt-btn my-2 mr-1 inline-flex shrink-0 items-center gap-1.5 self-center text-nowrap text-[13px]"
                     title="Quitar de tu lista: sin acuerdo aceptado, sin motivo ni impacto en confianza; con acuerdo aceptado, pedimos motivo"
-                    onClick={() => handleExitChat(th.id)}
+                    onClick={() => void handleExitChat(th.id)}
                   >
                     <LogOut size={16} aria-hidden /> Salir
                   </button>

@@ -51,6 +51,22 @@ import {
 import { buildRegisteredTransportistaPhoneOptions } from "./domain/routeSheetRegisteredPhones";
 import { tradeAgreementToDraft } from "./domain/tradeAgreementTypes";
 import { userHasTransportService } from "../../utils/user/transportEligibility";
+import {
+  fetchChatMessages,
+  fetchChatThread,
+  patchChatMessageStatus,
+} from "../../utils/chat/chatApi";
+import { joinChatThread, leaveChatThread } from "../../utils/chat/chatRealtime";
+import {
+  mapChatMessageDtoToMessage,
+  mergePersistedChatMessages,
+  normalizeThreadMessages,
+} from "../../utils/chat/chatMerge";
+import {
+  buildPurchaseThreadMessages,
+  buildPurchaseThreadSystemOnly,
+  syncOwnQaIntoMessages,
+} from "../../app/store/marketStoreHelpers";
 import "./chat.css";
 
 export function ChatPage() {
@@ -121,6 +137,7 @@ export function ChatPage() {
 
   const [recording, setRecording] = useState(false);
   const [recordSecs, setRecordSecs] = useState(0);
+  const [persistThreadError, setPersistThreadError] = useState(false);
 
   const [pendingImages, setPendingImages] = useState<PendingImg[]>([]);
   const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([]);
@@ -201,6 +218,87 @@ export function ChatPage() {
     syncThreadBuyerQa(threadId, me.id);
   }, [me.id, syncThreadBuyerQa, threadId]);
 
+  useEffect(() => {
+    if (!threadId?.startsWith("cth_")) return;
+    const existingTh = useMarketStore.getState().threads[threadId];
+    // Bootstrap puede dejar el hilo sin mensajes; hay que hidratar desde la API.
+    if (existingTh && existingTh.messages.length > 0) return;
+    setPersistThreadError(false);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const dto = await fetchChatThread(threadId);
+        const offer = useMarketStore.getState().offers[dto.offerId];
+        const store = useMarketStore.getState().stores[dto.storeId];
+        if (!offer || !store) {
+          if (!cancelled) setPersistThreadError(true);
+          return;
+        }
+        const msgs = await fetchChatMessages(threadId);
+        const meId = useAppStore.getState().me.id;
+        const mapped = msgs.map((d) => mapChatMessageDtoToMessage(d, meId));
+        const base =
+          msgs.length > 0
+            ? dto.purchaseMode
+              ? buildPurchaseThreadSystemOnly(offer)
+              : []
+            : dto.purchaseMode
+              ? buildPurchaseThreadMessages(offer, meId)
+              : [];
+        const merged = mergePersistedChatMessages(mapped, base);
+        const qaSynced = syncOwnQaIntoMessages(merged, offer, meId);
+        if (cancelled) return;
+        useMarketStore.setState((s) => ({
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              id: threadId,
+              offerId: dto.offerId,
+              storeId: dto.storeId,
+              store,
+              purchaseMode: dto.purchaseMode,
+              messages: qaSynced,
+              contracts: [],
+              routeSheets: [],
+            },
+          },
+        }));
+      } catch {
+        if (!cancelled) setPersistThreadError(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [threadId]);
+
+  useEffect(() => {
+    if (!threadId?.startsWith("cth_")) return;
+    void joinChatThread(threadId);
+    return () => {
+      void leaveChatThread(threadId);
+    };
+  }, [threadId]);
+
+  const lastReadMsgRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!threadId?.startsWith("cth_") || !thread) return;
+    const lastOther = [...thread.messages]
+      .reverse()
+      .find(
+        (m) =>
+          m.from === "other" &&
+          m.type === "text" &&
+          m.id &&
+          !m.id.startsWith("pend_"),
+      );
+    if (!lastOther || lastOther.type !== "text") return;
+    if (lastOther.chatStatus === "read") return;
+    if (lastOther.id === lastReadMsgRef.current) return;
+    lastReadMsgRef.current = lastOther.id;
+    void patchChatMessageStatus(threadId, lastOther.id, "read").catch(() => {});
+  }, [threadId, thread?.messages]);
+
   const prevCarrierStopsRef = useRef<Set<string> | null>(null);
   useEffect(() => {
     if (!thread) {
@@ -258,7 +356,9 @@ export function ChatPage() {
 
   const selectedOrdered = useMemo(() => {
     if (!thread) return [];
-    const order = new Map(thread.messages.map((m, i) => [m.id, i]));
+    const order = new Map(
+      normalizeThreadMessages(thread.messages).map((m, i) => [m.id, i]),
+    );
     return [...selectedIds].sort(
       (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0),
     );
@@ -387,6 +487,22 @@ export function ChatPage() {
 
   if (!threadId) return null;
   if (!thread) {
+    if (threadId.startsWith("cth_") && !persistThreadError) {
+      return (
+        <div className="container vt-page">
+          <div className="vt-card vt-card-pad">Cargando chat…</div>
+        </div>
+      );
+    }
+    if (threadId.startsWith("cth_") && persistThreadError) {
+      return (
+        <div className="container vt-page">
+          <div className="vt-card vt-card-pad">
+            No se pudo cargar este chat. ¿Iniciaste sesión y tenés acceso al hilo?
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="container vt-page">
         <div className="vt-card vt-card-pad">Chat no encontrado.</div>
@@ -561,7 +677,11 @@ export function ChatPage() {
                     <div className="font-black tracking-[-0.03em]">
                       {store.name}
                     </div>
-                    {thread.purchaseMode && (
+                    {thread.purchaseMode === false ? (
+                      <span className="rounded-full border border-[color-mix(in_oklab,var(--muted-foreground,#64748b)_40%,transparent)] bg-[color-mix(in_oklab,var(--muted-foreground,#64748b)_12%,transparent)] px-2.5 py-1 text-xs font-bold tracking-wide text-[var(--foreground)]">
+                        Modo consulta
+                      </span>
+                    ) : (
                       <span className="rounded-full border border-[color-mix(in_oklab,var(--accent,#16a34a)_35%,transparent)] bg-[color-mix(in_oklab,var(--accent,#16a34a)_18%,transparent)] px-2.5 py-1 text-xs font-bold tracking-wide text-[var(--accent-foreground,#14532d)]">
                         Modo compra
                       </span>

@@ -8,6 +8,8 @@ import { setMarketHydrating } from '../market/marketPersistence'
 import { setReelsBootstrap } from '../reels/reelsBootstrapState'
 import type { BootstrapResponse } from './bootstrapTypes'
 import { getOrCreateGuestId } from '../auth/guestId'
+import { syncChatNotificationsFromServer } from '../notifications/notificationsSync'
+import { startChatRealtime } from '../chat/chatRealtime'
 
 function normalizeReelsCovers(items: BootstrapResponse['reels']['items']) {
   return items.map((r) => ({
@@ -86,4 +88,9 @@ export async function bootstrapWebApp(): Promise<void> {
     items: normalizeReelsCovers(json.reels.items),
     initialComments: normalizeReelsComments(json.reels.initialComments),
   })
+
+  if (token && active) {
+    void syncChatNotificationsFromServer()
+    startChatRealtime()
+  }
 }

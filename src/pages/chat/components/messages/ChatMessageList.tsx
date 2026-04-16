@@ -1,8 +1,9 @@
-import type { MouseEvent, RefObject } from 'react'
+import { useMemo, type MouseEvent, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { cn } from '../../../../lib/cn'
 import type { Thread } from '../../../../app/store/useMarketStore'
+import { normalizeThreadMessages } from '../../../../utils/chat/chatMerge'
 import { MessageBody, MsgMeta } from '../media/ChatMedia'
 
 function TrustChip({ score, className }: { score: number; className?: string }) {
@@ -55,12 +56,17 @@ export function ChatMessageList({
 }: Props) {
   const store = thread.store
 
+  const orderedMessages = useMemo(
+    () => normalizeThreadMessages(thread.messages),
+    [thread.messages],
+  )
+
   return (
     <div
       ref={listRef as RefObject<HTMLDivElement>}
       className="vt-card flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[color-mix(in_oklab,var(--bg)_60%,var(--surface))] to-[var(--surface)] px-6 py-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
     >
-      {thread.messages.map((m) => {
+      {orderedMessages.map((m) => {
         const mine = m.from === 'me'
         const system = m.from === 'system'
         const agreementDoc =

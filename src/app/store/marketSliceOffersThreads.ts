@@ -2,6 +2,20 @@ import type { TradeAgreement } from '../../pages/chat/domain/tradeAgreementTypes
 import { normalizeMerchandiseLine } from '../../pages/chat/domain/tradeAgreementTypes'
 import { hasValidationErrors, validateTradeAgreementDraft } from '../../pages/chat/domain/tradeAgreementValidation'
 import { postOfferInquiry } from '../../utils/market/marketPersistence'
+import {
+  createOrGetChatThread,
+  deleteChatThread,
+  fetchChatMessages,
+  fetchChatThread,
+  fetchChatThreadByOffer,
+  type ChatMessageDto,
+} from '../../utils/chat/chatApi'
+import { leaveChatThread } from '../../utils/chat/chatRealtime'
+import {
+  mapChatMessageDtoToMessage,
+  mergePersistedChatMessages,
+} from '../../utils/chat/chatMerge'
+import { getSessionToken } from '../../utils/http/sessionToken'
 import type { MarketState, Offer, Message, QAItem, Thread } from './marketStoreTypes'
 import {
   threadHasAcceptedAgreement,
@@ -9,12 +23,14 @@ import {
 } from './marketStoreTypes'
 import {
   buildPurchaseThreadMessages,
+  buildPurchaseThreadSystemOnly,
   syncOwnQaIntoMessages,
   threadIsActionLocked,
   uid,
 } from './marketStoreHelpers'
 import { routeSheetHasConfirmedCarriers } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
+import { useAppStore } from './useAppStore'
 
 export function createOffersThreadsSlice(set: MarketSliceSet, get: MarketSliceGet): Pick<MarketState,
   | 'ask'
@@ -80,6 +96,42 @@ submitOfferQuestion: async (offerId, askedBy, question) => {
       offers: { ...state.offers, [offerId]: nextOffer },
     }
   })
+
+      if (created.threadId && getSessionToken() && askedBy.id !== 'guest') {
+    try {
+      const dto = await fetchChatThread(created.threadId)
+      const serverMsgs = await fetchChatMessages(created.threadId)
+      const meId = useAppStore.getState().me.id
+      const mapped = serverMsgs.map((d) => mapChatMessageDtoToMessage(d, meId))
+      const offer = get().offers[offerId]
+      const store = get().stores[offer?.storeId ?? '']
+      if (offer && store) {
+        const baseMessages = dto.purchaseMode
+          ? buildPurchaseThreadSystemOnly(offer)
+          : []
+        const merged = mergePersistedChatMessages(mapped, baseMessages)
+        const qaSynced = syncOwnQaIntoMessages(merged, offer, meId)
+        set((st) => ({
+          ...st,
+          threads: {
+            ...st.threads,
+            [created.threadId!]: {
+              id: created.threadId!,
+              offerId,
+              storeId: offer.storeId,
+              store,
+              purchaseMode: dto.purchaseMode,
+              messages: qaSynced,
+              contracts: [],
+              routeSheets: [],
+            },
+          },
+        }))
+      }
+    } catch {
+      /* el hilo se hidratará en bootstrap o al abrir /chat */
+    }
+  }
 },
 
 answer: (offerId, qaId, answerText) => {
@@ -103,13 +155,103 @@ answer: (offerId, qaId, answerText) => {
   })
 },
 
-ensureThreadForOffer: (offerId, opts) => {
+ensureThreadForOffer: async (offerId, opts) => {
   const s = get()
   const offer = s.offers[offerId]
   if (!offer) return ''
 
   const existing = Object.values(s.threads).find((t) => t.offerId === offerId)
   const buyerId = opts?.buyerId
+  const token = getSessionToken()
+  const canPersist = !!token && !!buyerId && buyerId !== 'guest'
+  const store = s.stores[offer.storeId]
+  const meId = buyerId ?? ''
+
+  const applyHydratedThread = (
+    threadId: string,
+    serverMsgs: ChatMessageDto[],
+    baseThread: Thread,
+    purchaseModeOverride?: boolean,
+  ) => {
+    const mapped = serverMsgs.map((d) => mapChatMessageDtoToMessage(d, meId))
+    const mergedMsgs = mergePersistedChatMessages(mapped, baseThread.messages)
+    const qaSynced = syncOwnQaIntoMessages(mergedMsgs, offer, buyerId)
+    set((x) => {
+      const nextThreads = { ...x.threads }
+      if (existing && existing.id !== threadId) delete nextThreads[existing.id]
+      nextThreads[threadId] = {
+        ...baseThread,
+        id: threadId,
+        ...(purchaseModeOverride !== undefined
+          ? { purchaseMode: purchaseModeOverride }
+          : {}),
+        messages: qaSynced,
+        contracts: baseThread.contracts ?? [],
+        routeSheets: baseThread.routeSheets ?? [],
+      }
+      return { ...x, threads: nextThreads }
+    })
+  }
+
+  if (canPersist) {
+    try {
+      if (existing?.id.startsWith('cth_')) {
+        const serverMsgs = await fetchChatMessages(existing.id)
+        const th = get().threads[existing.id]
+        if (th) {
+          try {
+            const dto = await fetchChatThread(existing.id)
+            applyHydratedThread(existing.id, serverMsgs, th, dto.purchaseMode)
+          } catch {
+            applyHydratedThread(existing.id, serverMsgs, th)
+          }
+        }
+        return existing.id
+      }
+
+      const isSeller = store.ownerUserId === meId
+      if (isSeller) {
+        const dto = await fetchChatThreadByOffer(offerId)
+        if (!dto) return ''
+        const serverMsgs = await fetchChatMessages(dto.id)
+        const bootstrap: Thread = existing
+          ? { ...existing, id: dto.id }
+          : {
+              id: dto.id,
+              offerId,
+              storeId: offer.storeId,
+              store,
+              purchaseMode: dto.purchaseMode,
+              messages: dto.purchaseMode
+                ? buildPurchaseThreadSystemOnly(offer)
+                : [],
+              contracts: [],
+              routeSheets: [],
+            }
+        applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode)
+        return dto.id
+      }
+
+      const dto = await createOrGetChatThread(offerId, true)
+      const serverMsgs = await fetchChatMessages(dto.id)
+      const bootstrap: Thread = {
+        id: dto.id,
+        offerId,
+        storeId: offer.storeId,
+        store,
+        purchaseMode: dto.purchaseMode,
+        messages: dto.purchaseMode
+          ? buildPurchaseThreadSystemOnly(offer)
+          : [],
+        contracts: existing?.contracts ?? [],
+        routeSheets: existing?.routeSheets ?? [],
+      }
+      applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode)
+      return dto.id
+    } catch {
+      /* fallback local */
+    }
+  }
 
   if (existing) {
     const merged = syncOwnQaIntoMessages(existing.messages, offer, buyerId)
@@ -130,7 +272,6 @@ ensureThreadForOffer: (offerId, opts) => {
     return existing.id
   }
 
-  const store = s.stores[offer.storeId]
   const id = uid('th')
   const bootstrap: Thread = {
     id,
@@ -149,7 +290,7 @@ ensureThreadForOffer: (offerId, opts) => {
 syncThreadBuyerQa: (threadId, buyerId) => {
   set((s) => {
     const th = s.threads[threadId]
-    if (!th?.purchaseMode || threadIsActionLocked(th)) return s
+    if (!th || threadIsActionLocked(th)) return s
     const offer = s.offers[th.offerId]
     if (!offer) return s
     const merged = syncOwnQaIntoMessages(th.messages, offer, buyerId)
@@ -409,7 +550,17 @@ recordChatExitFromList: (threadId) => {
   })
 },
 
-removeThreadFromList: (threadId) => {
+removeThreadFromList: async (threadId) => {
+  if (threadId.startsWith('cth_')) {
+    void leaveChatThread(threadId)
+    if (getSessionToken()) {
+      try {
+        await deleteChatThread(threadId)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }
   set((s) => {
     if (!s.threads[threadId]) return s
     const { [threadId]: _removed, ...rest } = s.threads

@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Bell, CheckCircle2, X } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { cn } from '../../lib/cn'
+import { markChatNotificationsRead } from '../../utils/chat/chatApi'
+import { syncChatNotificationsFromServer } from '../../utils/notifications/notificationsSync'
 
 function fmt(ts: number) {
   const d = new Date(ts)
-  return d.toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: '2-digit' })
+  return d.toLocaleString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    month: 'short',
+    day: '2-digit',
+    year: 'numeric',
+  })
 }
 
 export function NotificationsBell() {
@@ -17,9 +26,24 @@ export function NotificationsBell() {
 
   useEffect(() => {
     if (!open) return
-    // Requirement: when the user sees notifications, hide the unread badge.
-    markAllRead()
+    void (async () => {
+      try {
+        await markChatNotificationsRead()
+      } catch {
+        /* ignore */
+      }
+      markAllRead()
+    })()
   }, [open, markAllRead])
+
+  useEffect(() => {
+    if (!open) return
+    const onFocus = () => {
+      void syncChatNotificationsFromServer()
+    }
+    globalThis.addEventListener?.('focus', onFocus)
+    return () => globalThis.removeEventListener?.('focus', onFocus)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -92,25 +116,44 @@ export function NotificationsBell() {
                 <div className="vt-muted">Aún no hay notificaciones.</div>
               ) : (
                 <div className="flex flex-col gap-2.5">
-                  {items.map((n) => (
-                    <div
-                      key={n.id}
-                      className={cn(
-                        'grid grid-cols-[32px_1fr] gap-2.5 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-3 py-2.5',
-                        !n.read &&
-                          'border-[color-mix(in_oklab,var(--primary)_20%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))]',
-                      )}
-                    >
-                      <div className="grid h-8 w-8 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-                        <Bell size={16} />
-                      </div>
-                      <div>
-                        <div className="font-black tracking-[-0.02em]">{n.title}</div>
-                        <div className="vt-muted">{n.body}</div>
-                        <div className="mt-1.5 text-xs text-[var(--muted)]">{fmt(n.createdAt)}</div>
-                      </div>
+                  {items.map((n) => {
+                    const wrapClass = cn(
+                      'grid grid-cols-[32px_1fr] gap-2.5 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-3 py-2.5',
+                      !n.read &&
+                        'border-[color-mix(in_oklab,var(--primary)_20%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))]',
+                    )
+                    const inner = (
+                      <>
+                        <div className="grid h-8 w-8 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+                          <Bell size={16} />
+                        </div>
+                        <div>
+                          <div className="font-black tracking-[-0.02em]">{n.title}</div>
+                          <div className="vt-muted whitespace-pre-wrap break-words">{n.body}</div>
+                          <div className="mt-1.5 text-xs text-[var(--muted)]">{fmt(n.createdAt)}</div>
+                  {n.kind === 'chat_message' && n.threadId ? (
+                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
+                      Abrir chat →
                     </div>
-                  ))}
+                  ) : null}
+                        </div>
+                      </>
+                    )
+                    return n.kind === 'chat_message' && n.threadId ? (
+                      <Link
+                        key={n.id}
+                        to={`/chat/${encodeURIComponent(n.threadId)}`}
+                        className={cn(wrapClass, 'text-left no-underline text-[var(--text)]')}
+                        onClick={() => setOpen(false)}
+                      >
+                        {inner}
+                      </Link>
+                    ) : (
+                      <div key={n.id} className={wrapClass}>
+                        {inner}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -120,8 +163,10 @@ export function NotificationsBell() {
                 type="button"
                 className="vt-btn"
                 onClick={() => {
-                  markAllRead()
-                  setOpen(false)
+                  void markChatNotificationsRead().finally(() => {
+                    markAllRead()
+                    setOpen(false)
+                  })
                 }}
                 disabled={items.length === 0}
               >

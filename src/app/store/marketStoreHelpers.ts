@@ -1,4 +1,5 @@
 import type { RouteSheet } from '../../pages/chat/domain/routeSheetTypes'
+import { normalizeThreadMessages } from '../../utils/chat/chatMerge'
 import type { Message, Offer, QAItem, ReplyQuote, Thread } from './marketStoreTypes'
 
 export function uid(prefix: string): string {
@@ -93,16 +94,29 @@ export function syncOwnQaIntoMessages(
     .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
 
   let next = [...prev]
-  let t = next.length ? Math.max(...next.map((m) => m.at)) + 1 : Date.now()
+  const atNums = next.map((m) => m.at).filter((x) => typeof x === 'number' && !Number.isNaN(x))
+  let legacySeq = atNums.length ? Math.max(...atNums) + 1 : Date.now()
 
   for (const q of ownQa) {
+    const hasCreated =
+      typeof q.createdAt === 'number' && !Number.isNaN(q.createdAt)
+    let qAt: number
+    let aAt: number
+    if (hasCreated) {
+      qAt = q.createdAt!
+      aAt = q.createdAt! + 1
+    } else {
+      qAt = legacySeq++
+      aAt = q.answer ? legacySeq++ : qAt
+    }
+
     if (!hasSeededQuestion(next, q)) {
       next.push({
         id: uid('m'),
         from: 'me',
         type: 'text',
         text: q.question,
-        at: t++,
+        at: qAt,
         read: true,
         offerQaId: q.id,
       })
@@ -113,63 +127,32 @@ export function syncOwnQaIntoMessages(
         from: 'other',
         type: 'text',
         text: q.answer,
-        at: t++,
+        at: aAt,
         read: true,
         offerQaId: q.id,
       })
     }
   }
 
-  return next
+  return normalizeThreadMessages(next)
 }
 
-export function buildPurchaseThreadMessages(offer: Offer, buyerId: string | undefined): Message[] {
-  const messages: Message[] = []
-  let seq = 0
-  const base = Date.now() - 90_000
-
-  messages.push({
-    id: uid('m'),
-    from: 'system',
-    type: 'text',
-    text: `Inicio de chat de compra · ${offer.title}. Credenciales del negocio y disponibilidad de transporte se destacan arriba.`,
-    at: base + seq++ * 1000,
-  })
-
-  if (!buyerId) return messages
-
-  const ownQa = [...(offer.qa ?? [])]
-    .filter((q) => q.askedBy.id === buyerId)
-    .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
-
-  for (const q of ownQa) {
-    const tQ = base + seq++ * 1000
-    const tA = base + seq++ * 1000
-
-    messages.push({
+/** Solo el aviso de sistema (sin Q&A; la Q&A pública se añade vía syncOwnQaIntoMessages o el API). */
+export function buildPurchaseThreadSystemOnly(offer: Offer): Message[] {
+  return [
+    {
       id: uid('m'),
-      from: 'me',
+      from: 'system',
       type: 'text',
-      text: q.question,
-      at: tQ,
-      read: true,
-      offerQaId: q.id,
-    })
+      text: `Inicio de chat de compra · ${offer.title}. Credenciales del negocio y disponibilidad de transporte se destacan arriba.`,
+      at: Date.now() - 90_000,
+    },
+  ]
+}
 
-    if (q.answer) {
-      messages.push({
-        id: uid('m'),
-        from: 'other',
-        type: 'text',
-        text: q.answer,
-        at: tA,
-        read: true,
-        offerQaId: q.id,
-      })
-    }
-  }
-
-  return messages
+/** Hilos locales sin persistencia: sistema + consultas públicas del comprador desde `offer.qa`. */
+export function buildPurchaseThreadMessages(offer: Offer, buyerId: string | undefined): Message[] {
+  return syncOwnQaIntoMessages(buildPurchaseThreadSystemOnly(offer), offer, buyerId)
 }
 
 export function routeSheetIdsLinkedToContracts(th: Thread): Set<string> {

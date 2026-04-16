@@ -12,6 +12,7 @@ import type {
   RouteSheetCreatePayload,
   RouteSheetStatus,
 } from "../../pages/chat/domain/routeSheetTypes";
+import type { ChatMessageDto } from "../../utils/chat/chatApi";
 
 export type {
   TradeAgreement,
@@ -161,6 +162,8 @@ export type Message =
       read?: boolean;
       offerQaId?: string;
       replyQuotes?: ReplyQuote[];
+      /** Solo mensajes de texto persistidos / realtime. */
+      chatStatus?: ChatDeliveryStatus;
     }
   | {
       id: string;
@@ -280,6 +283,14 @@ export type RecommendationStoreStripAnchor = {
   storeIds: string[];
 };
 
+/** Estado de entrega/lectura (chat persistido + SignalR). */
+export type ChatDeliveryStatus =
+  | "pending"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "error";
+
 export type MarketState = {
   stores: Record<string, StoreBadge>;
   offers: Record<string, Offer>;
@@ -322,8 +333,16 @@ export type MarketState = {
   ensureThreadForOffer: (
     offerId: string,
     opts?: { buyerId?: string },
-  ) => string;
+  ) => Promise<string>;
   syncThreadBuyerQa: (threadId: string, buyerId: string) => void;
+  /** Mergea mensaje desde SignalR (evita duplicados por id). */
+  onChatMessageFromServer: (threadId: string, dto: ChatMessageDto) => void;
+  onChatMessageStatusFromServer: (
+    threadId: string,
+    messageId: string,
+    status: string,
+    updatedAtUtc?: string,
+  ) => void;
   sendText: (threadId: string, text: string, replyToIds?: string[]) => void;
   sendAudio: (
     threadId: string,
@@ -415,8 +434,8 @@ export type MarketState = {
   ) => boolean;
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean;
   recordChatExitFromList: (threadId: string) => void;
-  /** Quita el hilo del estado local (lista del comprador / demo). */
-  removeThreadFromList: (threadId: string) => void;
+  /** Quita el hilo del estado local y, si es persistido, lo borra en el servidor. */
+  removeThreadFromList: (threadId: string) => Promise<void>;
   markThreadPaymentCompleted: (threadId: string) => void;
 
   subscribeRouteOfferTramo: (

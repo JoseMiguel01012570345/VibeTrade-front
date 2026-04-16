@@ -425,10 +425,18 @@ export function OfferPage() {
                               offer.id,
                               "chat_start",
                             ).catch(() => undefined);
-                            const threadId = ensureThreadForOffer(offer.id, {
-                              buyerId: me.id,
-                            });
-                            nav(`/chat/${threadId}`);
+                            void (async () => {
+                              const threadId = await ensureThreadForOffer(offer.id, {
+                                buyerId: me.id,
+                              });
+                              if (!threadId) {
+                                toast.error(
+                                  "Aún no hay conversación con un comprador. Se abrirá cuando alguien te escriba.",
+                                );
+                                return;
+                              }
+                              nav(`/chat/${threadId}`);
+                            })();
                           }}
                         >
                           Ir al chat de la operación
@@ -571,10 +579,16 @@ export function OfferPage() {
                     offer.id,
                     "chat_start",
                   ).catch(() => undefined);
-                  const threadId = ensureThreadForOffer(offer.id, {
-                    buyerId: me.id,
-                  });
-                  nav(`/chat/${threadId}`);
+                  void (async () => {
+                    const threadId = await ensureThreadForOffer(offer.id, {
+                      buyerId: me.id,
+                    });
+                    if (!threadId) {
+                      toast.error("No se pudo abrir el chat. Probá de nuevo.");
+                      return;
+                    }
+                    nav(`/chat/${threadId}`);
+                  })();
                 }}
               >
                 <ShoppingCart size={16} /> Comprar (Chat)

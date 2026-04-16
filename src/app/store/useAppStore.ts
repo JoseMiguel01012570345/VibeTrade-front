@@ -45,11 +45,14 @@ const guestMe: User = {
 
 type NotificationItem = {
   id: string
-  kind: 'qa_reply' | 'payment' | 'system'
+  kind: 'qa_reply' | 'payment' | 'system' | 'chat_message'
   title: string
   body: string
   createdAt: number
   read: boolean
+  /** Solo para chat: abrir el hilo. */
+  threadId?: string
+  trustScore?: number
 }
 
 type AppState = {
@@ -79,6 +82,7 @@ type AppState = {
   setMeEmail: (email: string) => void
   setProfileSocialLink: (network: SocialNetworkId, value: string) => void
   pushNotification: (n: Omit<NotificationItem, 'id' | 'createdAt' | 'read'>) => void
+  setChatNotificationsFromServer: (items: NotificationItem[]) => void
   markAllRead: () => void
   toggleSavedReel: (reelId: string) => void
   setSavedOffersFromIds: (ids: string[]) => void
@@ -166,9 +170,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       body: n.body,
       createdAt: Date.now(),
       read: false,
+      ...(n.threadId != null ? { threadId: n.threadId } : {}),
+      ...(n.trustScore != null ? { trustScore: n.trustScore } : {}),
     }
     set((s) => ({ notifications: [item, ...s.notifications] }))
   },
+
+  setChatNotificationsFromServer: (items) =>
+    set((s) => {
+      const local = s.notifications.filter((x) => x.kind !== 'chat_message')
+      const merged = [...items, ...local]
+      merged.sort((a, b) => b.createdAt - a.createdAt)
+      return { notifications: merged }
+    }),
 
   markAllRead: () => set((s) => ({ notifications: s.notifications.map((x) => ({ ...x, read: true })) })),
 
