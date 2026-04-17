@@ -1,5 +1,10 @@
-import type { ChangeEvent, Dispatch, Ref, RefObject, SetStateAction } from 'react'
-import toast from 'react-hot-toast'
+import type {
+  ChangeEvent,
+  Dispatch,
+  Ref,
+  RefObject,
+  SetStateAction,
+} from "react";
 import {
   FileText,
   GitBranch,
@@ -9,70 +14,72 @@ import {
   Send,
   Square,
   X,
-} from 'lucide-react'
-import { cn } from '../../../../lib/cn'
-import type { Thread } from '../../../../app/store/useMarketStore'
-import { messageAuthorLabel, messagePreviewLine } from '../../lib/chatAttachments'
+} from "lucide-react";
+import { useAppStore } from "../../../../app/store/useAppStore";
+import { cn } from "../../../../lib/cn";
+import type { Thread } from "../../../../app/store/useMarketStore";
+import { replySelectionAuthorLabel } from "../../../../utils/chat/chatParticipantLabels";
+import { messagePreviewLine } from "../../lib/chatAttachments";
 
 function formatVoiceDur(sec: number) {
-  const s = Math.max(0, Math.floor(sec))
-  const m = Math.floor(s / 60)
-  const r = s % 60
-  return `${m}:${String(r).padStart(2, '0')}`
+  const s = Math.max(0, Math.floor(sec));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, "0")}`;
 }
 
-export type PendingImg = { id: string; url: string }
+export type PendingImg = { id: string; url: string };
 export type PendingDoc = {
-  id: string
-  url: string
-  name: string
-  size: string
-  kind: 'pdf' | 'doc' | 'other'
-}
+  id: string;
+  url: string;
+  name: string;
+  size: string;
+  kind: "pdf" | "doc" | "other";
+};
 
-type Me = { id: string; name: string; trustScore: number }
+type Me = { id: string; name: string; trustScore: number };
 
 type Props = {
-  thread: Thread
-  me: Me
-  storeName: string
-  chatActionsLocked: boolean
-  draftInputRef: RefObject<HTMLInputElement | null>
-  draft: string
-  setDraft: Dispatch<SetStateAction<string>>
-  selected: Record<string, boolean>
-  setSelected: Dispatch<SetStateAction<Record<string, boolean>>>
-  selectedIds: string[]
-  selectedOrdered: string[]
-  pendingDocs: PendingDoc[]
-  pendingImages: PendingImg[]
-  pendingAudio: { url: string; seconds: number } | null
-  recording: boolean
-  recordSecs: number
-  voiceRecorderContainerRef: Ref<HTMLDivElement>
-  blockTextWithVoiceAndFiles: boolean
-  hasComposeToSend: boolean
-  canSend: boolean
-  onPickDocument: (e: ChangeEvent<HTMLInputElement>) => void
-  onPickImages: (e: ChangeEvent<HTMLInputElement>) => void
-  removePendingDoc: (id: string) => void
-  removePendingImage: (id: string) => void
-  removePendingAudio: () => void
-  submitComposer: () => void
-  toggleVoiceRecording: () => void
-  markThreadPaymentCompleted: (threadId: string) => void
+  thread: Thread;
+  me: Me;
+  storeName: string;
+  chatActionsLocked: boolean;
+  draftInputRef: RefObject<HTMLInputElement | null>;
+  draft: string;
+  setDraft: Dispatch<SetStateAction<string>>;
+  selected: Record<string, boolean>;
+  setSelected: Dispatch<SetStateAction<Record<string, boolean>>>;
+  selectedIds: string[];
+  selectedOrdered: string[];
+  pendingDocs: PendingDoc[];
+  pendingImages: PendingImg[];
+  pendingAudio: { url: string; seconds: number } | null;
+  recording: boolean;
+  recordSecs: number;
+  voiceRecorderContainerRef: Ref<HTMLDivElement>;
+  blockTextWithVoiceAndFiles: boolean;
+  hasComposeToSend: boolean;
+  canSend: boolean;
+  onPickDocument: (e: ChangeEvent<HTMLInputElement>) => void;
+  onPickImages: (e: ChangeEvent<HTMLInputElement>) => void;
+  removePendingDoc: (id: string) => void;
+  removePendingImage: (id: string) => void;
+  removePendingAudio: () => void;
+  submitComposer: () => void;
+  toggleVoiceRecording: () => void;
+  markThreadPaymentCompleted: (threadId: string) => void;
   pushNotification: (n: {
-    kind: 'payment'
-    title: string
-    body: string
-  }) => void
-  setTrustScore: (n: number) => void
-}
+    kind: "payment";
+    title: string;
+    body: string;
+  }) => void;
+  setTrustScore: (n: number) => void;
+};
 
 export function ChatComposerSection({
   thread,
   me,
-  storeName,
+  storeName: _storeName,
   chatActionsLocked,
   draftInputRef,
   draft,
@@ -96,10 +103,11 @@ export function ChatComposerSection({
   removePendingAudio,
   submitComposer,
   toggleVoiceRecording,
-  markThreadPaymentCompleted,
-  pushNotification,
-  setTrustScore,
+  markThreadPaymentCompleted: _markThreadPaymentCompleted,
+  pushNotification: _pushNotification,
+  setTrustScore: _setTrustScore,
 }: Props) {
+  const profileDisplayNames = useAppStore((s) => s.profileDisplayNames);
   return (
     <div className="vt-card vt-card-pad flex shrink-0 flex-col gap-2.5">
       {selectedIds.length > 0 && (
@@ -116,9 +124,12 @@ export function ChatComposerSection({
               <GitBranch size={18} strokeWidth={2.25} />
             </span>
             <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="text-[13px] font-black tracking-[-0.02em] text-[var(--text)]">Nuevo hilo</span>
+              <span className="text-[13px] font-black tracking-[-0.02em] text-[var(--text)]">
+                Nuevo hilo
+              </span>
               <span className="text-[11px] leading-snug text-[var(--muted)]">
-                Tu mensaje enlaza estas citas y se muestra como continuación de hilo
+                Tu mensaje enlaza estas citas y se muestra como continuación de
+                hilo
               </span>
             </div>
           </div>
@@ -138,10 +149,15 @@ export function ChatComposerSection({
           </div>
           <div className="flex max-h-[140px] flex-col gap-2 overflow-y-auto px-3 pb-2.5 pl-3.5 pr-2.5">
             {selectedOrdered.map((id) => {
-              const msg = thread.messages.find((x) => x.id === id)
-              if (!msg || msg.type === 'certificate') return null
-              const author = messageAuthorLabel(msg, storeName)
-              const preview = messagePreviewLine(msg)
+              const msg = thread.messages.find((x) => x.id === id);
+              if (!msg || msg.type === "certificate") return null;
+              const author = replySelectionAuthorLabel(
+                msg,
+                thread,
+                me,
+                profileDisplayNames,
+              );
+              const preview = messagePreviewLine(msg);
               return (
                 <div key={id} className="flex min-w-0 items-start gap-2">
                   <span
@@ -149,8 +165,12 @@ export function ChatComposerSection({
                     aria-hidden
                   />
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="text-xs font-extrabold text-[#25d366]">{author}</span>
-                    <span className="line-clamp-2 text-xs leading-snug text-[var(--muted)]">{preview}</span>
+                    <span className="text-xs font-extrabold text-[#25d366]">
+                      {author}
+                    </span>
+                    <span className="line-clamp-2 text-xs leading-snug text-[var(--muted)]">
+                      {preview}
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -158,16 +178,16 @@ export function ChatComposerSection({
                     aria-label={`Quitar cita a ${author}`}
                     onClick={() =>
                       setSelected((s) => {
-                        const n = { ...s }
-                        delete n[id]
-                        return n
+                        const n = { ...s };
+                        delete n[id];
+                        return n;
                       })
                     }
                   >
                     <X size={16} strokeWidth={2} />
                   </button>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
@@ -182,15 +202,18 @@ export function ChatComposerSection({
               aria-disabled="true"
               aria-label="Adjuntar documentos (no disponible durante la grabación)"
             >
-              <span className="pointer-events-none grid place-items-center" aria-hidden>
+              <span
+                className="pointer-events-none grid place-items-center"
+                aria-hidden
+              >
                 <Paperclip size={22} strokeWidth={2} />
               </span>
             </span>
           ) : (
             <label
               className={cn(
-                'relative m-0 grid h-11 w-11 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[#111b21]',
-                chatActionsLocked && 'pointer-events-none opacity-40',
+                "relative m-0 grid h-11 w-11 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[#111b21]",
+                chatActionsLocked && "pointer-events-none opacity-40",
               )}
               aria-label="Adjuntar documentos"
               title="Documentos"
@@ -202,7 +225,10 @@ export function ChatComposerSection({
                 accept=".pdf,.doc,.docx,.odt,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={onPickDocument}
               />
-              <span className="pointer-events-none grid place-items-center" aria-hidden>
+              <span
+                className="pointer-events-none grid place-items-center"
+                aria-hidden
+              >
                 <Paperclip size={22} strokeWidth={2} />
               </span>
             </label>
@@ -214,28 +240,45 @@ export function ChatComposerSection({
               aria-disabled="true"
               aria-label="Adjuntar imágenes (no disponible durante la grabación)"
             >
-              <span className="pointer-events-none grid place-items-center" aria-hidden>
+              <span
+                className="pointer-events-none grid place-items-center"
+                aria-hidden
+              >
                 <ImageIcon size={22} strokeWidth={2} />
               </span>
             </span>
           ) : (
             <label
               className={cn(
-                'relative m-0 grid h-11 w-11 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[#111b21]',
-                chatActionsLocked && 'pointer-events-none opacity-40',
+                "relative m-0 grid h-11 w-11 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[#111b21]",
+                chatActionsLocked && "pointer-events-none opacity-40",
               )}
               aria-label="Adjuntar imágenes"
               title="Imágenes"
             >
-              <input type="file" className="sr-only" accept="image/*" multiple onChange={onPickImages} />
-              <span className="pointer-events-none grid place-items-center" aria-hidden>
+              <input
+                type="file"
+                className="sr-only"
+                accept="image/*"
+                multiple
+                onChange={onPickImages}
+              />
+              <span
+                className="pointer-events-none grid place-items-center"
+                aria-hidden
+              >
                 <ImageIcon size={22} strokeWidth={2} />
               </span>
             </label>
           )}
         </div>
-        {(pendingDocs.length > 0 || pendingImages.length > 0 || pendingAudio) && (
-          <div className="flex min-h-0 flex-wrap items-end gap-2 py-2 pb-1" aria-label="Archivos listos para enviar">
+        {(pendingDocs.length > 0 ||
+          pendingImages.length > 0 ||
+          pendingAudio) && (
+          <div
+            className="flex min-h-0 flex-wrap items-end gap-2 py-2 pb-1"
+            aria-label="Archivos listos para enviar"
+          >
             {pendingDocs.map((doc) => (
               <div
                 key={doc.id}
@@ -245,14 +288,18 @@ export function ChatComposerSection({
                   <FileText size={22} strokeWidth={2} />
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="truncate text-[13px] font-extrabold">{doc.name}</span>
-                  <span className="text-[11px] text-[var(--muted)]">{doc.size}</span>
+                  <span className="truncate text-[13px] font-extrabold">
+                    {doc.name}
+                  </span>
+                  <span className="text-[11px] text-[var(--muted)]">
+                    {doc.size}
+                  </span>
                 </div>
                 <button
                   type="button"
                   className={cn(
-                    'grid shrink-0 cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-1 leading-none text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_12%,transparent)] hover:text-[var(--text)]',
-                    chatActionsLocked && 'pointer-events-none opacity-[0.35]',
+                    "grid shrink-0 cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-1 leading-none text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_12%,transparent)] hover:text-[var(--text)]",
+                    chatActionsLocked && "pointer-events-none opacity-[0.35]",
                   )}
                   aria-label={`Quitar ${doc.name}`}
                   onClick={() => removePendingDoc(doc.id)}
@@ -266,12 +313,16 @@ export function ChatComposerSection({
                 key={img.id}
                 className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-xl border border-[var(--border)]"
               >
-                <img src={img.url} alt="" className="block h-full w-full object-cover" />
+                <img
+                  src={img.url}
+                  alt=""
+                  className="block h-full w-full object-cover"
+                />
                 <button
                   type="button"
                   className={cn(
-                    'absolute right-1 top-1 grid h-6 w-6 cursor-pointer place-items-center rounded-full border-0 bg-[rgba(15,23,42,0.65)] leading-none text-white hover:bg-[rgba(15,23,42,0.85)]',
-                    chatActionsLocked && 'pointer-events-none opacity-[0.35]',
+                    "absolute right-1 top-1 grid h-6 w-6 cursor-pointer place-items-center rounded-full border-0 bg-[rgba(15,23,42,0.65)] leading-none text-white hover:bg-[rgba(15,23,42,0.85)]",
+                    chatActionsLocked && "pointer-events-none opacity-[0.35]",
                   )}
                   aria-label="Quitar imagen"
                   onClick={() => removePendingImage(img.id)}
@@ -282,18 +333,25 @@ export function ChatComposerSection({
             ))}
             {pendingAudio && (
               <div className="flex min-w-0 max-w-full flex-[1_1_200px] items-center gap-2.5 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] px-2.5 py-2">
-                <div className="grid shrink-0 place-items-center text-[var(--primary)]" aria-hidden>
+                <div
+                  className="grid shrink-0 place-items-center text-[var(--primary)]"
+                  aria-hidden
+                >
                   <Mic size={20} strokeWidth={2} />
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="text-[13px] font-extrabold">Nota de voz</span>
-                  <span className="text-[11px] text-[var(--muted)]">{formatVoiceDur(pendingAudio.seconds)}</span>
+                  <span className="text-[13px] font-extrabold">
+                    Nota de voz
+                  </span>
+                  <span className="text-[11px] text-[var(--muted)]">
+                    {formatVoiceDur(pendingAudio.seconds)}
+                  </span>
                 </div>
                 <button
                   type="button"
                   className={cn(
-                    'grid shrink-0 cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-1 leading-none text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_12%,transparent)] hover:text-[var(--text)]',
-                    chatActionsLocked && 'pointer-events-none opacity-[0.35]',
+                    "grid shrink-0 cursor-pointer place-items-center rounded-lg border-0 bg-transparent p-1 leading-none text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_12%,transparent)] hover:text-[var(--text)]",
+                    chatActionsLocked && "pointer-events-none opacity-[0.35]",
                   )}
                   aria-label="Quitar nota de voz"
                   onClick={() => removePendingAudio()}
@@ -335,57 +393,65 @@ export function ChatComposerSection({
           <input
             ref={draftInputRef as RefObject<HTMLInputElement>}
             className="vt-input min-w-0 flex-1 self-stretch"
-            disabled={recording || blockTextWithVoiceAndFiles || chatActionsLocked}
+            disabled={
+              recording || blockTextWithVoiceAndFiles || chatActionsLocked
+            }
             placeholder={
               recording
-                ? 'Grabando nota de voz…'
+                ? "Grabando nota de voz…"
                 : blockTextWithVoiceAndFiles
-                  ? 'No se puede añadir texto con nota de voz y archivos'
-                  : pendingDocs.length > 0 || pendingImages.length > 0 || pendingAudio
-                    ? 'Añade un mensaje (opcional)…'
+                  ? "No se puede añadir texto con nota de voz y archivos"
+                  : pendingDocs.length > 0 ||
+                      pendingImages.length > 0 ||
+                      pendingAudio
+                    ? "Añade un mensaje (opcional)…"
                     : selectedIds.length
-                      ? 'Escribe una respuesta…'
-                      : 'Escribe un mensaje…'
+                      ? "Escribe una respuesta…"
+                      : "Escribe un mensaje…"
             }
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (recording || blockTextWithVoiceAndFiles || chatActionsLocked) {
-                e.preventDefault()
-                return
+              if (
+                recording ||
+                blockTextWithVoiceAndFiles ||
+                chatActionsLocked
+              ) {
+                e.preventDefault();
+                return;
               }
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                if (!canSend) return
-                submitComposer()
-                return
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (!canSend) return;
+                submitComposer();
+                return;
               }
-              if (e.key === 'Backspace' && draft === '') {
+              if (e.key === "Backspace" && draft === "") {
                 if (pendingImages.length > 0) {
-                  e.preventDefault()
-                  const last = pendingImages[pendingImages.length - 1]
-                  removePendingImage(last.id)
-                  return
+                  e.preventDefault();
+                  const last = pendingImages[pendingImages.length - 1];
+                  removePendingImage(last.id);
+                  return;
                 }
                 if (pendingDocs.length > 0) {
-                  e.preventDefault()
-                  const last = pendingDocs[pendingDocs.length - 1]
-                  removePendingDoc(last.id)
-                  return
+                  e.preventDefault();
+                  const last = pendingDocs[pendingDocs.length - 1];
+                  removePendingDoc(last.id);
+                  return;
                 }
                 if (pendingAudio) {
-                  e.preventDefault()
-                  removePendingAudio()
-                  return
+                  e.preventDefault();
+                  removePendingAudio();
+                  return;
                 }
                 if (selectedOrdered.length > 0) {
-                  e.preventDefault()
-                  const last = selectedOrdered[selectedOrdered.length - 1]
+                  e.preventDefault();
+                  const last = selectedOrdered[selectedOrdered.length - 1];
                   setSelected((s) => {
-                    const n = { ...s }
-                    delete n[last]
-                    return n
-                  })
+                    const n = { ...s };
+                    delete n[last];
+                    return n;
+                  });
                 }
               }
             }}
@@ -393,31 +459,37 @@ export function ChatComposerSection({
           <button
             type="button"
             className={cn(
-              'grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[#111b21]',
+              "grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[#111b21]",
               recording &&
-                'animate-[vt-rec-pulse_1.2s_ease-in-out_infinite] bg-[color-mix(in_oklab,var(--primary)_22%,var(--surface))] text-[var(--primary)] hover:bg-[color-mix(in_oklab,var(--primary)_22%,var(--surface))] hover:text-[var(--primary-2)]',
+                "animate-[vt-rec-pulse_1.2s_ease-in-out_infinite] bg-[color-mix(in_oklab,var(--primary)_22%,var(--surface))] text-[var(--primary)] hover:bg-[color-mix(in_oklab,var(--primary)_22%,var(--surface))] hover:text-[var(--primary-2)]",
             )}
             disabled={chatActionsLocked && !recording}
-            aria-label={recording ? 'Detener y enviar nota de voz' : 'Grabar nota de voz'}
-            title={recording ? 'Detener grabación' : 'Nota de voz'}
+            aria-label={
+              recording ? "Detener y enviar nota de voz" : "Grabar nota de voz"
+            }
+            title={recording ? "Detener grabación" : "Nota de voz"}
             onClick={toggleVoiceRecording}
           >
-            {recording ? <Square size={18} fill="currentColor" /> : <Mic size={22} strokeWidth={2} />}
+            {recording ? (
+              <Square size={18} fill="currentColor" />
+            ) : (
+              <Mic size={22} strokeWidth={2} />
+            )}
           </button>
           {hasComposeToSend && (
             <button
               type="button"
               className={cn(
-                'grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-gradient-to-br from-[var(--primary)] to-[color-mix(in_oklab,var(--primary)_75%,#7c3aed)] text-white shadow-[0_8px_20px_color-mix(in_oklab,var(--primary)_35%,transparent)] hover:brightness-105 active:scale-[0.97]',
+                "grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-gradient-to-br from-[var(--primary)] to-[color-mix(in_oklab,var(--primary)_75%,#7c3aed)] text-white shadow-[0_8px_20px_color-mix(in_oklab,var(--primary)_35%,transparent)] hover:brightness-105 active:scale-[0.97]",
                 !canSend &&
-                  'cursor-not-allowed opacity-45 [filter:grayscale(0.2)] hover:brightness-100 active:scale-100',
+                  "cursor-not-allowed opacity-45 [filter:grayscale(0.2)] hover:brightness-100 active:scale-100",
               )}
               aria-label="Enviar mensaje"
               title="Enviar"
               disabled={!canSend}
               onClick={() => {
-                if (!canSend) return
-                submitComposer()
+                if (!canSend) return;
+                submitComposer();
               }}
             >
               <Send size={22} strokeWidth={2.25} />
@@ -425,35 +497,6 @@ export function ChatComposerSection({
           )}
         </div>
       </div>
-
-      <div className="flex flex-wrap gap-2.5">
-        <button
-          className="vt-btn"
-          onClick={() => {
-            markThreadPaymentCompleted(thread.id)
-            pushNotification({
-              kind: 'payment',
-              title: 'Pago',
-              body: 'Se está generando la factura del pago (demo).',
-            })
-            toast('Se está generando la factura…', { icon: '⚠️' })
-          }}
-        >
-          Pago
-        </button>
-
-        <button
-          className="vt-btn"
-          disabled={chatActionsLocked}
-          title={chatActionsLocked ? 'No disponible hasta registrar el pago' : undefined}
-          onClick={() => {
-            setTrustScore(me.trustScore + 1)
-            toast.success('Acción exitosa (sube confianza)')
-          }}
-        >
-          + Confianza
-        </button>
-      </div>
     </div>
-  )
+  );
 }

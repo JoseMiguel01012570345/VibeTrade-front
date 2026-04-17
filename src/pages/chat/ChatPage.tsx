@@ -13,7 +13,6 @@ import { cn } from "../../lib/cn";
 import {
   ArrowLeft,
   FileText,
-  LogOut,
   PanelRight,
   ShieldCheck,
   Users,
@@ -39,7 +38,6 @@ import { ChatRightRail } from "./components/rail/ChatRightRail";
 import type { RouteSheet } from "./domain/routeSheetTypes";
 import { RouteSheetFormModal } from "./components/modals/RouteSheetFormModal";
 import { TradeAgreementFormModal } from "./components/modals/TradeAgreementFormModal";
-import { ChatLeaveConfirmModal } from "./components/modals/ChatLeaveConfirmModal";
 import {
   SELLER_TRUST_PENALTY_ON_EDIT,
   TrustRiskEditConfirmModal,
@@ -61,13 +59,17 @@ import {
 import {
   disconnectFromChatThread,
   joinChatThread,
-  notifyChatParticipantsUserLeft,
 } from "../../utils/chat/chatRealtime";
 import {
   mapChatMessageDtoToMessage,
   mergePersistedChatMessages,
   normalizeThreadMessages,
 } from "../../utils/chat/chatMerge";
+import {
+  mergeBuyerLabelFromThreadDto,
+  mergeChatSenderLabelsIntoProfileStore,
+} from "../../utils/chat/chatSenderLabels";
+import { chatThreadHeaderTitle } from "../../utils/chat/chatParticipantLabels";
 import {
   buildPurchaseThreadMessages,
   buildPurchaseThreadSystemOnly,
@@ -79,6 +81,7 @@ export function ChatPage() {
   const { threadId } = useParams();
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
+  const profileDisplayNames = useAppStore((s) => s.profileDisplayNames);
   const setTrustScore = useAppStore((s) => s.setTrustScore);
   const pushNotification = useAppStore((s) => s.pushNotification);
 
@@ -124,7 +127,6 @@ export function ChatPage() {
   const [routeSheetBeingEdited, setRouteSheetBeingEdited] =
     useState<RouteSheet | null>(null);
   const [railOpen, setRailOpen] = useState(false);
-  const [showLeaveChatModal, setShowLeaveChatModal] = useState(false);
   const [participantsEpoch, setParticipantsEpoch] = useState(0);
   const [focusRouteId, setFocusRouteId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -228,13 +230,12 @@ export function ChatPage() {
   useEffect(() => {
     if (!threadId?.startsWith("cth_")) return;
     const existingTh = useMarketStore.getState().threads[threadId];
-    // Bootstrap puede dejar el hilo sin mensajes; hay que hidratar desde la API.
-    if (existingTh && existingTh.messages.length > 0) return;
     setPersistThreadError(false);
     let cancelled = false;
     void (async () => {
       try {
         const dto = await fetchChatThread(threadId);
+        mergeBuyerLabelFromThreadDto(dto);
         const offer = useMarketStore.getState().offers[dto.offerId];
         const store = useMarketStore.getState().stores[dto.storeId];
         if (!offer || !store) {
@@ -242,31 +243,38 @@ export function ChatPage() {
           return;
         }
         const msgs = await fetchChatMessages(threadId);
+        mergeChatSenderLabelsIntoProfileStore(msgs);
         const meId = useAppStore.getState().me.id;
         const mapped = msgs.map((d) => mapChatMessageDtoToMessage(d, meId));
-        const base =
-          msgs.length > 0
-            ? dto.purchaseMode
-              ? buildPurchaseThreadSystemOnly(offer)
-              : []
-            : dto.purchaseMode
-              ? buildPurchaseThreadMessages(offer, meId)
-              : [];
-        const merged = mergePersistedChatMessages(mapped, base);
+        const prevMsgs = existingTh?.messages;
+        const localBasis =
+          prevMsgs && prevMsgs.length > 0
+            ? prevMsgs
+            : msgs.length > 0
+              ? dto.purchaseMode
+                ? buildPurchaseThreadSystemOnly(offer)
+                : []
+              : dto.purchaseMode
+                ? buildPurchaseThreadMessages(offer, meId)
+                : [];
+        const merged = mergePersistedChatMessages(mapped, localBasis);
         const qaSynced = syncOwnQaIntoMessages(merged, offer, meId);
         if (cancelled) return;
         useMarketStore.setState((s) => ({
           threads: {
             ...s.threads,
             [threadId]: {
+              ...(s.threads[threadId] ?? {}),
               id: threadId,
               offerId: dto.offerId,
               storeId: dto.storeId,
               store,
+              buyerUserId: dto.buyerUserId,
+              sellerUserId: dto.sellerUserId,
               purchaseMode: dto.purchaseMode,
               messages: qaSynced,
-              contracts: [],
-              routeSheets: [],
+              contracts: s.threads[threadId]?.contracts ?? [],
+              routeSheets: s.threads[threadId]?.routeSheets ?? [],
             },
           },
         }));
@@ -287,23 +295,45 @@ export function ChatPage() {
     };
   }, [threadId]);
 
-  const lastReadMsgRef = useRef<string | null>(null);
+  /** Evita reenviar PATCH si ya hubo intento exitoso por id en esta sesión de hilo. */
+  const markReadAttemptedIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    markReadAttemptedIdsRef.current = new Set();
+  }, [threadId]);
+
+  /**
+   * Como B hay que pasar a «read» todos los mensajes entrantes de A que sigan en sent/delivered,
+   * no solo el último; si no, A solo ve leído el último y el resto queda «entregado».
+   */
   useEffect(() => {
     if (!threadId?.startsWith("cth_") || !thread) return;
-    const lastOther = [...thread.messages]
-      .reverse()
-      .find(
-        (m) =>
-          m.from === "other" &&
-          m.type === "text" &&
-          m.id &&
-          !m.id.startsWith("pend_"),
-      );
-    if (!lastOther || lastOther.type !== "text") return;
-    if (lastOther.chatStatus === "read") return;
-    if (lastOther.id === lastReadMsgRef.current) return;
-    lastReadMsgRef.current = lastOther.id;
-    void patchChatMessageStatus(threadId, lastOther.id, "read").catch(() => {});
+
+    const incomingNeedsRead = (
+      m: (typeof thread.messages)[number],
+    ): boolean => {
+      if (m.from !== "other" || !m.id || m.id.startsWith("pend_")) return false;
+      if (
+        m.type !== "text" &&
+        m.type !== "image" &&
+        m.type !== "audio" &&
+        m.type !== "doc" &&
+        m.type !== "docs"
+      )
+        return false;
+      const st = "chatStatus" in m ? m.chatStatus : undefined;
+      if (st === "read") return false;
+      if (st === undefined && "read" in m && m.read === true) return false;
+      return true;
+    };
+
+    for (const m of thread.messages) {
+      if (!incomingNeedsRead(m)) continue;
+      if (markReadAttemptedIdsRef.current.has(m.id)) continue;
+      markReadAttemptedIdsRef.current.add(m.id);
+      void patchChatMessageStatus(threadId, m.id, "read").catch(() => {
+        markReadAttemptedIdsRef.current.delete(m.id);
+      });
+    }
   }, [threadId, thread?.messages]);
 
   const prevCarrierStopsRef = useRef<Set<string> | null>(null);
@@ -679,20 +709,12 @@ export function ChatPage() {
                 >
                   <ArrowLeft size={16} />
                 </button>
-                {threadId?.startsWith("cth_") ? (
-                  <button
-                    type="button"
-                    className="vt-btn inline-flex items-center gap-1.5 text-[13px] text-[color-mix(in_oklab,#64748b_95%,var(--text))]"
-                    onClick={() => setShowLeaveChatModal(true)}
-                    title="Salir del chat y avisar a los demás participantes"
-                  >
-                    <LogOut size={16} aria-hidden /> Salir
-                  </button>
-                ) : null}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <div className="font-black tracking-[-0.03em]">
-                      {store.name}
+                      {thread
+                        ? chatThreadHeaderTitle(thread, me, profileDisplayNames)
+                        : store.name}
                     </div>
                     {thread.purchaseMode === false ? (
                       <span className="rounded-full border border-[color-mix(in_oklab,var(--muted-foreground,#64748b)_40%,transparent)] bg-[color-mix(in_oklab,var(--muted-foreground,#64748b)_12%,transparent)] px-2.5 py-1 text-xs font-bold tracking-wide text-[var(--foreground)]">
@@ -925,18 +947,6 @@ export function ChatPage() {
       </div>
 
       <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
-
-      <ChatLeaveConfirmModal
-        open={showLeaveChatModal}
-        variant="page"
-        onClose={() => setShowLeaveChatModal(false)}
-        onConfirm={async () => {
-          if (threadId?.startsWith("cth_")) {
-            await notifyChatParticipantsUserLeft(threadId);
-          }
-          nav("/chat");
-        }}
-      />
 
       <AgreementDeleteRouteSheetsModal
         open={agreementDeleteSheetsModal !== null}

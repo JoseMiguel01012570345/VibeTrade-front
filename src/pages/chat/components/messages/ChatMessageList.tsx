@@ -1,10 +1,12 @@
 import { useMemo, type MouseEvent, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useAppStore } from '../../../../app/store/useAppStore'
 import { cn } from '../../../../lib/cn'
 import type { Thread } from '../../../../app/store/useMarketStore'
+import { chatBubbleHeaderLabel } from '../../../../utils/chat/chatParticipantLabels'
 import { normalizeThreadMessages } from '../../../../utils/chat/chatMerge'
-import { MessageBody, MsgMeta } from '../media/ChatMedia'
+import { deliveryStateForMineMessage, MessageBody, MsgMeta } from '../media/ChatMedia'
 
 function TrustChip({ score, className }: { score: number; className?: string }) {
   return (
@@ -55,6 +57,7 @@ export function ChatMessageList({
   setRailOpen,
 }: Props) {
   const store = thread.store
+  const profileDisplayNames = useAppStore((s) => s.profileDisplayNames)
 
   const orderedMessages = useMemo(
     () => normalizeThreadMessages(thread.messages),
@@ -140,7 +143,7 @@ export function ChatMessageList({
               {!system && (
                 <div className="mb-1.5 flex min-w-0 items-center justify-between gap-2.5 text-xs">
                   <span className="min-w-0 truncate font-black">
-                    {mine ? me.name : store.name}
+                    {chatBubbleHeaderLabel(mine, thread, me, profileDisplayNames)}
                   </span>
                   <span className="vt-muted shrink-0 whitespace-nowrap" data-chat-interactive>
                     {phone}
@@ -201,7 +204,7 @@ export function ChatMessageList({
               {'at' in m && (
                 <MsgMeta
                   at={m.at}
-                  read={mine && 'read' in m ? m.read : undefined}
+                  delivery={mine ? deliveryStateForMineMessage(m) : undefined}
                 />
               )}
             </div>

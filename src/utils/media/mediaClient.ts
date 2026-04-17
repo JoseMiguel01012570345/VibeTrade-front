@@ -18,6 +18,18 @@ export function getCachedMediaObjectUrl(srcUrl: string): string | undefined {
 }
 
 /** Upload binary media and return its id (protected download via /api/v1/media/{id}). */
+/** Sube un `Blob` (p. ej. nota de voz grabada) al endpoint de medios protegidos. */
+export async function uploadMediaBlob(
+  blob: Blob,
+  fileName: string,
+  mimeType?: string,
+): Promise<MediaUploadResponse> {
+  const file = new File([blob], fileName, {
+    type: mimeType || blob.type || "application/octet-stream",
+  })
+  return uploadMedia(file)
+}
+
 export async function uploadMedia(file: File): Promise<MediaUploadResponse> {
   if (file.size > MEDIA_MAX_BYTES) {
     const mb = (MEDIA_MAX_BYTES / (1024 * 1024)).toFixed(0)

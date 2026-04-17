@@ -12,6 +12,8 @@ export type ChatThreadDto = {
   createdAtUtc: string
   /** false = hilo originado solo por consultas desde la ficha; true = flujo Comprar (chat). */
   purchaseMode: boolean
+  /** DisplayName del comprador (p. ej. título del chat para el vendedor). */
+  buyerDisplayName?: string | null
 }
 
 /** Aligned with backend <see cref="VibeTrade.Backend.Data.ChatMessageStatus" /> (camelCase JSON). */
@@ -22,14 +24,39 @@ export type ChatMessageStatusApi =
   | 'read'
   | 'error'
 
+/** Coincide con el JSON de payload del backend (camelCase). */
+export type ChatMessagePayloadDto = Record<string, unknown> & {
+  type?: string
+  text?: string
+  offerQaId?: string
+  replyQuotes?: Array<{
+    messageId: string
+    author: string
+    preview: string
+    atUtc: string
+  }>
+  replyToIds?: string[]
+  url?: string
+  seconds?: number
+  images?: { url: string }[]
+  caption?: string
+  embeddedAudio?: { url: string; seconds: number }
+  name?: string
+  size?: string
+  kind?: string
+  documents?: { name: string; size: string; kind: string; url?: string }[]
+}
+
 export type ChatMessageDto = {
   id: string
   threadId: string
   senderUserId: string
-  payload: { type?: string; text?: string; offerQaId?: string }
+  payload: ChatMessagePayloadDto
   status: ChatMessageStatusApi
   createdAtUtc: string
   updatedAtUtc: string | null
+  /** Nombre mostrable del remitente (API: comprador = DisplayName, vendedor = tienda). */
+  senderDisplayLabel?: string | null
 }
 
 export type ChatThreadSummaryDto = {
@@ -106,16 +133,26 @@ export async function fetchChatMessages(threadId: string): Promise<ChatMessageDt
   return (await res.json()) as ChatMessageDto[]
 }
 
-export async function postChatTextMessage(
+export async function postChatMessage(
   threadId: string,
-  text: string,
+  body: Record<string, unknown>,
 ): Promise<ChatMessageDto> {
   const res = await apiFetch(`/api/v1/chat/threads/${encodeURIComponent(threadId)}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ type: 'text', text }),
+    body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(await res.text())
   return (await res.json()) as ChatMessageDto
+}
+
+export async function postChatTextMessage(
+  threadId: string,
+  text: string,
+  options?: { replyToIds?: string[] },
+): Promise<ChatMessageDto> {
+  const payload: Record<string, unknown> = { type: 'text', text }
+  if (options?.replyToIds?.length) payload.replyToIds = options.replyToIds
+  return postChatMessage(threadId, payload)
 }
 
 export async function fetchChatThreads(): Promise<ChatThreadSummaryDto[]> {

@@ -16,6 +16,10 @@ import {
   mapChatMessageDtoToMessage,
   mergePersistedChatMessages,
 } from '../../utils/chat/chatMerge'
+import {
+  mergeBuyerLabelFromThreadDto,
+  mergeChatSenderLabelsIntoProfileStore,
+} from '../../utils/chat/chatSenderLabels'
 import { getSessionToken } from '../../utils/http/sessionToken'
 import type { MarketState, Offer, Message, QAItem, Thread } from './marketStoreTypes'
 import {
@@ -50,6 +54,7 @@ export function createOffersThreadsSlice(set: MarketSliceSet, get: MarketSliceGe
 > {
   return {
 onThreadCreatedFromServer: (dto: ChatThreadDto) => {
+  mergeBuyerLabelFromThreadDto(dto)
   set((s) => {
     if (s.threads[dto.id]) return s
     const store = s.stores[dto.storeId]
@@ -63,6 +68,8 @@ onThreadCreatedFromServer: (dto: ChatThreadDto) => {
           offerId: dto.offerId,
           storeId: dto.storeId,
           store,
+          buyerUserId: dto.buyerUserId,
+          sellerUserId: dto.sellerUserId,
           purchaseMode: dto.purchaseMode,
           messages: [],
           contracts: [],
@@ -127,6 +134,7 @@ submitOfferQuestion: async (offerId, askedBy, question) => {
     try {
       const dto = await fetchChatThread(created.threadId)
       const serverMsgs = await fetchChatMessages(created.threadId)
+      mergeChatSenderLabelsIntoProfileStore(serverMsgs)
       const meId = useAppStore.getState().me.id
       const mapped = serverMsgs.map((d) => mapChatMessageDtoToMessage(d, meId))
       const offer = get().offers[offerId]
@@ -146,6 +154,8 @@ submitOfferQuestion: async (offerId, askedBy, question) => {
               offerId,
               storeId: offer.storeId,
               store,
+              buyerUserId: dto.buyerUserId,
+              sellerUserId: dto.sellerUserId,
               purchaseMode: dto.purchaseMode,
               messages: qaSynced,
               contracts: [],
@@ -198,7 +208,13 @@ ensureThreadForOffer: async (offerId, opts) => {
     serverMsgs: ChatMessageDto[],
     baseThread: Thread,
     purchaseModeOverride?: boolean,
+    participantDto?: Pick<
+      ChatThreadDto,
+      'buyerUserId' | 'sellerUserId' | 'buyerDisplayName'
+    >,
   ) => {
+    mergeChatSenderLabelsIntoProfileStore(serverMsgs)
+    if (participantDto) mergeBuyerLabelFromThreadDto(participantDto)
     const mapped = serverMsgs.map((d) => mapChatMessageDtoToMessage(d, meId))
     const mergedMsgs = mergePersistedChatMessages(mapped, baseThread.messages)
     const qaSynced = syncOwnQaIntoMessages(mergedMsgs, offer, buyerId)
@@ -210,6 +226,12 @@ ensureThreadForOffer: async (offerId, opts) => {
         id: threadId,
         ...(purchaseModeOverride !== undefined
           ? { purchaseMode: purchaseModeOverride }
+          : {}),
+        ...(participantDto
+          ? {
+              buyerUserId: participantDto.buyerUserId,
+              sellerUserId: participantDto.sellerUserId,
+            }
           : {}),
         messages: qaSynced,
         contracts: baseThread.contracts ?? [],
@@ -227,7 +249,7 @@ ensureThreadForOffer: async (offerId, opts) => {
         if (th) {
           try {
             const dto = await fetchChatThread(existing.id)
-            applyHydratedThread(existing.id, serverMsgs, th, dto.purchaseMode)
+            applyHydratedThread(existing.id, serverMsgs, th, dto.purchaseMode, dto)
           } catch {
             applyHydratedThread(existing.id, serverMsgs, th)
           }
@@ -254,7 +276,7 @@ ensureThreadForOffer: async (offerId, opts) => {
               contracts: [],
               routeSheets: [],
             }
-        applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode)
+        applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode, dto)
         return dto.id
       }
 
@@ -272,7 +294,7 @@ ensureThreadForOffer: async (offerId, opts) => {
         contracts: existing?.contracts ?? [],
         routeSheets: existing?.routeSheets ?? [],
       }
-      applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode)
+      applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode, dto)
       return dto.id
     } catch {
       /* fallback local */

@@ -175,6 +175,8 @@ export type Message =
       caption?: string;
       embeddedAudio?: { url: string; seconds: number };
       replyQuotes?: ReplyQuote[];
+      /** Entrega/lectura en mensajes propios persistidos (API / SignalR). */
+      chatStatus?: ChatDeliveryStatus;
     }
   | {
       id: string;
@@ -185,6 +187,7 @@ export type Message =
       at: number;
       read?: boolean;
       replyQuotes?: ReplyQuote[];
+      chatStatus?: ChatDeliveryStatus;
     }
   | {
       id: string;
@@ -198,6 +201,7 @@ export type Message =
       read?: boolean;
       caption?: string;
       replyQuotes?: ReplyQuote[];
+      chatStatus?: ChatDeliveryStatus;
     }
   | {
       id: string;
@@ -214,6 +218,7 @@ export type Message =
       at: number;
       read?: boolean;
       replyQuotes?: ReplyQuote[];
+      chatStatus?: ChatDeliveryStatus;
     }
   | {
       id: string;
@@ -247,6 +252,9 @@ export type Thread = {
   offerId: string;
   storeId: string;
   store: StoreBadge;
+  /** Hilos persistidos `cth_*`: IDs de comprador / vendedor (API). Mejoran etiquetas "Comprador . …" vs tienda. */
+  buyerUserId?: string;
+  sellerUserId?: string;
   purchaseMode?: boolean;
   messages: Message[];
   contracts?: TradeAgreement[];

@@ -1,6 +1,8 @@
 import type { RouteSheet } from '../../pages/chat/domain/routeSheetTypes'
 import { normalizeThreadMessages } from '../../utils/chat/chatMerge'
+import { quoteAuthorForMessage } from '../../utils/chat/chatParticipantLabels'
 import type { Message, Offer, QAItem, ReplyQuote, Thread } from './marketStoreTypes'
+import { useAppStore } from './useAppStore'
 
 export function uid(prefix: string): string {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`
@@ -38,25 +40,20 @@ function previewForMessage(m: Message): string {
   }
 }
 
-function authorForMessage(m: Message, storeName: string): string {
-  if (m.from === 'me') return 'Tú'
-  if (m.from === 'other') return storeName
-  return 'Sistema'
-}
-
 export function collectReplyQuotes(
   th: Thread,
   replyToIds: string[] | undefined,
 ): ReplyQuote[] | undefined {
   if (!replyToIds?.length) return undefined
-  const storeName = th.store.name
+  const me = useAppStore.getState().me
+  const profileDisplayNames = useAppStore.getState().profileDisplayNames
   const list = replyToIds
     .map((id) => {
       const msg = th.messages.find((x) => x.id === id)
       if (!msg || msg.type === 'certificate') return null
       return {
         id: msg.id,
-        author: authorForMessage(msg, storeName),
+        author: quoteAuthorForMessage(msg, th, me.id, me.name, profileDisplayNames),
         preview: previewForMessage(msg),
       }
     })
