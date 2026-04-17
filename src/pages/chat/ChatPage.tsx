@@ -15,7 +15,6 @@ import {
   FileText,
   PanelRight,
   ShieldCheck,
-  Users,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useShallow } from "zustand/react/shallow";
@@ -127,7 +126,6 @@ export function ChatPage() {
   const [routeSheetBeingEdited, setRouteSheetBeingEdited] =
     useState<RouteSheet | null>(null);
   const [railOpen, setRailOpen] = useState(false);
-  const [participantsEpoch, setParticipantsEpoch] = useState(0);
   const [focusRouteId, setFocusRouteId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [trustConfirm, setTrustConfirm] = useState<
@@ -746,17 +744,6 @@ export function ChatPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    className="vt-btn"
-                    onClick={() => {
-                      setRailOpen(true);
-                      setParticipantsEpoch((n) => n + 1);
-                    }}
-                    title="Ver quién participa en este chat"
-                  >
-                    <Users size={16} /> Integrantes
-                  </button>
-                  <button
-                    type="button"
                     className="vt-btn vt-chat-rail-toggle"
                     onClick={() => setRailOpen((o) => !o)}
                     title="Contratos y hojas de ruta"
@@ -869,7 +856,6 @@ export function ChatPage() {
             buyer={buyerForRail}
             seller={store}
             chatCarriers={thread.chatCarriers}
-            participantsFocusEpoch={participantsEpoch}
             focusRouteId={focusRouteId}
             onConsumedRouteFocus={() => setFocusRouteId(null)}
             onOpenNewRouteSheet={() => {

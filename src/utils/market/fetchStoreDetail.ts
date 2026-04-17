@@ -3,10 +3,19 @@ import type { StoreCatalog } from '../../pages/chat/domain/storeCatalogTypes'
 import { apiFetch } from '../http/apiClient'
 import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage } from '../http/apiErrorMessage'
 
+/** Dueño persistido (perfil público) incluido en detalle de tienda para la vitrina. */
+export type StoreDetailOwner = {
+  id: string
+  name: string
+  avatarUrl?: string
+  trustScore: number
+}
+
 export type StoreDetailResponse = {
   store: StoreBadge
   catalog: StoreCatalog
   viewer?: { userId?: string | null; role?: string | null }
+  owner?: StoreDetailOwner
 }
 
 export async function fetchStoreDetail(

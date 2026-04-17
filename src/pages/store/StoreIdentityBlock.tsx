@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { AlertTriangle, Calendar, CheckCircle2, Truck } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AlertTriangle, Calendar, CheckCircle2, ChevronRight, Truck } from "lucide-react";
 import { cn } from "../../lib/cn";
 import type { StoreBadge } from "../../app/store/marketStoreTypes";
 import type { StoreCatalog } from "../chat/domain/storeCatalogTypes";
@@ -7,15 +8,20 @@ import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 import { StoreLocationPreview } from "./StoreLocationPreview";
 import { StoreTrustMini } from "../../components/StoreTrustMini";
+import type { StoreDetailOwner } from "../../utils/market/fetchStoreDetail";
+import { profileSectionPath } from "../../utils/navigation/profilePaths";
 
 export function StoreIdentityBlock({
   store,
   catalog,
   joinedLabel,
+  ownerProfile,
 }: Readonly<{
   store: StoreBadge;
   catalog: StoreCatalog | undefined;
   joinedLabel: string | null;
+  /** Dueño persistido (detalle de tienda): enlace a perfil con nombre, foto y confianza. */
+  ownerProfile?: StoreDetailOwner | null;
 }>) {
   const [avatarLightboxUrl, setAvatarLightboxUrl] = useState<string | null>(
     null,
@@ -106,6 +112,48 @@ export function StoreIdentityBlock({
       <div className="mt-3 max-w-sm">
         <StoreTrustMini score={store.trustScore} />
       </div>
+
+      {ownerProfile ? (
+        <div className="mt-4 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] p-3">
+          <div className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+            Dueño de la tienda
+          </div>
+          <Link
+            to={profileSectionPath(ownerProfile.id, "account")}
+            className="relative mt-2 flex items-center gap-3 rounded-lg py-1.5 pr-7 text-inherit no-underline transition hover:bg-[color-mix(in_oklab,var(--primary)_8%,transparent)]"
+          >
+            <span
+              className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[color-mix(in_oklab,var(--primary)_18%,transparent)] text-[16px] font-black text-[var(--text)]"
+              aria-hidden
+            >
+              {ownerProfile.avatarUrl ? (
+                <ProtectedMediaImg
+                  src={ownerProfile.avatarUrl}
+                  alt=""
+                  wrapperClassName="h-11 w-11"
+                  className="absolute inset-0 size-full object-cover"
+                />
+              ) : (
+                ownerProfile.name.slice(0, 1).toUpperCase()
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-extrabold leading-tight">{ownerProfile.name}</div>
+              <div className="mt-1.5 max-w-[220px]">
+                <StoreTrustMini
+                  score={ownerProfile.trustScore}
+                  ariaLabel="Confianza del usuario"
+                />
+              </div>
+            </div>
+            <ChevronRight
+              size={18}
+              className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 opacity-45"
+              aria-hidden
+            />
+          </Link>
+        </div>
+      ) : null}
 
       {store.location ? (
         <StoreLocationPreview location={store.location} />

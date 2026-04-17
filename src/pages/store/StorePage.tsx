@@ -10,7 +10,10 @@ import {
   emptyStoreServiceInput,
   mergeStoreCatalogWithLocalExtras,
 } from "../chat/domain/storeCatalogTypes";
-import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
+import {
+  fetchStoreDetail,
+  type StoreDetailOwner,
+} from "../../utils/market/fetchStoreDetail";
 import {
   deleteStoreProductApi,
   deleteStoreServiceApi,
@@ -157,6 +160,9 @@ export function StorePage() {
   const [catalogReloadBusy, setCatalogReloadBusy] = useState(false);
   const [catalogCategories, setCatalogCategories] = useState<string[]>();
   const [catalogCurrencies, setCatalogCurrencies] = useState<string[]>();
+  /** Dueño persistido (API detalle) para enlace en vitrina. */
+  const [detailOwnerProfile, setDetailOwnerProfile] =
+    useState<StoreDetailOwner | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -192,6 +198,7 @@ export function StorePage() {
     setProductCtx(null);
     setServiceCtx(null);
     setCatalogDeleteTarget(null);
+    setDetailOwnerProfile(null);
     setFiltersBySection({
       vitrina: emptyStoreSectionFilters(),
       products: emptyStoreSectionFilters(),
@@ -227,9 +234,13 @@ export function StorePage() {
         } finally {
           setMarketHydrating(false);
         }
+        setDetailOwnerProfile(data.owner ?? null);
         setDetailStatus("ready");
       } catch {
-        if (!cancelled) setDetailStatus("error");
+        if (!cancelled) {
+          setDetailStatus("error");
+          setDetailOwnerProfile(null);
+        }
       }
     })();
     return () => {
@@ -880,6 +891,7 @@ export function StorePage() {
               store={store}
               catalog={catalog}
               joinedLabel={joinedLabel}
+              ownerProfile={detailOwnerProfile}
             />
             <div className="vt-card vt-card-pad flex flex-col gap-4">
               <div className="flex flex-wrap items-start justify-between gap-3">

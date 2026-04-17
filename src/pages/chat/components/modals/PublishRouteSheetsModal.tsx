@@ -46,7 +46,7 @@ export function PublishRouteSheetsModal({ open, onClose, routeSheets, onConfirm 
   return (
     <div className="vt-modal-backdrop" role="dialog" aria-modal="true">
       <div className={modalShellNarrow}>
-        <div className="vt-modal-title">Publicar en la plataforma</div>
+        <div className="vt-modal-title">Publicar hoja de ruta</div>
         <div className={modalSub}>
           Incluye publicación inicial y republicación mientras la oferta tenga tramos libres o sin confirmar.
           Vinculá desde Contratos si falta alguna.

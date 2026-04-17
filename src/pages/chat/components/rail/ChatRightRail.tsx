@@ -32,7 +32,6 @@ type Props = {
   buyerName: string
   buyer: { id: string; name: string; trustScore: number; avatarUrl?: string }
   seller: StoreBadge
-  participantsFocusEpoch?: number
   focusRouteId?: string | null
   onConsumedRouteFocus?: () => void
   onOpenNewRouteSheet: () => void
@@ -56,7 +55,6 @@ export function ChatRightRail({
   focusRouteId,
   buyer,
   seller,
-  participantsFocusEpoch = 0,
   onConsumedRouteFocus,
   onOpenNewRouteSheet,
   onEditRouteSheet,
@@ -88,13 +86,6 @@ export function ChatRightRail({
     setSelRouteId(focusRouteId)
     onConsumedRouteFocus?.()
   }, [focusRouteId, onConsumedRouteFocus])
-
-  useEffect(() => {
-    if (!participantsFocusEpoch) return
-    setTab('people')
-    setSelContract(null)
-    setSelRouteId(null)
-  }, [participantsFocusEpoch])
 
   const participants = useMemo(
     () => buildChatParticipants(buyer, seller, chatCarriers),
@@ -214,7 +205,7 @@ export function ChatRightRail({
             onClick={handlePublishToPlatform}
           >
             <Megaphone size={16} aria-hidden />
-            Publicar en la plataforma
+            Publicar hoja de ruta
           </button>
           <p className="mb-0 mt-2 text-[11px] leading-snug text-[var(--muted)]">
             Publicá por primera vez o republicá mientras falten tramos por cubrir con transportista confirmado.

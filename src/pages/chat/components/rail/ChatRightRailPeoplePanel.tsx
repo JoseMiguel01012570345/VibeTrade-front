@@ -17,7 +17,7 @@ export function ChatRightRailPeoplePanel({ bodyClassName, participants }: Props)
         {participants.map((p) => (
           <li key={`${p.role}-${p.id}`}>
             <Link
-              to={`/profile/${p.id}`}
+              to={p.href}
               className="relative flex items-center gap-2.5 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_60%,transparent)] py-2.5 pl-2.5 pr-7 text-inherit no-underline hover:border-[color-mix(in_oklab,var(--primary)_40%,var(--border))]"
               data-chat-interactive
             >

@@ -14,6 +14,8 @@ export type ChatParticipant = {
   avatarUrl?: string
   phone?: string
   detail?: string
+  /** Destino al tocar la fila: vitrina del negocio (vendedor) o perfil (resto). */
+  href: string
 }
 
 /** Integrantes del hilo: comprador, vendedor (perfil: `ownerUserId` de la tienda si existe, si no `store.id`) y transportistas. */
@@ -30,6 +32,7 @@ export function buildChatParticipants(
       roleLabel: 'Comprador',
       trustScore: buyer.trustScore,
       avatarUrl: buyer.avatarUrl,
+      href: `/profile/${buyer.id}`,
     },
     {
       id: seller.ownerUserId ?? seller.id,
@@ -39,6 +42,7 @@ export function buildChatParticipants(
       trustScore: seller.trustScore,
       verified: seller.verified,
       avatarUrl: seller.avatarUrl,
+      href: `/store/${seller.id}/vitrina`,
     },
   ]
   if (carriers?.length) {
@@ -51,6 +55,7 @@ export function buildChatParticipants(
         trustScore: c.trustScore,
         phone: c.phone,
         detail: `${c.tramoLabel} · ${c.vehicleLabel}`,
+        href: `/profile/${c.id}`,
       })
     }
   }
