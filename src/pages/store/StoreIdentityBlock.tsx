@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, Calendar, CheckCircle2, ChevronRight, Truck } from "lucide-react";
+import {
+  AlertTriangle,
+  Calendar,
+  CheckCircle2,
+  ChevronRight,
+  ExternalLink,
+  Truck,
+} from "lucide-react";
 import { cn } from "../../lib/cn";
 import type { StoreBadge } from "../../app/store/marketStoreTypes";
 import type { StoreCatalog } from "../chat/domain/storeCatalogTypes";
@@ -9,6 +16,7 @@ import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 import { StoreLocationPreview } from "./StoreLocationPreview";
 import { StoreTrustMini } from "../../components/StoreTrustMini";
 import type { StoreDetailOwner } from "../../utils/market/fetchStoreDetail";
+import { websiteUrlDisplayLabel } from "../../utils/websiteUrl";
 import { profileSectionPath } from "../../utils/navigation/profilePaths";
 
 export function StoreIdentityBlock({
@@ -53,15 +61,34 @@ export function StoreIdentityBlock({
               {store.name}
             </div>
             <div className="vt-muted mt-1">{store.categories.join(" · ")}</div>
-            {catalog?.pitch ? (
-              <p className="mt-2 max-w-[720px] text-[13px] leading-snug text-[var(--text)]">
-                {catalog.pitch}
-              </p>
-            ) : null}
+            {(() => {
+              const text = (catalog?.pitch ?? store.pitch ?? "").trim();
+              if (!text) return null;
+              return (
+                <p className="mt-2 max-w-[720px] text-[13px] leading-snug text-[var(--text)]">
+                  {text}
+                </p>
+              );
+            })()}
             {joinedLabel ? (
               <div className="vt-muted mt-2 inline-flex items-center gap-2 text-xs font-bold">
                 <Calendar size={14} aria-hidden /> En la plataforma desde{" "}
                 {joinedLabel}
+              </div>
+            ) : null}
+            {store.websiteUrl?.trim() ? (
+              <div className="mt-2">
+                <a
+                  href={store.websiteUrl.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex max-w-full items-center gap-1.5 text-[13px] font-bold text-[var(--primary)] hover:underline"
+                >
+                  <ExternalLink size={14} className="shrink-0" aria-hidden />
+                  <span className="truncate">
+                    {websiteUrlDisplayLabel(store.websiteUrl.trim())}
+                  </span>
+                </a>
               </div>
             ) : null}
           </div>

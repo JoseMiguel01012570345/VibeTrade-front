@@ -1,4 +1,4 @@
-import type { Offer } from '../../app/store/marketStoreTypes'
+import type { Offer, StoreBadge } from '../../app/store/marketStoreTypes'
 import type { MarketSerializableSlice } from '../market/marketSerializable'
 import type { ReelsBootstrapPayload } from '../reels/reelsBootstrapState'
 
@@ -8,6 +8,8 @@ export type RecommendationBatch = {
   offers?: Record<string, Offer>
   /** Tiendas ordenadas por relevancia en esta ventana (JSON: `recommendedStoreIds`). */
   recommendedStoreIds?: string[]
+  /** Fichas de tienda del lote (p. ej. `websiteUrl` actualizado). */
+  storeBadges?: Record<string, StoreBadge>
   nextCursor: number
   totalAvailable: number
   batchSize: number

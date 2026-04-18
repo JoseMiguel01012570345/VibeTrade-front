@@ -101,9 +101,13 @@ export function OwnerStoreCard({
               <div className="mt-2 max-w-[320px]">
                 <StoreTrustMini score={b.trustScore} />
               </div>
-              {cat?.pitch ? (
-                <p className="mt-2 text-[13px] leading-snug">{cat.pitch}</p>
-              ) : null}
+              {(() => {
+                const pitchText = (cat?.pitch ?? b.pitch ?? "").trim();
+                if (!pitchText) return null;
+                return (
+                  <p className="mt-2 text-[13px] leading-snug">{pitchText}</p>
+                );
+              })()}
               <div className="vt-muted mt-1 text-xs">
                 {b.categories.join(" · ")}
               </div>

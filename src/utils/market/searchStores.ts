@@ -92,6 +92,12 @@ function parseStoreBadge(raw: unknown): StoreBadge | null {
   };
   if (typeof o.avatarUrl === "string") badge.avatarUrl = o.avatarUrl;
   if (typeof o.ownerUserId === "string") badge.ownerUserId = o.ownerUserId;
+  if (typeof o.pitch === "string" && o.pitch.trim()) badge.pitch = o.pitch.trim();
+  const rec = o as Record<string, unknown>;
+  let web = "";
+  if (typeof o.websiteUrl === "string") web = o.websiteUrl;
+  else if (typeof rec.WebsiteUrl === "string") web = rec.WebsiteUrl;
+  if (web.trim()) badge.websiteUrl = web.trim();
   const loc = asRecord(o.location);
   if (
     loc &&

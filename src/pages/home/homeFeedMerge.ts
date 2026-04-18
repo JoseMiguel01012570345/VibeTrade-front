@@ -80,6 +80,15 @@ function sliceOffersForIds(
   return out;
 }
 
+function mergeStoreBadges(
+  stores: MarketState['stores'],
+  batch: RecommendationBatch,
+): MarketState['stores'] {
+  const b = batch.storeBadges;
+  if (!b || typeof b !== 'object') return stores;
+  return { ...stores, ...b };
+}
+
 /** Añade un lote inferior; si hay más de {@link REC_FEED_CAP}, se descartan las más viejas (arriba). */
 export function applyBottomRecommendationBatch(
   state: MarketState,
@@ -88,6 +97,7 @@ export function applyBottomRecommendationBatch(
   if (batch.offerIds.length === 0) return null;
   const mergedIds = [...state.offerIds, ...batch.offerIds];
   const mergedOffers = { ...state.offers, ...(batch.offers ?? {}) };
+  const mergedStores = mergeStoreBadges(state.stores, batch);
   let feedStart = state.recommendationFeedStartIndex ?? 0;
   let ids = mergedIds;
   const oldOfferLen = state.offerIds.length;
@@ -117,6 +127,7 @@ export function applyBottomRecommendationBatch(
   return {
     offerIds: ids,
     offers: mergedOffers,
+    stores: mergedStores,
     recommendationFeedStartIndex: feedStart,
     recommendationCursor: batch.nextCursor,
     recommendationTotalAvailable: batch.totalAvailable,
@@ -138,6 +149,7 @@ export function applyTopRecommendationBatch(
   if (batch.offerIds.length === 0) return null;
   let ids = [...batch.offerIds, ...state.offerIds];
   const mergedOffers = { ...(batch.offers ?? {}), ...state.offers };
+  const mergedStores = mergeStoreBadges(state.stores, batch);
   const feedStart = requestCursor;
 
   const prependedLen = batch.offerIds.length;
@@ -162,6 +174,7 @@ export function applyTopRecommendationBatch(
   return {
     offerIds: ids,
     offers: mergedOffers,
+    stores: mergedStores,
     recommendationFeedStartIndex: feedStart,
     recommendationCursor: feedStart + L,
     recommendationTotalAvailable: batch.totalAvailable,

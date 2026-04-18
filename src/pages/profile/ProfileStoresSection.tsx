@@ -604,6 +604,7 @@ export function ProfileStoresSection({
               categoryPitch: "",
               transportIncluded: false,
               location: undefined,
+              websiteUrl: undefined,
             }}
             onClose={() => setCreateOpen(false)}
             onSave={async (v) => {

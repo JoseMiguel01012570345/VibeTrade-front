@@ -1,5 +1,6 @@
 import type { StoreCatalog, StoreProduct, StoreService } from '../../pages/chat/domain/storeCatalogTypes'
 import type { StoreBadge } from './marketStoreTypes'
+import { normalizeOwnerWebsiteUrl } from '../../utils/websiteUrl'
 import { uid } from './marketStoreHelpers'
 import { isOwnerOfStore, normStoreName } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
@@ -28,6 +29,7 @@ createOwnerStore: (ownerUserId, values) => {
   const cats = values.categories.map((c) => c.trim()).filter(Boolean)
   const id = uid('ust')
   const pitch = values.categoryPitch.trim()
+  const web = normalizeOwnerWebsiteUrl(values.websiteUrl)
   const badge: StoreBadge = {
     id,
     name,
@@ -38,6 +40,7 @@ createOwnerStore: (ownerUserId, values) => {
     ownerUserId,
     ...(pitch ? { pitch } : {}),
     ...(values.location ? { location: values.location } : {}),
+    ...(web ? { websiteUrl: web } : {}),
   }
   const catalog: StoreCatalog = {
     pitch: values.categoryPitch.trim(),
@@ -106,6 +109,14 @@ updateOwnerStore: (storeId, ownerUserId, patch) => {
       else {
         const { pitch: _removedPitch, ...restBadge } = nextBadge
         nextBadge = restBadge as StoreBadge
+      }
+    }
+    if ('websiteUrl' in patch) {
+      const n = normalizeOwnerWebsiteUrl(patch.websiteUrl)
+      if (n) nextBadge = { ...nextBadge, websiteUrl: n }
+      else {
+        const { websiteUrl: _w, ...restW } = nextBadge
+        nextBadge = restW as StoreBadge
       }
     }
     return {

@@ -54,8 +54,12 @@ export async function bootstrapWebApp(): Promise<void> {
   const bootStoreIds = json.recommendations?.recommendedStoreIds ?? []
 
   setMarketHydrating(true)
+  const bootStoreBadges = json.recommendations?.storeBadges
   useMarketStore.setState({
-    stores: json.market.stores,
+    stores:
+      bootStoreBadges && typeof bootStoreBadges === 'object'
+        ? { ...json.market.stores, ...bootStoreBadges }
+        : json.market.stores,
     offers: {
       ...json.market.offers,
       ...(json.recommendations?.offers ?? {}),

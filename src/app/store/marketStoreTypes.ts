@@ -45,6 +45,8 @@ export type StoreBadge = {
   ownerUserId?: string;
   /** Ubicación opcional mostrada en la ficha pública de la tienda. */
   location?: StoreLocationPoint;
+  /** Sitio web público (https), opcional. */
+  websiteUrl?: string;
 };
 
 /** Alta de tienda desde perfil (flow-ui: nombre, categorías, descripción, transporte). */
@@ -55,11 +57,16 @@ export type OwnerStoreFormValues = {
   transportIncluded: boolean;
   /** Opcional: pin en mapa (OpenStreetMap). */
   location?: StoreLocationPoint;
+  /** Opcional: URL del sitio (se normaliza a https al guardar). */
+  websiteUrl?: string;
 };
 
 /** Parcial permitido al actualizar tienda (incl. imagen de vitrina). */
 export type OwnerStorePatch = Partial<
-  OwnerStoreFormValues & { avatarUrl: string | null | undefined }
+  OwnerStoreFormValues & {
+    avatarUrl: string | null | undefined;
+    websiteUrl: string | null | undefined;
+  }
 >;
 
 export type StoreProductInput = Omit<StoreProduct, "id" | "storeId">;

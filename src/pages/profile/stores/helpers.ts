@@ -84,5 +84,6 @@ export function ownerStoreToFormValues(
     categoryPitch: pitch,
     transportIncluded: b.transportIncluded,
     location: b.location,
+    websiteUrl: b.websiteUrl,
   };
 }

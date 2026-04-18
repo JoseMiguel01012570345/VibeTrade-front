@@ -1,4 +1,5 @@
 import type { OwnerStoreFormValues } from '../../app/store/marketStoreTypes'
+import { normalizeOwnerWebsiteUrl } from '../../utils/websiteUrl'
 import {
   catalogMonedasList,
   type StoreCustomField,
@@ -41,6 +42,10 @@ export function validateOwnerStoreForm(values: OwnerStoreFormValues): string | n
   }
   if (norm(values.categoryPitch).length < DESC_MIN) {
     return `La descripción de categorías del catálogo debe tener al menos ${DESC_MIN} caracteres.`
+  }
+  const w = norm(values.websiteUrl ?? '')
+  if (w && !normalizeOwnerWebsiteUrl(values.websiteUrl)) {
+    return 'La URL del sitio no es válida (ej.: https://mitienda.com o el dominio sin esquema).'
   }
   return null
 }

@@ -49,6 +49,7 @@ export function StoreFormModal({
   const [location, setLocation] = useState<StoreLocationPoint | undefined>(
     initial.location,
   );
+  const [websiteUrl, setWebsiteUrl] = useState(initial.websiteUrl ?? "");
   const [mapOpen, setMapOpen] = useState(false);
   const [showVal, setShowVal] = useState(false);
 
@@ -152,6 +153,21 @@ export function StoreFormModal({
             />
             <span>Transporte incluido en las ofertas de esta tienda</span>
           </label>
+          <label>
+            <span className={fieldLabel}>Sitio web (opcional)</span>
+            <input
+              className="vt-input mt-1"
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              placeholder="https://… o solo el dominio"
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+            />
+            <span className="mt-1 block text-[11px] text-[var(--muted)]">
+              Se mostrará en la vitrina, búsquedas y ofertas del feed.
+            </span>
+          </label>
           <div>
             <span className={fieldLabel}>Ubicación (opcional)</span>
             <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -189,6 +205,7 @@ export function StoreFormModal({
                 categoryPitch: pitch,
                 transportIncluded: transport,
                 location,
+                websiteUrl: websiteUrl.trim() || undefined,
               };
               const err = validateOwnerStoreForm(payload);
               if (err) {

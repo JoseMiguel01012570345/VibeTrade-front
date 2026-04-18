@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ExternalLink, Package, Store, Wrench } from "lucide-react";
 import type { CatalogOfferPreview, CatalogSearchItem } from "../../utils/market/searchStores";
+import { websiteUrlDisplayLabel } from "../../utils/websiteUrl";
 import { StoreTrustMini } from "../../components/StoreTrustMini";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { cn } from "../../lib/cn";
@@ -181,6 +182,20 @@ export function CatalogOfferSearchCard({ item }: Props) {
                   </span>
                 ) : null}
               </div>
+              {s.websiteUrl?.trim() ? (
+                <a
+                  href={s.websiteUrl.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="pointer-events-auto mt-1.5 inline-flex max-w-full items-center gap-1 truncate text-xs font-semibold text-[var(--primary)] hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink size={12} className="shrink-0" aria-hidden />
+                  <span className="truncate">
+                    {websiteUrlDisplayLabel(s.websiteUrl.trim())}
+                  </span>
+                </a>
+              ) : null}
               <div className="mt-2 max-w-[300px]">
                 <StoreTrustMini score={s.trustScore} />
               </div>

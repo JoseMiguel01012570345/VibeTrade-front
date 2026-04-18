@@ -23,11 +23,13 @@ import { OfferSaveButton } from "../offer/OfferSaveButton";
 import {
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   Heart,
   MessageCircle,
   Search,
   Store,
 } from "lucide-react";
+import { websiteUrlDisplayLabel } from "../../utils/websiteUrl";
 import { toggleOfferLike } from "../../utils/market/offerEngagementApi";
 import {
   isToolPlaceholderUrl,
@@ -243,7 +245,7 @@ function OfferCardsChunk({
                 </button>
               </div>
 
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex flex-col items-end gap-1">
                 <Link
                   to={`/store/${store?.id ?? o.storeId}`}
                   className="inline-flex max-w-full items-center gap-1.5 truncate rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-2 py-1 text-[11px] font-extrabold text-[var(--text)] lg:px-1.5 lg:text-[10px]"
@@ -251,6 +253,20 @@ function OfferCardsChunk({
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--primary)]" />
                   <span className="truncate">{store?.name ?? "Tienda"}</span>
                 </Link>
+                {store?.websiteUrl ? (
+                  <a
+                    href={store.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex max-w-full items-center gap-1 truncate text-[10px] font-bold text-[var(--primary)] hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ExternalLink size={12} className="shrink-0" aria-hidden />
+                    <span className="truncate">
+                      {websiteUrlDisplayLabel(store.websiteUrl)}
+                    </span>
+                  </a>
+                ) : null}
               </div>
 
               <div className="flex flex-wrap gap-1.5 lg:gap-1">
@@ -400,6 +416,20 @@ function RecommendedStoresRow({
                       <div className="mt-0.5 text-[11px] font-semibold leading-snug text-[var(--muted)]">
                         {storeCategoriesLabel(s.categories)}
                       </div>
+                      {s.websiteUrl ? (
+                        <a
+                          href={s.websiteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="pointer-events-auto mt-1 inline-flex max-w-full items-center gap-1 truncate text-[11px] font-bold text-[var(--primary)] hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink size={12} className="shrink-0" aria-hidden />
+                          <span className="truncate">
+                            {websiteUrlDisplayLabel(s.websiteUrl)}
+                          </span>
+                        </a>
+                      ) : null}
                     </div>
                   </div>
                   <StoreTrustMini score={s.trustScore} className="max-w-full" />

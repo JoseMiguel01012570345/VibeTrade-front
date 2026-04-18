@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { MapPin, Package, Store, Wrench } from "lucide-react";
+import { ExternalLink, MapPin, Package, Store, Wrench } from "lucide-react";
+import { websiteUrlDisplayLabel } from "../../utils/websiteUrl";
 import type { StoreBadge } from "../../app/store/marketStoreTypes";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { StoreTrustMini } from "../../components/StoreTrustMini";
@@ -53,6 +54,20 @@ export function StoreSearchResultCard({
               <div className="vt-muted mt-1 truncate text-xs">
                 {s.categories.join(" · ")}
               </div>
+              {s.websiteUrl ? (
+                <a
+                  href={s.websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="pointer-events-auto mt-1 inline-flex max-w-full items-center gap-1 truncate text-xs font-semibold text-[var(--primary)] hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink size={12} className="shrink-0" aria-hidden />
+                  <span className="truncate">
+                    {websiteUrlDisplayLabel(s.websiteUrl)}
+                  </span>
+                </a>
+              ) : null}
 
               <div className="vt-muted mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                 <span className="inline-flex items-center gap-1">
