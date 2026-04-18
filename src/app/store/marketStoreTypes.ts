@@ -76,6 +76,9 @@ export type QAItem = {
   answer?: string;
   /** Unix ms — cuándo se envió la consulta (persistido en JSON del backend). */
   createdAt?: number;
+  /** Enriquecido por GET `/market/offers/{id}/qa`. */
+  likeCount?: number;
+  viewerLiked?: boolean;
 };
 
 export type Offer = {
@@ -94,6 +97,10 @@ export type Offer = {
   /** Galería (mismas URLs que catálogo); la primera suele coincidir con imageUrl. */
   imageUrls?: string[];
   qa?: QAItem[];
+  /** Número de comentarios públicos (feed / recomendaciones). */
+  publicCommentCount?: number;
+  offerLikeCount?: number;
+  viewerLikedOffer?: boolean;
 };
 
 export type ReplyQuote = {

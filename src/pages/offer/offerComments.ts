@@ -7,6 +7,8 @@ export type OfferCommentNorm = {
   text: string
   author: { id: string; name: string; trustScore: number }
   createdAt: number
+  likeCount?: number
+  viewerLiked?: boolean
 }
 
 /** Nombre visible: perfil actual del viewer y `profileDisplayNames` para el resto (tras renombrar, etc.). */
@@ -72,12 +74,20 @@ export function normalizeOfferComments(offer: Offer): OfferCommentNorm[] {
         ? item.createdAt
         : Date.now()
 
+    const rec = item as Record<string, unknown>
+    const likeCount =
+      typeof rec.likeCount === 'number' ? rec.likeCount : undefined
+    const viewerLiked =
+      typeof rec.viewerLiked === 'boolean' ? rec.viewerLiked : undefined
+
     out.push({
       id,
       parentId,
       text: textFromNew,
       author,
       createdAt,
+      ...(likeCount !== undefined ? { likeCount } : {}),
+      ...(viewerLiked !== undefined ? { viewerLiked } : {}),
     })
 
     const legacy = item as unknown as QAItem
@@ -89,6 +99,8 @@ export function normalizeOfferComments(offer: Offer): OfferCommentNorm[] {
         text: legacy.answer!,
         author: legacy.answeredBy!,
         createdAt: createdAt + 1,
+        likeCount: 0,
+        viewerLiked: false,
       })
     }
   }

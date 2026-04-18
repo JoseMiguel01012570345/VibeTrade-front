@@ -19,7 +19,15 @@ import type { Offer, StoreBadge } from "../../app/store/useMarketStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { RouteOfferPreview } from "../offer/RouteOfferPreview";
 import { OfferSaveButton } from "../offer/OfferSaveButton";
-import { ChevronLeft, ChevronRight, Search, Store } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Heart,
+  MessageCircle,
+  Search,
+  Store,
+} from "lucide-react";
+import { toggleOfferLike } from "../../utils/market/offerEngagementApi";
 import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
@@ -106,6 +114,12 @@ function OfferCardsChunk({
         const descFull = o.description?.trim() ?? "";
         const descPreview = offerDescriptionPreview(descFull);
         const routePreview = routeOfferPublic[o.id];
+        const commentTotal =
+          typeof o.publicCommentCount === "number"
+            ? o.publicCommentCount
+            : (o.qa?.length ?? 0);
+        const offerLikes = o.offerLikeCount ?? 0;
+        const likedOffer = o.viewerLikedOffer ?? false;
         const thumbSrc =
           o.imageUrl?.trim() ||
           (o.tags.includes("Servicio") ? TOOL_PLACEHOLDER_SRC : undefined);
@@ -160,6 +174,67 @@ function OfferCardsChunk({
                   {descPreview}
                 </p>
               ) : null}
+
+              <div className="flex items-center justify-between gap-2 text-[11px] lg:text-[10px]">
+                <span className="inline-flex min-w-0 items-center gap-1 text-[var(--muted)]">
+                  <MessageCircle
+                    size={14}
+                    className="shrink-0 text-[var(--primary)]"
+                    aria-hidden
+                  />
+                  <span className="truncate font-bold text-[var(--text)]">
+                    {commentTotal}{" "}
+                    <span className="font-semibold text-[var(--muted)]">
+                      {commentTotal === 1 ? "comentario" : "comentarios"}
+                    </span>
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_50%,var(--surface))] px-2 py-0.5 font-extrabold text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--muted)_10%,var(--surface))]"
+                  title={likedOffer ? "Quitar me gusta" : "Me gusta"}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void (async () => {
+                      try {
+                        const r = await toggleOfferLike(o.id);
+                        useMarketStore.setState((s) => {
+                          const prev = s.offers[o.id];
+                          if (!prev) return s;
+                          return {
+                            ...s,
+                            offers: {
+                              ...s.offers,
+                              [o.id]: {
+                                ...prev,
+                                offerLikeCount: r.likeCount,
+                                viewerLikedOffer: r.liked,
+                              },
+                            },
+                          };
+                        });
+                      } catch (err) {
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : "No se pudo guardar el me gusta.",
+                        );
+                      }
+                    })();
+                  }}
+                >
+                  <Heart
+                    size={14}
+                    className={cn(
+                      likedOffer &&
+                        "fill-[color-mix(in_oklab,var(--bad)_50%,#f43f5e)] text-[color-mix(in_oklab,var(--bad)_50%,#f43f5e)]",
+                    )}
+                    aria-hidden
+                  />
+                  <span className="tabular-nums">{offerLikes}</span>
+                </button>
+              </div>
 
               <div className="flex items-center justify-end gap-2">
                 <Link

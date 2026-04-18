@@ -1,15 +1,17 @@
 import { useMemo, useRef, useState } from 'react'
-import { Send, X } from 'lucide-react'
+import { Heart, Send, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { cn } from '../../lib/cn'
 import type { Offer, StoreBadge } from '../../app/store/marketStoreTypes'
 import { useAppStore, type User } from '../../app/store/useAppStore'
+import { useMarketStore } from '../../app/store/useMarketStore'
+import { toggleOfferQaCommentLike } from '../../utils/market/offerEngagementApi'
 import { errorToUserMessage } from '../../utils/http/apiErrorMessage'
 import {
   normalizeOfferComments,
   resolveOfferCommentAuthorLabel,
   type OfferCommentNorm,
-} from './offerComments'
+} from "./offerComments";
 
 function timeAgo(ts: number) {
   const s = Math.floor((Date.now() - ts) / 1000)
@@ -51,6 +53,7 @@ export function OfferCommentsSection({
   submitOfferQuestion,
 }: Props) {
   const profileDisplayNames = useAppStore((s) => s.profileDisplayNames)
+  const refreshOfferQaFromServer = useMarketStore((s) => s.refreshOfferQaFromServer)
   const [draft, setDraft] = useState('')
   const [replyingTo, setReplyingTo] = useState<OfferCommentNorm | null>(null)
   const [sending, setSending] = useState(false)
@@ -74,6 +77,18 @@ export function OfferCommentsSection({
     () => ({ viewerId: me.id, viewerName: me.name, profileDisplayNames }),
     [me.id, me.name, profileDisplayNames],
   )
+
+  async function toggleCommentLike(c: OfferCommentNorm) {
+    if (c.id.endsWith("_legacy_ans")) return
+    try {
+      await toggleOfferQaCommentLike(offer.id, c.id)
+      await refreshOfferQaFromServer(offer.id)
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : 'No se pudo actualizar el me gusta.',
+      )
+    }
+  }
 
   async function submit() {
     const t = draft.trim()
@@ -137,16 +152,36 @@ export function OfferCommentsSection({
               <p className="my-1.5 mb-0 break-words text-sm leading-snug text-[var(--text)] [overflow-wrap:break-word]">
                 {c.text}
               </p>
-              <button
-                type="button"
-                className="mt-1.5 border-0 bg-transparent p-0 text-xs font-extrabold text-[var(--primary)] hover:underline"
-                onClick={() => {
-                  setReplyingTo(c)
-                  inputRef.current?.focus()
-                }}
-              >
-                Responder
-              </button>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="border-0 bg-transparent p-0 text-xs font-extrabold text-[var(--primary)] hover:underline"
+                  onClick={() => {
+                    setReplyingTo(c)
+                    inputRef.current?.focus()
+                  }}
+                >
+                  Responder
+                </button>
+                {!c.id.endsWith("_legacy_ans") ? (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-2 py-0.5 text-[11px] font-extrabold text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))]"
+                    title={c.viewerLiked ? "Quitar me gusta" : "Me gusta"}
+                    onClick={() => void toggleCommentLike(c)}
+                  >
+                    <Heart
+                      size={14}
+                      className={cn(
+                        c.viewerLiked &&
+                          "fill-[color-mix(in_oklab,var(--bad)_55%,#f43f5e)] text-[color-mix(in_oklab,var(--bad)_55%,#f43f5e)]",
+                      )}
+                      aria-hidden
+                    />
+                    <span className="tabular-nums">{c.likeCount ?? 0}</span>
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
           {hasReplies ? (
