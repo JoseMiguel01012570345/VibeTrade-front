@@ -183,7 +183,10 @@ ensureThreadForOffer: async (offerId, opts) => {
     purchaseModeOverride?: boolean,
     participantDto?: Pick<
       ChatThreadDto,
-      'buyerUserId' | 'sellerUserId' | 'buyerDisplayName'
+      | 'buyerUserId'
+      | 'sellerUserId'
+      | 'buyerDisplayName'
+      | 'buyerAvatarUrl'
     >,
   ) => {
     mergeChatSenderLabelsIntoProfileStore(serverMsgs)
@@ -206,6 +209,12 @@ ensureThreadForOffer: async (offerId, opts) => {
           ? {
               buyerUserId: participantDto.buyerUserId,
               sellerUserId: participantDto.sellerUserId,
+              ...(participantDto.buyerDisplayName?.trim()
+                ? { buyerDisplayName: participantDto.buyerDisplayName.trim() }
+                : {}),
+              ...(participantDto.buyerAvatarUrl?.trim()
+                ? { buyerAvatarUrl: participantDto.buyerAvatarUrl.trim() }
+                : {}),
             }
           : {}),
         messages: qaSynced,

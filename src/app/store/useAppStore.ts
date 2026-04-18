@@ -71,6 +71,8 @@ type AppState = {
   me: User
   /** Nombres mostrados para otros ids (bootstrap / Mocks del backend). */
   profileDisplayNames: Record<string, string>
+  /** Avatares de otros usuarios (`/api/v1/media/…`) indexados por user id (p. ej. comprador en chat). */
+  profileAvatarUrls: Record<string, string>
   profileSocialLinks: ProfileSocialLinks
   trustThreshold: number
   lastThresholdState: 'above' | 'below'
@@ -117,6 +119,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isSessionActive: readSessionActive(),
   me: { ...guestMe },
   profileDisplayNames: {},
+  profileAvatarUrls: {},
   profileSocialLinks: {},
   trustThreshold: 0,
   lastThresholdState: 'above',
@@ -226,11 +229,19 @@ export const useAppStore = create<AppState>((set, get) => ({
         nextMe.id && nextMe.id !== 'guest'
           ? { ...s.profileDisplayNames, [nextMe.id]: nextMe.name?.trim() ?? '' }
           : s.profileDisplayNames
+      const nextAvatars =
+        nextMe.id && nextMe.id !== 'guest' && nextMe.avatarUrl?.trim()
+          ? {
+              ...s.profileAvatarUrls,
+              [nextMe.id]: nextMe.avatarUrl.trim(),
+            }
+          : s.profileAvatarUrls
       return {
         me: nextMe,
         profileSocialLinks,
         savedOffers: s.savedOffers,
         profileDisplayNames: nextNames,
+        profileAvatarUrls: nextAvatars,
       }
     }),
 

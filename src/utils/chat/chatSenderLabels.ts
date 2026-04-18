@@ -1,14 +1,26 @@
 import { useAppStore } from '../../app/store/useAppStore'
 import type { ChatMessageDto, ChatThreadDto } from './chatApi'
 
-/** DisplayName del comprador desde `GET …/threads/:id` (no depende de que haya enviado mensajes). */
+/** DisplayName y avatar del comprador desde `GET …/threads/:id` o bootstrap. */
 export function mergeBuyerLabelFromThreadDto(
-  dto: Pick<ChatThreadDto, 'buyerUserId' | 'buyerDisplayName'>,
+  dto: Pick<
+    ChatThreadDto,
+    'buyerUserId' | 'buyerDisplayName' | 'buyerAvatarUrl'
+  >,
 ): void {
   const raw = dto.buyerDisplayName?.trim()
-  if (!raw || !dto.buyerUserId) return
+  const av = dto.buyerAvatarUrl?.trim()
+  if (!dto.buyerUserId) return
+  const hasName = Boolean(raw)
+  const hasAv = Boolean(av)
+  if (!hasName && !hasAv) return
   useAppStore.setState((s) => ({
-    profileDisplayNames: { ...s.profileDisplayNames, [dto.buyerUserId]: raw },
+    ...(hasName
+      ? { profileDisplayNames: { ...s.profileDisplayNames, [dto.buyerUserId]: raw! } }
+      : {}),
+    ...(hasAv
+      ? { profileAvatarUrls: { ...s.profileAvatarUrls, [dto.buyerUserId]: av! } }
+      : {}),
   }))
 }
 

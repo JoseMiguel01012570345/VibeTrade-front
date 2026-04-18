@@ -68,7 +68,10 @@ import {
   mergeBuyerLabelFromThreadDto,
   mergeChatSenderLabelsIntoProfileStore,
 } from "../../utils/chat/chatSenderLabels";
-import { chatThreadHeaderTitle } from "../../utils/chat/chatParticipantLabels";
+import {
+  chatThreadHeaderTitle,
+  resolveBuyerUserId,
+} from "../../utils/chat/chatParticipantLabels";
 import {
   buildPurchaseThreadMessages,
   buildPurchaseThreadSystemOnly,
@@ -81,6 +84,7 @@ export function ChatPage() {
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
   const profileDisplayNames = useAppStore((s) => s.profileDisplayNames);
+  const profileAvatarUrls = useAppStore((s) => s.profileAvatarUrls);
   const setTrustScore = useAppStore((s) => s.setTrustScore);
   const pushNotification = useAppStore((s) => s.pushNotification);
 
@@ -117,6 +121,73 @@ export function ChatPage() {
     () => userHasTransportService(me.id, stores, storeCatalogs),
     [me.id, stores, storeCatalogs],
   );
+
+  /** Panel "gente": el comprador no es `me` cuando el vendedor abre el chat (antes se mostraba la ficha del vendedor). */
+  const buyerForRail = useMemo(() => {
+    if (!thread) {
+      return {
+        id: me.id,
+        name: me.name,
+        trustScore: me.trustScore,
+        avatarUrl: me.avatarUrl,
+      };
+    }
+    if (thread.demoBuyer) return thread.demoBuyer;
+    const buyerId = resolveBuyerUserId(thread, me.id);
+    if (buyerId && buyerId === me.id) {
+      return {
+        id: me.id,
+        name: me.name,
+        trustScore: me.trustScore,
+        avatarUrl: me.avatarUrl,
+      };
+    }
+    if (buyerId) {
+      const name =
+        thread.buyerDisplayName?.trim() ||
+        profileDisplayNames[buyerId]?.trim() ||
+        "Comprador";
+      const avatarUrl =
+        thread.buyerAvatarUrl?.trim() ||
+        profileAvatarUrls[buyerId]?.trim() ||
+        undefined;
+      return {
+        id: buyerId,
+        name,
+        trustScore: 0,
+        avatarUrl,
+      };
+    }
+    const sellerUid = thread.sellerUserId ?? thread.store.ownerUserId;
+    const viewerIsSeller = !!sellerUid && me.id === sellerUid;
+    if (!viewerIsSeller) {
+      return {
+        id: me.id,
+        name: me.name,
+        trustScore: me.trustScore,
+        avatarUrl: me.avatarUrl,
+      };
+    }
+    return {
+      id: thread.buyerUserId ?? "unknown",
+      name: "Comprador",
+      trustScore: 0,
+      avatarUrl:
+        thread.buyerAvatarUrl?.trim() ||
+        (thread.buyerUserId
+          ? profileAvatarUrls[thread.buyerUserId]?.trim()
+          : undefined) ||
+        undefined,
+    };
+  }, [
+    thread,
+    me.id,
+    me.name,
+    me.trustScore,
+    me.avatarUrl,
+    profileDisplayNames,
+    profileAvatarUrls,
+  ]);
 
   const [draft, setDraft] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -270,6 +341,12 @@ export function ChatPage() {
               store,
               buyerUserId: dto.buyerUserId,
               sellerUserId: dto.sellerUserId,
+              ...(dto.buyerDisplayName?.trim()
+                ? { buyerDisplayName: dto.buyerDisplayName.trim() }
+                : {}),
+              ...(dto.buyerAvatarUrl?.trim()
+                ? { buyerAvatarUrl: dto.buyerAvatarUrl.trim() }
+                : {}),
               purchaseMode: dto.purchaseMode,
               messages: qaSynced,
               contracts: s.threads[threadId]?.contracts ?? [],
@@ -596,12 +673,6 @@ export function ChatPage() {
       icon: "⚠️",
     });
   }
-  const buyerForRail = thread.demoBuyer ?? {
-    id: me.id,
-    name: me.name,
-    trustScore: me.trustScore,
-    avatarUrl: me.avatarUrl,
-  };
 
   function toggleSelectRow(e: MouseEvent, id: string) {
     if (chatActionsLocked) return;

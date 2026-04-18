@@ -3,10 +3,63 @@ import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../../../../app/store/useAppStore'
 import { cn } from '../../../../lib/cn'
+import type { Message } from '../../../../app/store/marketStoreTypes'
 import type { Thread } from '../../../../app/store/useMarketStore'
-import { chatBubbleHeaderLabel } from '../../../../utils/chat/chatParticipantLabels'
+import {
+  buyerFirstNameForThread,
+  chatBubbleHeaderLabel,
+  inferMessageFromSeller,
+  resolveBuyerUserId,
+} from '../../../../utils/chat/chatParticipantLabels'
 import { normalizeThreadMessages } from '../../../../utils/chat/chatMerge'
+import { ProtectedMediaImg } from '../../../../components/media/ProtectedMediaImg'
 import { deliveryStateForMineMessage, MessageBody, MsgMeta } from '../media/ChatMedia'
+
+/** Avatar + enlace de la columna lateral: mensajes del comprador no usan la tienda. */
+function messageBubbleAvatarColumn(
+  thread: Thread,
+  store: Thread['store'],
+  me: Me,
+  m: Message,
+  profileDisplayNames: Record<string, string>,
+  profileAvatarUrls: Record<string, string>,
+): { href: string; avatarUrl?: string; avatarLetter: string; trust: number } {
+  if (m.from === 'system') {
+    return { href: `/chat/${thread.id}`, avatarLetter: '?', trust: 0 }
+  }
+  if (m.from === 'me') {
+    return {
+      href: `/profile/${me.id}`,
+      avatarUrl: me.avatarUrl,
+      avatarLetter: me.name.slice(0, 1).toUpperCase(),
+      trust: me.trustScore,
+    }
+  }
+  const peerMsgFromSeller = inferMessageFromSeller(m, thread, me.id)
+  if (peerMsgFromSeller) {
+    return {
+      href: `/store/${store.id}/vitrina`,
+      avatarUrl: store.avatarUrl,
+      avatarLetter: store.name.slice(0, 1).toUpperCase(),
+      trust: store.trustScore,
+    }
+  }
+  const buyerUid = resolveBuyerUserId(thread, me.id)
+  const letter =
+    buyerFirstNameForThread(thread, me.id, me.name, profileDisplayNames)
+      .slice(0, 1)
+      .toUpperCase() || 'C'
+  const buyerPic =
+    thread.buyerAvatarUrl?.trim() ||
+    (buyerUid ? profileAvatarUrls[buyerUid]?.trim() : undefined) ||
+    undefined
+  return {
+    href: buyerUid ? `/profile/${buyerUid}` : `/chat/${thread.id}`,
+    avatarUrl: buyerPic,
+    avatarLetter: letter,
+    trust: 0,
+  }
+}
 
 function TrustChip({ score, className }: { score: number; className?: string }) {
   return (
@@ -58,6 +111,7 @@ export function ChatMessageList({
 }: Props) {
   const store = thread.store
   const profileDisplayNames = useAppStore((s) => s.profileDisplayNames)
+  const profileAvatarUrls = useAppStore((s) => s.profileAvatarUrls)
 
   const orderedMessages = useMemo(
     () => normalizeThreadMessages(thread.messages),
@@ -76,10 +130,14 @@ export function ChatMessageList({
           m.type === 'agreement' ? thread.contracts?.find((c) => c.id === m.agreementId) : undefined
         const isSelected = !!selected[m.id]
         const phone = mine ? me.phone : '+54 11 0000-0000'
-        const trust = mine ? me.trustScore : store.trustScore
         const pendingRead = mine && 'read' in m && m.read === false
-        const avatarUrl = mine ? me.avatarUrl : store.avatarUrl
-        const avatarLetter = (mine ? me.name : store.name).slice(0, 1).toUpperCase()
+        const { href: peerProfileHref, avatarUrl, avatarLetter, trust } = messageBubbleAvatarColumn(
+          thread,
+          store,
+          me,
+          m,
+          profileDisplayNames,
+        )
         const waVoiceSent = mine && m.type === 'audio'
         const isAudio = m.type === 'audio'
 
@@ -97,7 +155,7 @@ export function ChatMessageList({
           >
             {!system && (
               <Link
-                to={`/profile/${mine ? me.id : store.ownerUserId ?? store.id}`}
+                to={peerProfileHref}
                 className={cn(
                   'relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-white/35 bg-gradient-to-br from-[var(--primary)] to-[#7c3aed] font-black text-white',
                   mine ? 'col-start-2 justify-self-end' : 'col-start-1',
@@ -107,10 +165,11 @@ export function ChatMessageList({
                 onClick={(e) => e.stopPropagation()}
               >
                 {avatarUrl ? (
-                  <img
+                  <ProtectedMediaImg
                     src={avatarUrl}
                     alt=""
-                    className="absolute inset-0 size-full object-cover"
+                    wrapperClassName="absolute inset-0 size-full"
+                    className="size-full object-cover"
                   />
                 ) : (
                   avatarLetter

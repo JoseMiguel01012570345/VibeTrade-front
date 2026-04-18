@@ -272,6 +272,9 @@ export type Thread = {
   /** Hilos persistidos `cth_*`: IDs de comprador / vendedor (API). Mejoran etiquetas "Comprador . …" vs tienda. */
   buyerUserId?: string;
   sellerUserId?: string;
+  /** Datos del comprador desde bootstrap / GET thread (foto para vendedor sin pedir otro endpoint). */
+  buyerDisplayName?: string;
+  buyerAvatarUrl?: string;
   purchaseMode?: boolean;
   messages: Message[];
   contracts?: TradeAgreement[];

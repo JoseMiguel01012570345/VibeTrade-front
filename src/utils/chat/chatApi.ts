@@ -14,6 +14,8 @@ export type ChatThreadDto = {
   purchaseMode: boolean
   /** DisplayName del comprador (p. ej. título del chat para el vendedor). */
   buyerDisplayName?: string | null
+  /** Foto de perfil del comprador (`/api/v1/media/…`; usar componente protegido en UI). */
+  buyerAvatarUrl?: string | null
 }
 
 /** Aligned with backend <see cref="VibeTrade.Backend.Data.ChatMessageStatus" /> (camelCase JSON). */
@@ -67,6 +69,10 @@ export type ChatThreadSummaryDto = {
   lastMessageAtUtc: string | null
   lastPreview: string | null
   purchaseMode: boolean
+  buyerUserId: string
+  sellerUserId: string
+  buyerDisplayName?: string | null
+  buyerAvatarUrl?: string | null
 }
 
 export type ChatNotificationDto = {

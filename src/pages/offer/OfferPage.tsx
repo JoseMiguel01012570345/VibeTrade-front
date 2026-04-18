@@ -71,6 +71,8 @@ export function OfferPage() {
     [offerId, storeCatalogs],
   );
   const resolvedOffer = offer ?? offerFromCatalog;
+  /** Sin esto, cada `refreshOfferQaFromServer` sustituye `offers[id]` y `resolvedOffer` cambia de referencia → efectos con `[resolvedOffer]` reejecutan en bucle. */
+  const offerResolved = Boolean(resolvedOffer);
 
   useLayoutEffect(() => {
     if (!offerId || offer || !offerFromCatalog) return;
@@ -190,7 +192,7 @@ export function OfferPage() {
   useEffect(() => {
     if (!offerId || !resolvedOffer) return;
     void trackRecommendationInteraction(offerId, "click").catch(() => undefined);
-  }, [offerId, resolvedOffer]);
+  }, [offerId, offerResolved]);
 
   /** Evita repetir scrollIntoView cuando `resolvedOffer`/QA se actualiza (polling o SignalR): obligaba a bajar si el usuario intentaba subir. */
   const offerCommentsAnchorScrolledKeyRef = useRef<string | null>(null);
@@ -212,12 +214,12 @@ export function OfferPage() {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     return () => cancelAnimationFrame(id);
-  }, [offerId, resolvedOffer, location.hash, location.pathname]);
+  }, [offerId, offerResolved, location.hash, location.pathname]);
 
   useEffect(() => {
     if (!offerId || !resolvedOffer) return;
     void refreshOfferQaFromServer(offerId);
-  }, [offerId, resolvedOffer, refreshOfferQaFromServer]);
+  }, [offerId, offerResolved, refreshOfferQaFromServer]);
 
   useEffect(() => {
     if (!offerId || !resolvedOffer) return;
@@ -226,7 +228,7 @@ export function OfferPage() {
     return () => {
       void leaveOfferChannel(offerId);
     };
-  }, [offerId, resolvedOffer, isSessionActive, me.id]);
+  }, [offerId, offerResolved, isSessionActive, me.id]);
 
   useEffect(() => {
     if (!offerId || !resolvedOffer) return;
@@ -237,7 +239,7 @@ export function OfferPage() {
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [offerId, resolvedOffer, refreshOfferQaFromServer]);
+  }, [offerId, offerResolved, refreshOfferQaFromServer]);
 
   useEffect(() => {
     if (!offerId || !resolvedOffer) return;
@@ -248,7 +250,7 @@ export function OfferPage() {
       }
     }, 15000);
     return () => clearInterval(t);
-  }, [offerId, resolvedOffer, me.id, refreshOfferQaFromServer]);
+  }, [offerId, offerResolved, me.id, refreshOfferQaFromServer]);
 
   if (!offerId || !resolvedOffer) {
     return (

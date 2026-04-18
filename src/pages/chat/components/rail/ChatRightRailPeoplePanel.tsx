@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ChevronRight, ShieldCheck } from 'lucide-react'
+import { ProtectedMediaImg } from '../../../../components/media/ProtectedMediaImg'
 import type { ChatParticipant } from '../../lib/chatParticipants'
 
 type Props = {
@@ -26,7 +27,12 @@ export function ChatRightRailPeoplePanel({ bodyClassName, participants }: Props)
                 aria-hidden
               >
                 {p.avatarUrl ? (
-                  <img src={p.avatarUrl} alt="" className="absolute inset-0 size-full object-cover" />
+                  <ProtectedMediaImg
+                    src={p.avatarUrl}
+                    alt=""
+                    wrapperClassName="absolute inset-0 size-full"
+                    className="size-full object-cover"
+                  />
                 ) : (
                   p.name.slice(0, 1).toUpperCase()
                 )}
