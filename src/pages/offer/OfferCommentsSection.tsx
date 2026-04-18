@@ -149,24 +149,11 @@ export function OfferCommentsSection({
                 />
                 <span className="text-[11px] text-[var(--muted)]">{timeAgo(c.createdAt)}</span>
               </div>
-              <p className="my-1.5 mb-0 break-words text-sm leading-snug text-[var(--text)] [overflow-wrap:break-word]">
-                {c.text}
-              </p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className="border-0 bg-transparent p-0 text-xs font-extrabold text-[var(--primary)] hover:underline"
-                  onClick={() => {
-                    setReplyingTo(c)
-                    inputRef.current?.focus()
-                  }}
-                >
-                  Responder
-                </button>
+              <div className="my-1.5 flex items-start gap-2">
                 {!c.id.endsWith("_legacy_ans") ? (
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-2 py-0.5 text-[11px] font-extrabold text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))]"
+                    className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-2 py-0.5 text-[11px] font-extrabold text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))]"
                     title={c.viewerLiked ? "Quitar me gusta" : "Me gusta"}
                     onClick={() => void toggleCommentLike(c)}
                   >
@@ -181,6 +168,21 @@ export function OfferCommentsSection({
                     <span className="tabular-nums">{c.likeCount ?? 0}</span>
                   </button>
                 ) : null}
+                <p className="my-0 min-w-0 flex-1 break-words text-sm leading-snug text-[var(--text)] [overflow-wrap:break-word]">
+                  {c.text}
+                </p>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="border-0 bg-transparent p-0 text-xs font-extrabold text-[var(--primary)] hover:underline"
+                  onClick={() => {
+                    setReplyingTo(c)
+                    inputRef.current?.focus()
+                  }}
+                >
+                  Responder
+                </button>
               </div>
             </div>
           </div>

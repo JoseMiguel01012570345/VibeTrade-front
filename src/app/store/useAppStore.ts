@@ -43,9 +43,16 @@ const guestMe: User = {
   trustScore: 0,
 }
 
-type NotificationItem = {
+export type NotificationItem = {
   id: string
-  kind: 'qa_reply' | 'payment' | 'system' | 'chat_message' | 'offer_comment'
+  kind:
+    | 'qa_reply'
+    | 'payment'
+    | 'system'
+    | 'chat_message'
+    | 'offer_comment'
+    | 'offer_like'
+    | 'qa_comment_like'
   title: string
   body: string
   createdAt: number
@@ -186,7 +193,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   setChatNotificationsFromServer: (items) =>
     set((s) => {
       const local = s.notifications.filter(
-        (x) => x.kind !== 'chat_message' && x.kind !== 'offer_comment',
+        (x) =>
+          x.kind !== 'chat_message' &&
+          x.kind !== 'offer_comment' &&
+          x.kind !== 'offer_like' &&
+          x.kind !== 'qa_comment_like',
       )
       const merged = [...items, ...local]
       merged.sort((a, b) => b.createdAt - a.createdAt)

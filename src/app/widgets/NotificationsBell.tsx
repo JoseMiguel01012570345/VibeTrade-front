@@ -12,7 +12,12 @@ function notificationHref(n: {
   threadId?: string
   offerId?: string
 }): string | null {
-  if (n.kind === 'offer_comment' && n.offerId) {
+  if (
+    (n.kind === 'offer_comment' ||
+      n.kind === 'offer_like' ||
+      n.kind === 'qa_comment_like') &&
+    n.offerId
+  ) {
     return `/offer/${encodeURIComponent(n.offerId)}#offer-comments`
   }
   if (n.threadId) {
@@ -159,7 +164,10 @@ export function NotificationsBell() {
                           <div className="font-black tracking-[-0.02em]">{n.title}</div>
                           <div className="vt-muted whitespace-pre-wrap break-words">{n.body}</div>
                           <div className="mt-1.5 text-xs text-[var(--muted)]">{fmt(n.createdAt)}</div>
-                  {n.kind === 'offer_comment' || (!n.threadId && n.offerId) ? (
+                  {n.kind === 'offer_comment' ||
+                  n.kind === 'offer_like' ||
+                  n.kind === 'qa_comment_like' ||
+                  (!n.threadId && n.offerId) ? (
                     <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
                       Ver oferta y comentarios →
                     </div>
