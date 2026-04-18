@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Home, LogIn, MessageCircle, PlaySquare, User } from 'lucide-react'
 import { cn } from '../../lib/cn'
@@ -6,6 +7,7 @@ import { TrustBar } from '../widgets/TrustBar'
 import { NotificationsBell } from '../widgets/NotificationsBell'
 import { ProtectedMediaImg } from '../../components/media/ProtectedMediaImg'
 import { AuthEntryModal } from '../../pages/onboarding/AuthEntryModal'
+import { syncChatNotificationsFromServer } from '../../utils/notifications/notificationsSync'
 
 const tabs = [
   { to: '/home', label: 'Home', icon: Home },
@@ -37,6 +39,17 @@ export function AppShell() {
   const authOpen = useAppStore((s) => s.authModalOpen)
   const openAuthModal = useAppStore((s) => s.openAuthModal)
   const closeAuthModal = useAppStore((s) => s.closeAuthModal)
+
+  useEffect(() => {
+    if (!isSessionActive) return
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        void syncChatNotificationsFromServer()
+      }
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [isSessionActive])
 
   return (
     <div className="vt-app flex min-h-screen flex-col">

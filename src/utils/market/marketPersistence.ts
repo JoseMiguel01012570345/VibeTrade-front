@@ -5,7 +5,7 @@ import {
   apiErrorTextToUserMessage,
   defaultUnexpectedErrorMessage,
 } from "../http/apiErrorMessage";
-import type { MarketState } from "../../app/store/marketStoreTypes";
+import type { MarketState, QAItem } from "../../app/store/marketStoreTypes";
 import { storeProfileBodiesToPersist } from "./marketSerializable";
 
 /** Reservado: antes coordinaba persistencia automática (deshabilitada). */
@@ -13,7 +13,10 @@ export function setMarketHydrating(_value: boolean) {}
 
 export type PostOfferInquiryBody = {
   offerId: string;
+  /** Legado; el servidor acepta también `text`. */
   question: string;
+  text?: string;
+  parentId?: string | null;
   askedBy: { id: string; name: string; trustScore: number };
   createdAt?: number;
 };
@@ -21,10 +24,11 @@ export type PostOfferInquiryBody = {
 export type PostOfferInquiryResponse = {
   id: string;
   question: string;
+  text?: string;
+  parentId?: string | null;
   askedBy: { id: string; name: string; trustScore: number };
+  author?: { id: string; name: string; trustScore: number };
   createdAt: number;
-  /** Presente si el servidor abrió el chat y dejó la consulta como mensaje (sesión + mismo usuario que askedBy). */
-  threadId?: string;
 };
 
 /** Añade una consulta pública; el servidor devuelve el ítem creado (id, createdAt). */
@@ -46,6 +50,26 @@ export async function postOfferInquiry(
     );
   }
   return (await res.json()) as PostOfferInquiryResponse;
+}
+
+/** Lista `qa` desde el servidor (jsonb), para refrescar la ficha sin recargar el feed. */
+export async function fetchOfferQaFromServer(
+  offerId: string,
+): Promise<QAItem[] | null> {
+  const res = await apiFetch(
+    `/api/v1/market/offers/${encodeURIComponent(offerId)}/qa`,
+    { method: "GET" },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(
+      apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
+    );
+  }
+  const raw = (await res.json()) as unknown;
+  if (!Array.isArray(raw)) return [];
+  return raw as QAItem[];
 }
 
 /** Metadatos de tienda: un PUT por tienda, cuerpo = campos de la ficha (incl. `id`), sin `stores:{...}`. */

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MessageSquareText, ShoppingCart } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, ShoppingCart } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
@@ -9,28 +9,22 @@ import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { RouteOfferPreview } from "./RouteOfferPreview";
 import { OfferSaveButton } from "./OfferSaveButton";
+import { OfferCommentsSection } from "./OfferCommentsSection";
 import {
   confirmedStopIdsForCarrier,
   tramoNotifyLineFromOffer,
 } from "../chat/domain/routeSheetOfferGuards";
 import { userActsAsCarrierOnTransportOffer } from "../../utils/user/transportEligibility";
-import { errorToUserMessage } from "../../utils/http/apiErrorMessage";
 import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
 } from "../../utils/market/toolPlaceholder";
 import { trackRecommendationInteraction } from "../../utils/recommendations/recommendationsApi";
-
-function formatInquiryDate(ms: number): string {
-  try {
-    return new Intl.DateTimeFormat("es", {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(new Date(ms));
-  } catch {
-    return "";
-  }
-}
+import {
+  joinOfferChannel,
+  leaveOfferChannel,
+} from "../../utils/chat/chatRealtime";
+import { offerFromStoreCatalogs } from "../../utils/market/offerFromCatalog";
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -45,6 +39,7 @@ function Trust({ score, helper }: { score: number; helper: string }) {
 
 export function OfferPage() {
   const { offerId } = useParams();
+  const location = useLocation();
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
   const isSessionActive = useAppStore((s) => s.isSessionActive);
@@ -66,6 +61,27 @@ export function OfferPage() {
   );
   const submitOfferQuestion = useMarketStore((s) => s.submitOfferQuestion);
   const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer);
+  const refreshOfferQaFromServer = useMarketStore(
+    (s) => s.refreshOfferQaFromServer,
+  );
+
+  const offerFromCatalog = useMemo(
+    () =>
+      offerId ? offerFromStoreCatalogs(offerId, storeCatalogs) : undefined,
+    [offerId, storeCatalogs],
+  );
+  const resolvedOffer = offer ?? offerFromCatalog;
+
+  useLayoutEffect(() => {
+    if (!offerId || offer || !offerFromCatalog) return;
+    useMarketStore.setState((s) => {
+      if (s.offers[offerId]) return s;
+      return {
+        ...s,
+        offers: { ...s.offers, [offerId]: offerFromCatalog },
+      };
+    });
+  }, [offerId, offer, offerFromCatalog]);
 
   const openTramos = useMemo(
     () => routeOffer?.tramos.filter((t) => !t.assignment) ?? [],
@@ -75,7 +91,6 @@ export function OfferPage() {
   const [galleryLightboxUrl, setGalleryLightboxUrl] = useState<string | null>(
     null,
   );
-  const [inquirySending, setInquirySending] = useState(false);
   const chosenStopId = pickedStopId ?? openTramos[0]?.stopId ?? "";
 
   const pendingValidations = useMemo(
@@ -117,12 +132,12 @@ export function OfferPage() {
   const canOpenRouteChat = carrierConfirmedOnRoute || carrierInChatThread;
 
   const actingAsCarrierOnThisOffer =
-    offer &&
+    resolvedOffer &&
     userActsAsCarrierOnTransportOffer(
       me.id,
       stores,
       storeCatalogs,
-      offer,
+      resolvedOffer,
       !!routeOffer,
     );
 
@@ -146,11 +161,11 @@ export function OfferPage() {
   }, [routeOffer, me.id, actingAsCarrierOnThisOffer]);
 
   const galleryUrls = useMemo(() => {
-    if (!offer) return [];
+    if (!resolvedOffer) return [];
     const main =
-      offer.imageUrl?.trim() ||
-      (offer.tags.includes("Servicio") ? TOOL_PLACEHOLDER_SRC : "");
-    const rest = (offer.imageUrls ?? [])
+      resolvedOffer.imageUrl?.trim() ||
+      (resolvedOffer.tags.includes("Servicio") ? TOOL_PLACEHOLDER_SRC : "");
+    const rest = (resolvedOffer.imageUrls ?? [])
       .map((u) => String(u).trim())
       .filter(Boolean);
     const seen = new Set<string>();
@@ -161,25 +176,81 @@ export function OfferPage() {
       out.push(u);
     }
     return out;
-  }, [offer]);
-
-  const qaList = useMemo(() => offer?.qa ?? [], [offer]);
+  }, [resolvedOffer]);
 
   const heroImageSrc = useMemo(() => {
-    if (!offer) return "";
+    if (!resolvedOffer) return "";
     return (
       galleryUrls[0] ||
-      offer.imageUrl?.trim() ||
-      (offer.tags.includes("Servicio") ? TOOL_PLACEHOLDER_SRC : "")
+      resolvedOffer.imageUrl?.trim() ||
+      (resolvedOffer.tags.includes("Servicio") ? TOOL_PLACEHOLDER_SRC : "")
     );
-  }, [offer, galleryUrls]);
+  }, [resolvedOffer, galleryUrls]);
 
   useEffect(() => {
-    if (!offerId || !offer) return;
+    if (!offerId || !resolvedOffer) return;
     void trackRecommendationInteraction(offerId, "click").catch(() => undefined);
-  }, [offerId, offer]);
+  }, [offerId, resolvedOffer]);
 
-  if (!offerId || !offer) {
+  /** Evita repetir scrollIntoView cuando `resolvedOffer`/QA se actualiza (polling o SignalR): obligaba a bajar si el usuario intentaba subir. */
+  const offerCommentsAnchorScrolledKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!offerId || !resolvedOffer) return;
+    if (location.hash !== "#offer-comments") {
+      offerCommentsAnchorScrolledKeyRef.current = null;
+      return;
+    }
+    const el = document.getElementById("offer-comments");
+    if (!el) return;
+
+    const key = `${offerId}|${location.pathname}|#offer-comments`;
+    if (offerCommentsAnchorScrolledKeyRef.current === key) return;
+    offerCommentsAnchorScrolledKeyRef.current = key;
+
+    const id = requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [offerId, resolvedOffer, location.hash, location.pathname]);
+
+  useEffect(() => {
+    if (!offerId || !resolvedOffer) return;
+    void refreshOfferQaFromServer(offerId);
+  }, [offerId, resolvedOffer, refreshOfferQaFromServer]);
+
+  useEffect(() => {
+    if (!offerId || !resolvedOffer) return;
+    if (!isSessionActive || me.id === "guest") return;
+    void joinOfferChannel(offerId);
+    return () => {
+      void leaveOfferChannel(offerId);
+    };
+  }, [offerId, resolvedOffer, isSessionActive, me.id]);
+
+  useEffect(() => {
+    if (!offerId || !resolvedOffer) return;
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        void refreshOfferQaFromServer(offerId);
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [offerId, resolvedOffer, refreshOfferQaFromServer]);
+
+  useEffect(() => {
+    if (!offerId || !resolvedOffer) return;
+    if (me.id !== "guest") return;
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void refreshOfferQaFromServer(offerId);
+      }
+    }, 15000);
+    return () => clearInterval(t);
+  }, [offerId, resolvedOffer, me.id, refreshOfferQaFromServer]);
+
+  if (!offerId || !resolvedOffer) {
     return (
       <div className="container vt-page">
         <div className="vt-card vt-card-pad">Oferta no encontrada.</div>
@@ -187,9 +258,19 @@ export function OfferPage() {
     );
   }
 
-  const store = stores[offer.storeId];
+  const store = stores[resolvedOffer.storeId];
+  if (!store) {
+    return (
+      <div className="container vt-page">
+        <div className="vt-card vt-card-pad">Oferta no encontrada.</div>
+      </div>
+    );
+  }
 
   const heroIsToolPlaceholder = isToolPlaceholderUrl(heroImageSrc);
+
+  const isOwnOffer =
+    !!store?.ownerUserId && me.id !== "guest" && me.id === store.ownerUserId;
 
   return (
     <div className="container vt-page">
@@ -216,7 +297,7 @@ export function OfferPage() {
           >
             <ProtectedMediaImg
               src={heroImageSrc}
-              alt={offer.title}
+              alt={resolvedOffer.title}
               wrapperClassName="block h-[260px] w-full"
               className={cn(
                 "block h-[260px] w-full",
@@ -276,15 +357,17 @@ export function OfferPage() {
             <div className="flex items-baseline justify-between gap-3">
               <div>
                 <div className="text-[22px] font-black tracking-[-0.03em]">
-                  {offer.title}
+                  {resolvedOffer.title}
                 </div>
               </div>
-              <div className="shrink-0 text-lg font-black">{offer.price}</div>
+              <div className="shrink-0 text-lg font-black">
+                {resolvedOffer.price}
+              </div>
             </div>
 
-            {offer.description?.trim() ? (
+            {resolvedOffer.description?.trim() ? (
               <p className="text-[15px] leading-relaxed text-[var(--text)]">
-                {offer.description.trim()}
+                {resolvedOffer.description.trim()}
               </p>
             ) : null}
 
@@ -312,7 +395,7 @@ export function OfferPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {offer.tags.map((t) => (
+              {resolvedOffer.tags.map((t) => (
                 <span key={t} className="vt-pill">
                   {t}
                 </span>
@@ -422,11 +505,11 @@ export function OfferPage() {
                               return;
                             }
                             void trackRecommendationInteraction(
-                              offer.id,
+                              resolvedOffer.id,
                               "chat_start",
                             ).catch(() => undefined);
                             void (async () => {
-                              const threadId = await ensureThreadForOffer(offer.id, {
+                              const threadId = await ensureThreadForOffer(resolvedOffer.id, {
                                 buyerId: me.id,
                               });
                               if (!threadId) {
@@ -519,54 +602,26 @@ export function OfferPage() {
               </>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+            <div className="flex flex-wrap gap-2.5">
               <button
-                type="button"
-                className="vt-btn"
-                disabled={inquirySending}
-                onClick={() => {
-                  void (async () => {
-                    const question = globalThis.prompt("Escribe tu pregunta");
-                    if (!question?.trim()) return;
-                    setInquirySending(true);
-                    try {
-                      await submitOfferQuestion(
-                        offer.id,
-                        {
-                          id: me.id,
-                          name: me.name,
-                          trustScore: me.trustScore,
-                        },
-                        question.trim(),
-                      );
-                      toast.success("Pregunta enviada");
-                    } catch (e) {
-                      toast.error(
-                        errorToUserMessage(
-                          e,
-                          "No se pudo enviar la pregunta. Probá de nuevo.",
-                        ),
-                      );
-                    } finally {
-                      setInquirySending(false);
-                    }
-                  })();
-                }}
-              >
-                <MessageSquareText size={16} />{" "}
-                {inquirySending ? "Enviando…" : "Preguntar"}
-              </button>
-              <button
-                className="vt-btn vt-btn-primary"
-                disabled={!!actingAsCarrierOnThisOffer && !!routeOffer}
+                className="vt-btn vt-btn-primary min-[420px]:flex-1"
+                disabled={
+                  (!!actingAsCarrierOnThisOffer && !!routeOffer) || isOwnOffer
+                }
                 title={
-                  actingAsCarrierOnThisOffer && routeOffer
-                    ? "Como transportista: suscribite a un tramo y esperá la validación para usar el chat de la ruta."
-                    : undefined
+                  isOwnOffer
+                    ? "No podés chatear con vos mismo en tu propia oferta."
+                    : actingAsCarrierOnThisOffer && routeOffer
+                      ? "Como transportista: suscribite a un tramo y esperá la validación para usar el chat de la ruta."
+                      : undefined
                 }
                 onClick={() => {
                   if (!isSessionActive || me.id === "guest") {
                     openAuthModal();
+                    return;
+                  }
+                  if (isOwnOffer) {
+                    toast.error("No podés chatear con vos mismo.");
                     return;
                   }
                   if (actingAsCarrierOnThisOffer && routeOffer) {
@@ -576,11 +631,11 @@ export function OfferPage() {
                     return;
                   }
                   void trackRecommendationInteraction(
-                    offer.id,
+                    resolvedOffer.id,
                     "chat_start",
                   ).catch(() => undefined);
                   void (async () => {
-                    const threadId = await ensureThreadForOffer(offer.id, {
+                    const threadId = await ensureThreadForOffer(resolvedOffer.id, {
                       buyerId: me.id,
                     });
                     if (!threadId) {
@@ -597,59 +652,13 @@ export function OfferPage() {
           </div>
         </div>
 
-        <div className="vt-card vt-card-pad">
-          <div className="vt-h2">Preguntas y respuestas (públicas)</div>
-          <div className="vt-muted mt-1.5">
-            Se muestra identidad del que pregunta y del que responde con su
-            indicador de confianza (sin mostrar el número).
-          </div>
-          <div className="vt-divider my-3" />
-
-          <div className="flex flex-col gap-2.5">
-            {qaList.length === 0 && (
-              <div className="vt-muted">Aún no hay preguntas.</div>
-            )}
-            {qaList.map((qa) => (
-              <div
-                key={qa.id}
-                className="flex min-w-0 flex-col gap-2.5 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] p-3 [overflow-wrap:anywhere]"
-              >
-                <div className="font-semibold">
-                  <div className="mb-1.5 flex min-w-0 items-center justify-between gap-2.5">
-                    <b className="min-w-0 break-words">{qa.askedBy.name}</b>
-                    <Trust
-                      score={qa.askedBy.trustScore}
-                      helper="Indicador de confianza del usuario (tooltip/helper)."
-                    />
-                  </div>
-                  {typeof qa.createdAt === "number" &&
-                  Number.isFinite(qa.createdAt) ? (
-                    <div className="mb-1.5 text-xs font-normal text-[var(--muted)]">
-                      {formatInquiryDate(qa.createdAt)}
-                    </div>
-                  ) : null}
-                  <div className="font-normal">{qa.question}</div>
-                </div>
-                {qa.answer ? (
-                  <div className="border-t border-dashed border-[var(--border)] pt-2.5 text-[var(--text)]">
-                    <div className="mb-1.5 flex min-w-0 items-center justify-between gap-2.5">
-                      <b className="min-w-0 break-words">
-                        {qa.answeredBy?.name ?? "Negocio"}
-                      </b>
-                      <Trust
-                        score={qa.answeredBy?.trustScore ?? store.trustScore}
-                        helper="Indicador de confianza del negocio (tooltip/helper)."
-                      />
-                    </div>
-                    <div>{qa.answer}</div>
-                  </div>
-                ) : (
-                  <div className="vt-muted">Sin respuesta aún.</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        <OfferCommentsSection
+          offer={resolvedOffer}
+          store={store}
+          me={me}
+          isOwnOffer={isOwnOffer}
+          submitOfferQuestion={submitOfferQuestion}
+        />
       </div>
 
       <ImageLightbox

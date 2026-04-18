@@ -1,10 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, CheckCircle2, X } from 'lucide-react'
+import { Bell, X } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { cn } from '../../lib/cn'
 import { markChatNotificationsRead } from '../../utils/chat/chatApi'
 import { syncChatNotificationsFromServer } from '../../utils/notifications/notificationsSync'
+
+/** Chat primero salvo avisos explícitos de comentario en ficha → oferta + ancla a comentarios. */
+function notificationHref(n: {
+  kind: string
+  threadId?: string
+  offerId?: string
+}): string | null {
+  if (n.kind === 'offer_comment' && n.offerId) {
+    return `/offer/${encodeURIComponent(n.offerId)}#offer-comments`
+  }
+  if (n.threadId) {
+    return `/chat/${encodeURIComponent(n.threadId)}`
+  }
+  if (n.offerId) {
+    return `/offer/${encodeURIComponent(n.offerId)}#offer-comments`
+  }
+  return null
+}
 
 function fmt(ts: number) {
   const d = new Date(ts)
@@ -27,6 +45,11 @@ export function NotificationsBell() {
   useEffect(() => {
     if (!open) return
     void (async () => {
+      try {
+        await syncChatNotificationsFromServer()
+      } catch {
+        /* ignore */
+      }
       try {
         await markChatNotificationsRead()
       } catch {
@@ -68,7 +91,12 @@ export function NotificationsBell() {
         )}
         aria-label="Abrir notificaciones"
         title="Notificaciones"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          void (async () => {
+            await syncChatNotificationsFromServer()
+            setOpen(true)
+          })()
+        }}
       >
         <Bell size={20} />
         {unread > 0 && (
@@ -95,7 +123,7 @@ export function NotificationsBell() {
             if (e.key === 'Enter' || e.key === ' ') setOpen(false)
           }}
         >
-          <div className="vt-modal">
+          <div className="vt-modal" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="vt-modal-title">Notificaciones</div>
@@ -131,7 +159,11 @@ export function NotificationsBell() {
                           <div className="font-black tracking-[-0.02em]">{n.title}</div>
                           <div className="vt-muted whitespace-pre-wrap break-words">{n.body}</div>
                           <div className="mt-1.5 text-xs text-[var(--muted)]">{fmt(n.createdAt)}</div>
-                  {n.kind === 'chat_message' && n.threadId ? (
+                  {n.kind === 'offer_comment' || (!n.threadId && n.offerId) ? (
+                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
+                      Ver oferta y comentarios →
+                    </div>
+                  ) : n.threadId ? (
                     <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
                       Abrir chat →
                     </div>
@@ -139,10 +171,11 @@ export function NotificationsBell() {
                         </div>
                       </>
                     )
-                    return n.kind === 'chat_message' && n.threadId ? (
+                    const href = notificationHref(n)
+                    return href ? (
                       <Link
                         key={n.id}
-                        to={`/chat/${encodeURIComponent(n.threadId)}`}
+                        to={href}
                         className={cn(wrapClass, 'text-left no-underline text-[var(--text)]')}
                         onClick={() => setOpen(false)}
                       >
@@ -156,22 +189,6 @@ export function NotificationsBell() {
                   })}
                 </div>
               )}
-            </div>
-
-            <div className="vt-modal-actions">
-              <button
-                type="button"
-                className="vt-btn"
-                onClick={() => {
-                  void markChatNotificationsRead().finally(() => {
-                    markAllRead()
-                    setOpen(false)
-                  })
-                }}
-                disabled={items.length === 0}
-              >
-                <CheckCircle2 size={16} /> Listo
-              </button>
             </div>
           </div>
         </div>

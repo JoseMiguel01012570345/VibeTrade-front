@@ -245,6 +245,7 @@ export function ChatPage() {
         const meId = useAppStore.getState().me.id;
         const mapped = msgs.map((d) => mapChatMessageDtoToMessage(d, meId));
         const prevMsgs = existingTh?.messages;
+        const sellerUserId = dto.sellerUserId ?? store.ownerUserId;
         const localBasis =
           prevMsgs && prevMsgs.length > 0
             ? prevMsgs
@@ -253,10 +254,10 @@ export function ChatPage() {
                 ? buildPurchaseThreadSystemOnly(offer)
                 : []
               : dto.purchaseMode
-                ? buildPurchaseThreadMessages(offer, meId)
+                ? buildPurchaseThreadMessages(offer, meId, sellerUserId)
                 : [];
         const merged = mergePersistedChatMessages(mapped, localBasis);
-        const qaSynced = syncOwnQaIntoMessages(merged, offer, meId);
+        const qaSynced = syncOwnQaIntoMessages(merged, offer, meId, sellerUserId);
         if (cancelled) return;
         useMarketStore.setState((s) => ({
           threads: {

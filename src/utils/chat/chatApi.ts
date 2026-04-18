@@ -71,8 +71,10 @@ export type ChatThreadSummaryDto = {
 
 export type ChatNotificationDto = {
   id: string
-  threadId: string
-  messageId: string
+  threadId: string | null
+  messageId: string | null
+  /** Presente cuando el aviso es por comentario en ficha (enlace a `/offer/:id`). */
+  offerId: string | null
   messagePreview: string
   /** Nombre tienda o nombre del comprador (según emisor). */
   authorLabel: string
@@ -81,6 +83,9 @@ export type ChatNotificationDto = {
   createdAtUtc: string
   readAtUtc: string | null
 }
+
+/** `Error.message` cuando el servidor rechaza abrir chat como comprador en tu propia oferta. */
+export const CHAT_CANNOT_MESSAGE_SELF = 'CHAT_CANNOT_MESSAGE_SELF'
 
 export async function createOrGetChatThread(
   offerId: string,
@@ -92,6 +97,16 @@ export async function createOrGetChatThread(
   })
   if (!res.ok) {
     const t = await res.text()
+    if (res.status === 400) {
+      try {
+        const j = JSON.parse(t) as { error?: string }
+        if (j.error === 'cannot_message_self') {
+          throw new Error(CHAT_CANNOT_MESSAGE_SELF)
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message === CHAT_CANNOT_MESSAGE_SELF) throw e
+      }
+    }
     throw new Error(t || `HTTP ${res.status}`)
   }
   return (await res.json()) as ChatThreadDto

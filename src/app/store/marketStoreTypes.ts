@@ -68,6 +68,9 @@ export type StoreServiceInput = Omit<StoreService, "id" | "storeId">;
 export type QAItem = {
   id: string;
   question: string;
+  /** Misma cadena que `question` cuando viene del API nuevo. */
+  text?: string;
+  parentId?: string | null;
   askedBy: { id: string; name: string; trustScore: number };
   answeredBy?: { id: string; name: string; trustScore: number };
   answer?: string;
@@ -336,6 +339,7 @@ export type MarketState = {
     offerId: string,
     askedBy: { id: string; name: string; trustScore: number },
     question: string,
+    options?: { parentId?: string | null },
   ) => Promise<void>;
   answer: (offerId: string, qaId: string, answer: string) => void;
   ensureThreadForOffer: (
@@ -343,6 +347,10 @@ export type MarketState = {
     opts?: { buyerId?: string },
   ) => Promise<string>;
   syncThreadBuyerQa: (threadId: string, buyerId: string) => void;
+  /** Reemplaza `offer.qa` desde el API (otros comentarios / otra pestaña). */
+  applyOfferQaFromServer: (offerId: string, qa: QAItem[]) => void;
+  /** GET `/market/offers/:id/qa` y aplica en store + hilos de compra. */
+  refreshOfferQaFromServer: (offerId: string) => Promise<void>;
   /** Mergea mensaje desde SignalR (evita duplicados por id). */
   onChatMessageFromServer: (threadId: string, dto: ChatMessageDto) => void;
   /** Nuevo hilo persistido: actualiza lista sin recargar (comprador y vendedor). */

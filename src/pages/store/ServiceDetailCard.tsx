@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Wrench } from "lucide-react";
+import { Link } from "react-router-dom";
+import { MessageCircle, Wrench } from "lucide-react";
 import {
   catalogMonedasList,
   type StoreService,
@@ -25,8 +26,17 @@ export function ServiceDetailCard({ s }: { s: StoreService }) {
           <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
             {s.category}
           </div>
-          <div className="mt-1 font-black tracking-[-0.02em]">
-            {s.tipoServicio}
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+            <span className="font-black tracking-[-0.02em]">
+              {s.tipoServicio}
+            </span>
+            <Link
+              to={`/offer/${encodeURIComponent(s.id)}#offer-comments`}
+              className="vt-btn vt-btn-ghost vt-btn-sm inline-flex shrink-0 items-center gap-1.5"
+            >
+              <MessageCircle size={16} aria-hidden />
+              Comentarios
+            </Link>
           </div>
           {monedas.length > 0 ? (
             <div className="mt-1.5 text-[12px] font-bold text-[var(--muted)]">

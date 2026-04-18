@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Package } from "lucide-react";
+import { Link } from "react-router-dom";
+import { MessageCircle, Package } from "lucide-react";
 import {
   catalogMonedasList,
   type StoreProduct,
@@ -53,13 +54,22 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
               </span>
             ) : null}
           </div>
-          <div className="mt-2 text-sm font-bold text-[color-mix(in_oklab,var(--primary)_90%,var(--text))]">
-            {p.price}
-            {precioMoneda ? (
-              <span className="ml-1.5 font-semibold text-[var(--muted)]">
-                · {precioMoneda}
-              </span>
-            ) : null}
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-bold text-[color-mix(in_oklab,var(--primary)_90%,var(--text))]">
+              {p.price}
+              {precioMoneda ? (
+                <span className="ml-1.5 font-semibold text-[var(--muted)]">
+                  · {precioMoneda}
+                </span>
+              ) : null}
+            </div>
+            <Link
+              to={`/offer/${encodeURIComponent(p.id)}#offer-comments`}
+              className="vt-btn vt-btn-ghost vt-btn-sm inline-flex shrink-0 items-center gap-1.5"
+            >
+              <MessageCircle size={16} aria-hidden />
+              Comentarios
+            </Link>
           </div>
           {monedasAceptadas.length > 0 &&
           !(

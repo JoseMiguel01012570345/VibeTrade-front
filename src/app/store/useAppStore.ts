@@ -45,13 +45,15 @@ const guestMe: User = {
 
 type NotificationItem = {
   id: string
-  kind: 'qa_reply' | 'payment' | 'system' | 'chat_message'
+  kind: 'qa_reply' | 'payment' | 'system' | 'chat_message' | 'offer_comment'
   title: string
   body: string
   createdAt: number
   read: boolean
-  /** Solo para chat: abrir el hilo. */
+  /** Chat: abrir `/chat/:threadId`. */
   threadId?: string
+  /** Comentario en ficha: abrir `/offer/:offerId`. */
+  offerId?: string
   trustScore?: number
 }
 
@@ -144,9 +146,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
   setMeName: (name) =>
-    set((s) => ({
-      me: { ...s.me, name: name.trim().slice(0, 100) },
-    })),
+    set((s) => {
+      const t = name.trim().slice(0, 100)
+      const id = s.me.id
+      const nextNames =
+        id && id !== 'guest' ? { ...s.profileDisplayNames, [id]: t } : s.profileDisplayNames
+      return { me: { ...s.me, name: t }, profileDisplayNames: nextNames }
+    }),
 
   setMeEmail: (email) =>
     set((s) => ({
@@ -171,6 +177,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       createdAt: Date.now(),
       read: false,
       ...(n.threadId != null ? { threadId: n.threadId } : {}),
+      ...(n.offerId != null ? { offerId: n.offerId } : {}),
       ...(n.trustScore != null ? { trustScore: n.trustScore } : {}),
     }
     set((s) => ({ notifications: [item, ...s.notifications] }))
@@ -178,7 +185,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setChatNotificationsFromServer: (items) =>
     set((s) => {
-      const local = s.notifications.filter((x) => x.kind !== 'chat_message')
+      const local = s.notifications.filter(
+        (x) => x.kind !== 'chat_message' && x.kind !== 'offer_comment',
+      )
       const merged = [...items, ...local]
       merged.sort((a, b) => b.createdAt - a.createdAt)
       return { notifications: merged }
@@ -202,7 +211,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (nextMe.instagram) profileSocialLinks.instagram = nextMe.instagram
       if (nextMe.telegram) profileSocialLinks.telegram = nextMe.telegram
       if (nextMe.xAccount) profileSocialLinks.x = nextMe.xAccount
-      return { me: nextMe, profileSocialLinks, savedOffers: s.savedOffers }
+      const nextNames =
+        nextMe.id && nextMe.id !== 'guest'
+          ? { ...s.profileDisplayNames, [nextMe.id]: nextMe.name?.trim() ?? '' }
+          : s.profileDisplayNames
+      return {
+        me: nextMe,
+        profileSocialLinks,
+        savedOffers: s.savedOffers,
+        profileDisplayNames: nextNames,
+      }
     }),
 
   resetSessionProfile: () =>

@@ -1,7 +1,8 @@
 import type { RouteSheet } from '../../pages/chat/domain/routeSheetTypes'
 import { normalizeThreadMessages } from '../../utils/chat/chatMerge'
 import { quoteAuthorForMessage } from '../../utils/chat/chatParticipantLabels'
-import type { Message, Offer, QAItem, ReplyQuote, Thread } from './marketStoreTypes'
+import { normalizeOfferComments } from '../../pages/offer/offerComments'
+import type { Message, Offer, ReplyQuote, Thread } from './marketStoreTypes'
 import { useAppStore } from './useAppStore'
 
 export function uid(prefix: string): string {
@@ -61,72 +62,44 @@ export function collectReplyQuotes(
   return list.length ? list : undefined
 }
 
-function hasSeededQuestion(messages: Message[], q: QAItem): boolean {
-  return messages.some((m) => {
-    if (m.type !== 'text' || m.from !== 'me') return false
-    if (m.offerQaId) return m.offerQaId === q.id
-    return m.text === q.question
-  })
-}
-
-function hasSeededAnswer(messages: Message[], q: QAItem): boolean {
-  if (!q.answer) return true
-  return messages.some((m) => {
-    if (m.type !== 'text' || m.from !== 'other') return false
-    if (m.offerQaId) return m.offerQaId === q.id
-    return m.text === q.answer
-  })
-}
-
-/** Añade al hilo las preguntas/respuestas del comprador que aún no estén reflejadas (p. ej. preguntó después del primer Comprar). */
+/** Añade al hilo los comentarios públicos de la ficha (comprador = me, vendedor = other), alineado con normalizeOfferComments. */
 export function syncOwnQaIntoMessages(
   prev: Message[],
   offer: Offer,
   buyerId: string | undefined,
+  sellerUserId?: string | null,
 ): Message[] {
   if (!buyerId) return prev
 
-  const ownQa = [...(offer.qa ?? [])]
-    .filter((q) => q.askedBy.id === buyerId)
-    .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
+  const seller = sellerUserId ?? undefined
+  const comments = normalizeOfferComments(offer)
 
   let next = [...prev]
   const atNums = next.map((m) => m.at).filter((x) => typeof x === 'number' && !Number.isNaN(x))
   let legacySeq = atNums.length ? Math.max(...atNums) + 1 : Date.now()
 
-  for (const q of ownQa) {
-    const hasCreated =
-      typeof q.createdAt === 'number' && !Number.isNaN(q.createdAt)
-    let qAt: number
-    let aAt: number
-    if (hasCreated) {
-      qAt = q.createdAt!
-      aAt = q.createdAt! + 1
-    } else {
-      qAt = legacySeq++
-      aAt = q.answer ? legacySeq++ : qAt
-    }
+  function hasSeeded(commentId: string, from: 'me' | 'other'): boolean {
+    return next.some((m) => {
+      if (m.type !== 'text' || m.offerQaId !== commentId) return false
+      return from === 'me' ? m.from === 'me' : m.from === 'other'
+    })
+  }
 
-    if (!hasSeededQuestion(next, q)) {
+  for (const c of comments) {
+    const isBuyer = c.author.id === buyerId
+    const isSeller = !!seller && c.author.id === seller
+    if (!isBuyer && !isSeller) continue
+    const from = isBuyer ? 'me' : 'other'
+    const at = typeof c.createdAt === 'number' && !Number.isNaN(c.createdAt) ? c.createdAt : legacySeq++
+    if (!hasSeeded(c.id, from)) {
       next.push({
         id: uid('m'),
-        from: 'me',
+        from,
         type: 'text',
-        text: q.question,
-        at: qAt,
+        text: c.text,
+        at,
         read: true,
-        offerQaId: q.id,
-      })
-    }
-    if (q.answer && !hasSeededAnswer(next, q)) {
-      next.push({
-        id: uid('m'),
-        from: 'other',
-        type: 'text',
-        text: q.answer,
-        at: aAt,
-        read: true,
-        offerQaId: q.id,
+        offerQaId: c.id,
       })
     }
   }
@@ -148,8 +121,12 @@ export function buildPurchaseThreadSystemOnly(offer: Offer): Message[] {
 }
 
 /** Hilos locales sin persistencia: sistema + consultas públicas del comprador desde `offer.qa`. */
-export function buildPurchaseThreadMessages(offer: Offer, buyerId: string | undefined): Message[] {
-  return syncOwnQaIntoMessages(buildPurchaseThreadSystemOnly(offer), offer, buyerId)
+export function buildPurchaseThreadMessages(
+  offer: Offer,
+  buyerId: string | undefined,
+  sellerUserId?: string | null,
+): Message[] {
+  return syncOwnQaIntoMessages(buildPurchaseThreadSystemOnly(offer), offer, buyerId, sellerUserId)
 }
 
 export function routeSheetIdsLinkedToContracts(th: Thread): Set<string> {

@@ -69,6 +69,7 @@ function handleIncomingPersistedChatMessage(dto: ChatMessageDto): void {
 
 let conn: signalR.HubConnection | null = null;
 const joinedThreads = new Set<string>();
+const joinedOffers = new Set<string>();
 
 function hubUrl(): string {
   const base =
@@ -134,6 +135,16 @@ export function startChatRealtime(): void {
     useMarketStore.getState().onThreadCreatedFromServer(dto);
   });
 
+  conn.on("notificationCreated", () => {
+    void syncChatNotificationsFromServer();
+  });
+
+  conn.on("offerCommentsUpdated", (payload: { offerId?: string }) => {
+    const oid = payload?.offerId;
+    if (!oid) return;
+    void useMarketStore.getState().refreshOfferQaFromServer(oid);
+  });
+
   conn.on(
     "participantLeft",
     (payload: { threadId?: string; userId?: string; displayName?: string }) => {
@@ -158,6 +169,13 @@ export function startChatRealtime(): void {
           /* ignore */
         }
       }
+      for (const oid of joinedOffers) {
+        try {
+          await conn.invoke("JoinOffer", oid);
+        } catch {
+          /* ignore */
+        }
+      }
     })();
   });
 
@@ -166,9 +184,44 @@ export function startChatRealtime(): void {
 
 export function stopChatRealtime(): void {
   joinedThreads.clear();
+  joinedOffers.clear();
   if (conn) {
     void conn.stop();
     conn = null;
+  }
+}
+
+/** Suscripción al grupo <c>offer:{id}</c> (comentarios en tiempo real en la ficha). */
+export async function joinOfferChannel(offerId: string): Promise<void> {
+  if (!offerId || offerId.length < 2) return;
+  startChatRealtime();
+  joinedOffers.add(offerId);
+  let attempts = 0;
+  while (
+    conn &&
+    conn.state !== signalR.HubConnectionState.Connected &&
+    attempts < 80
+  ) {
+    await new Promise((r) => setTimeout(r, 50));
+    attempts++;
+  }
+  if (conn?.state === signalR.HubConnectionState.Connected) {
+    try {
+      await conn.invoke("JoinOffer", offerId);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+}
+
+export async function leaveOfferChannel(offerId: string): Promise<void> {
+  joinedOffers.delete(offerId);
+  if (conn?.state === signalR.HubConnectionState.Connected) {
+    try {
+      await conn.invoke("LeaveOffer", offerId);
+    } catch {
+      /* ignore */
+    }
   }
 }
 
