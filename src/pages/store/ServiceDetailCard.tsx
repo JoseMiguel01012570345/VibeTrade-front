@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { MessageCircle, Wrench } from "lucide-react";
+import { Heart, MessageCircle, Wrench } from "lucide-react";
 import {
   catalogMonedasList,
   type StoreService,
@@ -14,6 +14,8 @@ import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 export function ServiceDetailCard({ s }: { s: StoreService }) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const monedas = catalogMonedasList(s);
+  const commentTotal = s.publicCommentCount ?? 0;
+  const offerLikes = s.offerLikeCount ?? 0;
   return (
     <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3.5">
       <div className="flex items-start gap-2">
@@ -32,10 +34,21 @@ export function ServiceDetailCard({ s }: { s: StoreService }) {
             </span>
             <Link
               to={`/offer/${encodeURIComponent(s.id)}#offer-comments`}
-              className="vt-btn vt-btn-ghost vt-btn-sm inline-flex shrink-0 items-center gap-1.5"
+              className="inline-flex shrink-0 items-center gap-3 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-2.5 py-1 text-[11px] font-extrabold text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))]"
+              title="Ver ficha y comentarios"
             >
-              <MessageCircle size={16} aria-hidden />
-              Comentarios
+              <span className="inline-flex items-center gap-1 text-[var(--muted)]">
+                <MessageCircle
+                  size={14}
+                  className="shrink-0 text-[var(--primary)]"
+                  aria-hidden
+                />
+                <span className="tabular-nums text-[var(--text)]">{commentTotal}</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-[var(--muted)]">
+                <Heart size={14} className="shrink-0" aria-hidden />
+                <span className="tabular-nums text-[var(--text)]">{offerLikes}</span>
+              </span>
             </Link>
           </div>
           {monedas.length > 0 ? (

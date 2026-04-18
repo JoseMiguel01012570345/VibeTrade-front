@@ -1,18 +1,8 @@
-import { useAppStore } from "../../app/store/useAppStore";
 import { apiFetch } from "../http/apiClient";
 import {
   apiErrorTextToUserMessage,
   defaultUnexpectedErrorMessage,
 } from "../http/apiErrorMessage";
-import { getOrCreateGuestId } from "../auth/guestId";
-
-type ToggleBody = { guestId?: string };
-
-function engagementBody(): ToggleBody {
-  const { isSessionActive } = useAppStore.getState();
-  if (isSessionActive) return {};
-  return { guestId: getOrCreateGuestId() };
-}
 
 export type ToggleLikeResult = { liked: boolean; likeCount: number };
 
@@ -22,7 +12,7 @@ export async function toggleOfferLike(offerId: string): Promise<ToggleLikeResult
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(engagementBody()),
+      body: JSON.stringify({}),
     },
   );
   if (!res.ok) {
@@ -43,7 +33,7 @@ export async function toggleOfferQaCommentLike(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(engagementBody()),
+      body: JSON.stringify({}),
     },
   );
   if (!res.ok) {

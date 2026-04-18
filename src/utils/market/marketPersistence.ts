@@ -1,4 +1,3 @@
-import { getOrCreateGuestId } from "../auth/guestId";
 import { useAppStore } from "../../app/store/useAppStore";
 import type { StoreProduct, StoreService } from "../../pages/chat/domain/storeCatalogTypes";
 import { apiFetch } from "../http/apiClient";
@@ -57,13 +56,8 @@ export async function postOfferInquiry(
 export async function fetchOfferQaFromServer(
   offerId: string,
 ): Promise<QAItem[] | null> {
-  const qs = new URLSearchParams();
-  if (!useAppStore.getState().isSessionActive) {
-    qs.set("guestId", getOrCreateGuestId());
-  }
-  const q = qs.toString();
   const res = await apiFetch(
-    `/api/v1/market/offers/${encodeURIComponent(offerId)}/qa${q ? `?${q}` : ""}`,
+    `/api/v1/market/offers/${encodeURIComponent(offerId)}/qa`,
     { method: "GET" },
   );
   if (res.status === 404) return null;

@@ -656,6 +656,7 @@ export function OfferPage() {
           offer={resolvedOffer}
           store={store}
           me={me}
+          isSessionActive={isSessionActive}
           isOwnOffer={isOwnOffer}
           submitOfferQuestion={submitOfferQuestion}
         />

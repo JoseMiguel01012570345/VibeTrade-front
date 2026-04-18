@@ -49,6 +49,10 @@ export type StoreProduct = {
   photoUrls: string[];
   /** Si es true, la ficha aparece en la vitrina pública de la tienda y puede anclarse en acuerdos como catálogo publicado. */
   published: boolean;
+  /** Enriquecido en detalle de tienda (API). */
+  publicCommentCount?: number;
+  offerLikeCount?: number;
+  viewerLikedOffer?: boolean;
   customFields: StoreCustomField[];
 };
 
@@ -73,6 +77,10 @@ export type StoreService = {
   propIntelectual: string;
   /** Imágenes de la ficha (mismo contrato que productos). */
   photoUrls?: string[];
+  /** Enriquecido en detalle de tienda (API). */
+  publicCommentCount?: number;
+  offerLikeCount?: number;
+  viewerLikedOffer?: boolean;
   customFields: StoreCustomField[];
 };
 

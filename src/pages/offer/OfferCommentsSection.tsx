@@ -36,6 +36,7 @@ type Props = {
   offer: Offer
   store: StoreBadge
   me: User
+  isSessionActive: boolean
   isOwnOffer: boolean
   submitOfferQuestion: (
     offerId: string,
@@ -49,6 +50,7 @@ export function OfferCommentsSection({
   offer,
   store,
   me,
+  isSessionActive,
   isOwnOffer,
   submitOfferQuestion,
 }: Props) {
@@ -150,7 +152,7 @@ export function OfferCommentsSection({
                 <span className="text-[11px] text-[var(--muted)]">{timeAgo(c.createdAt)}</span>
               </div>
               <div className="my-1.5 flex items-start gap-2">
-                {!c.id.endsWith("_legacy_ans") ? (
+                {!c.id.endsWith("_legacy_ans") && isSessionActive && me.id !== 'guest' ? (
                   <button
                     type="button"
                     className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-2 py-0.5 text-[11px] font-extrabold text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))]"
@@ -167,23 +169,33 @@ export function OfferCommentsSection({
                     />
                     <span className="tabular-nums">{c.likeCount ?? 0}</span>
                   </button>
+                ) : !c.id.endsWith("_legacy_ans") ? (
+                  <span
+                    className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-[11px] font-extrabold text-[var(--muted)]"
+                    title="Iniciá sesión para dar me gusta"
+                  >
+                    <Heart size={14} aria-hidden />
+                    <span className="tabular-nums">{c.likeCount ?? 0}</span>
+                  </span>
                 ) : null}
                 <p className="my-0 min-w-0 flex-1 break-words text-sm leading-snug text-[var(--text)] [overflow-wrap:break-word]">
                   {c.text}
                 </p>
               </div>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className="border-0 bg-transparent p-0 text-xs font-extrabold text-[var(--primary)] hover:underline"
-                  onClick={() => {
-                    setReplyingTo(c)
-                    inputRef.current?.focus()
-                  }}
-                >
-                  Responder
-                </button>
-              </div>
+              {isSessionActive && me.id !== 'guest' ? (
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className="border-0 bg-transparent p-0 text-xs font-extrabold text-[var(--primary)] hover:underline"
+                    onClick={() => {
+                      setReplyingTo(c)
+                      inputRef.current?.focus()
+                    }}
+                  >
+                    Responder
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
           {hasReplies ? (
@@ -200,7 +212,8 @@ export function OfferCommentsSection({
     })
   }
 
-  const composerLocked = isOwnOffer && !replyingTo
+  const composerLocked =
+    !isSessionActive || me.id === 'guest' || (isOwnOffer && !replyingTo)
 
   return (
     <div id="offer-comments" className="vt-card vt-card-pad">
@@ -249,7 +262,11 @@ export function OfferCommentsSection({
             </button>
           </div>
         ) : null}
-        {composerLocked ? (
+        {!isSessionActive || me.id === 'guest' ? (
+          <p className="mb-2 text-xs text-[var(--muted)]">
+            <strong>Iniciá sesión</strong> para comentar y dar me gusta en esta ficha.
+          </p>
+        ) : composerLocked ? (
           <p className="mb-2 text-xs text-[var(--muted)]">
             Como vendedor, usá <strong>Responder</strong> en un comentario para publicar aquí.
           </p>
@@ -260,11 +277,13 @@ export function OfferCommentsSection({
             className="vt-input min-w-0 flex-1"
             disabled={sending || composerLocked}
             placeholder={
-              composerLocked
-                ? 'Elegí «Responder» en un comentario…'
-                : replyingTo
-                  ? 'Escribe una respuesta…'
-                  : 'Escribe un comentario…'
+              !isSessionActive || me.id === 'guest'
+                ? 'Iniciá sesión para comentar…'
+                : composerLocked
+                  ? 'Elegí «Responder» en un comentario…'
+                  : replyingTo
+                    ? 'Escribe una respuesta…'
+                    : 'Escribe un comentario…'
             }
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

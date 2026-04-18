@@ -16,6 +16,7 @@ import type { StoreLocationPoint } from "../../app/store/marketStoreTypes";
 import type { RouteOfferPublicState } from "../../app/store/marketStoreTypes";
 import type { StoreCatalog } from "../../pages/chat/domain/storeCatalogTypes";
 import type { Offer, StoreBadge } from "../../app/store/useMarketStore";
+import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { RouteOfferPreview } from "../offer/RouteOfferPreview";
 import { OfferSaveButton } from "../offer/OfferSaveButton";
@@ -107,6 +108,8 @@ function OfferCardsChunk({
   stores: Record<string, StoreBadge>;
   routeOfferPublic: Partial<Record<string, RouteOfferPublicState>>;
 }>) {
+  const isSessionActive = useAppStore((s) => s.isSessionActive);
+  const openAuthModal = useAppStore((s) => s.openAuthModal);
   return (
     <div className="grid grid-cols-12 gap-3 md:gap-3.5">
       {items.map((o) => {
@@ -196,6 +199,10 @@ function OfferCardsChunk({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    if (!isSessionActive) {
+                      openAuthModal();
+                      return;
+                    }
                     void (async () => {
                       try {
                         const r = await toggleOfferLike(o.id);
