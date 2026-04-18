@@ -36,6 +36,8 @@ import {
 } from './marketStoreHelpers'
 import { routeSheetHasConfirmedCarriers } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
+import { resolveBuyerUserId } from '../../utils/chat/chatParticipantLabels'
+import { useAppStore } from './useAppStore'
 
 export function createOffersThreadsSlice(set: MarketSliceSet, get: MarketSliceGet): Pick<MarketState,
   | 'ask'
@@ -195,7 +197,15 @@ ensureThreadForOffer: async (offerId, opts) => {
     const mergedMsgs = mergePersistedChatMessages(mapped, baseThread.messages)
     const sellerUserId =
       participantDto?.sellerUserId ?? get().stores[offer.storeId]?.ownerUserId
-    const qaSynced = syncOwnQaIntoMessages(mergedMsgs, offer, buyerId, sellerUserId)
+    const threadBuyerId =
+      participantDto?.buyerUserId ?? baseThread.buyerUserId ?? buyerId
+    const qaSynced = syncOwnQaIntoMessages(
+      mergedMsgs,
+      offer,
+      threadBuyerId,
+      sellerUserId,
+      meId,
+    )
     set((x) => {
       const nextThreads = { ...x.threads }
       if (existing && existing.id !== threadId) delete nextThreads[existing.id]
@@ -287,11 +297,15 @@ ensureThreadForOffer: async (offerId, opts) => {
   }
 
   if (existing) {
+    const viewerId = useAppStore.getState().me.id
+    const threadBuyerId =
+      existing.buyerUserId ?? resolveBuyerUserId(existing, viewerId)
     const merged = syncOwnQaIntoMessages(
       existing.messages,
       offer,
-      buyerId,
+      threadBuyerId,
       existing.sellerUserId ?? store?.ownerUserId,
+      viewerId,
     )
     if (merged.length !== existing.messages.length) {
       set((x) => ({
@@ -319,7 +333,12 @@ ensureThreadForOffer: async (offerId, opts) => {
     storeId: offer.storeId,
     store,
     purchaseMode: true,
-    messages: buildPurchaseThreadMessages(offer, buyerId, store?.ownerUserId),
+    messages: buildPurchaseThreadMessages(
+      offer,
+      buyerId,
+      store?.ownerUserId,
+      buyerId,
+    ),
     contracts: [],
     routeSheets: [],
   }
@@ -327,14 +346,22 @@ ensureThreadForOffer: async (offerId, opts) => {
   return id
 },
 
-syncThreadBuyerQa: (threadId, buyerId) => {
+syncThreadBuyerQa: (threadId, viewerId) => {
   set((s) => {
     const th = s.threads[threadId]
     if (!th || threadIsActionLocked(th)) return s
     const offer = s.offers[th.offerId]
     if (!offer) return s
+    const threadBuyerId = th.buyerUserId ?? resolveBuyerUserId(th, viewerId)
+    if (!threadBuyerId) return s
     const sellerUserId = th.sellerUserId ?? s.stores[offer.storeId]?.ownerUserId
-    const merged = syncOwnQaIntoMessages(th.messages, offer, buyerId, sellerUserId)
+    const merged = syncOwnQaIntoMessages(
+      th.messages,
+      offer,
+      threadBuyerId,
+      sellerUserId,
+      viewerId,
+    )
     if (merged.length === th.messages.length) return s
     return {
       ...s,
@@ -365,10 +392,10 @@ applyOfferQaFromServer: (offerId, qa) => {
   })
   queueMicrotask(() => {
     const st = get()
+    const viewerId = useAppStore.getState().me.id
     for (const th of Object.values(st.threads)) {
       if (th.offerId !== offerId) continue
-      const buyerId = th.buyerUserId
-      if (buyerId) get().syncThreadBuyerQa(th.id, buyerId)
+      get().syncThreadBuyerQa(th.id, viewerId)
     }
   })
 },

@@ -363,7 +363,8 @@ export type MarketState = {
     offerId: string,
     opts?: { buyerId?: string },
   ) => Promise<string>;
-  syncThreadBuyerQa: (threadId: string, buyerId: string) => void;
+  /** `viewerId` = usuario conectado; el comprador del hilo se toma de `thread.buyerUserId`. */
+  syncThreadBuyerQa: (threadId: string, viewerId: string) => void;
   /** Reemplaza `offer.qa` desde el API (otros comentarios / otra pestaña). */
   applyOfferQaFromServer: (offerId: string, qa: QAItem[]) => void;
   /** GET `/market/offers/:id/qa` y aplica en store + hilos de compra. */

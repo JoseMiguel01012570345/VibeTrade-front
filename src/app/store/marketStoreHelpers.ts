@@ -62,36 +62,38 @@ export function collectReplyQuotes(
   return list.length ? list : undefined
 }
 
-/** Añade al hilo los comentarios públicos de la ficha (comprador = me, vendedor = other), alineado con normalizeOfferComments. */
+/**
+ * Añade al hilo los comentarios públicos de la ficha (comprador y vendedor del hilo).
+ * `from` es relativo al usuario que ve el chat (`viewerUserId`), no al rol “comprador = me” fijo.
+ */
 export function syncOwnQaIntoMessages(
   prev: Message[],
   offer: Offer,
-  buyerId: string | undefined,
+  threadBuyerUserId: string | undefined,
   sellerUserId?: string | null,
+  viewerUserId?: string,
 ): Message[] {
-  if (!buyerId) return prev
+  if (!threadBuyerUserId?.trim()) return prev
 
   const seller = sellerUserId ?? undefined
+  const viewer = viewerUserId?.trim() || threadBuyerUserId
   const comments = normalizeOfferComments(offer)
 
   let next = [...prev]
   const atNums = next.map((m) => m.at).filter((x) => typeof x === 'number' && !Number.isNaN(x))
   let legacySeq = atNums.length ? Math.max(...atNums) + 1 : Date.now()
 
-  function hasSeeded(commentId: string, from: 'me' | 'other'): boolean {
-    return next.some((m) => {
-      if (m.type !== 'text' || m.offerQaId !== commentId) return false
-      return from === 'me' ? m.from === 'me' : m.from === 'other'
-    })
+  function hasSeeded(commentId: string): boolean {
+    return next.some((m) => m.type === 'text' && m.offerQaId === commentId)
   }
 
   for (const c of comments) {
-    const isBuyer = c.author.id === buyerId
+    const isBuyer = c.author.id === threadBuyerUserId
     const isSeller = !!seller && c.author.id === seller
     if (!isBuyer && !isSeller) continue
-    const from = isBuyer ? 'me' : 'other'
+    const from = c.author.id === viewer ? 'me' : 'other'
     const at = typeof c.createdAt === 'number' && !Number.isNaN(c.createdAt) ? c.createdAt : legacySeq++
-    if (!hasSeeded(c.id, from)) {
+    if (!hasSeeded(c.id)) {
       next.push({
         id: uid('m'),
         from,
@@ -120,13 +122,20 @@ export function buildPurchaseThreadSystemOnly(offer: Offer): Message[] {
   ]
 }
 
-/** Hilos locales sin persistencia: sistema + consultas públicas del comprador desde `offer.qa`. */
+/** Hilos locales sin persistencia: sistema + consultas públicas desde `offer.qa`. */
 export function buildPurchaseThreadMessages(
   offer: Offer,
-  buyerId: string | undefined,
+  threadBuyerUserId: string | undefined,
   sellerUserId?: string | null,
+  viewerUserId?: string,
 ): Message[] {
-  return syncOwnQaIntoMessages(buildPurchaseThreadSystemOnly(offer), offer, buyerId, sellerUserId)
+  return syncOwnQaIntoMessages(
+    buildPurchaseThreadSystemOnly(offer),
+    offer,
+    threadBuyerUserId,
+    sellerUserId,
+    viewerUserId,
+  )
 }
 
 export function routeSheetIdsLinkedToContracts(th: Thread): Set<string> {

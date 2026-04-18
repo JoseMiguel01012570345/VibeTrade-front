@@ -294,7 +294,7 @@ export function ChatPage() {
   useEffect(() => {
     if (!threadId) return;
     syncThreadBuyerQa(threadId, me.id);
-  }, [me.id, syncThreadBuyerQa, threadId]);
+  }, [me.id, syncThreadBuyerQa, threadId, thread?.buyerUserId]);
 
   useEffect(() => {
     if (!threadId?.startsWith("cth_")) return;
@@ -325,10 +325,21 @@ export function ChatPage() {
                 ? buildPurchaseThreadSystemOnly(offer)
                 : []
               : dto.purchaseMode
-                ? buildPurchaseThreadMessages(offer, meId, sellerUserId)
+                ? buildPurchaseThreadMessages(
+                    offer,
+                    dto.buyerUserId,
+                    sellerUserId,
+                    meId,
+                  )
                 : [];
         const merged = mergePersistedChatMessages(mapped, localBasis);
-        const qaSynced = syncOwnQaIntoMessages(merged, offer, meId, sellerUserId);
+        const qaSynced = syncOwnQaIntoMessages(
+          merged,
+          offer,
+          dto.buyerUserId,
+          sellerUserId,
+          meId,
+        );
         if (cancelled) return;
         useMarketStore.setState((s) => ({
           threads: {
