@@ -31,9 +31,15 @@ function tabIsActive(pathname: string, t: (typeof tabs)[number]) {
   return pathname === t.to || pathname.startsWith(`${t.to}/`)
 }
 
+/** Lista `/chat`; hilo `/chat/:threadId` — en el hilo se oculta la barra inferior para pantalla completa. */
+function isChatThreadPath(pathname: string) {
+  return pathname.startsWith('/chat/') && pathname.length > '/chat/'.length
+}
+
 export function AppShell() {
   const { pathname } = useLocation()
   const isOnboarding = pathname.startsWith('/onboarding')
+  const hideBottomNav = isChatThreadPath(pathname)
   const isSessionActive = useAppStore((s) => s.isSessionActive)
   const me = useAppStore((s) => s.me)
   const authOpen = useAppStore((s) => s.authModalOpen)
@@ -76,11 +82,16 @@ export function AppShell() {
         </div>
       </div>
 
-      <main className="vt-main min-h-0 flex-1 py-4 pb-[88px]">
+      <main
+        className={cn(
+          'vt-main min-h-0 flex-1 py-4',
+          hideBottomNav ? 'pb-4' : 'pb-[88px]',
+        )}
+      >
         <Outlet />
       </main>
 
-      {!isOnboarding && (
+      {!isOnboarding && !hideBottomNav && (
         <nav className="fixed bottom-0 left-0 right-0 z-[60] border-t border-[var(--border)] bg-[var(--surface)]">
           <div className="container grid grid-cols-4 gap-1.5 py-2.5">
             {tabs.map((t) => {
