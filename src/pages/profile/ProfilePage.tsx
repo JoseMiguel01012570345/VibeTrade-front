@@ -29,6 +29,7 @@ import {
 import { ProfileStoresSection } from "./ProfileStoresSection";
 import { ContactsModal } from "./ContactsModal";
 import { reelTitlesById } from "../../utils/reels/reelsBootstrapState";
+import { fetchPublicProfile } from "../../utils/auth/fetchPublicProfile";
 import { logoutWebApp } from "../../utils/auth/logoutWebApp";
 import {
   patchProfile,
@@ -37,6 +38,7 @@ import {
 import { userFromSessionJson } from "../../utils/auth/sessionUser";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { mediaApiUrl, uploadMedia } from "../../utils/media/mediaClient";
+import { StoreTrustMini } from "../../components/StoreTrustMini";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { UploadBlockingOverlay } from "../../components/UploadBlockingOverlay";
 import { ImageLightbox } from "../chat/components/media/ImageLightbox";
@@ -185,6 +187,7 @@ export function ProfilePage() {
   const me = useAppStore((s) => s.me);
   const stores = useMarketStore((s) => s.stores);
   const profileDisplayNames = useAppStore((s) => s.profileDisplayNames);
+  const profileAvatarUrls = useAppStore((s) => s.profileAvatarUrls);
   const profileSocialLinks = useAppStore((s) => s.profileSocialLinks);
   const applySessionUser = useAppStore((s) => s.applySessionUser);
   const saved = useAppStore((s) => s.savedReels);
@@ -205,10 +208,66 @@ export function ProfilePage() {
 
   const reelTitles = useMemo(() => reelTitlesById(), []);
 
+  const [visitorPublic, setVisitorPublic] = useState<{
+    id: string;
+    name: string;
+    avatarUrl?: string;
+    trustScore: number;
+  } | null>(null);
+  const [visitorPublicStatus, setVisitorPublicStatus] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >("idle");
+
+  useEffect(() => {
+    if (!userId || isMe) {
+      setVisitorPublic(null);
+      setVisitorPublicStatus("idle");
+      return;
+    }
+    const uid = resolvedProfileUserId;
+    let cancelled = false;
+    setVisitorPublicStatus("loading");
+    void fetchPublicProfile(uid)
+      .then((p) => {
+        if (cancelled) return;
+        if (p) {
+          setVisitorPublic(p);
+          useAppStore.setState((s) => ({
+            profileDisplayNames: {
+              ...s.profileDisplayNames,
+              [p.id]: p.name,
+            },
+            profileTrustScores: {
+              ...s.profileTrustScores,
+              [p.id]: p.trustScore,
+            },
+            ...(p.avatarUrl?.trim()
+              ? {
+                  profileAvatarUrls: {
+                    ...s.profileAvatarUrls,
+                    [p.id]: p.avatarUrl.trim(),
+                  },
+                }
+              : {}),
+          }));
+        } else {
+          setVisitorPublic(null);
+        }
+        setVisitorPublicStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setVisitorPublicStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, isMe, resolvedProfileUserId]);
+
   const profileDisplayName = isMe
     ? safeName
-    : (profileDisplayNames[resolvedProfileUserId] ??
-      `Usuario ${resolvedProfileUserId}`);
+    : (visitorPublic?.name?.trim() ||
+        profileDisplayNames[resolvedProfileUserId]?.trim() ||
+        `Usuario ${resolvedProfileUserId}`);
 
   const [socialModal, setSocialModal] = useState<SocialNetworkId | null>(null);
   const [socialDraft, setSocialDraft] = useState("");
@@ -351,8 +410,20 @@ export function ProfilePage() {
     });
   }
 
+  const visitorAvatarDisplay =
+    visitorPublic?.avatarUrl || profileAvatarUrls[resolvedProfileUserId];
+
   const letter =
-    (isMe ? safeName : (userId ?? "U")).slice(0, 1).toUpperCase() || "?";
+    (
+      isMe
+        ? safeName
+        : visitorPublic?.name ||
+          profileDisplayNames[resolvedProfileUserId] ||
+          userId ||
+          "U"
+    )
+      .slice(0, 1)
+      .toUpperCase() || "?";
 
   const nameDirty = isMe && nameDraft.trim() !== safeName.trim();
   const emailDirty =
@@ -524,6 +595,38 @@ export function ProfilePage() {
             <div className="vt-h2">Configuración del usuario</div>
             <div className="vt-divider my-3" />
 
+            {!isMe ? (
+              <div className="mb-4 flex flex-col items-center gap-3 border-b border-[var(--border)] pb-4 text-center sm:flex-row sm:items-start sm:text-left">
+                <UserAvatarBadge
+                  avatarUrl={visitorAvatarDisplay}
+                  fallbackLetter={letter}
+                  sizeClass="h-[88px] w-[88px] shrink-0 text-2xl"
+                  title="Foto de perfil"
+                />
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  {visitorPublicStatus === "loading" ||
+                  visitorPublicStatus === "idle" ? (
+                    <div className="text-sm text-[var(--muted)]">
+                      Cargando perfil…
+                    </div>
+                  ) : visitorPublic != null ? (
+                    <StoreTrustMini
+                      score={visitorPublic.trustScore}
+                      ariaLabel="Confianza del usuario"
+                    />
+                  ) : visitorPublicStatus === "error" ? (
+                    <div className="text-sm text-[var(--muted)]">
+                      No se pudieron cargar los datos públicos del perfil.
+                    </div>
+                  ) : (
+                    <div className="text-sm text-[var(--muted)]">
+                      No hay perfil público para este usuario.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
             {isMe ? (
               <div className="mb-4 flex flex-col items-center gap-3 border-b border-[var(--border)] pb-4 text-center sm:flex-row sm:items-start sm:text-left">
                 <UserAvatarBadge
@@ -641,8 +744,9 @@ export function ProfilePage() {
                 </span>
                 <input
                   className="vt-input"
-                  defaultValue={"+" + (me.phone ?? "")}
+                  value={isMe ? "+" + (me.phone ?? "") : "—"}
                   disabled
+                  readOnly
                 />
               </label>
 

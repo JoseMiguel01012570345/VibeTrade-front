@@ -39,8 +39,23 @@ export function buildHomeFeedSegments(
   return out;
 }
 
-/** Máximo de ofertas en memoria en el feed de inicio (al pasar de 200, se recorta el exceso). */
-export const REC_FEED_CAP = 200;
+/** Máximo de ofertas en el feed de inicio (bootstrap y lotes posteriores recortan a esto). */
+export const REC_FEED_CAP = 100;
+
+/**
+ * El cursor del servidor no puede adelantarse más allá del fin de la ventana visible
+ * (`feedStartIndex` + cantidad mostrada; como mucho {@link REC_FEED_CAP}).
+ */
+export function clampNextCursorToVisibleWindow(
+  nextCursor: number,
+  feedStartIndex: number,
+  visibleOfferCount: number,
+): number {
+  const next = Number.isFinite(nextCursor) ? nextCursor : 0;
+  const start = Number.isFinite(feedStartIndex) ? Math.max(0, feedStartIndex) : 0;
+  const endExclusive = start + Math.max(0, visibleOfferCount);
+  return Math.min(next, endExclusive);
+}
 
 function dedupeStoreStripAnchors(
   anchors: RecommendationStoreStripAnchor[],
@@ -81,11 +96,11 @@ function sliceOffersForIds(
 }
 
 function mergeStoreBadges(
-  stores: MarketState['stores'],
+  stores: MarketState["stores"],
   batch: RecommendationBatch,
-): MarketState['stores'] {
+): MarketState["stores"] {
   const b = batch.storeBadges;
-  if (!b || typeof b !== 'object') return stores;
+  if (!b || typeof b !== "object") return stores;
   return { ...stores, ...b };
 }
 
@@ -95,9 +110,38 @@ export function applyBottomRecommendationBatch(
   batch: RecommendationBatch,
 ): Partial<MarketState> | null {
   if (batch.offerIds.length === 0) return null;
-  const mergedIds = [...state.offerIds, ...batch.offerIds];
+
+  const seen = new Set(state.offerIds.map((id) => String(id).trim()));
+  const newOfferIds = batch.offerIds
+    .map((id) => String(id).trim())
+    .filter((id) => id.length > 0 && !seen.has(id));
   const mergedOffers = { ...state.offers, ...(batch.offers ?? {}) };
   const mergedStores = mergeStoreBadges(state.stores, batch);
+
+  const metaRest: Pick<
+    MarketState,
+    | "recommendationFeedExhausted"
+    | "recommendationTotalAvailable"
+    | "recommendationBatchSize"
+    | "recommendationThreshold"
+  > = {
+    recommendationFeedExhausted: false,
+    recommendationTotalAvailable: batch.totalAvailable,
+    recommendationBatchSize: batch.batchSize,
+    recommendationThreshold: batch.threshold,
+  };
+
+  /** Tras un `wrapped` en servidor, el lote puede repetir ids ya visibles; igual hay que avanzar el cursor. */
+  if (newOfferIds.length === 0) {
+    return {
+      recommendationCursor: batch.nextCursor,
+      ...metaRest,
+      offers: mergedOffers,
+      stores: mergedStores,
+    };
+  }
+
+  const mergedIds = [...state.offerIds, ...newOfferIds];
   let feedStart = state.recommendationFeedStartIndex ?? 0;
   let ids = mergedIds;
   const oldOfferLen = state.offerIds.length;
@@ -124,15 +168,18 @@ export function applyBottomRecommendationBatch(
         (a) => a.beforeOfferIndex >= 0 && a.beforeOfferIndex <= ids.length,
       );
   }
+  const recommendationCursor = clampNextCursorToVisibleWindow(
+    batch.nextCursor,
+    feedStart,
+    ids.length,
+  );
   return {
     offerIds: ids,
     offers: mergedOffers,
     stores: mergedStores,
     recommendationFeedStartIndex: feedStart,
-    recommendationCursor: batch.nextCursor,
-    recommendationTotalAvailable: batch.totalAvailable,
-    recommendationBatchSize: batch.batchSize,
-    recommendationThreshold: batch.threshold,
+    recommendationCursor,
+    ...metaRest,
     recommendationStoreStripAnchors: nextAnchors,
   };
 }
@@ -191,7 +238,10 @@ export function trimBatchForPrepend(
   requestCursor: number,
 ): RecommendationBatch {
   const need = Math.max(0, feedStart - requestCursor);
-  const prefixIds = batch.offerIds.slice(0, Math.min(batch.offerIds.length, need));
+  const prefixIds = batch.offerIds.slice(
+    0,
+    Math.min(batch.offerIds.length, need),
+  );
   const offers = sliceOffersForIds(prefixIds, batch.offers);
   const keepStores = prefixIds.length === batch.offerIds.length;
   return {

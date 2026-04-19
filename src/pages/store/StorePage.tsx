@@ -235,6 +235,28 @@ export function StorePage() {
           setMarketHydrating(false);
         }
         setDetailOwnerProfile(data.owner ?? null);
+        if (data.owner) {
+          const o = data.owner;
+          const nm = o.name?.trim() ?? "";
+          useAppStore.setState((s) => ({
+            profileDisplayNames: {
+              ...s.profileDisplayNames,
+              [o.id]: nm || s.profileDisplayNames[o.id] || "",
+            },
+            profileTrustScores: {
+              ...s.profileTrustScores,
+              [o.id]: o.trustScore,
+            },
+            ...(o.avatarUrl?.trim()
+              ? {
+                  profileAvatarUrls: {
+                    ...s.profileAvatarUrls,
+                    [o.id]: o.avatarUrl.trim(),
+                  },
+                }
+              : {}),
+          }));
+        }
         setDetailStatus("ready");
       } catch {
         if (!cancelled) {

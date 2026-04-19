@@ -328,6 +328,8 @@ export type MarketState = {
    */
   recommendationFeedStartIndex: number;
   recommendationCursor: number;
+  /** `true` cuando el API devolvió un lote vacío: no hay más recomendaciones (no usar solo `totalAvailable` vs cap en memoria). */
+  recommendationFeedExhausted: boolean;
   recommendationTotalAvailable: number;
   recommendationBatchSize: number;
   recommendationThreshold: number;

@@ -3,6 +3,8 @@ import * as signalR from "@microsoft/signalr";
 import toast from "react-hot-toast";
 import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
+import { notifyDesktopIfUnfocused } from "../notifications/desktopNotifications";
+import { notificationDeepLink } from "../notifications/notificationRoutes";
 import { syncChatNotificationsFromServer } from "../notifications/notificationsSync";
 import { getSessionToken } from "../http/sessionToken";
 import {
@@ -31,6 +33,14 @@ function handleIncomingPersistedChatMessage(dto: ChatMessageDto): void {
 
   const author = incomingChatAuthorLabel(dto);
   const preview = previewLineFromChatMessageDto(dto);
+
+  notifyDesktopIfUnfocused({
+    title: author,
+    body: preview,
+    tag: `chat-msg-${dto.id}`,
+    navigateTo: `/chat/${encodeURIComponent(dto.threadId)}`,
+  });
+
   toast.custom(
     (t) =>
       h(
@@ -136,7 +146,18 @@ export function startChatRealtime(): void {
   });
 
   conn.on("notificationCreated", () => {
-    void syncChatNotificationsFromServer();
+    void (async () => {
+      await syncChatNotificationsFromServer();
+      const items = useAppStore.getState().notifications;
+      const head = items[0];
+      if (!head || head.read) return;
+      notifyDesktopIfUnfocused({
+        title: head.title,
+        body: head.body,
+        tag: `notif-${head.id}`,
+        navigateTo: notificationDeepLink(head),
+      });
+    })();
   });
 
   conn.on("offerCommentsUpdated", (payload: { offerId?: string }) => {

@@ -12,6 +12,7 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => ({
   offerIds: [],
   recommendationFeedStartIndex: 0,
   recommendationCursor: 0,
+  recommendationFeedExhausted: false,
   recommendationTotalAvailable: 0,
   recommendationBatchSize: 20,
   recommendationThreshold: 0.35,

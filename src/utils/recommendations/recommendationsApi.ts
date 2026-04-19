@@ -3,9 +3,47 @@ import {
   apiErrorTextToUserMessage,
   defaultUnexpectedErrorMessage,
 } from "../http/apiErrorMessage";
+import type { Offer, StoreBadge } from "../../app/store/marketStoreTypes";
 import type { RecommendationBatch } from "../bootstrap/bootstrapTypes";
 import { useAppStore } from "../../app/store/useAppStore";
 import { getOrCreateGuestId } from "../auth/guestId";
+
+function isPlainRecord(x: unknown): x is Record<string, unknown> {
+  return typeof x === "object" && x !== null && !Array.isArray(x);
+}
+
+/** Asegura camelCase y arrays; el cliente no debe depender de PascalCase del JSON. */
+function normalizeRecommendationBatch(raw: unknown): RecommendationBatch {
+  const r = isPlainRecord(raw) ? raw : {};
+  const idsRaw = r.offerIds ?? r.OfferIds;
+  const offerIds = Array.isArray(idsRaw)
+    ? idsRaw.map((x) => String(x).trim()).filter(Boolean)
+    : [];
+  const offersRaw = r.offers ?? r.Offers;
+  const offers = isPlainRecord(offersRaw)
+    ? (offersRaw as Record<string, Offer>)
+    : undefined;
+  const storeBadgesRaw = r.storeBadges ?? r.StoreBadges;
+  const storeBadges = isPlainRecord(storeBadgesRaw)
+    ? (storeBadgesRaw as Record<string, StoreBadge>)
+    : undefined;
+  const recStoresRaw = r.recommendedStoreIds ?? r.RecommendedStoreIds;
+  const recommendedStoreIds = Array.isArray(recStoresRaw)
+    ? recStoresRaw.map((x) => String(x).trim()).filter(Boolean)
+    : undefined;
+
+  return {
+    offerIds,
+    offers,
+    recommendedStoreIds,
+    storeBadges,
+    nextCursor: Number(r.nextCursor ?? r.NextCursor ?? 0),
+    totalAvailable: Number(r.totalAvailable ?? r.TotalAvailable ?? 0),
+    batchSize: Number(r.batchSize ?? r.BatchSize ?? 20),
+    threshold: Number(r.threshold ?? r.Threshold ?? 0.35),
+    wrapped: Boolean(r.wrapped ?? r.Wrapped),
+  };
+}
 
 export async function fetchRecommendationBatch(
   cursor: number,
@@ -30,7 +68,7 @@ export async function fetchRecommendationBatch(
       apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
     );
   }
-  return (await res.json()) as RecommendationBatch;
+  return normalizeRecommendationBatch(await res.json());
 }
 
 export async function trackRecommendationInteraction(

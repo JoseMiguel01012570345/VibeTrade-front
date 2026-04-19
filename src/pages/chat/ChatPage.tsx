@@ -64,6 +64,7 @@ import {
   mergePersistedChatMessages,
   normalizeThreadMessages,
 } from "../../utils/chat/chatMerge";
+import { fetchPublicProfile } from "../../utils/auth/fetchPublicProfile";
 import {
   mergeBuyerLabelFromThreadDto,
   mergeChatSenderLabelsIntoProfileStore,
@@ -85,6 +86,7 @@ export function ChatPage() {
   const me = useAppStore((s) => s.me);
   const profileDisplayNames = useAppStore((s) => s.profileDisplayNames);
   const profileAvatarUrls = useAppStore((s) => s.profileAvatarUrls);
+  const profileTrustScores = useAppStore((s) => s.profileTrustScores);
   const setTrustScore = useAppStore((s) => s.setTrustScore);
   const pushNotification = useAppStore((s) => s.pushNotification);
 
@@ -154,7 +156,7 @@ export function ChatPage() {
       return {
         id: buyerId,
         name,
-        trustScore: 0,
+        trustScore: profileTrustScores[buyerId] ?? 0,
         avatarUrl,
       };
     }
@@ -168,15 +170,17 @@ export function ChatPage() {
         avatarUrl: me.avatarUrl,
       };
     }
+    const buid = thread.buyerUserId;
     return {
-      id: thread.buyerUserId ?? "unknown",
-      name: "Comprador",
-      trustScore: 0,
+      id: buid ?? "unknown",
+      name:
+        thread.buyerDisplayName?.trim() ||
+        (buid ? profileDisplayNames[buid]?.trim() : undefined) ||
+        "Comprador",
+      trustScore: buid ? (profileTrustScores[buid] ?? 0) : 0,
       avatarUrl:
         thread.buyerAvatarUrl?.trim() ||
-        (thread.buyerUserId
-          ? profileAvatarUrls[thread.buyerUserId]?.trim()
-          : undefined) ||
+        (buid ? profileAvatarUrls[buid]?.trim() : undefined) ||
         undefined,
     };
   }, [
@@ -187,7 +191,58 @@ export function ChatPage() {
     me.avatarUrl,
     profileDisplayNames,
     profileAvatarUrls,
+    profileTrustScores,
   ]);
+
+  useEffect(() => {
+    if (!thread) return;
+    const toFetch: string[] = [];
+    const scores = useAppStore.getState().profileTrustScores;
+    const bid = resolveBuyerUserId(thread, me.id);
+    if (bid && bid !== me.id && scores[bid] === undefined) {
+      toFetch.push(bid);
+    }
+    const oid = thread.store.ownerUserId;
+    if (oid && scores[oid] === undefined) {
+      toFetch.push(oid);
+    }
+    const unique = [...new Set(toFetch)];
+    if (unique.length === 0) return;
+    let cancelled = false;
+    void Promise.all(
+      unique.map((id) =>
+        fetchPublicProfile(id).then((p) => {
+          if (cancelled || !p) return;
+          useAppStore.setState((s) => ({
+            profileTrustScores: { ...s.profileTrustScores, [p.id]: p.trustScore },
+            profileDisplayNames: { ...s.profileDisplayNames, [p.id]: p.name },
+            ...(p.avatarUrl?.trim()
+              ? {
+                  profileAvatarUrls: {
+                    ...s.profileAvatarUrls,
+                    [p.id]: p.avatarUrl.trim(),
+                  },
+                }
+              : {}),
+          }));
+        }),
+      ),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [thread, me.id]);
+
+  const sellerForPeople = useMemo(() => {
+    if (!thread) return undefined;
+    const st = thread.store;
+    const oid = st.ownerUserId;
+    if (oid) {
+      const t = profileTrustScores[oid];
+      if (t !== undefined) return { ...st, trustScore: t };
+    }
+    return st;
+  }, [thread, profileTrustScores]);
 
   const [draft, setDraft] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -797,15 +852,6 @@ export function ChatPage() {
                         ? chatThreadHeaderTitle(thread, me, profileDisplayNames)
                         : store.name}
                     </div>
-                    {thread.purchaseMode === false ? (
-                      <span className="rounded-full border border-[color-mix(in_oklab,var(--muted-foreground,#64748b)_40%,transparent)] bg-[color-mix(in_oklab,var(--muted-foreground,#64748b)_12%,transparent)] px-2.5 py-1 text-xs font-bold tracking-wide text-[var(--foreground)]">
-                        Modo consulta
-                      </span>
-                    ) : (
-                      <span className="rounded-full border border-[color-mix(in_oklab,var(--accent,#16a34a)_35%,transparent)] bg-[color-mix(in_oklab,var(--accent,#16a34a)_18%,transparent)] px-2.5 py-1 text-xs font-bold tracking-wide text-[var(--accent-foreground,#14532d)]">
-                        Modo compra
-                      </span>
-                    )}
                   </div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
                     <span className="vt-pill inline-flex items-center gap-1">
@@ -937,7 +983,7 @@ export function ChatPage() {
             storeName={store.name}
             buyerName={buyerForRail.name}
             buyer={buyerForRail}
-            seller={store}
+            seller={sellerForPeople ?? store}
             chatCarriers={thread.chatCarriers}
             focusRouteId={focusRouteId}
             onConsumedRouteFocus={() => setFocusRouteId(null)}

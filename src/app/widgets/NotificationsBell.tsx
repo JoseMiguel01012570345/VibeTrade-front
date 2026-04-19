@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { Bell, X } from 'lucide-react'
+import { Bell, Monitor, Trash2, X } from 'lucide-react'
 import { useAppStore } from '../store/useAppStore'
 import { cn } from '../../lib/cn'
 import { markChatNotificationsRead } from '../../utils/chat/chatApi'
+import {
+  getDesktopNotificationPermission,
+  isDesktopNotificationSupported,
+  requestDesktopNotificationPermission,
+} from '../../utils/notifications/desktopNotifications'
 import { syncChatNotificationsFromServer } from '../../utils/notifications/notificationsSync'
 
 /** Chat primero salvo avisos explícitos de comentario en ficha → oferta + ancla a comentarios. */
@@ -43,9 +49,18 @@ function fmt(ts: number) {
 export function NotificationsBell() {
   const items = useAppStore((s) => s.notifications)
   const markAllRead = useAppStore((s) => s.markAllRead)
+  const clearAllNotifications = useAppStore((s) => s.clearAllNotifications)
   const unread = useMemo(() => items.filter((x) => !x.read).length, [items])
 
   const [open, setOpen] = useState(false)
+  const [desktopNotifPerm, setDesktopNotifPerm] = useState<NotificationPermission>(() =>
+    isDesktopNotificationSupported() ? getDesktopNotificationPermission() : 'denied',
+  )
+
+  useEffect(() => {
+    if (!open) return
+    setDesktopNotifPerm(getDesktopNotificationPermission())
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -85,6 +100,17 @@ export function NotificationsBell() {
 
   const badgeText = unread > 99 ? '99+' : String(unread)
 
+  const handleClearAll = () => {
+    void (async () => {
+      try {
+        await markChatNotificationsRead()
+      } catch {
+        /* offline / 401 */
+      }
+      clearAllNotifications()
+    })()
+  }
+
   return (
     <>
       <button
@@ -114,24 +140,40 @@ export function NotificationsBell() {
         )}
       </button>
 
-      {open && (
-        <div
-          className="vt-modal-backdrop"
-          role="button"
-          tabIndex={0}
-          aria-label="Cerrar notificaciones"
-          onClick={(e) => {
-            // Close only when user clicks the backdrop itself (not the modal content).
-            if (e.target === e.currentTarget) setOpen(false)
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') setOpen(false)
-          }}
-        >
-          <div className="vt-modal" onClick={(e) => e.stopPropagation()}>
+      {open &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className={cn(
+              'vt-modal-backdrop',
+              /* Sobre la barra inferior (z-60); el overlay vivía en el header (z-50) y quedaba debajo. */
+              '!z-[100]',
+            )}
+            role="button"
+            tabIndex={0}
+            aria-label="Cerrar notificaciones"
+            onPointerDown={(e) => {
+              if (e.target === e.currentTarget) setOpen(false)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setOpen(false)
+              }
+            }}
+          >
+            <div
+              className="vt-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="notifications-modal-title"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="vt-modal-title">Notificaciones</div>
+                <div className="vt-modal-title" id="notifications-modal-title">
+                  Notificaciones
+                </div>
                 <div className="vt-modal-body">Historial y avisos recientes.</div>
               </div>
               <button
@@ -144,7 +186,66 @@ export function NotificationsBell() {
               </button>
             </div>
 
-            <div className="mt-3.5 max-h-[60vh] overflow-y-auto pr-1">
+            {isDesktopNotificationSupported() && desktopNotifPerm !== 'granted' && (
+              <div
+                className="mt-3 rounded-[14px] border border-[color-mix(in_oklab,var(--primary)_22%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_7%,var(--surface))] px-3 py-2.5"
+                role="region"
+                aria-label="Avisos del sistema cuando no uses esta pestaña"
+              >
+                <div className="flex gap-2.5">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--primary)]">
+                    <Monitor size={18} aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-extrabold leading-snug text-[var(--text)]">
+                      ¿Avisarte cuando no estés aquí?
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+                      Si cambias de pestaña o usas otra ventana, el navegador puede mostrar avisos del sistema
+                      para mensajes y alertas (no suenan mientras esta pestaña está activa).
+                    </p>
+                    {desktopNotifPerm === 'default' ? (
+                      <button
+                        type="button"
+                        className={cn(
+                          'mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--primary)] bg-[var(--primary)] px-3 py-2 text-sm font-extrabold text-white',
+                          'hover:opacity-95 active:scale-[0.99]',
+                        )}
+                        onClick={() => {
+                          void requestDesktopNotificationPermission().then(setDesktopNotifPerm)
+                        }}
+                      >
+                        Permitir avisos del sistema
+                      </button>
+                    ) : (
+                      <p className="mt-2 text-xs text-[var(--muted)]">
+                        Los avisos están bloqueados para este sit io. Actívalos en el candado o en la configuración
+                        del navegador.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-extrabold',
+                  'border-[color-mix(in_oklab,var(--bad)_35%,var(--border))] bg-[color-mix(in_oklab,var(--bad)_6%,var(--surface))] text-[var(--text)]',
+                  'hover:bg-[color-mix(in_oklab,var(--bad)_12%,var(--surface))] disabled:pointer-events-none disabled:opacity-40',
+                )}
+                disabled={items.length === 0}
+                aria-label="Limpiar todas las notificaciones"
+                onClick={handleClearAll}
+              >
+                <Trash2 size={16} className="text-[var(--bad)]" aria-hidden />
+                Limpiar
+              </button>
+            </div>
+
+            <div className="mt-3 max-h-[60vh] overflow-y-auto pr-1">
               {items.length === 0 ? (
                 <div className="vt-muted">Aún no hay notificaciones.</div>
               ) : (
@@ -199,8 +300,9 @@ export function NotificationsBell() {
               )}
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </>
   )
 }

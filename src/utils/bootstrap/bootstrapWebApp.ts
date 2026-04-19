@@ -7,6 +7,10 @@ import { getSessionToken } from '../http/sessionToken'
 import { setMarketHydrating } from '../market/marketPersistence'
 import { setReelsBootstrap } from '../reels/reelsBootstrapState'
 import type { BootstrapResponse } from './bootstrapTypes'
+import {
+  clampNextCursorToVisibleWindow,
+  REC_FEED_CAP,
+} from '../../pages/home/homeFeedMerge'
 import { getOrCreateGuestId } from '../auth/guestId'
 import { syncChatNotificationsFromServer } from '../notifications/notificationsSync'
 import { startChatRealtime } from '../chat/chatRealtime'
@@ -49,9 +53,17 @@ export async function bootstrapWebApp(): Promise<void> {
     throw new Error(msg)
   }
   const json = (await res.json()) as BootstrapResponse
-  const bootOfferIds =
+  const bootOfferIdsRaw =
     json.recommendations?.offerIds ?? json.market.offerIds ?? []
+  const bootOfferIds = bootOfferIdsRaw.slice(0, REC_FEED_CAP)
   const bootStoreIds = json.recommendations?.recommendedStoreIds ?? []
+  const bootFeedStart = 0
+  const rawNextCursor = json.recommendations?.nextCursor ?? 0
+  const recommendationCursor = clampNextCursorToVisibleWindow(
+    rawNextCursor,
+    bootFeedStart,
+    bootOfferIds.length,
+  )
 
   setMarketHydrating(true)
   const bootStoreBadges = json.recommendations?.storeBadges
@@ -64,9 +76,10 @@ export async function bootstrapWebApp(): Promise<void> {
       ...json.market.offers,
       ...(json.recommendations?.offers ?? {}),
     },
-    offerIds: json.recommendations?.offerIds ?? json.market.offerIds,
-    recommendationFeedStartIndex: 0,
-    recommendationCursor: json.recommendations?.nextCursor ?? 0,
+    offerIds: bootOfferIds,
+    recommendationFeedStartIndex: bootFeedStart,
+    recommendationCursor,
+    recommendationFeedExhausted: false,
     recommendationTotalAvailable: json.recommendations?.totalAvailable ?? json.market.offerIds.length,
     recommendationBatchSize: json.recommendations?.batchSize ?? 20,
     recommendationThreshold: json.recommendations?.threshold ?? 0.35,

@@ -73,6 +73,8 @@ type AppState = {
   profileDisplayNames: Record<string, string>
   /** Avatares de otros usuarios (`/api/v1/media/…`) indexados por user id (p. ej. comprador en chat). */
   profileAvatarUrls: Record<string, string>
+  /** Confianza de usuario por id (API público / sesión); p. ej. integrantes del chat. */
+  profileTrustScores: Record<string, number>
   profileSocialLinks: ProfileSocialLinks
   trustThreshold: number
   lastThresholdState: 'above' | 'below'
@@ -83,6 +85,12 @@ type AppState = {
 
   /** Modal global de autenticación (login/registro). */
   authModalOpen: boolean
+  /**
+   * Scroll vertical guardado al navegar fuera de Home (restaurar con POP).
+   * No se escribe en localhost (ver HomePage).
+   */
+  homeFeedScrollY: number | null
+  setHomeFeedScrollY: (y: number | null) => void
 
   setSessionActive: (active: boolean) => void
   openAuthModal: () => void
@@ -95,6 +103,8 @@ type AppState = {
   pushNotification: (n: Omit<NotificationItem, 'id' | 'createdAt' | 'read'>) => void
   setChatNotificationsFromServer: (items: NotificationItem[]) => void
   markAllRead: () => void
+  /** Vacía la lista local y debe usarse tras marcar leídas en servidor para que no reaparezcan al sincronizar. */
+  clearAllNotifications: () => void
   toggleSavedReel: (reelId: string) => void
   setSavedOffersFromIds: (ids: string[]) => void
   applySessionUser: (user: User) => void
@@ -120,6 +130,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   me: { ...guestMe },
   profileDisplayNames: {},
   profileAvatarUrls: {},
+  profileTrustScores: {},
   profileSocialLinks: {},
   trustThreshold: 0,
   lastThresholdState: 'above',
@@ -127,6 +138,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   savedReels: {},
   savedOffers: {},
   authModalOpen: false,
+  homeFeedScrollY: null,
+
+  setHomeFeedScrollY: (y) => set({ homeFeedScrollY: y }),
 
   setSessionActive: (active) => {
     try {
@@ -143,10 +157,18 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setTrustScore: (score) => {
     const threshold = get().trustThreshold
-    set((s) => ({
-      me: { ...s.me, trustScore: score },
-      lastThresholdState: score < threshold ? 'below' : 'above',
-    }))
+    set((s) => {
+      const id = s.me.id
+      const profileTrustScores =
+        id && id !== 'guest'
+          ? { ...s.profileTrustScores, [id]: score }
+          : s.profileTrustScores
+      return {
+        me: { ...s.me, trustScore: score },
+        lastThresholdState: score < threshold ? 'below' : 'above',
+        profileTrustScores,
+      }
+    })
   },
 
   setMeAvatarUrl: (url) =>
@@ -202,12 +224,15 @@ export const useAppStore = create<AppState>((set, get) => ({
           x.kind !== 'offer_like' &&
           x.kind !== 'qa_comment_like',
       )
-      const merged = [...items, ...local]
+      const fromServer = items.filter((x) => !x.read)
+      const merged = [...fromServer, ...local]
       merged.sort((a, b) => b.createdAt - a.createdAt)
       return { notifications: merged }
     }),
 
   markAllRead: () => set((s) => ({ notifications: s.notifications.map((x) => ({ ...x, read: true })) })),
+
+  clearAllNotifications: () => set({ notifications: [] }),
 
   toggleSavedReel: (reelId) =>
     set((s) => ({ savedReels: { ...s.savedReels, [reelId]: !s.savedReels[reelId] } })),
@@ -236,12 +261,17 @@ export const useAppStore = create<AppState>((set, get) => ({
               [nextMe.id]: nextMe.avatarUrl.trim(),
             }
           : s.profileAvatarUrls
+      const nextTrust =
+        nextMe.id && nextMe.id !== 'guest'
+          ? { ...s.profileTrustScores, [nextMe.id]: nextMe.trustScore }
+          : s.profileTrustScores
       return {
         me: nextMe,
         profileSocialLinks,
         savedOffers: s.savedOffers,
         profileDisplayNames: nextNames,
         profileAvatarUrls: nextAvatars,
+        profileTrustScores: nextTrust,
       }
     }),
 
@@ -254,7 +284,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         savedReels: {},
         savedOffers: {},
         profileSocialLinks: {},
+        profileTrustScores: {},
         authModalOpen: false,
+        homeFeedScrollY: null,
       }
     }),
 }))
