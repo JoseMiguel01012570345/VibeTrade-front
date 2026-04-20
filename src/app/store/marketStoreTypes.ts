@@ -13,6 +13,16 @@ import type {
   RouteSheetStatus,
 } from "../../pages/chat/domain/routeSheetTypes";
 import type { ChatMessageDto, ChatThreadDto } from "../../utils/chat/chatApi";
+import type {
+  OfferQaAuthorSnapshot,
+  OfferQaCommentEnriched,
+} from "../domain/offerQaTypes";
+
+export type {
+  OfferQaAuthorSnapshot,
+  OfferQaComment,
+  OfferQaCommentEnriched,
+} from "../domain/offerQaTypes";
 
 export type {
   TradeAgreement,
@@ -72,20 +82,14 @@ export type OwnerStorePatch = Partial<
 export type StoreProductInput = Omit<StoreProduct, "id" | "storeId">;
 export type StoreServiceInput = Omit<StoreService, "id" | "storeId">;
 
-export type QAItem = {
-  id: string;
+/**
+ * QA fila en el cliente: modelo de dominio enriquecido + campo `question` usado en UI legada
+ * (la API persiste `text` / `question` según el flujo).
+ */
+export type QAItem = OfferQaCommentEnriched & {
   question: string;
-  /** Misma cadena que `question` cuando viene del API nuevo. */
-  text?: string;
-  parentId?: string | null;
-  askedBy: { id: string; name: string; trustScore: number };
-  answeredBy?: { id: string; name: string; trustScore: number };
-  answer?: string;
-  /** Unix ms — cuándo se envió la consulta (persistido en JSON del backend). */
-  createdAt?: number;
-  /** Enriquecido por GET `/market/offers/{id}/qa`. */
-  likeCount?: number;
-  viewerLiked?: boolean;
+  askedBy: OfferQaAuthorSnapshot;
+  answeredBy?: OfferQaAuthorSnapshot;
 };
 
 export type Offer = {
