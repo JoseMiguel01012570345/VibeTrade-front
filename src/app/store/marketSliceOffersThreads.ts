@@ -94,6 +94,7 @@ ask: (offerId, askedBy, question) => {
       qa: [
         {
           id: qaId,
+          text: question,
           question,
           askedBy,
           createdAt: Date.now(),

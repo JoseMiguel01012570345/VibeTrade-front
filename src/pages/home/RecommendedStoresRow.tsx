@@ -94,7 +94,7 @@ export function RecommendedStoresRow({
       >
         Tiendas para vos
       </p>
-      <div className="flex min-w-0 items-stretch gap-1.5 sm:gap-2">
+      <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
         <button
           type="button"
           className={arrowBtn}
@@ -110,7 +110,7 @@ export function RecommendedStoresRow({
           role="list"
           aria-label="Tiendas recomendadas"
         >
-          <div className="flex w-max gap-3 pl-0.5 pr-4">
+          <div className="flex w-max items-center gap-3 pl-0.5 pr-4">
             {resolved.map((s) => {
               const cat = storeCatalogs[s.id];
               const desc = storeDescriptionSnippet(s.pitch, cat?.pitch);

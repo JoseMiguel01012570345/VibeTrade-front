@@ -315,6 +315,18 @@ export type RecommendationStoreStripAnchor = {
   storeIds: string[];
 };
 
+/** Un “bulk” del feed home: tiendas sugeridas del lote + ids de ofertas de ese lote (alineado al API de recomendaciones). */
+export type RecommendationHomeBulk = {
+  /** Clave estable para React cuando dos lotes comparten los mismos offerIds. */
+  instanceKey?: string;
+  storeIds: string[];
+  offerIds: string[];
+  /** Página siguiente (memoria + API en el borde inferior de la ventana). */
+  next: string | null;
+  /** Página anterior (API solo desde el bulk índice 0). */
+  prev: string | null;
+};
+
 /** Estado de entrega/lectura (chat persistido + SignalR). */
 export type ChatDeliveryStatus =
   | "pending"
@@ -339,6 +351,19 @@ export type MarketState = {
   recommendationThreshold: number;
   /** Tiendas sugeridas al inicio de cada lote (orden por `beforeOfferIndex`). */
   recommendationStoreStripAnchors: RecommendationStoreStripAnchor[];
+  /** Lotes del home (card = tiendas del lote + ofertas del lote). */
+  recommendationHomeBulks: RecommendationHomeBulk[];
+  /**
+   * Índice del primer bulk de la bolsa API actual en {@link recommendationHomeBulks}
+   * (prefetch en +4 relativos, merge en +6). Necesario cuando hay más de 7 bulks en el carrusel.
+   */
+  recommendationBagStartBulkIdx: number;
+  /**
+   * Ids de ofertas en el feed de recomendaciones (puede repetir el mismo id por cada hueco);
+   * al fusionar, se podan entradas que ya no están en {@link recommendationHomeBulks}.
+   */
+  recommendationCachedOfferIds: string[];
+  recommendationCachedStoreIds: string[];
   /** Catálogo de tienda (productos/servicios de ficha) por id de negocio — flow-ui perfil & acuerdos. */
   storeCatalogs: Record<string, StoreCatalog>;
   threads: Record<string, Thread>;

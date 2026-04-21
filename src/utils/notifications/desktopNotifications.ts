@@ -29,7 +29,7 @@ export function shouldShowDesktopNotificationBecauseUnfocused(): boolean {
   try {
     return !document.hasFocus()
   } catch {
-    return document.visibilityState === 'hidden'
+    return document.visibilityState !== 'visible'
   }
 }
 

@@ -3,18 +3,14 @@ import type { MarketSerializableSlice } from '../market/marketSerializable'
 import type { ReelsBootstrapPayload } from '../reels/reelsBootstrapState'
 
 export type RecommendationBatch = {
+  /** Orden del ranking; puede repetir ids (el mapa `offers` solo tiene una entrada por id). */
   offerIds: string[]
   /** Cuerpo de cada oferta del lote (misma forma que `market.offers`). */
   offers?: Record<string, Offer>
-  /** Tiendas ordenadas por relevancia en esta ventana (JSON: `recommendedStoreIds`). */
-  recommendedStoreIds?: string[]
   /** Fichas de tienda del lote (p. ej. `websiteUrl` actualizado). */
   storeBadges?: Record<string, StoreBadge>
-  nextCursor: number
-  totalAvailable: number
   batchSize: number
   threshold: number
-  wrapped: boolean
 }
 
 export type BootstrapResponse = {

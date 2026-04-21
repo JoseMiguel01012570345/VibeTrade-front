@@ -385,6 +385,37 @@ body:has(.vt-chat-page) {
   overflow: hidden;
 }
 
+/* Home: sin scroll del documento; carrusel vertical + scroll solo en cada lote */
+.vt-main:has(.vt-home-page) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+html:has(.vt-home-page),
+body:has(.vt-home-page) {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#root:has(.vt-home-page) {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#root:has(.vt-home-page) .vt-app {
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
 .container.vt-chat-page {
   width: 80%;
   max-width: calc(100% - 20px);

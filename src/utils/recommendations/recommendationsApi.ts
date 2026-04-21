@@ -12,53 +12,57 @@ function isPlainRecord(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null && !Array.isArray(x);
 }
 
-/** Asegura camelCase y arrays; el cliente no debe depender de PascalCase del JSON. */
+function offerIdsFromOffersRecord(
+  offers: Record<string, Offer> | undefined,
+): string[] {
+  if (!offers || typeof offers !== "object") return [];
+  return Object.keys(offers);
+}
+
+/** Asegura camelCase; el cliente no debe depender de PascalCase del JSON. */
 function normalizeRecommendationBatch(raw: unknown): RecommendationBatch {
   const r = isPlainRecord(raw) ? raw : {};
-  const idsRaw = r.offerIds ?? r.OfferIds;
-  const offerIds = Array.isArray(idsRaw)
-    ? idsRaw.map((x) => String(x).trim()).filter(Boolean)
-    : [];
   const offersRaw = r.offers ?? r.Offers;
   const offers = isPlainRecord(offersRaw)
     ? (offersRaw as Record<string, Offer>)
     : undefined;
+
+  const idsRaw = r.offerIds ?? r.OfferIds;
+  const fromArray = Array.isArray(idsRaw)
+    ? idsRaw.map((x) => String(x).trim()).filter(Boolean)
+    : [];
+  /** Orden y repeticiones: priorizar el array del API; no sustituir por Object.keys(offers) (colapsa duplicados). */
+  const offerIds =
+    fromArray.length > 0
+      ? fromArray
+      : offerIdsFromOffersRecord(offers);
+
   const storeBadgesRaw = r.storeBadges ?? r.StoreBadges;
   const storeBadges = isPlainRecord(storeBadgesRaw)
     ? (storeBadgesRaw as Record<string, StoreBadge>)
-    : undefined;
-  const recStoresRaw = r.recommendedStoreIds ?? r.RecommendedStoreIds;
-  const recommendedStoreIds = Array.isArray(recStoresRaw)
-    ? recStoresRaw.map((x) => String(x).trim()).filter(Boolean)
     : undefined;
 
   return {
     offerIds,
     offers,
-    recommendedStoreIds,
     storeBadges,
-    nextCursor: Number(r.nextCursor ?? r.NextCursor ?? 0),
-    totalAvailable: Number(r.totalAvailable ?? r.TotalAvailable ?? 0),
     batchSize: Number(r.batchSize ?? r.BatchSize ?? 20),
     threshold: Number(r.threshold ?? r.Threshold ?? 0.35),
-    wrapped: Boolean(r.wrapped ?? r.Wrapped),
   };
 }
 
-export async function fetchRecommendationBatch(
-  cursor: number,
+/** Una página de recomendaciones: solo `take` (y sesión / guestId en la URL de invitado). */
+export async function fetchRecommendationPage(
   take = 20,
 ): Promise<RecommendationBatch> {
-  const qs = new URLSearchParams({
-    cursor: String(Math.max(0, cursor)),
-    take: String(Math.max(1, take)),
-  });
+  const rawTake = String(Math.max(1, take));
+  const qs = new URLSearchParams({ take: rawTake });
   const isSessionActive = useAppStore.getState().isSessionActive;
   const path = isSessionActive
     ? `/api/v1/recommendations?${qs.toString()}`
     : `/api/v1/recommendations/guest?${new URLSearchParams({
         guestId: getOrCreateGuestId(),
-        ...Object.fromEntries(qs.entries()),
+        take: rawTake,
       }).toString()}`;
 
   const res = await apiFetch(path);

@@ -1,6 +1,7 @@
 import type {
   MarketState,
   Offer,
+  RecommendationHomeBulk,
   RecommendationStoreStripAnchor,
 } from "../../app/store/marketStoreTypes";
 import type { RecommendationBatch } from "../../utils/bootstrap/bootstrapTypes";
@@ -39,215 +40,245 @@ export function buildHomeFeedSegments(
   return out;
 }
 
-/** Máximo de ofertas en el feed de inicio (bootstrap y lotes posteriores recortan a esto). */
-export const REC_FEED_CAP = 100;
+/** Tamaño de bolsa que pide el cliente al API (después se parte en carrusel de 20). */
+export const RECOMMENDATION_API_TAKE = 140;
+
+/** Ofertas por “tarjeta” del carrusel home. */
+export const RECOMMENDATION_BULK_OFFER_COUNT = 20;
+
+/** Bolsa API / carrusel: 140 / 20. */
+export const RECOMMENDATION_BULKS_PER_BAG = 7;
 
 /**
- * El cursor del servidor no puede adelantarse más allá del fin de la ventana visible
- * (`feedStartIndex` + cantidad mostrada; como mucho {@link REC_FEED_CAP}).
+ * 5.ª tarjeta del lote API actual (offset 4 desde {@link bagStartBulkIdx} cuando hay ≥5 bulks).
+ * No usar `rel % RECOMMENDATION_BULKS_PER_BAG`: si el lote tiene 8+ bulks, `rel === 7` deja de coincidir y el feed deja de pedir datos.
  */
-export function clampNextCursorToVisibleWindow(
-  nextCursor: number,
-  feedStartIndex: number,
-  visibleOfferCount: number,
-): number {
-  const next = Number.isFinite(nextCursor) ? nextCursor : 0;
-  const start = Number.isFinite(feedStartIndex) ? Math.max(0, feedStartIndex) : 0;
-  const endExclusive = start + Math.max(0, visibleOfferCount);
-  return Math.min(next, endExclusive);
-}
-
-function dedupeStoreStripAnchors(
-  anchors: RecommendationStoreStripAnchor[],
-): RecommendationStoreStripAnchor[] {
-  const byIndex = new Map<number, string[]>();
-  for (const a of anchors) {
-    const n = a.beforeOfferIndex;
-    if (n < 0 || (a.storeIds?.length ?? 0) === 0) continue;
-    const prev = byIndex.get(n);
-    if (!prev) {
-      byIndex.set(n, [...a.storeIds]);
-      continue;
-    }
-    const seen = new Set(prev);
-    for (const id of a.storeIds) {
-      if (!seen.has(id)) {
-        seen.add(id);
-        prev.push(id);
-      }
-    }
+export function shouldPrefetchNextBag(
+  cardIdx: number,
+  bagStartBulkIdx: number,
+  bulksInCurrentBag: number,
+): boolean {
+  if (bulksInCurrentBag < 1) return false;
+  const rel = cardIdx - bagStartBulkIdx;
+  if (rel < 0 || rel >= bulksInCurrentBag) return false;
+  let prefetchRel: number;
+  if (bulksInCurrentBag >= 5) {
+    prefetchRel = RECOMMENDATION_BULKS_PER_BAG - 3;
+  } else if (bulksInCurrentBag >= 2) {
+    prefetchRel = 0;
+  } else {
+    prefetchRel = -1;
   }
-  return [...byIndex.entries()]
-    .sort(([x], [y]) => x - y)
-    .map(([beforeOfferIndex, storeIds]) => ({ beforeOfferIndex, storeIds }));
+  if (prefetchRel < 0) return false;
+  return rel === prefetchRel;
 }
 
-function sliceOffersForIds(
-  ids: string[],
-  offers: Record<string, Offer> | undefined,
-): Record<string, Offer> {
-  if (!offers) return {};
-  const out: Record<string, Offer> = {};
-  for (const id of ids) {
+/** Última tarjeta del lote API actual (sustituye la antigua “7.ª” fija cuando el lote no tiene exactamente 7 bulks). */
+export function shouldMergePendingBag(
+  cardIdx: number,
+  bagStartBulkIdx: number,
+  bulksInCurrentBag: number,
+): boolean {
+  if (bulksInCurrentBag < 1) return false;
+  const rel = cardIdx - bagStartBulkIdx;
+  return rel === bulksInCurrentBag - 1;
+}
+
+const emptyPaging = {
+  next: null as string | null,
+  prev: null as string | null,
+};
+
+function newBulkInstanceKey(): string {
+  return (
+    globalThis.crypto?.randomUUID?.() ??
+    `b-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  );
+}
+
+/**
+ * Misma idea que el ranking de tiendas del servidor: peso (L - i) por posición en el lote;
+ * no requiere un array `recommendedStoreIds` en la respuesta.
+ */
+export function deriveRecommendedStoreIdsFromBatch(
+  offerIdsInRankOrder: string[],
+  offers: Record<string, { storeId?: string }> | undefined,
+  maxStores: number,
+): string[] {
+  const L = offerIdsInRankOrder.length;
+  if (L === 0 || !offers || maxStores <= 0) return [];
+
+  const storeRaw = new Map<string, number>();
+  let denom = 0;
+  for (let i = 0; i < offerIdsInRankOrder.length; i++) {
+    const id = String(offerIdsInRankOrder[i] ?? "").trim();
+    if (!id) continue;
+    const w = L - i;
+    denom += w;
     const o = offers[id];
-    if (o) out[id] = o;
+    const sid = o?.storeId != null ? String(o.storeId).trim() : "";
+    if (!sid) continue;
+    storeRaw.set(sid, (storeRaw.get(sid) ?? 0) + w);
+  }
+  if (denom <= 0) return [];
+
+  return [...storeRaw.entries()]
+    .sort((a, b) => {
+      const na = a[1] / denom;
+      const nb = b[1] / denom;
+      if (nb !== na) return nb - na;
+      return a[0].localeCompare(b[0]);
+    })
+    .slice(0, maxStores)
+    .map(([storeId]) => storeId);
+}
+
+export function recommendationBatchToHomeBulk(
+  batch: RecommendationBatch,
+): RecommendationHomeBulk {
+  const offerIds = batch.offerIds
+    .map((id) => String(id).trim())
+    .filter((id) => id.length > 0);
+  const maxStores = Math.max(
+    1,
+    Math.min(batch.batchSize || RECOMMENDATION_BULK_OFFER_COUNT, 20),
+  );
+  const storeIds = deriveRecommendedStoreIdsFromBatch(
+    offerIds,
+    batch.offers,
+    maxStores,
+  );
+  return {
+    instanceKey: newBulkInstanceKey(),
+    storeIds,
+    offerIds,
+    ...emptyPaging,
+  };
+}
+
+/** Un slide del carrusel a partir de un slice de ids (orden = ranking del API). */
+export function homeBulkFromOfferSlice(
+  sliceIds: string[],
+  offers: RecommendationBatch["offers"],
+  threshold: number,
+): RecommendationHomeBulk {
+  const offerIds = sliceIds
+    .map((id) => String(id).trim())
+    .filter((id) => id.length > 0);
+  return recommendationBatchToHomeBulk({
+    offerIds,
+    offers,
+    batchSize: RECOMMENDATION_BULK_OFFER_COUNT,
+    threshold,
+  });
+}
+
+/** Parte una respuesta del API (hasta 140 ofertas) en 7 bulks de 20. */
+export function splitRecommendationBatchIntoHomeBulks(
+  batch: RecommendationBatch,
+): RecommendationHomeBulk[] {
+  const ids = batch.offerIds
+    .map((id) => String(id).trim())
+    .filter((id) => id.length > 0);
+  const out: RecommendationHomeBulk[] = [];
+  for (let i = 0; i < ids.length; i += RECOMMENDATION_BULK_OFFER_COUNT) {
+    const slice = ids.slice(i, i + RECOMMENDATION_BULK_OFFER_COUNT);
+    if (slice.length > 0) {
+      out.push(homeBulkFromOfferSlice(slice, batch.offers, batch.threshold));
+    }
   }
   return out;
 }
 
-function mergeStoreBadges(
-  stores: MarketState["stores"],
-  batch: RecommendationBatch,
-): MarketState["stores"] {
-  const b = batch.storeBadges;
-  if (!b || typeof b !== "object") return stores;
-  return { ...stores, ...b };
+/** Orden del API a través de los bulks (sin deduplicar). */
+function offerIdsFlatFromBulks(bulks: RecommendationHomeBulk[]): string[] {
+  const out: string[] = [];
+  for (const b of bulks) {
+    for (const id of b.offerIds) {
+      const t = String(id).trim();
+      if (t) out.push(t);
+    }
+  }
+  return out;
 }
 
-/** Añade un lote inferior; si hay más de {@link REC_FEED_CAP}, se descartan las más viejas (arriba). */
-export function applyBottomRecommendationBatch(
-  state: MarketState,
-  batch: RecommendationBatch,
-): Partial<MarketState> | null {
-  if (batch.offerIds.length === 0) return null;
-
-  const seen = new Set(state.offerIds.map((id) => String(id).trim()));
-  const newOfferIds = batch.offerIds
-    .map((id) => String(id).trim())
-    .filter((id) => id.length > 0 && !seen.has(id));
-  const mergedOffers = { ...state.offers, ...(batch.offers ?? {}) };
-  const mergedStores = mergeStoreBadges(state.stores, batch);
-
-  const metaRest: Pick<
-    MarketState,
-    | "recommendationFeedExhausted"
-    | "recommendationTotalAvailable"
-    | "recommendationBatchSize"
-    | "recommendationThreshold"
-  > = {
-    recommendationFeedExhausted: false,
-    recommendationTotalAvailable: batch.totalAvailable,
-    recommendationBatchSize: batch.batchSize,
-    recommendationThreshold: batch.threshold,
-  };
-
-  /** Tras un `wrapped` en servidor, el lote puede repetir ids ya visibles; igual hay que avanzar el cursor. */
-  if (newOfferIds.length === 0) {
-    return {
-      recommendationCursor: batch.nextCursor,
-      ...metaRest,
-      offers: mergedOffers,
-      stores: mergedStores,
-    };
+function collectKeepStoreIdsForBulks(
+  bulks: RecommendationHomeBulk[],
+  offers: Record<string, { storeId?: string }>,
+): Set<string> {
+  const s = new Set<string>();
+  for (const b of bulks) {
+    for (const sid of b.storeIds) {
+      const t = String(sid).trim();
+      if (t) s.add(t);
+    }
+    for (const oid of b.offerIds) {
+      const o = offers[String(oid).trim()];
+      const st = o?.storeId != null ? String(o.storeId).trim() : "";
+      if (st) s.add(st);
+    }
   }
-
-  const mergedIds = [...state.offerIds, ...newOfferIds];
-  let feedStart = state.recommendationFeedStartIndex ?? 0;
-  let ids = mergedIds;
-  const oldOfferLen = state.offerIds.length;
-  let nextAnchors: RecommendationStoreStripAnchor[] = [
-    ...(state.recommendationStoreStripAnchors ?? []),
-  ];
-  const appendedStores = batch.recommendedStoreIds ?? [];
-  if (appendedStores.length > 0) {
-    /** Tira antes del primer ítem del lote recién añadido. */
-    nextAnchors.push({
-      beforeOfferIndex: oldOfferLen,
-      storeIds: appendedStores,
-    });
-  }
-  nextAnchors = dedupeStoreStripAnchors(nextAnchors);
-
-  if (ids.length > REC_FEED_CAP) {
-    const dropped = ids.length - REC_FEED_CAP;
-    ids = ids.slice(-REC_FEED_CAP);
-    feedStart += dropped;
-    nextAnchors = nextAnchors
-      .map((a) => ({ ...a, beforeOfferIndex: a.beforeOfferIndex - dropped }))
-      .filter(
-        (a) => a.beforeOfferIndex >= 0 && a.beforeOfferIndex <= ids.length,
-      );
-  }
-  const recommendationCursor = clampNextCursorToVisibleWindow(
-    batch.nextCursor,
-    feedStart,
-    ids.length,
-  );
-  return {
-    offerIds: ids,
-    offers: mergedOffers,
-    stores: mergedStores,
-    recommendationFeedStartIndex: feedStart,
-    recommendationCursor,
-    ...metaRest,
-    recommendationStoreStripAnchors: nextAnchors,
-  };
+  return s;
 }
 
 /**
- * Anteponer un lote (scroll arriba). `requestCursor` es el `cursor` enviado al API.
- * `batch` ya debe contener solo los ids anteriores a la ventana actual (sin solaparse).
+ * Sustituye la última bolsa API (desde {@link MarketState.recommendationBagStartBulkIdx})
+ * por el nuevo lote; conserva solo los bulks anteriores al inicio de esa bolsa.
  */
-export function applyTopRecommendationBatch(
+export function appendHomeBulksFromApiBag(
   state: MarketState,
   batch: RecommendationBatch,
-  requestCursor: number,
-): Partial<MarketState> | null {
+): { patch: Partial<MarketState>; preferredCardIdx: number } | null {
   if (batch.offerIds.length === 0) return null;
-  let ids = [...batch.offerIds, ...state.offerIds];
-  const mergedOffers = { ...(batch.offers ?? {}), ...state.offers };
-  const mergedStores = mergeStoreBadges(state.stores, batch);
-  const feedStart = requestCursor;
 
-  const prependedLen = batch.offerIds.length;
-  let nextAnchors: RecommendationStoreStripAnchor[] = (
-    state.recommendationStoreStripAnchors ?? []
-  ).map((a) => ({
-    ...a,
-    beforeOfferIndex: a.beforeOfferIndex + prependedLen,
-  }));
-  const prependStores = batch.recommendedStoreIds ?? [];
-  if (prependStores.length > 0) {
-    nextAnchors.push({ beforeOfferIndex: 0, storeIds: prependStores });
+  const newBulks = splitRecommendationBatchIntoHomeBulks(batch);
+  if (newBulks.length === 0) return null;
+
+  const prev = state.recommendationHomeBulks ?? [];
+  let bagStart = Math.max(0, state.recommendationBagStartBulkIdx ?? 0);
+  if (prev.length > 0 && bagStart > prev.length - 1) {
+    bagStart = 0;
   }
-  nextAnchors = dedupeStoreStripAnchors(nextAnchors);
-  nextAnchors.sort((a, b) => a.beforeOfferIndex - b.beforeOfferIndex);
+  const prefix = prev.slice(0, bagStart);
+  const combined = [...prefix, ...newBulks];
+  const bagStartBulkIdx = prefix.length;
+  const preferredCardIdx = Math.min(combined.length - 1, bagStartBulkIdx);
 
-  if (ids.length > REC_FEED_CAP) {
-    ids = ids.slice(0, REC_FEED_CAP);
-    nextAnchors = nextAnchors.filter((a) => a.beforeOfferIndex <= ids.length);
+  const flatIds = offerIdsFlatFromBulks(combined);
+  const keepOfferIds = new Set(flatIds);
+
+  const offers: Record<string, Offer> = { ...state.offers };
+  for (const id of state.recommendationCachedOfferIds ?? []) {
+    if (!keepOfferIds.has(id)) delete offers[id];
   }
-  const L = ids.length;
-  return {
-    offerIds: ids,
-    offers: mergedOffers,
-    stores: mergedStores,
-    recommendationFeedStartIndex: feedStart,
-    recommendationCursor: feedStart + L,
-    recommendationTotalAvailable: batch.totalAvailable,
-    recommendationBatchSize: batch.batchSize,
-    recommendationThreshold: batch.threshold,
-    recommendationStoreStripAnchors: nextAnchors,
-  };
-}
+  Object.assign(offers, batch.offers ?? {});
 
-/** Recorta un batch “hacia atrás” para no duplicar ítems cuando `cursor` queda en 0. */
-export function trimBatchForPrepend(
-  batch: RecommendationBatch,
-  feedStart: number,
-  requestCursor: number,
-): RecommendationBatch {
-  const need = Math.max(0, feedStart - requestCursor);
-  const prefixIds = batch.offerIds.slice(
-    0,
-    Math.min(batch.offerIds.length, need),
-  );
-  const offers = sliceOffersForIds(prefixIds, batch.offers);
-  const keepStores = prefixIds.length === batch.offerIds.length;
+  const keepStoreIds = collectKeepStoreIdsForBulks(combined, offers);
+  const stores: MarketState["stores"] = { ...state.stores };
+  for (const id of state.recommendationCachedStoreIds ?? []) {
+    if (!keepStoreIds.has(id)) delete stores[id];
+  }
+  Object.assign(stores, batch.storeBadges ?? {});
+
+  const recStoreIds = [...keepStoreIds];
+
   return {
-    ...batch,
-    offerIds: prefixIds,
-    offers,
-    recommendedStoreIds: keepStores ? batch.recommendedStoreIds : [],
+    preferredCardIdx,
+    patch: {
+      recommendationHomeBulks: combined,
+      recommendationBagStartBulkIdx: bagStartBulkIdx,
+      offerIds: flatIds,
+      offers,
+      stores,
+      /** Una entrada por hueco del feed (incluye el mismo id repetido). */
+      recommendationCachedOfferIds: [...flatIds],
+      recommendationCachedStoreIds: recStoreIds,
+      recommendationFeedStartIndex: 0,
+      recommendationStoreStripAnchors: [],
+      recommendationFeedExhausted: false,
+      recommendationTotalAvailable: flatIds.length,
+      recommendationBatchSize: RECOMMENDATION_BULK_OFFER_COUNT,
+      recommendationThreshold: batch.threshold,
+    },
   };
 }

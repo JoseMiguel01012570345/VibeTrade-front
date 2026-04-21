@@ -30,7 +30,7 @@ export function OfferCardsChunk({
   const openAuthModal = useAppStore((s) => s.openAuthModal);
   return (
     <div className="grid grid-cols-12 gap-3 md:gap-3.5">
-      {items.map((o) => {
+      {items.map((o, i) => {
         const store = stores[o.storeId];
         const descFull = o.description?.trim() ?? "";
         const descPreview = offerDescriptionPreview(descFull);
@@ -47,7 +47,7 @@ export function OfferCardsChunk({
         const isToolPlaceholder = isToolPlaceholderUrl(thumbSrc);
         return (
           <div
-            key={o.id}
+            key={`${o.id}-${i}`}
             className="vt-card col-span-12 min-w-0 overflow-hidden md:col-span-6 lg:col-span-4"
           >
             <div className="relative h-[150px] overflow-hidden bg-gray-200 lg:h-[132px]">

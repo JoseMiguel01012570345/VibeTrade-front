@@ -1,4 +1,17 @@
+import { useAppStore } from "../../app/store/useAppStore";
 import { getSessionToken } from "./sessionToken";
+
+function requestPathname(input: string): string {
+  const withoutQuery = input.split("?")[0] ?? input;
+  if (/^https?:\/\//i.test(withoutQuery)) {
+    try {
+      return new URL(withoutQuery).pathname;
+    } catch {
+      return withoutQuery;
+    }
+  }
+  return withoutQuery.startsWith("/") ? withoutQuery : `/${withoutQuery}`;
+}
 
 /**
  * En desarrollo (`import.meta.env.DEV`), las rutas que empiezan por `/api` usan URL relativa
@@ -24,11 +37,21 @@ export function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   }
   const base = resolvedBase;
 
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
   const headers = new Headers(init?.headers);
-  headers.set("X-Timezone", timeZone);
   const token = getSessionToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const path = requestPathname(input);
+  /**
+   * Invitado: token residual sin `isSessionActive` no debe ir a bootstrap/recomendaciones guest.
+   * Excepción: restaurar o cerrar sesión envían Bearer aunque el store aún no marque activa.
+   */
+  const attachBearer =
+    !!token &&
+    (useAppStore.getState().isSessionActive ||
+      path === "/api/v1/auth/session" ||
+      path === "/api/v1/auth/logout");
+  if (attachBearer) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
   // Never set Content-Type for FormData: the runtime must send multipart boundary.
   const body = init?.body;
   const isFormData =
