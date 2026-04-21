@@ -165,29 +165,57 @@ export function homeBulkFromOfferSlice(
   const offerIds = sliceIds
     .map((id) => String(id).trim())
     .filter((id) => id.length > 0);
+  const cap = Math.min(offerIds.length, RECOMMENDATION_BULK_OFFER_COUNT);
   return recommendationBatchToHomeBulk({
     offerIds,
     offers,
-    batchSize: RECOMMENDATION_BULK_OFFER_COUNT,
+    batchSize: cap > 0 ? cap : RECOMMENDATION_BULK_OFFER_COUNT,
     threshold,
   });
 }
 
-/** Parte una respuesta del API (hasta 140 ofertas) en 7 bulks de 20. */
+/** Reparte `ids` en exactamente `bucketCount` trozos con tamaños lo más iguales posible. */
+function splitIdsIntoEvenBuckets(
+  ids: string[],
+  bucketCount: number,
+): string[][] {
+  const n = ids.length;
+  if (n === 0 || bucketCount < 1) return [];
+  const base = Math.floor(n / bucketCount);
+  const rem = n % bucketCount;
+  const out: string[][] = [];
+  let idx = 0;
+  for (let i = 0; i < bucketCount; i++) {
+    const size = base + (i < rem ? 1 : 0);
+    out.push(ids.slice(idx, idx + size));
+    idx += size;
+  }
+  return out;
+}
+
+/**
+ * Parte una respuesta del API en bulks alineados a la bolsa de 7 tarjetas:
+ * - Con ≥7 ofertas: exactamente 7 bulks repartiendo ofertas de forma equitativa (140 → 7×20).
+ * - Con menos de 7 ofertas: un bulk por oferta (un slide por oferta).
+ */
 export function splitRecommendationBatchIntoHomeBulks(
   batch: RecommendationBatch,
 ): RecommendationHomeBulk[] {
   const ids = batch.offerIds
     .map((id) => String(id).trim())
     .filter((id) => id.length > 0);
-  const out: RecommendationHomeBulk[] = [];
-  for (let i = 0; i < ids.length; i += RECOMMENDATION_BULK_OFFER_COUNT) {
-    const slice = ids.slice(i, i + RECOMMENDATION_BULK_OFFER_COUNT);
-    if (slice.length > 0) {
-      out.push(homeBulkFromOfferSlice(slice, batch.offers, batch.threshold));
-    }
+  if (ids.length === 0) return [];
+
+  let slices: string[][];
+  if (ids.length >= RECOMMENDATION_BULKS_PER_BAG) {
+    slices = splitIdsIntoEvenBuckets(ids, RECOMMENDATION_BULKS_PER_BAG);
+  } else {
+    slices = ids.map((id) => [id]);
   }
-  return out;
+
+  return slices.map((slice) =>
+    homeBulkFromOfferSlice(slice, batch.offers, batch.threshold),
+  );
 }
 
 /** Orden del API a través de los bulks (sin deduplicar). */
