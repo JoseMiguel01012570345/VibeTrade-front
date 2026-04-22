@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { Bell, Monitor, Trash2, X } from 'lucide-react'
+import { Bell, Trash2, X } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useAppStore } from '../store/useAppStore'
 import { cn } from '../../lib/cn'
 import { markChatNotificationsRead } from '../../utils/chat/chatApi'
 import {
+  DESKTOP_NOTIFICATIONS_PREF_STORAGE_KEY,
   getDesktopNotificationPermission,
+  getDesktopNotificationsEnabledPreference,
   isDesktopNotificationSupported,
   requestDesktopNotificationPermission,
+  setDesktopNotificationsEnabledPreference,
 } from '../../utils/notifications/desktopNotifications'
 import { syncChatNotificationsFromServer } from '../../utils/notifications/notificationsSync'
 
@@ -56,11 +60,58 @@ export function NotificationsBell() {
   const [desktopNotifPerm, setDesktopNotifPerm] = useState<NotificationPermission>(() =>
     isDesktopNotificationSupported() ? getDesktopNotificationPermission() : 'denied',
   )
+  const [desktopPref, setDesktopPref] = useState(() =>
+    getDesktopNotificationsEnabledPreference(),
+  )
+
+  const desktopEffectiveOn =
+    desktopPref && desktopNotifPerm === 'granted'
 
   useEffect(() => {
     if (!open) return
     setDesktopNotifPerm(getDesktopNotificationPermission())
+    setDesktopPref(getDesktopNotificationsEnabledPreference())
   }, [open])
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== DESKTOP_NOTIFICATIONS_PREF_STORAGE_KEY) return
+      setDesktopPref(getDesktopNotificationsEnabledPreference())
+    }
+    globalThis.addEventListener?.('storage', onStorage)
+    return () => globalThis.removeEventListener?.('storage', onStorage)
+  }, [])
+
+  const toggleDesktopNotifications = useCallback(async () => {
+    if (!isDesktopNotificationSupported()) return
+    if (desktopEffectiveOn) {
+      setDesktopNotificationsEnabledPreference(false)
+      setDesktopPref(false)
+      toast.success('Avisos fuera del navegador desactivados')
+      return
+    }
+    setDesktopNotificationsEnabledPreference(true)
+    setDesktopPref(true)
+    if (desktopNotifPerm === 'default') {
+      const p = await requestDesktopNotificationPermission()
+      setDesktopNotifPerm(p)
+      if (p === 'granted') {
+        toast.success('Listo: te avisaremos cuando esta pestaña no esté activa')
+      } else {
+        toast.error('Sin permiso del navegador no podemos mostrar avisos del sistema')
+      }
+      return
+    }
+    if (desktopNotifPerm === 'denied') {
+      toast.error(
+        'Este sitio no tiene permiso. Abrí el candado de la barra de direcciones o la configuración del navegador y permití notificaciones.',
+      )
+      return
+    }
+    if (desktopNotifPerm === 'granted') {
+      toast.success('Avisos fuera del navegador activados')
+    }
+  }, [desktopEffectiveOn, desktopNotifPerm])
 
   useEffect(() => {
     if (!open) return
@@ -186,44 +237,59 @@ export function NotificationsBell() {
               </button>
             </div>
 
-            {isDesktopNotificationSupported() && desktopNotifPerm !== 'granted' && (
+            {isDesktopNotificationSupported() && (
               <div
-                className="mt-3 rounded-[14px] border border-[color-mix(in_oklab,var(--primary)_22%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_7%,var(--surface))] px-3 py-2.5"
+                className="mt-3 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-3 py-3 pr-4"
                 role="region"
-                aria-label="Avisos del sistema cuando no uses esta pestaña"
+                aria-label="Notificaciones fuera del navegador"
               >
-                <div className="flex gap-2.5">
-                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--primary)]">
-                    <Monitor size={18} aria-hidden />
-                  </div>
-                  <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3 sm:gap-4">
+                  <div className="min-w-0 flex-1 pr-1">
                     <div className="text-sm font-extrabold leading-snug text-[var(--text)]">
-                      ¿Avisarte cuando no estés aquí?
+                      Avisos fuera del navegador
                     </div>
                     <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
-                      Si cambias de pestaña o usas otra ventana, el navegador puede mostrar avisos del sistema
-                      para mensajes y alertas (no suenan mientras esta pestaña está activa).
+                      Cuando cambies de pestaña o minimices, el sistema puede mostrar avisos por mensajes y
+                      alertas (mientras esta pestaña está al frente no duplicamos el aviso).
                     </p>
-                    {desktopNotifPerm === 'default' ? (
-                      <button
-                        type="button"
-                        className={cn(
-                          'mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--primary)] bg-[var(--primary)] px-3 py-2 text-sm font-extrabold text-white',
-                          'hover:opacity-95 active:scale-[0.99]',
-                        )}
-                        onClick={() => {
-                          void requestDesktopNotificationPermission().then(setDesktopNotifPerm)
-                        }}
-                      >
-                        Permitir avisos del sistema
-                      </button>
-                    ) : (
-                      <p className="mt-2 text-xs text-[var(--muted)]">
-                        Los avisos están bloqueados para este sit io. Actívalos en el candado o en la configuración
-                        del navegador.
+                    {desktopNotifPerm === 'denied' ? (
+                      <p className="mt-2 text-xs font-semibold text-[var(--bad)]">
+                        Permiso denegado: habilitá notificaciones para este sitio en el navegador.
                       </p>
-                    )}
+                    ) : null}
+                    {desktopNotifPerm === 'default' && !desktopEffectiveOn ? (
+                      <p className="mt-2 text-xs text-[var(--muted)]">
+                        Activá el interruptor para que el navegador pida permiso.
+                      </p>
+                    ) : null}
                   </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={desktopEffectiveOn}
+                    aria-label={
+                      desktopEffectiveOn
+                        ? 'Desactivar avisos fuera del navegador'
+                        : 'Activar avisos fuera del navegador'
+                    }
+                    className={cn(
+                      'relative mt-0.5 h-7 w-11 shrink-0 overflow-hidden rounded-full border border-transparent transition-colors',
+                      desktopEffectiveOn
+                        ? 'bg-[var(--primary)]'
+                        : 'bg-[color-mix(in_oklab,var(--muted)_32%,var(--border))]',
+                    )}
+                    onClick={() => void toggleDesktopNotifications()}
+                  >
+                    <span
+                      className={cn(
+                        'pointer-events-none absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white shadow-sm ring-1 ring-black/5 transition-[left] duration-200',
+                        desktopEffectiveOn
+                          ? 'left-[calc(100%-0.125rem-1.25rem)]'
+                          : 'left-0.5',
+                      )}
+                      aria-hidden
+                    />
+                  </button>
                 </div>
               </div>
             )}

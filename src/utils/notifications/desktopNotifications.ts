@@ -3,6 +3,25 @@
  * Solo se muestran cuando la ventana o pestaña no está enfocada / está oculta.
  */
 
+/** Preferencia del usuario (localStorage); por defecto activada. */
+export const DESKTOP_NOTIFICATIONS_PREF_STORAGE_KEY =
+  'vt_desktop_notifications_enabled'
+
+export function getDesktopNotificationsEnabledPreference(): boolean {
+  if (typeof localStorage === 'undefined') return true
+  const v = localStorage.getItem(DESKTOP_NOTIFICATIONS_PREF_STORAGE_KEY)
+  if (v === null) return true
+  return v === '1' || v === 'true'
+}
+
+export function setDesktopNotificationsEnabledPreference(enabled: boolean): void {
+  if (typeof localStorage === 'undefined') return
+  localStorage.setItem(
+    DESKTOP_NOTIFICATIONS_PREF_STORAGE_KEY,
+    enabled ? '1' : '0',
+  )
+}
+
 export function isDesktopNotificationSupported(): boolean {
   return typeof globalThis !== 'undefined' && 'Notification' in globalThis
 }
@@ -44,6 +63,7 @@ export type DesktopNotifyPayload = {
 
 export function notifyDesktopIfUnfocused(payload: DesktopNotifyPayload): void {
   if (!isDesktopNotificationSupported()) return
+  if (!getDesktopNotificationsEnabledPreference()) return
   if (Notification.permission !== 'granted') return
   if (!shouldShowDesktopNotificationBecauseUnfocused()) return
 

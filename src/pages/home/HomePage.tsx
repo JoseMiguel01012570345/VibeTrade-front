@@ -180,9 +180,11 @@ export function HomePage() {
     feedUpdateClearAfterPaintRef.current = false;
     const root = viewportRef.current;
     if (root) {
-      root.querySelectorAll("[data-home-offers-scroll]").forEach((node) => {
-        (node as HTMLElement).scrollTop = 0;
-      });
+      root
+        .querySelectorAll("[data-home-offers-scroll], [data-home-stores-scroll]")
+        .forEach((node) => {
+          (node as HTMLElement).scrollTop = 0;
+        });
     }
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -333,7 +335,9 @@ export function HomePage() {
       if (t && el.contains(t)) {
         const scrollable =
           t instanceof Element
-            ? (t.closest("[data-home-offers-scroll]") as HTMLElement | null)
+            ? (t.closest(
+                "[data-home-offers-scroll], [data-home-stores-scroll]",
+              ) as HTMLElement | null)
             : null;
         if (scrollable) {
           const st = scrollable.scrollTop;
@@ -437,32 +441,41 @@ export function HomePage() {
                       key={slideKey}
                       className="flex h-full max-h-full w-full flex-col overflow-hidden"
                     >
-                      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-xl bg-[var(--bg)] p-3 sm:p-4">
+                      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-xl bg-[var(--bg)] p-3 sm:p-4 md:flex-row md:items-stretch md:gap-0">
                         {bulk.storeIds.length > 0 ? (
-                          <div className="shrink-0 border-b border-[var(--border)] pb-3">
+                          <aside className="flex min-h-0 w-full max-h-[min(42vh,380px)] shrink-0 flex-col border-b border-[var(--border)] pb-3 md:max-h-none md:h-auto md:w-[min(100%,300px)] md:shrink-0 md:border-b-0 md:border-r md:border-[var(--border)] md:pb-0 md:pr-3">
                             <RecommendedStoresRow
                               embedded
+                              orientation="vertical"
                               storeIds={bulk.storeIds}
                               stores={stores}
                               storeCatalogs={storeCatalogs}
                             />
-                          </div>
+                          </aside>
                         ) : null}
                         <div
-                          data-home-offers-scroll
-                          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pt-3 [-ms-overflow-style:none] [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
+                          className={
+                            bulk.storeIds.length > 0
+                              ? "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pt-3 md:min-h-0 md:flex-1 md:pl-3 md:pt-0"
+                              : "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+                          }
                         >
-                          {chunkItems.length > 0 ? (
-                            <OfferCardsChunk
-                              items={chunkItems}
-                              stores={stores}
-                              routeOfferPublic={routeOfferPublic}
-                            />
-                          ) : (
-                            <p className="py-6 text-center text-sm text-[var(--muted)]">
-                              Sin ofertas en este lote.
-                            </p>
-                          )}
+                          <div
+                            data-home-offers-scroll
+                            className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-ms-overflow-style:none] [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
+                          >
+                            {chunkItems.length > 0 ? (
+                              <OfferCardsChunk
+                                items={chunkItems}
+                                stores={stores}
+                                routeOfferPublic={routeOfferPublic}
+                              />
+                            ) : (
+                              <p className="py-6 text-center text-sm text-[var(--muted)]">
+                                Sin ofertas en este lote.
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
