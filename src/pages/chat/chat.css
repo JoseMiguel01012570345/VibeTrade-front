@@ -1,20 +1,30 @@
 /*
  * Chat: panel lateral (drawer móvil). Mensajes, modales y formularios: Tailwind + formModalStyles.ts.
  * Scroll del documento y container: index.css
+ *
+ * El drawer fijo (position) debe aplicar siempre en viewport angosto, no solo cuando está
+ * cerrado; si no, al abrir se pierde la regla :not(.--open) y el panel vuelve al flujo
+ * (fila con altura 0) y no se ve.
  */
 
 @media (max-width: 960px) {
-  .vt-chat-rail-wrap:not(.vt-chat-rail-wrap--open) .vt-chat-rail {
+  .vt-chat-rail-wrap .vt-chat-rail {
     position: fixed;
     top: 0;
     right: 0;
     bottom: 0;
     width: min(100vw - 20px, 440px);
+    z-index: 80;
+    max-height: none;
+    transition:
+      transform 0.22s ease,
+      visibility 0.22s;
+  }
+
+  .vt-chat-rail-wrap:not(.vt-chat-rail-wrap--open) .vt-chat-rail {
     transform: translateX(105%);
     visibility: hidden;
     pointer-events: none;
-    transition: transform 0.22s ease, visibility 0.22s;
-    z-index: 75;
   }
 
   .vt-chat-rail-wrap--open .vt-chat-rail {
@@ -26,7 +36,7 @@
   .vt-chat-rail-wrap--open .vt-chat-rail-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 74;
+    z-index: 79;
     border: none;
     padding: 0;
     margin: 0;

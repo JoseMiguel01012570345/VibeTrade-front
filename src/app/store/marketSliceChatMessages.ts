@@ -6,6 +6,7 @@ import {
 } from "./marketStoreHelpers";
 import type { MarketSliceGet, MarketSliceSet } from "./marketSliceTypes";
 import type { MarketState } from "./marketStoreTypes";
+import { getSessionToken } from "../../utils/http/sessionToken";
 import type { ChatMessageDto } from "../../utils/chat/chatApi";
 import { postChatMessage, postChatTextMessage } from "../../utils/chat/chatApi";
 import {
@@ -30,6 +31,32 @@ async function blobUrlToMediaApiUrl(
     mimeHint || blob.type,
   );
   return mediaApiUrl(uploaded.id);
+}
+
+const threadContractsRefreshAfterMessageTimer = new Map<
+  string,
+  ReturnType<typeof setTimeout>
+>();
+
+/**
+ * Un mensaje vía SignalR (p. ej. aviso de sistema al editar un acuerdo) no actualiza
+ * `thread.contracts` por sí solo; el comprador seguía viendo título/estado viejos en la
+ * burbuja hasta un refetch. Tras un breve debounce, alineamos contratos con GET.
+ */
+function scheduleThreadContractsSyncAfterMessage(
+  get: MarketSliceGet,
+  threadId: string,
+) {
+  if (!threadId.startsWith("cth_") || !getSessionToken()) return;
+  const prev = threadContractsRefreshAfterMessageTimer.get(threadId);
+  if (prev !== undefined) clearTimeout(prev);
+  threadContractsRefreshAfterMessageTimer.set(
+    threadId,
+    setTimeout(() => {
+      threadContractsRefreshAfterMessageTimer.delete(threadId);
+      void get().refreshThreadTradeAgreements(threadId);
+    }, 300),
+  );
 }
 
 export function createChatMessagesSlice(
@@ -100,6 +127,7 @@ export function createChatMessagesSlice(
           },
         };
       });
+      scheduleThreadContractsSyncAfterMessage(get, threadId);
     },
 
     onChatMessageStatusFromServer: (threadId, messageId, statusStr, _updatedAtUtc) => {
@@ -114,7 +142,8 @@ export function createChatMessagesSlice(
             msg.type === "image" ||
             msg.type === "audio" ||
             msg.type === "doc" ||
-            msg.type === "docs"
+            msg.type === "docs" ||
+            msg.type === "agreement"
           ) {
             const prevSt = "chatStatus" in msg ? msg.chatStatus : undefined;
             const mergedStatus =

@@ -1,4 +1,11 @@
-import { useMemo, type MouseEvent, type RefObject } from "react";
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAppStore } from "../../../../app/store/useAppStore";
@@ -76,6 +83,79 @@ function messageBubbleAvatarColumn(
   };
 }
 
+/** Sólo hilo cth_: marcar leído en API cuando el mensaje entra al viewport (no mientras B scrolleó hacia arriba). */
+function incomingMessageCanMarkReadOnVisible(
+  m: Message,
+  hasReadHandler: boolean,
+): boolean {
+  if (!hasReadHandler) return false;
+  if (m.from !== "other" || !m.id || m.id.startsWith("pend_")) return false;
+  if (
+    m.type !== "text" &&
+    m.type !== "image" &&
+    m.type !== "audio" &&
+    m.type !== "doc" &&
+    m.type !== "docs" &&
+    m.type !== "agreement"
+  ) {
+    return false;
+  }
+  if ("chatStatus" in m && m.chatStatus === "read") return false;
+  if ("read" in m && m.read === true) return false;
+  return true;
+}
+
+/**
+ * Fila con IntersectionObserver (root = lista con scroll) para enviar visto al hub
+ * sólo cuando B ve el mensaje en el área visible.
+ */
+function TrackedMessageRow({
+  listRef,
+  m,
+  onIncomingMessageVisible,
+  className,
+  onClick,
+  children,
+}: {
+  listRef: RefObject<HTMLDivElement | null>;
+  m: Message;
+  onIncomingMessageVisible?: (messageId: string) => void;
+  className: string;
+  onClick: (e: MouseEvent) => void;
+  children: ReactNode;
+}) {
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const shouldTrack = useMemo(
+    () => incomingMessageCanMarkReadOnVisible(m, !!onIncomingMessageVisible),
+    [m, onIncomingMessageVisible],
+  );
+
+  useLayoutEffect(() => {
+    if (!shouldTrack) return;
+    const el = rowRef.current;
+    const root = listRef.current;
+    if (!el || !root) return;
+    const o = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            onIncomingMessageVisible?.(m.id);
+          }
+        }
+      },
+      { root, rootMargin: "0px 0px 0px 0px", threshold: 0.12 },
+    );
+    o.observe(el);
+    return () => o.disconnect();
+  }, [shouldTrack, m.id, onIncomingMessageVisible, listRef]);
+
+  return (
+    <div ref={rowRef} className={className} onClick={onClick}>
+      {children}
+    </div>
+  );
+}
+
 function TrustChip({
   score,
   className,
@@ -107,6 +187,9 @@ type Me = {
 
 type Props = {
   listRef: RefObject<HTMLDivElement | null>;
+  /** Anclaje al final del hilo: visible en el visor = el usuario vio el último mensaje. */
+  listEndRef?: RefObject<HTMLDivElement | null>;
+  onListScroll?: () => void;
   thread: Thread;
   me: Me;
   selected: Record<string, boolean>;
@@ -120,10 +203,14 @@ type Props = {
   ) => Promise<boolean>;
   setFocusRouteId: (id: string | null) => void;
   setRailOpen: (open: boolean | ((o: boolean) => boolean)) => void;
+  /** Hilos cth_: «read» al API sólo cuando el mensaje entra al viewport. */
+  onIncomingMessageVisibleForRead?: (messageId: string) => void;
 };
 
 export function ChatMessageList({
   listRef,
+  listEndRef,
+  onListScroll,
   thread,
   me,
   selected,
@@ -133,6 +220,7 @@ export function ChatMessageList({
   respondTradeAgreement,
   setFocusRouteId,
   setRailOpen,
+  onIncomingMessageVisibleForRead,
 }: Props) {
   const store = thread.store;
   const profileDisplayNames = useAppStore((s) => s.profileDisplayNames);
@@ -152,6 +240,7 @@ export function ChatMessageList({
   return (
     <div
       ref={listRef as RefObject<HTMLDivElement>}
+      onScroll={onListScroll}
       className="vt-card flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[color-mix(in_oklab,var(--bg)_60%,var(--surface))] to-[var(--surface)] px-6 py-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
     >
       {orderedMessages.map((m) => {
@@ -180,21 +269,26 @@ export function ChatMessageList({
         const waVoiceSent = mine && m.type === "audio";
         const isAudio = m.type === "audio";
 
+        const rowClassName = cn(
+          "grid items-end gap-2.5",
+          system
+            ? "grid-cols-1"
+            : mine
+              ? "grid-cols-[minmax(0,1fr)_36px]"
+              : "grid-cols-[36px_minmax(0,1fr)]",
+        );
+        const rowOnClick = (e: MouseEvent) => {
+          if (chatActionsLocked || system || m.type === "agreement") return;
+          toggleSelectRow(e, m.id);
+        };
         return (
-          <div
+          <TrackedMessageRow
             key={m.id}
-            className={cn(
-              "grid items-end gap-2.5",
-              system
-                ? "grid-cols-1"
-                : mine
-                  ? "grid-cols-[minmax(0,1fr)_36px]"
-                  : "grid-cols-[36px_minmax(0,1fr)]",
-            )}
-            onClick={(e) => {
-              if (chatActionsLocked || system || m.type === "agreement") return;
-              toggleSelectRow(e, m.id);
-            }}
+            listRef={listRef}
+            m={m}
+            onIncomingMessageVisible={onIncomingMessageVisibleForRead}
+            className={rowClassName}
+            onClick={rowOnClick}
           >
             {!system && (
               <Link
@@ -334,7 +428,9 @@ export function ChatMessageList({
                   viewerIsBuyer
                 }
                 onOpenAgreementRouteSheet={
-                  m.type === "agreement" && agreementDoc?.routeSheetId
+                  m.type === "agreement" &&
+                  agreementDoc?.status !== "deleted" &&
+                  agreementDoc?.routeSheetId
                     ? () => {
                         setFocusRouteId(agreementDoc.routeSheetId!);
                         setRailOpen(true);
@@ -350,9 +446,16 @@ export function ChatMessageList({
                 />
               )}
             </div>
-          </div>
+          </TrackedMessageRow>
         );
       })}
+      {listEndRef ? (
+        <div
+          ref={listEndRef as RefObject<HTMLDivElement>}
+          className="h-px w-full min-h-px shrink-0"
+          aria-hidden
+        />
+      ) : null}
     </div>
   );
 }

@@ -60,9 +60,12 @@ async function syncPersistedAgreementsAndMessages(
       fetchChatMessages(threadId),
     ])
     const contracts = agreements.map(mapTradeAgreementApiToTradeAgreement)
+    const validAgreementIds = new Set(contracts.map((c) => c.id))
     mergeChatSenderLabelsIntoProfileStore(serverMsgs)
     const mapped = serverMsgs.map((d) => mapChatMessageDtoToMessage(d, meId))
-    const mergedMsgs = mergePersistedChatMessages(mapped, th.messages)
+    const mergedMsgs = mergePersistedChatMessages(mapped, th.messages, {
+      validTradeAgreementIds: validAgreementIds,
+    })
     const sellerUserId = th.sellerUserId ?? get().stores[th.storeId]?.ownerUserId
     const threadBuyerId = th.buyerUserId ?? resolveBuyerUserId(th, meId)
     const qaSynced = offer
@@ -97,6 +100,7 @@ export function createOffersThreadsSlice(set: MarketSliceSet, get: MarketSliceGe
   | 'updatePendingTradeAgreement'
   | 'deleteTradeAgreement'
   | 'respondTradeAgreement'
+  | 'refreshThreadTradeAgreements'
   | 'recordChatExitFromList'
   | 'removeThreadFromList'
   | 'markThreadPaymentCompleted'
@@ -241,7 +245,11 @@ ensureThreadForOffer: async (offerId, opts) => {
     mergeChatSenderLabelsIntoProfileStore(serverMsgs)
     if (participantDto) mergeBuyerLabelFromThreadDto(participantDto)
     const mapped = serverMsgs.map((d) => mapChatMessageDtoToMessage(d, meId))
-    const mergedMsgs = mergePersistedChatMessages(mapped, baseThread.messages)
+    const contractList = contractsOverride ?? baseThread.contracts ?? []
+    const validAgreementIds = new Set(contractList.map((c) => c.id))
+    const mergedMsgs = mergePersistedChatMessages(mapped, baseThread.messages, {
+      validTradeAgreementIds: validAgreementIds,
+    })
     const sellerUserId =
       participantDto?.sellerUserId ?? get().stores[offer.storeId]?.ownerUserId
     const threadBuyerId =
@@ -575,6 +583,7 @@ updatePendingTradeAgreement: async (threadId, agreementId, draft) => {
     const idx = list.findIndex((c) => c.id === agreementId)
     if (idx < 0) return s
     const ag = list[idx]
+    if (ag.status === 'deleted') return s
     if (ag.status !== 'pending_buyer' && ag.status !== 'rejected' && ag.status !== 'accepted') return s
     if (ag.issuedByStoreId !== th.storeId) return s
     if (ag.sellerEditBlockedUntilBuyerResponse) return s
@@ -666,18 +675,23 @@ deleteTradeAgreement: async (threadId, agreementId) => {
     const idx = list.findIndex((c) => c.id === agreementId)
     if (idx < 0) return s
     const ag = list[idx]
-    if (ag.status === 'accepted') return s
+    if (ag.status === 'accepted' || ag.status === 'deleted') return s
     if (ag.issuedByStoreId !== th.storeId) return s
     const sheetCount = th.routeSheets?.length ?? 0
     if (sheetCount > list.length - 1) return s
     const title = ag.title
-    const nextContracts = list.filter((c) => c.id !== agreementId)
+    const now = Date.now()
+    const nextContracts = list.map((c) =>
+      c.id === agreementId
+        ? { ...c, status: 'deleted' as const, deletedAt: now }
+        : c,
+    )
     const sys: Message = {
       id: uid('m'),
       from: 'system',
       type: 'text',
       text: `Se eliminó el acuerdo «${title}» del hilo (no aplica a acuerdos ya aceptados).`,
-      at: Date.now(),
+      at: now,
     }
     ok = true
     return {
@@ -700,7 +714,30 @@ respondTradeAgreement: async (threadId, agreementId, response) => {
   const persist = !!getSessionToken() && threadId.startsWith('cth_')
   if (persist) {
     try {
-      await postThreadTradeAgreementRespond(threadId, agreementId, response === 'accept')
+      const updatedDto = await postThreadTradeAgreementRespond(
+        threadId,
+        agreementId,
+        response === 'accept',
+      )
+      // La respuesta del POST es la fuente de verdad del acuerdo actualizado. Reflejarla ya,
+      // porque sync (GET mensajes + acuerdos) puede fallar en red y el catch silencioso
+      // dejaba el panel Contratos y las burbujas en estado viejo aun con backend OK.
+      const mapped = mapTradeAgreementApiToTradeAgreement(updatedDto)
+      set((s) => {
+        const t = s.threads[threadId]
+        if (!t) return s
+        const list = t.contracts ?? []
+        const idx = list.findIndex((c) => c.id === mapped.id)
+        const nextContracts =
+          idx < 0 ? [...list, mapped] : list.map((c, i) => (i === idx ? mapped : c))
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...t, contracts: nextContracts },
+          },
+        }
+      })
       await syncPersistedAgreementsAndMessages(set, get, threadId)
       return true
     } catch {
@@ -715,6 +752,7 @@ respondTradeAgreement: async (threadId, agreementId, response) => {
     const idx = list.findIndex((c) => c.id === agreementId)
     if (idx < 0) return s
     const ag = list[idx]
+    if (ag.status === 'deleted') return s
     if (ag.status !== 'pending_buyer') return s
     const nextContracts = [...list]
     nextContracts[idx] = {
@@ -750,6 +788,29 @@ respondTradeAgreement: async (threadId, agreementId, response) => {
     }
   })
   return true
+},
+
+refreshThreadTradeAgreements: async (threadId) => {
+  const th = get().threads[threadId]
+  if (!th || !threadId.startsWith('cth_')) return
+  if (!getSessionToken()) return
+  try {
+    const agreements = await fetchThreadTradeAgreements(threadId)
+    const contracts = agreements.map(mapTradeAgreementApiToTradeAgreement)
+    set((s) => {
+      const t = s.threads[threadId]
+      if (!t) return s
+      return {
+        ...s,
+        threads: {
+          ...s.threads,
+          [threadId]: { ...t, contracts },
+        },
+      }
+    })
+  } catch {
+    /* offline */
+  }
 },
 
 recordChatExitFromList: (threadId) => {

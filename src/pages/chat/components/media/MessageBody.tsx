@@ -129,7 +129,7 @@ export function MessageBody({
   if (m.type === "agreement")
     return (
       <AgreementBubble
-        title={m.title}
+        title={agreementDoc?.title?.trim() ? agreementDoc.title : m.title}
         agreement={agreementDoc ?? undefined}
         onAccept={onAcceptAgreement}
         onReject={onRejectAgreement}

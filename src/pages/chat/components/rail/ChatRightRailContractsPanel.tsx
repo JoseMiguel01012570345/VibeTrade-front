@@ -78,6 +78,12 @@ export function ChatRightRailContractsPanel({
           >
             ← Volver
           </button>
+          {agreementForDetail.status === 'deleted' ? (
+            <p className="mb-2.5 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_92%,transparent)] px-2.5 py-2 text-[12px] leading-snug text-[var(--muted)]">
+              Este acuerdo fue <strong className="text-[var(--text)]">eliminado</strong> por el vendedor. Queda en el
+              historial como registro; no se puede editar ni volver a usar como contrato activo.
+            </p>
+          ) : null}
           {agreementForDetail.status === 'accepted' ? (
             <p className="mb-2.5 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_92%,transparent)] px-2.5 py-2 text-[12px] leading-snug text-[var(--muted)]">
               Este acuerdo está <strong className="text-[var(--text)]">aceptado</strong>. Si el vendedor lo modifica,
@@ -87,6 +93,7 @@ export function ChatRightRailContractsPanel({
           ) : null}
           {isActingSeller &&
           !actionsLocked &&
+          agreementForDetail.status !== 'deleted' &&
           agreementForDetail.issuedByStoreId === threadStoreId &&
           onRequestEditAgreement ? (
             <div className="mb-2.5 flex flex-col gap-2">
@@ -104,7 +111,9 @@ export function ChatRightRailContractsPanel({
                 >
                   Editar acuerdo
                 </button>
-                {agreementForDetail.status !== 'accepted' && onDeleteAgreement ? (
+                {agreementForDetail.status !== 'accepted' &&
+                agreementForDetail.status !== 'deleted' &&
+                onDeleteAgreement ? (
                   <button
                     type="button"
                     className="vt-btn vt-btn-sm inline-flex items-center gap-1 border-[color-mix(in_oklab,#dc2626_28%,var(--border))] bg-[color-mix(in_oklab,#dc2626_6%,var(--surface))] text-[color-mix(in_oklab,#dc2626_88%,var(--text))]"
@@ -132,7 +141,7 @@ export function ChatRightRailContractsPanel({
           <AgreementDetailView
             a={agreementForDetail}
             routeSheets={routeSheets}
-            linkActionsDisabled={actionsLocked}
+            linkActionsDisabled={actionsLocked || agreementForDetail.status === 'deleted'}
             onLinkRouteSheet={(agreementId, routeSheetId) => {
               const ok = linkAgreementToRouteSheet(threadId, agreementId, routeSheetId)
               if (ok) toast.success('Vinculación registrada; se notificó en el chat')

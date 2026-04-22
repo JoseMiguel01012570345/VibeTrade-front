@@ -116,7 +116,11 @@ export type ServiceItem = {
   propIntelectual: string;
 };
 
-export type AgreementStatus = "pending_buyer" | "accepted" | "rejected";
+export type AgreementStatus =
+  | "pending_buyer"
+  | "accepted"
+  | "rejected"
+  | "deleted";
 
 export type TradeAgreement = {
   id: string;
@@ -126,6 +130,8 @@ export type TradeAgreement = {
   issuedByStoreId: string;
   issuerLabel: string;
   status: AgreementStatus;
+  /** Si el vendedor eliminó el acuerdo (baja lógica en servidor), epoch ms. */
+  deletedAt?: number;
   respondedAt?: number;
   /**
    * Tras una edición del vendedor, no puede volver a editar hasta que el comprador acepte o rechace esta versión.
@@ -431,12 +437,18 @@ export function legacyServiceBlockToServiceItem(
   item.metodoPago = legacy.metodoPago;
   item.moneda = legacy.moneda;
   const legM = legacy.moneda.trim();
-  item.monedasAceptadas =
-    legM.includes(",") ?
-      [...new Set(legM.split(",").map((x) => x.trim()).filter(Boolean))]
-    : legM ?
-      [legM]
-    : undefined;
+  item.monedasAceptadas = legM.includes(",")
+    ? [
+        ...new Set(
+          legM
+            .split(",")
+            .map((x) => x.trim())
+            .filter(Boolean),
+        ),
+      ]
+    : legM
+      ? [legM]
+      : undefined;
   item.medicionCumplimiento = legacy.medicionCumplimiento;
   item.penalIncumplimiento = legacy.penalIncumplimiento;
   item.nivelResponsabilidad = legacy.nivelResponsabilidad;

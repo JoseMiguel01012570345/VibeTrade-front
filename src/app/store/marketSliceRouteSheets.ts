@@ -321,6 +321,7 @@ linkAgreementToRouteSheet: (threadId, agreementId, routeSheetId) => {
     const cIdx = contracts.findIndex((c) => c.id === agreementId)
     if (cIdx < 0) return s
     const prev = contracts[cIdx]
+    if (prev.status === 'deleted') return s
     if (prev.routeSheetId === routeSheetId) return s
     const nextContracts = [...contracts]
     nextContracts[cIdx] = { ...prev, routeSheetId }
@@ -358,6 +359,7 @@ unlinkAgreementFromRouteSheet: (threadId, agreementId) => {
     const cIdx = contracts.findIndex((c) => c.id === agreementId)
     if (cIdx < 0) return s
     const prev = contracts[cIdx]
+    if (prev.status === 'deleted') return s
     const rid = prev.routeSheetId
     if (!rid) return s
     const sheet = sheets.find((r) => r.id === rid)

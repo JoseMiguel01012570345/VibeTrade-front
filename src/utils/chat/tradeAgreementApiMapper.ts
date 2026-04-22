@@ -20,6 +20,7 @@ export function mapTradeAgreementApiToTradeAgreement(
     issuedByStoreId: d.issuedByStoreId,
     issuerLabel: d.issuerLabel,
     status: d.status,
+    deletedAt: d.deletedAt != null ? d.deletedAt : undefined,
     respondedAt: d.respondedAt ?? undefined,
     sellerEditBlockedUntilBuyerResponse:
       d.sellerEditBlockedUntilBuyerResponse ?? undefined,

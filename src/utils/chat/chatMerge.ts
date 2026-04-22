@@ -15,7 +15,8 @@ function supportsChatDeliveryMerge(m: Message): boolean {
     m.type === "image" ||
     m.type === "audio" ||
     m.type === "doc" ||
-    m.type === "docs"
+    m.type === "docs" ||
+    m.type === "agreement"
   );
 }
 
@@ -331,6 +332,14 @@ export function normalizeThreadMessages(messages: readonly Message[]): Message[]
   return dedupePublicQaMirrors(dedupeMessagesById(messages));
 }
 
+export type MergePersistedChatMessagesOptions = {
+  /**
+   * IDs de `trade_agreements` que siguen existiendo (p. ej. GET /trade-agreements).
+   * Si un mensaje local `agreement` referencia un id que no está aquí, se descarta (p. ej. acuerdo eliminado en servidor).
+   */
+  validTradeAgreementIds?: ReadonlySet<string>;
+};
+
 /**
  * Combina mensajes persistidos con estado local.
  * Si ya hay mensajes del servidor, descarta texto local que no sea sistema/acuerdo/pendiente
@@ -339,6 +348,7 @@ export function normalizeThreadMessages(messages: readonly Message[]): Message[]
 export function mergePersistedChatMessages(
   serverMapped: Message[],
   existingLocal: Message[],
+  options?: MergePersistedChatMessagesOptions,
 ): Message[] {
   const hasServer = serverMapped.length > 0;
   const serverAgreementIds = new Set(
@@ -346,10 +356,19 @@ export function mergePersistedChatMessages(
       .filter((m) => m.type === "agreement")
       .map((m) => m.agreementId),
   );
+  const validIds = options?.validTradeAgreementIds;
   const preservedLocal = hasServer
     ? existingLocal.filter((m) => {
         if (typeof m.id === "string" && m.id.startsWith("pend_")) return true;
         if (m.type === "agreement" && serverAgreementIds.has(m.agreementId))
+          return false;
+        if (
+          m.type === "agreement" &&
+          validIds &&
+          typeof m.agreementId === "string" &&
+          m.agreementId.length > 0 &&
+          !validIds.has(m.agreementId)
+        )
           return false;
         return isLocalRichMessage(m);
       })

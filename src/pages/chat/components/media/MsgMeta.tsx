@@ -10,7 +10,7 @@ export function hhmm(ts: number) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Mensaje propio con estado de entrega persistido (texto, imagen, audio, doc). */
+/** Mensaje propio con estado de entrega persistido (texto, imagen, audio, documentos, acuerdo). */
 export function deliveryStateForMineMessage(
   m: Message,
 ): ChatDeliveryStatus | undefined {
@@ -21,6 +21,7 @@ export function deliveryStateForMineMessage(
     case "audio":
     case "doc":
     case "docs":
+    case "agreement":
       break;
     default:
       return undefined;

@@ -35,7 +35,8 @@ export type TradeAgreementApiDto = {
   issuedAt: number
   issuedByStoreId: string
   issuerLabel: string
-  status: 'pending_buyer' | 'accepted' | 'rejected'
+  status: 'pending_buyer' | 'accepted' | 'rejected' | 'deleted'
+  deletedAt?: number | null
   respondedAt?: number | null
   sellerEditBlockedUntilBuyerResponse?: boolean | null
   includeMerchandise: boolean
@@ -174,6 +175,7 @@ export async function fetchChatThreadByOffer(offerId: string): Promise<ChatThrea
 export async function fetchChatMessages(threadId: string): Promise<ChatMessageDto[]> {
   const res = await apiFetch(`/api/v1/chat/threads/${encodeURIComponent(threadId)}/messages`, {
     method: 'GET',
+    cache: 'no-store',
   })
   if (!res.ok) throw new Error(await res.text())
   return (await res.json()) as ChatMessageDto[]
@@ -184,7 +186,7 @@ export async function fetchThreadTradeAgreements(
 ): Promise<TradeAgreementApiDto[]> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements`,
-    { method: 'GET' },
+    { method: 'GET', cache: 'no-store' },
   )
   if (!res.ok) throw new Error(await res.text())
   return (await res.json()) as TradeAgreementApiDto[]

@@ -257,6 +257,9 @@ export type Message =
       title: string;
       at: number;
       read?: boolean;
+      replyQuotes?: ReplyQuote[];
+      /** Entrega/lectura en el propio anuncio de acuerdo (GET / messages + SignalR). */
+      chatStatus?: ChatDeliveryStatus;
     };
 
 /**
@@ -400,6 +403,8 @@ export type MarketState = {
   applyOfferQaFromServer: (offerId: string, qa: QAItem[]) => void;
   /** GET `/market/offers/:id/qa` y aplica en store + hilos de compra. */
   refreshOfferQaFromServer: (offerId: string) => Promise<void>;
+  /** GET acuerdos del hilo y reemplaza `thread.contracts` (p. ej. tras SignalR, sin refetch de todos los mensajes). */
+  refreshThreadTradeAgreements: (threadId: string) => Promise<void>;
   /** Mergea mensaje desde SignalR (evita duplicados por id). */
   onChatMessageFromServer: (threadId: string, dto: ChatMessageDto) => void;
   /** Nuevo hilo persistido: actualiza lista sin recargar (comprador y vendedor). */

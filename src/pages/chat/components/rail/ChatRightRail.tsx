@@ -92,7 +92,10 @@ export function ChatRightRail({
     [buyer, seller, chatCarriers],
   )
 
-  const hasAcceptedContract = useMemo(() => contracts.some((c) => c.status === 'accepted'), [contracts])
+  const hasAcceptedContract = useMemo(
+    () => contracts.some((c) => c.status === 'accepted'),
+    [contracts],
+  )
 
   const allTramosConfirmedOnOffer = useMemo(() => {
     const ro = routeOfferForThread
@@ -103,6 +106,7 @@ export function ChatRightRail({
   const linkedRouteSheetIds = useMemo(() => {
     const s = new Set<string>()
     for (const c of contracts) {
+      if (c.status === 'deleted') continue
       if (c.routeSheetId) s.add(c.routeSheetId)
     }
     return s
@@ -122,7 +126,12 @@ export function ChatRightRail({
   const displayContracts = useMemo(() => {
     if (cFilter === 'all') return contracts
     if (cFilter === 'store') return contracts.filter((c) => c.issuedByStoreId === threadStoreId)
-    return contracts.filter((c) => c.status === 'pending_buyer' || c.respondedAt != null)
+    return contracts.filter(
+      (c) =>
+        c.status === 'pending_buyer' ||
+        c.respondedAt != null ||
+        c.status === 'deleted',
+    )
   }, [contracts, cFilter, threadStoreId])
 
   const selRoute = selRouteId ? routeSheets.find((r) => r.id === selRouteId) : undefined

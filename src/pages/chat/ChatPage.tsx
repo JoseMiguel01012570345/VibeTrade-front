@@ -12,6 +12,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "../../lib/cn";
 import {
   ArrowLeft,
+  ChevronDown,
   FileText,
   PanelRight,
   ShieldCheck,
@@ -81,6 +82,8 @@ import {
   syncOwnQaIntoMessages,
 } from "../../app/store/marketStoreHelpers";
 import "./chat.css";
+
+const CHAT_SCROLL_BOTTOM_PX = 80;
 
 export function ChatPage() {
   const { threadId } = useParams();
@@ -264,6 +267,14 @@ export function ChatPage() {
   >(null);
   const trustPenaltyNextSave = useRef<"none" | "agreement" | "routeSheet">("none");
   const listRef = useRef<HTMLDivElement | null>(null);
+  const listEndRef = useRef<HTMLDivElement | null>(null);
+  /** Sigue true si el usuario estaba al final del hilo (para decidir autoscroll al llegar mensajes). */
+  const userWasAtBottomRef = useRef(true);
+  const prevMessageCountInThreadRef = useRef(0);
+  const chatListInitThreadIdRef = useRef<string | null>(null);
+  const [unreadBelowCount, setUnreadBelowCount] = useState(0);
+  /** True si el usuario scrolleó hacia arriba y el fondo del hilo no está a la vista. */
+  const [scrolledUpFromBottom, setScrolledUpFromBottom] = useState(false);
   const draftInputRef = useRef<HTMLInputElement | null>(null);
   const voiceRecorderContainerRef = useRef<HTMLDivElement | null>(null);
   const voiceSessionRef = useRef<ReturnType<
@@ -377,6 +388,11 @@ export function ChatPage() {
         const contracts = agResult.ok
           ? agResult.agreements.map(mapTradeAgreementApiToTradeAgreement)
           : (existingTh?.contracts ?? []);
+        const validAgreementIds: Set<string> | undefined = agResult.ok
+          ? new Set(agResult.agreements.map((a) => a.id))
+          : (existingTh?.contracts?.length
+              ? new Set(existingTh.contracts.map((c) => c.id))
+              : undefined);
         mergeChatSenderLabelsIntoProfileStore(msgs);
         const meId = useAppStore.getState().me.id;
         const mapped = msgs.map((d) => mapChatMessageDtoToMessage(d, meId));
@@ -397,7 +413,13 @@ export function ChatPage() {
                     meId,
                   )
                 : [];
-        const merged = mergePersistedChatMessages(mapped, localBasis);
+        const merged = mergePersistedChatMessages(
+          mapped,
+          localBasis,
+          validAgreementIds
+            ? { validTradeAgreementIds: validAgreementIds }
+            : undefined,
+        );
         const qaSynced = syncOwnQaIntoMessages(
           merged,
           offer,
@@ -453,40 +475,17 @@ export function ChatPage() {
     markReadAttemptedIdsRef.current = new Set();
   }, [threadId]);
 
-  /**
-   * Como B hay que pasar a «read» todos los mensajes entrantes de A que sigan en sent/delivered,
-   * no solo el último; si no, A solo ve leído el último y el resto queda «entregado».
-   */
-  useEffect(() => {
-    if (!threadId?.startsWith("cth_") || !thread) return;
-
-    const incomingNeedsRead = (
-      m: (typeof thread.messages)[number],
-    ): boolean => {
-      if (m.from !== "other" || !m.id || m.id.startsWith("pend_")) return false;
-      if (
-        m.type !== "text" &&
-        m.type !== "image" &&
-        m.type !== "audio" &&
-        m.type !== "doc" &&
-        m.type !== "docs"
-      )
-        return false;
-      const st = "chatStatus" in m ? m.chatStatus : undefined;
-      if (st === "read") return false;
-      if (st === undefined && "read" in m && m.read === true) return false;
-      return true;
-    };
-
-    for (const m of thread.messages) {
-      if (!incomingNeedsRead(m)) continue;
-      if (markReadAttemptedIdsRef.current.has(m.id)) continue;
-      markReadAttemptedIdsRef.current.add(m.id);
-      void patchChatMessageStatus(threadId, m.id, "read").catch(() => {
-        markReadAttemptedIdsRef.current.delete(m.id);
+  const onIncomingMessageVisibleForRead = useCallback(
+    (messageId: string) => {
+      if (!threadId?.startsWith("cth_")) return;
+      if (markReadAttemptedIdsRef.current.has(messageId)) return;
+      markReadAttemptedIdsRef.current.add(messageId);
+      void patchChatMessageStatus(threadId, messageId, "read").catch(() => {
+        markReadAttemptedIdsRef.current.delete(messageId);
       });
-    }
-  }, [threadId, thread?.messages]);
+    },
+    [threadId],
+  );
 
   const prevCarrierStopsRef = useRef<Set<string> | null>(null);
   useEffect(() => {
@@ -531,9 +530,98 @@ export function ChatPage() {
     if (thread?.chatActionsLocked) setSelected({});
   }, [thread?.chatActionsLocked]);
 
+  const onChatListScroll = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const atBottom =
+      el.scrollTop + el.clientHeight >=
+      el.scrollHeight - CHAT_SCROLL_BOTTOM_PX;
+    userWasAtBottomRef.current = atBottom;
+    setScrolledUpFromBottom(!atBottom);
+    if (atBottom) {
+      setUnreadBelowCount(0);
+    }
+  }, []);
+
+  const jumpChatToBottom = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    setUnreadBelowCount(0);
+    setScrolledUpFromBottom(false);
+    userWasAtBottomRef.current = true;
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!thread) {
+      if (!threadId) {
+        chatListInitThreadIdRef.current = null;
+        prevMessageCountInThreadRef.current = 0;
+        setUnreadBelowCount(0);
+        setScrolledUpFromBottom(false);
+      }
+      return;
+    }
+    const el = listRef.current;
+    const n = thread.messages.length;
+    const tid = thread.id;
+    if (!el) {
+      return;
+    }
+    if (chatListInitThreadIdRef.current !== tid) {
+      chatListInitThreadIdRef.current = tid;
+      el.scrollTo({ top: el.scrollHeight });
+      prevMessageCountInThreadRef.current = n;
+      setUnreadBelowCount(0);
+      userWasAtBottomRef.current = true;
+      queueMicrotask(() => {
+        onChatListScroll();
+      });
+      return;
+    }
+    if (n < prevMessageCountInThreadRef.current) {
+      prevMessageCountInThreadRef.current = n;
+      return;
+    }
+    if (n > prevMessageCountInThreadRef.current) {
+      const added = n - prevMessageCountInThreadRef.current;
+      const ordered = normalizeThreadMessages(thread.messages);
+      const newSlice = ordered.slice(-added);
+      /** No sumar al badge los envíos propios mientras se está scrolleado arriba (sólo avisar de lo del otro/sistema). */
+      const unreadFromNonMe = newSlice.filter((m) => m.from !== "me").length;
+      if (userWasAtBottomRef.current) {
+        el.scrollTo({ top: el.scrollHeight });
+        setUnreadBelowCount(0);
+        queueMicrotask(() => {
+          onChatListScroll();
+        });
+      } else if (unreadFromNonMe > 0) {
+        setUnreadBelowCount((c) => c + unreadFromNonMe);
+      }
+    }
+    prevMessageCountInThreadRef.current = n;
+  }, [thread, threadId, onChatListScroll]);
+
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
-  }, [thread?.messages?.length]);
+    if (!thread) return;
+    const root = listRef.current;
+    const target = listEndRef.current;
+    if (!root || !target) return;
+    const o = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setUnreadBelowCount(0);
+            setScrolledUpFromBottom(false);
+            userWasAtBottomRef.current = true;
+          }
+        }
+      },
+      { root, rootMargin: "0px", threshold: 0.01 },
+      );
+    o.observe(target);
+    return () => o.disconnect();
+  }, [thread?.id, thread?.messages.length]);
 
   const selectedIds = useMemo(
     () => Object.keys(selected).filter((id) => selected[id]),
@@ -889,22 +977,24 @@ export function ChatPage() {
                   >
                     <PanelRight size={16} /> Panel
                   </button>
-                  <button
-                    type="button"
-                    className="vt-btn"
-                    disabled={chatActionsLocked}
-                    title={
-                      chatActionsLocked
-                        ? "No disponible hasta registrar el pago"
-                        : "Emitir acuerdo como negocio"
-                    }
-                    onClick={() => {
-                      setAgreementBeingEditedId(null);
-                      setShowAgreementForm(true);
-                    }}
-                  >
-                    <FileText size={16} /> Emitir acuerdo
-                  </button>
+                  {isActingSeller ? (
+                    <button
+                      type="button"
+                      className="vt-btn"
+                      disabled={chatActionsLocked}
+                      title={
+                        chatActionsLocked
+                          ? "No disponible hasta registrar el pago"
+                          : "Emitir acuerdo como negocio"
+                      }
+                      onClick={() => {
+                        setAgreementBeingEditedId(null);
+                        setShowAgreementForm(true);
+                      }}
+                    >
+                      <FileText size={16} /> Emitir acuerdo
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -921,18 +1011,49 @@ export function ChatPage() {
               </div>
             ) : null}
 
-            <ChatMessageList
-              listRef={listRef}
-              thread={thread}
-              me={me}
-              selected={selected}
-              chatActionsLocked={chatActionsLocked}
-              toggleSelectRow={toggleSelectRow}
-              setLightboxUrl={setLightboxUrl}
-              respondTradeAgreement={respondTradeAgreement}
-              setFocusRouteId={setFocusRouteId}
-              setRailOpen={setRailOpen}
-            />
+            <div className="relative min-h-0 flex flex-1 flex-col">
+              <ChatMessageList
+                listRef={listRef}
+                listEndRef={listEndRef}
+                onListScroll={onChatListScroll}
+                onIncomingMessageVisibleForRead={onIncomingMessageVisibleForRead}
+                thread={thread}
+                me={me}
+                selected={selected}
+                chatActionsLocked={chatActionsLocked}
+                toggleSelectRow={toggleSelectRow}
+                setLightboxUrl={setLightboxUrl}
+                respondTradeAgreement={respondTradeAgreement}
+                setFocusRouteId={setFocusRouteId}
+                setRailOpen={setRailOpen}
+              />
+              {scrolledUpFromBottom ? (
+                <div className="pointer-events-none absolute bottom-2 right-3 z-20 sm:bottom-3 sm:right-4">
+                  <button
+                    type="button"
+                    onClick={jumpChatToBottom}
+                    className="pointer-events-auto relative flex min-h-11 min-w-11 items-center justify-center gap-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-[0_6px_24px_rgba(15,23,42,0.18)] transition hover:border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] hover:bg-[color-mix(in_oklab,var(--primary)_6%,var(--surface))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+                    aria-label={
+                      unreadBelowCount > 0
+                        ? `${unreadBelowCount > 99 ? "99+" : unreadBelowCount} mensajes nuevos, ir al final del chat`
+                        : "Ir al final del chat"
+                    }
+                    title="Ir al final del chat"
+                  >
+                    {unreadBelowCount > 0 ? (
+                      <span className="absolute -right-1.5 -top-2 flex min-h-5 min-w-5 select-none items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-[10px] font-black leading-none text-white shadow-sm">
+                        {unreadBelowCount > 99 ? "99+" : unreadBelowCount}
+                      </span>
+                    ) : null}
+                    <ChevronDown
+                      className="size-6 shrink-0"
+                      strokeWidth={2.25}
+                      aria-hidden
+                    />
+                  </button>
+                </div>
+              ) : null}
+            </div>
 
             <ChatComposerSection
               thread={thread}
@@ -971,7 +1092,8 @@ export function ChatPage() {
 
         <div
           className={cn(
-            "relative z-[2] flex min-h-0 flex-col min-[961px]:self-stretch",
+            /* En móvil el drawer es fixed: hace falta z por encima del header (z-50) y del nav (z-60). */
+            "relative flex min-h-0 flex-col min-[961px]:self-stretch min-[961px]:z-[2] max-[960px]:z-[100]",
             "vt-chat-rail-wrap",
             railOpen && "vt-chat-rail-wrap--open",
           )}
@@ -1106,7 +1228,7 @@ export function ChatPage() {
       />
 
       <TradeAgreementFormModal
-        open={showAgreementForm}
+        open={showAgreementForm && isActingSeller}
         onClose={() => {
           trustPenaltyNextSave.current = "none";
           setShowAgreementForm(false);
@@ -1117,6 +1239,7 @@ export function ChatPage() {
         initialDraft={agreementBeingEditedId ? agreementFormInitial : null}
         editingAgreementId={agreementBeingEditedId}
         onSubmit={async (draft) => {
+          if (!isActingSeller) return false;
           if (agreementBeingEditedId) {
             const ok = await updatePendingTradeAgreement(
               thread.id,
