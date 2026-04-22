@@ -1,7 +1,6 @@
 import toast from 'react-hot-toast'
 import { ChevronRight, ExternalLink, MapPin, Trash2 } from 'lucide-react'
-import { agreementDeclaresMerchandise, type TradeAgreement } from '../../domain/tradeAgreementTypes'
-import { hasMerchandise } from '../../domain/tradeAgreementValidation'
+import { type TradeAgreement } from '../../domain/tradeAgreementTypes'
 import type { RouteSheet } from '../../domain/routeSheetTypes'
 import { AgreementDetailView } from '../modals/AgreementDetailView'
 import {
@@ -111,9 +110,7 @@ export function ChatRightRailContractsPanel({
                 >
                   Editar acuerdo
                 </button>
-                {agreementForDetail.status !== 'accepted' &&
-                agreementForDetail.status !== 'deleted' &&
-                onDeleteAgreement ? (
+                {agreementForDetail.status !== 'accepted' && onDeleteAgreement ? (
                   <button
                     type="button"
                     className="vt-btn vt-btn-sm inline-flex items-center gap-1 border-[color-mix(in_oklab,#dc2626_28%,var(--border))] bg-[color-mix(in_oklab,#dc2626_6%,var(--surface))] text-[color-mix(in_oklab,#dc2626_88%,var(--text))]"
@@ -167,9 +164,7 @@ export function ChatRightRailContractsPanel({
                   <span className={contractStatusClass(c.status)}>{contractStatusLabel(c.status)}</span>
                 </div>
                 <div className="mt-1 text-[11px] text-[var(--muted)]">{c.issuerLabel}</div>
-                {agreementDeclaresMerchandise(c) &&
-                hasMerchandise({ merchandise: c.merchandise }) &&
-                (c.routeSheetId || c.routeSheetUrl) ? (
+                {(c.routeSheetId || c.routeSheetUrl) ? (
                   <div className="mt-1.5 flex flex-wrap gap-2 text-[11px] text-[var(--muted)]">
                     {c.routeSheetId ? (
                       <span className="inline-flex items-center gap-1">

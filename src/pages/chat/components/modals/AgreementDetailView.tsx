@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { VtSelect, type VtSelectOption } from "../../../../components/VtSelect";
 import { useMarketStore } from "../../../../app/store/useMarketStore";
 import { cn } from "../../../../lib/cn";
 import {
@@ -10,9 +11,14 @@ import {
   type MerchandiseSectionMeta,
   type TradeAgreement,
 } from "../../domain/tradeAgreementTypes";
-import { hasMerchandise } from "../../domain/tradeAgreementValidation";
-import type { StoreCatalog, StoreProduct } from "../../domain/storeCatalogTypes";
-import { findStoreProduct, findStoreService } from "../../domain/storeCatalogTypes";
+import type {
+  StoreCatalog,
+  StoreProduct,
+} from "../../domain/storeCatalogTypes";
+import {
+  findStoreProduct,
+  findStoreService,
+} from "../../domain/storeCatalogTypes";
 import { ServiceItemPreview } from "./serviceConfig/ServiceItemPreview";
 import type { RouteSheet } from "../../domain/routeSheetTypes";
 import {
@@ -50,22 +56,36 @@ function FichaProductoExcerpt({ p }: { p: StoreProduct }) {
   return (
     <div className="mb-2 space-y-2 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] p-2.5 text-[13px]">
       <div className="font-extrabold text-[var(--text)]">Ficha de producto</div>
-      {p.model?.trim() ? <Row label="Versión / modelo" value={p.model} /> : null}
-      {p.shortDescription?.trim() ? (
-        <p className="whitespace-pre-wrap text-[var(--text)]">{p.shortDescription}</p>
+      {p.model?.trim() ? (
+        <Row label="Versión / modelo" value={p.model} />
       ) : null}
-      {p.mainBenefit?.trim() ? <Row label="Beneficio principal" value={p.mainBenefit} /> : null}
+      {p.shortDescription?.trim() ? (
+        <p className="whitespace-pre-wrap text-[var(--text)]">
+          {p.shortDescription}
+        </p>
+      ) : null}
+      {p.mainBenefit?.trim() ? (
+        <Row label="Beneficio principal" value={p.mainBenefit} />
+      ) : null}
       {p.technicalSpecs?.trim() ? (
         <div>
           <div className="mb-0.5 text-[10px] font-extrabold uppercase text-[var(--muted)]">
             Características técnicas
           </div>
-          <div className="whitespace-pre-wrap text-[var(--text)]">{p.technicalSpecs}</div>
+          <div className="whitespace-pre-wrap text-[var(--text)]">
+            {p.technicalSpecs}
+          </div>
         </div>
       ) : null}
-      {p.contentIncluded?.trim() ? <Row label="Contenido incluido" value={p.contentIncluded} /> : null}
-      {p.usageConditions?.trim() ? <Row label="Condiciones de uso" value={p.usageConditions} /> : null}
-      {p.taxesShippingInstall?.trim() ? <Row label="Envío / impuestos (ficha)" value={p.taxesShippingInstall} /> : null}
+      {p.contentIncluded?.trim() ? (
+        <Row label="Contenido incluido" value={p.contentIncluded} />
+      ) : null}
+      {p.usageConditions?.trim() ? (
+        <Row label="Condiciones de uso" value={p.usageConditions} />
+      ) : null}
+      {p.taxesShippingInstall?.trim() ? (
+        <Row label="Envío / impuestos (ficha)" value={p.taxesShippingInstall} />
+      ) : null}
       {p.customFields.length > 0 ? (
         <div>
           <div className="mb-1.5 text-[10px] font-extrabold uppercase text-[var(--muted)]">
@@ -80,10 +100,14 @@ function FichaProductoExcerpt({ p }: { p: StoreProduct }) {
                 <div className="font-bold text-[var(--text)]">{f.title}</div>
               ) : null}
               {f.attachmentNote?.trim() ? (
-                <div className="text-[11px] text-[var(--muted)]">{f.attachmentNote}</div>
+                <div className="text-[11px] text-[var(--muted)]">
+                  {f.attachmentNote}
+                </div>
               ) : null}
               {f.body?.trim() ? (
-                <div className="whitespace-pre-wrap text-sm text-[var(--text)]">{f.body}</div>
+                <div className="whitespace-pre-wrap text-sm text-[var(--text)]">
+                  {f.body}
+                </div>
               ) : null}
               {f.attachments?.length ? (
                 <ul className="mt-1.5 list-inside list-disc text-xs">
@@ -107,7 +131,9 @@ function FichaProductoExcerpt({ p }: { p: StoreProduct }) {
       ) : null}
       {p.photoUrls?.filter((u) => u?.trim()).length ? (
         <div>
-          <div className="mb-1.5 text-[10px] font-extrabold uppercase text-[var(--muted)]">Fotos</div>
+          <div className="mb-1.5 text-[10px] font-extrabold uppercase text-[var(--muted)]">
+            Fotos
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {p.photoUrls
               .filter((u) => u?.trim())
@@ -120,7 +146,11 @@ function FichaProductoExcerpt({ p }: { p: StoreProduct }) {
                   rel="noreferrer"
                   className="block h-20 w-20 overflow-hidden rounded border border-[var(--border)]"
                 >
-                  <img src={url} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
                 </a>
               ))}
           </div>
@@ -130,7 +160,13 @@ function FichaProductoExcerpt({ p }: { p: StoreProduct }) {
   );
 }
 
-function MerchandiseBlock({ lines, catalog }: { lines: MerchandiseLine[]; catalog?: StoreCatalog }) {
+function MerchandiseBlock({
+  lines,
+  catalog,
+}: {
+  lines: MerchandiseLine[];
+  catalog?: StoreCatalog;
+}) {
   if (!lines.length) return null;
   return (
     <div className={agrDetailBlock}>
@@ -199,8 +235,6 @@ export function AgreementDetailView({
   const services = normalizeAgreementServices(a);
   const showMerch = agreementDeclaresMerchandise(a);
   const showService = agreementDeclaresService(a);
-  const hasGoods = hasMerchandise({ merchandise: a.merchandise });
-
   const [pickId, setPickId] = useState(a.routeSheetId ?? "");
   useEffect(() => {
     setPickId(a.routeSheetId ?? "");
@@ -211,106 +245,117 @@ export function AgreementDetailView({
     : undefined;
   const linkedTitle = linkedSheet?.titulo;
   const routeLinked = !!a.routeSheetId;
-  /** Publicada: sin desvincular ni desde aquí. */
+  /** Hoja publicada: no se puede cambiar el roadmap vinculado ni desde el select ni sustituyendo la hoja. */
   const linkPublishedLocked =
     !!a.routeSheetId && !!linkedSheet?.publicadaPlataforma;
   const canUnlinkRoute =
     !!a.routeSheetId &&
     !linkedSheet?.publicadaPlataforma &&
     !!onUnlinkRouteSheet;
+  const selectRouteSheetDisabled = linkPublishedLocked || linkActionsDisabled;
+  const vincularDisabled =
+    linkActionsDisabled ||
+    linkPublishedLocked ||
+    !pickId ||
+    pickId === (a.routeSheetId ?? "");
+
+  const routeSheetSelectOptions: VtSelectOption[] = useMemo(
+    () => [
+      { value: "", label: "Sin vincular — seleccionar…" },
+      ...routeSheets.map((r) => ({
+        value: r.id,
+        label: r.publicadaPlataforma ? `${r.titulo} (publicada)` : r.titulo,
+      })),
+    ],
+    [routeSheets],
+  );
 
   return (
     <div className={agrDetailRoot}>
       <Row label="Título" value={a.title} />
 
-      {showMerch && hasGoods ? (
+      {onLinkRouteSheet ? (
         <div className={agrDetailBlock}>
-          <div className={agrDetailH}>Hoja de ruta</div>
-          {onLinkRouteSheet ? (
-            routeSheets.length === 0 ? (
-              <p className={cn("vt-muted", agrDetailHint)}>
-                No hay hojas de ruta en este chat. Creá una en la pestaña Rutas
-                y volvé para vincularla.
-              </p>
-            ) : (
-              <>
-                {linkActionsDisabled ? (
-                  <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
-                    La vinculación de hojas de ruta no está disponible hasta
-                    registrar el pago en el chat.
-                  </p>
-                ) : null}
-                <div className={linkRutaRow}>
-                  <label className={linkRutaSelect}>
-                    <span className={fieldLabel}>Elegir hoja</span>
-                    <select
-                      className="vt-input"
-                      value={pickId}
-                      disabled={routeLinked || linkActionsDisabled}
-                      onChange={(e) => setPickId(e.target.value)}
-                    >
-                      <option value="">Seleccionar…</option>
-                      {routeSheets.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.titulo}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+          <div className={agrDetailH}>Hoja de ruta (roadmap)</div>
+          <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
+            Elegí una sola hoja de ruta del chat para este acuerdo. Podés
+            cambiarla mientras la hoja no esté publicada a transportistas.
+          </p>
+          {routeSheets.length === 0 ? (
+            <p className={cn("vt-muted", agrDetailHint)}>
+              No hay hojas de ruta en este chat. Creá una en la pestaña Rutas y
+              volvé para vincularla.
+            </p>
+          ) : (
+            <>
+              {linkActionsDisabled ? (
+                <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
+                  La vinculación de hojas de ruta no está disponible hasta
+                  registrar el pago en el chat.
+                </p>
+              ) : null}
+              <div className={linkRutaRow}>
+                <div className={linkRutaSelect}>
+                  <span className={fieldLabel}>Roadmap vinculado</span>
+                  <VtSelect
+                    value={pickId}
+                    onChange={setPickId}
+                    options={routeSheetSelectOptions}
+                    placeholder="Sin vincular — seleccionar…"
+                    disabled={selectRouteSheetDisabled}
+                    ariaLabel="Seleccionar hoja de ruta para el acuerdo"
+                    listPortal
+                    listPortalZIndexClass="z-[220]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="vt-btn vt-btn-primary shrink-0"
+                  disabled={vincularDisabled}
+                  onClick={() => {
+                    if (!pickId || !onLinkRouteSheet || vincularDisabled)
+                      return;
+                    onLinkRouteSheet(a.id, pickId);
+                  }}
+                >
+                  {routeLinked &&
+                  !linkPublishedLocked &&
+                  pickId !== (a.routeSheetId ?? "")
+                    ? "Actualizar vínculo"
+                    : "Vincular"}
+                </button>
+                {canUnlinkRoute ? (
                   <button
                     type="button"
-                    className="vt-btn vt-btn-primary shrink-0"
-                    disabled={
-                      linkActionsDisabled ||
-                      routeLinked ||
-                      !pickId ||
-                      pickId === (a.routeSheetId ?? "")
-                    }
+                    className="vt-btn shrink-0"
+                    disabled={linkActionsDisabled}
                     onClick={() => {
-                      if (
-                        !pickId ||
-                        !onLinkRouteSheet ||
-                        routeLinked ||
-                        linkActionsDisabled
-                      )
-                        return;
-                      onLinkRouteSheet(a.id, pickId);
+                      if (linkActionsDisabled || !onUnlinkRouteSheet) return;
+                      onUnlinkRouteSheet(a.id);
                     }}
                   >
-                    Vincular
+                    Desvincular
                   </button>
-                  {canUnlinkRoute ? (
-                    <button
-                      type="button"
-                      className="vt-btn shrink-0"
-                      disabled={linkActionsDisabled}
-                      onClick={() => {
-                        if (linkActionsDisabled || !onUnlinkRouteSheet) return;
-                        onUnlinkRouteSheet(a.id);
-                      }}
-                    >
-                      Desvincular
-                    </button>
-                  ) : null}
-                </div>
-                {linkPublishedLocked ? (
-                  <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
-                    La hoja ya está publicada en la plataforma: el vínculo no se
-                    puede cambiar ni quitar desde aquí.
-                  </p>
-                ) : a.routeSheetId ? (
-                  <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
-                    Con una hoja vinculada, la elección queda fija; podés
-                    desvincular para elegir otra mientras la hoja no esté
-                    publicada en la plataforma.
-                  </p>
                 ) : null}
-              </>
-            )
-          ) : null}
+              </div>
+              {linkPublishedLocked ? (
+                <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
+                  Esta hoja ya está{" "}
+                  <strong className="text-[var(--text)]">publicada</strong> en
+                  la plataforma: el roadmap vinculado no se puede modificar ni
+                  quitar desde aquí.
+                </p>
+              ) : routeLinked ? (
+                <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
+                  Podés elegir otra hoja en el selector y usar «Actualizar
+                  vínculo», o desvincular para dejar el acuerdo sin roadmap.
+                </p>
+              ) : null}
+            </>
+          )}
           {a.routeSheetId && linkedTitle ? (
-            <p className={cn("vt-muted", agrDetailHint)}>
-              Vinculada a: <strong>{linkedTitle}</strong>
+            <p className={cn("vt-muted", agrDetailHint, "mt-2")}>
+              Vinculada ahora a: <strong>{linkedTitle}</strong>
             </p>
           ) : null}
           {a.routeSheetId && onOpenRouteSheet ? (
@@ -338,7 +383,9 @@ export function AgreementDetailView({
         </div>
       ) : null}
 
-      {showMerch ? <MerchandiseBlock lines={a.merchandise} catalog={catalog} /> : null}
+      {showMerch ? (
+        <MerchandiseBlock lines={a.merchandise} catalog={catalog} />
+      ) : null}
 
       {showMerch && legacyMerchandiseMetaHasContent(m) ? (
         <div className={agrDetailBlock}>

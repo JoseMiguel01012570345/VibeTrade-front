@@ -2,6 +2,7 @@ import type { TradeAgreement } from '../../pages/chat/domain/tradeAgreementTypes
 import { normalizeMerchandiseLine } from '../../pages/chat/domain/tradeAgreementTypes'
 import { hasValidationErrors, validateTradeAgreementDraft } from '../../pages/chat/domain/tradeAgreementValidation'
 import { fetchOfferQaFromServer, postOfferInquiry } from '../../utils/market/marketPersistence'
+import type { RouteSheetPayload } from '../../pages/chat/domain/routeSheetTypes'
 import {
   CHAT_CANNOT_MESSAGE_SELF,
   createOrGetChatThread,
@@ -10,6 +11,7 @@ import {
   fetchChatMessages,
   fetchChatThread,
   fetchChatThreadByOffer,
+  fetchThreadRouteSheets,
   fetchThreadTradeAgreements,
   patchThreadTradeAgreement,
   postThreadTradeAgreement,
@@ -55,9 +57,10 @@ async function syncPersistedAgreementsAndMessages(
   const offer = get().offers[th.offerId]
   const meId = useAppStore.getState().me.id
   try {
-    const [agreements, serverMsgs] = await Promise.all([
+    const [agreements, serverMsgs, routeSheetsRs] = await Promise.all([
       fetchThreadTradeAgreements(threadId),
       fetchChatMessages(threadId),
+      fetchThreadRouteSheets(threadId).catch(() => [] as RouteSheetPayload[]),
     ])
     const contracts = agreements.map(mapTradeAgreementApiToTradeAgreement)
     const validAgreementIds = new Set(contracts.map((c) => c.id))
@@ -79,6 +82,7 @@ async function syncPersistedAgreementsAndMessages(
           ...s.threads[threadId]!,
           contracts,
           messages: qaSynced,
+          routeSheets: routeSheetsRs.length > 0 ? routeSheetsRs : s.threads[threadId]!.routeSheets ?? [],
         },
       },
     }))
@@ -241,6 +245,7 @@ ensureThreadForOffer: async (offerId, opts) => {
       | 'buyerAvatarUrl'
     >,
     contractsOverride?: TradeAgreement[],
+    routeSheetsFromServer?: RouteSheetPayload[],
   ) => {
     mergeChatSenderLabelsIntoProfileStore(serverMsgs)
     if (participantDto) mergeBuyerLabelFromThreadDto(participantDto)
@@ -284,7 +289,7 @@ ensureThreadForOffer: async (offerId, opts) => {
           : {}),
         messages: qaSynced,
         contracts: contractsOverride ?? baseThread.contracts ?? [],
-        routeSheets: baseThread.routeSheets ?? [],
+        routeSheets: routeSheetsFromServer ?? baseThread.routeSheets ?? [],
       }
       return { ...x, threads: nextThreads }
     })
@@ -310,11 +315,31 @@ ensureThreadForOffer: async (offerId, opts) => {
         const th = get().threads[existing.id]
         if (th) {
           const contracts = await loadContractsForPersistedThread(existing.id, th.contracts)
+          const routeSheets =
+            getSessionToken()
+              ? await fetchThreadRouteSheets(existing.id).catch(() => [] as RouteSheetPayload[])
+              : []
           try {
             const dto = await fetchChatThread(existing.id)
-            applyHydratedThread(existing.id, serverMsgs, th, dto.purchaseMode, dto, contracts)
+            applyHydratedThread(
+              existing.id,
+              serverMsgs,
+              th,
+              dto.purchaseMode,
+              dto,
+              contracts,
+              routeSheets,
+            )
           } catch {
-            applyHydratedThread(existing.id, serverMsgs, th, undefined, undefined, contracts)
+            applyHydratedThread(
+              existing.id,
+              serverMsgs,
+              th,
+              undefined,
+              undefined,
+              contracts,
+              routeSheets,
+            )
           }
         }
         return existing.id
@@ -325,6 +350,10 @@ ensureThreadForOffer: async (offerId, opts) => {
         const dto = await fetchChatThreadByOffer(offerId)
         if (!dto) return ''
         const serverMsgs = await fetchChatMessages(dto.id)
+        const routeSheets =
+          dto.id.startsWith('cth_') && getSessionToken()
+            ? await fetchThreadRouteSheets(dto.id).catch(() => [] as RouteSheetPayload[])
+            : []
         const bootstrap: Thread = existing
           ? { ...existing, id: dto.id }
           : {
@@ -340,12 +369,16 @@ ensureThreadForOffer: async (offerId, opts) => {
               routeSheets: [],
             }
         const contracts = await loadContractsForPersistedThread(dto.id, bootstrap.contracts)
-        applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode, dto, contracts)
+        applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode, dto, contracts, routeSheets)
         return dto.id
       }
 
       const dto = await createOrGetChatThread(offerId, true)
       const serverMsgs = await fetchChatMessages(dto.id)
+      const routeSheets =
+        dto.id.startsWith('cth_') && getSessionToken()
+          ? await fetchThreadRouteSheets(dto.id).catch(() => [] as RouteSheetPayload[])
+          : []
       const bootstrap: Thread = {
         id: dto.id,
         offerId,
@@ -359,7 +392,7 @@ ensureThreadForOffer: async (offerId, opts) => {
         routeSheets: existing?.routeSheets ?? [],
       }
       const contracts = await loadContractsForPersistedThread(dto.id, bootstrap.contracts)
-      applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode, dto, contracts)
+      applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode, dto, contracts, routeSheets)
       return dto.id
     } catch (e) {
       if (e instanceof Error && e.message === CHAT_CANNOT_MESSAGE_SELF) return ''

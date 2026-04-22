@@ -4,7 +4,7 @@ import {
   normalizeRouteSheetParadas,
 } from '../../pages/chat/domain/routeSheetValidation'
 import type { RouteSheet, RouteStop } from '../../pages/chat/domain/routeSheetTypes'
-import type { Message } from './marketStoreTypes'
+import type { Message, MarketState } from './marketStoreTypes'
 import { threadHasAcceptedAgreement } from './marketStoreTypes'
 import {
   stripLegacyRouteSheetHead,
@@ -21,7 +21,11 @@ import {
   confirmedCarrierIdsOnOffer,
 } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
-import type { MarketState } from './marketStoreTypes'
+import {
+  deleteThreadRouteSheet,
+  putThreadRouteSheet,
+} from '../../utils/chat/chatApi'
+import { getSessionToken } from '../../utils/http/sessionToken'
 
 export function createRouteSheetsSlice(set: MarketSliceSet, get: MarketSliceGet): Pick<MarketState,
   | 'createRouteSheet'
@@ -101,6 +105,11 @@ createRouteSheet: (threadId, payload) => {
       },
     }
   })
+  if (threadId.startsWith('cth_') && getSessionToken()) {
+    const th = get().threads[threadId]
+    const created = th?.routeSheets?.find((r) => r.id === rid)
+    if (created) void putThreadRouteSheet(threadId, created).catch(() => {})
+  }
   return rid
 },
 
@@ -212,6 +221,11 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
       },
     }
   })
+  if (ok && threadId.startsWith('cth_') && getSessionToken()) {
+    const th = get().threads[threadId]
+    const sheet = th?.routeSheets?.find((r) => r.id === routeSheetId)
+    if (sheet) void putThreadRouteSheet(threadId, sheet).catch(() => {})
+  }
   return ok
 },
 
@@ -232,6 +246,10 @@ setRouteSheetStatus: (threadId, routeSheetId, estado) => {
       },
     }
   })
+  if (threadId.startsWith('cth_') && getSessionToken()) {
+    const sh = get().threads[threadId]?.routeSheets?.find((r) => r.id === routeSheetId)
+    if (sh) void putThreadRouteSheet(threadId, sh).catch(() => {})
+  }
 },
 
 toggleRouteStop: (threadId, routeSheetId, stopId) => {
@@ -256,10 +274,15 @@ toggleRouteStop: (threadId, routeSheetId, stopId) => {
       },
     }
   })
+  if (threadId.startsWith('cth_') && getSessionToken()) {
+    const sh = get().threads[threadId]?.routeSheets?.find((r) => r.id === routeSheetId)
+    if (sh) void putThreadRouteSheet(threadId, sh).catch(() => {})
+  }
 },
 
 publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
   const idSet = new Set(routeSheetIds)
+  let toSync: RouteSheet[] = []
   set((s) => {
     const th = s.threads[threadId]
     const sheets = th?.routeSheets
@@ -295,6 +318,7 @@ publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
       return rs
     })
     if (extraMsgs.length === 0) return s
+    toSync = list.filter((rs) => allowedArr.includes(rs.id))
     return {
       ...s,
       threads: {
@@ -307,6 +331,9 @@ publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
       },
     }
   })
+  if (toSync.length > 0 && threadId.startsWith('cth_') && getSessionToken()) {
+    for (const sh of toSync) void putThreadRouteSheet(threadId, sh).catch(() => {})
+  }
 },
 
 linkAgreementToRouteSheet: (threadId, agreementId, routeSheetId) => {
@@ -434,6 +461,9 @@ deleteRouteSheet: (threadId, routeSheetId) => {
       },
     }
   })
+  if (ok && threadId.startsWith('cth_') && getSessionToken()) {
+    void deleteThreadRouteSheet(threadId, routeSheetId).catch(() => {})
+  }
   return ok
 },
   }

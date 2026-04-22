@@ -117,6 +117,27 @@ export type RouteSheetCreatePayload = {
   notasGenerales?: string
 }
 
+/** Tramo; mismo contrato que `RouteStopPayload` en el backend. */
+export type RouteStopPayload = RouteStop
+
+/**
+ * Cuerpo PUT/GET `/api/v1/chat/threads/.../route-sheets`;
+ * mismo contrato que `RouteSheetPayload` en el backend.
+ */
+export type RouteSheetPayload = RouteSheet
+
+/** Resumen emergente para recomendaciones; mismo contrato que `EmergentRouteSheetSnapshot` en el backend. */
+export type EmergentRouteLegSnapshot = {
+  origen: string
+  destino: string
+}
+
+export type EmergentRouteSheetSnapshot = {
+  titulo: string
+  mercanciasResumen: string
+  paradas: EmergentRouteLegSnapshot[]
+}
+
 /** Datos viejos guardados a nivel hoja (antes de por-tramo). */
 export type RouteSheetLegacyHead = {
   responsabilidadEmbalaje?: string

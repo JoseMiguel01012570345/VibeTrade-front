@@ -1,3 +1,4 @@
+import type { RouteSheetPayload } from '../../pages/chat/domain/routeSheetTypes'
 import { apiFetch } from '../http/apiClient'
 import { getSessionToken } from '../http/sessionToken'
 
@@ -179,6 +180,35 @@ export async function fetchChatMessages(threadId: string): Promise<ChatMessageDt
   })
   if (!res.ok) throw new Error(await res.text())
   return (await res.json()) as ChatMessageDto[]
+}
+
+export async function fetchThreadRouteSheets(threadId: string): Promise<RouteSheetPayload[]> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets`,
+    { method: 'GET', cache: 'no-store' },
+  )
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as RouteSheetPayload[]
+}
+
+export async function putThreadRouteSheet(threadId: string, sheet: RouteSheetPayload): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(sheet.id)}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sheet),
+    },
+  )
+  if (!res.ok) throw new Error(await res.text())
+}
+
+export async function deleteThreadRouteSheet(threadId: string, routeSheetId: string): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}`,
+    { method: 'DELETE' },
+  )
+  if (!res.ok && res.status !== 404) throw new Error(await res.text())
 }
 
 export async function fetchThreadTradeAgreements(

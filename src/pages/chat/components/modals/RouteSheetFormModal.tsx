@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
+import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { cn } from '../../../../lib/cn'
+import { nominatimReverse, nominatimSearch } from '../../../../utils/map/nominatimGeocode'
+import { storeMapPinIcon } from '../../../../utils/map/storeMapPinIcon'
+import 'leaflet/dist/leaflet.css'
 import { ModalFormField as Field } from './ModalFormField'
 import { emptyTramo, expandChainedTramoOrigins } from '../../lib/routeSheetTramoFormUtils'
 import {
@@ -11,7 +15,6 @@ import {
   fieldRootWithInvalid,
   mapBackdropLayerAboveChatRail,
   modalFormBody,
-  modalShellNarrow,
   modalShellWide,
   modalSub,
   rutaCoordsHint,
@@ -60,6 +63,39 @@ type Props = {
 
 type MapPick = { tramoIndex: number; punto: 'origen' | 'destino' }
 
+const ROUTE_MAP_DEFAULT_CENTER: [number, number] = [22.526838, -81.128701]
+const ROUTE_MAP_ZOOM = 9
+const ROUTE_MAP_ZOOM_POINT = 13
+
+function formatPickedCoord(n: number): string {
+  return n.toFixed(6)
+}
+
+function tryParseLatLngStrings(latRaw: string, lngRaw: string): { lat: number; lng: number } | null {
+  const lat = Number(latRaw.trim().replace(/\s/g, '').replace(',', '.'))
+  const lng = Number(lngRaw.trim().replace(/\s/g, '').replace(',', '.'))
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null
+  return { lat, lng }
+}
+
+function RouteMapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onPick(e.latlng.lat, e.latlng.lng)
+    },
+  })
+  return null
+}
+
+function RouteMapViewSync({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map = useMap()
+  useEffect(() => {
+    map.setView(center, zoom)
+  }, [map, center[0], center[1], zoom])
+  return null
+}
+
 /** En el formulario, el origen del tramo i&gt;0 no se guarda en el estado: se deriva del destino del tramo i−1. */
 function clearDerivedOriginsInForm(tramos: RouteTramoFormInput[]): RouteTramoFormInput[] {
   return tramos.map((t, i) =>
@@ -104,17 +140,22 @@ export function RouteSheetFormModal({
   const [mapPick, setMapPick] = useState<MapPick | null>(null)
   const [mapLat, setMapLat] = useState('')
   const [mapLng, setMapLng] = useState('')
+  const [mapPlaceLabel, setMapPlaceLabel] = useState('')
   const [mapCoordError, setMapCoordError] = useState<string | undefined>(undefined)
   const [formErrors, setFormErrors] = useState<RouteSheetFormErrors>({})
   const routeOfferRef = useRef(routeOfferForSheet)
   routeOfferRef.current = routeOfferForSheet
   const editBaselineJsonRef = useRef<string | null>(null)
+  /** Invalida búsquedas Nominatim al cerrar el mapa o abrir otro punto. */
+  const mapForwardTokenRef = useRef(0)
 
   useEffect(() => {
     if (!open) return
     setFormErrors({})
     setMapPick(null)
+    setMapPlaceLabel('')
     setMapCoordError(undefined)
+    mapForwardTokenRef.current += 1
     if (initialRouteSheet) {
       const rs = initialRouteSheet
       const ro = routeOfferRef.current
@@ -155,6 +196,39 @@ export function RouteSheetFormModal({
     }
   }, [open, initialRouteSheet?.id])
 
+  const routeMapCenter = useMemo((): [number, number] => {
+    if (!mapPick) return ROUTE_MAP_DEFAULT_CENTER
+    const p = tryParseLatLngStrings(mapLat, mapLng)
+    if (p) return [p.lat, p.lng]
+    return ROUTE_MAP_DEFAULT_CENTER
+  }, [mapPick, mapLat, mapLng])
+
+  const routeMapZoom = useMemo(() => {
+    const p = tryParseLatLngStrings(mapLat, mapLng)
+    return p ? ROUTE_MAP_ZOOM_POINT : ROUTE_MAP_ZOOM
+  }, [mapLat, mapLng])
+
+  useEffect(() => {
+    if (!mapPick || !open) return
+    const parsed = tryParseLatLngStrings(mapLat, mapLng)
+    if (!parsed) return
+    const ac = new AbortController()
+    const tid = globalThis.setTimeout(() => {
+      void (async () => {
+        try {
+          const label = await nominatimReverse(parsed.lat, parsed.lng, ac.signal)
+          if (!ac.signal.aborted && label) setMapPlaceLabel(label)
+        } catch {
+          /* cancelado o red */
+        }
+      })()
+    }, 450)
+    return () => {
+      globalThis.clearTimeout(tid)
+      ac.abort()
+    }
+  }, [mapPick, mapLat, mapLng, open])
+
   if (!open) return null
 
   function openMapPicker(tramoIndex: number, punto: 'origen' | 'destino') {
@@ -162,14 +236,65 @@ export function RouteSheetFormModal({
     const t = tramos[tramoIndex]
     if (!t) return
     setMapCoordError(undefined)
+    const token = ++mapForwardTokenRef.current
+
+    let latStr = ''
+    let lngStr = ''
+    let labelStr = ''
     if (punto === 'origen') {
-      setMapLat(t.origenLat ?? '')
-      setMapLng(t.origenLng ?? '')
+      latStr = t.origenLat ?? ''
+      lngStr = t.origenLng ?? ''
+      labelStr = t.origen ?? ''
     } else {
-      setMapLat(t.destinoLat ?? '')
-      setMapLng(t.destinoLng ?? '')
+      latStr = t.destinoLat ?? ''
+      lngStr = t.destinoLng ?? ''
+      labelStr = t.destino ?? ''
     }
+    setMapLat(latStr)
+    setMapLng(lngStr)
+    setMapPlaceLabel(labelStr.trim())
     setMapPick({ tramoIndex, punto })
+
+    if (tryParseLatLngStrings(latStr, lngStr)) return
+    const q = labelStr.trim()
+    if (q.length < 3) return
+
+    void (async () => {
+      try {
+        const r = await nominatimSearch(q)
+        if (mapForwardTokenRef.current !== token || !r) return
+        setMapLat(formatPickedCoord(r.lat))
+        setMapLng(formatPickedCoord(r.lng))
+        setMapPlaceLabel(r.label)
+        setMapCoordError(undefined)
+      } catch {
+        /* ignore */
+      }
+    })()
+  }
+
+  async function geocodePlaceToMap() {
+    const q = mapPlaceLabel.trim()
+    if (q.length < 3) {
+      toast.error('Escribí al menos 3 caracteres de dirección')
+      return
+    }
+    const token = ++mapForwardTokenRef.current
+    try {
+      const r = await nominatimSearch(q)
+      if (mapForwardTokenRef.current !== token) return
+      if (!r) {
+        toast.error('No se encontró esa dirección')
+        return
+      }
+      setMapLat(formatPickedCoord(r.lat))
+      setMapLng(formatPickedCoord(r.lng))
+      setMapPlaceLabel(r.label)
+      setMapCoordError(undefined)
+    } catch {
+      if (mapForwardTokenRef.current === token)
+        toast.error('No se pudo buscar la dirección. Probá de nuevo.')
+    }
   }
 
   function applyMapCoords() {
@@ -180,22 +305,26 @@ export function RouteSheetFormModal({
       return
     }
     setMapCoordError(undefined)
+    mapForwardTokenRef.current += 1
     const lat = mapLat.trim()
     const lng = mapLng.trim()
+    const place = mapPlaceLabel.trim()
     setTramos((prev) => {
       const next = [...prev]
       const row = { ...next[mapPick.tramoIndex] }
       if (mapPick.punto === 'origen') {
         row.origenLat = lat || undefined
         row.origenLng = lng || undefined
+        if (place) row.origen = place
       } else {
         row.destinoLat = lat || undefined
         row.destinoLng = lng || undefined
+        if (place) row.destino = place
       }
       next[mapPick.tramoIndex] = row
       return next
     })
-    toast.success('Coordenadas guardadas (en la app final se elegirán en un mapa)')
+    toast.success('Ubicación guardada')
     setMapPick(null)
   }
 
@@ -262,6 +391,7 @@ export function RouteSheetFormModal({
   }
 
   const err = formErrors
+  const routeMapMarkerPos = mapPick ? tryParseLatLngStrings(mapLat, mapLng) : null
 
   return (
     <>
@@ -272,8 +402,8 @@ export function RouteSheetFormModal({
           </div>
           <div className={modalSub}>
             Todos los campos son obligatorios. Tiempos estimados y precio del tramo deben ser números (ej. horas o
-            monto). Las coordenadas se cargan desde el botón del mapa. A partir del segundo tramo, el origen coincide con
-            el destino del tramo anterior (solo editable ahí).
+            monto). Origen, destino y el mapa se sincronizan (dirección ↔ pin). A partir del segundo tramo, el origen
+            coincide con el destino del tramo anterior (solo editable ahí).
           </div>
           <div className={modalFormBody}>
             <Field
@@ -554,15 +684,74 @@ export function RouteSheetFormModal({
           aria-modal="true"
           aria-label="Coordenadas del mapa"
         >
-          <div className={modalShellNarrow}>
+          <div className={cn(modalShellWide, 'max-w-[560px]')}>
             <div className="vt-modal-title">
-              {mapPick.punto === 'origen' ? 'Coordenadas de origen' : 'Coordenadas de destino'} (tramo{' '}
+              {mapPick.punto === 'origen' ? 'Origen del recorrido' : 'Destino del recorrido'} (tramo{' '}
               {mapPick.tramoIndex + 1})
             </div>
             <div className={modalSub}>
-              En producción se abrirá un mapa interactivo. Ingresá latitud y longitud manualmente o desde Maps.
+              Tocá el mapa o escribí la dirección y usá «Buscar en el mapa». El texto y las coordenadas se actualizan
+              entre sí; podés editar la dirección antes de guardar.
+            </div>
+            <div
+              className="mb-4 overflow-hidden rounded-xl border border-[var(--border)] [&_.leaflet-container]:z-0"
+              style={{ minHeight: 'min(52vh, 360px)' }}
+            >
+              <MapContainer
+                key={`${mapPick.tramoIndex}-${mapPick.punto}`}
+                center={routeMapCenter}
+                zoom={routeMapZoom}
+                className="h-[min(52vh,360px)] w-full"
+                scrollWheelZoom
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <RouteMapViewSync center={routeMapCenter} zoom={routeMapZoom} />
+                <RouteMapClickHandler
+                  onPick={(lat, lng) => {
+                    setMapLat(formatPickedCoord(lat))
+                    setMapLng(formatPickedCoord(lng))
+                    setMapCoordError(undefined)
+                  }}
+                />
+                {routeMapMarkerPos ? (
+                  <Marker
+                    position={[routeMapMarkerPos.lat, routeMapMarkerPos.lng]}
+                    draggable
+                    icon={storeMapPinIcon()}
+                    eventHandlers={{
+                      dragend: (e) => {
+                        const ll = e.target.getLatLng()
+                        setMapLat(formatPickedCoord(ll.lat))
+                        setMapLng(formatPickedCoord(ll.lng))
+                        setMapCoordError(undefined)
+                      },
+                    }}
+                  />
+                ) : null}
+              </MapContainer>
             </div>
             <div className={modalFormBody}>
+              <label className={fieldRootWithInvalid(false)}>
+                <span className={fieldLabel}>
+                  {mapPick.punto === 'origen' ? 'Origen (dirección)' : 'Destino (dirección)'}
+                </span>
+                <textarea
+                  className="vt-input min-h-[72px] resize-y"
+                  value={mapPlaceLabel}
+                  onChange={(e) => setMapPlaceLabel(e.target.value)}
+                  rows={3}
+                  placeholder="Ej. Calle 23, La Habana"
+                  autoComplete="street-address"
+                />
+              </label>
+              <div className="mb-4 flex flex-wrap gap-2">
+                <button type="button" className="vt-btn vt-btn-ghost text-[13px]" onClick={() => void geocodePlaceToMap()}>
+                  Buscar en el mapa
+                </button>
+              </div>
               <label className={fieldRootWithInvalid(!!mapCoordError)}>
                 <span className={fieldLabel}>Latitud</span>
                 <input
@@ -600,6 +789,7 @@ export function RouteSheetFormModal({
                 type="button"
                 className="vt-btn"
                 onClick={() => {
+                  mapForwardTokenRef.current += 1
                   setMapPick(null)
                   setMapCoordError(undefined)
                 }}
