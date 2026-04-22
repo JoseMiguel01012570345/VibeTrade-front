@@ -59,6 +59,12 @@ export function AppShell() {
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [isSessionActive])
 
+  /** Tras cambiar de ruta, vuelve a sincronizar: el filtro por hilo abierto depende de `pathname`. */
+  useEffect(() => {
+    if (!isSessionActive) return
+    void syncChatNotificationsFromServer()
+  }, [isSessionActive, pathname])
+
   return (
     <div className="vt-app flex min-h-screen flex-col">
       <div className="sticky top-0 z-50 overflow-visible border-b border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_65%,transparent)] pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-[10px]">

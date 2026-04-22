@@ -117,7 +117,7 @@ type Props = {
     threadId: string,
     agreementId: string,
     response: "accept" | "reject",
-  ) => void;
+  ) => Promise<boolean>;
   setFocusRouteId: (id: string | null) => void;
   setRailOpen: (open: boolean | ((o: boolean) => boolean)) => void;
 };
@@ -142,6 +142,12 @@ export function ChatMessageList({
     () => normalizeThreadMessages(thread.messages),
     [thread.messages],
   );
+
+  /** Solo el comprador puede aceptar/rechazar; el vendedor ve estado pendiente sin esas acciones. */
+  const viewerIsBuyer = useMemo(() => {
+    const buyerUid = resolveBuyerUserId(thread, me.id);
+    return buyerUid != null && buyerUid === me.id;
+  }, [thread, me.id]);
 
   return (
     <div
@@ -287,35 +293,45 @@ export function ChatMessageList({
                 onImageOpen={setLightboxUrl}
                 agreementDoc={agreementDoc}
                 onAcceptAgreement={
-                  m.type === "agreement"
+                  m.type === "agreement" && viewerIsBuyer
                     ? () => {
-                        respondTradeAgreement(
-                          thread.id,
-                          m.agreementId,
-                          "accept",
-                        );
-                        toast.success(
-                          "Acuerdo aceptado. No puede derogarse; podés emitir otros contratos nuevos.",
-                        );
+                        void (async () => {
+                          const ok = await respondTradeAgreement(
+                            thread.id,
+                            m.agreementId,
+                            "accept",
+                          );
+                          if (ok) {
+                            toast.success(
+                              "Compra aceptada. No puede derogarse; podés emitir otros contratos nuevos.",
+                            );
+                          } else {
+                            toast.error("No se pudo confirmar la compra.");
+                          }
+                        })();
                       }
                     : undefined
                 }
                 onRejectAgreement={
-                  m.type === "agreement"
+                  m.type === "agreement" && viewerIsBuyer
                     ? () => {
-                        respondTradeAgreement(
-                          thread.id,
-                          m.agreementId,
-                          "reject",
-                        );
-                        toast("Acuerdo rechazado");
+                        void (async () => {
+                          const ok = await respondTradeAgreement(
+                            thread.id,
+                            m.agreementId,
+                            "reject",
+                          );
+                          if (ok) toast("Acuerdo rechazado");
+                          else toast.error("No se pudo rechazar el acuerdo.");
+                        })();
                       }
                     : undefined
                 }
                 canRespondAgreement={
                   m.type === "agreement" &&
                   agreementDoc?.status === "pending_buyer" &&
-                  !chatActionsLocked
+                  !chatActionsLocked &&
+                  viewerIsBuyer
                 }
                 onOpenAgreementRouteSheet={
                   m.type === "agreement" && agreementDoc?.routeSheetId

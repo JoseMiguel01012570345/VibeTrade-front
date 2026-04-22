@@ -179,14 +179,16 @@ export function AgreementDeleteRouteSheetsModal({
               type="button"
               className="vt-btn vt-btn-primary"
               onClick={() => {
-                const ok = deleteTradeAgreement(threadId, agreementId)
-                if (ok) {
-                  toast.success('Acuerdo eliminado')
-                  onAgreementDeleted()
-                  onClose()
-                } else {
-                  toast.error('No se pudo eliminar el acuerdo (ya aceptado, bloqueado o restricción de hojas).')
-                }
+                void (async () => {
+                  const ok = await deleteTradeAgreement(threadId, agreementId)
+                  if (ok) {
+                    toast.success('Acuerdo eliminado')
+                    onAgreementDeleted()
+                    onClose()
+                  } else {
+                    toast.error('No se pudo eliminar el acuerdo (ya aceptado, bloqueado o restricción de hojas).')
+                  }
+                })()
               }}
             >
               Eliminar acuerdo «{agreementTitle}»

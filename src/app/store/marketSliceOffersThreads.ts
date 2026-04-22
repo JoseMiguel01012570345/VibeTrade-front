@@ -6,12 +6,18 @@ import {
   CHAT_CANNOT_MESSAGE_SELF,
   createOrGetChatThread,
   deleteChatThread,
+  deleteThreadTradeAgreement,
   fetchChatMessages,
   fetchChatThread,
   fetchChatThreadByOffer,
+  fetchThreadTradeAgreements,
+  patchThreadTradeAgreement,
+  postThreadTradeAgreement,
+  postThreadTradeAgreementRespond,
   type ChatMessageDto,
   type ChatThreadDto,
 } from '../../utils/chat/chatApi'
+import { mapTradeAgreementApiToTradeAgreement } from '../../utils/chat/tradeAgreementApiMapper'
 import { disconnectFromChatThread } from '../../utils/chat/chatRealtime'
 import {
   mapChatMessageDtoToMessage,
@@ -38,6 +44,45 @@ import { routeSheetHasConfirmedCarriers } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
 import { resolveBuyerUserId } from '../../utils/chat/chatParticipantLabels'
 import { useAppStore } from './useAppStore'
+
+async function syncPersistedAgreementsAndMessages(
+  set: MarketSliceSet,
+  get: MarketSliceGet,
+  threadId: string,
+) {
+  const th = get().threads[threadId]
+  if (!th || !threadId.startsWith('cth_')) return
+  const offer = get().offers[th.offerId]
+  const meId = useAppStore.getState().me.id
+  try {
+    const [agreements, serverMsgs] = await Promise.all([
+      fetchThreadTradeAgreements(threadId),
+      fetchChatMessages(threadId),
+    ])
+    const contracts = agreements.map(mapTradeAgreementApiToTradeAgreement)
+    mergeChatSenderLabelsIntoProfileStore(serverMsgs)
+    const mapped = serverMsgs.map((d) => mapChatMessageDtoToMessage(d, meId))
+    const mergedMsgs = mergePersistedChatMessages(mapped, th.messages)
+    const sellerUserId = th.sellerUserId ?? get().stores[th.storeId]?.ownerUserId
+    const threadBuyerId = th.buyerUserId ?? resolveBuyerUserId(th, meId)
+    const qaSynced = offer
+      ? syncOwnQaIntoMessages(mergedMsgs, offer, threadBuyerId, sellerUserId, meId)
+      : mergedMsgs
+    set((s) => ({
+      ...s,
+      threads: {
+        ...s.threads,
+        [threadId]: {
+          ...s.threads[threadId]!,
+          contracts,
+          messages: qaSynced,
+        },
+      },
+    }))
+  } catch {
+    /* offline */
+  }
+}
 
 export function createOffersThreadsSlice(set: MarketSliceSet, get: MarketSliceGet): Pick<MarketState,
   | 'ask'
@@ -191,6 +236,7 @@ ensureThreadForOffer: async (offerId, opts) => {
       | 'buyerDisplayName'
       | 'buyerAvatarUrl'
     >,
+    contractsOverride?: TradeAgreement[],
   ) => {
     mergeChatSenderLabelsIntoProfileStore(serverMsgs)
     if (participantDto) mergeBuyerLabelFromThreadDto(participantDto)
@@ -229,11 +275,24 @@ ensureThreadForOffer: async (offerId, opts) => {
             }
           : {}),
         messages: qaSynced,
-        contracts: baseThread.contracts ?? [],
+        contracts: contractsOverride ?? baseThread.contracts ?? [],
         routeSheets: baseThread.routeSheets ?? [],
       }
       return { ...x, threads: nextThreads }
     })
+  }
+
+  const loadContractsForPersistedThread = async (
+    tid: string,
+    fallback: TradeAgreement[] | undefined,
+  ): Promise<TradeAgreement[]> => {
+    if (!tid.startsWith('cth_') || !getSessionToken()) return fallback ?? []
+    try {
+      const ag = await fetchThreadTradeAgreements(tid)
+      return ag.map(mapTradeAgreementApiToTradeAgreement)
+    } catch {
+      return fallback ?? []
+    }
   }
 
   if (canPersist) {
@@ -242,11 +301,12 @@ ensureThreadForOffer: async (offerId, opts) => {
         const serverMsgs = await fetchChatMessages(existing.id)
         const th = get().threads[existing.id]
         if (th) {
+          const contracts = await loadContractsForPersistedThread(existing.id, th.contracts)
           try {
             const dto = await fetchChatThread(existing.id)
-            applyHydratedThread(existing.id, serverMsgs, th, dto.purchaseMode, dto)
+            applyHydratedThread(existing.id, serverMsgs, th, dto.purchaseMode, dto, contracts)
           } catch {
-            applyHydratedThread(existing.id, serverMsgs, th)
+            applyHydratedThread(existing.id, serverMsgs, th, undefined, undefined, contracts)
           }
         }
         return existing.id
@@ -271,7 +331,8 @@ ensureThreadForOffer: async (offerId, opts) => {
               contracts: [],
               routeSheets: [],
             }
-        applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode, dto)
+        const contracts = await loadContractsForPersistedThread(dto.id, bootstrap.contracts)
+        applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode, dto, contracts)
         return dto.id
       }
 
@@ -289,7 +350,8 @@ ensureThreadForOffer: async (offerId, opts) => {
         contracts: existing?.contracts ?? [],
         routeSheets: existing?.routeSheets ?? [],
       }
-      applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode, dto)
+      const contracts = await loadContractsForPersistedThread(dto.id, bootstrap.contracts)
+      applyHydratedThread(dto.id, serverMsgs, bootstrap, dto.purchaseMode, dto, contracts)
       return dto.id
     } catch (e) {
       if (e instanceof Error && e.message === CHAT_CANNOT_MESSAGE_SELF) return ''
@@ -411,11 +473,32 @@ refreshOfferQaFromServer: async (offerId) => {
   }
 },
 
-emitTradeAgreement: (threadId, draft) => {
+emitTradeAgreement: async (threadId, draft) => {
   if (hasValidationErrors(validateTradeAgreementDraft(draft))) return null
   if (threadIsActionLocked(get().threads[threadId])) return null
   const title = draft.title.trim()
   if (!title) return null
+  const th0 = get().threads[threadId]
+  if (!th0 || threadIsActionLocked(th0)) return null
+
+  const persist = !!getSessionToken() && threadId.startsWith('cth_')
+  if (persist) {
+    try {
+      const body = {
+        title: draft.title,
+        includeMerchandise: draft.includeMerchandise,
+        includeService: draft.includeService,
+        merchandise: draft.merchandise,
+        services: draft.services,
+      }
+      const created = await postThreadTradeAgreement(threadId, body)
+      await syncPersistedAgreementsAndMessages(set, get, threadId)
+      return created.id
+    } catch {
+      return null
+    }
+  }
+
   const aid = uid('agr')
   set((s) => {
     const th = s.threads[threadId]
@@ -460,11 +543,30 @@ emitTradeAgreement: (threadId, draft) => {
   return aid
 },
 
-updatePendingTradeAgreement: (threadId, agreementId, draft) => {
+updatePendingTradeAgreement: async (threadId, agreementId, draft) => {
   if (hasValidationErrors(validateTradeAgreementDraft(draft))) return false
   if (threadIsActionLocked(get().threads[threadId])) return false
   const title = draft.title.trim()
   if (!title) return false
+
+  const persist = !!getSessionToken() && threadId.startsWith('cth_')
+  if (persist) {
+    try {
+      const body = {
+        title: draft.title,
+        includeMerchandise: draft.includeMerchandise,
+        includeService: draft.includeService,
+        merchandise: draft.merchandise,
+        services: draft.services,
+      }
+      await patchThreadTradeAgreement(threadId, agreementId, body)
+      await syncPersistedAgreementsAndMessages(set, get, threadId)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   let applied = false
   set((s) => {
     const th = s.threads[threadId]
@@ -544,7 +646,18 @@ updatePendingTradeAgreement: (threadId, agreementId, draft) => {
   return applied
 },
 
-deleteTradeAgreement: (threadId, agreementId) => {
+deleteTradeAgreement: async (threadId, agreementId) => {
+  const persist = !!getSessionToken() && threadId.startsWith('cth_')
+  if (persist) {
+    try {
+      await deleteThreadTradeAgreement(threadId, agreementId)
+      await syncPersistedAgreementsAndMessages(set, get, threadId)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   let ok = false
   set((s) => {
     const th = s.threads[threadId]
@@ -583,7 +696,18 @@ deleteTradeAgreement: (threadId, agreementId) => {
   return ok
 },
 
-respondTradeAgreement: (threadId, agreementId, response) => {
+respondTradeAgreement: async (threadId, agreementId, response) => {
+  const persist = !!getSessionToken() && threadId.startsWith('cth_')
+  if (persist) {
+    try {
+      await postThreadTradeAgreementRespond(threadId, agreementId, response === 'accept')
+      await syncPersistedAgreementsAndMessages(set, get, threadId)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   set((s) => {
     const th = s.threads[threadId]
     if (!th || threadIsActionLocked(th)) return s
@@ -625,6 +749,7 @@ respondTradeAgreement: (threadId, agreementId, response) => {
       },
     }
   })
+  return true
 },
 
 recordChatExitFromList: (threadId) => {

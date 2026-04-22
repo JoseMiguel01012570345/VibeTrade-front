@@ -251,7 +251,7 @@ export type Message =
     }
   | {
       id: string;
-      from: "other";
+      from: "me" | "other";
       type: "agreement";
       agreementId: string;
       title: string;
@@ -457,20 +457,20 @@ export type MarketState = {
   emitTradeAgreement: (
     threadId: string,
     draft: TradeAgreementDraft,
-  ) => string | null;
+  ) => Promise<string | null>;
   /** Si `pending_buyer` o `rejected` (en ese caso pasa otra vez a pendiente). Emisor = tienda del hilo. */
   updatePendingTradeAgreement: (
     threadId: string,
     agreementId: string,
     draft: TradeAgreementDraft,
-  ) => boolean;
+  ) => Promise<boolean>;
   /** Sólo si el acuerdo no está aceptado y, tras el borrado, hojas ≤ acuerdos. */
-  deleteTradeAgreement: (threadId: string, agreementId: string) => boolean;
+  deleteTradeAgreement: (threadId: string, agreementId: string) => Promise<boolean>;
   respondTradeAgreement: (
     threadId: string,
     agreementId: string,
     response: "accept" | "reject",
-  ) => void;
+  ) => Promise<boolean>;
   /** Sólo si la cantidad de hojas es estrictamente menor que la de acuerdos (y hay acuerdo aceptado en la demo). */
   createRouteSheet: (
     threadId: string,

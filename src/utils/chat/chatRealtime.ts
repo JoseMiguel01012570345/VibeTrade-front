@@ -27,9 +27,10 @@ function handleIncomingPersistedChatMessage(dto: ChatMessageDto): void {
   void patchChatMessageStatus(dto.threadId, dto.id, "delivered").catch(
     () => {},
   );
-  void syncChatNotificationsFromServer();
 
   if (getOpenChatThreadIdFromLocation() === dto.threadId) return;
+
+  void syncChatNotificationsFromServer();
 
   const author = incomingChatAuthorLabel(dto);
   const preview = previewLineFromChatMessageDto(dto);
@@ -151,6 +152,13 @@ export function startChatRealtime(): void {
       const items = useAppStore.getState().notifications;
       const head = items[0];
       if (!head || head.read) return;
+      const open = getOpenChatThreadIdFromLocation();
+      if (
+        head.kind === "chat_message" &&
+        open &&
+        head.threadId === open
+      )
+        return;
       notifyDesktopIfUnfocused({
         title: head.title,
         body: head.body,

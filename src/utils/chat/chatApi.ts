@@ -27,9 +27,32 @@ export type ChatMessageStatusApi =
   | 'error'
 
 /** Coincide con el JSON de payload del backend (camelCase). */
+/** Respuesta GET/POST/PATCH acuerdos (camelCase API). */
+export type TradeAgreementApiDto = {
+  id: string
+  threadId: string
+  title: string
+  issuedAt: number
+  issuedByStoreId: string
+  issuerLabel: string
+  status: 'pending_buyer' | 'accepted' | 'rejected'
+  respondedAt?: number | null
+  sellerEditBlockedUntilBuyerResponse?: boolean | null
+  includeMerchandise: boolean
+  includeService: boolean
+  merchandise: Record<string, unknown>[]
+  merchandiseMeta?: Record<string, unknown> | null
+  services: Record<string, unknown>[]
+  routeSheetId?: string | null
+  routeSheetUrl?: string | null
+}
+
 export type ChatMessagePayloadDto = Record<string, unknown> & {
   type?: string
   text?: string
+  agreementId?: string
+  title?: string
+  status?: string
   offerQaId?: string
   replyQuotes?: Array<{
     messageId: string
@@ -154,6 +177,66 @@ export async function fetchChatMessages(threadId: string): Promise<ChatMessageDt
   })
   if (!res.ok) throw new Error(await res.text())
   return (await res.json()) as ChatMessageDto[]
+}
+
+export async function fetchThreadTradeAgreements(
+  threadId: string,
+): Promise<TradeAgreementApiDto[]> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements`,
+    { method: 'GET' },
+  )
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as TradeAgreementApiDto[]
+}
+
+export async function postThreadTradeAgreement(
+  threadId: string,
+  body: Record<string, unknown>,
+): Promise<TradeAgreementApiDto> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements`,
+    { method: 'POST', body: JSON.stringify(body) },
+  )
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as TradeAgreementApiDto
+}
+
+export async function patchThreadTradeAgreement(
+  threadId: string,
+  agreementId: string,
+  body: Record<string, unknown>,
+): Promise<TradeAgreementApiDto> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}`,
+    { method: 'PATCH', body: JSON.stringify(body) },
+  )
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as TradeAgreementApiDto
+}
+
+export async function postThreadTradeAgreementRespond(
+  threadId: string,
+  agreementId: string,
+  accept: boolean,
+): Promise<TradeAgreementApiDto> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}/respond`,
+    { method: 'POST', body: JSON.stringify({ accept }) },
+  )
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as TradeAgreementApiDto
+}
+
+export async function deleteThreadTradeAgreement(
+  threadId: string,
+  agreementId: string,
+): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}`,
+    { method: 'DELETE' },
+  )
+  if (!res.ok && res.status !== 404) throw new Error(await res.text())
 }
 
 export async function postChatMessage(

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { getOpenChatThreadIdFromLocation } from '../../utils/chat/getOpenChatThreadIdFromLocation'
 
 const SESSION_STORAGE_KEY = 'vt_session_active'
 const SESSION_TOKEN_KEY = 'vt_session_token'
@@ -217,6 +218,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setChatNotificationsFromServer: (items) =>
     set((s) => {
+      const openThread = getOpenChatThreadIdFromLocation()
+      const serverItems = openThread
+        ? items.filter(
+            (x) =>
+              x.kind !== 'chat_message' ||
+              !x.threadId ||
+              x.threadId !== openThread,
+          )
+        : items
       const local = s.notifications.filter(
         (x) =>
           x.kind !== 'chat_message' &&
@@ -224,7 +234,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           x.kind !== 'offer_like' &&
           x.kind !== 'qa_comment_like',
       )
-      const fromServer = items.filter((x) => !x.read)
+      const fromServer = serverItems.filter((x) => !x.read)
       const merged = [...fromServer, ...local]
       merged.sort((a, b) => b.createdAt - a.createdAt)
       return { notifications: merged }

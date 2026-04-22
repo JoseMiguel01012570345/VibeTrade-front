@@ -39,7 +39,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   /** Devolvé `true` si el guardado/emisión fue exitoso (se cierra el modal). */
-  onSubmit: (draft: TradeAgreementDraft) => boolean;
+  onSubmit: (draft: TradeAgreementDraft) => boolean | Promise<boolean>;
   storeName: string;
   /** Catálogo del vendedor (productos/servicios de ficha) para anclar líneas del acuerdo. */
   sellerCatalog?: StoreCatalog | null;
@@ -146,7 +146,7 @@ export function TradeAgreementFormModal({
     setConfigOpen(true);
   }
 
-  function trySubmit() {
+  async function trySubmit() {
     const e = validateTradeAgreementDraft(draft);
     setErrors(e);
     if (hasValidationErrors(e)) {
@@ -160,7 +160,9 @@ export function TradeAgreementFormModal({
         return;
       }
     }
-    if (onSubmit(draft)) onClose();
+    const result = onSubmit(draft);
+    const ok = result instanceof Promise ? await result : result;
+    if (ok) onClose();
   }
 
   return (

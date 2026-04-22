@@ -51,9 +51,9 @@ export function AgreementBubble({
       ) : (
         <div className="vt-muted">Cargando detalle…</div>
       )}
-      {st === 'pending_buyer' ? (
+      {st === 'pending_buyer' && !canRespond ? (
         <div className="mt-2">
-          <span className={statusPillPending}>Pendiente de comprador</span>
+          <span className={statusPillPending}>Pendiente de respuesta del comprador</span>
         </div>
       ) : null}
       {st === 'accepted' ? (
@@ -87,13 +87,18 @@ export function AgreementBubble({
         </div>
       ) : null}
       {canRespond && st === 'pending_buyer' ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" className="vt-btn vt-btn-primary vt-btn-sm" onClick={onAccept}>
-            Aceptar acuerdo
-          </button>
-          <button type="button" className="vt-btn vt-btn-sm" onClick={onReject}>
-            Rechazar
-          </button>
+        <div className="mt-3 space-y-2">
+          <p className="text-sm leading-snug text-[var(--muted)]">
+            Confirmá la compra según este acuerdo o rechazá la propuesta.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="vt-btn vt-btn-primary vt-btn-sm" onClick={onAccept}>
+              Comprar
+            </button>
+            <button type="button" className="vt-btn vt-btn-sm" onClick={onReject}>
+              Rechazar
+            </button>
+          </div>
         </div>
       ) : null}
     </div>

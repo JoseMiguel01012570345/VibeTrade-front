@@ -225,6 +225,28 @@ export function mapChatMessageDtoToMessage(
     };
   }
 
+  if (type === "agreement") {
+    const agreementId =
+      typeof p.agreementId === "string" ? p.agreementId : "";
+    const title = typeof p.title === "string" ? p.title : "";
+    return {
+      ...common,
+      from: from as "me" | "other",
+      type: "agreement",
+      agreementId,
+      title,
+    };
+  }
+
+  if (type === "system_text" && typeof p.text === "string") {
+    return {
+      ...common,
+      from: "system",
+      type: "text",
+      text: p.text,
+    };
+  }
+
   return {
     id: dto.id,
     from,
@@ -319,12 +341,18 @@ export function mergePersistedChatMessages(
   existingLocal: Message[],
 ): Message[] {
   const hasServer = serverMapped.length > 0;
+  const serverAgreementIds = new Set(
+    serverMapped
+      .filter((m) => m.type === "agreement")
+      .map((m) => m.agreementId),
+  );
   const preservedLocal = hasServer
-    ? existingLocal.filter(
-        (m) =>
-          isLocalRichMessage(m) ||
-          (typeof m.id === "string" && m.id.startsWith("pend_")),
-      )
+    ? existingLocal.filter((m) => {
+        if (typeof m.id === "string" && m.id.startsWith("pend_")) return true;
+        if (m.type === "agreement" && serverAgreementIds.has(m.agreementId))
+          return false;
+        return isLocalRichMessage(m);
+      })
     : existingLocal;
   const mergedServer = serverMapped.map((sm) => {
     const ex = existingLocal.find((x) => x.id === sm.id);

@@ -53,8 +53,10 @@ import { userHasTransportService } from "../../utils/user/transportEligibility";
 import {
   fetchChatMessages,
   fetchChatThread,
+  fetchThreadTradeAgreements,
   patchChatMessageStatus,
 } from "../../utils/chat/chatApi";
+import { mapTradeAgreementApiToTradeAgreement } from "../../utils/chat/tradeAgreementApiMapper";
 import {
   disconnectFromChatThread,
   joinChatThread,
@@ -366,7 +368,15 @@ export function ChatPage() {
           if (!cancelled) setPersistThreadError(true);
           return;
         }
-        const msgs = await fetchChatMessages(threadId);
+        const [msgs, agResult] = await Promise.all([
+          fetchChatMessages(threadId),
+          fetchThreadTradeAgreements(threadId)
+            .then((a) => ({ ok: true as const, agreements: a }))
+            .catch(() => ({ ok: false as const })),
+        ]);
+        const contracts = agResult.ok
+          ? agResult.agreements.map(mapTradeAgreementApiToTradeAgreement)
+          : (existingTh?.contracts ?? []);
         mergeChatSenderLabelsIntoProfileStore(msgs);
         const meId = useAppStore.getState().me.id;
         const mapped = msgs.map((d) => mapChatMessageDtoToMessage(d, meId));
@@ -415,7 +425,7 @@ export function ChatPage() {
                 : {}),
               purchaseMode: dto.purchaseMode,
               messages: qaSynced,
-              contracts: s.threads[threadId]?.contracts ?? [],
+              contracts,
               routeSheets: s.threads[threadId]?.routeSheets ?? [],
             },
           },
@@ -1049,13 +1059,15 @@ export function ChatPage() {
                 )
               )
                 return;
-              const ok = deleteTradeAgreement(thread.id, ag.id);
-              if (ok) toast.success("Acuerdo eliminado");
-              else {
-                toast.error(
-                  "No se pudo eliminar el acuerdo (aceptado, bloqueo del hilo o más hojas que acuerdos permitidos).",
-                );
-              }
+              void (async () => {
+                const ok = await deleteTradeAgreement(thread.id, ag.id);
+                if (ok) toast.success("Acuerdo eliminado");
+                else {
+                  toast.error(
+                    "No se pudo eliminar el acuerdo (aceptado, bloqueo del hilo o más hojas que acuerdos permitidos).",
+                  );
+                }
+              })();
             }}
           />
         </div>
@@ -1104,9 +1116,9 @@ export function ChatPage() {
         sellerCatalog={sellerCatalog}
         initialDraft={agreementBeingEditedId ? agreementFormInitial : null}
         editingAgreementId={agreementBeingEditedId}
-        onSubmit={(draft) => {
+        onSubmit={async (draft) => {
           if (agreementBeingEditedId) {
-            const ok = updatePendingTradeAgreement(
+            const ok = await updatePendingTradeAgreement(
               thread.id,
               agreementBeingEditedId,
               draft,
@@ -1117,7 +1129,7 @@ export function ChatPage() {
             } else toast.error("No se pudo guardar el acuerdo.");
             return ok;
           }
-          const id = emitTradeAgreement(thread.id, draft);
+          const id = await emitTradeAgreement(thread.id, draft);
           if (id) toast.success("Acuerdo emitido al chat");
           else
             toast.error(
