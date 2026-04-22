@@ -7,6 +7,7 @@ import {
   checkRow,
   detailsBlock,
   fieldError,
+  mapBackdropLayerAboveChatRail,
   modalFormBody,
   modalShellWide,
   modalSub,
@@ -30,7 +31,10 @@ import {
   validationErrorCount,
 } from "../../domain/tradeAgreementValidation";
 import type { StoreCatalog } from "../../domain/storeCatalogTypes";
-import { mergeServiceItemWithStoreService } from "../../domain/storeCatalogTypes";
+import {
+  mergeMerchandiseLineWithStoreProduct,
+  mergeServiceItemWithStoreService,
+} from "../../domain/storeCatalogTypes";
 import { ServiceConfigWizard } from "./serviceConfig/ServiceConfigWizard";
 import { ServiceItemPreview } from "./serviceConfig/ServiceItemPreview";
 import { serviceItemSummaryLine } from "./serviceConfig/serviceItemFormat";
@@ -46,6 +50,11 @@ type Props = {
   /** Modo edición: borrador desde acuerdo `pending_buyer` o `rejected` (al guardar, vuelve a pendiente). */
   initialDraft?: TradeAgreementDraft | null;
   editingAgreementId?: string | null;
+  /**
+   * `Thread.offerId`: anuncio (producto/servicio de ficha) por el que el comprador abrió el chat; primero en el
+   * desplegable y anclado por defecto al emitir un acuerdo nuevo.
+   */
+  contextOfferId?: string | null;
 };
 
 export function TradeAgreementFormModal({
@@ -56,6 +65,7 @@ export function TradeAgreementFormModal({
   sellerCatalog = null,
   initialDraft = null,
   editingAgreementId = null,
+  contextOfferId = null,
 }: Props) {
   const [draft, setDraft] = useState<TradeAgreementDraft>(() =>
     defaultAgreementDraft(),
@@ -66,6 +76,49 @@ export function TradeAgreementFormModal({
   const [agrCategoryHints, setAgrCategoryHints] = useState<string[]>([]);
   const isEdit = !!editingAgreementId;
   const editBaselineJsonRef = useRef<string | null>(null);
+  const contextDefaultAppliedRef = useRef(false);
+
+  useEffect(() => {
+    if (!open) {
+      contextDefaultAppliedRef.current = false;
+    }
+  }, [open]);
+
+  /** Nuevo acuerdo: anclar a la ficha del anuncio con el que se abrió el hilo (mismo `id` que en catálogo). */
+  useEffect(() => {
+    if (!open || isEdit || initialDraft) return;
+    if (contextDefaultAppliedRef.current) return;
+    if (!contextOfferId || !sellerCatalog) return;
+    const product = sellerCatalog.products.find((p) => p.id === contextOfferId);
+    if (product) {
+      contextDefaultAppliedRef.current = true;
+      setDraft((d) => {
+        if (d.merchandise[0]?.linkedStoreProductId) return d;
+        const nextM = [...d.merchandise];
+        nextM[0] = mergeMerchandiseLineWithStoreProduct(
+          d.merchandise[0],
+          product,
+        );
+        return { ...d, merchandise: nextM };
+      });
+      return;
+    }
+    const service = sellerCatalog.services.find(
+      (s) => s.id === contextOfferId,
+    );
+    if (service) {
+      contextDefaultAppliedRef.current = true;
+      setDraft((d) => {
+        if (d.services.length > 0) return d;
+        return {
+          ...d,
+          services: [
+            mergeServiceItemWithStoreService(emptyServiceItem(), service),
+          ],
+        };
+      });
+    }
+  }, [open, isEdit, initialDraft, contextOfferId, sellerCatalog]);
 
   useEffect(() => {
     if (!open) return;
@@ -94,6 +147,33 @@ export function TradeAgreementFormModal({
         editingAgreementId && initialDraft ? JSON.stringify(d) : null;
     }
   }, [open, initialDraft, editingAgreementId]);
+
+  const merchandiseCheckboxDisabled = sellerCatalog?.products.length === 0;
+  const servicesCheckboxDisabled = sellerCatalog?.services.length === 0;
+
+  useEffect(() => {
+    if (!open || sellerCatalog == null) return;
+    setDraft((d) => {
+      let includeMerchandise = d.includeMerchandise;
+      let includeService = d.includeService;
+      let services = d.services;
+      if (sellerCatalog.products.length === 0 && includeMerchandise) {
+        includeMerchandise = false;
+      }
+      if (sellerCatalog.services.length === 0 && includeService) {
+        includeService = false;
+        if (services.length) services = [];
+      }
+      if (
+        includeMerchandise === d.includeMerchandise &&
+        includeService === d.includeService &&
+        services === d.services
+      ) {
+        return d;
+      }
+      return { ...d, includeMerchandise, includeService, services };
+    });
+  }, [open, sellerCatalog]);
 
   if (!open) return null;
 
@@ -125,8 +205,16 @@ export function TradeAgreementFormModal({
 
   function addService() {
     const item = emptyServiceItem();
-    setDraft((d) => ({ ...d, services: [...d.services, item] }));
-    setConfigId(item.id);
+    const svc =
+      sellerCatalog && contextOfferId
+        ? sellerCatalog.services.find((x) => x.id === contextOfferId)
+        : undefined;
+    const toAdd =
+      svc && draft.services.length === 0
+        ? mergeServiceItemWithStoreService(item, svc)
+        : item;
+    setDraft((d) => ({ ...d, services: [...d.services, toAdd] }));
+    setConfigId(toAdd.id);
     setConfigOpen(true);
   }
 
@@ -147,7 +235,7 @@ export function TradeAgreementFormModal({
   }
 
   async function trySubmit() {
-    const e = validateTradeAgreementDraft(draft);
+    const e = validateTradeAgreementDraft(draft, { sellerCatalog });
     setErrors(e);
     if (hasValidationErrors(e)) {
       const n = validationErrorCount(e);
@@ -167,7 +255,7 @@ export function TradeAgreementFormModal({
 
   return (
     <div
-      className="vt-modal-backdrop"
+      className={mapBackdropLayerAboveChatRail}
       role="dialog"
       aria-modal="true"
       onMouseDown={(e) => onBackdropPointerClose(e, onClose)}
@@ -213,29 +301,57 @@ export function TradeAgreementFormModal({
           ) : null}
 
           <div className={scopeRow} aria-label="Qué incluye este acuerdo">
-            <label className={checkRow}>
+            <label
+              className={cn(
+                checkRow,
+                merchandiseCheckboxDisabled ? "cursor-not-allowed opacity-60" : "",
+              )}
+            >
               <input
                 type="checkbox"
-                checked={draft.includeMerchandise}
-                onChange={(e) =>
+                disabled={merchandiseCheckboxDisabled}
+                title={
+                  merchandiseCheckboxDisabled
+                    ? "No hay productos en la ficha de la tienda; cargalos en la vitrina."
+                    : undefined
+                }
+                checked={
+                  merchandiseCheckboxDisabled ? false : draft.includeMerchandise
+                }
+                onChange={(e) => {
+                  if (merchandiseCheckboxDisabled) return;
                   setDraft((d) => ({
                     ...d,
                     includeMerchandise: e.target.checked,
-                  }))
-                }
+                  }));
+                }}
               />
               <span>Incluir mercancías</span>
             </label>
-            <label className={checkRow}>
+            <label
+              className={cn(
+                checkRow,
+                servicesCheckboxDisabled ? "cursor-not-allowed opacity-60" : "",
+              )}
+            >
               <input
                 type="checkbox"
-                checked={draft.includeService}
-                onChange={(e) =>
+                disabled={servicesCheckboxDisabled}
+                title={
+                  servicesCheckboxDisabled
+                    ? "No hay servicios en la ficha de la tienda; cargalos en la vitrina."
+                    : undefined
+                }
+                checked={
+                  servicesCheckboxDisabled ? false : draft.includeService
+                }
+                onChange={(e) => {
+                  if (servicesCheckboxDisabled) return;
                   setDraft((d) => ({
                     ...d,
                     includeService: e.target.checked,
-                  }))
-                }
+                  }));
+                }}
               />
               <span>Incluir servicios</span>
             </label>
@@ -244,8 +360,9 @@ export function TradeAgreementFormModal({
             className="vt-muted"
             style={{ fontSize: 12, marginTop: 0, marginBottom: 12 }}
           >
-            Al menos uno debe estar marcado. Solo se validan los bloques que
-            incluyas.
+            {merchandiseCheckboxDisabled && servicesCheckboxDisabled
+              ? "No tenés productos ni servicios en la ficha: agregalos en tu tienda para poder incluirlos en el acuerdo."
+              : "Al menos uno debe estar disponible y marcado. Solo se validan los bloques que incluyas."}
           </p>
 
           <details open={draft.includeMerchandise} className={detailsBlock}>
@@ -261,7 +378,7 @@ export function TradeAgreementFormModal({
                   onRemove={() => removeLine(i)}
                   canRemove={draft.merchandise.length > 1}
                   sellerCatalog={sellerCatalog}
-                  categoryListId="agr-cat-hints"
+                  contextOfferId={contextOfferId}
                 />
               ))
             ) : (
@@ -296,53 +413,6 @@ export function TradeAgreementFormModal({
                         Servicio {i + 1}: {serviceItemSummaryLine(sv)}
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {sellerCatalog?.services.length ? (
-                          <label className="flex min-w-[200px] max-w-full flex-col gap-1">
-                            <span className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                              Anclar a servicio del catálogo
-                            </span>
-                            <select
-                              className="vt-input vt-btn-sm py-1.5"
-                              value={sv.linkedStoreServiceId ?? ""}
-                              onChange={(e) => {
-                                const id = e.target.value;
-                                if (!id) {
-                                  setDraft((d) => ({
-                                    ...d,
-                                    services: d.services.map((s) =>
-                                      s.id === sv.id
-                                        ? {
-                                            ...s,
-                                            linkedStoreServiceId: undefined,
-                                          }
-                                        : s,
-                                    ),
-                                  }));
-                                  return;
-                                }
-                                const svc = sellerCatalog.services.find(
-                                  (x) => x.id === id,
-                                );
-                                if (!svc) return;
-                                setDraft((d) => ({
-                                  ...d,
-                                  services: d.services.map((s) =>
-                                    s.id === sv.id
-                                      ? mergeServiceItemWithStoreService(s, svc)
-                                      : s,
-                                  ),
-                                }));
-                              }}
-                            >
-                              <option value="">Sin anclar…</option>
-                              {sellerCatalog.services.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                  {s.category} · {s.tipoServicio}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        ) : null}
                         <button
                           type="button"
                           className="vt-btn vt-btn-sm"
@@ -407,6 +477,8 @@ export function TradeAgreementFormModal({
           open={configOpen && !!configItem}
           initial={configItem}
           categoryListId="agr-cat-hints"
+          sellerCatalog={sellerCatalog}
+          contextOfferId={contextOfferId}
           onClose={() => {
             setConfigOpen(false);
             setConfigId(null);

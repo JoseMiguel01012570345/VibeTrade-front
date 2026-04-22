@@ -265,9 +265,9 @@ export function ProfilePage() {
 
   const profileDisplayName = isMe
     ? safeName
-    : (visitorPublic?.name?.trim() ||
-        profileDisplayNames[resolvedProfileUserId]?.trim() ||
-        `Usuario ${resolvedProfileUserId}`);
+    : visitorPublic?.name?.trim() ||
+      profileDisplayNames[resolvedProfileUserId]?.trim() ||
+      `Usuario ${resolvedProfileUserId}`;
 
   const [socialModal, setSocialModal] = useState<SocialNetworkId | null>(null);
   const [socialDraft, setSocialDraft] = useState("");
@@ -414,13 +414,12 @@ export function ProfilePage() {
     visitorPublic?.avatarUrl || profileAvatarUrls[resolvedProfileUserId];
 
   const letter =
-    (
-      isMe
-        ? safeName
-        : visitorPublic?.name ||
-          profileDisplayNames[resolvedProfileUserId] ||
-          userId ||
-          "U"
+    (isMe
+      ? safeName
+      : visitorPublic?.name ||
+        profileDisplayNames[resolvedProfileUserId] ||
+        userId ||
+        "U"
     )
       .slice(0, 1)
       .toUpperCase() || "?";
@@ -675,7 +674,7 @@ export function ProfilePage() {
             <div className="flex flex-col gap-3">
               <label className="flex flex-col gap-2">
                 <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
-                  <User size={14} /> Nombre para mostrar
+                  <User size={14} /> Nombre
                 </span>
                 {isMe ? (
                   <div className="flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-stretch">

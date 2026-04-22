@@ -87,29 +87,25 @@ export function formatChatParticipantDisplayName(args: {
 }
 
 /**
- * Título del hilo en la barra superior del chat: nombre de la tienda si el usuario es comprador;
- * etiqueta del comprador ("Comprador" / "Comprador . …") si el usuario es vendedor.
+ * Título del hilo (lista / barra del chat): el comprador ve la tienda; el vendedor
+ * <code>«nombre de la tienda» · «nombre del comprador»</code> (U+00B7).
  */
 export function chatThreadHeaderTitle(
   th: Thread,
   me: { id: string; name: string },
   profileDisplayNames: Record<string, string>,
 ): string {
+  const storeName = (th.store.name || "Negocio").trim();
   const sellerUid = resolveSellerUserId(th);
   const imSeller = sellerUid != null && me.id === sellerUid;
-  if (imSeller) {
-    return formatChatParticipantDisplayName({
-      messageFromSeller: false,
-      storeName: th.store.name,
-      buyerFirstName: buyerFirstNameForThread(
-        th,
-        me.id,
-        me.name,
-        profileDisplayNames,
-      ),
-    });
-  }
-  return (th.store.name || "Negocio").trim();
+  if (!imSeller) return storeName;
+  const buyerName = buyerFirstNameForThread(
+    th,
+    me.id,
+    me.name,
+    profileDisplayNames,
+  );
+  return `${storeName} \u00b7 ${buyerName}`;
 }
 
 /** Encabezado de burbuja para un mensaje (vos / el otro). */

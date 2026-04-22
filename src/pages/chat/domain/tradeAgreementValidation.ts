@@ -3,9 +3,12 @@ import type {
   ServiceItem,
   TradeAgreementDraft,
 } from "./tradeAgreementTypes";
-import { coerceServiceSchedule } from "./tradeAgreementTypes";
+import {
+  coerceServiceSchedule,
+  monedasFromRecurrenciaPagos,
+} from "./tradeAgreementTypes";
 import { validateVigenciaRange } from "./serviceVigenciaDates";
-import { serviceItemAcceptedMonedas } from "./storeCatalogTypes";
+import type { StoreCatalog } from "./storeCatalogTypes";
 
 type MerchandiseHolder = { merchandise: MerchandiseLine[] };
 
@@ -117,18 +120,19 @@ function validateAvisoDias(raw: string): string | undefined {
 }
 
 function lineIsActive(line: MerchandiseLine): boolean {
+  /** La ficha del producto aporta el resto; la línea cuenta al haber producto anclado. */
+  return !!line.linkedStoreProductId;
+}
+
+/** Línea vacía añadida con «+» y aún no usada: no exige producto. */
+function isSkippableEmptyMerchLine(line: MerchandiseLine): boolean {
+  if (line.linkedStoreProductId) return false;
   return (
-    !isBlank(line.tipo) ||
-    !isBlank(line.cantidad) ||
-    !isBlank(line.valorUnitario) ||
-    !isBlank(line.descuento) ||
-    !isBlank(line.impuestos) ||
-    !isBlank(line.moneda) ||
-    !isBlank(line.tipoEmbalaje) ||
-    !isBlank(line.devolucionesDesc) ||
-    !isBlank(line.devolucionQuienPaga) ||
-    !isBlank(line.devolucionPlazos) ||
-    !isBlank(line.regulaciones)
+    isBlank(line.cantidad) &&
+    isBlank(line.tipoEmbalaje) &&
+    isBlank(line.devolucionQuienPaga) &&
+    isBlank(line.devolucionPlazos) &&
+    isBlank(line.regulaciones)
   );
 }
 
@@ -142,6 +146,7 @@ export function hasMerchandise(d: MerchandiseHolder): boolean {
  */
 export function validateTradeAgreementDraft(
   d: TradeAgreementDraft,
+  options?: { sellerCatalog?: StoreCatalog | null },
 ): TradeAgreementFormErrors {
   const errors: TradeAgreementFormErrors = {};
 
@@ -153,83 +158,82 @@ export function validateTradeAgreementDraft(
     errors.title = `El título no puede superar ${TITLE_MAX} caracteres`;
 
   if (!d.includeMerchandise && !d.includeService) {
-    errors.scope =
-      "Debés incluir al menos mercancías o servicios (podés marcar ambos).";
+    const c = options?.sellerCatalog;
+    if (
+      c != null &&
+      c.products.length === 0 &&
+      c.services.length === 0
+    ) {
+      errors.scope =
+        "No hay productos ni servicios en la ficha de la tienda. Cargalos en la vitrina para poder acordar.";
+    } else {
+      errors.scope =
+        "Debés incluir al menos mercancías o servicios (podés marcar ambos).";
+    }
   }
 
   if (d.includeMerchandise && !hasMerchandise(d)) {
     errors.scope =
       errors.scope ??
-      "Con «Incluir mercancías» activado, completá al menos una línea con datos (tipo, cantidad, valor…).";
+      "Con «Incluir mercancías» activado, elegí al menos un producto del catálogo y completá los datos del comprador.";
   }
 
   const lineErrors: NonNullable<TradeAgreementFormErrors["merchandiseLines"]> =
     {};
 
   d.merchandise.forEach((line, i) => {
-    if (!d.includeMerchandise || !lineIsActive(line)) return;
+    if (!d.includeMerchandise) return;
+    if (isSkippableEmptyMerchLine(line)) return;
+    if (!line.linkedStoreProductId) {
+      lineErrors[i] = {
+        tipo: "Seleccioná un producto del catálogo de la tienda",
+      };
+      return;
+    }
 
     const le: Partial<Record<keyof MerchandiseLine, string>> = {};
-
-    const tipoErr = requireNonEmpty(line.tipo, "Tipo de mercancía", false);
-    if (tipoErr) le.tipo = tipoErr;
+    {
+      const valErr = requireDecimal(line.valorUnitario, "Valor unitario (ficha)", {
+        allowZero: true,
+      });
+      if (valErr) le.valorUnitario = valErr;
+    }
 
     const cantErr = requireDecimal(line.cantidad, "Cantidad", {
       positive: true,
     });
     if (cantErr) le.cantidad = cantErr;
 
-    const valErr = requireDecimal(line.valorUnitario, "Valor unitario", {
-      allowZero: true,
-    });
-    if (valErr) le.valorUnitario = valErr;
-
-    const descRaw = norm(line.descuento);
-    if (descRaw === "") {
-      le.descuento = "Indicá el descuento (0 si no aplica)";
-    } else {
-      const dErr = requireDecimal(line.descuento, "Descuento", {
-        allowZero: true,
-      });
-      if (dErr) le.descuento = dErr;
-    }
-
-    const impRaw = norm(line.impuestos);
-    if (impRaw === "") {
-      le.impuestos =
-        "Impuestos (IVA, aranceles…): indicá el cálculo o «0» si no aplica";
-    } else if (impRaw.length < 2 && impRaw !== "0") {
-      le.impuestos = "Usá al menos 2 caracteres o «0» si no hay impuestos";
-    } else {
-      const om = optionalTextMax(line.impuestos, "Impuestos", true);
-      if (om) le.impuestos = om;
-    }
-
     (
       [
-        ["moneda", "Moneda"],
         ["tipoEmbalaje", "Tipo de embalaje"],
-        ["devolucionesDesc", "Condiciones para devolver y garantias"],
         ["devolucionQuienPaga", "Quién paga el envío de devolución"],
         ["devolucionPlazos", "Plazos de devolución"],
-        ["regulaciones", "Regulaciones y cumplimiento"],
       ] as const
     ).forEach(([key, label]) => {
       const v = line[key];
-      const e =
-        key === "regulaciones" || key === "devolucionesDesc"
-          ? requireNonEmpty(v, label, true)
-          : requireNonEmpty(v, label, false);
+      const e = requireNonEmpty(v, label, false);
       if (e) le[key] = e;
       else {
-        const om = optionalTextMax(
-          v,
-          label,
-          key === "regulaciones" || key === "devolucionesDesc",
-        );
+        const om = optionalTextMax(v, label, false);
         if (om) le[key] = om;
       }
     });
+
+    const regE = requireNonEmpty(
+      line.regulaciones,
+      "Regulaciones y cumplimiento (comprador)",
+      true,
+    );
+    if (regE) le.regulaciones = regE;
+    else {
+      const omR = optionalTextMax(
+        line.regulaciones,
+        "Regulaciones y cumplimiento (comprador)",
+        true,
+      );
+      if (omR) le.regulaciones = omR;
+    }
 
     if (Object.keys(le).length) lineErrors[i] = le;
   });
@@ -290,6 +294,8 @@ function collectServicePagoErrors(sv: ServiceItem): string[] {
           `Pago ${i + 1}: el mes no está entre los meses seleccionados`,
         );
       }
+      if (!norm(String(en.moneda ?? "")))
+        msgs.push(`Pago ${i + 1}: indicá la moneda`);
       if (en.day < 1 || en.day > 31) msgs.push(`Pago ${i + 1}: día inválido`);
       const y = new Date().getFullYear();
       const dim =
@@ -368,9 +374,12 @@ function collectServiceRiesgosDependenciasErrors(sv: ServiceItem): string[] {
   return msgs;
 }
 
-function collectServiceGarantiasPenalTermErrors(sv: ServiceItem): string[] {
+function collectServiceGarantiasPenalTermErrors(
+  sv: ServiceItem,
+  opts?: { omitGarantiasFichaBlock?: boolean },
+): string[] {
   const msgs: string[] = [];
-  if (sv.garantias.enabled) {
+  if (sv.garantias.enabled && !opts?.omitGarantiasFichaBlock) {
     const eg = requireNonEmpty(sv.garantias.texto, "Garantías", true);
     if (eg) msgs.push(eg);
   }
@@ -402,6 +411,10 @@ export function validateServiceWizardAdvance(
   sv: ServiceItem,
   fromStep: number,
 ): string[] {
+  const ficha = !!sv.linkedStoreServiceId;
+  if (ficha && (fromStep === 4 || fromStep === 5)) {
+    return [];
+  }
   switch (fromStep) {
     case 2:
       return collectServiceHorarioErrors(sv);
@@ -412,7 +425,9 @@ export function validateServiceWizardAdvance(
     case 5:
       return collectServiceRiesgosDependenciasErrors(sv);
     case 6:
-      return collectServiceGarantiasPenalTermErrors(sv);
+      return collectServiceGarantiasPenalTermErrors(sv, {
+        omitGarantiasFichaBlock: ficha,
+      });
     default:
       return [];
   }
@@ -443,15 +458,18 @@ export function validateServiceItem(sv: ServiceItem): string[] {
 
   collectServiceHorarioErrors(sv).forEach((m) => msgs.push(m));
   collectServicePagoErrors(sv).forEach((m) => msgs.push(m));
-  collectServiceAlcanceErrors(sv).forEach((m) => msgs.push(m));
-  collectServiceRiesgosDependenciasErrors(sv).forEach((m) => msgs.push(m));
-  collectServiceGarantiasPenalTermErrors(sv).forEach((m) => msgs.push(m));
+  if (!sv.linkedStoreServiceId) {
+    collectServiceAlcanceErrors(sv).forEach((m) => msgs.push(m));
+    collectServiceRiesgosDependenciasErrors(sv).forEach((m) => msgs.push(m));
+  }
+  collectServiceGarantiasPenalTermErrors(sv, {
+    omitGarantiasFichaBlock: !!sv.linkedStoreServiceId,
+  }).forEach((m) => msgs.push(m));
 
-  const m1 = requireNonEmpty(sv.metodoPago, "Método de pago", false);
-  if (m1) msgs.push(m1);
-  const acc = serviceItemAcceptedMonedas(sv);
-  if (acc.length === 0) {
-    msgs.push("Indicá al menos una moneda aceptada para el pago.");
+  if (monedasFromRecurrenciaPagos(sv.recurrenciaPagos).length === 0) {
+    msgs.push(
+      "Indicá la moneda en cada fila de la recurrencia de pagos (paso «Pagos recurrentes»).",
+    );
   }
 
   const eMed = requireNonEmpty(
@@ -477,7 +495,15 @@ export function validateServiceItem(sv: ServiceItem): string[] {
     "Propiedad intelectual y licencias",
     true,
   );
-  if (ePi) msgs.push(ePi);
+  if (ePi) {
+    if (sv.linkedStoreServiceId && !norm(sv.propIntelectual)) {
+      msgs.push(
+        "Completá la propiedad intelectual en la ficha del servicio o desanclá el catálogo.",
+      );
+    } else {
+      msgs.push(ePi);
+    }
+  }
 
   return [...new Set(msgs)];
 }

@@ -9,7 +9,7 @@ import {
   fieldError,
   fieldLabel,
   fieldRootWithInvalid,
-  mapBackdropLayer,
+  mapBackdropLayerAboveChatRail,
   modalFormBody,
   modalShellNarrow,
   modalShellWide,
@@ -265,7 +265,7 @@ export function RouteSheetFormModal({
 
   return (
     <>
-      <div className="vt-modal-backdrop" role="dialog" aria-modal="true">
+      <div className={mapBackdropLayerAboveChatRail} role="dialog" aria-modal="true">
         <div className={modalShellWide}>
           <div className="vt-modal-title">
             {initialRouteSheet ? 'Editar hoja de rutas' : 'Nueva hoja de rutas'}
@@ -549,7 +549,7 @@ export function RouteSheetFormModal({
 
       {mapPick ? (
         <div
-          className={mapBackdropLayer}
+          className={mapBackdropLayerAboveChatRail}
           role="dialog"
           aria-modal="true"
           aria-label="Coordenadas del mapa"

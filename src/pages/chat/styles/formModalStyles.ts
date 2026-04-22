@@ -74,6 +74,12 @@ export const rutaCoordsHint = 'vt-muted mb-1.5 text-[11px]'
 
 export const mapBackdropLayer = 'vt-modal-backdrop z-[90]'
 
+/**
+ * Modales montados en `ChatPage`: el panel lateral (móvil) va con el contenedor a `z-[100]`;
+ * el `.vt-modal-backdrop` por defecto es `z-[80]`, por eso quedaría tapado. Usar esta capa.
+ */
+export const mapBackdropLayerAboveChatRail = 'vt-modal-backdrop z-[120]'
+
 export const agrDetailRoot = 'flex flex-col gap-3.5 text-[13px]'
 
 export const agrDetailBlock = 'border-t border-[var(--border)] pt-3'

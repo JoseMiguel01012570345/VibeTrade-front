@@ -93,6 +93,21 @@ export type StoreCatalog = {
   services: StoreService[];
 };
 
+/**
+ * Pone primero el ítem cuyo `id` coincide con el del anuncio/origen (p. ej. `Thread.offerId`).
+ */
+export function sortCatalogItemsByContextId<T extends { id: string }>(
+  items: T[],
+  preferredId: string | undefined | null,
+): T[] {
+  if (!preferredId) return items;
+  const i = items.findIndex((x) => x.id === preferredId);
+  if (i <= 0) return items;
+  const pick = items[i];
+  if (pick === undefined) return items;
+  return [pick, ...items.filter((_, j) => j !== i)];
+}
+
 function norm(s: string): string {
   return s.trim();
 }
@@ -212,24 +227,6 @@ export function storeProductToMerchandiseDefaults(
   p: StoreProduct,
 ): MerchandiseLine {
   const tipo = [p.name, p.model].filter(Boolean).join(" — ");
-  const regulaciones = [
-    p.category && `Categoría: ${p.category}`,
-    p.shortDescription && `Descripción breve: ${p.shortDescription}`,
-    p.mainBenefit && `Beneficio principal: ${p.mainBenefit}`,
-    p.technicalSpecs && `Características técnicas: ${p.technicalSpecs}`,
-    p.contentIncluded && `Contenido incluido: ${p.contentIncluded}`,
-    p.usageConditions && `Condiciones de uso: ${p.usageConditions}`,
-    ...p.customFields.map((f) => {
-      if (!norm(f.title)) return "";
-      const att = f.attachments?.length
-        ? ` [Adjuntos: ${f.attachments.map((a) => a.fileName).join(", ")}]`
-        : "";
-      const note = f.attachmentNote ? ` (${f.attachmentNote})` : "";
-      return `${f.title}: ${f.body}${note}${att}`;
-    }),
-  ]
-    .filter(Boolean)
-    .join("\n");
 
   const monedaLine =
     norm(p.monedaPrecio ?? "") !== ""
@@ -246,7 +243,8 @@ export function storeProductToMerchandiseDefaults(
     impuestos: p.taxesShippingInstall ?? "",
     devolucionesDesc: p.warrantyReturn,
     tipoEmbalaje: "",
-    regulaciones,
+    /** Solo lo completa el comprador en el acuerdo; la ficha se muestra aparte. */
+    regulaciones: "",
   };
 }
 
@@ -277,20 +275,9 @@ export function mergeMerchandiseLineWithStoreProduct(
       def.devolucionQuienPaga,
     ),
     devolucionPlazos: pickLine(line.devolucionPlazos, def.devolucionPlazos),
-    regulaciones: pickLine(line.regulaciones, def.regulaciones),
+    /** A cargo del comprador; no se mezcla con el texto de la ficha. */
+    regulaciones: line.regulaciones,
   };
-
-  if (
-    norm(line.regulaciones) !== "" &&
-    norm(def.regulaciones) !== "" &&
-    line.regulaciones !== def.regulaciones
-  ) {
-    merged.regulaciones = appendDetailBlock(
-      line.regulaciones,
-      "Detalle del catálogo",
-      def.regulaciones,
-    );
-  }
 
   if (norm(p.availability) && !norm(merged.cantidad)) {
     merged.cantidad = p.availability;

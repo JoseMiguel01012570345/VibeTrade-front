@@ -1,6 +1,5 @@
 import { CalendarClock, ClipboardList, CreditCard, Scale, ShieldAlert } from 'lucide-react'
-import type { ServiceItem } from '../../../domain/tradeAgreementTypes'
-import { serviceItemAcceptedMonedas } from '../../../domain/storeCatalogTypes'
+import { monedasFromRecurrenciaPagos, type ServiceItem } from '../../../domain/tradeAgreementTypes'
 import { formatPaymentSummary } from './serviceItemFormat'
 import { ServiceScheduleReadView } from './ServiceScheduleReadView'
 
@@ -24,7 +23,7 @@ function Block({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export function ServiceItemPreview({ sv }: { sv: ServiceItem }) {
-  const monedasAceptadas = serviceItemAcceptedMonedas(sv)
+  const monedasRecurrencia = monedasFromRecurrenciaPagos(sv.recurrenciaPagos)
   const t = sv.tiempo
   const vigencia =
     t.startDate && t.endDate
@@ -66,6 +65,7 @@ export function ServiceItemPreview({ sv }: { sv: ServiceItem }) {
               <tr className="border-b border-[var(--border)] bg-[var(--bg)] text-[var(--muted)]">
                 <th className="px-2 py-1.5 font-extrabold">Mes</th>
                 <th className="px-2 py-1.5 font-extrabold">Día</th>
+                <th className="px-2 py-1.5 font-extrabold">Moneda</th>
                 <th className="px-2 py-1.5 font-extrabold">Monto</th>
               </tr>
             </thead>
@@ -74,6 +74,7 @@ export function ServiceItemPreview({ sv }: { sv: ServiceItem }) {
                 <tr key={i} className="border-b border-[color-mix(in_oklab,var(--border)_60%,transparent)] last:border-0">
                   <td className="px-2 py-1.5">{MES[en.month]}</td>
                   <td className="px-2 py-1.5">{en.day}</td>
+                  <td className="px-2 py-1.5">{en.moneda || '—'}</td>
                   <td className="px-2 py-1.5 font-semibold">{en.amount}</td>
                 </tr>
               ))}
@@ -143,9 +144,8 @@ export function ServiceItemPreview({ sv }: { sv: ServiceItem }) {
           Comercial y cumplimiento
         </div>
         <div className="grid gap-3 min-[480px]:grid-cols-2">
-          <Block label="Método de pago">{sv.metodoPago || '—'}</Block>
-          <Block label="Monedas aceptadas">
-            {monedasAceptadas.length > 0 ? monedasAceptadas.join(' · ') : '—'}
+          <Block label="Monedas (recurrencia)">
+            {monedasRecurrencia.length > 0 ? monedasRecurrencia.join(' · ') : '—'}
           </Block>
         </div>
         <div className="mt-3 space-y-3 border-t border-[var(--border)] pt-3">

@@ -9,7 +9,7 @@ import {
   sheetPreviewContactLine,
 } from '../../domain/routeSheetOfferGuards'
 import { routeStatusLabel } from '../../domain/routeSheetTypes'
-import { modalShellWide } from '../../styles/formModalStyles'
+import { mapBackdropLayerAboveChatRail, modalShellWide } from '../../styles/formModalStyles'
 
 type Props = Readonly<{
   open: boolean
@@ -67,7 +67,12 @@ export function AgreementDeleteRouteSheetsModal({
   if (!open) return null
 
   return (
-    <div className="vt-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="agr-del-routes-title">
+    <div
+      className={mapBackdropLayerAboveChatRail}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="agr-del-routes-title"
+    >
       <div className={modalShellWide}>
         <div id="agr-del-routes-title" className="vt-modal-title">
           No podés eliminar este acuerdo todavía

@@ -1,5 +1,12 @@
 /** Modelo de acuerdo comercial (formulario emitido por el vendedor, aceptación del comprador). */
 
+import {
+  calendarDaysInMonthWithinVigencia,
+  isCalendarMonthDayInVigencia,
+  monthsOverlappingVigenciaInYear,
+  yearsTouchingVigencia,
+} from "./serviceVigenciaDates";
+
 export type MerchandiseCondition = "nuevo" | "usado" | "reacondicionado";
 
 export type MerchandiseLine = {
@@ -79,6 +86,8 @@ export type PaymentRecurrenceEntry = {
   month: number;
   day: number;
   amount: string;
+  /** Código de moneda (ej. ARS, USD), elegido entre las aceptadas para el servicio. */
+  moneda: string;
 };
 
 export type ServicePaymentRecurrence = {
@@ -364,7 +373,50 @@ export function coerceServiceSchedule(
     calendarYear: year,
     daysByMonth,
     defaultWindow: raw.defaultWindow ?? { start: "09:00", end: "17:00" },
-    dayHourOverrides: { ...raw.dayHourOverrides },
+    dayHourOverrides: { ...(raw.dayHourOverrides ?? {}) },
+  };
+}
+
+/**
+ * Ajusta meses y días a la vigencia (tiempo inicio–fin). Los días por mes son los del calendario
+ * que caen en el rango, no “todos los lun–vie” (evita 22 días en abril por un servicio de un solo día).
+ */
+export function clampServiceScheduleToVigencia(
+  raw: ServiceScheduleState,
+  startIso: string,
+  endIso: string,
+): ServiceScheduleState {
+  const s = coerceServiceSchedule(raw);
+  if (!startIso.trim()) return s;
+  const ys = yearsTouchingVigencia(startIso, endIso);
+  if (!ys.length) return s;
+  let y = s.calendarYear;
+  if (!ys.includes(y)) y = ys[0];
+  const months = monthsOverlappingVigenciaInYear(startIso, endIso, y);
+  if (!months.length) return s;
+  const daysByMonth: Record<number, number[]> = {};
+  for (const m of months) {
+    daysByMonth[m] = calendarDaysInMonthWithinVigencia(
+      y,
+      m,
+      startIso,
+      endIso,
+    );
+  }
+  const dayHourOverrides: ServiceScheduleState["dayHourOverrides"] = {};
+  for (const [k, v] of Object.entries(s.dayHourOverrides)) {
+    const [mo, da] = k.split("-").map(Number);
+    if (!Number.isInteger(mo) || !Number.isInteger(da)) continue;
+    if (isCalendarMonthDayInVigencia(startIso, endIso, mo, da)) {
+      dayHourOverrides[k] = v;
+    }
+  }
+  return {
+    ...s,
+    calendarYear: y,
+    months,
+    daysByMonth,
+    dayHourOverrides,
   };
 }
 
@@ -379,10 +431,55 @@ export function emptyServiceSchedule(): ServiceScheduleState {
   };
 }
 
+/** Moneda por defecto para nuevas filas de recurrencia si no hay otra en contexto. */
+export const DEFAULT_RECURRENCE_MONEDA = "ARS" as const;
+
+/**
+ * Asegura `moneda` en cada fila (datos viejos sin el campo) y recorta al default si falta.
+ */
+export function normalizeServicePaymentRecurrence(
+  r: ServicePaymentRecurrence,
+  defaultMoneda: string = DEFAULT_RECURRENCE_MONEDA,
+): ServicePaymentRecurrence {
+  const d = defaultMoneda.trim() || DEFAULT_RECURRENCE_MONEDA;
+  return {
+    ...r,
+    entries: r.entries.map((e) => {
+      const raw = typeof e.moneda === "string" ? e.moneda.trim() : "";
+      return {
+        ...e,
+        moneda: raw || d,
+      };
+    }),
+  };
+}
+
+/** Monedas distintas usadas en la recurrencia (resumen de «monedas aceptadas»). */
+export function monedasFromRecurrenciaPagos(
+  r: ServicePaymentRecurrence,
+): string[] {
+  const u = [
+    ...new Set(
+      r.entries
+        .map((e) => String(e.moneda ?? "").trim())
+        .filter(Boolean),
+    ),
+  ];
+  u.sort((a, b) => a.localeCompare(b, "es"));
+  return u;
+}
+
 export function emptyServicePaymentRecurrence(): ServicePaymentRecurrence {
   return {
     months: [...ALL_MONTHS],
-    entries: [{ month: 1, day: 1, amount: "1" }],
+    entries: [
+      {
+        month: 1,
+        day: 1,
+        amount: "1",
+        moneda: DEFAULT_RECURRENCE_MONEDA,
+      },
+    ],
   };
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { VtDateField } from '../../../../../components/VtDateField'
 import { validateVigenciaRange } from '../../../domain/serviceVigenciaDates'
 import { onBackdropPointerClose } from '../../../lib/modalClose'
 import { modalShellNarrow } from '../../../styles/formModalStyles'
@@ -67,28 +68,29 @@ export function ServiceTimeModal({ open, startDate, endDate, onSave, onClose }: 
           ser desde hoy y como máximo 50 años en el futuro.
         </p>
         <div className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1">
             <span className="text-xs font-bold text-[var(--muted)]">Inicio</span>
-            <input
-              type="date"
-              className="vt-input"
-              min={bounds.min}
-              max={bounds.max}
+            <VtDateField
               value={s}
-              onChange={(ev) => setS(ev.target.value)}
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-[var(--muted)]">Fin (opcional)</span>
-            <input
-              type="date"
-              className="vt-input"
+              onChange={setS}
               min={bounds.min}
               max={bounds.max}
-              value={e}
-              onChange={(ev) => setE(ev.target.value)}
+              placeholder="Elegir fecha de inicio"
+              aria-label="Fecha de inicio del servicio"
             />
-          </label>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-bold text-[var(--muted)]">Fin (opcional)</span>
+            <VtDateField
+              value={e}
+              onChange={setE}
+              min={bounds.min}
+              max={bounds.max}
+              allowEmpty
+              placeholder="Sin fecha de fin"
+              aria-label="Fecha de fin del servicio"
+            />
+          </div>
         </div>
         {err ? (
           <p className="mt-2 text-xs font-semibold text-[#b91c1c]" role="alert">

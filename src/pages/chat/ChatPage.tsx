@@ -51,6 +51,8 @@ import {
 import { buildRegisteredTransportistaPhoneOptions } from "./domain/routeSheetRegisteredPhones";
 import { tradeAgreementToDraft } from "./domain/tradeAgreementTypes";
 import { userHasTransportService } from "../../utils/user/transportEligibility";
+import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
+import { mergeStoreCatalogWithLocalExtras } from "./domain/storeCatalogTypes";
 import {
   fetchChatMessages,
   fetchChatThread,
@@ -363,6 +365,35 @@ export function ChatPage() {
     if (!threadId) return;
     syncThreadBuyerQa(threadId, me.id);
   }, [me.id, syncThreadBuyerQa, threadId, thread?.buyerUserId]);
+
+  /** Catálogo de la tienda del hilo: sin esto el acuerdo muestra «Catálogo no disponible» hasta abrir /store/:id. */
+  useEffect(() => {
+    const sid = thread?.storeId;
+    if (!sid) return;
+    if (useMarketStore.getState().storeCatalogs[sid] !== undefined) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await fetchStoreDetail(sid, { userId: me.id });
+        if (cancelled) return;
+        useMarketStore.setState((s) => ({
+          stores: { ...s.stores, [sid]: data.store },
+          storeCatalogs: {
+            ...s.storeCatalogs,
+            [sid]: mergeStoreCatalogWithLocalExtras(
+              s.storeCatalogs[sid],
+              data.catalog,
+            ),
+          },
+        }));
+      } catch {
+        /* deja el select deshabilitado; el vendedor puede abrir su ficha de tienda */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [thread?.storeId, me.id]);
 
   useEffect(() => {
     if (!threadId?.startsWith("cth_")) return;
@@ -1236,6 +1267,7 @@ export function ChatPage() {
         }}
         storeName={store.name}
         sellerCatalog={sellerCatalog}
+        contextOfferId={thread.offerId}
         initialDraft={agreementBeingEditedId ? agreementFormInitial : null}
         editingAgreementId={agreementBeingEditedId}
         onSubmit={async (draft) => {

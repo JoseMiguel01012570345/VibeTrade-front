@@ -25,6 +25,114 @@ function maxAllowedDate(): Date {
   return m
 }
 
+/** Fecha de fin de vigencia: la indicada o, si está vacía, tope 50 años (misma regla que validación). */
+function effectiveVigenciaEndOrMax(start: Date, endIso: string): Date {
+  if (!endIso.trim()) {
+    return maxAllowedDate()
+  }
+  const t = parseLocalDateFromIso(endIso)
+  return t && t >= start ? t : maxAllowedDate()
+}
+
+/**
+ * Años calendario que tocan [inicio, fin] (fin abierta → 50 años).
+ */
+export function yearsTouchingVigencia(
+  startIso: string,
+  endIso: string,
+): number[] {
+  const a = parseLocalDateFromIso(startIso)
+  if (!a) return []
+  const b = effectiveVigenciaEndOrMax(a, endIso)
+  if (b < a) return []
+  const y0 = a.getFullYear()
+  const y1 = b.getFullYear()
+  const out: number[] = []
+  for (let y = y0; y <= y1; y++) out.push(y)
+  return out
+}
+
+/**
+ * Meses (1–12) del `year` dado con al menos un día dentro de la vigencia.
+ */
+export function monthsOverlappingVigenciaInYear(
+  startIso: string,
+  endIso: string,
+  year: number,
+): number[] {
+  const a = parseLocalDateFromIso(startIso)
+  if (!a) return []
+  const b = effectiveVigenciaEndOrMax(a, endIso)
+  if (b < a) return []
+  const out: number[] = []
+  for (let m = 1; m <= 12; m++) {
+    const first = new Date(year, m - 1, 1)
+    const lastD = new Date(year, m, 0).getDate()
+    const last = new Date(year, m - 1, lastD)
+    if (last >= a && first <= b) out.push(m)
+  }
+  return out
+}
+
+/** [inicio, fin] local para cálculos (fin abierta → tope 50 años). */
+export function vigenciaRangeBounds(
+  startIso: string,
+  endIso: string,
+): { start: Date; end: Date } | null {
+  const a = parseLocalDateFromIso(startIso)
+  if (!a) return null
+  const b = effectiveVigenciaEndOrMax(a, endIso)
+  if (b < a) return null
+  return { start: a, end: b }
+}
+
+/**
+ * Indica si el día de calendario (mes 1–12, día 1–31) entra al menos una vez
+ * en el intervalo de vigencia, probando **cada año** que toca [inicio, fin] (el modelo
+ * de excepciones solo guarda `m-d` sin año).
+ */
+export function isCalendarMonthDayInVigencia(
+  startIso: string,
+  endIso: string,
+  month1: number,
+  day1: number,
+): boolean {
+  if (!Number.isInteger(month1) || month1 < 1 || month1 > 12) return false
+  if (!Number.isInteger(day1) || day1 < 1 || day1 > 31) return false
+  const vr = vigenciaRangeBounds(startIso, endIso)
+  if (!vr) return false
+  const ys = yearsTouchingVigencia(startIso, endIso)
+  for (const y of ys) {
+    const t = new Date(y, month1 - 1, day1)
+    if (t.getFullYear() !== y || t.getMonth() !== month1 - 1 || t.getDate() !== day1) {
+      continue
+    }
+    if (t >= vr.start && t <= vr.end) return true
+  }
+  return false
+}
+
+/**
+ * Días del calendario (1–`dim`) del `year`+`month` que caen dentro de la vigencia.
+ * Así, un solo día (p. ej. 2026-04-22 → 2026-04-22) produce solo [22] en abril.
+ */
+export function calendarDaysInMonthWithinVigencia(
+  year: number,
+  month1: number,
+  startIso: string,
+  endIso: string,
+): number[] {
+  const vr = vigenciaRangeBounds(startIso, endIso)
+  if (!vr) return []
+  const dim = new Date(year, month1, 0).getDate()
+  const out: number[] = []
+  for (let d = 1; d <= dim; d++) {
+    const t = new Date(year, month1 - 1, d)
+    if (t >= vr.start && t <= vr.end) out.push(d)
+  }
+  return out
+}
+
 export function validateVigenciaDate(
   iso: string,
   label: string,

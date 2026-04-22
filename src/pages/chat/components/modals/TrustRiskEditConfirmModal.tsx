@@ -1,4 +1,4 @@
-import { modalShellNarrow } from '../../styles/formModalStyles'
+import { mapBackdropLayerAboveChatRail, modalShellNarrow } from '../../styles/formModalStyles'
 
 type Props = {
   open: boolean
@@ -12,7 +12,12 @@ export function TrustRiskEditConfirmModal({ open, onClose, onConfirm, subjectLab
   if (!open) return null
 
   return (
-    <div className="vt-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="trust-risk-edit-title">
+    <div
+      className={mapBackdropLayerAboveChatRail}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="trust-risk-edit-title"
+    >
       <div className={modalShellNarrow}>
         <div id="trust-risk-edit-title" className="vt-modal-title">
           ¿Continuar con la edición?

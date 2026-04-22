@@ -2,8 +2,14 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { HelpCircle, LogOut, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useAppStore } from '../../app/store/useAppStore'
 import type { Message, Thread } from '../../app/store/useMarketStore'
 import { threadHasAcceptedAgreement, useMarketStore } from '../../app/store/useMarketStore'
+import {
+  buyerFirstNameForThread,
+  chatThreadHeaderTitle,
+  resolveSellerUserId,
+} from '../../utils/chat/chatParticipantLabels'
 import { cn } from '../../lib/cn'
 import { notifyChatParticipantsUserLeft } from '../../utils/chat/chatRealtime'
 import { ChatLeaveConfirmModal } from './components/modals/ChatLeaveConfirmModal'
@@ -47,6 +53,8 @@ function fmtShort(ts: number) {
 }
 
 export function ChatListPage() {
+  const me = useAppStore((s) => s.me)
+  const profileDisplayNames = useAppStore((s) => s.profileDisplayNames)
   const threads = useMarketStore((s) => s.threads)
   const offers = useMarketStore((s) => s.offers)
   const recordChatExitFromList = useMarketStore((s) => s.recordChatExitFromList)
@@ -123,6 +131,12 @@ export function ChatListPage() {
           <div className="flex flex-col">
             {rows.map(({ th, offerTitle, preview, at }) => {
               const inv = Boolean(th.prematureExitUnderInvestigation)
+              const listTitle = chatThreadHeaderTitle(th, me, profileDisplayNames)
+              const sellerUid = resolveSellerUserId(th)
+              const imSeller = sellerUid != null && me.id === sellerUid
+              const avatarLetter = imSeller
+                ? (buyerFirstNameForThread(th, me.id, me.name, profileDisplayNames) || '?').charAt(0)
+                : (th.store.name || '?').charAt(0)
               return (
                 <div
                   key={th.id}
@@ -147,11 +161,11 @@ export function ChatListPage() {
                       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_oklab,var(--primary)_18%,var(--surface))] text-base font-bold text-[var(--primary)]"
                       aria-hidden
                     >
-                      {th.store.name.slice(0, 1).toUpperCase()}
+                      {avatarLetter.toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="mb-1 flex items-center justify-between gap-2">
-                        <div className="truncate text-[15px] font-semibold">{th.store.name}</div>
+                        <div className="truncate text-[15px] font-semibold">{listTitle}</div>
                         <div className="flex shrink-0 items-center gap-1.5">
                           {inv ? (
                             <span className="flex leading-none text-amber-700" aria-hidden>

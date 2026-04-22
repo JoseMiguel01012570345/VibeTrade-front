@@ -11,7 +11,7 @@ import {
   type TradeAgreement,
 } from "../../domain/tradeAgreementTypes";
 import { hasMerchandise } from "../../domain/tradeAgreementValidation";
-import type { StoreCatalog } from "../../domain/storeCatalogTypes";
+import type { StoreCatalog, StoreProduct } from "../../domain/storeCatalogTypes";
 import { findStoreProduct, findStoreService } from "../../domain/storeCatalogTypes";
 import { ServiceItemPreview } from "./serviceConfig/ServiceItemPreview";
 import type { RouteSheet } from "../../domain/routeSheetTypes";
@@ -46,6 +46,90 @@ function legacyMerchandiseMetaHasContent(m?: MerchandiseSectionMeta): boolean {
   return Object.values(m).some((v) => (v ?? "").trim() !== "");
 }
 
+function FichaProductoExcerpt({ p }: { p: StoreProduct }) {
+  return (
+    <div className="mb-2 space-y-2 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] p-2.5 text-[13px]">
+      <div className="font-extrabold text-[var(--text)]">Ficha de producto</div>
+      {p.model?.trim() ? <Row label="Versión / modelo" value={p.model} /> : null}
+      {p.shortDescription?.trim() ? (
+        <p className="whitespace-pre-wrap text-[var(--text)]">{p.shortDescription}</p>
+      ) : null}
+      {p.mainBenefit?.trim() ? <Row label="Beneficio principal" value={p.mainBenefit} /> : null}
+      {p.technicalSpecs?.trim() ? (
+        <div>
+          <div className="mb-0.5 text-[10px] font-extrabold uppercase text-[var(--muted)]">
+            Características técnicas
+          </div>
+          <div className="whitespace-pre-wrap text-[var(--text)]">{p.technicalSpecs}</div>
+        </div>
+      ) : null}
+      {p.contentIncluded?.trim() ? <Row label="Contenido incluido" value={p.contentIncluded} /> : null}
+      {p.usageConditions?.trim() ? <Row label="Condiciones de uso" value={p.usageConditions} /> : null}
+      {p.taxesShippingInstall?.trim() ? <Row label="Envío / impuestos (ficha)" value={p.taxesShippingInstall} /> : null}
+      {p.customFields.length > 0 ? (
+        <div>
+          <div className="mb-1.5 text-[10px] font-extrabold uppercase text-[var(--muted)]">
+            Campos y adjuntos
+          </div>
+          {p.customFields.map((f, j) => (
+            <div
+              key={j}
+              className="mb-2 rounded border border-[color-mix(in_oklab,var(--border)_70%,transparent)] p-2 last:mb-0"
+            >
+              {f.title?.trim() ? (
+                <div className="font-bold text-[var(--text)]">{f.title}</div>
+              ) : null}
+              {f.attachmentNote?.trim() ? (
+                <div className="text-[11px] text-[var(--muted)]">{f.attachmentNote}</div>
+              ) : null}
+              {f.body?.trim() ? (
+                <div className="whitespace-pre-wrap text-sm text-[var(--text)]">{f.body}</div>
+              ) : null}
+              {f.attachments?.length ? (
+                <ul className="mt-1.5 list-inside list-disc text-xs">
+                  {f.attachments.map((a) => (
+                    <li key={a.id}>
+                      <a
+                        href={a.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={cn(agrDetailLink, "inline")}
+                      >
+                        {a.fileName}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {p.photoUrls?.filter((u) => u?.trim()).length ? (
+        <div>
+          <div className="mb-1.5 text-[10px] font-extrabold uppercase text-[var(--muted)]">Fotos</div>
+          <div className="flex flex-wrap gap-1.5">
+            {p.photoUrls
+              .filter((u) => u?.trim())
+              .slice(0, 12)
+              .map((url, u) => (
+                <a
+                  key={u}
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block h-20 w-20 overflow-hidden rounded border border-[var(--border)]"
+                >
+                  <img src={url} alt="" className="h-full w-full object-cover" />
+                </a>
+              ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function MerchandiseBlock({ lines, catalog }: { lines: MerchandiseLine[]; catalog?: StoreCatalog }) {
   if (!lines.length) return null;
   return (
@@ -57,9 +141,10 @@ function MerchandiseBlock({ lines, catalog }: { lines: MerchandiseLine[]; catalo
         return (
           <div key={i} className={agrDetailCard}>
             <div className={agrDetailSub}>Ítem {i + 1}</div>
+            {linked ? <FichaProductoExcerpt p={linked} /> : null}
             {linked ? (
               <Row
-                label="Anclaje al catálogo"
+                label="Producto (catálogo)"
                 value={`${linked.name} · ${linked.category}`}
               />
             ) : null}
@@ -70,11 +155,14 @@ function MerchandiseBlock({ lines, catalog }: { lines: MerchandiseLine[]; catalo
             <Row label="Descuento" value={line.descuento} />
             <Row label="Impuestos" value={line.impuestos} />
             <Row label="Moneda" value={line.moneda} />
-            <Row label="Tipo de embalaje" value={line.tipoEmbalaje} />
             <Row
-              label="Condiciones para devolver y garantias"
+              label="Condiciones para devolver y garantias (ficha)"
               value={line.devolucionesDesc}
             />
+            <div className="my-1 border-t border-[color-mix(in_oklab,var(--border)_70%,transparent)] pt-1 text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+              Comprador
+            </div>
+            <Row label="Tipo de embalaje" value={line.tipoEmbalaje} />
             <Row
               label="Quién paga envío de devolución"
               value={line.devolucionQuienPaga}
