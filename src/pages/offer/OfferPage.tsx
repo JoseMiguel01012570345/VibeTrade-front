@@ -49,8 +49,10 @@ import {
 } from "../../utils/market/offerPublishedForBuyerChat";
 import {
   fetchEmergentCarrierSubscriptionStatus,
+  fetchEmergentMyRouteTramoSubscriptions,
   postEmergentTramoSubscriptionRequest,
 } from "../../utils/emergentOffers/emergentCarrierSubscriptionApi";
+import { fetchThreadRouteTramoSubscriptions } from "../../utils/chat/chatApi";
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -104,6 +106,12 @@ export function OfferPage() {
   const threads = useMarketStore((s) => s.threads);
   const subscribeRouteOfferTramo = useMarketStore(
     (s) => s.subscribeRouteOfferTramo,
+  );
+  const applyThreadRouteTramoSubscriptions = useMarketStore(
+    (s) => s.applyThreadRouteTramoSubscriptions,
+  );
+  const hydrateRouteOfferCarrierSubscriptions = useMarketStore(
+    (s) => s.hydrateRouteOfferCarrierSubscriptions,
   );
   const submitOfferQuestion = useMarketStore((s) => s.submitOfferQuestion);
   const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer);
@@ -237,6 +245,42 @@ export function OfferPage() {
         : undefined,
     [threads, offerId, threadCatalogId],
   );
+
+  /** Persistencia servidor: recuperar suscripciones del transportista sin depender del hilo en memoria (p. ej. tras F5). */
+  useEffect(() => {
+    if (!sessionReady || me.id === "guest") return;
+    if (!emergentPublicationId || !threadCatalogId || !routeOffer?.routeSheetId) return;
+    let cancelled = false;
+    void fetchEmergentMyRouteTramoSubscriptions(emergentPublicationId).then((items) => {
+      if (cancelled || !items?.length) return;
+      hydrateRouteOfferCarrierSubscriptions(threadCatalogId, items, me.id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    emergentPublicationId,
+    threadCatalogId,
+    routeOffer?.routeSheetId,
+    me.id,
+    sessionReady,
+    hydrateRouteOfferCarrierSubscriptions,
+  ]);
+
+  useEffect(() => {
+    const tid = threadForThisOffer?.id?.trim();
+    if (!tid || !sessionReady || me.id === "guest") return;
+    let cancelled = false;
+    void fetchThreadRouteTramoSubscriptions(tid)
+      .then((items) => {
+        if (cancelled) return;
+        applyThreadRouteTramoSubscriptions(tid, items, me.id);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [threadForThisOffer?.id, me.id, sessionReady, applyThreadRouteTramoSubscriptions]);
   const carrierInChatThread = useMemo(
     () => !!threadForThisOffer?.chatCarriers?.some((c) => c.id === me.id),
     [threadForThisOffer, me.id],

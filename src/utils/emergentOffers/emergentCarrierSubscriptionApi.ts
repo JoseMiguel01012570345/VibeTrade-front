@@ -1,4 +1,5 @@
 import { apiFetch } from "../http/apiClient";
+import type { RouteTramoSubscriptionItemApi } from "../chat/chatApi";
 
 export type EmergentCarrierSubscriptionResponse = {
   canSubscribe: boolean;
@@ -16,6 +17,20 @@ export async function fetchEmergentCarrierSubscriptionStatus(
   );
   if (!res.ok) return null;
   return (await res.json()) as EmergentCarrierSubscriptionResponse;
+}
+
+/** GET: suscripciones del usuario actual a tramos de esta publicación emergente (tras recargar ficha). */
+export async function fetchEmergentMyRouteTramoSubscriptions(
+  emergentOfferId: string,
+): Promise<RouteTramoSubscriptionItemApi[] | null> {
+  const res = await apiFetch(
+    `/api/v1/emergent-offers/${encodeURIComponent(emergentOfferId)}/my-route-tramo-subscriptions`,
+    { method: "GET", cache: "no-store" },
+  );
+  if (res.status === 401) return null;
+  if (res.status === 404) return null;
+  if (!res.ok) return null;
+  return (await res.json()) as RouteTramoSubscriptionItemApi[];
 }
 
 /** POST: valida servicio de transporte en servidor y notifica al comprador y vendedor del hilo. */

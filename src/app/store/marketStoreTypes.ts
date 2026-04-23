@@ -12,7 +12,11 @@ import type {
   RouteSheetCreatePayload,
   RouteSheetStatus,
 } from "../../pages/chat/domain/routeSheetTypes";
-import type { ChatMessageDto, ChatThreadDto } from "../../utils/chat/chatApi";
+import type {
+  ChatMessageDto,
+  ChatThreadDto,
+  RouteTramoSubscriptionItemApi,
+} from "../../utils/chat/chatApi";
 import type {
   OfferQaAuthorSnapshot,
   OfferQaCommentEnriched,
@@ -585,6 +589,20 @@ export type MarketState = {
     carrierUserId: string,
     accept: boolean,
   ) => boolean;
+
+  /** Sincroniza suscripciones persistidas (GET) con oferta pública y transportistas en hilo. */
+  applyThreadRouteTramoSubscriptions: (
+    threadId: string,
+    items: RouteTramoSubscriptionItemApi[],
+    viewerId: string,
+  ) => void;
+
+  /** Hidrata solo <c>routeOfferPublic[key]</c> desde GET emergente (sin hilo en memoria). */
+  hydrateRouteOfferCarrierSubscriptions: (
+    routeOfferPublicKey: string,
+    items: RouteTramoSubscriptionItemApi[],
+    viewerId: string,
+  ) => void;
 
   /** Tiendas creadas por el usuario (vendedor) — flow-ui perfil. */
   createOwnerStore: (

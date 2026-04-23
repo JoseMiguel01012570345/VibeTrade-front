@@ -59,6 +59,7 @@ import {
   fetchChatMessages,
   fetchChatThread,
   fetchThreadRouteSheets,
+  fetchThreadRouteTramoSubscriptions,
   fetchThreadTradeAgreements,
   patchChatMessageStatus,
 } from "../../utils/chat/chatApi";
@@ -127,6 +128,9 @@ export function ChatPage() {
   const sendImages = useMarketStore((s) => s.sendImages);
   const markThreadPaymentCompleted = useMarketStore(
     (s) => s.markThreadPaymentCompleted,
+  );
+  const applyThreadRouteTramoSubscriptions = useMarketStore(
+    (s) => s.applyThreadRouteTramoSubscriptions,
   );
   const stores = useMarketStore((s) => s.stores);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
@@ -439,12 +443,13 @@ export function ChatPage() {
           if (!cancelled) setPersistThreadError(true);
           return;
         }
-        const [msgs, agResult, routeSheetsRs] = await Promise.all([
+        const [msgs, agResult, routeSheetsRs, subsRs] = await Promise.all([
           fetchChatMessages(threadId),
           fetchThreadTradeAgreements(threadId)
             .then((a) => ({ ok: true as const, agreements: a }))
             .catch(() => ({ ok: false as const })),
           fetchThreadRouteSheets(threadId).catch(() => null),
+          fetchThreadRouteTramoSubscriptions(threadId).catch(() => null),
         ]);
         const contracts = agResult.ok
           ? agResult.agreements.map(mapTradeAgreementApiToTradeAgreement)
@@ -516,6 +521,9 @@ export function ChatPage() {
             },
           },
         }));
+        if (subsRs && Array.isArray(subsRs)) {
+          applyThreadRouteTramoSubscriptions(threadId, subsRs, meId);
+        }
       } catch {
         if (!cancelled) setPersistThreadError(true);
       }
@@ -523,7 +531,29 @@ export function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [threadId]);
+  }, [threadId, applyThreadRouteTramoSubscriptions]);
+
+  const refreshChatRouteData = useCallback(async () => {
+    const tid = threadId?.trim();
+    if (!tid?.startsWith("cth_")) return;
+    const uid = useAppStore.getState().me.id;
+    const [sheets, subs] = await Promise.all([
+      fetchThreadRouteSheets(tid).catch(() => null),
+      fetchThreadRouteTramoSubscriptions(tid).catch(() => null),
+    ]);
+    if (sheets) {
+      useMarketStore.setState((s) => ({
+        threads: {
+          ...s.threads,
+          [tid]: {
+            ...(s.threads[tid] ?? {}),
+            routeSheets: sheets as RouteSheet[],
+          },
+        },
+      }));
+    }
+    if (subs && Array.isArray(subs)) applyThreadRouteTramoSubscriptions(tid, subs, uid);
+  }, [threadId, applyThreadRouteTramoSubscriptions]);
 
   useEffect(() => {
     if (!threadId?.startsWith("cth_")) return;
@@ -1007,11 +1037,14 @@ export function ChatPage() {
             {routeSubscribersSheetId ? (
               <ChatRouteSubscribersPanel
                 key={routeSubscribersSheetId}
+                threadId={thread.id}
                 routeOffer={routeOfferForThisThread}
                 routeSheetId={routeSubscribersSheetId}
                 routeSheetTitle={
                   thread.routeSheets?.find((r) => r.id === routeSubscribersSheetId)?.titulo
                 }
+                canModerateSubscribers={viewerIsThreadBuyer || viewerIsThreadSeller}
+                onSubscriptionsChanged={refreshChatRouteData}
                 highlightUserId={highlightSubscriberUserId}
                 onClose={() => {
                   setRouteSubscribersSheetId(null);

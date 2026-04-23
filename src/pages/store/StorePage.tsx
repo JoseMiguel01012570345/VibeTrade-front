@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAppStore } from "../../app/store/useAppStore";
 import { ArrowLeft, LayoutGrid, RefreshCw } from "lucide-react";
@@ -76,6 +76,7 @@ export function StorePage() {
   const { storeId } = useParams();
   const nav = useNavigate();
   const { pathname } = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const me = useAppStore((s) => s.me);
   const store = useMarketStore((s) =>
     storeId ? s.stores[storeId] : undefined,
@@ -205,6 +206,27 @@ export function StorePage() {
       services: emptyStoreSectionFilters(),
     });
   }, [storeId]);
+
+  /**
+   * `/store/:id/services?service=…`: solo el dueño abre el editor; el resto va a la oferta pública
+   * (evita que comprador/vendedor en chat caigan en el modal de edición del servicio del transportista).
+   */
+  useEffect(() => {
+    const sid = searchParams.get("service")?.trim();
+    if (!sid || !storeId) return;
+    const screen = screenFromPathname(pathname, storeId);
+    if (screen !== "services") return;
+
+    if (!isOwner) {
+      nav(`/offer/${encodeURIComponent(sid)}`, { replace: true });
+      return;
+    }
+
+    setServiceCtx({ serviceId: sid });
+    const next = new URLSearchParams(searchParams);
+    next.delete("service");
+    setSearchParams(next, { replace: true });
+  }, [storeId, pathname, searchParams, setSearchParams, isOwner, nav]);
 
   const screen = useMemo(
     () => (storeId ? screenFromPathname(pathname, storeId) : "catalog"),

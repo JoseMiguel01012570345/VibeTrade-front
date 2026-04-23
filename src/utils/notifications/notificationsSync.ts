@@ -46,6 +46,19 @@ function mapServerNotification(n: ChatNotificationDto): NotificationItem {
     }
   }
 
+  if (n.kind === 'route_tramo_subscribe_accepted' && n.threadId) {
+    return {
+      id: n.id,
+      kind: 'route_tramo_subscribe_accepted',
+      title: `${n.authorLabel} · confianza ${n.authorTrustScore}`,
+      body: n.messagePreview,
+      createdAt: Date.parse(n.createdAtUtc),
+      read: n.readAtUtc != null,
+      threadId: n.threadId,
+      trustScore: n.authorTrustScore,
+    }
+  }
+
   const isOfferOnly = Boolean(n.offerId && !n.threadId)
   const kind = isOfferOnly
     ? mapOfferNotificationKind(n.kind)

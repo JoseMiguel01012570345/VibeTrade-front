@@ -1,4 +1,8 @@
 import type { RouteSheet } from '../../pages/chat/domain/routeSheetTypes'
+import {
+  applyViewerRouteTramoSubscriptions,
+  mergeTramoSubscriptionsIntoRouteOffer,
+} from '../../pages/chat/domain/routeOfferSubscriptionMerge'
 import { routeOfferPublicBlockedForBuyerWithAgreement } from '../../pages/chat/domain/routeSheetOfferGuards'
 import type { Message } from './marketStoreTypes'
 import { threadIsActionLocked, uid } from './marketStoreHelpers'
@@ -10,8 +14,30 @@ export function createRouteOfferPublicSlice(set: MarketSliceSet, _get: MarketSli
   | 'subscribeRouteOfferTramo'
   | 'validateRouteOfferTramo'
   | 'respondRouteSheetEdit'
+  | 'applyThreadRouteTramoSubscriptions'
+  | 'hydrateRouteOfferCarrierSubscriptions'
 > {
   return {
+hydrateRouteOfferCarrierSubscriptions: (routeOfferPublicKey, items, viewerId) => {
+  set((s) => {
+    const key = routeOfferPublicKey.trim()
+    if (!key) return s
+    const ro = s.routeOfferPublic[key]
+    if (!ro) return s
+    const merged = mergeTramoSubscriptionsIntoRouteOffer(ro, items, viewerId)
+    if (!merged || merged === ro) return s
+    return {
+      ...s,
+      routeOfferPublic: { ...s.routeOfferPublic, [key]: merged },
+    }
+  })
+},
+applyThreadRouteTramoSubscriptions: (threadId, items, viewerId) => {
+  set((s) => {
+    const next = applyViewerRouteTramoSubscriptions(s, threadId, items, viewerId)
+    return next ?? s
+  })
+},
 subscribeRouteOfferTramo: (offerId, stopId, carrier, vehicleLabel, storeServiceId) => {
   let ok = false
   set((s) => {

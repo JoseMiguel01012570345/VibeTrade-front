@@ -11,6 +11,9 @@ export function notificationDeepLink(
     | 'highlightCarrierUserId'
   >,
 ): string | null {
+  if (n.kind === 'route_tramo_subscribe_accepted' && n.threadId) {
+    return `/chat/${encodeURIComponent(n.threadId)}`
+  }
   if (
     n.kind === 'route_tramo_subscribe' &&
     n.threadId &&

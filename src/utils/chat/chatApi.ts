@@ -113,7 +113,7 @@ export type ChatNotificationDto = {
   senderUserId: string
   createdAtUtc: string
   readAtUtc: string | null
-  /** Backend: offer_comment, offer_like, qa_comment_like, route_tramo_subscribe; ausente en avisos de chat por hilo. */
+  /** Backend: offer_comment, offer_like, qa_comment_like, route_tramo_subscribe, route_tramo_subscribe_accepted; ausente en avisos de chat por hilo. */
   kind?: string | null
   /** JSON con routeSheetId, stopId, carrierUserId (camelCase). */
   metaJson?: string | null
@@ -191,6 +191,58 @@ export async function fetchThreadRouteSheets(threadId: string): Promise<RouteShe
   )
   if (!res.ok) throw new Error(await res.text())
   return (await res.json()) as RouteSheetPayload[]
+}
+
+/** Ítem de GET <c>threads/{id}/route-tramo-subscriptions</c> (camelCase). */
+export type RouteTramoSubscriptionItemApi = {
+  routeSheetId: string
+  stopId: string
+  orden: number
+  carrierUserId: string
+  displayName: string
+  phone: string
+  trustScore: number
+  storeServiceId?: string | null
+  transportServiceLabel: string
+  status: string
+  origenLine: string
+  destinoLine: string
+  createdAtUnixMs: number
+  carrierServiceStoreId?: string | null
+}
+
+/** Suscripciones a tramos persistidas en servidor (hojas publicadas del hilo). */
+export async function fetchThreadRouteTramoSubscriptions(
+  threadId: string,
+): Promise<RouteTramoSubscriptionItemApi[]> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions`,
+    { method: 'GET', cache: 'no-store' },
+  )
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as RouteTramoSubscriptionItemApi[]
+}
+
+export async function postAcceptRouteTramoSubscriptions(
+  threadId: string,
+  body: { routeSheetId: string; carrierUserId: string },
+): Promise<{ acceptedCount: number }> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/accept`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        routeSheetId: body.routeSheetId,
+        carrierUserId: body.carrierUserId,
+      }),
+    },
+  )
+  if (!res.ok) {
+    const t = await res.text()
+    throw new Error(t || `HTTP ${res.status}`)
+  }
+  return (await res.json()) as { acceptedCount: number }
 }
 
 export async function putThreadRouteSheet(threadId: string, sheet: RouteSheetPayload): Promise<void> {
