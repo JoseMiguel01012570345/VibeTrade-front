@@ -5,7 +5,12 @@ import {
   apiErrorTextToUserMessage,
   defaultUnexpectedErrorMessage,
 } from "../http/apiErrorMessage";
-import type { MarketState, QAItem } from "../../app/store/marketStoreTypes";
+import type {
+  MarketState,
+  Offer,
+  QAItem,
+  StoreBadge,
+} from "../../app/store/marketStoreTypes";
 import { storeProfileBodiesToPersist } from "./marketSerializable";
 
 /** Reservado: antes coordinaba persistencia automática (deshabilitada). */
@@ -70,6 +75,30 @@ export async function fetchOfferQaFromServer(
   const raw = (await res.json()) as unknown;
   if (!Array.isArray(raw)) return [];
   return raw as QAItem[];
+}
+
+export type PublicOfferCardResponse = { offer: Offer; store: StoreBadge };
+
+/**
+ * Ficha de oferta (catálogo o publicación `emo_`) + tienda, para abrir /offer/… sin el feed.
+ */
+export async function fetchPublicOfferCard(
+  offerId: string,
+): Promise<PublicOfferCardResponse | null> {
+  const res = await apiFetch(
+    `/api/v1/market/offers/${encodeURIComponent(offerId)}/card`,
+    { method: "GET" },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(
+      apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
+    );
+  }
+  const raw = (await res.json()) as { offer: Offer; store: StoreBadge };
+  if (!raw?.offer || !raw.offer.id) return null;
+  return { offer: raw.offer, store: raw.store };
 }
 
 /** Metadatos de tienda: un PUT por tienda, cuerpo = campos de la ficha (incl. `id`), sin `stores:{...}`. */

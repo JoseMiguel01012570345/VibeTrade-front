@@ -13,6 +13,7 @@ const BLOQUE_MIN = 3
 const CARGA_MIN = 5
 const TIPO_MERC_MIN = 2
 const NOTA_TRAMO_MIN = 3
+const MONEDA_MAX = 32
 
 function norm(s: string | undefined): string {
   return (s ?? '').trim()
@@ -108,6 +109,7 @@ export type RouteTramoFieldErrors = Partial<{
   requisitosEspeciales: string
   tipoVehiculoRequerido: string
   telefonoTransportista: string
+  monedaPago: string
 }>
 
 export type RouteSheetFormErrors = {
@@ -242,6 +244,14 @@ export function getRouteSheetFormErrors(p: RouteSheetCreatePayload): RouteSheetF
     if (tel.length > 48) {
       mergeTramo(e, i, { telefonoTransportista: 'Máximo 48 caracteres' })
     }
+
+    {
+      const m = norm(raw.monedaPago)
+      if (m !== '') {
+        const mx = optionalMax(m, MONEDA_MAX)
+        if (mx) mergeTramo(e, i, { monedaPago: mx })
+      }
+    }
   })
 
   return e
@@ -296,6 +306,7 @@ export function normalizeRouteSheetParadas(paradas: RouteTramoFormInput[]): Rout
       requisitosEspeciales: norm(p.requisitosEspeciales) || undefined,
       tipoVehiculoRequerido: norm(p.tipoVehiculoRequerido) || undefined,
       telefonoTransportista: norm(p.telefonoTransportista) || undefined,
+      monedaPago: norm(p.monedaPago) || undefined,
     }))
     .filter((p) => p.origen.length >= PLACE_MIN && p.destino.length >= PLACE_MIN)
 }

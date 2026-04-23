@@ -24,11 +24,18 @@ export function OfferSaveButton({
 }: Props) {
   const isSessionActive = useAppStore((s) => s.isSessionActive);
   const me = useAppStore((s) => s.me);
-  const saved = useAppStore((s) => s.savedOffers[offerId]);
   const setSavedOffersFromIds = useAppStore((s) => s.setSavedOffersFromIds);
   const offer = useMarketStore((s) => s.offers[offerId]);
   const stores = useMarketStore((s) => s.stores);
   const [busy, setBusy] = useState(false);
+
+  const isEmergentId = offerId.startsWith("emo_");
+  /** Publicación `emo_…` se guarda como producto de catálogo (`emergentBaseOfferId`), no con el id emergente. */
+  const productIdForApi =
+    offer?.isEmergentRoutePublication && offer.emergentBaseOfferId?.trim() ?
+      offer.emergentBaseOfferId.trim()
+    : offerId;
+  const saved = useAppStore((s) => s.savedOffers[productIdForApi]);
 
   const store = offer ? stores[offer.storeId] : undefined;
   const isOwnOffer =
@@ -38,6 +45,10 @@ export function OfferSaveButton({
     store.ownerUserId === me.id;
 
   if (isOwnOffer) return null;
+  if (isEmergentId && !offer) return null;
+  if (offer?.isEmergentRoutePublication && !offer.emergentBaseOfferId?.trim()) {
+    return null;
+  }
 
   async function onClick(e: React.MouseEvent) {
     e.preventDefault();
@@ -50,8 +61,8 @@ export function OfferSaveButton({
     setBusy(true);
     try {
       const ids = saved
-        ? await deleteSavedOffer(offerId)
-        : await postSavedOffer(offerId);
+        ? await deleteSavedOffer(productIdForApi)
+        : await postSavedOffer(productIdForApi);
       setSavedOffersFromIds(ids);
       toast.success(saved ? "Quitada de guardados" : "Guardada en tu perfil");
     } catch (err) {

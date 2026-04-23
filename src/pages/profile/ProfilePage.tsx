@@ -51,6 +51,7 @@ import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
 } from "../../utils/market/toolPlaceholder";
+import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
 
 function isValidEmail(value: string): boolean {
   const t = value.trim();
@@ -338,6 +339,57 @@ export function ProfilePage() {
       a.title.localeCompare(b.title, "es", { sensitivity: "base" }),
     );
   }, [savedOfferIds, offers]);
+
+  const savedOfferIdsKey = useMemo(
+    () => savedOfferIds.slice().sort().join("\u0000"),
+    [savedOfferIds],
+  );
+
+  /** Hojas de ruta (y otras ofertas) se guardan con id de catálogo; el feed a veces solo tiene `emo_…`, entonces el store no tenía el producto y la lista de guardados quedaba vacía. */
+  useEffect(() => {
+    if (tab !== "saved" || !isMe) return;
+    const ids = Object.keys(useAppStore.getState().savedOffers).filter(
+      (i) => useAppStore.getState().savedOffers[i],
+    );
+    if (ids.length === 0) return;
+    const missing = ids.filter(
+      (id) => !useMarketStore.getState().offers[id],
+    );
+    if (missing.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      for (const id of missing) {
+        if (cancelled) return;
+        try {
+          const r = await fetchPublicOfferCard(id);
+          if (!r || cancelled) continue;
+          const storeKey = r.store.id?.trim() || r.offer.storeId;
+          const merged: Offer = { ...r.offer, id };
+          useMarketStore.setState((s) => {
+            if (s.offers[id]) return s;
+            const nextStores = { ...s.stores };
+            if (storeKey) {
+              nextStores[storeKey] = {
+                ...s.stores[storeKey],
+                ...r.store,
+                id: storeKey,
+              };
+            }
+            return {
+              ...s,
+              offers: { ...s.offers, [id]: merged },
+              stores: nextStores,
+            };
+          });
+        } catch {
+          /* offline / 404 */
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, isMe, savedOfferIdsKey]);
 
   const savedIds = useMemo(
     () => Object.keys(saved).filter((id) => saved[id]),

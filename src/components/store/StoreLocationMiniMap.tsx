@@ -1,7 +1,5 @@
-import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import type { StoreLocationPoint } from "../../app/store/marketStoreTypes";
-import { storeMapPinIcon } from "../../utils/map/storeMapPinIcon";
-import "leaflet/dist/leaflet.css";
+import { PointLocationFeedMap } from "../../pages/home/EmergentRouteFeedMap";
 
 type Props = Readonly<{
   location: StoreLocationPoint;
@@ -11,30 +9,21 @@ type Props = Readonly<{
 
 /**
  * Mapa embebido pequeño (solo lectura) para fichas de tienda en carruseles.
+ * Mismo visor/capa base que las hojas de ruta (`PointLocationFeedMap`).
  */
 export function StoreLocationMiniMap({ location, mapKey }: Props) {
-  const center: [number, number] = [location.lat, location.lng];
   return (
     <div
-      className="pointer-events-none relative isolate h-[88px] w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] [&_.leaflet-control-container]:hidden"
+      className="pointer-events-none relative isolate h-[88px] w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[#e2e8f0] [&_.leaflet-control-container]:hidden"
       aria-hidden
     >
-      <MapContainer
-        key={mapKey}
-        center={center}
-        zoom={14}
-        className="h-full w-full"
-        style={{ height: "100%", width: "100%" }}
-        dragging={false}
-        touchZoom={false}
-        scrollWheelZoom={false}
-        doubleClickZoom={false}
-        zoomControl={false}
-        attributionControl={false}
-      >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <Marker position={center} icon={storeMapPinIcon()} />
-      </MapContainer>
+      <PointLocationFeedMap
+        location={location}
+        mapKey={mapKey}
+        className="h-full w-full min-h-0 [&_.leaflet-control-attribution]:hidden"
+        fixedZoom={14}
+        showAttribution={false}
+      />
     </div>
   );
 }

@@ -40,15 +40,31 @@ export function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers);
   const token = getSessionToken();
   const path = requestPathname(input);
+  const method = (init?.method ?? "GET").toUpperCase();
+  const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+  /**
+   * Me gusta y comentarios exigen Bearer: si el token ya está guardado y la sesión
+   * aún no marcó `isSessionActive` (hidratar / race), el POST iba sin Authorization → 401.
+   */
+  const attachBearerForPendingSession =
+    !!token &&
+    isMutating &&
+    (/^\/api\/v1\/market\/offers\/[^/]+\/like$/.test(path) ||
+      /^\/api\/v1\/market\/offers\/[^/]+\/qa\/[^/]+\/like$/.test(path) ||
+      path === "/api/v1/market/inquiries" ||
+      path === "/api/v1/market/workspace/inquiries");
   /**
    * Invitado: token residual sin `isSessionActive` no debe ir a bootstrap/recomendaciones guest.
-   * Excepción: restaurar o cerrar sesión envían Bearer aunque el store aún no marque activa.
+   * Excepción: restaurar o cerrar sesión envían Bearer aunque el store aún no marque activa;
+   * además, mutaciones de engagement/comentarios (arriba) con token anexan Bearer aunque la sesión
+   * aún se esté activando.
    */
   const attachBearer =
     !!token &&
     (useAppStore.getState().isSessionActive ||
       path === "/api/v1/auth/session" ||
-      path === "/api/v1/auth/logout");
+      path === "/api/v1/auth/logout" ||
+      attachBearerForPendingSession);
   if (attachBearer) {
     headers.set("Authorization", `Bearer ${token}`);
   }

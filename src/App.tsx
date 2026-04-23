@@ -13,6 +13,7 @@ import { ChatPage } from "./pages/chat/ChatPage";
 import { HomePage } from "./pages/home/HomePage";
 import { NotificationsPage } from "./pages/notifications/NotificationsPage";
 import { OfferPage } from "./pages/offer/OfferPage";
+import { OfferRouteMapPage } from "./pages/offer/OfferRouteMapPage";
 import { ProfilePage } from "./pages/profile/ProfilePage";
 import { ReelsPage } from "./pages/reels/ReelsPage";
 import { StorePage } from "./pages/store/StorePage";
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="/home" element={<HomePage />} />
           <Route path="/search" element={<CatalogSearchPage />} />
           <Route path="/stores" element={<StoresSearchPage />} />
+          <Route path="/offer/:offerId/mapa" element={<OfferRouteMapPage />} />
           <Route path="/offer/:offerId" element={<OfferPage />} />
           <Route path="/store/:storeId" element={<StorePage />} />
           <Route path="/store/:storeId/vitrina" element={<StorePage />} />

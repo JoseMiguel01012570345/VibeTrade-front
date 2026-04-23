@@ -56,6 +56,7 @@ import { mergeStoreCatalogWithLocalExtras } from "./domain/storeCatalogTypes";
 import {
   fetchChatMessages,
   fetchChatThread,
+  fetchThreadRouteSheets,
   fetchThreadTradeAgreements,
   patchChatMessageStatus,
 } from "../../utils/chat/chatApi";
@@ -410,11 +411,12 @@ export function ChatPage() {
           if (!cancelled) setPersistThreadError(true);
           return;
         }
-        const [msgs, agResult] = await Promise.all([
+        const [msgs, agResult, routeSheetsRs] = await Promise.all([
           fetchChatMessages(threadId),
           fetchThreadTradeAgreements(threadId)
             .then((a) => ({ ok: true as const, agreements: a }))
             .catch(() => ({ ok: false as const })),
+          fetchThreadRouteSheets(threadId).catch(() => null),
         ]);
         const contracts = agResult.ok
           ? agResult.agreements.map(mapTradeAgreementApiToTradeAgreement)
@@ -479,7 +481,10 @@ export function ChatPage() {
               purchaseMode: dto.purchaseMode,
               messages: qaSynced,
               contracts,
-              routeSheets: s.threads[threadId]?.routeSheets ?? [],
+              routeSheets:
+                routeSheetsRs !== null
+                  ? (routeSheetsRs as RouteSheet[])
+                  : (s.threads[threadId]?.routeSheets ?? []),
             },
           },
         }));

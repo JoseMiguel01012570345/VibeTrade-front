@@ -16,6 +16,10 @@ import {
   TOOL_PLACEHOLDER_SRC,
 } from "../../utils/market/toolPlaceholder";
 import { offerDescriptionPreview } from "./homeTextUtils";
+import { getSessionToken } from "../../utils/http/sessionToken";
+import { buildEmergentMapLegs } from "../../utils/map/emergentRouteMapLegs";
+import { EmergentRouteFeedMap } from "./EmergentRouteFeedMap";
+import { userHasTransportService } from "../../utils/user/transportEligibility";
 
 export function OfferCardsChunk({
   items,
@@ -28,13 +32,26 @@ export function OfferCardsChunk({
 }>) {
   const isSessionActive = useAppStore((s) => s.isSessionActive);
   const openAuthModal = useAppStore((s) => s.openAuthModal);
+  const me = useAppStore((s) => s.me);
+  const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
+  const sessionReady = isSessionActive || !!getSessionToken();
   return (
     <div className="grid grid-cols-12 gap-3 md:gap-3.5">
       {items.map((o, i) => {
         const store = stores[o.storeId];
         const descFull = o.description?.trim() ?? "";
-        const descPreview = offerDescriptionPreview(descFull);
-        const routePreview = routeOfferPublic[o.id];
+        const routePreview =
+          routeOfferPublic[o.id] ??
+          (o.emergentBaseOfferId
+            ? routeOfferPublic[o.emergentBaseOfferId]
+            : undefined);
+        const isEmergentRouteFeed =
+          o.isEmergentRoutePublication === true ||
+          (o.tags?.includes("Hoja de ruta (publicada)") && !!routePreview);
+        const descPreview = isEmergentRouteFeed
+          ? ""
+          : offerDescriptionPreview(descFull);
+        const mapLegs = buildEmergentMapLegs(o, routePreview);
         const commentTotal =
           typeof o.publicCommentCount === "number"
             ? o.publicCommentCount
@@ -45,6 +62,11 @@ export function OfferCardsChunk({
           o.imageUrl?.trim() ||
           (o.tags.includes("Servicio") ? TOOL_PLACEHOLDER_SRC : undefined);
         const isToolPlaceholder = isToolPlaceholderUrl(thumbSrc);
+        const canSubscribeEmergent =
+          isEmergentRouteFeed &&
+          sessionReady &&
+          me.id !== "guest" &&
+          userHasTransportService(me.id, stores, storeCatalogs);
         return (
           <div
             key={`${o.id}-${i}`}
@@ -55,20 +77,38 @@ export function OfferCardsChunk({
                 to={`/offer/${o.id}`}
                 className={cn(
                   "block h-full overflow-hidden",
-                  !isToolPlaceholder && "group",
+                  isEmergentRouteFeed ? "group" : !isToolPlaceholder && "group",
                 )}
               >
-                <ProtectedMediaImg
-                  src={thumbSrc}
-                  alt={o.title}
-                  wrapperClassName="block h-full w-full min-h-[150px] lg:min-h-[132px]"
-                  className={cn(
-                    "block h-full w-full min-h-[150px] transition-transform duration-[240ms] ease-out lg:min-h-[132px]",
-                    isToolPlaceholder
-                      ? "vt-img-tool-placeholder bg-gray-200 p-3 sm:p-4 lg:p-3"
-                      : "scale-[1.02] object-cover group-hover:scale-[1.06]",
-                  )}
-                />
+                {isEmergentRouteFeed ? (
+                  <div
+                    className={cn(
+                      "flex h-full min-h-[150px] w-full flex-col overflow-hidden transition-transform duration-[240ms] ease-out will-change-transform lg:min-h-[132px]",
+                      "group-hover:scale-[1.03]",
+                    )}
+                  >
+                    <div className="shrink-0 border-b border-slate-200/80 bg-[#eef2f7] py-1.5 text-center text-[11px] font-black tracking-wide text-slate-800 lg:text-[10px]">
+                      Hoja de ruta
+                    </div>
+                    <EmergentRouteFeedMap
+                      legs={mapLegs}
+                      mapKey={`map-${o.id}-${i}`}
+                      className="relative z-0 min-h-0 flex-1 overflow-hidden bg-[#e2e8f0] [&_.leaflet-control-attribution]:text-[7px] [&_.leaflet-control-attribution]:opacity-80"
+                    />
+                  </div>
+                ) : (
+                  <ProtectedMediaImg
+                    src={thumbSrc}
+                    alt={o.title}
+                    wrapperClassName="block h-full w-full min-h-[150px] lg:min-h-[132px]"
+                    className={cn(
+                      "block h-full w-full min-h-[150px] transition-transform duration-[240ms] ease-out lg:min-h-[132px]",
+                      isToolPlaceholder
+                        ? "vt-img-tool-placeholder bg-gray-200 p-3 sm:p-4 lg:p-3"
+                        : "scale-[1.02] object-cover group-hover:scale-[1.06]",
+                    )}
+                  />
+                )}
               </Link>
               <div className="pointer-events-auto absolute right-1.5 top-1.5 z-[2] lg:right-1 lg:top-1">
                 <OfferSaveButton offerId={o.id} />
@@ -119,7 +159,7 @@ export function OfferCardsChunk({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (!isSessionActive) {
+                    if (!sessionReady) {
                       openAuthModal();
                       return;
                     }
@@ -194,7 +234,41 @@ export function OfferCardsChunk({
                   </span>
                 ))}
               </div>
-              {routePreview ? (
+              {isEmergentRouteFeed ? (
+                <div className="mt-1.5">
+                  {canSubscribeEmergent ? (
+                    <Link
+                      to={`/offer/${o.id}#hoja-suscribir`}
+                      className="vt-btn vt-btn-primary inline-flex w-full items-center justify-center text-[12px] font-extrabold lg:text-[11px]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Suscribirse
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      className="vt-btn vt-btn-primary inline-flex w-full items-center justify-center text-[12px] font-extrabold disabled:cursor-not-allowed disabled:opacity-50 lg:text-[11px]"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!sessionReady) {
+                          openAuthModal();
+                          return;
+                        }
+                        if (!userHasTransportService(me.id, stores, storeCatalogs)) {
+                          toast.error(
+                            "Necesitás un servicio de transporte publicado en tu tienda para suscribirte.",
+                          );
+                          return;
+                        }
+                      }}
+                      disabled={!sessionReady}
+                    >
+                      Suscribirse
+                    </button>
+                  )}
+                </div>
+              ) : routePreview ? (
                 <RouteOfferPreview
                   state={routePreview}
                   compact

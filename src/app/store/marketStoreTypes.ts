@@ -112,6 +112,29 @@ export type Offer = {
   publicCommentCount?: number;
   offerLikeCount?: number;
   viewerLikedOffer?: boolean;
+  /**
+   * Publicación emergente de hoja de ruta (`emo_…`); el `id` es la publicación, no el id de catálogo.
+   * Viene de la API de recomendaciones; la imagen del producto sigue en `imageUrl` (oferta base).
+   */
+  isEmergentRoutePublication?: boolean;
+  /** Oferta de catálogo (producto/servicio) asociada a la publicación emergente. */
+  emergentBaseOfferId?: string;
+  /** Tramos (snapshot) para mapa en feed sin `routeOfferPublic` local. Misma estructura que en la API. */
+  emergentRouteParadas?: EmergentRouteParadaSnapshot[];
+  /** Moneda de pago (snapshot) si la hoja de ruta la definió. */
+  emergentMonedaPago?: string;
+};
+
+/** Parada en snapshot de publicación emergente; coords opcionales para Leaflet. */
+export type EmergentRouteParadaSnapshot = {
+  origen: string;
+  destino: string;
+  origenLat?: string;
+  origenLng?: string;
+  destinoLat?: string;
+  destinoLng?: string;
+  /** Moneda del precio de este tramo (API `emergentRouteParadas[].monedaPago`). */
+  monedaPago?: string;
 };
 
 export type ReplyQuote = {
@@ -145,6 +168,10 @@ export type RouteOfferTramoPublic = {
   orden: number;
   origenLine: string;
   destinoLine: string;
+  origenLat?: string;
+  origenLng?: string;
+  destinoLat?: string;
+  destinoLng?: string;
   /** Campos de la hoja publicada visibles al transportista antes de suscribirse. */
   cargaEnTramo?: string;
   tipoMercanciaCarga?: string;
@@ -157,6 +184,8 @@ export type RouteOfferTramoPublic = {
   requisitosEspeciales?: string;
   /** Teléfono por tramo en la hoja (vendedor o post-validación de suscripción). */
   telefonoTransportista?: string;
+  /** Moneda del precio de este tramo en la hoja. */
+  monedaPago?: string;
   assignment?: RouteOfferTramoAssignment;
 };
 
@@ -504,12 +533,12 @@ export type MarketState = {
     threadId: string,
     agreementId: string,
     routeSheetId: string,
-  ) => boolean;
+  ) => Promise<boolean>;
   /** Quitar vínculo solo si la hoja no está publicada en la plataforma. */
   unlinkAgreementFromRouteSheet: (
     threadId: string,
     agreementId: string,
-  ) => boolean;
+  ) => Promise<boolean>;
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean;
   recordChatExitFromList: (threadId: string) => void;
   /** Quita el hilo del estado local y, si es persistido, lo borra en el servidor. */

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet'
 import { cn } from '../../../../lib/cn'
 import { nominatimReverse, nominatimSearch } from '../../../../utils/map/nominatimGeocode'
 import { storeMapPinIcon } from '../../../../utils/map/storeMapPinIcon'
@@ -47,6 +47,10 @@ import {
   phoneSelectOptions,
   type TransportistaPhoneOption,
 } from '../../domain/routeSheetRegisteredPhones'
+import { paymentCurrencyVtOptions } from '../../domain/routeSheetMonedaOptions'
+import { fetchCurrencies } from '../../../../utils/market/fetchCurrencies'
+import { VibeMapTileLayer } from '../../../home/EmergentRouteFeedMap'
+import { VtSelect } from '../../../../components/VtSelect'
 
 export type RouteSheetFormPayload = RouteSheetCreatePayload
 
@@ -122,6 +126,7 @@ function tramosToLimpios(tramos: RouteTramoFormInput[]): RouteTramoFormInput[] {
     requisitosEspeciales: p.requisitosEspeciales?.trim() ?? '',
     tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() ?? '',
     telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+    monedaPago: p.monedaPago?.trim() ?? '',
   }))
 }
 
@@ -143,11 +148,29 @@ export function RouteSheetFormModal({
   const [mapPlaceLabel, setMapPlaceLabel] = useState('')
   const [mapCoordError, setMapCoordError] = useState<string | undefined>(undefined)
   const [formErrors, setFormErrors] = useState<RouteSheetFormErrors>({})
+  /** Códigos de moneda permitidos (GET /api/v1/market/currencies), mismo origen que el catálogo. */
+  const [currencyCodes, setCurrencyCodes] = useState<string[]>([])
   const routeOfferRef = useRef(routeOfferForSheet)
   routeOfferRef.current = routeOfferForSheet
   const editBaselineJsonRef = useRef<string | null>(null)
   /** Invalida búsquedas Nominatim al cerrar el mapa o abrir otro punto. */
   const mapForwardTokenRef = useRef(0)
+
+  useEffect(() => {
+    if (!open) return
+    let cancel = false
+    void (async () => {
+      try {
+        const list = await fetchCurrencies()
+        if (!cancel) setCurrencyCodes(list)
+      } catch {
+        if (!cancel) setCurrencyCodes([])
+      }
+    })()
+    return () => {
+      cancel = true
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -163,7 +186,12 @@ export function RouteSheetFormModal({
         ro?.routeSheetId === rs.id ? new Map(ro.tramos.map((t) => [t.stopId, t])) : undefined
       const tramosInitRaw =
         rs.paradas.length > 0
-          ? routeStopsToFormInputs(rs.paradas, routeSheetLegacyHead(rs), offerMap)
+          ? routeStopsToFormInputs(
+              rs.paradas,
+              routeSheetLegacyHead(rs),
+              offerMap,
+              rs.monedaPago ?? '',
+            )
           : [emptyTramo(), emptyTramo()]
       const tramosInit = clearDerivedOriginsInForm(tramosInitRaw)
       setTitulo(rs.titulo)
@@ -207,6 +235,11 @@ export function RouteSheetFormModal({
     const p = tryParseLatLngStrings(mapLat, mapLng)
     return p ? ROUTE_MAP_ZOOM_POINT : ROUTE_MAP_ZOOM
   }, [mapLat, mapLng])
+
+  const monedaOptionsFor = useCallback(
+    (cur: string) => paymentCurrencyVtOptions(cur, currencyCodes),
+    [currencyCodes],
+  )
 
   useEffect(() => {
     if (!mapPick || !open) return
@@ -402,8 +435,8 @@ export function RouteSheetFormModal({
           </div>
           <div className={modalSub}>
             Todos los campos son obligatorios. Tiempos estimados y precio del tramo deben ser números (ej. horas o
-            monto). Origen, destino y el mapa se sincronizan (dirección ↔ pin). A partir del segundo tramo, el origen
-            coincide con el destino del tramo anterior (solo editable ahí).
+            monto). La moneda de pago se elige en cada tramo. Origen, destino y el mapa se sincronizan (dirección ↔ pin).
+            A partir del segundo tramo, el origen coincide con el destino del tramo anterior (solo editable ahí).
           </div>
           <div className={modalFormBody}>
             <Field
@@ -422,7 +455,6 @@ export function RouteSheetFormModal({
               error={err.mercanciasResumen}
               inputId="ruta-merc"
             />
-
             <div className={cn(detailsBlock, rutaTramosBlock)}>
               <strong>Tramos del recorrido</strong>
               {err.paradasGlobal ? (
@@ -616,6 +648,26 @@ export function RouteSheetFormModal({
                       inputId={`ruta-tramo-${i}-precio`}
                       inputMode="decimal"
                     />
+                    <div className={cn(fieldRootWithInvalid(!!te?.monedaPago), 'w-full')}>
+                      <span className={fieldLabel} id={`ruta-tramo-${i}-moneda-lbl`}>
+                        Moneda de pago (este tramo)
+                      </span>
+                      <VtSelect
+                        value={p.monedaPago ?? ''}
+                        onChange={(v) => updateTramo(i, { monedaPago: v })}
+                        options={monedaOptionsFor(p.monedaPago ?? '')}
+                        placeholder="Elegir moneda…"
+                        listPortal
+                        listPortalZIndexClass="z-[400]"
+                        ariaLabel={`Moneda de pago del tramo ${i + 1}`}
+                        buttonClassName="vt-input w-full min-h-[2.5rem] justify-between"
+                      />
+                      {te?.monedaPago ? (
+                        <span className={fieldError} role="alert">
+                          {te.monedaPago}
+                        </span>
+                      ) : null}
+                    </div>
                     <Field
                       label="Carga en este tramo"
                       value={p.cargaEnTramo ?? ''}
@@ -694,7 +746,7 @@ export function RouteSheetFormModal({
               entre sí; podés editar la dirección antes de guardar.
             </div>
             <div
-              className="mb-4 overflow-hidden rounded-xl border border-[var(--border)] [&_.leaflet-container]:z-0"
+              className="mb-4 overflow-hidden rounded-xl border border-[var(--border)] bg-[#e2e8f0] [&_.leaflet-container]:z-0 [&_.leaflet-control-attribution]:text-[10px]"
               style={{ minHeight: 'min(52vh, 360px)' }}
             >
               <MapContainer
@@ -703,11 +755,9 @@ export function RouteSheetFormModal({
                 zoom={routeMapZoom}
                 className="h-[min(52vh,360px)] w-full"
                 scrollWheelZoom
+                attributionControl
               >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
+                <VibeMapTileLayer />
                 <RouteMapViewSync center={routeMapCenter} zoom={routeMapZoom} />
                 <RouteMapClickHandler
                   onPick={(lat, lng) => {

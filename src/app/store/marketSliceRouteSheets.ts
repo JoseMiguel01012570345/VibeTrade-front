@@ -3,7 +3,11 @@ import {
   hasRouteSheetFormErrors,
   normalizeRouteSheetParadas,
 } from '../../pages/chat/domain/routeSheetValidation'
-import type { RouteSheet, RouteStop } from '../../pages/chat/domain/routeSheetTypes'
+import {
+  type RouteSheet,
+  type RouteStop,
+  summarizeRouteSheetMonedaPago,
+} from '../../pages/chat/domain/routeSheetTypes'
 import type { Message, MarketState } from './marketStoreTypes'
 import { threadHasAcceptedAgreement } from './marketStoreTypes'
 import {
@@ -23,9 +27,11 @@ import {
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
 import {
   deleteThreadRouteSheet,
+  patchThreadTradeAgreementRouteLink,
   putThreadRouteSheet,
 } from '../../utils/chat/chatApi'
 import { getSessionToken } from '../../utils/http/sessionToken'
+import { mapTradeAgreementApiToTradeAgreement } from '../../utils/chat/tradeAgreementApiMapper'
 
 export function createRouteSheetsSlice(set: MarketSliceSet, get: MarketSliceGet): Pick<MarketState,
   | 'createRouteSheet'
@@ -71,6 +77,7 @@ createRouteSheet: (threadId, payload) => {
       requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
       tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || undefined,
       telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+      monedaPago: p.monedaPago?.trim() || undefined,
       completada: false,
     }))
   const rid = uid('ruta')
@@ -85,6 +92,7 @@ createRouteSheet: (threadId, payload) => {
     mercanciasResumen: merc,
     paradas,
     notasGenerales: payload.notasGenerales?.trim() || undefined,
+    monedaPago: summarizeRouteSheetMonedaPago(paradas),
     publicadaPlataforma: false,
     editadaEnFormulario: false,
   }
@@ -143,6 +151,7 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
       requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
       tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || undefined,
       telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+      monedaPago: p.monedaPago?.trim() || undefined,
       completada: false as boolean | undefined,
     }))
   let ok = false
@@ -164,6 +173,7 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
       mercanciasResumen: merc,
       paradas,
       notasGenerales: payload.notasGenerales?.trim() || undefined,
+      monedaPago: summarizeRouteSheetMonedaPago(paradas),
       actualizadoEn: now,
       editadaEnFormulario: true,
     }
@@ -336,86 +346,190 @@ publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
   }
 },
 
-linkAgreementToRouteSheet: (threadId, agreementId, routeSheetId) => {
-  let ok = false
-  set((s) => {
-    const th = s.threads[threadId]
-    const contracts = th.contracts ?? []
-    const sheets = th.routeSheets ?? []
-    if (!th || threadIsActionLocked(th) || !contracts.length || !sheets.length) return s
-    const sheet = sheets.find((r) => r.id === routeSheetId)
-    if (!sheet) return s
-    const cIdx = contracts.findIndex((c) => c.id === agreementId)
-    if (cIdx < 0) return s
-    const prev = contracts[cIdx]
-    if (prev.status === 'deleted') return s
-    if (prev.routeSheetId === routeSheetId) return s
-    const nextContracts = [...contracts]
-    nextContracts[cIdx] = { ...prev, routeSheetId }
-    const sys: Message = {
-      id: uid('m'),
-      from: 'system',
-      type: 'text',
-      text: `Acuerdo «${prev.title}» vinculado a la hoja de ruta «${sheet.titulo}».`,
-      at: Date.now(),
-    }
-    ok = true
-    return {
-      ...s,
-      threads: {
-        ...s.threads,
-        [threadId]: {
-          ...th,
-          contracts: nextContracts,
-          messages: [...th.messages, sys],
-          routeSheets: th.routeSheets ?? [],
+linkAgreementToRouteSheet: async (threadId, agreementId, routeSheetId) => {
+  const th0 = get().threads[threadId]
+  const contracts0 = th0?.contracts ?? []
+  const sheets0 = th0?.routeSheets ?? []
+  if (!th0 || threadIsActionLocked(th0) || !contracts0.length || !sheets0.length) return false
+  const sheet0 = sheets0.find((r) => r.id === routeSheetId)
+  if (!sheet0) return false
+  const prev0 = contracts0.find((c) => c.id === agreementId)
+  if (!prev0 || prev0.status === 'deleted') return false
+  if (prev0.routeSheetId === routeSheetId) return true
+
+  const applyLocal = () => {
+    set((s) => {
+      const th = s.threads[threadId]
+      const contracts = th?.contracts ?? []
+      const sheets = th?.routeSheets ?? []
+      if (!th || threadIsActionLocked(th)) return s
+      const sheet = sheets.find((r) => r.id === routeSheetId)
+      if (!sheet) return s
+      const cIdx = contracts.findIndex((c) => c.id === agreementId)
+      if (cIdx < 0) return s
+      const prev = contracts[cIdx]
+      if (prev.status === 'deleted' || prev.routeSheetId === routeSheetId) return s
+      const nextContracts = [...contracts]
+      nextContracts[cIdx] = { ...prev, routeSheetId }
+      const sys: Message = {
+        id: uid('m'),
+        from: 'system',
+        type: 'text',
+        text: `Acuerdo «${prev.title}» vinculado a la hoja de ruta «${sheet.titulo}».`,
+        at: Date.now(),
+      }
+      return {
+        ...s,
+        threads: {
+          ...s.threads,
+          [threadId]: {
+            ...th,
+            contracts: nextContracts,
+            messages: [...th.messages, sys],
+            routeSheets: th.routeSheets ?? [],
+          },
         },
-      },
-    }
-  })
-  return ok
+      }
+    })
+  }
+
+  if (!threadId.startsWith('cth_') || !getSessionToken()) {
+    applyLocal()
+    return true
+  }
+
+  try {
+    const dto = await patchThreadTradeAgreementRouteLink(
+      threadId,
+      agreementId,
+      routeSheetId,
+    )
+    const mapped = mapTradeAgreementApiToTradeAgreement(dto)
+    set((s) => {
+      const th = s.threads[threadId]
+      if (!th) return s
+      const list = th.contracts ?? []
+      const i = list.findIndex((c) => c.id === agreementId)
+      if (i < 0) return s
+      const next = [...list]
+      next[i] = mapped
+      const sys: Message = {
+        id: uid('m'),
+        from: 'system',
+        type: 'text',
+        text: `Acuerdo «${prev0.title}» vinculado a la hoja de ruta «${sheet0.titulo}».`,
+        at: Date.now(),
+      }
+      return {
+        ...s,
+        threads: {
+          ...s.threads,
+          [threadId]: {
+            ...th,
+            contracts: next,
+            messages: [...th.messages, sys],
+          },
+        },
+      }
+    })
+    return true
+  } catch {
+    return false
+  }
 },
 
-unlinkAgreementFromRouteSheet: (threadId, agreementId) => {
-  let ok = false
-  set((s) => {
-    const th = s.threads[threadId]
-    const contracts = th.contracts ?? []
-    const sheets = th.routeSheets ?? []
-    if (!th || threadIsActionLocked(th) || !contracts.length) return s
-    const cIdx = contracts.findIndex((c) => c.id === agreementId)
-    if (cIdx < 0) return s
-    const prev = contracts[cIdx]
-    if (prev.status === 'deleted') return s
-    const rid = prev.routeSheetId
-    if (!rid) return s
-    const sheet = sheets.find((r) => r.id === rid)
-    if (sheet?.publicadaPlataforma) return s
-    const nextContracts = [...contracts]
-    nextContracts[cIdx] = { ...prev, routeSheetId: undefined }
-    const titulo = sheet?.titulo ?? 'hoja de ruta'
-    const sys: Message = {
-      id: uid('m'),
-      from: 'system',
-      type: 'text',
-      text: `Acuerdo «${prev.title}» desvinculado de la hoja de ruta «${titulo}».`,
-      at: Date.now(),
-    }
-    ok = true
-    return {
-      ...s,
-      threads: {
-        ...s.threads,
-        [threadId]: {
-          ...th,
-          contracts: nextContracts,
-          messages: [...th.messages, sys],
-          routeSheets: th.routeSheets ?? [],
+unlinkAgreementFromRouteSheet: async (threadId, agreementId) => {
+  const th0 = get().threads[threadId]
+  const contracts0 = th0?.contracts ?? []
+  const sheets0 = th0?.routeSheets ?? []
+  if (!th0 || threadIsActionLocked(th0) || !contracts0.length) return false
+  const prev0 = contracts0.find((c) => c.id === agreementId)
+  if (!prev0 || prev0.status === 'deleted' || !prev0.routeSheetId) return false
+  const sheet0 = sheets0.find((r) => r.id === prev0.routeSheetId)
+  if (sheet0?.publicadaPlataforma) return false
+
+  const applyLocal = () => {
+    set((s) => {
+      const th = s.threads[threadId]
+      const contracts = th?.contracts ?? []
+      const sheets = th?.routeSheets ?? []
+      if (!th || threadIsActionLocked(th)) return s
+      const cIdx = contracts.findIndex((c) => c.id === agreementId)
+      if (cIdx < 0) return s
+      const prev = contracts[cIdx]
+      const rid = prev.routeSheetId
+      if (!rid) return s
+      const sheet = sheets.find((r) => r.id === rid)
+      if (sheet?.publicadaPlataforma) return s
+      const nextContracts = [...contracts]
+      nextContracts[cIdx] = { ...prev, routeSheetId: undefined }
+      const titulo = sheet?.titulo ?? 'hoja de ruta'
+      const sys: Message = {
+        id: uid('m'),
+        from: 'system',
+        type: 'text',
+        text: `Acuerdo «${prev.title}» desvinculado de la hoja de ruta «${titulo}».`,
+        at: Date.now(),
+      }
+      return {
+        ...s,
+        threads: {
+          ...s.threads,
+          [threadId]: {
+            ...th,
+            contracts: nextContracts,
+            messages: [...th.messages, sys],
+            routeSheets: th.routeSheets ?? [],
+          },
         },
-      },
-    }
-  })
-  return ok
+      }
+    })
+  }
+
+  if (!threadId.startsWith('cth_') || !getSessionToken()) {
+    applyLocal()
+    return true
+  }
+
+  try {
+    const dto = await patchThreadTradeAgreementRouteLink(
+      threadId,
+      agreementId,
+      null,
+    )
+    const mapped = mapTradeAgreementApiToTradeAgreement(dto)
+    set((s) => {
+      const th = s.threads[threadId]
+      if (!th) return s
+      const list = th.contracts ?? []
+      const i = list.findIndex((c) => c.id === agreementId)
+      if (i < 0) return s
+      const next = [...list]
+      next[i] = mapped
+      const titulo = sheet0?.titulo ?? 'hoja de ruta'
+      const sys: Message = {
+        id: uid('m'),
+        from: 'system',
+        type: 'text',
+        text: `Acuerdo «${prev0.title}» desvinculado de la hoja de ruta «${titulo}».`,
+        at: Date.now(),
+      }
+      return {
+        ...s,
+        threads: {
+          ...s.threads,
+          [threadId]: {
+            ...th,
+            contracts: next,
+            messages: [...th.messages, sys],
+          },
+        },
+      }
+    })
+    return true
+  } catch {
+    return false
+  }
 },
 
 deleteRouteSheet: (threadId, routeSheetId) => {

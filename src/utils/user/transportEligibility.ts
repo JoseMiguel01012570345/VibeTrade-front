@@ -57,3 +57,38 @@ export function userActsAsCarrierOnTransportOffer(
     userHasTransportService(userId, stores, storeCatalogs)
   )
 }
+
+export type UserTransportServiceOption = {
+  storeId: string;
+  serviceId: string;
+  /** Texto para referencia en suscripción (demo). */
+  label: string;
+};
+
+/**
+ * Servicios publicados del usuario que califican como transporte/logística (mismo criterio que el feed).
+ */
+export function listUserTransportServices(
+  userId: string,
+  stores: Record<string, StoreBadge>,
+  storeCatalogs: Record<string, StoreCatalog | undefined>,
+): UserTransportServiceOption[] {
+  const out: UserTransportServiceOption[] = []
+  if (!userId || userId === 'guest') return out
+  for (const [sid, b] of Object.entries(stores)) {
+    if (b.ownerUserId !== userId) continue
+    const cat = storeCatalogs[sid]
+    if (!cat?.services?.length) continue
+    for (const s of cat.services) {
+      if (s.published === false) continue
+      if (
+        SERVICE_TRANSPORT_HINT.test(s.tipoServicio) ||
+        SERVICE_TRANSPORT_HINT.test(s.category)
+      ) {
+        const label = [s.tipoServicio, s.category].filter((x) => x?.trim()).join(' · ') || 'Servicio de transporte'
+        out.push({ storeId: sid, serviceId: s.id, label })
+      }
+    }
+  }
+  return out
+}

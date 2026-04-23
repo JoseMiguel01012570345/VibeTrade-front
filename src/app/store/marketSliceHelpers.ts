@@ -33,6 +33,10 @@ export function routeOfferPublicAfterSheetEdit(
       orden: p.orden,
       origenLine: p.origen,
       destinoLine: p.destino,
+      origenLat: p.origenLat?.trim() || undefined,
+      origenLng: p.origenLng?.trim() || undefined,
+      destinoLat: p.destinoLat?.trim() || undefined,
+      destinoLng: p.destinoLng?.trim() || undefined,
       cargaEnTramo: p.cargaEnTramo,
       tipoMercanciaCarga: p.tipoMercanciaCarga,
       tipoMercanciaDescarga: p.tipoMercanciaDescarga,
@@ -43,6 +47,7 @@ export function routeOfferPublicAfterSheetEdit(
       notas: p.notas,
       requisitosEspeciales: p.requisitosEspeciales,
       telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+      monedaPago: p.monedaPago?.trim() || undefined,
       assignment: assignByStop.get(p.id),
     }))
     if (!touched) {
@@ -104,6 +109,7 @@ export function routeStopAckFingerprint(p: RouteStop): string {
     re: (p.responsabilidadEmbalaje ?? '').trim(),
     rq: (p.requisitosEspeciales ?? '').trim(),
     ve: (p.tipoVehiculoRequerido ?? '').trim(),
+    mon: (p.monedaPago ?? '').trim(),
   })
 }
 

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, useMapEvents } from "react-leaflet";
 import type { StoreLocationPoint } from "../../../app/store/marketStoreTypes";
 import { storeMapPinIcon } from "../../../utils/map/storeMapPinIcon";
 import { onBackdropPointerClose } from "../../chat/lib/modalClose";
 import { modalShellWide } from "../../chat/styles/formModalStyles";
+import { VibeMapTileLayer } from "../../home/EmergentRouteFeedMap";
 import "leaflet/dist/leaflet.css";
 
 const DEFAULT_CENTER: [number, number] = [22.526838, -81.128701];
@@ -66,17 +67,15 @@ export function StoreLocationMapModal({
           Tocá el mapa para colocar el pin. Podés arrastrarlo para ajustar. Es
           opcional y visible para quien visite la tienda.
         </div>
-        <div className="store-map-modal-frame overflow-hidden rounded-xl border border-[var(--border)]">
+        <div className="store-map-modal-frame overflow-hidden rounded-xl border border-[var(--border)] bg-[#e2e8f0] [&_.leaflet-control-attribution]:text-[10px]">
           <MapContainer
             center={center}
             zoom={ZOOM}
             className="h-[min(52vh,360px)] w-full"
             scrollWheelZoom
+            attributionControl
           >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+            <VibeMapTileLayer />
             <MapClickHandler onPick={(lat, lng) => setPos({ lat, lng })} />
             {pos ? (
               <Marker

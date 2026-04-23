@@ -19,6 +19,7 @@ export function emptyTramo(): RouteTramoFormInput {
     requisitosEspeciales: '',
     tipoVehiculoRequerido: '',
     telefonoTransportista: '',
+    monedaPago: '',
   }
 }
 

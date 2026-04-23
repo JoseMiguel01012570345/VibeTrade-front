@@ -225,7 +225,12 @@ ensureThreadForOffer: async (offerId, opts) => {
   const offer = s.offers[offerId]
   if (!offer) return ''
 
-  const existing = Object.values(s.threads).find((t) => t.offerId === offerId)
+  const threadCatalogId =
+    (offer as { emergentBaseOfferId?: string }).emergentBaseOfferId?.trim() || offerId
+
+  const existing = Object.values(s.threads).find(
+    (t) => t.offerId === threadCatalogId,
+  )
   const buyerId = opts?.buyerId
   const token = getSessionToken()
   const canPersist = !!token && !!buyerId && buyerId !== 'guest'
@@ -347,7 +352,7 @@ ensureThreadForOffer: async (offerId, opts) => {
 
       const isSeller = store.ownerUserId === meId
       if (isSeller) {
-        const dto = await fetchChatThreadByOffer(offerId)
+        const dto = await fetchChatThreadByOffer(threadCatalogId)
         if (!dto) return ''
         const serverMsgs = await fetchChatMessages(dto.id)
         const routeSheets =
@@ -358,7 +363,7 @@ ensureThreadForOffer: async (offerId, opts) => {
           ? { ...existing, id: dto.id }
           : {
               id: dto.id,
-              offerId,
+              offerId: threadCatalogId,
               storeId: offer.storeId,
               store,
               purchaseMode: dto.purchaseMode,
@@ -373,7 +378,7 @@ ensureThreadForOffer: async (offerId, opts) => {
         return dto.id
       }
 
-      const dto = await createOrGetChatThread(offerId, true)
+      const dto = await createOrGetChatThread(threadCatalogId, true)
       const serverMsgs = await fetchChatMessages(dto.id)
       const routeSheets =
         dto.id.startsWith('cth_') && getSessionToken()
@@ -381,7 +386,7 @@ ensureThreadForOffer: async (offerId, opts) => {
           : []
       const bootstrap: Thread = {
         id: dto.id,
-        offerId,
+        offerId: threadCatalogId,
         storeId: offer.storeId,
         store,
         purchaseMode: dto.purchaseMode,
@@ -433,7 +438,7 @@ ensureThreadForOffer: async (offerId, opts) => {
   const id = uid('th')
   const bootstrap: Thread = {
     id,
-    offerId,
+    offerId: threadCatalogId,
     storeId: offer.storeId,
     store,
     purchaseMode: true,
@@ -828,7 +833,10 @@ refreshThreadTradeAgreements: async (threadId) => {
   if (!th || !threadId.startsWith('cth_')) return
   if (!getSessionToken()) return
   try {
-    const agreements = await fetchThreadTradeAgreements(threadId)
+    const [agreements, routeSheetsRs] = await Promise.all([
+      fetchThreadTradeAgreements(threadId),
+      fetchThreadRouteSheets(threadId).catch(() => [] as RouteSheetPayload[]),
+    ])
     const contracts = agreements.map(mapTradeAgreementApiToTradeAgreement)
     set((s) => {
       const t = s.threads[threadId]
@@ -837,7 +845,12 @@ refreshThreadTradeAgreements: async (threadId) => {
         ...s,
         threads: {
           ...s.threads,
-          [threadId]: { ...t, contracts },
+          [threadId]: {
+            ...t,
+            contracts,
+            routeSheets:
+              routeSheetsRs.length > 0 ? routeSheetsRs : (t.routeSheets ?? []),
+          },
         },
       }
     })

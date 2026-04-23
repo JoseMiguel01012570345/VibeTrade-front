@@ -12,6 +12,9 @@ export const MEDIA_MAX_BYTES = 5 * 1024 * 1024
 
 const objectUrlCache = new Map<string, string>()
 
+/** Peticiones en curso por URL: varios <ProtectedMediaImg> con el mismo `src` comparten un solo fetch. */
+const mediaFetchInFlight = new Map<string, Promise<string>>()
+
 /** Blob URL ya resuelta para esta URL de API (evita spinner al volver a montar el componente). */
 export function getCachedMediaObjectUrl(srcUrl: string): string | undefined {
   return objectUrlCache.get(srcUrl)
@@ -60,21 +63,33 @@ export function isProtectedMediaUrl(url: string): boolean {
 
 /**
  * Fetch a protected media URL with auth headers and return a temporary blob URL for display.
- * Caches by source URL; call `releaseMediaObjectUrl` when you know you no longer need it.
+ * Caches by source URL; reutiliza un único `fetch` en vuelo por `srcUrl` (mismo avatar en muchos mensajes).
  */
 export async function fetchMediaObjectUrl(srcUrl: string): Promise<string> {
   const cached = objectUrlCache.get(srcUrl)
   if (cached) return cached
 
-  const res = await apiFetch(srcUrl, { method: 'GET' })
-  if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(t || `media fetch failed: ${res.status}`)
-  }
-  const blob = await res.blob()
-  const obj = URL.createObjectURL(blob)
-  objectUrlCache.set(srcUrl, obj)
-  return obj
+  const inFlight = mediaFetchInFlight.get(srcUrl)
+  if (inFlight) return inFlight
+
+  const p = (async () => {
+    try {
+      const res = await apiFetch(srcUrl, { method: 'GET' })
+      if (!res.ok) {
+        const t = await res.text().catch(() => '')
+        throw new Error(t || `media fetch failed: ${res.status}`)
+      }
+      const blob = await res.blob()
+      const obj = URL.createObjectURL(blob)
+      objectUrlCache.set(srcUrl, obj)
+      return obj
+    } finally {
+      mediaFetchInFlight.delete(srcUrl)
+    }
+  })()
+
+  mediaFetchInFlight.set(srcUrl, p)
+  return p
 }
 
 export function releaseMediaObjectUrl(srcUrl: string): void {

@@ -1,8 +1,6 @@
 import { ExternalLink } from "lucide-react";
-import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import type { StoreLocationPoint } from "../../app/store/marketStoreTypes";
-import { storeMapPinIcon } from "../../utils/map/storeMapPinIcon";
-import "leaflet/dist/leaflet.css";
+import { PointLocationFeedMap } from "../home/EmergentRouteFeedMap";
 
 type Props = Readonly<{
   location: StoreLocationPoint;
@@ -10,7 +8,6 @@ type Props = Readonly<{
 }>;
 
 export function StoreLocationPreview({ location, title }: Props) {
-  const center: [number, number] = [location.lat, location.lng];
   const osmHref = `https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=16/${location.lat}/${location.lng}`;
 
   return (
@@ -29,23 +26,13 @@ export function StoreLocationPreview({ location, title }: Props) {
           <ExternalLink size={14} aria-hidden />
         </a>
       </div>
-      <div className="store-map-preview relative isolate h-[200px] w-full [&_.leaflet-control-container]:hidden">
-        <MapContainer
-          key={`${location.lat}-${location.lng}`}
-          center={center}
-          zoom={15}
+      <div className="store-map-preview relative isolate h-[200px] w-full overflow-hidden bg-[#e2e8f0] [&_.leaflet-control-attribution]:text-[8px]">
+        <PointLocationFeedMap
+          location={location}
+          mapKey={`store-loc-${location.lat}-${location.lng}`}
           className="h-full w-full"
-          dragging={false}
-          scrollWheelZoom={false}
-          doubleClickZoom={false}
-          zoomControl={false}
-        >
-          <TileLayer
-            attribution='&copy; OpenStreetMap'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <Marker position={center} icon={storeMapPinIcon()} />
-        </MapContainer>
+          fixedZoom={15}
+        />
       </div>
     </div>
   );

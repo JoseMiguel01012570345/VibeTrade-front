@@ -25,8 +25,12 @@ type Props = {
   actionsLocked: boolean
   threadId: string
   threadStoreId: string
-  linkAgreementToRouteSheet: (threadId: string, agreementId: string, routeSheetId: string) => boolean
-  unlinkAgreementFromRouteSheet: (threadId: string, agreementId: string) => boolean
+  linkAgreementToRouteSheet: (
+    threadId: string,
+    agreementId: string,
+    routeSheetId: string,
+  ) => Promise<boolean>
+  unlinkAgreementFromRouteSheet: (threadId: string, agreementId: string) => Promise<boolean>
   openRouteFromContract: (routeId: string) => void
   onRequestEditAgreement?: (agreement: TradeAgreement) => void
   isActingSeller?: boolean
@@ -139,13 +143,13 @@ export function ChatRightRailContractsPanel({
             a={agreementForDetail}
             routeSheets={routeSheets}
             linkActionsDisabled={actionsLocked || agreementForDetail.status === 'deleted'}
-            onLinkRouteSheet={(agreementId, routeSheetId) => {
-              const ok = linkAgreementToRouteSheet(threadId, agreementId, routeSheetId)
+            onLinkRouteSheet={async (agreementId, routeSheetId) => {
+              const ok = await linkAgreementToRouteSheet(threadId, agreementId, routeSheetId)
               if (ok) toast.success('Vinculación registrada; se notificó en el chat')
               else toast.error('No se pudo vincular (elegí otra hoja).')
             }}
-            onUnlinkRouteSheet={(agreementId) => {
-              const ok = unlinkAgreementFromRouteSheet(threadId, agreementId)
+            onUnlinkRouteSheet={async (agreementId) => {
+              const ok = await unlinkAgreementFromRouteSheet(threadId, agreementId)
               if (ok) toast.success('Vínculo quitado; se notificó en el chat')
               else toast.error('No se pudo desvincular (la hoja ya está publicada).')
             }}

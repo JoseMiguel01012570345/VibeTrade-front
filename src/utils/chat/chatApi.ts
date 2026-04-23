@@ -222,6 +222,24 @@ export async function fetchThreadTradeAgreements(
   return (await res.json()) as TradeAgreementApiDto[]
 }
 
+/** Persiste vínculo acuerdo ↔ hoja de ruta (seller). `routeSheetId` null = desvincular. */
+export async function patchThreadTradeAgreementRouteLink(
+  threadId: string,
+  agreementId: string,
+  routeSheetId: string | null,
+): Promise<TradeAgreementApiDto> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}/route-link`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ routeSheetId }),
+    },
+  )
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as TradeAgreementApiDto
+}
+
 export async function postThreadTradeAgreement(
   threadId: string,
   body: Record<string, unknown>,

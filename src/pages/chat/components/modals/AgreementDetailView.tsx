@@ -353,9 +353,12 @@ export function AgreementDetailView({
               ) : null}
             </>
           )}
-          {a.routeSheetId && linkedTitle ? (
+          {a.routeSheetId ? (
             <p className={cn("vt-muted", agrDetailHint, "mt-2")}>
-              Vinculada ahora a: <strong>{linkedTitle}</strong>
+              Vinculada ahora a:{" "}
+              <strong>
+                {linkedTitle ?? "hoja de ruta (sincronizando título…)"}
+              </strong>
             </p>
           ) : null}
           {a.routeSheetId && onOpenRouteSheet ? (

@@ -6,6 +6,7 @@ import type { Offer, StoreBadge } from '../../app/store/marketStoreTypes'
 import { useAppStore, type User } from '../../app/store/useAppStore'
 import { useMarketStore } from '../../app/store/useMarketStore'
 import { toggleOfferQaCommentLike } from '../../utils/market/offerEngagementApi'
+import { getSessionToken } from '../../utils/http/sessionToken'
 import { errorToUserMessage } from '../../utils/http/apiErrorMessage'
 import {
   normalizeOfferComments,
@@ -63,6 +64,9 @@ export function OfferCommentsSection({
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const comments = useMemo(() => normalizeOfferComments(offer), [offer])
+
+  const sessionReady = isSessionActive || !!getSessionToken()
+  const canEngageLikes = me.id !== 'guest' && sessionReady
 
   const tree = useMemo(() => {
     const byParent = new Map<string | null, OfferCommentNorm[]>()
@@ -152,7 +156,7 @@ export function OfferCommentsSection({
                 <span className="text-[11px] text-[var(--muted)]">{timeAgo(c.createdAt)}</span>
               </div>
               <div className="my-1.5 flex items-start gap-2">
-                {!c.id.endsWith("_legacy_ans") && isSessionActive && me.id !== 'guest' ? (
+                {!c.id.endsWith("_legacy_ans") && canEngageLikes ? (
                   <button
                     type="button"
                     className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-2 py-0.5 text-[11px] font-extrabold text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))]"
@@ -182,7 +186,7 @@ export function OfferCommentsSection({
                   {c.text}
                 </p>
               </div>
-              {isSessionActive && me.id !== 'guest' ? (
+              {sessionReady && me.id !== 'guest' ? (
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
@@ -213,7 +217,7 @@ export function OfferCommentsSection({
   }
 
   const composerLocked =
-    !isSessionActive || me.id === 'guest' || (isOwnOffer && !replyingTo)
+    !sessionReady || me.id === 'guest' || (isOwnOffer && !replyingTo)
 
   return (
     <div id="offer-comments" className="vt-card vt-card-pad">
@@ -262,7 +266,7 @@ export function OfferCommentsSection({
             </button>
           </div>
         ) : null}
-        {!isSessionActive || me.id === 'guest' ? (
+        {!sessionReady || me.id === 'guest' ? (
           <p className="mb-2 text-xs text-[var(--muted)]">
             <strong>Iniciá sesión</strong> para comentar y dar me gusta en esta ficha.
           </p>
@@ -277,7 +281,7 @@ export function OfferCommentsSection({
             className="vt-input min-w-0 flex-1"
             disabled={sending || composerLocked}
             placeholder={
-              !isSessionActive || me.id === 'guest'
+              !sessionReady || me.id === 'guest'
                 ? 'Iniciá sesión para comentar…'
                 : composerLocked
                   ? 'Elegí «Responder» en un comentario…'

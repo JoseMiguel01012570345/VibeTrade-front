@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Heart, ShoppingCart } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
@@ -14,7 +14,13 @@ import {
   confirmedStopIdsForCarrier,
   tramoNotifyLineFromOffer,
 } from "../chat/domain/routeSheetOfferGuards";
-import { userActsAsCarrierOnTransportOffer } from "../../utils/user/transportEligibility";
+import {
+  listUserTransportServices,
+  userActsAsCarrierOnTransportOffer,
+  userHasTransportService,
+} from "../../utils/user/transportEligibility";
+import { buildEmergentMapLegs } from "../../utils/map/emergentRouteMapLegs";
+import { EmergentRouteFeedMap } from "../home/EmergentRouteFeedMap";
 import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
@@ -25,6 +31,9 @@ import {
   leaveOfferChannel,
 } from "../../utils/chat/chatRealtime";
 import { offerFromStoreCatalogs } from "../../utils/market/offerFromCatalog";
+import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
+import { toggleOfferLike } from "../../utils/market/offerEngagementApi";
+import { getSessionToken } from "../../utils/http/sessionToken";
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -44,13 +53,36 @@ export function OfferPage() {
   const me = useAppStore((s) => s.me);
   const isSessionActive = useAppStore((s) => s.isSessionActive);
   const openAuthModal = useAppStore((s) => s.openAuthModal);
+  const sessionReady = isSessionActive || !!getSessionToken();
   const offer = useMarketStore((s) =>
     offerId ? s.offers[offerId] : undefined,
   );
   const stores = useMarketStore((s) => s.stores);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
+  const [publicCardLoadDone, setPublicCardLoadDone] = useState(() => {
+    if (!offerId) return true;
+    const st = useMarketStore.getState();
+    if (st.offers[offerId]) return true;
+    if (offerFromStoreCatalogs(offerId, st.storeCatalogs)) return true;
+    return false;
+  });
+
+  const offerFromCatalog = useMemo(
+    () =>
+      offerId ? offerFromStoreCatalogs(offerId, storeCatalogs) : undefined,
+    [offerId, storeCatalogs],
+  );
+  const resolvedOffer = offer ?? offerFromCatalog;
+
+  const threadCatalogId = useMemo(
+    () =>
+      (offer?.emergentBaseOfferId?.trim() ??
+        offerFromCatalog?.emergentBaseOfferId?.trim() ??
+        offerId) as string | undefined,
+    [offer, offerFromCatalog, offerId],
+  );
   const routeOffer = useMarketStore((s) =>
-    offerId ? s.routeOfferPublic[offerId] : undefined,
+    threadCatalogId ? s.routeOfferPublic[threadCatalogId] : undefined,
   );
   const threads = useMarketStore((s) => s.threads);
   const subscribeRouteOfferTramo = useMarketStore(
@@ -64,13 +96,6 @@ export function OfferPage() {
   const refreshOfferQaFromServer = useMarketStore(
     (s) => s.refreshOfferQaFromServer,
   );
-
-  const offerFromCatalog = useMemo(
-    () =>
-      offerId ? offerFromStoreCatalogs(offerId, storeCatalogs) : undefined,
-    [offerId, storeCatalogs],
-  );
-  const resolvedOffer = offer ?? offerFromCatalog;
   /** Sin esto, cada `refreshOfferQaFromServer` sustituye `offers[id]` y `resolvedOffer` cambia de referencia → efectos con `[resolvedOffer]` reejecutan en bucle. */
   const offerResolved = Boolean(resolvedOffer);
 
@@ -85,6 +110,46 @@ export function OfferPage() {
     });
   }, [offerId, offer, offerFromCatalog]);
 
+  useEffect(() => {
+    if (!offerId) {
+      setPublicCardLoadDone(false);
+      return;
+    }
+    if (offer || offerFromCatalog) {
+      setPublicCardLoadDone(true);
+      return;
+    }
+    setPublicCardLoadDone(false);
+    void fetchPublicOfferCard(offerId)
+      .then((r) => {
+        if (r) {
+          const storeKey = r.store.id?.trim() || r.offer.storeId;
+          useMarketStore.setState((s) => {
+            const nextStores = { ...s.stores };
+            if (storeKey) {
+              nextStores[storeKey] = {
+                ...s.stores[storeKey],
+                ...r.store,
+                id: storeKey,
+              };
+            }
+            return {
+              ...s,
+              offers: { ...s.offers, [r.offer.id]: r.offer },
+              stores: nextStores,
+            };
+          });
+        }
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : "No se pudo cargar la ficha.";
+        toast.error(msg);
+      })
+      .finally(() => {
+        setPublicCardLoadDone(true);
+      });
+  }, [offerId, offer, offerFromCatalog]);
+
   const openTramos = useMemo(
     () => routeOffer?.tramos.filter((t) => !t.assignment) ?? [],
     [routeOffer],
@@ -93,6 +158,9 @@ export function OfferPage() {
   const [galleryLightboxUrl, setGalleryLightboxUrl] = useState<string | null>(
     null,
   );
+  const [selectedTransportServiceId, setSelectedTransportServiceId] = useState<
+    string | null
+  >(null);
   const chosenStopId = pickedStopId ?? openTramos[0]?.stopId ?? "";
 
   const pendingValidations = useMemo(
@@ -123,9 +191,11 @@ export function OfferPage() {
   const threadForThisOffer = useMemo(
     () =>
       offerId
-        ? Object.values(threads).find((t) => t.offerId === offerId)
+        ? Object.values(threads).find(
+            (t) => t.offerId === (threadCatalogId ?? offerId),
+          )
         : undefined,
-    [threads, offerId],
+    [threads, offerId, threadCatalogId],
   );
   const carrierInChatThread = useMemo(
     () => !!threadForThisOffer?.chatCarriers?.some((c) => c.id === me.id),
@@ -142,6 +212,28 @@ export function OfferPage() {
       resolvedOffer,
       !!routeOffer,
     );
+
+  const emergentMapLegs = useMemo(
+    () =>
+      resolvedOffer ? buildEmergentMapLegs(resolvedOffer, routeOffer) : [],
+    [resolvedOffer, routeOffer],
+  );
+  const transportServiceOptions = useMemo(
+    () => listUserTransportServices(me.id, stores, storeCatalogs),
+    [me.id, stores, storeCatalogs],
+  );
+
+  useEffect(() => {
+    if (transportServiceOptions.length === 0) {
+      setSelectedTransportServiceId(null);
+      return;
+    }
+    setSelectedTransportServiceId((prev) => {
+      if (prev && transportServiceOptions.some((o) => o.serviceId === prev))
+        return prev;
+      return transportServiceOptions[0]!.serviceId;
+    });
+  }, [transportServiceOptions]);
 
   const prevCarrierStopsOfferRef = useRef<Set<string> | null>(null);
   useEffect(() => {
@@ -196,6 +288,24 @@ export function OfferPage() {
 
   /** Evita repetir scrollIntoView cuando `resolvedOffer`/QA se actualiza (polling o SignalR): obligaba a bajar si el usuario intentaba subir. */
   const offerCommentsAnchorScrolledKeyRef = useRef<string | null>(null);
+  const hojaSuscribirScrolledKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!offerId || !resolvedOffer) return;
+    if (location.hash !== "#hoja-suscribir") {
+      hojaSuscribirScrolledKeyRef.current = null;
+      return;
+    }
+    const el = document.getElementById("hoja-suscribir");
+    if (!el) return;
+    const key = `${offerId}|${location.pathname}|#hoja-suscribir`;
+    if (hojaSuscribirScrolledKeyRef.current === key) return;
+    hojaSuscribirScrolledKeyRef.current = key;
+    const id = requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [offerId, offerResolved, location.hash, location.pathname, resolvedOffer]);
 
   useEffect(() => {
     if (!offerId || !resolvedOffer) return;
@@ -252,7 +362,17 @@ export function OfferPage() {
     return () => clearInterval(t);
   }, [offerId, offerResolved, me.id, refreshOfferQaFromServer]);
 
-  if (!offerId || !resolvedOffer) {
+  if (!offerId || !publicCardLoadDone) {
+    return (
+      <div className="container vt-page">
+        <div className="vt-card vt-card-pad text-[15px] text-[var(--muted)]">
+          Cargando ficha…
+        </div>
+      </div>
+    );
+  }
+
+  if (!resolvedOffer) {
     return (
       <div className="container vt-page">
         <div className="vt-card vt-card-pad">Oferta no encontrada.</div>
@@ -270,6 +390,7 @@ export function OfferPage() {
   }
 
   const heroIsToolPlaceholder = isToolPlaceholderUrl(heroImageSrc);
+  const isEmergentRouteFicha = !!resolvedOffer.isEmergentRoutePublication;
 
   const isOwnOffer =
     !!store?.ownerUserId && me.id !== "guest" && me.id === store.ownerUserId;
@@ -278,47 +399,88 @@ export function OfferPage() {
     <div className="container vt-page">
       <div className="flex flex-col gap-3.5">
         <div className="vt-card relative overflow-hidden">
-          <div className="absolute left-3 right-3 top-3 z-[2] flex items-center justify-between gap-2">
-            <button
-              type="button"
-              className="vt-btn border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
-              onClick={() => nav(-1)}
-            >
-              <ArrowLeft size={16} />
-            </button>
-            <OfferSaveButton
-              offerId={offerId}
-              className="border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
-            />
-          </div>
-          <div
-            className={cn(
-              "relative",
-              heroIsToolPlaceholder && "bg-gray-200",
-            )}
-          >
-            <ProtectedMediaImg
-              src={heroImageSrc}
-              alt={resolvedOffer.title}
-              wrapperClassName="block h-[260px] w-full"
-              className={cn(
-                "block h-[260px] w-full",
-                heroIsToolPlaceholder
-                  ? "vt-img-tool-placeholder p-5 sm:p-7"
-                  : "object-cover",
-              )}
-            />
-            {heroImageSrc && !heroIsToolPlaceholder ? (
+          {!isEmergentRouteFicha ? (
+            <div className="pointer-events-none absolute left-3 right-3 top-3 z-[2] flex items-center justify-between gap-2">
               <button
                 type="button"
-                className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
-                aria-label="Ver imagen a pantalla completa"
-                title="Ver imagen a pantalla completa"
-                onClick={() => setGalleryLightboxUrl(heroImageSrc)}
+                className="pointer-events-auto vt-btn border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
+                onClick={() => nav(-1)}
+              >
+                <ArrowLeft size={16} />
+              </button>
+              <OfferSaveButton
+                offerId={offerId ?? ""}
+                className="pointer-events-auto border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
               />
-            ) : null}
-          </div>
-          {galleryUrls.length > 1 ? (
+            </div>
+          ) : null}
+          {isEmergentRouteFicha ? (
+            <div className="flex h-[260px] w-full flex-col overflow-hidden bg-[#e2e8f0]">
+              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200/90 bg-[#eef2f7] px-2.5 py-2">
+                <span className="text-sm font-black tracking-wide text-slate-800">
+                  Hoja de ruta
+                </span>
+                {offerId && emergentMapLegs.length > 0 ? (
+                  <Link
+                    to={`/offer/${encodeURIComponent(offerId)}/mapa`}
+                    className="shrink-0 text-xs font-extrabold text-blue-600 underline"
+                  >
+                    Ver mapa en grande
+                  </Link>
+                ) : null}
+              </div>
+              <div className="relative min-h-0 flex-1">
+                <div className="pointer-events-none absolute left-2 right-2 top-2 z-[1100] flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    className="pointer-events-auto vt-btn border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.92)] shadow-[0_6px_16px_rgba(2,6,23,0.15)] backdrop-blur-[6px] hover:bg-[rgba(255,255,255,0.98)]"
+                    onClick={() => nav(-1)}
+                    aria-label="Volver"
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
+                  <OfferSaveButton
+                    offerId={offerId ?? ""}
+                    className="pointer-events-auto border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.92)] shadow-[0_6px_16px_rgba(2,6,23,0.15)] backdrop-blur-[6px] hover:bg-[rgba(255,255,255,0.98)]"
+                  />
+                </div>
+                <EmergentRouteFeedMap
+                  legs={emergentMapLegs}
+                  mapKey={`offer-map-${resolvedOffer.id}`}
+                  className="absolute inset-0 h-full w-full min-h-0 [&_.leaflet-control-attribution]:text-[8px] [&_.leaflet-container]:z-0"
+                />
+              </div>
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "relative",
+                heroIsToolPlaceholder && "bg-gray-200",
+              )}
+            >
+              <ProtectedMediaImg
+                src={heroImageSrc}
+                alt={resolvedOffer.title}
+                wrapperClassName="block h-[260px] w-full"
+                className={cn(
+                  "block h-[260px] w-full",
+                  heroIsToolPlaceholder
+                    ? "vt-img-tool-placeholder p-5 sm:p-7"
+                    : "object-cover",
+                )}
+              />
+              {heroImageSrc && !heroIsToolPlaceholder ? (
+                <button
+                  type="button"
+                  className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
+                  aria-label="Ver imagen a pantalla completa"
+                  title="Ver imagen a pantalla completa"
+                  onClick={() => setGalleryLightboxUrl(heroImageSrc)}
+                />
+              ) : null}
+            </div>
+          )}
+          {!isEmergentRouteFicha && galleryUrls.length > 1 ? (
             <div className="flex gap-2 overflow-x-auto border-t border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] px-3 py-2.5">
               {galleryUrls.slice(1).map((src, i) => {
                 const thumbIsTool = isToolPlaceholderUrl(src);
@@ -366,8 +528,111 @@ export function OfferPage() {
                 {resolvedOffer.price}
               </div>
             </div>
+            {isEmergentRouteFicha ?
+              (() => {
+                const legs = resolvedOffer.emergentRouteParadas
+                const anyPerLeg = legs?.some((l) => l.monedaPago?.trim())
+                if (anyPerLeg && legs?.length) {
+                  return (
+                    <div className="m-0 text-sm font-extrabold text-[var(--muted)]">
+                      <span className="block text-[11px] uppercase tracking-wide">
+                        Moneda por tramo
+                      </span>
+                      <ul className="mt-1 list-none space-y-0.5 p-0 text-[var(--text)]">
+                        {legs.map((leg, i) => {
+                          const m = leg.monedaPago?.trim()
+                          if (!m) return null
+                          const label = String.fromCharCode(65 + Math.min(25, i))
+                          return (
+                            <li key={i}>
+                              Tramo {label}: {m}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  )
+                }
+                if (resolvedOffer.emergentMonedaPago?.trim()) {
+                  return (
+                    <p className="m-0 text-sm font-extrabold text-[var(--muted)]">
+                      Moneda de pago:{" "}
+                      <span className="text-[var(--text)]">
+                        {resolvedOffer.emergentMonedaPago.trim()}
+                      </span>
+                    </p>
+                  )
+                }
+                return null
+              })()
+            : null}
 
-            {resolvedOffer.description?.trim() ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {sessionReady && me.id !== "guest" ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_50%,var(--surface))] px-3 py-1.5 text-sm font-extrabold text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--muted)_10%,var(--surface))]"
+                  title={
+                    resolvedOffer.viewerLikedOffer
+                      ? "Quitar me gusta"
+                      : "Me gusta"
+                  }
+                  onClick={() => {
+                    if (!offerId) return;
+                    void (async () => {
+                      try {
+                        const r = await toggleOfferLike(offerId);
+                        useMarketStore.setState((s) => {
+                          const prev = s.offers[offerId];
+                          if (!prev) return s;
+                          return {
+                            ...s,
+                            offers: {
+                              ...s.offers,
+                              [offerId]: {
+                                ...prev,
+                                offerLikeCount: r.likeCount,
+                                viewerLikedOffer: r.liked,
+                              },
+                            },
+                          };
+                        });
+                      } catch (err) {
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : "No se pudo guardar el me gusta.",
+                        );
+                      }
+                    })();
+                  }}
+                >
+                  <Heart
+                    size={18}
+                    className={cn(
+                      resolvedOffer.viewerLikedOffer &&
+                        "fill-[color-mix(in_oklab,var(--bad)_50%,#f43f5e)] text-[color-mix(in_oklab,var(--bad)_50%,#f43f5e)]",
+                    )}
+                    aria-hidden
+                  />
+                  <span className="tabular-nums">
+                    {resolvedOffer.offerLikeCount ?? 0}
+                  </span>
+                </button>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1.5 text-sm font-extrabold text-[var(--muted)]"
+                  title="Iniciá sesión para dar me gusta a la ficha"
+                >
+                  <Heart size={18} aria-hidden />
+                  <span className="tabular-nums">
+                    {resolvedOffer.offerLikeCount ?? 0}
+                  </span>
+                </span>
+              )}
+            </div>
+
+            {resolvedOffer.description?.trim() && !isEmergentRouteFicha ? (
               <p className="text-[15px] leading-relaxed text-[var(--text)]">
                 {resolvedOffer.description.trim()}
               </p>
@@ -404,11 +669,28 @@ export function OfferPage() {
               ))}
             </div>
 
+            {resolvedOffer.isEmergentRoutePublication &&
+            resolvedOffer.emergentBaseOfferId ? (
+              <div>
+                <Link
+                  to={`/offer/${resolvedOffer.emergentBaseOfferId}`}
+                  className="inline-flex text-[15px] font-extrabold text-[var(--primary)] hover:underline"
+                >
+                  Ver ficha del producto o servicio
+                </Link>
+              </div>
+            ) : null}
+
             {routeOffer ? (
-              <>
-                <RouteOfferPreview state={routeOffer} className="mt-1" />
+              <div id="hoja-suscribir" className="scroll-mt-20 space-y-0">
+                <RouteOfferPreview
+                  state={routeOffer}
+                  className="mt-1"
+                  showTramoAddresses={!isEmergentRouteFicha}
+                />
                 {actingAsCarrierOnThisOffer ? (
-                  <div className="mt-3 rounded-[14px] border border-[color-mix(in_oklab,var(--primary)_28%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] p-3.5">
+                  <div className="mt-3 rounded-[14px] border border-[color-mix(in_oklab,var(--primary)_28%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] p-3.5"
+                  >
                     <div className="text-sm font-black tracking-tight">
                       Suscribirme a un tramo
                     </div>
@@ -419,6 +701,32 @@ export function OfferPage() {
                       comprador deben <strong>validar</strong> la suscripción
                       antes de que puedas entrar al chat operativo de la ruta.
                     </p>
+                    {transportServiceOptions.length > 1 ? (
+                      <div className="mt-2">
+                        <label
+                          className="block text-[12px] font-extrabold text-[var(--text)]"
+                          htmlFor="tr-svc-suscribe"
+                        >
+                          Servicio de transporte para la suscripción
+                        </label>
+                        <select
+                          id="tr-svc-suscribe"
+                          className="mt-1 w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-[13px] font-semibold"
+                          value={selectedTransportServiceId ?? ""}
+                          onChange={(e) =>
+                            setSelectedTransportServiceId(
+                              e.target.value || null,
+                            )
+                          }
+                        >
+                          {transportServiceOptions.map((o) => (
+                            <option key={o.serviceId} value={o.serviceId}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : null}
                     {carrierPendingOnRoute ? (
                       <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_8%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
                         Tenés al menos una solicitud pendiente de validación.
@@ -453,8 +761,14 @@ export function OfferPage() {
                               onChange={() => setPickedStopId(t.stopId)}
                             />
                             <span className="text-[13px] leading-snug">
-                              <strong>Tramo {t.orden}</strong>: {t.origenLine} →{" "}
-                              {t.destinoLine}
+                              <strong>Tramo {t.orden}</strong>
+                              {isEmergentRouteFicha
+                                ? null
+                                : (
+                                    <>
+                                      : {t.origenLine} → {t.destinoLine}
+                                    </>
+                                  )}
                             </span>
                           </label>
                         ))}
@@ -467,9 +781,23 @@ export function OfferPage() {
                           className="vt-btn vt-btn-primary"
                           disabled={!chosenStopId || openTramos.length === 0}
                           onClick={() => {
-                            if (!offerId || !chosenStopId) return;
+                            if (!threadCatalogId || !chosenStopId) return;
+                            if (
+                              transportServiceOptions.length > 0 &&
+                              !selectedTransportServiceId
+                            ) {
+                              toast.error(
+                                "Elegí con qué servicio de transporte te suscribís.",
+                              );
+                              return;
+                            }
+                            const vLabel = selectedTransportServiceId
+                              ? transportServiceOptions.find(
+                                  (o) => o.serviceId === selectedTransportServiceId,
+                                )?.label
+                              : undefined;
                             const ok = subscribeRouteOfferTramo(
-                              offerId,
+                              threadCatalogId,
                               chosenStopId,
                               {
                                 userId: me.id,
@@ -477,6 +805,7 @@ export function OfferPage() {
                                 phone: me.phone,
                                 trustScore: me.trustScore,
                               },
+                              vLabel,
                             );
                             if (ok) {
                               toast.success(
@@ -569,9 +898,9 @@ export function OfferPage() {
                               type="button"
                               className="vt-btn vt-btn-primary px-2.5 py-1.5 text-xs"
                               onClick={() => {
-                                if (!offerId) return;
+                                if (!threadCatalogId) return;
                                 validateRouteOfferTramo(
-                                  offerId,
+                                  threadCatalogId,
                                   t.stopId,
                                   true,
                                 );
@@ -584,9 +913,9 @@ export function OfferPage() {
                               type="button"
                               className="vt-btn px-2.5 py-1.5 text-xs"
                               onClick={() => {
-                                if (!offerId) return;
+                                if (!threadCatalogId) return;
                                 validateRouteOfferTramo(
-                                  offerId,
+                                  threadCatalogId,
                                   t.stopId,
                                   false,
                                 );
@@ -601,55 +930,97 @@ export function OfferPage() {
                     </ul>
                   </div>
                 ) : null}
-              </>
+              </div>
             ) : null}
 
             <div className="flex flex-wrap gap-2.5">
-              <button
-                className="vt-btn vt-btn-primary min-[420px]:flex-1"
-                disabled={
-                  (!!actingAsCarrierOnThisOffer && !!routeOffer) || isOwnOffer
-                }
-                title={
-                  isOwnOffer
-                    ? "No podés chatear con vos mismo en tu propia oferta."
-                    : actingAsCarrierOnThisOffer && routeOffer
-                      ? "Como transportista: suscribite a un tramo y esperá la validación para usar el chat de la ruta."
+              {isEmergentRouteFicha ? (
+                <button
+                  type="button"
+                  className="vt-btn vt-btn-primary min-[420px]:flex-1"
+                  disabled={isOwnOffer}
+                  title={
+                    isOwnOffer
+                      ? "No podés suscribirte a tu propia publicación."
                       : undefined
-                }
-                onClick={() => {
-                  if (!isSessionActive || me.id === "guest") {
-                    openAuthModal();
-                    return;
                   }
-                  if (isOwnOffer) {
-                    toast.error("No podés chatear con vos mismo.");
-                    return;
-                  }
-                  if (actingAsCarrierOnThisOffer && routeOffer) {
-                    toast.error(
-                      "Usá la suscripción al tramo; el chat se habilita tras la validación.",
-                    );
-                    return;
-                  }
-                  void trackRecommendationInteraction(
-                    resolvedOffer.id,
-                    "chat_start",
-                  ).catch(() => undefined);
-                  void (async () => {
-                    const threadId = await ensureThreadForOffer(resolvedOffer.id, {
-                      buyerId: me.id,
-                    });
-                    if (!threadId) {
-                      toast.error("No se pudo abrir el chat. Probá de nuevo.");
+                  onClick={() => {
+                    if (!isSessionActive || me.id === "guest") {
+                      openAuthModal();
                       return;
                     }
-                    nav(`/chat/${threadId}`);
-                  })();
-                }}
-              >
-                <ShoppingCart size={16} /> Comprar (Chat)
-              </button>
+                    if (isOwnOffer) {
+                      toast.error("No podés suscribirte a tu propia oferta.");
+                      return;
+                    }
+                    if (!userHasTransportService(me.id, stores, storeCatalogs)) {
+                      toast.error(
+                        "Necesitás un servicio de transporte publicado en tu tienda para suscribirte.",
+                      );
+                      return;
+                    }
+                    if (!routeOffer) {
+                      toast.error(
+                        "Aún no tenemos la hoja de ruta en esta sesión. Entrá desde el inicio o recargá la página.",
+                      );
+                      return;
+                    }
+                    document
+                      .getElementById("hoja-suscribir")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                >
+                  Suscribirse
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="vt-btn vt-btn-primary min-[420px]:flex-1"
+                  disabled={
+                    (!!actingAsCarrierOnThisOffer && !!routeOffer) || isOwnOffer
+                  }
+                  title={
+                    isOwnOffer
+                      ? "No podés chatear con vos mismo en tu propia oferta."
+                      : actingAsCarrierOnThisOffer && routeOffer
+                        ? "Como transportista: suscribite a un tramo y esperá la validación para usar el chat de la ruta."
+                        : undefined
+                  }
+                  onClick={() => {
+                    if (!isSessionActive || me.id === "guest") {
+                      openAuthModal();
+                      return;
+                    }
+                    if (isOwnOffer) {
+                      toast.error("No podés chatear con vos mismo.");
+                      return;
+                    }
+                    if (actingAsCarrierOnThisOffer && routeOffer) {
+                      toast.error(
+                        "Usá la suscripción al tramo; el chat se habilita tras la validación.",
+                      );
+                      return;
+                    }
+                    void trackRecommendationInteraction(
+                      resolvedOffer.id,
+                      "chat_start",
+                    ).catch(() => undefined);
+                    void (async () => {
+                      const threadId = await ensureThreadForOffer(
+                        resolvedOffer.id,
+                        { buyerId: me.id },
+                      );
+                      if (!threadId) {
+                        toast.error("No se pudo abrir el chat. Probá de nuevo.");
+                        return;
+                      }
+                      nav(`/chat/${threadId}`);
+                    })();
+                  }}
+                >
+                  <ShoppingCart size={16} /> Comprar (Chat)
+                </button>
+              )}
             </div>
           </div>
         </div>

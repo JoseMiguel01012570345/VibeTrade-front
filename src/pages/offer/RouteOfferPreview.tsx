@@ -91,6 +91,8 @@ function TramoPublicDetails({ t, compact }: { t: RouteOfferTramoPublic; compact:
   }
   if (t.precioTransportista?.trim())
     rows.push({ label: 'Tarifa transportista (demo)', value: t.precioTransportista.trim() })
+  if (t.monedaPago?.trim())
+    rows.push({ label: 'Moneda de pago (tramo)', value: t.monedaPago.trim() })
   if (t.notas?.trim()) rows.push({ label: 'Notas del tramo', value: t.notas.trim() })
   if (t.requisitosEspeciales?.trim())
     rows.push({ label: 'Requisitos / especiales', value: t.requisitosEspeciales.trim() })
@@ -119,9 +121,11 @@ type Props = {
   state: RouteOfferPublicState
   compact?: boolean
   className?: string
+  /** Si es false, no muestra la línea «origen → destino» (p. ej. cuando va un mapa arriba). */
+  showTramoAddresses?: boolean
 }
 
-export function RouteOfferPreview({ state, compact, className }: Props) {
+export function RouteOfferPreview({ state, compact, className, showTramoAddresses = true }: Props) {
   const estadoLabel = state.hojaEstado ?
       routeStatusLabel(state.hojaEstado as RouteSheetStatus)
     : null
@@ -165,9 +169,11 @@ export function RouteOfferPreview({ state, compact, className }: Props) {
             >
               <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 <span className="text-[11px] font-black text-[var(--muted)]">Tramo {t.orden}</span>
-                <span className={cn('min-w-0 font-bold text-[var(--text)]', compact ? 'text-[11px]' : 'text-[12px]')}>
-                  {tramoLine(t.origenLine, t.destinoLine)}
-                </span>
+                {showTramoAddresses ?
+                  <span className={cn('min-w-0 font-bold text-[var(--text)]', compact ? 'text-[11px]' : 'text-[12px]')}>
+                    {tramoLine(t.origenLine, t.destinoLine)}
+                  </span>
+                : null}
               </div>
               {telTramo ?
                 <div className={cn('mt-1', compact ? 'text-[10px]' : 'text-[11px]')}>
