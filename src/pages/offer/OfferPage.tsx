@@ -34,6 +34,10 @@ import { offerFromStoreCatalogs } from "../../utils/market/offerFromCatalog";
 import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
 import { toggleOfferLike } from "../../utils/market/offerEngagementApi";
 import { getSessionToken } from "../../utils/http/sessionToken";
+import {
+  isOfferPublishedForBuyerChat,
+  NOT_PUBLISHED_TOAST_ES,
+} from "../../utils/market/offerPublishedForBuyerChat";
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -835,6 +839,15 @@ export function OfferPage() {
                               );
                               return;
                             }
+                            if (
+                              !isOfferPublishedForBuyerChat(
+                                resolvedOffer,
+                                storeCatalogs,
+                              )
+                            ) {
+                              toast.error(NOT_PUBLISHED_TOAST_ES);
+                              return;
+                            }
                             void trackRecommendationInteraction(
                               resolvedOffer.id,
                               "chat_start",
@@ -999,6 +1012,15 @@ export function OfferPage() {
                       toast.error(
                         "Usá la suscripción al tramo; el chat se habilita tras la validación.",
                       );
+                      return;
+                    }
+                    if (
+                      !isOfferPublishedForBuyerChat(
+                        resolvedOffer,
+                        storeCatalogs,
+                      )
+                    ) {
+                      toast.error(NOT_PUBLISHED_TOAST_ES);
                       return;
                     }
                     void trackRecommendationInteraction(

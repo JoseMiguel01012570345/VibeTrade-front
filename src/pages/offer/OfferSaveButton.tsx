@@ -30,11 +30,13 @@ export function OfferSaveButton({
   const [busy, setBusy] = useState(false);
 
   const isEmergentId = offerId.startsWith("emo_");
-  /** Publicación `emo_…` se guarda como producto de catálogo (`emergentBaseOfferId`), no con el id emergente. */
-  const productIdForApi =
-    offer?.isEmergentRoutePublication && offer.emergentBaseOfferId?.trim() ?
-      offer.emergentBaseOfferId.trim()
-    : offerId;
+  /** Hoja de ruta publicada: guardar el id `emo_*` de la publicación, no el producto/servicio base del hilo. */
+  let emoPublicationId: string | null = null;
+  if (offer?.isEmergentRoutePublication) {
+    if (offer.id.startsWith("emo_")) emoPublicationId = offer.id;
+    else if (offerId.startsWith("emo_")) emoPublicationId = offerId;
+  }
+  const productIdForApi = emoPublicationId ?? offerId;
   const saved = useAppStore((s) => s.savedOffers[productIdForApi]);
 
   const store = offer ? stores[offer.storeId] : undefined;
@@ -46,7 +48,7 @@ export function OfferSaveButton({
 
   if (isOwnOffer) return null;
   if (isEmergentId && !offer) return null;
-  if (offer?.isEmergentRoutePublication && !offer.emergentBaseOfferId?.trim()) {
+  if (offer?.isEmergentRoutePublication && !emoPublicationId) {
     return null;
   }
 

@@ -52,6 +52,8 @@ import {
   TOOL_PLACEHOLDER_SRC,
 } from "../../utils/market/toolPlaceholder";
 import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
+import { buildEmergentMapLegs } from "../../utils/map/emergentRouteMapLegs";
+import { EmergentRouteFeedMap } from "../home/EmergentRouteFeedMap";
 
 function isValidEmail(value: string): boolean {
   const t = value.trim();
@@ -194,6 +196,7 @@ export function ProfilePage() {
   const saved = useAppStore((s) => s.savedReels);
   const savedOffers = useAppStore((s) => s.savedOffers);
   const offers = useMarketStore((s) => s.offers);
+  const routeOfferPublic = useMarketStore((s) => s.routeOfferPublic);
 
   const isMe = userId === "me" || userId === me.id;
   const resolvedProfileUserId = isMe ? me.id : (userId ?? me.id);
@@ -345,7 +348,7 @@ export function ProfilePage() {
     [savedOfferIds],
   );
 
-  /** Hojas de ruta (y otras ofertas) se guardan con id de catálogo; el feed a veces solo tiene `emo_…`, entonces el store no tenía el producto y la lista de guardados quedaba vacía. */
+  /** Si falta la ficha en memoria (p. ej. abriste Guardados en frío), pedimos `/card` por cada id guardado. Las hojas de ruta usan id `emo_*`. */
   useEffect(() => {
     if (tab !== "saved" || !isMe) return;
     const ids = Object.keys(useAppStore.getState().savedOffers).filter(
@@ -944,8 +947,18 @@ export function ProfilePage() {
               <div className="vt-muted">Aún no guardaste ofertas.</div>
             ) : (
               <div className="grid grid-cols-12 gap-3.5">
-                {savedOfferItems.map((o) => {
+                {savedOfferItems.map((o, idx) => {
                   const store = stores[o.storeId];
+                  const routePreview =
+                    routeOfferPublic[o.id] ??
+                    (o.emergentBaseOfferId?.trim()
+                      ? routeOfferPublic[o.emergentBaseOfferId.trim()]
+                      : undefined);
+                  const isEmergentRouteCard =
+                    o.isEmergentRoutePublication === true ||
+                    (o.tags?.includes("Hoja de ruta (publicada)") &&
+                      !!routePreview);
+                  const mapLegs = buildEmergentMapLegs(o, routePreview);
                   const thumbSrc =
                     o.imageUrl?.trim() ||
                     (o.tags.includes("Servicio")
@@ -958,21 +971,40 @@ export function ProfilePage() {
                       to={`/offer/${o.id}`}
                       className={cn(
                         "vt-card col-span-12 overflow-hidden min-[640px]:col-span-6 no-underline text-[var(--text)]",
-                        !isToolPlaceholder && "group",
+                        isEmergentRouteCard ? "group"
+                        : !isToolPlaceholder && "group",
                       )}
                     >
                       <div className="relative h-[160px] overflow-hidden bg-gray-200">
-                        <ProtectedMediaImg
-                          src={thumbSrc}
-                          alt={o.title}
-                          wrapperClassName="block h-full w-full min-h-[160px]"
-                          className={cn(
-                            "block h-full w-full min-h-[160px] transition-transform duration-[240ms] ease-out",
-                            isToolPlaceholder
-                              ? "vt-img-tool-placeholder p-3 sm:p-4"
-                              : "object-cover group-hover:scale-[1.04]",
-                          )}
-                        />
+                        {isEmergentRouteCard ? (
+                          <div
+                            className={cn(
+                              "flex h-full min-h-[160px] w-full flex-col overflow-hidden transition-transform duration-[240ms] ease-out will-change-transform",
+                              "group-hover:scale-[1.03]",
+                            )}
+                          >
+                            <div className="shrink-0 border-b border-slate-200/80 bg-[#eef2f7] py-1.5 text-center text-[11px] font-black tracking-wide text-slate-800">
+                              Hoja de ruta
+                            </div>
+                            <EmergentRouteFeedMap
+                              legs={mapLegs}
+                              mapKey={`saved-map-${o.id}-${idx}`}
+                              className="relative z-0 min-h-0 flex-1 overflow-hidden bg-[#e2e8f0] [&_.leaflet-control-attribution]:text-[7px] [&_.leaflet-control-attribution]:opacity-80"
+                            />
+                          </div>
+                        ) : (
+                          <ProtectedMediaImg
+                            src={thumbSrc}
+                            alt={o.title}
+                            wrapperClassName="block h-full w-full min-h-[160px]"
+                            className={cn(
+                              "block h-full w-full min-h-[160px] transition-transform duration-[240ms] ease-out",
+                              isToolPlaceholder
+                                ? "vt-img-tool-placeholder p-3 sm:p-4"
+                                : "object-cover group-hover:scale-[1.04]",
+                            )}
+                          />
+                        )}
                       </div>
                       <div className="flex flex-col gap-2 p-3.5">
                         <div className="flex items-baseline justify-between gap-3">

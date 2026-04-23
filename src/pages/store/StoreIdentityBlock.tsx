@@ -183,7 +183,7 @@ export function StoreIdentityBlock({
       ) : null}
 
       {store.location ? (
-        <StoreLocationPreview location={store.location} />
+        <StoreLocationPreview storeId={store.id} location={store.location} />
       ) : null}
 
       <ImageLightbox

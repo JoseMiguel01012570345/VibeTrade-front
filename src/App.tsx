@@ -16,6 +16,7 @@ import { OfferPage } from "./pages/offer/OfferPage";
 import { OfferRouteMapPage } from "./pages/offer/OfferRouteMapPage";
 import { ProfilePage } from "./pages/profile/ProfilePage";
 import { ReelsPage } from "./pages/reels/ReelsPage";
+import { StoreLocationMapPage } from "./pages/store/StoreLocationMapPage";
 import { StorePage } from "./pages/store/StorePage";
 import { OtpPage } from "./pages/onboarding/OtpPage";
 import { OnboardingWelcomePage } from "./pages/onboarding/OnboardingWelcomePage";
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="/stores" element={<StoresSearchPage />} />
           <Route path="/offer/:offerId/mapa" element={<OfferRouteMapPage />} />
           <Route path="/offer/:offerId" element={<OfferPage />} />
+          <Route path="/store/:storeId/mapa" element={<StoreLocationMapPage />} />
           <Route path="/store/:storeId" element={<StorePage />} />
           <Route path="/store/:storeId/vitrina" element={<StorePage />} />
           <Route path="/store/:storeId/products" element={<StorePage />} />

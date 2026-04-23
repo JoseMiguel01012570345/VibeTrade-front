@@ -45,6 +45,7 @@ import {
 import { routeSheetHasConfirmedCarriers } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
 import { resolveBuyerUserId } from '../../utils/chat/chatParticipantLabels'
+import { isOfferPublishedForBuyerChat } from '../../utils/market/offerPublishedForBuyerChat'
 import { useAppStore } from './useAppStore'
 
 async function syncPersistedAgreementsAndMessages(
@@ -378,6 +379,10 @@ ensureThreadForOffer: async (offerId, opts) => {
         return dto.id
       }
 
+      if (!isOfferPublishedForBuyerChat(offer, get().storeCatalogs)) {
+        return ''
+      }
+
       const dto = await createOrGetChatThread(threadCatalogId, true)
       const serverMsgs = await fetchChatMessages(dto.id)
       const routeSheets =
@@ -434,6 +439,14 @@ ensureThreadForOffer: async (offerId, opts) => {
   }
 
   if (store?.ownerUserId && buyerId && store.ownerUserId === buyerId) return ''
+
+  if (
+    buyerId &&
+    store?.ownerUserId !== buyerId &&
+    !isOfferPublishedForBuyerChat(offer, get().storeCatalogs)
+  ) {
+    return ''
+  }
 
   const id = uid('th')
   const bootstrap: Thread = {
