@@ -20,6 +20,10 @@ import { getSessionToken } from "../../utils/http/sessionToken";
 import { buildEmergentMapLegs } from "../../utils/map/emergentRouteMapLegs";
 import { EmergentRouteFeedMap } from "./EmergentRouteFeedMap";
 import { userHasTransportService } from "../../utils/user/transportEligibility";
+import {
+  ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
+  routeOfferPublicBlockedForBuyerWithAgreement,
+} from "../chat/domain/routeSheetOfferGuards";
 
 export function OfferCardsChunk({
   items,
@@ -34,6 +38,7 @@ export function OfferCardsChunk({
   const openAuthModal = useAppStore((s) => s.openAuthModal);
   const me = useAppStore((s) => s.me);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
+  const threads = useMarketStore((s) => s.threads);
   const sessionReady = isSessionActive || !!getSessionToken();
   return (
     <div className="grid grid-cols-12 gap-3 md:gap-3.5">
@@ -62,11 +67,18 @@ export function OfferCardsChunk({
           o.imageUrl?.trim() ||
           (o.tags.includes("Servicio") ? TOOL_PLACEHOLDER_SRC : undefined);
         const isToolPlaceholder = isToolPlaceholderUrl(thumbSrc);
+        const buyerBlockedOnRoute =
+          routeOfferPublicBlockedForBuyerWithAgreement(
+            routePreview,
+            threads,
+            me.id,
+          );
         const canSubscribeEmergent =
           isEmergentRouteFeed &&
           sessionReady &&
           me.id !== "guest" &&
-          userHasTransportService(me.id, stores, storeCatalogs);
+          userHasTransportService(me.id, stores, storeCatalogs) &&
+          !buyerBlockedOnRoute;
         return (
           <div
             key={`${o.id}-${i}`}
@@ -259,6 +271,16 @@ export function OfferCardsChunk({
                           toast.error(
                             "Necesitás un servicio de transporte publicado en tu tienda para suscribirte.",
                           );
+                          return;
+                        }
+                        if (
+                          routeOfferPublicBlockedForBuyerWithAgreement(
+                            routePreview,
+                            threads,
+                            me.id,
+                          )
+                        ) {
+                          toast.error(ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES);
                           return;
                         }
                       }}

@@ -1,4 +1,5 @@
 import type { RouteSheet } from '../../pages/chat/domain/routeSheetTypes'
+import { routeOfferPublicBlockedForBuyerWithAgreement } from '../../pages/chat/domain/routeSheetOfferGuards'
 import type { Message } from './marketStoreTypes'
 import { threadIsActionLocked, uid } from './marketStoreHelpers'
 import { routeOfferPublicAfterSheetEdit } from './marketSliceHelpers'
@@ -16,6 +17,7 @@ subscribeRouteOfferTramo: (offerId, stopId, carrier, vehicleLabel) => {
   set((s) => {
     const ro = s.routeOfferPublic[offerId]
     if (!ro) return s
+    if (routeOfferPublicBlockedForBuyerWithAgreement(ro, s.threads, carrier.userId)) return s
     const ti = ro.tramos.findIndex((t) => t.stopId === stopId)
     if (ti < 0) return s
     const tr = ro.tramos[ti]

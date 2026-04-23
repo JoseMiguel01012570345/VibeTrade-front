@@ -1,8 +1,14 @@
 import type {
   RouteOfferPublicState,
   RouteOfferTramoPublic,
+  Thread,
 } from '../../../app/store/marketStoreTypes'
+import { threadHasAcceptedAgreement } from '../../../app/store/marketStoreTypes'
 import type { RouteSheet, RouteStop } from './routeSheetTypes'
+
+/** Mensaje cuando el comprador del hilo intenta suscribirse como transportista a la misma hoja publicada. */
+export const ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES =
+  'No podés suscribirte como transportista: en esta operación sos el comprador con un acuerdo aceptado.'
 
 /** Prioridad: teléfono en la parada de la hoja → asignación en la oferta → campo público del tramo. */
 export function effectiveTramoContactPhone(
@@ -72,4 +78,21 @@ export function tramoNotifyLineFromOffer(ro: RouteOfferPublicState | undefined, 
   const t = ro?.tramos.find((x) => x.stopId === stopId)
   if (!t) return 'un tramo nuevo'
   return `Tramo ${t.orden} (${t.origenLine} → ${t.destinoLine})`
+}
+
+/**
+ * True si el usuario no debe poder suscribirse como transportista a esta oferta pública de ruta:
+ * está vinculada al hilo donde es comprador y ya hay acuerdo aceptado.
+ */
+export function routeOfferPublicBlockedForBuyerWithAgreement(
+  routeOffer: RouteOfferPublicState | undefined,
+  threads: Record<string, Thread>,
+  viewerId: string,
+): boolean {
+  const tid = routeOffer?.threadId?.trim()
+  if (!tid || !viewerId || viewerId === 'guest') return false
+  const th = threads[tid]
+  if (!th) return false
+  if (th.buyerUserId !== viewerId) return false
+  return threadHasAcceptedAgreement(th)
 }

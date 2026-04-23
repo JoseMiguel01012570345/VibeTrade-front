@@ -12,6 +12,8 @@ import { OfferSaveButton } from "./OfferSaveButton";
 import { OfferCommentsSection } from "./OfferCommentsSection";
 import {
   confirmedStopIdsForCarrier,
+  ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
+  routeOfferPublicBlockedForBuyerWithAgreement,
   tramoNotifyLineFromOffer,
 } from "../chat/domain/routeSheetOfferGuards";
 import {
@@ -38,6 +40,7 @@ import {
   isOfferPublishedForBuyerChat,
   NOT_PUBLISHED_TOAST_ES,
 } from "../../utils/market/offerPublishedForBuyerChat";
+import { fetchEmergentCarrierSubscriptionStatus } from "../../utils/emergentOffers/emergentCarrierSubscriptionApi";
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -216,6 +219,16 @@ export function OfferPage() {
       resolvedOffer,
       !!routeOffer,
     );
+
+  const subscribeBlockedAsBuyerWithAgreement = useMemo(
+    () =>
+      routeOfferPublicBlockedForBuyerWithAgreement(
+        routeOffer,
+        threads,
+        me.id,
+      ),
+    [routeOffer, threads, me.id],
+  );
 
   const emergentMapLegs = useMemo(
     () =>
@@ -698,193 +711,236 @@ export function OfferPage() {
                     <div className="text-sm font-black tracking-tight">
                       Suscribirme a un tramo
                     </div>
-                    <p className="vt-muted mt-1.5 text-[13px] leading-snug">
-                      Elegí un tramo libre y enviá la solicitud. Podés
-                      suscribirte a <strong>más de un tramo</strong> en la misma
-                      hoja; cada uno se valida por separado. El vendedor y el
-                      comprador deben <strong>validar</strong> la suscripción
-                      antes de que puedas entrar al chat operativo de la ruta.
-                    </p>
-                    {transportServiceOptions.length > 1 ? (
-                      <div className="mt-2">
-                        <label
-                          className="block text-[12px] font-extrabold text-[var(--text)]"
-                          htmlFor="tr-svc-suscribe"
-                        >
-                          Servicio de transporte para la suscripción
-                        </label>
-                        <select
-                          id="tr-svc-suscribe"
-                          className="mt-1 w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-[13px] font-semibold"
-                          value={selectedTransportServiceId ?? ""}
-                          onChange={(e) =>
-                            setSelectedTransportServiceId(
-                              e.target.value || null,
-                            )
-                          }
-                        >
-                          {transportServiceOptions.map((o) => (
-                            <option key={o.serviceId} value={o.serviceId}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ) : null}
-                    {carrierPendingOnRoute ? (
-                      <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_8%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
-                        Tenés al menos una solicitud pendiente de validación.
-                        Mientras tanto podés pedir otro tramo si sigue libre;
-                        cuando te acepten en cualquiera de ellos podés habilitar
-                        el chat (según reglas de la demo).
+                    {subscribeBlockedAsBuyerWithAgreement ? (
+                      <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,var(--border)_90%,transparent)] bg-[color-mix(in_oklab,var(--bg)_50%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
+                        {ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES}
                       </p>
                     ) : null}
-                    {carrierConfirmedOnRoute ? (
-                      <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,var(--good)_30%,var(--border))] bg-[color-mix(in_oklab,var(--good)_7%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
-                        Suscripción confirmada: ya podés abrir el chat de la
-                        operación.
-                      </p>
+                    {!subscribeBlockedAsBuyerWithAgreement ? (
+                      <>
+                        <p className="vt-muted mt-1.5 text-[13px] leading-snug">
+                          Elegí un tramo libre y enviá la solicitud. Podés
+                          suscribirte a <strong>más de un tramo</strong> en la
+                          misma hoja; cada uno se valida por separado. El
+                          vendedor y el comprador deben{" "}
+                          <strong>validar</strong> la suscripción antes de que
+                          puedas entrar al chat operativo de la ruta.
+                        </p>
+                        {transportServiceOptions.length > 1 ? (
+                          <div className="mt-2">
+                            <label
+                              className="block text-[12px] font-extrabold text-[var(--text)]"
+                              htmlFor="tr-svc-suscribe"
+                            >
+                              Servicio de transporte para la suscripción
+                            </label>
+                            <select
+                              id="tr-svc-suscribe"
+                              className="mt-1 w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-[13px] font-semibold"
+                              value={selectedTransportServiceId ?? ""}
+                              onChange={(e) =>
+                                setSelectedTransportServiceId(
+                                  e.target.value || null,
+                                )
+                              }
+                            >
+                              {transportServiceOptions.map((o) => (
+                                <option key={o.serviceId} value={o.serviceId}>
+                                  {o.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : null}
+                        {carrierPendingOnRoute ? (
+                          <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_8%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
+                            Tenés al menos una solicitud pendiente de
+                            validación. Mientras tanto podés pedir otro tramo si
+                            sigue libre; cuando te acepten en cualquiera de
+                            ellos podés habilitar el chat (según reglas de la
+                            demo).
+                          </p>
+                        ) : null}
+                        {carrierConfirmedOnRoute ? (
+                          <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,var(--good)_30%,var(--border))] bg-[color-mix(in_oklab,var(--good)_7%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
+                            Suscripción confirmada: ya podés abrir el chat de la
+                            operación.
+                          </p>
+                        ) : null}
+                        {openTramos.length === 0 ? (
+                          <p className="mt-2 text-[13px] font-semibold text-[var(--text)]">
+                            Todos los tramos tienen transportista asignado o
+                            pendiente.
+                          </p>
+                        ) : (
+                          <div className="mt-2 flex flex-col gap-2">
+                            {openTramos.map((t) => (
+                              <label
+                                key={t.stopId}
+                                className="flex cursor-pointer items-start gap-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-2.5"
+                              >
+                                <input
+                                  type="radio"
+                                  name="tramo-pick"
+                                  className="mt-1"
+                                  checked={chosenStopId === t.stopId}
+                                  onChange={() => setPickedStopId(t.stopId)}
+                                />
+                                <span className="text-[13px] leading-snug">
+                                  <strong>Tramo {t.orden}</strong>
+                                  {isEmergentRouteFicha
+                                    ? null
+                                    : (
+                                        <>
+                                          : {t.origenLine} → {t.destinoLine}
+                                        </>
+                                      )}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     ) : null}
-                    {openTramos.length === 0 ? (
-                      <p className="mt-2 text-[13px] font-semibold text-[var(--text)]">
-                        Todos los tramos tienen transportista asignado o
-                        pendiente.
-                      </p>
-                    ) : (
-                      <div className="mt-2 flex flex-col gap-2">
-                        {openTramos.map((t) => (
-                          <label
-                            key={t.stopId}
-                            className="flex cursor-pointer items-start gap-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-2.5"
-                          >
-                            <input
-                              type="radio"
-                              name="tramo-pick"
-                              className="mt-1"
-                              checked={chosenStopId === t.stopId}
-                              onChange={() => setPickedStopId(t.stopId)}
-                            />
-                            <span className="text-[13px] leading-snug">
-                              <strong>Tramo {t.orden}</strong>
-                              {isEmergentRouteFicha
-                                ? null
-                                : (
-                                    <>
-                                      : {t.origenLine} → {t.destinoLine}
-                                    </>
-                                  )}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                    <div className="mt-3 flex flex-col gap-2">
-                      <div className="flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {!subscribeBlockedAsBuyerWithAgreement ? (
                         <button
                           type="button"
                           className="vt-btn vt-btn-primary"
-                          disabled={!chosenStopId || openTramos.length === 0}
+                          disabled={
+                            !chosenStopId || openTramos.length === 0
+                          }
                           onClick={() => {
-                            if (!threadCatalogId || !chosenStopId) return;
-                            if (
-                              transportServiceOptions.length > 0 &&
-                              !selectedTransportServiceId
-                            ) {
-                              toast.error(
-                                "Elegí con qué servicio de transporte te suscribís.",
+                            void (async () => {
+                              if (!threadCatalogId || !chosenStopId) return;
+                              if (
+                                routeOfferPublicBlockedForBuyerWithAgreement(
+                                  routeOffer,
+                                  threads,
+                                  me.id,
+                                )
+                              ) {
+                                toast.error(
+                                  ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
+                                );
+                                return;
+                              }
+                              if (
+                                transportServiceOptions.length > 0 &&
+                                !selectedTransportServiceId
+                              ) {
+                                toast.error(
+                                  "Elegí con qué servicio de transporte te suscribís.",
+                                );
+                                return;
+                              }
+                              if (resolvedOffer.id.startsWith("emo_")) {
+                                const st =
+                                  await fetchEmergentCarrierSubscriptionStatus(
+                                    resolvedOffer.id,
+                                  );
+                                if (st && !st.canSubscribe) {
+                                  toast.error(
+                                    st.message?.trim() ||
+                                      ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
+                                  );
+                                  return;
+                                }
+                              }
+                              const vLabel = selectedTransportServiceId
+                                ? transportServiceOptions.find(
+                                    (o) =>
+                                      o.serviceId === selectedTransportServiceId,
+                                  )?.label
+                                : undefined;
+                              const ok = subscribeRouteOfferTramo(
+                                threadCatalogId,
+                                chosenStopId,
+                                {
+                                  userId: me.id,
+                                  displayName: me.name,
+                                  phone: me.phone,
+                                  trustScore: me.trustScore,
+                                },
+                                vLabel,
                               );
-                              return;
-                            }
-                            const vLabel = selectedTransportServiceId
-                              ? transportServiceOptions.find(
-                                  (o) => o.serviceId === selectedTransportServiceId,
-                                )?.label
-                              : undefined;
-                            const ok = subscribeRouteOfferTramo(
-                              threadCatalogId,
-                              chosenStopId,
-                              {
-                                userId: me.id,
-                                displayName: me.name,
-                                phone: me.phone,
-                                trustScore: me.trustScore,
-                              },
-                              vLabel,
-                            );
-                            if (ok) {
-                              toast.success(
-                                "Solicitud enviada. Pendiente de validación del vendedor o comprador.",
-                              );
-                              setPickedStopId(null);
-                            } else {
-                              toast.error("No se pudo suscribir a ese tramo.");
-                            }
+                              if (ok) {
+                                toast.success(
+                                  "Solicitud enviada. Pendiente de validación del vendedor o comprador.",
+                                );
+                                setPickedStopId(null);
+                              } else {
+                                toast.error(
+                                  "No se pudo suscribir a ese tramo.",
+                                );
+                              }
+                            })();
                           }}
                         >
                           Enviar solicitud de suscripción
                         </button>
-                        <button
-                          type="button"
-                          className="vt-btn"
-                          disabled={!canOpenRouteChat}
-                          title={
-                            canOpenRouteChat
-                              ? "Abrir el chat de la operación"
-                              : "Disponible con tramo validado o si ya figurás como integrante del hilo"
+                      ) : null}
+                      <button
+                        type="button"
+                        className="vt-btn"
+                        disabled={!canOpenRouteChat}
+                        title={
+                          canOpenRouteChat
+                            ? "Abrir el chat de la operación"
+                            : "Disponible con tramo validado o si ya figurás como integrante del hilo"
+                        }
+                        onClick={() => {
+                          if (!canOpenRouteChat) {
+                            toast.error(
+                              "El chat se habilita con tramo validado o cuando ya sos integrante del hilo de esta oferta.",
+                            );
+                            return;
                           }
-                          onClick={() => {
-                            if (!canOpenRouteChat) {
+                          if (
+                            !isOfferPublishedForBuyerChat(
+                              resolvedOffer,
+                              storeCatalogs,
+                            )
+                          ) {
+                            toast.error(NOT_PUBLISHED_TOAST_ES);
+                            return;
+                          }
+                          void trackRecommendationInteraction(
+                            resolvedOffer.id,
+                            "chat_start",
+                          ).catch(() => undefined);
+                          void (async () => {
+                            const threadId = await ensureThreadForOffer(resolvedOffer.id, {
+                              buyerId: me.id,
+                            });
+                            if (!threadId) {
                               toast.error(
-                                "El chat se habilita con tramo validado o cuando ya sos integrante del hilo de esta oferta.",
+                                "Aún no hay conversación con un comprador. Se abrirá cuando alguien te escriba.",
                               );
                               return;
                             }
-                            if (
-                              !isOfferPublishedForBuyerChat(
-                                resolvedOffer,
-                                storeCatalogs,
-                              )
-                            ) {
-                              toast.error(NOT_PUBLISHED_TOAST_ES);
-                              return;
-                            }
-                            void trackRecommendationInteraction(
-                              resolvedOffer.id,
-                              "chat_start",
-                            ).catch(() => undefined);
-                            void (async () => {
-                              const threadId = await ensureThreadForOffer(resolvedOffer.id, {
-                                buyerId: me.id,
-                              });
-                              if (!threadId) {
-                                toast.error(
-                                  "Aún no hay conversación con un comprador. Se abrirá cuando alguien te escriba.",
-                                );
-                                return;
-                              }
-                              nav(`/chat/${threadId}`);
-                            })();
-                          }}
-                        >
-                          Ir al chat de la operación
-                        </button>
-                      </div>
-                      {!canOpenRouteChat ? (
-                        <p className="text-[12px] leading-snug text-[var(--muted)]">
-                          El botón de chat permanece deshabilitado hasta que tu
-                          tramo quede <strong>validado</strong> o hasta que
-                          figures en el hilo como transportista.
-                        </p>
-                      ) : null}
-                      {canOpenRouteChat &&
-                      !carrierConfirmedOnRoute &&
-                      carrierInChatThread ? (
-                        <p className="text-[12px] leading-snug text-[var(--muted)]">
-                          Abrís el chat como integrante del hilo aunque no
-                          tengas un tramo confirmado en este momento (demo).
-                        </p>
-                      ) : null}
+                            nav(`/chat/${threadId}`);
+                          })();
+                        }}
+                      >
+                        Ir al chat de la operación
+                      </button>
                     </div>
+                    {!canOpenRouteChat ? (
+                      <p className="text-[12px] leading-snug text-[var(--muted)]">
+                        El botón de chat permanece deshabilitado hasta que tu
+                        tramo quede <strong>validado</strong> o hasta que
+                        figures en el hilo como transportista.
+                      </p>
+                    ) : null}
+                    {canOpenRouteChat &&
+                    !carrierConfirmedOnRoute &&
+                    carrierInChatThread ? (
+                      <p className="text-[12px] leading-snug text-[var(--muted)]">
+                        Abrís el chat como integrante del hilo aunque no
+                        tengas un tramo confirmado en este momento (demo).
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
                 {pendingValidations.length > 0 ? (
@@ -951,11 +1007,13 @@ export function OfferPage() {
                 <button
                   type="button"
                   className="vt-btn vt-btn-primary min-[420px]:flex-1"
-                  disabled={isOwnOffer}
+                  disabled={isOwnOffer || subscribeBlockedAsBuyerWithAgreement}
                   title={
                     isOwnOffer
                       ? "No podés suscribirte a tu propia publicación."
-                      : undefined
+                      : subscribeBlockedAsBuyerWithAgreement
+                        ? ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES
+                        : undefined
                   }
                   onClick={() => {
                     if (!isSessionActive || me.id === "guest") {
@@ -964,6 +1022,10 @@ export function OfferPage() {
                     }
                     if (isOwnOffer) {
                       toast.error("No podés suscribirte a tu propia oferta.");
+                      return;
+                    }
+                    if (subscribeBlockedAsBuyerWithAgreement) {
+                      toast.error(ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES);
                       return;
                     }
                     if (!userHasTransportService(me.id, stores, storeCatalogs)) {
