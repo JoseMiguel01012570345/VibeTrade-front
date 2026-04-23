@@ -131,6 +131,10 @@ export type Offer = {
 
 /** Parada en snapshot de publicación emergente; coords opcionales para Leaflet. */
 export type EmergentRouteParadaSnapshot = {
+  /** Id del tramo en la hoja persistida (API `stopId`); requerido para suscripción en servidor. */
+  stopId?: string;
+  /** Orden del tramo en la hoja (API `orden`). */
+  orden?: number;
   origen: string;
   destino: string;
   origenLat?: string;
@@ -167,6 +171,8 @@ export type RouteOfferTramoAssignment = {
   phone: string;
   trustScore: number;
   vehicleLabel?: string;
+  /** Servicio de catálogo con el que se suscribió (validado en servidor si aplica). */
+  storeServiceId?: string;
 };
 
 export type RouteOfferTramoPublic = {
@@ -561,6 +567,7 @@ export type MarketState = {
       trustScore: number;
     },
     vehicleLabel?: string,
+    storeServiceId?: string,
   ) => boolean;
   /** Vendedor/comprador del hilo: acepta o rechaza la suscripción pendiente al tramo. */
   validateRouteOfferTramo: (

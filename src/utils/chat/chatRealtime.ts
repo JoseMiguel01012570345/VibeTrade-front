@@ -154,7 +154,7 @@ export function startChatRealtime(): void {
       if (!head || head.read) return;
       const open = getOpenChatThreadIdFromLocation();
       if (
-        head.kind === "chat_message" &&
+        (head.kind === "chat_message" || head.kind === "route_tramo_subscribe") &&
         open &&
         head.threadId === open
       )

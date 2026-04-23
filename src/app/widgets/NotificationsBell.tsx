@@ -14,6 +14,7 @@ import {
   requestDesktopNotificationPermission,
   setDesktopNotificationsEnabledPreference,
 } from '../../utils/notifications/desktopNotifications'
+import { notificationDeepLink } from '../../utils/notifications/notificationRoutes'
 import { syncChatNotificationsFromServer } from '../../utils/notifications/notificationsSync'
 
 /** Chat primero salvo avisos explícitos de comentario en ficha → oferta + ancla a comentarios. */
@@ -21,22 +22,12 @@ function notificationHref(n: {
   kind: string
   threadId?: string
   offerId?: string
+  routeSheetId?: string
+  highlightCarrierUserId?: string
 }): string | null {
-  if (
-    (n.kind === 'offer_comment' ||
-      n.kind === 'offer_like' ||
-      n.kind === 'qa_comment_like') &&
-    n.offerId
-  ) {
-    return `/offer/${encodeURIComponent(n.offerId)}#offer-comments`
-  }
-  if (n.threadId) {
-    return `/chat/${encodeURIComponent(n.threadId)}`
-  }
-  if (n.offerId) {
-    return `/offer/${encodeURIComponent(n.offerId)}#offer-comments`
-  }
-  return null
+  return notificationDeepLink(
+    n as Parameters<typeof notificationDeepLink>[0],
+  )
 }
 
 function fmt(ts: number) {
@@ -331,10 +322,14 @@ export function NotificationsBell() {
                           <div className="font-black tracking-[-0.02em]">{n.title}</div>
                           <div className="vt-muted whitespace-pre-wrap break-words">{n.body}</div>
                           <div className="mt-1.5 text-xs text-[var(--muted)]">{fmt(n.createdAt)}</div>
-                  {n.kind === 'offer_comment' ||
-                  n.kind === 'offer_like' ||
-                  n.kind === 'qa_comment_like' ||
-                  (!n.threadId && n.offerId) ? (
+                  {n.kind === 'route_tramo_subscribe' ? (
+                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
+                      Ver suscriptor en el chat →
+                    </div>
+                  ) : n.kind === 'offer_comment' ||
+                    n.kind === 'offer_like' ||
+                    n.kind === 'qa_comment_like' ||
+                    (!n.threadId && n.offerId) ? (
                     <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
                       Ver oferta y comentarios →
                     </div>

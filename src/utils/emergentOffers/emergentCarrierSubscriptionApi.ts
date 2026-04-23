@@ -17,3 +17,29 @@ export async function fetchEmergentCarrierSubscriptionStatus(
   if (!res.ok) return null;
   return (await res.json()) as EmergentCarrierSubscriptionResponse;
 }
+
+/** POST: valida servicio de transporte en servidor y notifica al comprador y vendedor del hilo. */
+export async function postEmergentTramoSubscriptionRequest(
+  emergentOfferId: string,
+  body: { stopId: string; storeServiceId: string },
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const res = await apiFetch(
+    `/api/v1/emergent-offers/${encodeURIComponent(emergentOfferId)}/tramo-subscription-requests`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        stopId: body.stopId,
+        storeServiceId: body.storeServiceId,
+      }),
+    },
+  );
+  if (res.status === 204) return { ok: true };
+  let message = `No se pudo registrar la solicitud (HTTP ${res.status}).`;
+  try {
+    const j = (await res.json()) as { message?: string };
+    if (j.message?.trim()) message = j.message.trim();
+  } catch {
+    /* ignore */
+  }
+  return { ok: false, message };
+}

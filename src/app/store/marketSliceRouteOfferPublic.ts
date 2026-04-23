@@ -12,7 +12,7 @@ export function createRouteOfferPublicSlice(set: MarketSliceSet, _get: MarketSli
   | 'respondRouteSheetEdit'
 > {
   return {
-subscribeRouteOfferTramo: (offerId, stopId, carrier, vehicleLabel) => {
+subscribeRouteOfferTramo: (offerId, stopId, carrier, vehicleLabel, storeServiceId) => {
   let ok = false
   set((s) => {
     const ro = s.routeOfferPublic[offerId]
@@ -33,6 +33,7 @@ subscribeRouteOfferTramo: (offerId, stopId, carrier, vehicleLabel) => {
             phone: carrier.phone,
             trustScore: carrier.trustScore,
             ...(vehicleLabel?.trim() ? { vehicleLabel: vehicleLabel.trim() } : {}),
+            ...(storeServiceId?.trim() ? { storeServiceId: storeServiceId.trim() } : {}),
           },
         }
       : t,

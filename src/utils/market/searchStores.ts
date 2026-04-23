@@ -251,6 +251,15 @@ function parseEmergentRouteParadas(
       origen: origen || "—",
       destino: destino || "—",
     };
+    const stopId = stringField(r, "stopId", "StopId");
+    if (stopId) row.stopId = stopId;
+    const ordRaw = r.orden ?? r.Orden;
+    if (typeof ordRaw === "number" && Number.isInteger(ordRaw) && ordRaw > 0) {
+      row.orden = ordRaw;
+    } else if (typeof ordRaw === "string" && /^\d+$/.test(ordRaw.trim())) {
+      const n = Number.parseInt(ordRaw.trim(), 10);
+      if (n > 0) row.orden = n;
+    }
     if (oLa0 !== undefined)
       row.origenLat = typeof oLa0 === "number" ? String(oLa0) : oLa0;
     if (oLn0 !== undefined)

@@ -54,6 +54,7 @@ export type NotificationItem = {
     | 'offer_comment'
     | 'offer_like'
     | 'qa_comment_like'
+    | 'route_tramo_subscribe'
   title: string
   body: string
   createdAt: number
@@ -63,6 +64,11 @@ export type NotificationItem = {
   /** Comentario en ficha: abrir `/offer/:offerId`. */
   offerId?: string
   trustScore?: number
+  /** Panel de suscriptores: hoja de ruta. */
+  routeSheetId?: string
+  /** Resaltar transportista en el panel. */
+  highlightCarrierUserId?: string
+  stopId?: string
 }
 
 type AppState = {
@@ -212,6 +218,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       ...(n.threadId != null ? { threadId: n.threadId } : {}),
       ...(n.offerId != null ? { offerId: n.offerId } : {}),
       ...(n.trustScore != null ? { trustScore: n.trustScore } : {}),
+      ...(n.routeSheetId != null ? { routeSheetId: n.routeSheetId } : {}),
+      ...(n.highlightCarrierUserId != null ?
+        { highlightCarrierUserId: n.highlightCarrierUserId }
+      : {}),
+      ...(n.stopId != null ? { stopId: n.stopId } : {}),
     }
     set((s) => ({ notifications: [item, ...s.notifications] }))
   },
@@ -220,19 +231,26 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => {
       const openThread = getOpenChatThreadIdFromLocation()
       const serverItems = openThread
-        ? items.filter(
-            (x) =>
+        ? items.filter((x) => {
+            if (
+              x.kind === 'route_tramo_subscribe' &&
+              x.threadId === openThread
+            )
+              return false
+            return (
               x.kind !== 'chat_message' ||
               !x.threadId ||
-              x.threadId !== openThread,
-          )
+              x.threadId !== openThread
+            )
+          })
         : items
       const local = s.notifications.filter(
         (x) =>
           x.kind !== 'chat_message' &&
           x.kind !== 'offer_comment' &&
           x.kind !== 'offer_like' &&
-          x.kind !== 'qa_comment_like',
+          x.kind !== 'qa_comment_like' &&
+          x.kind !== 'route_tramo_subscribe',
       )
       const fromServer = serverItems.filter((x) => !x.read)
       const merged = [...fromServer, ...local]

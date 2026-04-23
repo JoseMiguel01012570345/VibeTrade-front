@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { cn } from "../../lib/cn";
 import {
   ArrowLeft,
@@ -35,6 +35,7 @@ import { formatFileSize, inferDocKind } from "./lib/chatAttachments";
 import { createChatVoiceRecorderSession } from "./lib/chatWavesurferRecorder";
 import { ensureMicPermission } from "./lib/voiceRecording";
 import { ChatRightRail } from "./components/rail/ChatRightRail";
+import { ChatRouteSubscribersPanel } from "./components/ChatRouteSubscribersPanel";
 import type { RouteSheet } from "./domain/routeSheetTypes";
 import { RouteSheetFormModal } from "./components/modals/RouteSheetFormModal";
 import { TradeAgreementFormModal } from "./components/modals/TradeAgreementFormModal";
@@ -46,6 +47,7 @@ import { AgreementDeleteRouteSheetsModal } from "./components/modals/AgreementDe
 import {
   agreementDeleteBlockedByRouteSheetInvariant,
   confirmedStopIdsForCarrier,
+  resolveRouteOfferPublicForThread,
   tramoNotifyLineFromOffer,
 } from "./domain/routeSheetOfferGuards";
 import { buildRegisteredTransportistaPhoneOptions } from "./domain/routeSheetRegisteredPhones";
@@ -91,6 +93,7 @@ const CHAT_SCROLL_BOTTOM_PX = 80;
 export function ChatPage() {
   const { threadId } = useParams();
   const nav = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const me = useAppStore((s) => s.me);
   const profileDisplayNames = useAppStore((s) => s.profileDisplayNames);
   const profileAvatarUrls = useAppStore((s) => s.profileAvatarUrls);
@@ -110,7 +113,7 @@ export function ChatPage() {
   const { thread, sellerCatalog, routeOfferForThisThread } = useMarketStore(
     useShallow((s) => {
       const th = threadId ? s.threads[threadId] : undefined;
-      const ro = th ? s.routeOfferPublic[th.offerId] : undefined;
+      const ro = resolveRouteOfferPublicForThread(s, th);
       return {
         thread: th,
         sellerCatalog: th ? (s.storeCatalogs[th.storeId] ?? null) : null,
@@ -260,6 +263,9 @@ export function ChatPage() {
   const [routeSheetBeingEdited, setRouteSheetBeingEdited] =
     useState<RouteSheet | null>(null);
   const [railOpen, setRailOpen] = useState(false);
+  /** Panel izquierdo: suscriptores a la oferta de hoja de ruta (solo comprador). */
+  const [routeSubscribersSheetId, setRouteSubscribersSheetId] = useState<string | null>(null);
+  const [highlightSubscriberUserId, setHighlightSubscriberUserId] = useState<string | null>(null);
   const [focusRouteId, setFocusRouteId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [trustConfirm, setTrustConfirm] = useState<
@@ -366,6 +372,28 @@ export function ChatPage() {
     if (!threadId) return;
     syncThreadBuyerQa(threadId, me.id);
   }, [me.id, syncThreadBuyerQa, threadId, thread?.buyerUserId]);
+
+  useEffect(() => {
+    setRouteSubscribersSheetId(null);
+    setHighlightSubscriberUserId(null);
+  }, [threadId]);
+
+  /** Deep link desde notificación: ?subs=1&sheet=&hi= */
+  useEffect(() => {
+    if (!thread?.id) return;
+    const subs = searchParams.get("subs");
+    const sheet = searchParams.get("sheet");
+    const hi = searchParams.get("hi");
+    if (subs !== "1" || !sheet?.trim() || !hi?.trim()) return;
+    setRouteSubscribersSheetId(sheet.trim());
+    setHighlightSubscriberUserId(hi.trim());
+    setRailOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("subs");
+    next.delete("sheet");
+    next.delete("hi");
+    setSearchParams(next, { replace: true });
+  }, [thread?.id, searchParams, setSearchParams]);
 
   /** Catálogo de la tienda del hilo: sin esto el acuerdo muestra «Catálogo no disponible» hasta abrir /store/:id. */
   useEffect(() => {
@@ -824,8 +852,14 @@ export function ChatPage() {
   }
 
   const carrierInThreadIntegrantes = thread.chatCarriers?.some((c) => c.id === me.id) ?? false;
+  const viewerIsThreadBuyer = resolveBuyerUserId(thread, me.id) === me.id;
+  const sellerUid = thread.sellerUserId?.trim() || thread.store.ownerUserId;
+  const viewerIsThreadSeller = !!sellerUid && sellerUid === me.id;
+  /** Comprador/vendedor pueden tener servicio de transporte publicado; no son “transportista bloqueado”. */
   const carrierBlockedFromRouteChat =
     hasTransportService &&
+    !viewerIsThreadBuyer &&
+    !viewerIsThreadSeller &&
     routeOfferForThisThread &&
     routeOfferForThisThread.threadId === thread.id &&
     !routeOfferForThisThread.tramos.some(
@@ -969,8 +1003,24 @@ export function ChatPage() {
         )}
       >
         <div className="flex min-h-0 min-w-0 flex-col px-1 min-[961px]:pl-2 min-[961px]:pr-1">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3.5">
-            <div className="vt-card shrink-0 px-[22px] py-[18px]">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-row gap-2.5">
+            {routeSubscribersSheetId ? (
+              <ChatRouteSubscribersPanel
+                key={routeSubscribersSheetId}
+                routeOffer={routeOfferForThisThread}
+                routeSheetId={routeSubscribersSheetId}
+                routeSheetTitle={
+                  thread.routeSheets?.find((r) => r.id === routeSubscribersSheetId)?.titulo
+                }
+                highlightUserId={highlightSubscriberUserId}
+                onClose={() => {
+                  setRouteSubscribersSheetId(null);
+                  setHighlightSubscriberUserId(null);
+                }}
+              />
+            ) : null}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3.5">
+              <div className="vt-card shrink-0 px-[22px] py-[18px]">
               <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   className="vt-btn"
@@ -1033,9 +1083,9 @@ export function ChatPage() {
                   ) : null}
                 </div>
               </div>
-            </div>
+              </div>
 
-            {chatActionsLocked ? (
+              {chatActionsLocked ? (
               <div
                 className="mx-1 mt-2.5 rounded-xl border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_12%,var(--surface))] p-3 text-sm leading-snug text-[var(--text)]"
                 role="status"
@@ -1045,9 +1095,9 @@ export function ChatPage() {
                 podés usar <strong>Pago</strong> para continuar; no podés enviar
                 mensajes ni crear acuerdos u hojas de ruta hasta entonces.
               </div>
-            ) : null}
+              ) : null}
 
-            <div className="relative min-h-0 flex flex-1 flex-col">
+              <div className="relative min-h-0 flex flex-1 flex-col">
               <ChatMessageList
                 listRef={listRef}
                 listEndRef={listEndRef}
@@ -1089,9 +1139,9 @@ export function ChatPage() {
                   </button>
                 </div>
               ) : null}
-            </div>
+              </div>
 
-            <ChatComposerSection
+              <ChatComposerSection
               thread={thread}
               me={me}
               storeName={store.name}
@@ -1122,7 +1172,8 @@ export function ChatPage() {
               markThreadPaymentCompleted={markThreadPaymentCompleted}
               pushNotification={pushNotification}
               setTrustScore={setTrustScore}
-            />
+              />
+            </div>
           </div>
         </div>
 
@@ -1194,6 +1245,9 @@ export function ChatPage() {
             }}
             toggleRouteStop={toggleRouteStop}
             isActingSeller={isActingSeller}
+            onOpenRouteSubscribers={(routeSheetId) => {
+              setRouteSubscribersSheetId(routeSheetId);
+            }}
             onRequestEditAgreement={(ag) => {
               if (!isActingSeller) return;
               if (ag.sellerEditBlockedUntilBuyerResponse) {

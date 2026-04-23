@@ -1,4 +1,5 @@
 import type {
+  MarketState,
   RouteOfferPublicState,
   RouteOfferTramoPublic,
   Thread,
@@ -95,4 +96,27 @@ export function routeOfferPublicBlockedForBuyerWithAgreement(
   if (!th) return false
   if (th.buyerUserId !== viewerId) return false
   return threadHasAcceptedAgreement(th)
+}
+
+/**
+ * `routeOfferPublic` suele estar bajo el id de catálogo; el hilo puede tener `offerId` = publicación `emo_*`.
+ * Resuelve la entrada correcta para el panel de suscriptores, bloqueo de transportista, etc.
+ */
+export function resolveRouteOfferPublicForThread(
+  state: Pick<MarketState, 'threads' | 'routeOfferPublic' | 'offers'>,
+  thread: Thread | undefined,
+): RouteOfferPublicState | undefined {
+  if (!thread) return undefined
+  const direct = state.routeOfferPublic[thread.offerId]
+  if (direct) return direct
+  const offer = state.offers[thread.offerId]
+  const base = offer?.emergentBaseOfferId?.trim()
+  if (base) {
+    const fromBase = state.routeOfferPublic[base]
+    if (fromBase) return fromBase
+  }
+  for (const ro of Object.values(state.routeOfferPublic)) {
+    if (ro.threadId === thread.id) return ro
+  }
+  return undefined
 }

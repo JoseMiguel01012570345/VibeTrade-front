@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Heart, ShoppingCart } from "lucide-react";
 import toast from "react-hot-toast";
@@ -8,6 +8,7 @@ import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
 import { RouteOfferPreview } from "./RouteOfferPreview";
+import { RouteTramoSubscribeModal } from "./RouteTramoSubscribeModal";
 import { OfferSaveButton } from "./OfferSaveButton";
 import { OfferCommentsSection } from "./OfferCommentsSection";
 import {
@@ -34,7 +35,10 @@ import {
 } from "../../utils/chat/chatRealtime";
 import { offerFromStoreCatalogs } from "../../utils/market/offerFromCatalog";
 import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
-import { routeOfferPublicFromEmergentCardOffer } from "../../utils/market/routeOfferPublicFromEmergentCard";
+import {
+  mergeRouteOfferPublicFromEmergentCard,
+  routeOfferPublicFromEmergentCardOffer,
+} from "../../utils/market/routeOfferPublicFromEmergentCard";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
 import { mergeStoreCatalogWithLocalExtras } from "../chat/domain/storeCatalogTypes";
 import { toggleOfferLike } from "../../utils/market/offerEngagementApi";
@@ -43,7 +47,10 @@ import {
   isOfferPublishedForBuyerChat,
   NOT_PUBLISHED_TOAST_ES,
 } from "../../utils/market/offerPublishedForBuyerChat";
-import { fetchEmergentCarrierSubscriptionStatus } from "../../utils/emergentOffers/emergentCarrierSubscriptionApi";
+import {
+  fetchEmergentCarrierSubscriptionStatus,
+  postEmergentTramoSubscriptionRequest,
+} from "../../utils/emergentOffers/emergentCarrierSubscriptionApi";
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -97,9 +104,6 @@ export function OfferPage() {
   const threads = useMarketStore((s) => s.threads);
   const subscribeRouteOfferTramo = useMarketStore(
     (s) => s.subscribeRouteOfferTramo,
-  );
-  const validateRouteOfferTramo = useMarketStore(
-    (s) => s.validateRouteOfferTramo,
   );
   const submitOfferQuestion = useMarketStore((s) => s.submitOfferQuestion);
   const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer);
@@ -165,12 +169,13 @@ export function OfferPage() {
     const built = routeOfferPublicFromEmergentCardOffer(resolvedOffer);
     if (!built) return;
     useMarketStore.setState((s) => {
-      if (s.routeOfferPublic[threadCatalogId]) return s;
+      const prev = s.routeOfferPublic[threadCatalogId];
+      const merged = mergeRouteOfferPublicFromEmergentCard(prev, built);
       return {
         ...s,
         routeOfferPublic: {
           ...s.routeOfferPublic,
-          [threadCatalogId]: built,
+          [threadCatalogId]: merged,
         },
       };
     });
@@ -189,12 +194,21 @@ export function OfferPage() {
   >(null);
   const chosenStopId = pickedStopId ?? openTramos[0]?.stopId ?? "";
 
-  const pendingValidations = useMemo(
-    () =>
-      routeOffer?.tramos.filter((t) => t.assignment?.status === "pending") ??
-      [],
-    [routeOffer],
+  const emergentPublicationId = useMemo(
+    () => (resolvedOffer?.id?.startsWith("emo_") ? resolvedOffer.id : null),
+    [resolvedOffer?.id],
   );
+
+  const stopSummaryForModal = useMemo(() => {
+    const em = !!resolvedOffer?.isEmergentRoutePublication;
+    const t = routeOffer?.tramos.find((x) => x.stopId === chosenStopId);
+    if (!t) return chosenStopId || "—";
+    if (em) return `Tramo ${t.orden}`;
+    return `Tramo ${t.orden}: ${t.origenLine} → ${t.destinoLine}`;
+  }, [routeOffer, chosenStopId, resolvedOffer?.isEmergentRoutePublication]);
+
+  const [subscribeModalOpen, setSubscribeModalOpen] = useState(false);
+  const [subscribeModalSubmitting, setSubscribeModalSubmitting] = useState(false);
 
   const carrierConfirmedOnRoute = useMemo(
     () =>
@@ -437,6 +451,84 @@ export function OfferPage() {
     }, 15000);
     return () => clearInterval(t);
   }, [offerId, offerResolved, me.id, refreshOfferQaFromServer]);
+
+  const confirmRouteSubscribe = useCallback(
+    async (storeServiceId: string) => {
+      if (!threadCatalogId || !chosenStopId) return;
+      if (
+        routeOfferPublicBlockedForBuyerWithAgreement(routeOffer, threads, me.id)
+      ) {
+        toast.error(ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES);
+        return;
+      }
+      const opt = transportServiceOptions.find((o) => o.serviceId === storeServiceId);
+      if (!opt) {
+        toast.error("Elegí un servicio de transporte válido.");
+        return;
+      }
+      if (resolvedOffer?.id?.startsWith("emo_")) {
+        const st = await fetchEmergentCarrierSubscriptionStatus(resolvedOffer.id);
+        if (st && !st.canSubscribe) {
+          toast.error(
+            st.message?.trim() || ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
+          );
+          return;
+        }
+      }
+      setSubscribeModalSubmitting(true);
+      try {
+        if (emergentPublicationId) {
+          const api = await postEmergentTramoSubscriptionRequest(emergentPublicationId, {
+            stopId: chosenStopId,
+            storeServiceId,
+          });
+          if (!api.ok) {
+            toast.error(api.message);
+            return;
+          }
+        }
+        const ok = subscribeRouteOfferTramo(
+          threadCatalogId,
+          chosenStopId,
+          {
+            userId: me.id,
+            displayName: me.name,
+            phone: me.phone,
+            trustScore: me.trustScore,
+          },
+          opt.label,
+          storeServiceId,
+        );
+        if (ok) {
+          toast.success(
+            emergentPublicationId ?
+              "Solicitud enviada. Los participantes del hilo recibieron un aviso. Pendiente de validación."
+            : "Solicitud registrada. Pendiente de validación del vendedor o comprador.",
+          );
+          setPickedStopId(null);
+          setSubscribeModalOpen(false);
+        } else {
+          toast.error("No se pudo suscribir a ese tramo.");
+        }
+      } finally {
+        setSubscribeModalSubmitting(false);
+      }
+    },
+    [
+      threadCatalogId,
+      chosenStopId,
+      routeOffer,
+      threads,
+      me.id,
+      me.name,
+      me.phone,
+      me.trustScore,
+      resolvedOffer?.id,
+      transportServiceOptions,
+      subscribeRouteOfferTramo,
+      emergentPublicationId,
+    ],
+  );
 
   if (!offerId || !publicCardLoadDone) {
     return (
@@ -793,32 +885,6 @@ export function OfferPage() {
                           <strong>validar</strong> la suscripción antes de que
                           puedas entrar al chat operativo de la ruta.
                         </p>
-                        {transportServiceOptions.length > 1 ? (
-                          <div className="mt-2">
-                            <label
-                              className="block text-[12px] font-extrabold text-[var(--text)]"
-                              htmlFor="tr-svc-suscribe"
-                            >
-                              Servicio de transporte para la suscripción
-                            </label>
-                            <select
-                              id="tr-svc-suscribe"
-                              className="mt-1 w-full max-w-md rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-[13px] font-semibold"
-                              value={selectedTransportServiceId ?? ""}
-                              onChange={(e) =>
-                                setSelectedTransportServiceId(
-                                  e.target.value || null,
-                                )
-                              }
-                            >
-                              {transportServiceOptions.map((o) => (
-                                <option key={o.serviceId} value={o.serviceId}>
-                                  {o.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        ) : null}
                         {carrierPendingOnRoute ? (
                           <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_8%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
                             Tenés al menos una solicitud pendiente de
@@ -875,74 +941,16 @@ export function OfferPage() {
                           type="button"
                           className="vt-btn vt-btn-primary"
                           disabled={
-                            !chosenStopId || openTramos.length === 0
+                            !chosenStopId ||
+                            openTramos.length === 0 ||
+                            transportServiceOptions.length === 0
                           }
-                          onClick={() => {
-                            void (async () => {
-                              if (!threadCatalogId || !chosenStopId) return;
-                              if (
-                                routeOfferPublicBlockedForBuyerWithAgreement(
-                                  routeOffer,
-                                  threads,
-                                  me.id,
-                                )
-                              ) {
-                                toast.error(
-                                  ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
-                                );
-                                return;
-                              }
-                              if (
-                                transportServiceOptions.length > 0 &&
-                                !selectedTransportServiceId
-                              ) {
-                                toast.error(
-                                  "Elegí con qué servicio de transporte te suscribís.",
-                                );
-                                return;
-                              }
-                              if (resolvedOffer.id.startsWith("emo_")) {
-                                const st =
-                                  await fetchEmergentCarrierSubscriptionStatus(
-                                    resolvedOffer.id,
-                                  );
-                                if (st && !st.canSubscribe) {
-                                  toast.error(
-                                    st.message?.trim() ||
-                                      ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
-                                  );
-                                  return;
-                                }
-                              }
-                              const vLabel = selectedTransportServiceId
-                                ? transportServiceOptions.find(
-                                    (o) =>
-                                      o.serviceId === selectedTransportServiceId,
-                                  )?.label
-                                : undefined;
-                              const ok = subscribeRouteOfferTramo(
-                                threadCatalogId,
-                                chosenStopId,
-                                {
-                                  userId: me.id,
-                                  displayName: me.name,
-                                  phone: me.phone,
-                                  trustScore: me.trustScore,
-                                },
-                                vLabel,
-                              );
-                              if (ok) {
-                                toast.success(
-                                  "Solicitud enviada. Pendiente de validación del vendedor o comprador.",
-                                );
-                                setPickedStopId(null);
-                              } else {
-                                toast.error(
-                                  "No se pudo suscribir a ese tramo.",
-                                );
-                              }
-                            })();
-                          }}
+                          title={
+                            transportServiceOptions.length === 0
+                              ? "Necesitás al menos un servicio de transporte publicado en tu tienda"
+                              : undefined
+                          }
+                          onClick={() => setSubscribeModalOpen(true)}
                         >
                           Enviar solicitud de suscripción
                         </button>
@@ -1008,62 +1016,6 @@ export function OfferPage() {
                         tengas un tramo confirmado en este momento (demo).
                       </p>
                     ) : null}
-                  </div>
-                ) : null}
-                {pendingValidations.length > 0 ? (
-                  <div className="mt-3 rounded-[14px] border border-[color-mix(in_oklab,var(--border)_90%,transparent)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] p-3.5">
-                    <div className="text-sm font-black">
-                      Validación vendedor / comprador (demo)
-                    </div>
-                    <p className="vt-muted mt-1 text-[12px] leading-snug">
-                      En producción solo el vendedor del chat y el comprador
-                      podrían aceptar o rechazar. Aquí podés simular la decisión
-                      para ver el flujo completo.
-                    </p>
-                    <ul className="m-0 mt-2 list-none space-y-2 p-0">
-                      {pendingValidations.map((t) => (
-                        <li
-                          key={t.stopId}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] px-2.5 py-2"
-                        >
-                          <span className="text-[13px]">
-                            Tramo {t.orden}: {t.assignment?.displayName}
-                          </span>
-                          <span className="flex gap-1.5">
-                            <button
-                              type="button"
-                              className="vt-btn vt-btn-primary px-2.5 py-1.5 text-xs"
-                              onClick={() => {
-                                if (!threadCatalogId) return;
-                                validateRouteOfferTramo(
-                                  threadCatalogId,
-                                  t.stopId,
-                                  true,
-                                );
-                                toast.success("Suscripción validada.");
-                              }}
-                            >
-                              Aceptar
-                            </button>
-                            <button
-                              type="button"
-                              className="vt-btn px-2.5 py-1.5 text-xs"
-                              onClick={() => {
-                                if (!threadCatalogId) return;
-                                validateRouteOfferTramo(
-                                  threadCatalogId,
-                                  t.stopId,
-                                  false,
-                                );
-                                toast("Solicitud rechazada");
-                              }}
-                            >
-                              Rechazar
-                            </button>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
                 ) : null}
               </div>
@@ -1185,6 +1137,18 @@ export function OfferPage() {
           submitOfferQuestion={submitOfferQuestion}
         />
       </div>
+
+      <RouteTramoSubscribeModal
+        open={subscribeModalOpen}
+        onClose={() => !subscribeModalSubmitting && setSubscribeModalOpen(false)}
+        services={transportServiceOptions}
+        initialServiceId={selectedTransportServiceId}
+        stopSummary={stopSummaryForModal}
+        submitting={subscribeModalSubmitting}
+        onConfirm={(sid) => {
+          void confirmRouteSubscribe(sid);
+        }}
+      />
 
       <ImageLightbox
         url={galleryLightboxUrl}

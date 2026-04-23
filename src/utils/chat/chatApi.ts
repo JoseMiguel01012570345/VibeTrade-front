@@ -113,8 +113,10 @@ export type ChatNotificationDto = {
   senderUserId: string
   createdAtUtc: string
   readAtUtc: string | null
-  /** Backend: offer_comment, offer_like, qa_comment_like; ausente en avisos de chat por hilo. */
+  /** Backend: offer_comment, offer_like, qa_comment_like, route_tramo_subscribe; ausente en avisos de chat por hilo. */
   kind?: string | null
+  /** JSON con routeSheetId, stopId, carrierUserId (camelCase). */
+  metaJson?: string | null
 }
 
 /** `Error.message` cuando el servidor rechaza abrir chat como comprador en tu propia oferta. */

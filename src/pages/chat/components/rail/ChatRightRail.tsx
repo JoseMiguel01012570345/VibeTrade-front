@@ -7,6 +7,7 @@ import { useMarketStore } from '../../../../app/store/useMarketStore'
 import { cn } from '../../../../lib/cn'
 import type { TradeAgreement } from '../../domain/tradeAgreementTypes'
 import type { RouteSheet } from '../../domain/routeSheetTypes'
+import { resolveRouteOfferPublicForThread } from '../../domain/routeSheetOfferGuards'
 import { buildChatParticipants } from '../../lib/chatParticipants'
 import { PublishRouteSheetsModal } from '../modals/PublishRouteSheetsModal'
 import {
@@ -42,6 +43,8 @@ type Props = {
   isActingSeller?: boolean
   onDeleteAgreement?: (agreement: TradeAgreement) => void
   chatCarriers?: ThreadChatCarrier[]
+  /** Comprador del hilo: ve acciones sobre suscriptores a la oferta de ruta. */
+  onOpenRouteSubscribers?: (routeSheetId: string) => void
 }
 
 export function ChatRightRail({
@@ -63,6 +66,7 @@ export function ChatRightRail({
   isActingSeller = false,
   onDeleteAgreement,
   chatCarriers,
+  onOpenRouteSubscribers,
 }: Props) {
   const publishRouteSheetsToPlatform = useMarketStore((s) => s.publishRouteSheetsToPlatform)
   const linkAgreementToRouteSheet = useMarketStore((s) => s.linkAgreementToRouteSheet)
@@ -71,7 +75,7 @@ export function ChatRightRail({
   const routeOfferForThread = useMarketStore(
     useShallow((s) => {
       const th = s.threads[threadId]
-      return th ? s.routeOfferPublic[th.offerId] : undefined
+      return resolveRouteOfferPublicForThread(s, th)
     }),
   )
   const [publishModalOpen, setPublishModalOpen] = useState(false)
@@ -294,6 +298,7 @@ export function ChatRightRail({
             toggleRouteStop={toggleRouteStop}
             deleteRouteSheet={deleteRouteSheet}
             routeOffer={routeOfferForThread}
+            onOpenRouteSubscribers={onOpenRouteSubscribers}
           />
         )}
 
