@@ -77,6 +77,7 @@ export function CatalogSearchPage() {
     "store",
     "product",
     "service",
+    "emergent",
   ]);
   const [km, setKm] = useState("");
   const [trustMin, setTrustMin] = useState("");
@@ -342,7 +343,8 @@ export function CatalogSearchPage() {
         <div>
           <h1 className="vt-h1">Buscar</h1>
           <div className="vt-muted">
-            Tiendas, productos y servicios. Elegí filtros y pulsá la lupa.
+            Tiendas, productos, servicios y hojas de ruta. Elegí filtros y pulsá
+            la lupa.
           </div>
         </div>
         <Link className="vt-btn" to="/home">
@@ -361,7 +363,7 @@ export function CatalogSearchPage() {
               value={storeNameQ}
               onChange={setStoreNameQ}
               options={nameSuggestions.map((s) => ({ value: s }))}
-              placeholder="Nombre, producto, servicio…"
+              placeholder="Nombre, producto, servicio, ruta…"
               ariaLabel="Buscar en catálogo"
               matchMode="fuzzy"
             />
@@ -385,7 +387,12 @@ export function CatalogSearchPage() {
               onChange={(next) => {
                 const safe =
                   next.length === 0
-                    ? (["store", "product", "service"] as CatalogSearchKind[])
+                    ? ([
+                        "store",
+                        "product",
+                        "service",
+                        "emergent",
+                      ] as CatalogSearchKind[])
                     : (next as CatalogSearchKind[]);
                 setKinds(safe);
               }}
@@ -395,6 +402,7 @@ export function CatalogSearchPage() {
                 { value: "store", label: "Tiendas" },
                 { value: "product", label: "Productos" },
                 { value: "service", label: "Servicios" },
+                { value: "emergent", label: "Hojas de ruta" },
               ]}
             />
           </label>

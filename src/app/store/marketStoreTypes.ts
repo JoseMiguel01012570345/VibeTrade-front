@@ -119,6 +119,10 @@ export type Offer = {
   isEmergentRoutePublication?: boolean;
   /** Oferta de catálogo (producto/servicio) asociada a la publicación emergente. */
   emergentBaseOfferId?: string;
+  /** Hilo de chat de la operación (API `emergentThreadId`). */
+  emergentThreadId?: string;
+  /** Hoja de ruta persistida (API `emergentRouteSheetId`). */
+  emergentRouteSheetId?: string;
   /** Tramos (snapshot) para mapa en feed sin `routeOfferPublic` local. Misma estructura que en la API. */
   emergentRouteParadas?: EmergentRouteParadaSnapshot[];
   /** Moneda de pago (snapshot) si la hoja de ruta la definió. */
@@ -135,6 +139,8 @@ export type EmergentRouteParadaSnapshot = {
   destinoLng?: string;
   /** Moneda del precio de este tramo (API `emergentRouteParadas[].monedaPago`). */
   monedaPago?: string;
+  /** Tarifa / precio del transportista en este tramo (`precioTransportista` en API). */
+  precioTransportista?: string;
 };
 
 export type ReplyQuote = {

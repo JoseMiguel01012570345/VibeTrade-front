@@ -38,6 +38,8 @@ export function OfferCardsChunk({
   const openAuthModal = useAppStore((s) => s.openAuthModal);
   const me = useAppStore((s) => s.me);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
+  /** El prop `stores` solo incluye tiendas del lote visible; la elegibilidad de transportista debe ver todas las tiendas del usuario. */
+  const allStores = useMarketStore((s) => s.stores);
   const threads = useMarketStore((s) => s.threads);
   const sessionReady = isSessionActive || !!getSessionToken();
   return (
@@ -77,7 +79,7 @@ export function OfferCardsChunk({
           isEmergentRouteFeed &&
           sessionReady &&
           me.id !== "guest" &&
-          userHasTransportService(me.id, stores, storeCatalogs) &&
+          userHasTransportService(me.id, allStores, storeCatalogs) &&
           !buyerBlockedOnRoute;
         return (
           <div
@@ -267,7 +269,7 @@ export function OfferCardsChunk({
                           openAuthModal();
                           return;
                         }
-                        if (!userHasTransportService(me.id, stores, storeCatalogs)) {
+                        if (!userHasTransportService(me.id, allStores, storeCatalogs)) {
                           toast.error(
                             "Necesitás un servicio de transporte publicado en tu tienda para suscribirte.",
                           );

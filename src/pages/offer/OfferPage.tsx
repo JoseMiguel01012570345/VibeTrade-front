@@ -34,6 +34,9 @@ import {
 } from "../../utils/chat/chatRealtime";
 import { offerFromStoreCatalogs } from "../../utils/market/offerFromCatalog";
 import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
+import { routeOfferPublicFromEmergentCardOffer } from "../../utils/market/routeOfferPublicFromEmergentCard";
+import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
+import { mergeStoreCatalogWithLocalExtras } from "../chat/domain/storeCatalogTypes";
 import { toggleOfferLike } from "../../utils/market/offerEngagementApi";
 import { getSessionToken } from "../../utils/http/sessionToken";
 import {
@@ -157,6 +160,22 @@ export function OfferPage() {
       });
   }, [offerId, offer, offerFromCatalog]);
 
+  useLayoutEffect(() => {
+    if (!threadCatalogId || !resolvedOffer?.isEmergentRoutePublication) return;
+    const built = routeOfferPublicFromEmergentCardOffer(resolvedOffer);
+    if (!built) return;
+    useMarketStore.setState((s) => {
+      if (s.routeOfferPublic[threadCatalogId]) return s;
+      return {
+        ...s,
+        routeOfferPublic: {
+          ...s.routeOfferPublic,
+          [threadCatalogId]: built,
+        },
+      };
+    });
+  }, [threadCatalogId, resolvedOffer]);
+
   const openTramos = useMemo(
     () => routeOffer?.tramos.filter((t) => !t.assignment) ?? [],
     [routeOffer],
@@ -251,6 +270,46 @@ export function OfferPage() {
       return transportServiceOptions[0]!.serviceId;
     });
   }, [transportServiceOptions]);
+
+  /**
+   * Bootstrap deja `storeCatalogs` vacío (ver backend); sin hidratar, no se detectan servicios «Transportista».
+   */
+  const ownedStoreIdsKey = useMemo(() => {
+    if (me.id === "guest") return "";
+    return Object.entries(stores)
+      .filter(([, b]) => b.ownerUserId === me.id)
+      .map(([id]) => id)
+      .sort((a, b) => a.localeCompare(b, "es"))
+      .join("\0");
+  }, [me.id, stores]);
+
+  useEffect(() => {
+    if (!ownedStoreIdsKey || me.id === "guest") return;
+    const ids = ownedStoreIdsKey.split("\0").filter(Boolean);
+    let cancelled = false;
+    void (async () => {
+      for (const sid of ids) {
+        if (cancelled) return;
+        if (useMarketStore.getState().storeCatalogs[sid] !== undefined) continue;
+        try {
+          const data = await fetchStoreDetail(sid, { userId: me.id });
+          if (cancelled) return;
+          useMarketStore.setState((s) => ({
+            stores: { ...s.stores, [sid]: data.store },
+            storeCatalogs: {
+              ...s.storeCatalogs,
+              [sid]: mergeStoreCatalogWithLocalExtras(s.storeCatalogs[sid], data.catalog),
+            },
+          }));
+        } catch {
+          /* sin catálogo: el usuario puede abrir su tienda para cargarlo */
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [me.id, ownedStoreIdsKey]);
 
   const prevCarrierStopsOfferRef = useRef<Set<string> | null>(null);
   useEffect(() => {
@@ -447,7 +506,7 @@ export function OfferPage() {
                 ) : null}
               </div>
               <div className="relative min-h-0 flex-1">
-                <div className="pointer-events-none absolute left-2 right-2 top-2 z-[1100] flex items-center justify-between gap-2">
+                <div className="pointer-events-none absolute left-2 right-2 top-2 z-40 flex items-center justify-between gap-2">
                   <button
                     type="button"
                     className="pointer-events-auto vt-btn border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.92)] shadow-[0_6px_16px_rgba(2,6,23,0.15)] backdrop-blur-[6px] hover:bg-[rgba(255,255,255,0.98)]"
@@ -548,21 +607,29 @@ export function OfferPage() {
             {isEmergentRouteFicha ?
               (() => {
                 const legs = resolvedOffer.emergentRouteParadas
-                const anyPerLeg = legs?.some((l) => l.monedaPago?.trim())
-                if (anyPerLeg && legs?.length) {
+                const anyPerLegPay =
+                  legs?.some(
+                    (l) => l.monedaPago?.trim() || l.precioTransportista?.trim(),
+                  ) ?? false
+                if (anyPerLegPay && legs?.length) {
                   return (
                     <div className="m-0 text-sm font-extrabold text-[var(--muted)]">
                       <span className="block text-[11px] uppercase tracking-wide">
-                        Moneda por tramo
+                        Pago por tramo
                       </span>
-                      <ul className="mt-1 list-none space-y-0.5 p-0 text-[var(--text)]">
+                      <ul className="mt-1 list-none space-y-1 p-0 text-[var(--text)]">
                         {legs.map((leg, i) => {
+                          const p = leg.precioTransportista?.trim()
                           const m = leg.monedaPago?.trim()
-                          if (!m) return null
+                          if (!p && !m) return null
                           const label = String.fromCharCode(65 + Math.min(25, i))
+                          const pay = [p, m].filter(Boolean).join(" ")
                           return (
-                            <li key={i}>
-                              Tramo {label}: {m}
+                            <li key={`${label}-${p ?? ""}-${m ?? ""}`}>
+                              Tramo {label}:{" "}
+                              <span className="font-black text-[var(--text)]">
+                                {pay}
+                              </span>
                             </li>
                           )
                         })}

@@ -14,9 +14,10 @@ export type EmergentMapLeg = {
   synthetic: boolean;
 };
 
-function parseCoord(s: string | undefined): number | null {
-  if (!s) return null;
-  const n = parseFloat(s.replace(",", ".").trim());
+function parseCoord(s: string | number | undefined): number | null {
+  if (s === undefined || s === null) return null;
+  if (typeof s === "number") return Number.isFinite(s) ? s : null;
+  const n = parseFloat(String(s).replace(",", ".").trim());
   return Number.isFinite(n) ? n : null;
 }
 

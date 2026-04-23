@@ -1,6 +1,10 @@
 import { Link } from "react-router-dom";
 import { ExternalLink, Package, Store, Wrench } from "lucide-react";
-import type { CatalogOfferPreview, CatalogSearchItem } from "../../utils/market/searchStores";
+import type { Offer } from "../../app/store/useMarketStore";
+import type {
+  CatalogOfferPreview,
+  CatalogSearchItem,
+} from "../../utils/market/searchStores";
 import { websiteUrlDisplayLabel } from "../../utils/websiteUrl";
 import { StoreTrustMini } from "../../components/StoreTrustMini";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
@@ -9,6 +13,8 @@ import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
 } from "../../utils/market/toolPlaceholder";
+import { buildEmergentMapLegs } from "../../utils/map/emergentRouteMapLegs";
+import { EmergentRouteFeedMap } from "../home/EmergentRouteFeedMap";
 
 type Props = Readonly<{
   item: CatalogSearchItem;
@@ -21,12 +27,18 @@ function fmtKm(v: number): string {
 }
 
 function offerTitle(offer: CatalogOfferPreview): string {
+  if (offer.kind === "emergent")
+    return offer.name?.trim() || offer.category || "Hoja de ruta";
   if (offer.kind === "product")
     return offer.name?.trim() || offer.category || "Producto";
   return offer.tipoServicio?.trim() || offer.category || "Servicio";
 }
 
 function offerSubtitle(offer: CatalogOfferPreview): string | null {
+  if (offer.kind === "emergent") {
+    const bits = [offer.category].filter(Boolean);
+    return bits.length ? bits.join(" · ") : "Publicación de hoja de ruta";
+  }
   if (offer.kind === "product") {
     const priceText =
       offer.price && offer.currency
@@ -41,16 +53,133 @@ function offerSubtitle(offer: CatalogOfferPreview): string | null {
   return bits.length ? bits.join(" · ") : null;
 }
 
+function emergentOfferForMap(
+  preview: CatalogOfferPreview,
+  storeId: string,
+): Offer {
+  return {
+    id: preview.id,
+    storeId,
+    title: preview.name?.trim() || "Hoja de ruta",
+    price: preview.price?.trim() || "—",
+    tags: ["Hoja de ruta (publicada)"],
+    imageUrl: preview.photoUrls?.[0]?.trim() || "",
+    isEmergentRoutePublication: true,
+    emergentRouteParadas: preview.emergentRouteParadas,
+  };
+}
+
 export function CatalogOfferSearchCard({ item }: Props) {
   const { store: s, offer, distanceKm } = item;
   if (!offer) return null;
 
+  if (offer.kind === "emergent") {
+    const title = offerTitle(offer);
+    const sub = offerSubtitle(offer);
+    const desc = offer.shortDescription?.trim() ?? "";
+    const price = offer.price?.trim() || "—";
+    const mapLegs = buildEmergentMapLegs(emergentOfferForMap(offer, s.id), undefined);
+
+    return (
+      <div className="vt-card min-w-0 overflow-hidden">
+        <div className="relative h-[150px] overflow-hidden bg-gray-200 lg:h-[132px]">
+          <Link
+            to={`/offer/${offer.id}`}
+            className={cn(
+              "block h-full overflow-hidden group",
+            )}
+          >
+            <div
+              className={cn(
+                "flex h-full min-h-[150px] w-full flex-col overflow-hidden transition-transform duration-[240ms] ease-out will-change-transform lg:min-h-[132px]",
+                "group-hover:scale-[1.03]",
+              )}
+            >
+              <div className="shrink-0 border-b border-slate-200/80 bg-[#eef2f7] py-1.5 text-center text-[11px] font-black tracking-wide text-slate-800 lg:text-[10px]">
+                Hoja de ruta
+              </div>
+              <EmergentRouteFeedMap
+                legs={mapLegs}
+                mapKey={`search-map-${offer.id}`}
+                className="relative z-0 min-h-0 flex-1 overflow-hidden bg-[#e2e8f0] [&_.leaflet-control-attribution]:text-[7px] [&_.leaflet-control-attribution]:opacity-80"
+              />
+            </div>
+          </Link>
+        </div>
+
+        <div className="flex flex-col gap-2 p-3 lg:gap-2 lg:p-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1 font-black tracking-[-0.02em] text-[15px] leading-tight lg:text-sm">
+              <Link
+                to={`/offer/${offer.id}`}
+                className="line-clamp-2 text-[var(--text)] hover:underline"
+              >
+                {title}
+              </Link>
+            </div>
+            <div className="shrink-0 font-black text-[var(--text)] text-sm lg:text-xs">
+              {price}
+            </div>
+          </div>
+
+          {sub ? (
+            <p className="text-[12px] font-semibold leading-snug text-slate-600 lg:text-[11px]">
+              {sub}
+            </p>
+          ) : null}
+
+          {desc ? (
+            <p
+              className="vt-muted line-clamp-2 min-w-0 break-words text-[11px] leading-snug lg:text-[10px]"
+              title={desc.length > 120 ? desc : undefined}
+            >
+              {desc}
+            </p>
+          ) : null}
+
+          <div className="vt-muted flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] lg:text-[10px]">
+            <span className="font-semibold text-[var(--text)]">Tipo:</span>
+            <span>Hoja de ruta publicada</span>
+          </div>
+
+          <div className="flex flex-col items-end gap-1 border-t border-[var(--border)] pt-2">
+            <Link
+              to={`/store/${s.id}`}
+              className="inline-flex max-w-full items-center gap-1.5 truncate rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-2 py-1 text-[11px] font-extrabold text-[var(--text)] lg:px-1.5 lg:text-[10px]"
+            >
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--primary)]" />
+              <span className="truncate">{s.name}</span>
+            </Link>
+            {s.websiteUrl?.trim() ? (
+              <a
+                href={s.websiteUrl.trim()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex max-w-full items-center gap-1 truncate text-[10px] font-bold text-[var(--primary)] hover:underline"
+              >
+                <ExternalLink size={12} className="shrink-0" aria-hidden />
+                <span className="truncate">
+                  {websiteUrlDisplayLabel(s.websiteUrl.trim())}
+                </span>
+              </a>
+            ) : null}
+            {typeof distanceKm === "number" ? (
+              <span className="text-[10px] text-[var(--muted)]">{fmtKm(distanceKm)}</span>
+            ) : null}
+          </div>
+
+          <div className="max-w-full">
+            <StoreTrustMini score={s.trustScore} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const title = offerTitle(offer);
   const sub = offerSubtitle(offer);
   const desc =
-    offer.kind === "product"
-      ? offer.shortDescription
-      : offer.descripcion;
+    offer.kind === "product" ? offer.shortDescription : offer.descripcion;
   const accepted = offer.acceptedCurrencies ?? [];
   const photos = (offer.photoUrls ?? []).map((x) => x.trim()).filter(Boolean);
   const mainPhoto = photos[0] || "";
