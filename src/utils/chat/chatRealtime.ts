@@ -15,6 +15,7 @@ import {
 import { mergeChatSenderLabelsIntoProfileStore } from "./chatSenderLabels";
 import {
   fetchThreadRouteTramoSubscriptions,
+  fetchThreadRouteSheets,
   patchChatMessageStatus,
   type ChatMessageDto,
   type ChatThreadDto,
@@ -229,6 +230,28 @@ export function startChatRealtime(): void {
         useMarketStore
           .getState()
           .applyThreadRouteTramoSubscriptions(tid, items, me);
+
+        if (tid.startsWith("cth_") && useMarketStore.getState().threads[tid]) {
+          try {
+            const sheets = await fetchThreadRouteSheets(tid);
+            useMarketStore.setState((s) => {
+              const t = s.threads[tid];
+              if (!t) return s;
+              return {
+                ...s,
+                threads: {
+                  ...s.threads,
+                  [tid]: {
+                    ...t,
+                    routeSheets: sheets as unknown as typeof t.routeSheets,
+                  },
+                },
+              };
+            });
+          } catch {
+            /* hilo sin acceso o red */
+          }
+        }
 
         const enriched: RouteTramoSubscriptionsChangedPayload = {
           threadId: tid,

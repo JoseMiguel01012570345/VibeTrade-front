@@ -1,8 +1,10 @@
-/* Marcadores A, B, C (Leaflet divIcon) */
+/* Vértices de ruta 1…N+1 (Leaflet divIcon); ancho crece con más dígitos vía iconSize en JS */
 .leaflet-container .er-mark {
   display: flex;
   height: 28px;
-  width: 28px;
+  min-width: 28px;
+  padding: 0 5px;
+  box-sizing: border-box;
   align-items: center;
   justify-content: center;
   border-radius: 9999px;

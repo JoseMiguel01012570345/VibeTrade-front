@@ -47,7 +47,18 @@ import {
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
 import { mergeStoreCatalogWithLocalExtras } from "../chat/domain/storeCatalogTypes";
 import { toggleOfferLike } from "../../utils/market/offerEngagementApi";
+import { emergentRoutePublicationUserDescription } from "../../utils/market/emergentRouteOfferDisplay";
+import {
+  buildEmergentMapLegs,
+  tramoParadaNumeros,
+} from "../../utils/map/emergentRouteMapLegs";
+import { useLegKmForEmergentLegs } from "../../hooks/useEmergentRouteLegKm";
+import {
+  formatKmEs,
+  formatPrecioPorKmEs,
+} from "../../utils/map/routeLegMetrics";
 import { getSessionToken } from "../../utils/http/sessionToken";
+import { EmergentRouteFeedMap } from "../home/EmergentRouteFeedMap";
 import {
   isOfferPublishedForBuyerChat,
   NOT_PUBLISHED_TOAST_ES,
@@ -214,12 +225,10 @@ export function OfferPage() {
   );
 
   const stopSummaryForModal = useMemo(() => {
-    const em = !!resolvedOffer?.isEmergentRoutePublication;
     const t = routeOffer?.tramos.find((x) => x.stopId === chosenStopId);
     if (!t) return chosenStopId || "—";
-    if (em) return `Tramo ${t.orden}`;
-    return `Tramo ${t.orden}: ${t.origenLine} → ${t.destinoLine}`;
-  }, [routeOffer, chosenStopId, resolvedOffer?.isEmergentRoutePublication]);
+    return `Tramo ${t.orden}`;
+  }, [routeOffer, chosenStopId]);
 
   const [subscribeModalOpen, setSubscribeModalOpen] = useState(false);
   const [subscribeModalSubmitting, setSubscribeModalSubmitting] =
@@ -454,6 +463,13 @@ export function OfferPage() {
     );
   }, [resolvedOffer, galleryUrls]);
 
+  const fichaMapLegs = useMemo(() => {
+    if (!resolvedOffer || !routeOffer?.tramos?.length) return [];
+    return buildEmergentMapLegs(resolvedOffer, routeOffer);
+  }, [resolvedOffer, routeOffer]);
+
+  const fichaLegKm = useLegKmForEmergentLegs(fichaMapLegs);
+
   useEffect(() => {
     if (!offerId || !resolvedOffer) return;
     void trackRecommendationInteraction(offerId, "click").catch(
@@ -652,6 +668,11 @@ export function OfferPage() {
 
   const heroIsToolPlaceholder = isToolPlaceholderUrl(heroImageSrc);
   const isEmergentRouteFicha = !!resolvedOffer.isEmergentRoutePublication;
+  const showRouteMapHero = isEmergentRouteFicha && fichaMapLegs.length > 0;
+  const fichaDescriptionText = emergentRoutePublicationUserDescription(
+    resolvedOffer,
+    routeOffer,
+  );
 
   const isOwnOffer =
     !!store?.ownerUserId && me.id !== "guest" && me.id === store.ownerUserId;
@@ -673,31 +694,50 @@ export function OfferPage() {
               className="pointer-events-auto border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
             />
           </div>
-          <div
-            className={cn("relative", heroIsToolPlaceholder && "bg-gray-200")}
-          >
-            <ProtectedMediaImg
-              src={heroImageSrc}
-              alt={resolvedOffer.title}
-              wrapperClassName="block h-[260px] w-full"
-              className={cn(
-                "block h-[260px] w-full",
-                heroIsToolPlaceholder
-                  ? "vt-img-tool-placeholder p-5 sm:p-7"
-                  : "object-cover",
-              )}
-            />
-            {heroImageSrc && !heroIsToolPlaceholder ? (
-              <button
-                type="button"
-                className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
-                aria-label="Ver imagen a pantalla completa"
-                title="Ver imagen a pantalla completa"
-                onClick={() => setGalleryLightboxUrl(heroImageSrc)}
+          {showRouteMapHero ? (
+            <div className="relative isolate z-0 h-[260px] w-full overflow-hidden bg-[#e2e8f0]">
+              <EmergentRouteFeedMap
+                legs={fichaMapLegs}
+                mapKey={`offer-ficha-map-${resolvedOffer.id}`}
+                interactive={false}
+                className="h-[260px] w-full [&_.leaflet-control-attribution]:text-[8px]"
               />
-            ) : null}
-          </div>
-          {galleryUrls.length > 1 ? (
+              {offerId ? (
+                <Link
+                  to={`/offer/${encodeURIComponent(offerId)}/mapa`}
+                  className="pointer-events-auto absolute bottom-2 right-2 z-10 rounded-lg border border-white/80 bg-[rgba(255,255,255,0.9)] px-2.5 py-1.5 text-[12px] font-extrabold text-slate-800 shadow-md backdrop-blur-sm hover:bg-white"
+                >
+                  Pantalla completa
+                </Link>
+              ) : null}
+            </div>
+          ) : (
+            <div
+              className={cn("relative", heroIsToolPlaceholder && "bg-gray-200")}
+            >
+              <ProtectedMediaImg
+                src={heroImageSrc}
+                alt={resolvedOffer.title}
+                wrapperClassName="block h-[260px] w-full"
+                className={cn(
+                  "block h-[260px] w-full",
+                  heroIsToolPlaceholder
+                    ? "vt-img-tool-placeholder p-5 sm:p-7"
+                    : "object-cover",
+                )}
+              />
+              {heroImageSrc && !heroIsToolPlaceholder ? (
+                <button
+                  type="button"
+                  className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
+                  aria-label="Ver imagen a pantalla completa"
+                  title="Ver imagen a pantalla completa"
+                  onClick={() => setGalleryLightboxUrl(heroImageSrc)}
+                />
+              ) : null}
+            </div>
+          )}
+          {!showRouteMapHero && galleryUrls.length > 1 ? (
             <div className="flex gap-2 overflow-x-auto border-t border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] px-3 py-2.5">
               {galleryUrls.slice(1).map((src, i) => {
                 const thumbIsTool = isToolPlaceholderUrl(src);
@@ -810,9 +850,9 @@ export function OfferPage() {
               )}
             </div>
 
-            {resolvedOffer.description?.trim() ? (
+            {fichaDescriptionText.trim() ? (
               <p className="text-[15px] leading-relaxed text-[var(--text)]">
-                {resolvedOffer.description.trim()}
+                {fichaDescriptionText.trim()}
               </p>
             ) : null}
 
@@ -856,16 +896,6 @@ export function OfferPage() {
                 >
                   Ver ficha del producto o servicio
                 </Link>
-                {offerId &&
-                resolvedOffer.emergentRouteParadas &&
-                resolvedOffer.emergentRouteParadas.length > 0 ? (
-                  <Link
-                    to={`/offer/${encodeURIComponent(offerId)}/mapa`}
-                    className="inline-flex text-[15px] font-extrabold text-[var(--primary)] hover:underline"
-                  >
-                    Ver mapa de la ruta
-                  </Link>
-                ) : null}
               </div>
             ) : null}
 
@@ -913,28 +943,53 @@ export function OfferPage() {
                           </p>
                         ) : (
                           <div className="mt-2 flex flex-col gap-2">
-                            {openTramos.map((t) => (
-                              <label
-                                key={t.stopId}
-                                className="flex cursor-pointer items-start gap-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-2.5"
-                              >
-                                <input
-                                  type="radio"
-                                  name="tramo-pick"
-                                  className="mt-1"
-                                  checked={chosenStopId === t.stopId}
-                                  onChange={() => setPickedStopId(t.stopId)}
-                                />
-                                <span className="text-[13px] leading-snug">
-                                  <strong>Tramo {t.orden}</strong>
-                                  {isEmergentRouteFicha ? null : (
-                                    <>
-                                      : {t.origenLine} → {t.destinoLine}
-                                    </>
-                                  )}
-                                </span>
-                              </label>
-                            ))}
+                            {openTramos.map((t) => {
+                              const li = fichaMapLegs.findIndex(
+                                (l) => l.orden === t.orden,
+                              );
+                              const meta = li >= 0 ? fichaMapLegs[li] : null;
+                              const km = li >= 0 ? (fichaLegKm[li] ?? 0) : 0;
+                              const { fromN, toN } = tramoParadaNumeros(
+                                fichaMapLegs,
+                                t.orden,
+                              );
+                              const kmLine = formatKmEs(km);
+                              const rateLine = formatPrecioPorKmEs(
+                                meta?.precioTramo,
+                                meta?.monedaPago,
+                                km,
+                              );
+                              return (
+                                <label
+                                  key={t.stopId}
+                                  className="flex cursor-pointer items-start gap-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-2.5"
+                                >
+                                  <input
+                                    type="radio"
+                                    name="tramo-pick"
+                                    className="mt-1"
+                                    checked={chosenStopId === t.stopId}
+                                    onChange={() => setPickedStopId(t.stopId)}
+                                  />
+                                  <span className="min-w-0 flex-1 text-[13px] leading-snug">
+                                    <span className="font-semibold text-[var(--text)]">
+                                      <strong>Tramo {t.orden}</strong>
+                                      <span className="font-extrabold text-[var(--muted)]">
+                                        {" "}
+                                        · {fromN} → {toN}
+                                      </span>
+                                    </span>
+                                    <span className="mt-0.5 block text-[12px] font-semibold leading-snug text-[var(--muted)]">
+                                      {kmLine}
+                                      <span className="text-[var(--text)]">
+                                        {" "}
+                                        · {rateLine}
+                                      </span>
+                                    </span>
+                                  </span>
+                                </label>
+                              );
+                            })}
                           </div>
                         )}
                       </>

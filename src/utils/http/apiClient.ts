@@ -52,7 +52,8 @@ export function apiFetch(input: string, init?: RequestInit): Promise<Response> {
     (/^\/api\/v1\/market\/offers\/[^/]+\/like$/.test(path) ||
       /^\/api\/v1\/market\/offers\/[^/]+\/qa\/[^/]+\/like$/.test(path) ||
       path === "/api/v1/market/inquiries" ||
-      path === "/api/v1/market/workspace/inquiries");
+      path === "/api/v1/market/workspace/inquiries" ||
+      path === "/api/v1/routing/leg-distances");
   /**
    * Invitado: token residual sin `isSessionActive` no debe ir a bootstrap/recomendaciones guest.
    * Excepción: restaurar o cerrar sesión envían Bearer aunque el store aún no marque activa;

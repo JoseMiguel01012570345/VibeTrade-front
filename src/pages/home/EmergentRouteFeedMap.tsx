@@ -1,43 +1,37 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { EmergentMapLeg } from "../../utils/map/emergentRouteMapLegs";
+import { emergentMapWaypoints } from "../../utils/map/emergentRouteMapLegs";
 import { storeMapPinIcon } from "../../utils/map/storeMapPinIcon";
+import { cn } from "../../lib/cn";
+import { LeafletRoadSnappedRoute } from "./LeafletRoadSnappedRoute";
 import "leaflet/dist/leaflet.css";
 import "./emergentRouteMapMarkers.css";
 
-function tramoEndIcon(letter: string) {
+/** Evita que los paneles de Leaflet (z-index altos) compitan con el chrome fijo (p. ej. barra de confianza z-50). */
+const embedRootClass = "relative isolate z-0 min-h-0";
+
+function routeWaypointIcon(label: string) {
+  const w = Math.max(28, 16 + label.length * 9);
   return L.divIcon({
     className: "emergent-route-legend",
-    html: `<div class="er-mark">${letter}</div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+    html: `<div class="er-mark">${label}</div>`,
+    iconSize: [w, 28],
+    iconAnchor: [w / 2, 14],
   });
 }
 
 /** Misma capa OSM y atribución que el resto de mapas de la app (rutas, tiendas). */
-export function VibeMapTileLayer() {
+export function VibeMapTileLayer({
+  attribution = "&copy; OpenStreetMap",
+}: Readonly<{ attribution?: string }> = {}) {
   return (
     <TileLayer
       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      attribution="&copy; OpenStreetMap"
+      attribution={attribution}
     />
   );
-}
-
-function FitRouteBounds({ legs }: { legs: EmergentMapLeg[] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (legs.length === 0) return;
-    const b = L.latLngBounds(
-      legs.flatMap((l) => [
-        [l.oLat, l.oLng] as L.LatLngExpression,
-        [l.dLat, l.dLng] as L.LatLngExpression,
-      ]),
-    );
-    map.fitBounds(b, { padding: [12, 12], maxZoom: 10 });
-  }, [legs, map]);
-  return null;
 }
 
 function FitPointView({
@@ -65,13 +59,20 @@ type Props = Readonly<{
 }>;
 
 /**
- * Mapa (solo lectura) con tramos etiquetados A, B, C… en el punto (sin polilínea entre orígen/destino).
+ * Mapa (solo lectura) con N+1 marcas numeradas en los vértices de la ruta (inicio, fin de cada tramo) y trazo entre ellos.
  */
 export function EmergentRouteFeedMap({ legs, className, mapKey, interactive = false }: Props) {
+  const waypoints = useMemo(() => emergentMapWaypoints(legs), [legs]);
+  const linePositions = useMemo(
+    () => waypoints.map((w) => [w.lat, w.lng] as [number, number]),
+    [waypoints],
+  );
+  const useRoadSnapping = useMemo(() => legs.every((leg) => !leg.synthetic), [legs]);
+
   if (legs.length === 0) {
     return (
       <div
-        className={className}
+        className={cn(embedRootClass, className)}
         aria-hidden
       >
         <div className="flex h-full w-full items-center justify-center bg-[#e8eef4] text-[11px] font-bold text-[var(--muted)]">
@@ -81,14 +82,13 @@ export function EmergentRouteFeedMap({ legs, className, mapKey, interactive = fa
     );
   }
 
-  const first = legs[0]!;
-  const center: [number, number] = [
-    (first.oLat + first.dLat) / 2,
-    (first.oLng + first.dLng) / 2,
-  ];
+  const w0 = waypoints[0];
+  const w1 = waypoints[waypoints.length - 1];
+  const center: [number, number] =
+    w0 && w1 ? [(w0.lat + w1.lat) / 2, (w0.lng + w1.lng) / 2] : [0, 0];
 
   return (
-    <div className={className}>
+    <div className={cn(embedRootClass, className)}>
       <MapContainer
         key={mapKey}
         center={center}
@@ -103,19 +103,24 @@ export function EmergentRouteFeedMap({ legs, className, mapKey, interactive = fa
         attributionControl
         maxBoundsViscosity={1}
       >
-        <VibeMapTileLayer />
-        <FitRouteBounds legs={legs} />
-        {legs.map((l, i) => {
-          const midLat = (l.oLat + l.dLat) / 2;
-          const midLng = (l.oLng + l.dLng) / 2;
-          return (
-            <Marker
-              key={`mid-${l.label}-${i}`}
-              position={[midLat, midLng]}
-              icon={tramoEndIcon(l.label)}
-            />
-          );
-        })}
+        <VibeMapTileLayer
+          attribution={
+            useRoadSnapping
+              ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Routing <a href="https://project-osrm.org/">OSRM</a>'
+              : undefined
+          }
+        />
+        {linePositions.length >= 2 ? (
+          <LeafletRoadSnappedRoute positions={linePositions} useRoads={useRoadSnapping} />
+        ) : null}
+        {waypoints.map((w) => (
+          <Marker
+            key={`wp-${w.label}-${w.lat}-${w.lng}`}
+            position={[w.lat, w.lng]}
+            icon={routeWaypointIcon(w.label)}
+            zIndexOffset={400}
+          />
+        ))}
       </MapContainer>
     </div>
   );
