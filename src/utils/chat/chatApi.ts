@@ -227,6 +227,25 @@ export async function fetchThreadRouteTramoSubscriptions(
   return (await res.json()) as RouteTramoSubscriptionItemApi[]
 }
 
+export type CarrierWithdrawFromThreadApiResult = {
+  withdrawnRowCount: number
+  applyTrustPenalty: boolean
+  /** Trust persistido en servidor tras penalización (si aplica). */
+  trustScoreAfterPenalty?: number | null
+}
+
+/** Transportista: abandona el hilo y des-suscribe tramos (no borra el hilo para comprador/vendedor). */
+export async function postCarrierWithdrawFromThread(
+  threadId: string,
+): Promise<CarrierWithdrawFromThreadApiResult> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/carrier-withdraw`,
+    { method: 'POST' },
+  )
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as CarrierWithdrawFromThreadApiResult
+}
+
 export async function postAcceptRouteTramoSubscriptions(
   threadId: string,
   body: { routeSheetId: string; carrierUserId: string; stopId?: string },

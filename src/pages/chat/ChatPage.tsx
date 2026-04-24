@@ -165,6 +165,9 @@ export function ChatPage() {
   const applyThreadRouteTramoSubscriptions = useMarketStore(
     (s) => s.applyThreadRouteTramoSubscriptions,
   );
+  const refreshOfferQaFromServer = useMarketStore(
+    (s) => s.refreshOfferQaFromServer,
+  );
   const stores = useMarketStore((s) => s.stores);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
   const hasTransportService = useMemo(
@@ -606,6 +609,9 @@ export function ChatPage() {
         if (subsRs && Array.isArray(subsRs)) {
           applyThreadRouteTramoSubscriptions(tid, subsRs, meId);
         }
+        if (dto.purchaseMode && dto.offerId?.trim()) {
+          void refreshOfferQaFromServer(dto.offerId.trim());
+        }
       } catch {
         if (!cancelled) setPersistThreadError(true);
       }
@@ -613,7 +619,7 @@ export function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [threadId, applyThreadRouteTramoSubscriptions]);
+  }, [threadId, applyThreadRouteTramoSubscriptions, refreshOfferQaFromServer]);
 
   const refreshChatRouteData = useCallback(async () => {
     const tid = threadId?.trim();

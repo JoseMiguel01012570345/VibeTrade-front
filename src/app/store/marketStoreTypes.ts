@@ -558,7 +558,10 @@ export type MarketState = {
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean;
   recordChatExitFromList: (threadId: string) => void;
   /** Quita el hilo del estado local y, si es persistido, lo borra en el servidor. */
-  removeThreadFromList: (threadId: string) => Promise<void>;
+  removeThreadFromList: (
+    threadId: string,
+    opts?: { skipServerDelete?: boolean },
+  ) => Promise<void>;
   markThreadPaymentCompleted: (threadId: string) => void;
 
   subscribeRouteOfferTramo: (

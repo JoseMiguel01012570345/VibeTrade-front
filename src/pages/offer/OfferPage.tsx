@@ -14,7 +14,6 @@ import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
-import { RouteOfferPreview } from "./RouteOfferPreview";
 import { RouteTramoSubscribeModal } from "./RouteTramoSubscribeModal";
 import { OfferSaveButton } from "./OfferSaveButton";
 import { OfferCommentsSection } from "./OfferCommentsSection";
@@ -29,8 +28,6 @@ import {
   userActsAsCarrierOnTransportOffer,
   userHasTransportService,
 } from "../../utils/user/transportEligibility";
-import { buildEmergentMapLegs } from "../../utils/map/emergentRouteMapLegs";
-import { EmergentRouteFeedMap } from "../home/EmergentRouteFeedMap";
 import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
@@ -350,11 +347,6 @@ export function OfferPage() {
     [routeOffer, threads, me.id],
   );
 
-  const emergentMapLegs = useMemo(
-    () =>
-      resolvedOffer ? buildEmergentMapLegs(resolvedOffer, routeOffer) : [],
-    [resolvedOffer, routeOffer],
-  );
   const transportServiceOptions = useMemo(
     () => listUserTransportServices(me.id, stores, storeCatalogs),
     [me.id, stores, storeCatalogs],
@@ -668,85 +660,44 @@ export function OfferPage() {
     <div className="container vt-page">
       <div className="flex flex-col gap-3.5">
         <div className="vt-card relative overflow-hidden">
-          {!isEmergentRouteFicha ? (
-            <div className="pointer-events-none absolute left-3 right-3 top-3 z-[2] flex items-center justify-between gap-2">
+          <div className="pointer-events-none absolute left-3 right-3 top-3 z-[2] flex items-center justify-between gap-2">
+            <button
+              type="button"
+              className="pointer-events-auto vt-btn border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
+              onClick={() => nav(-1)}
+            >
+              <ArrowLeft size={16} />
+            </button>
+            <OfferSaveButton
+              offerId={offerId ?? ""}
+              className="pointer-events-auto border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
+            />
+          </div>
+          <div
+            className={cn("relative", heroIsToolPlaceholder && "bg-gray-200")}
+          >
+            <ProtectedMediaImg
+              src={heroImageSrc}
+              alt={resolvedOffer.title}
+              wrapperClassName="block h-[260px] w-full"
+              className={cn(
+                "block h-[260px] w-full",
+                heroIsToolPlaceholder
+                  ? "vt-img-tool-placeholder p-5 sm:p-7"
+                  : "object-cover",
+              )}
+            />
+            {heroImageSrc && !heroIsToolPlaceholder ? (
               <button
                 type="button"
-                className="pointer-events-auto vt-btn border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
-                onClick={() => nav(-1)}
-              >
-                <ArrowLeft size={16} />
-              </button>
-              <OfferSaveButton
-                offerId={offerId ?? ""}
-                className="pointer-events-auto border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
+                className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
+                aria-label="Ver imagen a pantalla completa"
+                title="Ver imagen a pantalla completa"
+                onClick={() => setGalleryLightboxUrl(heroImageSrc)}
               />
-            </div>
-          ) : null}
-          {isEmergentRouteFicha ? (
-            <div className="flex h-[260px] w-full flex-col overflow-hidden bg-[#e2e8f0]">
-              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200/90 bg-[#eef2f7] px-2.5 py-2">
-                <span className="text-sm font-black tracking-wide text-slate-800">
-                  Hoja de ruta
-                </span>
-                {offerId && emergentMapLegs.length > 0 ? (
-                  <Link
-                    to={`/offer/${encodeURIComponent(offerId)}/mapa`}
-                    className="shrink-0 text-xs font-extrabold text-blue-600 underline"
-                  >
-                    Ver mapa en grande
-                  </Link>
-                ) : null}
-              </div>
-              <div className="relative min-h-0 flex-1">
-                <div className="pointer-events-none absolute left-2 right-2 top-2 z-40 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    className="pointer-events-auto vt-btn border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.92)] shadow-[0_6px_16px_rgba(2,6,23,0.15)] backdrop-blur-[6px] hover:bg-[rgba(255,255,255,0.98)]"
-                    onClick={() => nav(-1)}
-                    aria-label="Volver"
-                  >
-                    <ArrowLeft size={16} />
-                  </button>
-                  <OfferSaveButton
-                    offerId={offerId ?? ""}
-                    className="pointer-events-auto border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.92)] shadow-[0_6px_16px_rgba(2,6,23,0.15)] backdrop-blur-[6px] hover:bg-[rgba(255,255,255,0.98)]"
-                  />
-                </div>
-                <EmergentRouteFeedMap
-                  legs={emergentMapLegs}
-                  mapKey={`offer-map-${resolvedOffer.id}`}
-                  className="absolute inset-0 h-full w-full min-h-0 [&_.leaflet-control-attribution]:text-[8px] [&_.leaflet-container]:z-0"
-                />
-              </div>
-            </div>
-          ) : (
-            <div
-              className={cn("relative", heroIsToolPlaceholder && "bg-gray-200")}
-            >
-              <ProtectedMediaImg
-                src={heroImageSrc}
-                alt={resolvedOffer.title}
-                wrapperClassName="block h-[260px] w-full"
-                className={cn(
-                  "block h-[260px] w-full",
-                  heroIsToolPlaceholder
-                    ? "vt-img-tool-placeholder p-5 sm:p-7"
-                    : "object-cover",
-                )}
-              />
-              {heroImageSrc && !heroIsToolPlaceholder ? (
-                <button
-                  type="button"
-                  className="absolute inset-0 z-[1] cursor-zoom-in bg-transparent"
-                  aria-label="Ver imagen a pantalla completa"
-                  title="Ver imagen a pantalla completa"
-                  onClick={() => setGalleryLightboxUrl(heroImageSrc)}
-                />
-              ) : null}
-            </div>
-          )}
-          {!isEmergentRouteFicha && galleryUrls.length > 1 ? (
+            ) : null}
+          </div>
+          {galleryUrls.length > 1 ? (
             <div className="flex gap-2 overflow-x-auto border-t border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] px-3 py-2.5">
               {galleryUrls.slice(1).map((src, i) => {
                 const thumbIsTool = isToolPlaceholderUrl(src);
@@ -794,56 +745,6 @@ export function OfferPage() {
                 {resolvedOffer.price}
               </div>
             </div>
-            {isEmergentRouteFicha
-              ? (() => {
-                  const legs = resolvedOffer.emergentRouteParadas;
-                  const anyPerLegPay =
-                    legs?.some(
-                      (l) =>
-                        l.monedaPago?.trim() || l.precioTransportista?.trim(),
-                    ) ?? false;
-                  if (anyPerLegPay && legs?.length) {
-                    return (
-                      <div className="m-0 text-sm font-extrabold text-[var(--muted)]">
-                        <span className="block text-[11px] uppercase tracking-wide">
-                          Pago por tramo
-                        </span>
-                        <ul className="mt-1 list-none space-y-1 p-0 text-[var(--text)]">
-                          {legs.map((leg, i) => {
-                            const p = leg.precioTransportista?.trim();
-                            const m = leg.monedaPago?.trim();
-                            if (!p && !m) return null;
-                            const label = String.fromCharCode(
-                              65 + Math.min(25, i),
-                            );
-                            const pay = [p, m].filter(Boolean).join(" ");
-                            return (
-                              <li key={`${label}-${p ?? ""}-${m ?? ""}`}>
-                                Tramo {label}:{" "}
-                                <span className="font-black text-[var(--text)]">
-                                  {pay}
-                                </span>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    );
-                  }
-                  if (resolvedOffer.emergentMonedaPago?.trim()) {
-                    return (
-                      <p className="m-0 text-sm font-extrabold text-[var(--muted)]">
-                        Moneda de pago:{" "}
-                        <span className="text-[var(--text)]">
-                          {resolvedOffer.emergentMonedaPago.trim()}
-                        </span>
-                      </p>
-                    );
-                  }
-                  return null;
-                })()
-              : null}
-
             <div className="flex flex-wrap items-center gap-2">
               {sessionReady && me.id !== "guest" ? (
                 <button
@@ -909,7 +810,7 @@ export function OfferPage() {
               )}
             </div>
 
-            {resolvedOffer.description?.trim() && !isEmergentRouteFicha ? (
+            {resolvedOffer.description?.trim() ? (
               <p className="text-[15px] leading-relaxed text-[var(--text)]">
                 {resolvedOffer.description.trim()}
               </p>
@@ -948,23 +849,28 @@ export function OfferPage() {
 
             {resolvedOffer.isEmergentRoutePublication &&
             resolvedOffer.emergentBaseOfferId ? (
-              <div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <Link
                   to={`/offer/${resolvedOffer.emergentBaseOfferId}`}
                   className="inline-flex text-[15px] font-extrabold text-[var(--primary)] hover:underline"
                 >
                   Ver ficha del producto o servicio
                 </Link>
+                {offerId &&
+                resolvedOffer.emergentRouteParadas &&
+                resolvedOffer.emergentRouteParadas.length > 0 ? (
+                  <Link
+                    to={`/offer/${encodeURIComponent(offerId)}/mapa`}
+                    className="inline-flex text-[15px] font-extrabold text-[var(--primary)] hover:underline"
+                  >
+                    Ver mapa de la ruta
+                  </Link>
+                ) : null}
               </div>
             ) : null}
 
             {routeOffer ? (
               <div id="hoja-suscribir" className="scroll-mt-20 space-y-0">
-                <RouteOfferPreview
-                  state={routeOffer}
-                  className="mt-1"
-                  showTramoAddresses={!isEmergentRouteFicha}
-                />
                 {actingAsCarrierOnThisOffer ? (
                   <div className="mt-3 rounded-[14px] border border-[color-mix(in_oklab,var(--primary)_28%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] p-3.5">
                     <div className="text-sm font-black tracking-tight">
@@ -1082,21 +988,18 @@ export function OfferPage() {
                             resolvedOffer.id,
                             "chat_start",
                           ).catch(() => undefined);
-                          void (async () => {
-                            const threadId = await ensureThreadForOffer(
-                              resolvedOffer.id,
-                              {
-                                buyerId: me.id,
-                              },
+                          const opThreadId =
+                            threadForThisOffer?.id?.trim() ||
+                            routeOffer?.threadId?.trim() ||
+                            resolvedOffer.emergentThreadId?.trim() ||
+                            "";
+                          if (!opThreadId.startsWith("cth_")) {
+                            toast.error(
+                              "No se encontró el hilo de esta operación. Recargá la ficha o entrá desde la notificación del chat.",
                             );
-                            if (!threadId) {
-                              toast.error(
-                                "Aún no hay conversación con un comprador. Se abrirá cuando alguien te escriba.",
-                              );
-                              return;
-                            }
-                            nav(`/chat/${threadId}`);
-                          })();
+                            return;
+                          }
+                          nav(`/chat/${opThreadId}`);
                         }}
                       >
                         Ir al chat de la operación

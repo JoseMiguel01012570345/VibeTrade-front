@@ -74,7 +74,7 @@ export function createChatMessagesSlice(
   | "sendDocsBundle"
 > {
   return {
-    onParticipantLeftFromServer: (threadId, _userId, displayName) => {
+    onParticipantLeftFromServer: (threadId, userId, displayName) => {
       const text = `${displayName} salió del chat`;
       const m: Message = {
         id: `sys_leave_${uid("m")}`,
@@ -83,15 +83,20 @@ export function createChatMessagesSlice(
         text,
         at: Date.now(),
       };
+      const leftId = userId?.trim() ?? "";
       set((s) => {
         const t = s.threads[threadId];
         if (!t) return s;
+        const cc = t.chatCarriers?.filter((c) => c.id !== leftId) ?? [];
+        const chatCarriers =
+          leftId.length > 0 && cc.length !== (t.chatCarriers?.length ?? 0) ? cc : t.chatCarriers;
         return {
           ...s,
           threads: {
             ...s.threads,
             [threadId]: {
               ...t,
+              ...(chatCarriers !== t.chatCarriers ? { chatCarriers } : {}),
               messages: normalizeThreadMessages([...t.messages, m]),
             },
           },

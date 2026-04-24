@@ -6,7 +6,6 @@ import type { RouteOfferPublicState } from "../../app/store/marketStoreTypes";
 import type { Offer, StoreBadge } from "../../app/store/useMarketStore";
 import { useAppStore } from "../../app/store/useAppStore";
 import { useMarketStore } from "../../app/store/useMarketStore";
-import { RouteOfferPreview } from "../offer/RouteOfferPreview";
 import { OfferSaveButton } from "../offer/OfferSaveButton";
 import { ExternalLink, Heart, MessageCircle } from "lucide-react";
 import { websiteUrlDisplayLabel } from "../../utils/websiteUrl";
@@ -52,9 +51,8 @@ export function OfferCardsChunk({
           (o.emergentBaseOfferId
             ? routeOfferPublic[o.emergentBaseOfferId]
             : undefined);
-        const isEmergentRouteFeed =
-          o.isEmergentRoutePublication === true ||
-          (o.tags?.includes("Hoja de ruta (publicada)") && !!routePreview);
+        /** Solo publicaciones `emo_*`: el mapa y CTA de suscripción. No mezclar con `routeOfferPublic` hidratado por el chat (suscriptores), para no mutar la tarjeta en el feed. */
+        const isEmergentRouteFeed = o.isEmergentRoutePublication === true;
         const descPreview = isEmergentRouteFeed
           ? ""
           : offerDescriptionPreview(descFull);
@@ -292,12 +290,6 @@ export function OfferCardsChunk({
                     </button>
                   )}
                 </div>
-              ) : routePreview ? (
-                <RouteOfferPreview
-                  state={routePreview}
-                  compact
-                  className="mt-2.5"
-                />
               ) : null}
             </div>
           </div>

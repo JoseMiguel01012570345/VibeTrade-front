@@ -1,6 +1,7 @@
 import type {
   MarketState,
   RouteOfferPublicState,
+  RouteOfferTramoAssignment,
   Thread,
   ThreadChatCarrier,
 } from "../../../app/store/marketStoreTypes";
@@ -21,44 +22,93 @@ function routeOfferPublicKeyForThread(
   return found?.[0];
 }
 
-function viewerIsBuyerOrSellerForThread(
-  thread: Thread,
-  viewerId: string,
-): boolean {
-  const v = viewerId.trim();
-  if (!v) return false;
-  if (thread.buyerUserId?.trim() === v) return true;
-  const sellerUid =
-    thread.sellerUserId?.trim() || thread.store?.ownerUserId?.trim();
-  return sellerUid === v;
+function normSubStatus(s: string | undefined): string {
+  return (s ?? "").trim().toLowerCase();
 }
 
-/** Comprador/vendedor: fusionar filas de todos los transportistas en la misma hoja (GET lista completa). */
-function mergeTramoSubscriptionsIntoRouteOfferForAllCarriers(
+/** Elige la fila que debe pintarse en un tramo a partir del GET (una entrada por stopId). */
+function pickSubscriptionRowForStop(
+  rows: RouteTramoSubscriptionItemApi[],
+): RouteTramoSubscriptionItemApi | undefined {
+  if (!rows.length) return undefined;
+  const active = rows.filter((x) => {
+    const st = normSubStatus(x.status);
+    return st !== "rejected" && st !== "withdrawn";
+  });
+  if (!active.length) return undefined;
+  const confirmed = active.filter((x) => normSubStatus(x.status) === "confirmed");
+  const pool = confirmed.length ? confirmed : active;
+  return pool.sort((a, b) => b.createdAtUnixMs - a.createdAtUnixMs)[0];
+}
+
+function assignmentFromSubscriptionRow(
+  sub: RouteTramoSubscriptionItemApi,
+): RouteOfferTramoAssignment {
+  const raw = normSubStatus(sub.status);
+  const status =
+    raw === "confirmed" ? ("confirmed" as const) : ("pending" as const);
+  return {
+    userId: sub.carrierUserId.trim(),
+    displayName: sub.displayName?.trim() || "Transportista",
+    phone: sub.phone?.trim() ?? "",
+    trustScore: sub.trustScore ?? 0,
+    ...(sub.transportServiceLabel?.trim()
+      ? { vehicleLabel: sub.transportServiceLabel.trim() }
+      : {}),
+    ...(sub.storeServiceId?.trim()
+      ? { storeServiceId: sub.storeServiceId.trim() }
+      : {}),
+    status,
+  };
+}
+
+/**
+ * Reconstruye asignaciones solo desde el GET del hilo (autoritativo).
+ * Evita dejar “confirmado” u otro transportista en un tramo cuando ya no hay fila en servidor
+ * (el merge incremental por transportista conservaba el `t` anterior).
+ */
+function rebuildRouteOfferAssignmentsFromThreadItems(
   ro: RouteOfferPublicState | undefined,
   items: RouteTramoSubscriptionItemApi[],
 ): RouteOfferPublicState | undefined {
   if (!ro) return ro;
   const rsid = ro.routeSheetId?.trim() ?? "";
   if (!rsid) return ro;
-  const carrierIds = [
-    ...new Set(
-      items
-        .filter((x) => x.routeSheetId?.trim() === rsid)
-        .map((x) => x.carrierUserId?.trim())
-        .filter((c): c is string => !!c?.length),
-    ),
-  ].sort();
-  let merged: RouteOfferPublicState = ro;
-  let changed = false;
-  for (const cid of carrierIds) {
-    const next = mergeTramoSubscriptionsIntoRouteOffer(merged, items, cid);
-    if (next !== undefined && next !== merged) {
-      merged = next;
-      changed = true;
-    }
+  const forSheet = items.filter((x) => x.routeSheetId?.trim() === rsid);
+  const byStop = new Map<string, RouteTramoSubscriptionItemApi[]>();
+  for (const it of forSheet) {
+    const sid = it.stopId?.trim() ?? "";
+    if (!sid) continue;
+    const arr = byStop.get(sid) ?? [];
+    arr.push(it);
+    byStop.set(sid, arr);
   }
-  return changed ? merged : ro;
+  let changed = false;
+  const nextTramos = ro.tramos.map((t) => {
+    const picked = pickSubscriptionRowForStop(byStop.get(t.stopId) ?? []);
+    if (!picked) {
+      if (t.assignment !== undefined) {
+        changed = true;
+        return { ...t, assignment: undefined };
+      }
+      return t;
+    }
+    const nextAsg = assignmentFromSubscriptionRow(picked);
+    const cur = t.assignment;
+    if (
+      cur?.userId === nextAsg.userId &&
+      cur.status === nextAsg.status &&
+      cur.phone === nextAsg.phone &&
+      cur.displayName === nextAsg.displayName &&
+      (cur.vehicleLabel ?? "") === (nextAsg.vehicleLabel ?? "") &&
+      (cur.storeServiceId ?? "") === (nextAsg.storeServiceId ?? "")
+    ) {
+      return t;
+    }
+    changed = true;
+    return { ...t, assignment: nextAsg };
+  });
+  return changed ? { ...ro, tramos: nextTramos } : ro;
 }
 
 function tramoDescFromItem(
@@ -115,6 +165,44 @@ function mergeChatCarriersForConfirmedItems(
   return chatCarriers;
 }
 
+/** Lista de integrantes transportista en el hilo: solo filas confirmadas del GET (retiros / withdrawn no entran). */
+function buildChatCarriersFromConfirmedSubscriptionItems(
+  confirmedItems: RouteTramoSubscriptionItemApi[],
+  ro: RouteOfferPublicState | undefined,
+): ThreadChatCarrier[] {
+  if (!confirmedItems.length) return [];
+  const byCarrier = new Map<string, RouteTramoSubscriptionItemApi[]>();
+  for (const it of confirmedItems) {
+    const c = it.carrierUserId?.trim();
+    if (!c) continue;
+    const arr = byCarrier.get(c) ?? [];
+    arr.push(it);
+    byCarrier.set(c, arr);
+  }
+  const seed = {
+    id: "",
+    offerId: "",
+    storeId: "",
+    store: {
+      id: "",
+      name: "",
+      verified: false,
+      categories: [] as string[],
+      transportIncluded: false,
+      trustScore: 0,
+    },
+    messages: [],
+    chatCarriers: [],
+  } satisfies Thread;
+  let cc: ThreadChatCarrier[] = [];
+  let acc: Thread = seed;
+  for (const rows of byCarrier.values()) {
+    cc = mergeChatCarriersForConfirmedItems({ ...acc, chatCarriers: cc }, rows, ro);
+    acc = { ...acc, chatCarriers: cc };
+  }
+  return cc;
+}
+
 export function mergeTramoSubscriptionsIntoRouteOffer(
   ro: RouteOfferPublicState | undefined,
   items: RouteTramoSubscriptionItemApi[],
@@ -127,57 +215,61 @@ export function mergeTramoSubscriptionsIntoRouteOffer(
       x.carrierUserId?.trim() === uid &&
       x.routeSheetId?.trim() === ro.routeSheetId?.trim(),
   );
-  if (!mine.length) return ro;
-
   const byStop = new Map(mine.map((x) => [x.stopId, x]));
   let changed = false;
   const nextTramos = ro.tramos.map((t) => {
     const sub = byStop.get(t.stopId);
-    if (!sub) return t;
-    const raw = sub.status?.trim().toLowerCase() ?? "";
-    if (raw === "rejected") {
-      const cur = t.assignment;
-      if (cur?.userId === uid) {
-        changed = true;
-        return { ...t, assignment: undefined };
+    if (sub) {
+      const raw = sub.status?.trim().toLowerCase() ?? "";
+      if (raw === "rejected" || raw === "withdrawn") {
+        const cur = t.assignment;
+        if (cur?.userId === uid) {
+          changed = true;
+          return { ...t, assignment: undefined };
+        }
+        return t;
       }
-      return t;
+      const status =
+        raw === "confirmed" ? ("confirmed" as const) : ("pending" as const);
+      const nextAsg = {
+        userId: uid,
+        displayName: sub.displayName?.trim() || "Transportista",
+        phone: sub.phone?.trim() ?? "",
+        trustScore: sub.trustScore ?? 0,
+        ...(sub.transportServiceLabel?.trim()
+          ? { vehicleLabel: sub.transportServiceLabel.trim() }
+          : {}),
+        ...(sub.storeServiceId?.trim()
+          ? { storeServiceId: sub.storeServiceId.trim() }
+          : {}),
+        status,
+      };
+      const cur = t.assignment;
+      if (
+        cur?.userId === nextAsg.userId &&
+        cur.status === nextAsg.status &&
+        cur.phone === nextAsg.phone &&
+        cur.displayName === nextAsg.displayName &&
+        (cur.vehicleLabel ?? "") === (nextAsg.vehicleLabel ?? "") &&
+        (cur.storeServiceId ?? "") === (nextAsg.storeServiceId ?? "")
+      ) {
+        return t;
+      }
+      changed = true;
+      return { ...t, assignment: nextAsg };
     }
-    const status =
-      raw === "confirmed" ? ("confirmed" as const) : ("pending" as const);
-    const nextAsg = {
-      userId: uid,
-      displayName: sub.displayName?.trim() || "Transportista",
-      phone: sub.phone?.trim() ?? "",
-      trustScore: sub.trustScore ?? 0,
-      ...(sub.transportServiceLabel?.trim()
-        ? { vehicleLabel: sub.transportServiceLabel.trim() }
-        : {}),
-      ...(sub.storeServiceId?.trim()
-        ? { storeServiceId: sub.storeServiceId.trim() }
-        : {}),
-      status,
-    };
-    const cur = t.assignment;
-    if (
-      cur?.userId === nextAsg.userId &&
-      cur.status === nextAsg.status &&
-      cur.phone === nextAsg.phone &&
-      cur.displayName === nextAsg.displayName &&
-      (cur.vehicleLabel ?? "") === (nextAsg.vehicleLabel ?? "") &&
-      (cur.storeServiceId ?? "") === (nextAsg.storeServiceId ?? "")
-    ) {
-      return t;
+    if (t.assignment?.userId === uid) {
+      changed = true;
+      return { ...t, assignment: undefined };
     }
-    changed = true;
-    return { ...t, assignment: nextAsg };
+    return t;
   });
   return changed ? { ...ro, tramos: nextTramos } : ro;
 }
 
 /**
  * Aplica filas del GET de suscripciones al estado local: oferta pública y chatCarriers.
- * — Oferta pública: comprador/vendedor fusionan todos los transportistas; el transportista solo sus filas (`mine`).
+ * — Oferta pública: comprador/vendedor y transportistas con tramo confirmado fusionan todos los transportistas (misma vista).
  * — Integrantes (chatCarriers): todos los confirmados en el hilo, misma lista para cualquier rol (el GET incluye confirmados ajenos si sos transportista).
  */
 export function applyViewerRouteTramoSubscriptions(
@@ -193,8 +285,6 @@ export function applyViewerRouteTramoSubscriptions(
   const thread = state.threads[tid];
   if (!thread) return null;
 
-  const buyerOrSeller = viewerIsBuyerOrSellerForThread(thread, vid);
-  const mine = items.filter((x) => x.carrierUserId?.trim() === vid);
   const ro = resolveRouteOfferPublicForThread(state, thread);
   const key = routeOfferPublicKeyForThread(state, thread);
 
@@ -202,54 +292,28 @@ export function applyViewerRouteTramoSubscriptions(
   let threads = state.threads;
 
   if (ro && key) {
-    if (buyerOrSeller) {
-      const mergedRo = mergeTramoSubscriptionsIntoRouteOfferForAllCarriers(
-        ro,
-        items,
-      );
-      if (mergedRo !== undefined && mergedRo !== ro) {
-        routeOfferPublic = { ...state.routeOfferPublic, [key]: mergedRo };
-      }
-    } else {
-      const mergedRo = mergeTramoSubscriptionsIntoRouteOffer(ro, mine, vid);
-      if (mergedRo && mergedRo !== ro) {
-        routeOfferPublic = { ...state.routeOfferPublic, [key]: mergedRo };
-      }
+    const mergedRo = rebuildRouteOfferAssignmentsFromThreadItems(ro, items);
+    if (mergedRo !== undefined && mergedRo !== ro) {
+      routeOfferPublic = { ...state.routeOfferPublic, [key]: mergedRo };
     }
   }
 
   const confirmedAll = items.filter(
     (x) => x.status?.trim().toLowerCase() === "confirmed",
   );
-  if (confirmedAll.length) {
-    const th0 = threads[tid] ?? thread;
-    const roForCarrier = resolveRouteOfferPublicForThread(
-      { ...state, routeOfferPublic },
-      th0,
-    );
-    let cc = th0.chatCarriers ?? [];
-    const byCarrier = new Map<string, RouteTramoSubscriptionItemApi[]>();
-    for (const it of confirmedAll) {
-      const c = it.carrierUserId?.trim();
-      if (!c) continue;
-      const arr = byCarrier.get(c) ?? [];
-      arr.push(it);
-      byCarrier.set(c, arr);
-    }
-    let thAcc = th0;
-    for (const rows of byCarrier.values()) {
-      cc = mergeChatCarriersForConfirmedItems(
-        { ...thAcc, chatCarriers: cc },
-        rows,
-        roForCarrier,
-      );
-      thAcc = { ...thAcc, chatCarriers: cc };
-    }
-    threads = {
-      ...threads,
-      [tid]: { ...th0, chatCarriers: cc },
-    };
-  }
+  const th0 = threads[tid] ?? thread;
+  const roForCarrier = resolveRouteOfferPublicForThread(
+    { ...state, routeOfferPublic },
+    th0,
+  );
+  const ccNext = buildChatCarriersFromConfirmedSubscriptionItems(
+    confirmedAll,
+    roForCarrier,
+  );
+  threads = {
+    ...threads,
+    [tid]: { ...th0, chatCarriers: ccNext },
+  };
 
   if (routeOfferPublic === state.routeOfferPublic && threads === state.threads)
     return null;

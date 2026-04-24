@@ -8,10 +8,14 @@ import { threadHasAcceptedAgreement, useMarketStore } from '../../app/store/useM
 import {
   buyerFirstNameForThread,
   chatThreadHeaderTitle,
+  resolveBuyerUserId,
   resolveSellerUserId,
 } from '../../utils/chat/chatParticipantLabels'
 import { cn } from '../../lib/cn'
 import { notifyChatParticipantsUserLeft } from '../../utils/chat/chatRealtime'
+import { postCarrierWithdrawFromThread } from '../../utils/chat/chatApi'
+import { getSessionToken } from '../../utils/http/sessionToken'
+import { CARRIER_ROUTE_EXIT_TRUST_PENALTY } from './components/modals/TrustRiskEditConfirmModal'
 import { ChatLeaveConfirmModal } from './components/modals/ChatLeaveConfirmModal'
 import { messagePreviewLine } from './lib/chatAttachments'
 
@@ -55,6 +59,7 @@ function fmtShort(ts: number) {
 export function ChatListPage() {
   const me = useAppStore((s) => s.me)
   const profileDisplayNames = useAppStore((s) => s.profileDisplayNames)
+  const setTrustScore = useAppStore((s) => s.setTrustScore)
   const threads = useMarketStore((s) => s.threads)
   const offers = useMarketStore((s) => s.offers)
   const recordChatExitFromList = useMarketStore((s) => s.recordChatExitFromList)
@@ -64,21 +69,59 @@ export function ChatListPage() {
   async function runExitChatAfterConfirm(threadId: string) {
     const th = threads[threadId]
     if (!th) return
-    const hadAccepted = threadHasAcceptedAgreement(th)
-    if (hadAccepted) {
-      const reason = globalThis.prompt('Motivo para salir del chat')
-      if (reason == null || !String(reason).trim()) return
-      recordChatExitFromList(threadId)
-      toast('Salida registrada. Podría revisarse y afectar tu confianza. El chat se quitó de tu lista.', {
-        icon: '⚠️',
-      })
-    } else {
-      toast.success('Chat eliminado de tu lista. Sin acuerdo aceptado, sin impacto en tu confianza.')
+    const buyerId = resolveBuyerUserId(th, me.id)
+    const sellerId = resolveSellerUserId(th)
+    const isBuyerOrSeller =
+      me.id === buyerId || (sellerId != null && me.id === sellerId)
+
+    let withdrewAsCarrier = false
+    let notifiedParticipantsBeforeCarrierWithdraw = false
+    if (!isBuyerOrSeller && threadId.startsWith('cth_') && getSessionToken()) {
+      await notifyChatParticipantsUserLeft(threadId)
+      notifiedParticipantsBeforeCarrierWithdraw = true
+      try {
+        const r = await postCarrierWithdrawFromThread(threadId)
+        if (r.withdrawnRowCount > 0) {
+          withdrewAsCarrier = true
+          if (r.applyTrustPenalty) {
+            const nextTrust =
+              typeof r.trustScoreAfterPenalty === 'number' ?
+                r.trustScoreAfterPenalty
+              : Math.max(-10_000, me.trustScore - CARRIER_ROUTE_EXIT_TRUST_PENALTY)
+            setTrustScore(nextTrust)
+            toast(
+              `Tu barra de confianza se ajustó en −${CARRIER_ROUTE_EXIT_TRUST_PENALTY} por abandonar la ruta antes de entregarla (demo).`,
+              { icon: '⚠️' },
+            )
+          } else {
+            toast.success('Te des-suscribiste de los tramos. El chat sigue para comprador y vendedor.')
+          }
+        }
+      } catch {
+        /* sin suscripciones activas o error de red */
+      }
     }
-    if (threadId.startsWith('cth_')) {
+
+    const hadAccepted = threadHasAcceptedAgreement(th)
+    if (isBuyerOrSeller) {
+      if (hadAccepted) {
+        const reason = globalThis.prompt('Motivo para salir del chat')
+        if (reason == null || !String(reason).trim()) return
+        recordChatExitFromList(threadId)
+        toast('Salida registrada. Podría revisarse y afectar tu confianza. El chat se quitó de tu lista.', {
+          icon: '⚠️',
+        })
+      } else {
+        toast.success('Chat eliminado de tu lista. Sin acuerdo aceptado, sin impacto en tu confianza.')
+      }
+    } else if (!withdrewAsCarrier) {
+      toast.success('Chat quitado de tu lista.')
+    }
+
+    if (threadId.startsWith('cth_') && !notifiedParticipantsBeforeCarrierWithdraw) {
       await notifyChatParticipantsUserLeft(threadId)
     }
-    await removeThreadFromList(threadId)
+    await removeThreadFromList(threadId, { skipServerDelete: !isBuyerOrSeller })
   }
 
   const rows = useMemo(() => {
@@ -111,9 +154,10 @@ export function ChatListPage() {
       <div className="mb-4">
         <h1 className="vt-h1">Chats</h1>
         <div className="vt-muted">
-          Tus conversaciones con negocios (una por oferta en esta demo). «Salir» <strong>elimina el chat de tu lista</strong>
-          . Si <strong>no</strong> hay ningún acuerdo aceptado, no pedimos motivo y no afecta tu confianza (demo). Si ya
-          aceptaste un acuerdo, pedimos el motivo de salida y la plataforma puede revisar el caso.
+          Tus conversaciones con negocios (una por oferta en esta demo). «Salir» <strong>elimina el chat de tu lista</strong>.
+          Como transportista con tramos confirmados, salir antes de que la hoja esté entregada puede des-suscribirte, limpiar
+          tus datos en la ruta y ajustar tu barra de confianza (demo). Si sos comprador o vendedor y no hay acuerdo aceptado,
+          no pedimos motivo; si ya lo hay, pedimos motivo y puede revisarse el caso.
         </div>
       </div>
 

@@ -47,7 +47,11 @@ subscribeRouteOfferTramo: (offerId, stopId, carrier, vehicleLabel, storeServiceI
     const ti = ro.tramos.findIndex((t) => t.stopId === stopId)
     if (ti < 0) return s
     const tr = ro.tramos[ti]
-    if (tr.assignment?.status === 'confirmed' || tr.assignment?.status === 'pending') return s
+    const asg0 = tr.assignment
+    if (asg0) {
+      if (asg0.userId !== carrier.userId) return s
+      if (asg0.status === 'confirmed' || asg0.status === 'pending') return s
+    }
     const nextTramos = ro.tramos.map((t, i) =>
       i === ti ?
         {

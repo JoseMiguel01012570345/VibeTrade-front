@@ -87,7 +87,7 @@ export function subscribersFromApiRouteTramoItems(
     const uid = it.carrierUserId?.trim();
     if (!uid) continue;
     const raw = it.status?.trim().toLowerCase() ?? "";
-    if (raw === "rejected") continue;
+    if (raw === "rejected" || raw === "withdrawn") continue;
     const st = raw === "confirmed" ? ("confirmed" as const) : ("pending" as const);
     const tr: RouteOfferSubscriberTramo = {
       stopId: it.stopId,

@@ -122,7 +122,7 @@ export function ChatRouteSubscribersPanel({
         return groups.some((g) => g.stopId === prevT) ? prevT : null;
       });
       const ch = p.change.toLowerCase();
-      if (ch === "accept" || ch === "reject") {
+      if (ch === "accept" || ch === "reject" || ch === "withdraw") {
         void onSubscriptionsChanged?.();
       }
     });

@@ -896,10 +896,10 @@ recordChatExitFromList: (threadId) => {
   })
 },
 
-removeThreadFromList: async (threadId) => {
+removeThreadFromList: async (threadId, opts?: { skipServerDelete?: boolean }) => {
   if (threadId.startsWith('cth_')) {
     void disconnectFromChatThread(threadId)
-    if (getSessionToken()) {
+    if (getSessionToken() && !opts?.skipServerDelete) {
       try {
         await deleteChatThread(threadId)
       } catch (e) {

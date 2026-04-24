@@ -255,6 +255,8 @@ export function startChatRealtime(): void {
             "Se confirmó un transportista en la hoja de ruta."
           : change === "reject" ?
             "Se rechazó una solicitud en la hoja de ruta."
+          : change === "withdraw" ?
+            "Un transportista se retiró de la hoja de ruta."
           : "Se actualizaron las suscripciones a la hoja de ruta.";
         toast.success(msg);
       })();

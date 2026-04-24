@@ -51,3 +51,6 @@ export function TrustRiskEditConfirmModal({ open, onClose, onConfirm, subjectLab
 
 /** Puntos que resta el demo al vendedor al guardar una edición confirmada tras el aviso. */
 export const SELLER_TRUST_PENALTY_ON_EDIT = 3
+
+/** Demo: salida del transportista con tramos confirmados antes de entregar la ruta. */
+export const CARRIER_ROUTE_EXIT_TRUST_PENALTY = 3
