@@ -21,6 +21,9 @@ export type ChatThreadDto = {
   buyerDisplayName?: string | null
   /** Foto de perfil del comprador (`/api/v1/media/…`; usar componente protegido en UI). */
   buyerAvatarUrl?: string | null
+  partyExitedUserId?: string | null
+  partyExitedReason?: string | null
+  partyExitedAtUtc?: string | null
 }
 
 /** Aligned with backend <see cref="VibeTrade.Backend.Data.ChatMessageStatus" /> (camelCase JSON). */
@@ -156,6 +159,24 @@ export async function deleteChatThread(threadId: string): Promise<void> {
     method: 'DELETE',
   })
   if (!res.ok && res.status !== 404) {
+    const t = await res.text().catch(() => '')
+    throw new Error(t || `HTTP ${res.status}`)
+  }
+}
+
+/** Comprador/vendedor con acuerdo aceptado: oculta el hilo solo para quien sale; el resto conserva el chat. */
+export async function postPartySoftLeaveChatThread(
+  threadId: string,
+  reason: string,
+): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/party-soft-leave`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason.trim() }),
+    },
+  )
+  if (!res.ok) {
     const t = await res.text().catch(() => '')
     throw new Error(t || `HTTP ${res.status}`)
   }

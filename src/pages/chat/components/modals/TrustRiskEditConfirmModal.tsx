@@ -60,5 +60,8 @@ export function TrustRiskEditConfirmModal({
 /** Puntos que resta el demo a la tienda (rechazo de edición por transportista, eliminar hoja con confirmados, etc.). */
 export const SELLER_TRUST_PENALTY_ON_EDIT = 3
 
+/** Por cada integrante del chat (comprador, vendedor, transportistas) al salir con acuerdo aceptado. */
+export const CHAT_PARTY_EXIT_TRUST_PER_MEMBER = 1
+
 /** Demo: salida del transportista con tramos confirmados antes de entregar la ruta. */
 export const CARRIER_ROUTE_EXIT_TRUST_PENALTY = 3

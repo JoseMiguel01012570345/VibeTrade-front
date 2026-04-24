@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronRight,
   ExternalLink,
+  ScrollText,
   Truck,
 } from "lucide-react";
 import { cn } from "../../lib/cn";
@@ -15,6 +16,11 @@ import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 import { StoreLocationPreview } from "./StoreLocationPreview";
 import { StoreTrustMini } from "../../components/StoreTrustMini";
+import { TrustHistoryModal } from "../../components/TrustHistoryModal";
+import { useAppStore } from "../../app/store/useAppStore";
+import { EMPTY_TRUST_LEDGER_ENTRIES } from "../../app/store/trustLedgerTypes";
+import { getSessionToken } from "../../utils/http/sessionToken";
+import { fetchStoreTrustHistory } from "../../utils/trust/trustLedgerApi";
 import type { StoreDetailOwner } from "../../utils/market/fetchStoreDetail";
 import { websiteUrlDisplayLabel } from "../../utils/websiteUrl";
 import { profileSectionPath } from "../../utils/navigation/profilePaths";
@@ -34,6 +40,34 @@ export function StoreIdentityBlock({
   const [avatarLightboxUrl, setAvatarLightboxUrl] = useState<string | null>(
     null,
   );
+  const [trustHistoryOpen, setTrustHistoryOpen] = useState(false);
+  const [trustHistoryLoading, setTrustHistoryLoading] = useState(false);
+  const storeTrustEntries = useAppStore(
+    (s) => s.storeTrustLedger[store.id] ?? EMPTY_TRUST_LEDGER_ENTRIES,
+  );
+
+  useEffect(() => {
+    if (!trustHistoryOpen) return;
+    const sid = store.id?.trim();
+    if (!sid) return;
+    if (!getSessionToken()) return;
+    let cancelled = false;
+    setTrustHistoryLoading(true);
+    void fetchStoreTrustHistory(sid)
+      .then((list) => {
+        if (cancelled) return;
+        useAppStore.setState((s) => ({
+          storeTrustLedger: { ...s.storeTrustLedger, [sid]: list },
+        }));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setTrustHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trustHistoryOpen, store.id]);
 
   return (
     <div className="vt-card vt-card-pad">
@@ -136,8 +170,16 @@ export function StoreIdentityBlock({
         ) : null}
       </div>
 
-      <div className="mt-3 max-w-sm">
+      <div className="mt-3 flex max-w-sm flex-col gap-2">
         <StoreTrustMini score={store.trustScore} />
+        <button
+          type="button"
+          className="vt-btn vt-btn-ghost vt-btn-sm inline-flex w-full max-w-[280px] items-center justify-center gap-2"
+          onClick={() => setTrustHistoryOpen(true)}
+        >
+          <ScrollText size={16} aria-hidden />
+          Historial de confianza de la tienda
+        </button>
       </div>
 
       {ownerProfile ? (
@@ -189,6 +231,14 @@ export function StoreIdentityBlock({
       <ImageLightbox
         url={avatarLightboxUrl}
         onClose={() => setAvatarLightboxUrl(null)}
+      />
+      <TrustHistoryModal
+        open={trustHistoryOpen}
+        onClose={() => setTrustHistoryOpen(false)}
+        title={`Historial — ${store.name}`}
+        subtitle="Con sesión iniciada, los datos vienen del servidor. Sin sesión solo se listan cambios locales (demo)."
+        entries={storeTrustEntries}
+        loading={trustHistoryLoading}
       />
     </div>
   );

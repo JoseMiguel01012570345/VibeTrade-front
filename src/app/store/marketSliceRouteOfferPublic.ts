@@ -289,7 +289,11 @@ respondRouteSheetEdit: (threadId, routeSheetId, carrierUserId, accept) => {
     const penalty = SELLER_TRUST_PENALTY_ON_EDIT
     const storeId = th.storeId?.trim()
     if (storeId) {
-      get().applyStoreTrustPenalty(storeId, penalty)
+      get().applyStoreTrustPenalty(
+        storeId,
+        penalty,
+        'Transportista rechazó cambios en la hoja de ruta (demo)',
+      )
     }
     const sys: Message = {
       id: uid('m'),

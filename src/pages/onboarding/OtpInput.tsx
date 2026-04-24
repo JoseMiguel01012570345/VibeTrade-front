@@ -25,10 +25,20 @@ export function OtpInput({
     if (cleaned !== value) onChange(cleaned)
   }, [length, onChange, value])
 
+  function applyFullCode(raw: string) {
+    const cleaned = raw.replace(/[^\d]/g, '').slice(0, length)
+    if (!cleaned) return
+    onChange(cleaned)
+    if (cleaned.length === length) onComplete?.(cleaned)
+    const focusIdx = Math.min(Math.max(0, cleaned.length - 1), length - 1)
+    globalThis.requestAnimationFrame(() => refs.current[focusIdx]?.focus())
+  }
+
   function setAt(i: number, d: string) {
     const next = digits.map((x, idx) => (idx === i ? d : x)).join('')
     onChange(next)
-    if (next.length === length && !next.includes('')) onComplete?.(next)
+    // Nota: en JS `str.includes('')` es siempre true; no usar eso para “celdas vacías”.
+    if (next.length === length) onComplete?.(next)
   }
 
   return (
@@ -56,9 +66,20 @@ export function OtpInput({
           value={d}
           onChange={(e) => {
             const v = e.target.value.replace(/[^\d]/g, '')
+            if (v.length > 1) {
+              applyFullCode(v)
+              return
+            }
             const last = v.slice(-1)
             setAt(i, last)
             if (last && refs.current[i + 1]) refs.current[i + 1]?.focus()
+          }}
+          onPaste={(e) => {
+            const text = e.clipboardData.getData('text')
+            const digitsOnly = text.replace(/[^\d]/g, '')
+            if (digitsOnly.length < 2) return
+            e.preventDefault()
+            applyFullCode(digitsOnly)
           }}
           onKeyDown={(e) => {
             if (e.key === 'Backspace' && !digits[i] && refs.current[i - 1]) {

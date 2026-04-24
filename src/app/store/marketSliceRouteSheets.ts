@@ -637,7 +637,11 @@ deleteRouteSheet: (threadId, routeSheetId) => {
     const nConfirmed = confirmedIds.size
     const storeId = th.storeId?.trim()
     if (!persistChat && nConfirmed > 0 && storeId) {
-      get().applyStoreTrustPenalty(storeId, SELLER_TRUST_PENALTY_ON_EDIT * nConfirmed)
+      get().applyStoreTrustPenalty(
+        storeId,
+        SELLER_TRUST_PENALTY_ON_EDIT * nConfirmed,
+        'Eliminación de hoja de ruta con transportistas confirmados (demo)',
+      )
     }
     let sysText = `Se eliminó la hoja de ruta «${sheet.titulo}».`
     if (assignedIds.size > 0) {

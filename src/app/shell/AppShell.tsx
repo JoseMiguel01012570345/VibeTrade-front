@@ -12,6 +12,7 @@ import { cn } from "../../lib/cn";
 import { useAppStore } from "../store/useAppStore";
 import { TrustBar } from "../widgets/TrustBar";
 import { NotificationsBell } from "../widgets/NotificationsBell";
+import { UserTrustHistoryButton } from "../widgets/UserTrustHistoryButton";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { AuthEntryModal } from "../../pages/onboarding/AuthEntryModal";
 import { syncChatNotificationsFromServer } from "../../utils/notifications/notificationsSync";
@@ -108,9 +109,12 @@ export function AppShell() {
                     Buscar tiendas, productos o servicios…
                   </span>
                 </button>
-                <div className="shrink-0 self-center">
+                <div className="flex shrink-0 items-center gap-2 self-center">
                   {isSessionActive ? (
-                    <NotificationsBell />
+                    <>
+                      <UserTrustHistoryButton />
+                      <NotificationsBell />
+                    </>
                   ) : (
                     <button
                       type="button"
@@ -129,9 +133,12 @@ export function AppShell() {
                 {isSessionActive ? <TrustBar /> : null}
               </div>
               {!isOnboarding ? (
-                <div className="shrink-0 self-center">
+                <div className="flex shrink-0 items-center gap-2 self-center">
                   {isSessionActive ? (
-                    <NotificationsBell />
+                    <>
+                      <UserTrustHistoryButton />
+                      <NotificationsBell />
+                    </>
                   ) : (
                     <button
                       type="button"

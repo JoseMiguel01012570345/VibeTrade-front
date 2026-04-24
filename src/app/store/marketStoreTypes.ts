@@ -332,6 +332,16 @@ export type Thread = {
   contracts?: TradeAgreement[];
   routeSheets?: RouteSheet[];
   prematureExitUnderInvestigation?: boolean;
+  /** Salida de comprador/vendedor con acuerdo aceptado (también puede venir en JSON plano como partyExited*). */
+  peerPartyExit?: {
+    userId: string;
+    reason: string;
+    atUtc: string;
+    leaverRole?: "buyer" | "seller";
+  };
+  partyExitedUserId?: string;
+  partyExitedReason?: string;
+  partyExitedAtUtc?: string;
   paymentCompleted?: boolean;
   chatActionsLocked?: boolean;
   /** Comprador mostrado en integrantes cuando el hilo es vista logística (p. ej. demo cooperativa). */
@@ -425,7 +435,12 @@ export type MarketState = {
   /**
    * Demo / local: resta puntos de confianza del badge de la tienda y sincroniza `thread.store` en hilos abiertos.
    */
-  applyStoreTrustPenalty: (storeId: string, penalty: number) => void;
+  applyStoreTrustPenalty: (
+    storeId: string,
+    penalty: number,
+    reason?: string,
+    opts?: { forceLocal?: boolean },
+  ) => void;
 
   ask: (
     offerId: string,
@@ -572,7 +587,17 @@ export type MarketState = {
   recordChatExitFromList: (
     threadId: string,
     leaverUserId: string,
+    opts?: { skipTrustAdjust?: boolean },
   ) => { appliedPenalty: number; groupMemberCount: number };
+  applyPeerPartyExitedFromServer: (
+    threadId: string,
+    payload: {
+      leaverUserId: string;
+      reason?: string;
+      atUtc?: string | number;
+      leaverRole?: "buyer" | "seller";
+    },
+  ) => void;
   /** Quita el hilo del estado local y, si es persistido, lo borra en el servidor. */
   removeThreadFromList: (
     threadId: string,

@@ -339,6 +339,27 @@ export function startChatRealtime(): void {
     },
   );
 
+  conn.on(
+    "peerPartyExitedChat",
+    (payload: {
+      threadId?: string;
+      leaverUserId?: string;
+      reason?: string;
+      atUtc?: string;
+      leaverRole?: "buyer" | "seller";
+    }) => {
+      const tid = payload?.threadId?.trim() ?? "";
+      const uid = payload?.leaverUserId?.trim() ?? "";
+      if (tid.length < 4 || uid.length < 2) return;
+      useMarketStore.getState().applyPeerPartyExitedFromServer(tid, {
+        leaverUserId: uid,
+        reason: payload?.reason,
+        atUtc: payload?.atUtc,
+        leaverRole: payload?.leaverRole,
+      });
+    },
+  );
+
   conn.onreconnected(() => {
     void (async () => {
       if (!conn) return;

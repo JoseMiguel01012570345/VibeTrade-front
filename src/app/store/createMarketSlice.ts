@@ -1,5 +1,11 @@
 import type { StateCreator } from "zustand";
+import { getSessionToken } from "../../utils/http/sessionToken";
+import {
+  postStoreTrustAdjust,
+  trustHistoryItemFromApi,
+} from "../../utils/trust/trustLedgerApi";
 import type { MarketState } from "./marketStoreTypes";
+import { useAppStore } from "./useAppStore";
 import { createChatMessagesSlice } from "./marketSliceChatMessages";
 import { createOffersThreadsSlice } from "./marketSliceOffersThreads";
 import { createOwnerStoresSlice } from "./marketSliceOwnerStores";
@@ -28,27 +34,76 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => ({
   setWorkspacePersistStoreId: (storeId) =>
     set({ workspacePersistStoreId: storeId }),
 
-  applyStoreTrustPenalty: (storeId, penalty) => {
+  applyStoreTrustPenalty: (
+    storeId,
+    penalty,
+    reason = "Ajuste a la tienda (demo)",
+    opts?: { forceLocal?: boolean },
+  ) => {
     const sid = (storeId ?? "").trim();
     if (!sid || penalty <= 0) return;
-    set((s) => {
-      const b = s.stores[sid];
-      if (!b) return s;
-      const score = Math.max(-10_000, b.trustScore - penalty);
-      const nextBadge = { ...b, trustScore: score };
-      const nextStores = { ...s.stores, [sid]: nextBadge };
-      const nextThreads = { ...s.threads };
-      for (const tid of Object.keys(nextThreads)) {
-        const th = nextThreads[tid];
-        if (th.storeId === sid) {
-          nextThreads[tid] = {
-            ...th,
-            store: { ...th.store, trustScore: score },
-          };
+
+    const applyLocal = () => {
+      let balanceAfter = 0;
+      set((s) => {
+        const b = s.stores[sid];
+        const prevFromThread = Object.values(s.threads).find(
+          (th) => th.storeId === sid,
+        )?.store.trustScore;
+        const prev = b?.trustScore ?? prevFromThread ?? 0;
+        const score = Math.max(-10_000, prev - penalty);
+        balanceAfter = score;
+        const nextThreads = { ...s.threads };
+        for (const tid of Object.keys(nextThreads)) {
+          const th = nextThreads[tid];
+          if (th.storeId === sid) {
+            nextThreads[tid] = {
+              ...th,
+              store: { ...th.store, trustScore: score },
+            };
+          }
         }
-      }
-      return { ...s, stores: nextStores, threads: nextThreads };
-    });
+        if (!b) {
+          return { ...s, threads: nextThreads };
+        }
+        const nextBadge = { ...b, trustScore: score };
+        const nextStores = { ...s.stores, [sid]: nextBadge };
+        return { ...s, stores: nextStores, threads: nextThreads };
+      });
+      useAppStore.getState().appendStoreTrustLedger(sid, -penalty, balanceAfter, reason);
+    };
+
+    if (!opts?.forceLocal && getSessionToken()) {
+      void postStoreTrustAdjust(sid, -penalty, reason)
+        .then((r) => {
+          const score = r.trustScore;
+          set((s) => {
+            const nextThreads = { ...s.threads };
+            for (const tid of Object.keys(nextThreads)) {
+              const th = nextThreads[tid];
+              if (th.storeId === sid) {
+                nextThreads[tid] = {
+                  ...th,
+                  store: { ...th.store, trustScore: score },
+                };
+              }
+            }
+            const b = s.stores[sid];
+            if (!b) return { ...s, threads: nextThreads };
+            const nextBadge = { ...b, trustScore: score };
+            const nextStores = { ...s.stores, [sid]: nextBadge };
+            return { ...s, stores: nextStores, threads: nextThreads };
+          });
+          useAppStore
+            .getState()
+            .prependStoreTrustHistory(sid, trustHistoryItemFromApi(r.entry));
+        })
+        .catch(() => {
+          applyLocal();
+        });
+      return;
+    }
+    applyLocal();
   },
 
   ...createOffersThreadsSlice(set, get),

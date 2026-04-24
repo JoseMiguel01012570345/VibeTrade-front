@@ -87,9 +87,14 @@ export function createChatMessagesSlice(
       set((s) => {
         const t = s.threads[threadId];
         if (!t) return s;
-        const cc = t.chatCarriers?.filter((c) => c.id !== leftId) ?? [];
+        const carriers = t.chatCarriers ?? [];
+        const wasCarrier =
+          leftId.length > 0 && carriers.some((c) => c.id === leftId);
+        const cc = wasCarrier
+          ? carriers.filter((c) => c.id !== leftId)
+          : carriers;
         const chatCarriers =
-          leftId.length > 0 && cc.length !== (t.chatCarriers?.length ?? 0) ? cc : t.chatCarriers;
+          wasCarrier && cc.length !== carriers.length ? cc : t.chatCarriers;
         return {
           ...s,
           threads: {

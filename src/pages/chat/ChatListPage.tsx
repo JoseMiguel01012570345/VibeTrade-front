@@ -13,11 +13,19 @@ import {
 } from '../../utils/chat/chatParticipantLabels'
 import { cn } from '../../lib/cn'
 import { notifyChatParticipantsUserLeft } from '../../utils/chat/chatRealtime'
-import { postCarrierWithdrawFromThread } from '../../utils/chat/chatApi'
+import {
+  postCarrierWithdrawFromThread,
+  postPartySoftLeaveChatThread,
+} from '../../utils/chat/chatApi'
 import { getSessionToken } from '../../utils/http/sessionToken'
 import {
+  postMeTrustAdjust,
+  postStoreTrustAdjust,
+  trustHistoryItemFromApi,
+} from '../../utils/trust/trustLedgerApi'
+import {
   CARRIER_ROUTE_EXIT_TRUST_PENALTY,
-  SELLER_TRUST_PENALTY_ON_EDIT,
+  CHAT_PARTY_EXIT_TRUST_PER_MEMBER,
 } from './components/modals/TrustRiskEditConfirmModal'
 import { ChatLeaveConfirmModal } from './components/modals/ChatLeaveConfirmModal'
 import { messagePreviewLine } from './lib/chatAttachments'
@@ -65,8 +73,10 @@ export function ChatListPage() {
   const setTrustScore = useAppStore((s) => s.setTrustScore)
   const threads = useMarketStore((s) => s.threads)
   const offers = useMarketStore((s) => s.offers)
-  const recordChatExitFromList = useMarketStore((s) => s.recordChatExitFromList)
   const removeThreadFromList = useMarketStore((s) => s.removeThreadFromList)
+  const unpublishRouteSheetFromPlatform = useMarketStore(
+    (s) => s.unpublishRouteSheetFromPlatform,
+  )
   const [leaveModalThreadId, setLeaveModalThreadId] = useState<string | null>(null)
 
   async function runExitChatAfterConfirm(threadId: string) {
@@ -110,16 +120,91 @@ export function ChatListPage() {
       if (hadAccepted) {
         const reason = globalThis.prompt('Motivo para salir del chat')
         if (reason == null || !String(reason).trim()) return
-        const { appliedPenalty, groupMemberCount } = recordChatExitFromList(threadId, me.id)
+        const reasonTrim = String(reason).trim()
+        const imSeller = sellerId != null && me.id === sellerId
+        for (const rs of th.routeSheets ?? []) {
+          if (rs.publicadaPlataforma) {
+            unpublishRouteSheetFromPlatform(threadId, rs.id)
+          }
+        }
+        let groupMemberCount = 0
+        if (buyerId && buyerId.trim().length >= 2) groupMemberCount++
+        if (sellerId && sellerId.trim().length >= 2) groupMemberCount++
+        groupMemberCount += th.chatCarriers?.length ?? 0
+        groupMemberCount = Math.max(1, groupMemberCount)
+        const appliedPenalty = CHAT_PARTY_EXIT_TRUST_PER_MEMBER * groupMemberCount
+        const exitReasonDetail = `Salida con acuerdo aceptado: ${reasonTrim}`
+        try {
+          await postPartySoftLeaveChatThread(threadId, reasonTrim)
+        } catch {
+          toast.error('No se pudo registrar la salida en el servidor.')
+          return
+        }
+        const token = getSessionToken()
+        if (token && appliedPenalty > 0) {
+          try {
+            if (imSeller && th.storeId?.trim()) {
+              const sid = th.storeId.trim()
+              const r = await postStoreTrustAdjust(sid, -appliedPenalty, exitReasonDetail)
+              useMarketStore.setState((s) => {
+                const score = r.trustScore
+                const nextThreads = { ...s.threads }
+                for (const tid of Object.keys(nextThreads)) {
+                  const t = nextThreads[tid]
+                  if (t.storeId === sid) {
+                    nextThreads[tid] = {
+                      ...t,
+                      store: { ...t.store, trustScore: score },
+                    }
+                  }
+                }
+                const b = s.stores[sid]
+                if (!b) return { ...s, threads: nextThreads }
+                return {
+                  ...s,
+                  stores: { ...s.stores, [sid]: { ...b, trustScore: score } },
+                  threads: nextThreads,
+                }
+              })
+              useAppStore
+                .getState()
+                .prependStoreTrustHistory(sid, trustHistoryItemFromApi(r.entry))
+            } else {
+              const r = await postMeTrustAdjust(-appliedPenalty, exitReasonDetail)
+              useAppStore.setState((s) => ({
+                me: { ...s.me, trustScore: r.trustScore },
+                profileTrustScores: { ...s.profileTrustScores, [me.id]: r.trustScore },
+                lastThresholdState:
+                  r.trustScore < s.trustThreshold ? 'below' : 'above',
+              }))
+              useAppStore
+                .getState()
+                .prependUserTrustHistory(me.id, trustHistoryItemFromApi(r.entry))
+            }
+          } catch {
+            const sid = th.storeId?.trim()
+            if (imSeller && sid) {
+              useMarketStore.getState().applyStoreTrustPenalty(sid, appliedPenalty, exitReasonDetail, {
+                forceLocal: true,
+              })
+            } else {
+              useAppStore.getState().applyTrustPenalty(me.id, appliedPenalty, exitReasonDetail, {
+                forceLocal: true,
+              })
+            }
+          }
+        }
         if (appliedPenalty > 0) {
+          const scope = imSeller ? 'La confianza de tu tienda' : 'Tu barra de confianza'
           toast(
-            `Tu barra de confianza se ajustó en −${appliedPenalty} por salir con acuerdo aceptado (${groupMemberCount} integrantes × ${SELLER_TRUST_PENALTY_ON_EDIT}, demo). El chat se quitó de tu lista.`,
+            `${scope} se ajustó en −${appliedPenalty} por salir con acuerdo aceptado (${groupMemberCount} integrantes × ${CHAT_PARTY_EXIT_TRUST_PER_MEMBER}). Las hojas publicadas se retiraron del mercado. El chat se ocultó de tu lista.`,
             { icon: '⚠️' },
           )
         } else {
-          toast('Salida registrada. Podría revisarse. El chat se quitó de tu lista.', {
-            icon: '⚠️',
-          })
+          toast(
+            'Salida registrada. Las hojas publicadas se retiraron del mercado. Podría revisarse. El chat se ocultó de tu lista.',
+            { icon: '⚠️' },
+          )
         }
       } else {
         toast.success('Chat eliminado de tu lista. Sin acuerdo aceptado, sin impacto en tu confianza.')
@@ -128,10 +213,16 @@ export function ChatListPage() {
       toast.success('Chat quitado de tu lista.')
     }
 
-    if (threadId.startsWith('cth_') && !notifiedParticipantsBeforeCarrierWithdraw) {
+    const shouldNotifyOthersLeft =
+      threadId.startsWith('cth_') &&
+      !notifiedParticipantsBeforeCarrierWithdraw &&
+      !(isBuyerOrSeller && hadAccepted)
+    if (shouldNotifyOthersLeft) {
       await notifyChatParticipantsUserLeft(threadId)
     }
-    await removeThreadFromList(threadId, { skipServerDelete: !isBuyerOrSeller })
+    const skipServerDelete =
+      !isBuyerOrSeller || (isBuyerOrSeller && hadAccepted)
+    await removeThreadFromList(threadId, { skipServerDelete })
   }
 
   const rows = useMemo(() => {
@@ -168,7 +259,8 @@ export function ChatListPage() {
           Como transportista con tramos confirmados, salir antes de que la hoja esté entregada puede des-suscribirte, limpiar
           tus datos en la ruta y ajustar tu barra de confianza (demo). Si sos comprador o vendedor y no hay acuerdo aceptado,
           no pedimos motivo; si ya lo hay, pedimos motivo y se aplica un ajuste de confianza proporcional al número de
-          integrantes del chat (comprador, vendedor y transportistas).
+          integrantes del chat (comprador, vendedor y transportistas). Como vendedor, el ajuste
+          impacta la confianza del negocio; las hojas de ruta publicadas se despublican.
         </div>
       </div>
 

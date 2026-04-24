@@ -81,7 +81,13 @@ export async function bootstrapWebApp(): Promise<void> {
     0,
     RECOMMENDATION_API_TAKE,
   );
-  const bootOfferIds = fromRec.length > 0 ? fromRec : fromMarket;
+  let bootOfferIds = fromRec.length > 0 ? fromRec : fromMarket;
+  if (bootOfferIds.length === 0) {
+    bootOfferIds = Object.keys(json.market?.offers ?? {}).slice(
+      0,
+      RECOMMENDATION_API_TAKE,
+    );
+  }
   const bootFeedStart = 0;
 
   const recBatch =

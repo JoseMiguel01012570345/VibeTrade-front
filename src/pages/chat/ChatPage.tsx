@@ -20,6 +20,11 @@ import {
 import toast from "react-hot-toast";
 import { useShallow } from "zustand/react/shallow";
 import { useAppStore } from "../../app/store/useAppStore";
+import { getSessionToken } from "../../utils/http/sessionToken";
+import {
+  postMeTrustAdjust,
+  trustHistoryItemFromApi,
+} from "../../utils/trust/trustLedgerApi";
 import type { Offer, StoreBadge } from "../../app/store/marketStoreTypes";
 import {
   threadHasAcceptedAgreement,
@@ -48,6 +53,7 @@ import {
   TrustRiskEditConfirmModal,
 } from "./components/modals/TrustRiskEditConfirmModal";
 import { AgreementDeleteRouteSheetsModal } from "./components/modals/AgreementDeleteRouteSheetsModal";
+import { PeerPartyExitedInfoModal } from "./components/modals/PeerPartyExitedInfoModal";
 import {
   agreementDeleteBlockedByRouteSheetInvariant,
   confirmedStopIdsForCarrier,
@@ -88,6 +94,7 @@ import {
   chatThreadHeaderTitle,
   resolveBuyerUserId,
 } from "../../utils/chat/chatParticipantLabels";
+import { getThreadPeerPartyExit } from "../../utils/chat/threadPeerPartyExit";
 import {
   buildPurchaseThreadMessages,
   buildPurchaseThreadSystemOnly,
@@ -290,6 +297,40 @@ export function ChatPage() {
     };
   }, [thread, me.id]);
 
+  useEffect(() => {
+    setPeerPartyExitedInfo(null);
+    peerExitModalPrimedRef.current = null;
+  }, [threadId]);
+
+  useEffect(() => {
+    if (!threadId || !thread) return;
+    const exit = getThreadPeerPartyExit(thread);
+    if (!exit?.userId || exit.userId === me.id) return;
+    try {
+      if (
+        globalThis.sessionStorage?.getItem(`vt_party_exit_ack_${threadId}`) ===
+        "1"
+      )
+        return;
+    } catch {
+      /* private mode */
+    }
+    if (peerExitModalPrimedRef.current === threadId) return;
+    peerExitModalPrimedRef.current = threadId;
+    const buyerId = resolveBuyerUserId(thread, me.id);
+    const sellerUid =
+      thread.sellerUserId?.trim() || thread.store.ownerUserId?.trim() || "";
+    let roleLabel = "Un participante";
+    if (exit.leaverRole === "buyer") roleLabel = "El comprador";
+    else if (exit.leaverRole === "seller") roleLabel = "El vendedor";
+    else if (buyerId && exit.userId === buyerId) roleLabel = "El comprador";
+    else if (sellerUid && exit.userId === sellerUid) roleLabel = "El vendedor";
+    setPeerPartyExitedInfo({
+      roleLabel,
+      reason: exit.reason.trim() || "Sin motivo indicado.",
+    });
+  }, [threadId, thread, me.id]);
+
   const sellerForPeople = useMemo(() => {
     if (!thread) return undefined;
     const st = thread.store;
@@ -327,6 +368,11 @@ export function ChatPage() {
   >(null);
   const [agreementDeleteSheetsModal, setAgreementDeleteSheetsModal] =
     useState<null | { agreementId: string; title: string }>(null);
+  const [peerPartyExitedInfo, setPeerPartyExitedInfo] = useState<{
+    roleLabel: string;
+    reason: string;
+  } | null>(null);
+  const peerExitModalPrimedRef = useRef<string | null>(null);
   const trustPenaltyNextSave = useRef<"none" | "agreement" | "routeSheet">(
     "none",
   );
@@ -1064,9 +1110,26 @@ export function ChatPage() {
     const q = trustPenaltyNextSave.current;
     trustPenaltyNextSave.current = "none";
     if (q !== "agreement") return;
-    setTrustScore(
-      Math.max(-10_000, me.trustScore - SELLER_TRUST_PENALTY_ON_EDIT),
-    );
+    const reason = "Modificación de acuerdo aceptado (demo)";
+    const applyLocal = () => {
+      useAppStore.getState().applyTrustPenalty(me.id, SELLER_TRUST_PENALTY_ON_EDIT, reason, {
+        forceLocal: true,
+      });
+    };
+    if (getSessionToken()) {
+      void postMeTrustAdjust(-SELLER_TRUST_PENALTY_ON_EDIT, reason)
+        .then((r) => {
+          setTrustScore(r.trustScore);
+          useAppStore
+            .getState()
+            .prependUserTrustHistory(me.id, trustHistoryItemFromApi(r.entry));
+        })
+        .catch(() => {
+          applyLocal();
+        });
+    } else {
+      applyLocal();
+    }
     toast(
       `Tu barra de confianza se ajustó en −${SELLER_TRUST_PENALTY_ON_EDIT} por modificar un acuerdo (demo).`,
       {
@@ -1593,6 +1656,21 @@ export function ChatPage() {
             return false;
           }
           return true;
+        }}
+      />
+      <PeerPartyExitedInfoModal
+        open={peerPartyExitedInfo != null}
+        roleLabel={peerPartyExitedInfo?.roleLabel ?? ""}
+        reason={peerPartyExitedInfo?.reason ?? ""}
+        onAcknowledge={() => {
+          if (threadId) {
+            try {
+              sessionStorage.setItem(`vt_party_exit_ack_${threadId}`, "1");
+            } catch {
+              /* ignore */
+            }
+          }
+          setPeerPartyExitedInfo(null);
         }}
       />
     </div>

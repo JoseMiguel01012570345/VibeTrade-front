@@ -45,7 +45,10 @@ import {
 import { routeSheetHasConfirmedCarriers } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
 import { resolveBuyerUserId, resolveSellerUserId } from '../../utils/chat/chatParticipantLabels'
-import { SELLER_TRUST_PENALTY_ON_EDIT } from '../../pages/chat/components/modals/TrustRiskEditConfirmModal'
+import {
+  CHAT_PARTY_EXIT_TRUST_PER_MEMBER,
+} from '../../pages/chat/components/modals/TrustRiskEditConfirmModal'
+import { peerPartyExitFromDto } from '../../utils/chat/threadPeerPartyExit'
 import { isOfferPublishedForBuyerChat } from '../../utils/market/offerPublishedForBuyerChat'
 import { useAppStore } from './useAppStore'
 
@@ -108,12 +111,14 @@ export function createOffersThreadsSlice(set: MarketSliceSet, get: MarketSliceGe
   | 'respondTradeAgreement'
   | 'refreshThreadTradeAgreements'
   | 'recordChatExitFromList'
+  | 'applyPeerPartyExitedFromServer'
   | 'removeThreadFromList'
   | 'markThreadPaymentCompleted'
 > {
   return {
 onThreadCreatedFromServer: (dto: ChatThreadDto) => {
   mergeBuyerLabelFromThreadDto(dto)
+  const peer = peerPartyExitFromDto(dto)
   set((s) => {
     if (s.threads[dto.id]) return s
     const store = s.stores[dto.storeId]
@@ -133,6 +138,14 @@ onThreadCreatedFromServer: (dto: ChatThreadDto) => {
           messages: [],
           contracts: [],
           routeSheets: [],
+          ...(peer
+            ? {
+                peerPartyExit: peer,
+                partyExitedUserId: peer.userId,
+                partyExitedReason: peer.reason,
+                partyExitedAtUtc: peer.atUtc,
+              }
+            : {}),
         },
       },
     }
@@ -250,6 +263,9 @@ ensureThreadForOffer: async (offerId, opts) => {
       | 'sellerUserId'
       | 'buyerDisplayName'
       | 'buyerAvatarUrl'
+      | 'partyExitedUserId'
+      | 'partyExitedReason'
+      | 'partyExitedAtUtc'
     >,
     contractsOverride?: TradeAgreement[],
     routeSheetsFromServer?: RouteSheetPayload[],
@@ -273,6 +289,9 @@ ensureThreadForOffer: async (offerId, opts) => {
       sellerUserId,
       meId,
     )
+    const peerExit = peerPartyExitFromDto(participantDto ?? undefined)
+    const premature =
+      peerExit != null && peerExit.userId.trim() !== meId.trim()
     set((x) => {
       const nextThreads = { ...x.threads }
       if (existing && existing.id !== threadId) delete nextThreads[existing.id]
@@ -292,6 +311,15 @@ ensureThreadForOffer: async (offerId, opts) => {
               ...(participantDto.buyerAvatarUrl?.trim()
                 ? { buyerAvatarUrl: participantDto.buyerAvatarUrl.trim() }
                 : {}),
+            }
+          : {}),
+        ...(peerExit
+          ? {
+              peerPartyExit: peerExit,
+              partyExitedUserId: peerExit.userId,
+              partyExitedReason: peerExit.reason,
+              partyExitedAtUtc: peerExit.atUtc,
+              prematureExitUnderInvestigation: premature,
             }
           : {}),
         messages: qaSynced,
@@ -873,7 +901,7 @@ refreshThreadTradeAgreements: async (threadId) => {
   }
 },
 
-recordChatExitFromList: (threadId, leaverUserId) => {
+recordChatExitFromList: (threadId, leaverUserId, opts?: { skipTrustAdjust?: boolean }) => {
   const lid = (leaverUserId ?? '').trim()
   const th0 = get().threads[threadId]
   let appliedPenalty = 0
@@ -890,9 +918,25 @@ recordChatExitFromList: (threadId, leaverUserId) => {
       if (sellerUid.length >= 2) n++
       n += th0.chatCarriers?.length ?? 0
       groupMemberCount = Math.max(1, n)
-      appliedPenalty = SELLER_TRUST_PENALTY_ON_EDIT * groupMemberCount
-      const target = leaverIsBuyer ? buyerUid : sellerUid
-      useAppStore.getState().applyTrustPenalty(target, appliedPenalty)
+      appliedPenalty = CHAT_PARTY_EXIT_TRUST_PER_MEMBER * groupMemberCount
+      if (!opts?.skipTrustAdjust) {
+        if (leaverIsSeller) {
+          const storeId = th0.storeId?.trim()
+          if (storeId) {
+            get().applyStoreTrustPenalty(
+              storeId,
+              appliedPenalty,
+              'Salida del chat con acuerdo aceptado (demo)',
+            )
+          }
+        } else {
+          useAppStore.getState().applyTrustPenalty(
+            buyerUid,
+            appliedPenalty,
+            'Salida del chat con acuerdo aceptado (demo)',
+          )
+        }
+      }
     }
   }
 
@@ -917,6 +961,40 @@ recordChatExitFromList: (threadId, leaverUserId) => {
   })
 
   return { appliedPenalty, groupMemberCount }
+},
+
+applyPeerPartyExitedFromServer: (threadId, payload) => {
+  const tid = (threadId ?? '').trim()
+  const uid = (payload.leaverUserId ?? '').trim()
+  if (tid.length < 4 || uid.length < 2) return
+  const reason = (payload.reason ?? '').trim()
+  const atUtc =
+    payload.atUtc != null ? String(payload.atUtc) : new Date().toISOString()
+  const leaverRole = payload.leaverRole
+  set((s) => {
+    const th = s.threads[tid]
+    if (!th) return s
+    const peer = {
+      userId: uid,
+      reason,
+      atUtc,
+      ...(leaverRole === 'buyer' || leaverRole === 'seller' ? { leaverRole } : {}),
+    }
+    return {
+      ...s,
+      threads: {
+        ...s.threads,
+        [tid]: {
+          ...th,
+          peerPartyExit: peer,
+          partyExitedUserId: uid,
+          partyExitedReason: reason,
+          partyExitedAtUtc: atUtc,
+          prematureExitUnderInvestigation: true,
+        },
+      },
+    }
+  })
 },
 
 removeThreadFromList: async (threadId, opts?: { skipServerDelete?: boolean }) => {

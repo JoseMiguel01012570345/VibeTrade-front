@@ -1,5 +1,13 @@
 import { create } from 'zustand'
 import { getOpenChatThreadIdFromLocation } from '../../utils/chat/getOpenChatThreadIdFromLocation'
+import { getSessionToken } from '../../utils/http/sessionToken'
+import {
+  postMeTrustAdjust,
+  trustHistoryItemFromApi,
+} from '../../utils/trust/trustLedgerApi'
+import type { TrustHistoryEntry } from './trustLedgerTypes'
+
+export type { TrustHistoryEntry } from './trustLedgerTypes'
 
 const SESSION_STORAGE_KEY = 'vt_session_active'
 const SESSION_TOKEN_KEY = 'vt_session_token'
@@ -84,6 +92,10 @@ type AppState = {
   profileAvatarUrls: Record<string, string>
   /** Confianza de usuario por id (API público / sesión); p. ej. integrantes del chat. */
   profileTrustScores: Record<string, number>
+  /** Historial de cambios de confianza por usuario (esta sesión / dispositivo). */
+  userTrustLedger: Record<string, TrustHistoryEntry[]>
+  /** Historial de cambios de confianza por tienda. */
+  storeTrustLedger: Record<string, TrustHistoryEntry[]>
   profileSocialLinks: ProfileSocialLinks
   trustThreshold: number
   lastThresholdState: 'above' | 'below'
@@ -106,7 +118,27 @@ type AppState = {
   closeAuthModal: () => void
   setTrustScore: (score: number) => void
   /** Resta puntos a un usuario por id (perfil local / demo); si coincide con `me`, actualiza la barra propia. */
-  applyTrustPenalty: (userId: string, penalty: number) => void
+  applyTrustPenalty: (
+    userId: string,
+    penalty: number,
+    reason?: string,
+    opts?: { forceLocal?: boolean },
+  ) => void
+  appendUserTrustLedger: (
+    userId: string,
+    delta: number,
+    balanceAfter: number,
+    reason: string,
+  ) => void
+  appendStoreTrustLedger: (
+    storeId: string,
+    delta: number,
+    balanceAfter: number,
+    reason: string,
+  ) => void
+  /** Anteponer entrada ya persistida en API (id servidor). */
+  prependUserTrustHistory: (userId: string, entry: TrustHistoryEntry) => void
+  prependStoreTrustHistory: (storeId: string, entry: TrustHistoryEntry) => void
   setMeAvatarUrl: (url: string | undefined) => void
   setMeName: (name: string) => void
   setMeEmail: (email: string) => void
@@ -142,6 +174,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   profileDisplayNames: {},
   profileAvatarUrls: {},
   profileTrustScores: {},
+  userTrustLedger: {},
+  storeTrustLedger: {},
   profileSocialLinks: {},
   trustThreshold: 0,
   lastThresholdState: 'above',
@@ -182,25 +216,106 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
 
-  applyTrustPenalty: (userId, penalty) => {
+  appendUserTrustLedger: (userId, delta, balanceAfter, reason) => {
+    if (!userId || userId === 'guest' || delta === 0) return
+    const r = reason.trim() || '—'
+    const entry: TrustHistoryEntry = {
+      id: uid('tlu'),
+      at: Date.now(),
+      delta,
+      balanceAfter,
+      reason: r,
+    }
+    set((s) => {
+      const prevList = s.userTrustLedger[userId] ?? []
+      const nextList = [entry, ...prevList].slice(0, 200)
+      return {
+        userTrustLedger: { ...s.userTrustLedger, [userId]: nextList },
+      }
+    })
+  },
+
+  appendStoreTrustLedger: (storeId, delta, balanceAfter, reason) => {
+    const sid = (storeId ?? '').trim()
+    if (!sid || delta === 0) return
+    const r = reason.trim() || '—'
+    const entry: TrustHistoryEntry = {
+      id: uid('tls'),
+      at: Date.now(),
+      delta,
+      balanceAfter,
+      reason: r,
+    }
+    set((s) => {
+      const prevList = s.storeTrustLedger[sid] ?? []
+      const nextList = [entry, ...prevList].slice(0, 200)
+      return {
+        storeTrustLedger: { ...s.storeTrustLedger, [sid]: nextList },
+      }
+    })
+  },
+
+  prependUserTrustHistory: (userId, entry) => {
+    if (!userId || userId === 'guest') return
+    set((s) => {
+      const prevList = s.userTrustLedger[userId] ?? []
+      const nextList = [entry, ...prevList.filter((e) => e.id !== entry.id)].slice(0, 200)
+      return { userTrustLedger: { ...s.userTrustLedger, [userId]: nextList } }
+    })
+  },
+
+  prependStoreTrustHistory: (storeId, entry) => {
+    const sid = (storeId ?? '').trim()
+    if (!sid) return
+    set((s) => {
+      const prevList = s.storeTrustLedger[sid] ?? []
+      const nextList = [entry, ...prevList.filter((e) => e.id !== entry.id)].slice(0, 200)
+      return { storeTrustLedger: { ...s.storeTrustLedger, [sid]: nextList } }
+    })
+  },
+
+  applyTrustPenalty: (userId, penalty, reason = 'Ajuste de confianza (demo)') => {
     if (!userId || userId === 'guest' || penalty <= 0) return
     const clamp = (n: number) => Math.max(-10_000, n)
     const threshold = get().trustThreshold
-    set((s) => {
-      if (s.me.id === userId) {
-        const score = clamp(s.me.trustScore - penalty)
-        return {
-          me: { ...s.me, trustScore: score },
-          profileTrustScores: { ...s.profileTrustScores, [userId]: score },
-          lastThresholdState: score < threshold ? 'below' : 'above',
+    const s0 = get()
+    const applyLocal = () => {
+      const score =
+        s0.me.id === userId ?
+          clamp(s0.me.trustScore - penalty)
+        : clamp((s0.profileTrustScores[userId] ?? 0) - penalty)
+      set((s) => {
+        if (s.me.id === userId) {
+          return {
+            me: { ...s.me, trustScore: score },
+            profileTrustScores: { ...s.profileTrustScores, [userId]: score },
+            lastThresholdState: score < threshold ? 'below' : 'above',
+          }
         }
-      }
-      const prev = s.profileTrustScores[userId] ?? 0
-      const score = clamp(prev - penalty)
-      return {
-        profileTrustScores: { ...s.profileTrustScores, [userId]: score },
-      }
-    })
+        return {
+          profileTrustScores: { ...s.profileTrustScores, [userId]: score },
+        }
+      })
+      get().appendUserTrustLedger(userId, -penalty, score, reason)
+    }
+
+    if (!opts?.forceLocal && getSessionToken() && s0.me.id === userId) {
+      void postMeTrustAdjust(-penalty, reason)
+        .then((r) => {
+          set((s) => ({
+            me: { ...s.me, trustScore: r.trustScore },
+            profileTrustScores: { ...s.profileTrustScores, [userId]: r.trustScore },
+            lastThresholdState:
+              r.trustScore < threshold ? 'below' : 'above',
+          }))
+          get().prependUserTrustHistory(userId, trustHistoryItemFromApi(r.entry))
+        })
+        .catch(() => {
+          applyLocal()
+        })
+      return
+    }
+    applyLocal()
   },
 
   setMeAvatarUrl: (url) =>
@@ -341,6 +456,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         savedOffers: {},
         profileSocialLinks: {},
         profileTrustScores: {},
+        userTrustLedger: {},
+        storeTrustLedger: {},
         authModalOpen: false,
         homeFeedScrollY: null,
       }
