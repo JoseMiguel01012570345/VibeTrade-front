@@ -45,6 +45,8 @@ type Props = {
   onDeleteAgreement?: (agreement: TradeAgreement) => void;
   chatCarriers?: ThreadChatCarrier[];
   onOpenRouteSubscribers?: (routeSheetId: string) => void;
+  /** Tras mutaciones de ruta en hilo persistido: hojas + suscripciones desde API. */
+  onPersistedRouteDataRefresh?: () => Promise<void>;
 };
 
 export function ChatRightRail({
@@ -67,6 +69,7 @@ export function ChatRightRail({
   onDeleteAgreement,
   chatCarriers,
   onOpenRouteSubscribers,
+  onPersistedRouteDataRefresh,
 }: Props) {
   const publishRouteSheetsToPlatform = useMarketStore(
     (s) => s.publishRouteSheetsToPlatform,
@@ -218,6 +221,7 @@ export function ChatRightRail({
           unpublishRouteSheetFromPlatform={unpublishRouteSheetFromPlatform}
           routeOffer={routeOfferForThread}
           onOpenRouteSubscribers={onOpenRouteSubscribers}
+          onPersistedRouteDataRefresh={onPersistedRouteDataRefresh}
         />
       )}
 

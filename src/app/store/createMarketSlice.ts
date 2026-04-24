@@ -28,6 +28,29 @@ export const createMarketSlice: StateCreator<MarketState> = (set, get) => ({
   setWorkspacePersistStoreId: (storeId) =>
     set({ workspacePersistStoreId: storeId }),
 
+  applyStoreTrustPenalty: (storeId, penalty) => {
+    const sid = (storeId ?? "").trim();
+    if (!sid || penalty <= 0) return;
+    set((s) => {
+      const b = s.stores[sid];
+      if (!b) return s;
+      const score = Math.max(-10_000, b.trustScore - penalty);
+      const nextBadge = { ...b, trustScore: score };
+      const nextStores = { ...s.stores, [sid]: nextBadge };
+      const nextThreads = { ...s.threads };
+      for (const tid of Object.keys(nextThreads)) {
+        const th = nextThreads[tid];
+        if (th.storeId === sid) {
+          nextThreads[tid] = {
+            ...th,
+            store: { ...th.store, trustScore: score },
+          };
+        }
+      }
+      return { ...s, stores: nextStores, threads: nextThreads };
+    });
+  },
+
   ...createOffersThreadsSlice(set, get),
   ...createRouteOfferPublicSlice(set, get),
   ...createRouteSheetsSlice(set, get),

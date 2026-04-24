@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useShallow } from "zustand/react/shallow";
 import toast from "react-hot-toast";
 import {
@@ -15,6 +16,8 @@ import {
 } from "lucide-react";
 import { useAppStore } from "../../../../app/store/useAppStore";
 import { useMarketStore } from "../../../../app/store/useMarketStore";
+import { postRouteSheetEditCarrierResponse } from "../../../../utils/chat/chatApi";
+import { getSessionToken } from "../../../../utils/http/sessionToken";
 import { cn } from "../../../../lib/cn";
 import type { RouteOfferPublicState } from "../../../../app/store/marketStoreTypes";
 import type { RouteSheet } from "../../domain/routeSheetTypes";
@@ -27,6 +30,8 @@ import {
   resolveRouteOfferPublicForThread,
   sheetPreviewContactLine,
 } from "../../domain/routeSheetOfferGuards";
+import { confirmedCarrierIdsOnOffer } from "../../../../app/store/marketSliceHelpers";
+import { SELLER_TRUST_PENALTY_ON_EDIT } from "../modals/TrustRiskEditConfirmModal";
 import { railItemClass } from "./chatRailStyles";
 import { statusPillOk, statusPillPending } from "../../styles/formModalStyles";
 
@@ -61,6 +66,7 @@ type Props = {
   ) => void;
   routeOffer: RouteOfferPublicState | undefined;
   onOpenRouteSubscribers?: (routeSheetId: string) => void;
+  onPersistedRouteDataRefresh?: () => Promise<void>;
 };
 
 export function ChatRightRailRoutesPanel({
@@ -82,6 +88,7 @@ export function ChatRightRailRoutesPanel({
   unpublishRouteSheetFromPlatform,
   routeOffer,
   onOpenRouteSubscribers,
+  onPersistedRouteDataRefresh,
 }: Props) {
   const me = useAppStore((s) => s.me);
   const routeOfferFromStore = useMarketStore(
@@ -96,11 +103,8 @@ export function ChatRightRailRoutesPanel({
   );
   const chatCarriers = useMarketStore((s) => s.threads[threadId]?.chatCarriers);
   const respondRouteSheetEdit = useMarketStore((s) => s.respondRouteSheetEdit);
-
-  const selSheetHasConfirmedCarriers =
-    !!selRoute &&
-    routeOfferResolved?.routeSheetId === selRoute.id &&
-    routeOfferResolved.tramos.some((t) => t.assignment?.status === "confirmed");
+  const removeThreadFromList = useMarketStore((s) => s.removeThreadFromList);
+  const navigate = useNavigate();
 
   const routeSheetCapReached = routeSheets.length >= agreementCount;
 
@@ -198,7 +202,7 @@ export function ChatRightRailRoutesPanel({
                 esta versión de la hoja.
               </p>
             ) : null}
-            {!selSheetHasConfirmedCarriers ? (
+            {isActingSeller ? (
               <button
                 type="button"
                 className="vt-btn inline-flex items-center gap-1.5 border-[color-mix(in_oklab,#dc2626_28%,var(--border))] bg-[color-mix(in_oklab,#dc2626_6%,var(--surface))] px-2.5 py-1.5 text-xs text-[color-mix(in_oklab,#dc2626_88%,var(--text))] hover:bg-[color-mix(in_oklab,#dc2626_10%,var(--surface))]"
@@ -206,23 +210,35 @@ export function ChatRightRailRoutesPanel({
                 title={
                   actionsLocked
                     ? "No disponible hasta registrar el pago"
-                    : "Eliminar si no hay transportistas con tramo ya aceptado; las solicitudes pendientes no lo impiden"
+                    : "Eliminar la hoja: los transportistas con tramo en la oferta salen del chat; penalización a la tienda por cada confirmado (demo)"
                 }
                 onClick={() => {
-                  if (
-                    !globalThis.confirm(
-                      `¿Eliminar la hoja de ruta «${selRoute.titulo}»? Se quitará el vínculo en los acuerdos.`,
-                    )
-                  )
-                    return;
+                  const offerForSheet =
+                    routeOfferResolved?.routeSheetId === selRoute.id ?
+                      routeOfferResolved
+                    : undefined;
+                  const nConf = offerForSheet ?
+                    confirmedCarrierIdsOnOffer(offerForSheet, selRoute.id).size
+                  : 0;
+                  const hasAssigned =
+                    !!offerForSheet &&
+                    offerForSheet.tramos.some((t) => t.assignment?.userId);
+                  const totalPen = nConf * SELLER_TRUST_PENALTY_ON_EDIT;
+                  let msg = `¿Eliminar la hoja de ruta «${selRoute.titulo}»? Se quitará el vínculo en los acuerdos.`;
+                  if (hasAssigned) {
+                    msg +=
+                      " Los transportistas con tramo en la oferta saldrán del chat.";
+                  }
+                  if (nConf > 0) {
+                    msg += ` Se descontarán ${totalPen} puntos de confianza de la tienda (${nConf} transportista${nConf === 1 ? "" : "s"} confirmado${nConf === 1 ? "" : "s"}; demo).`;
+                  }
+                  if (!globalThis.confirm(msg)) return;
                   const ok = deleteRouteSheet(threadId, selRoute.id);
                   if (ok) {
                     toast.success("Hoja de ruta eliminada");
                     setSelRouteId(null);
                   } else {
-                    toast.error(
-                      "No se puede eliminar: hay al menos un transportista con tramo confirmado en esta oferta.",
-                    );
+                    toast.error("No se pudo eliminar la hoja de ruta.");
                   }
                 }}
               >
@@ -288,8 +304,8 @@ export function ChatRightRailRoutesPanel({
                 {routeSheetEditAcks[selRoute.id].revision})
               </div>
               <p className="vt-muted mb-2 mt-1 text-[11px] leading-snug">
-                El vendedor editó la hoja. Como transportista en este hilo,
-                podés aceptarla o rechazarla.
+                La hoja se editó y cambió un tramo que tenés confirmado: solo vos
+                podés aceptar o rechazar esta versión para tu tramo.
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -297,15 +313,37 @@ export function ChatRightRailRoutesPanel({
                   className="vt-btn vt-btn-primary inline-flex items-center gap-1 px-2.5 py-1.5 text-xs"
                   disabled={actionsLocked}
                   onClick={() => {
-                    const ok = respondRouteSheetEdit(
-                      threadId,
-                      selRoute.id,
-                      me.id,
-                      true,
-                    );
-                    if (ok)
-                      toast.success("Aceptaste la versión actual de la hoja");
-                    else toast.error("No se pudo registrar la aceptación");
+                    void (async () => {
+                      if (
+                        threadId.startsWith("cth_") &&
+                        getSessionToken() &&
+                        onPersistedRouteDataRefresh
+                      ) {
+                        try {
+                          await postRouteSheetEditCarrierResponse(
+                            threadId,
+                            selRoute.id,
+                            true,
+                          );
+                          await onPersistedRouteDataRefresh();
+                          toast.success(
+                            "Aceptaste la versión actual de la hoja",
+                          );
+                        } catch {
+                          toast.error("No se pudo registrar la aceptación");
+                        }
+                        return;
+                      }
+                      const ok = respondRouteSheetEdit(
+                        threadId,
+                        selRoute.id,
+                        me.id,
+                        true,
+                      );
+                      if (ok)
+                        toast.success("Aceptaste la versión actual de la hoja");
+                      else toast.error("No se pudo registrar la aceptación");
+                    })();
                   }}
                 >
                   <ThumbsUp size={14} aria-hidden /> Aceptar cambios
@@ -315,17 +353,47 @@ export function ChatRightRailRoutesPanel({
                   className="vt-btn inline-flex items-center gap-1 border-[color-mix(in_oklab,#dc2626_28%,var(--border))] px-2.5 py-1.5 text-xs"
                   disabled={actionsLocked}
                   onClick={() => {
-                    const ok = respondRouteSheetEdit(
-                      threadId,
-                      selRoute.id,
-                      me.id,
-                      false,
-                    );
-                    if (ok) {
-                      toast.success(
-                        "Rechazaste la edición de la hoja. Seguís en el chat; tus tramos quedan libres en la oferta (demo).",
+                    void (async () => {
+                      if (
+                        threadId.startsWith("cth_") &&
+                        getSessionToken() &&
+                        onPersistedRouteDataRefresh
+                      ) {
+                        try {
+                          await postRouteSheetEditCarrierResponse(
+                            threadId,
+                            selRoute.id,
+                            false,
+                          );
+                          await onPersistedRouteDataRefresh();
+                          await removeThreadFromList(threadId, {
+                            skipServerDelete: true,
+                          });
+                          toast.success(
+                            "Rechazaste la edición: salís del chat del hilo, tus tramos quedan libres en la oferta (demo).",
+                          );
+                          navigate("/chat");
+                        } catch {
+                          toast.error("No se pudo registrar el rechazo");
+                        }
+                        return;
+                      }
+                      const ok = respondRouteSheetEdit(
+                        threadId,
+                        selRoute.id,
+                        me.id,
+                        false,
                       );
-                    } else toast.error("No se pudo registrar el rechazo");
+                      if (ok) {
+                        await removeThreadFromList(threadId, {
+                          skipServerDelete: true,
+                        });
+                        toast.success(
+                          "Rechazaste la edición: salís del chat del hilo, tus tramos quedan libres en la oferta (demo).",
+                        );
+                        navigate("/chat");
+                      } else toast.error("No se pudo registrar el rechazo");
+                    })();
                   }}
                 >
                   <ThumbsDown size={14} aria-hidden /> Rechazar

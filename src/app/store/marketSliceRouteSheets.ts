@@ -6,6 +6,7 @@ import {
 import {
   type RouteSheet,
   type RouteStop,
+  routeSheetEditAcksRecordFromSheets,
   summarizeRouteSheetMonedaPago,
 } from '../../pages/chat/domain/routeSheetTypes'
 import type { Message, MarketState } from './marketStoreTypes'
@@ -19,14 +20,19 @@ import {
 import {
   routeOfferPublicAfterSheetEdit,
   routeOfferTramosAllConfirmed,
-  routeSheetHasConfirmedCarriers,
   routeSheetHasPendingCarrierAck,
   carrierUserIdsAffectedByRouteSheetParadas,
   confirmedCarrierIdsOnOffer,
+  assignedCarrierUserIdsOnOffer,
+  buildRouteSheetEditSystemMessage,
 } from './marketSliceHelpers'
+import { useAppStore } from './useAppStore'
+import { SELLER_TRUST_PENALTY_ON_EDIT } from '../../pages/chat/components/modals/TrustRiskEditConfirmModal'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
 import {
   deleteThreadRouteSheet,
+  fetchThreadRouteSheets,
+  fetchThreadRouteTramoSubscriptions,
   patchThreadTradeAgreementRouteLink,
   putThreadRouteSheet,
 } from '../../utils/chat/chatApi'
@@ -202,14 +208,12 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
         [routeSheetId]: { revision: prevRev + 1, byCarrier: nextBy },
       }
     }
+    const persistChat = threadId.startsWith('cth_') && getSessionToken()
     const sysEdit: Message = {
       id: uid('m'),
       from: 'system',
       type: 'text',
-      text:
-        affectedCarriers.size > 0 ?
-          `Hoja de ruta «${titulo}» editada. Los transportistas cuyo tramo cambió deben aceptar o rechazar la versión actual en la pestaña Rutas (demo).`
-        : `Hoja de ruta «${titulo}» editada.`,
+      text: buildRouteSheetEditSystemMessage(titulo, ro0, routeSheetId, existing, paradas),
       at: now,
     }
     ok = true
@@ -227,7 +231,7 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
           ...th,
           routeSheets: list,
           routeSheetEditAcks,
-          messages: [...th.messages, sysEdit],
+          ...(persistChat ? {} : { messages: [...th.messages, sysEdit] }),
         },
       },
     }
@@ -235,7 +239,32 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
   if (ok && threadId.startsWith('cth_') && getSessionToken()) {
     const th = get().threads[threadId]
     const sheet = th?.routeSheets?.find((r) => r.id === routeSheetId)
-    if (sheet) void putThreadRouteSheet(threadId, sheet).catch(() => {})
+    if (sheet) {
+      void (async () => {
+        try {
+          await putThreadRouteSheet(threadId, sheet)
+          const sheets = await fetchThreadRouteSheets(threadId)
+          const acks = routeSheetEditAcksRecordFromSheets(sheets as RouteSheet[])
+          set((s) => {
+            const t = s.threads[threadId]
+            if (!t) return s
+            return {
+              ...s,
+              threads: {
+                ...s.threads,
+                [threadId]: {
+                  ...t,
+                  routeSheets: sheets as RouteSheet[],
+                  routeSheetEditAcks: { ...(t.routeSheetEditAcks ?? {}), ...acks },
+                },
+              },
+            }
+          })
+        } catch {
+          /* red / validación servidor */
+        }
+      })()
+    }
   }
   return ok
 },
@@ -581,29 +610,47 @@ unlinkAgreementFromRouteSheet: async (threadId, agreementId) => {
 
 deleteRouteSheet: (threadId, routeSheetId) => {
   let ok = false
+  const persistChat = threadId.startsWith('cth_') && getSessionToken()
   set((s) => {
     const th = s.threads[threadId]
     if (!th?.routeSheets?.length || threadIsActionLocked(th)) return s
     const sheet = th.routeSheets.find((r) => r.id === routeSheetId)
     if (!sheet) return s
-    if (routeSheetHasConfirmedCarriers(s.routeOfferPublic, th, routeSheetId)) return s
+    const ro = s.routeOfferPublic[th.offerId]
+    const confirmedIds = confirmedCarrierIdsOnOffer(ro, routeSheetId)
+    const assignedIds = assignedCarrierUserIdsOnOffer(ro, routeSheetId)
     const list = th.routeSheets.filter((r) => r.id !== routeSheetId)
     const contracts = (th.contracts ?? []).map((c) =>
       c.routeSheetId === routeSheetId ? { ...c, routeSheetId: undefined } : c,
     )
     let routeOfferPublic = s.routeOfferPublic
-    const ro = s.routeOfferPublic[th.offerId]
     if (ro?.routeSheetId === routeSheetId) {
       routeOfferPublic = { ...s.routeOfferPublic }
       delete routeOfferPublic[th.offerId]
     }
     const routeSheetEditAcks = { ...(th.routeSheetEditAcks ?? {}) }
     delete routeSheetEditAcks[routeSheetId]
+    let chatCarriers = th.chatCarriers
+    if (!persistChat && assignedIds.size > 0 && chatCarriers?.length) {
+      chatCarriers = chatCarriers.filter((c) => !assignedIds.has(c.id))
+    }
+    const nConfirmed = confirmedIds.size
+    const storeId = th.storeId?.trim()
+    if (!persistChat && nConfirmed > 0 && storeId) {
+      get().applyStoreTrustPenalty(storeId, SELLER_TRUST_PENALTY_ON_EDIT * nConfirmed)
+    }
+    let sysText = `Se eliminó la hoja de ruta «${sheet.titulo}».`
+    if (assignedIds.size > 0) {
+      sysText += ` Los transportistas con tramo en la oferta salieron del chat.`
+      if (nConfirmed > 0) {
+        sysText += ` A la tienda se aplicó un ajuste de confianza por cada transportista confirmado (${nConfirmed}× demo).`
+      }
+    }
     const sys: Message = {
       id: uid('m'),
       from: 'system',
       type: 'text',
-      text: `Se eliminó la hoja de ruta «${sheet.titulo}».`,
+      text: sysText,
       at: Date.now(),
     }
     ok = true
@@ -617,13 +664,42 @@ deleteRouteSheet: (threadId, routeSheetId) => {
           routeSheets: list,
           contracts,
           routeSheetEditAcks,
-          messages: [...th.messages, sys],
+          ...(!persistChat && chatCarriers !== th.chatCarriers ? { chatCarriers } : {}),
+          ...(persistChat ? {} : { messages: [...th.messages, sys] }),
         },
       },
     }
   })
-  if (ok && threadId.startsWith('cth_') && getSessionToken()) {
-    void deleteThreadRouteSheet(threadId, routeSheetId).catch(() => {})
+  if (ok && persistChat) {
+    void (async () => {
+      try {
+        await deleteThreadRouteSheet(threadId, routeSheetId)
+        const [sheets, subs] = await Promise.all([
+          fetchThreadRouteSheets(threadId),
+          fetchThreadRouteTramoSubscriptions(threadId),
+        ])
+        const acks = routeSheetEditAcksRecordFromSheets(sheets as RouteSheet[])
+        const meId = useAppStore.getState().me.id
+        get().applyThreadRouteTramoSubscriptions(threadId, subs, meId)
+        set((s) => {
+          const t = s.threads[threadId]
+          if (!t) return s
+          return {
+            ...s,
+            threads: {
+              ...s.threads,
+              [threadId]: {
+                ...t,
+                routeSheets: sheets as RouteSheet[],
+                routeSheetEditAcks: { ...(t.routeSheetEditAcks ?? {}), ...acks },
+              },
+            },
+          }
+        })
+      } catch {
+        /* servidor / red */
+      }
+    })()
   }
   return ok
 },

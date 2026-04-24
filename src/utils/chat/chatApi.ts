@@ -316,6 +316,26 @@ export async function deleteThreadRouteSheet(threadId: string, routeSheetId: str
   if (!res.ok && res.status !== 404) throw new Error(await res.text())
 }
 
+/** Transportista: acuse de edición de hoja (aceptar / rechazar). */
+export async function postRouteSheetEditCarrierResponse(
+  threadId: string,
+  routeSheetId: string,
+  accept: boolean,
+): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}/edit-carrier-response`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accept }),
+    },
+  )
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(t || `HTTP ${res.status}`)
+  }
+}
+
 export async function fetchThreadTradeAgreements(
   threadId: string,
 ): Promise<TradeAgreementApiDto[]> {

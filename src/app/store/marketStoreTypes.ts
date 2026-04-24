@@ -422,6 +422,10 @@ export type MarketState = {
    */
   workspacePersistStoreId: string | null;
   setWorkspacePersistStoreId: (storeId: string | null) => void;
+  /**
+   * Demo / local: resta puntos de confianza del badge de la tienda y sincroniza `thread.store` en hilos abiertos.
+   */
+  applyStoreTrustPenalty: (storeId: string, penalty: number) => void;
 
   ask: (
     offerId: string,
@@ -561,7 +565,14 @@ export type MarketState = {
     agreementId: string,
   ) => Promise<boolean>;
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean;
-  recordChatExitFromList: (threadId: string) => void;
+  /**
+   * Marca salida prematura con acuerdo y aplica penalización demo al comprador o vendedor que sale:
+   * puntos base × cantidad de integrantes (comprador + vendedor + transportistas en el hilo).
+   */
+  recordChatExitFromList: (
+    threadId: string,
+    leaverUserId: string,
+  ) => { appliedPenalty: number; groupMemberCount: number };
   /** Quita el hilo del estado local y, si es persistido, lo borra en el servidor. */
   removeThreadFromList: (
     threadId: string,

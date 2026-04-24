@@ -105,6 +105,8 @@ type AppState = {
   openAuthModal: () => void
   closeAuthModal: () => void
   setTrustScore: (score: number) => void
+  /** Resta puntos a un usuario por id (perfil local / demo); si coincide con `me`, actualiza la barra propia. */
+  applyTrustPenalty: (userId: string, penalty: number) => void
   setMeAvatarUrl: (url: string | undefined) => void
   setMeName: (name: string) => void
   setMeEmail: (email: string) => void
@@ -176,6 +178,27 @@ export const useAppStore = create<AppState>((set, get) => ({
         me: { ...s.me, trustScore: score },
         lastThresholdState: score < threshold ? 'below' : 'above',
         profileTrustScores,
+      }
+    })
+  },
+
+  applyTrustPenalty: (userId, penalty) => {
+    if (!userId || userId === 'guest' || penalty <= 0) return
+    const clamp = (n: number) => Math.max(-10_000, n)
+    const threshold = get().trustThreshold
+    set((s) => {
+      if (s.me.id === userId) {
+        const score = clamp(s.me.trustScore - penalty)
+        return {
+          me: { ...s.me, trustScore: score },
+          profileTrustScores: { ...s.profileTrustScores, [userId]: score },
+          lastThresholdState: score < threshold ? 'below' : 'above',
+        }
+      }
+      const prev = s.profileTrustScores[userId] ?? 0
+      const score = clamp(prev - penalty)
+      return {
+        profileTrustScores: { ...s.profileTrustScores, [userId]: score },
       }
     })
   },

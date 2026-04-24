@@ -9,8 +9,9 @@ import { threadIsActionLocked, uid } from './marketStoreHelpers'
 import { routeOfferPublicAfterSheetEdit } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
 import type { MarketState } from './marketStoreTypes'
+import { SELLER_TRUST_PENALTY_ON_EDIT } from '../../pages/chat/components/modals/TrustRiskEditConfirmModal'
 
-export function createRouteOfferPublicSlice(set: MarketSliceSet, _get: MarketSliceGet): Pick<MarketState,
+export function createRouteOfferPublicSlice(set: MarketSliceSet, get: MarketSliceGet): Pick<MarketState,
   | 'subscribeRouteOfferTramo'
   | 'validateRouteOfferTramo'
   | 'respondRouteSheetEdit'
@@ -284,36 +285,33 @@ respondRouteSheetEdit: (threadId, routeSheetId, carrierUserId, accept) => {
       routeSheetId,
       updatedSheet,
     )
-    const nextChatCarriers = (th.chatCarriers ?? []).map((c) =>
-      c.id !== carrierUserId ?
-        c
-      : {
-          ...c,
-          tramoLabel:
-            'Integrante del hilo — sin tramo asignado en la oferta tras rechazar la edición de la hoja (demo)',
-        },
-    )
+    const nextChatCarriers = (th.chatCarriers ?? []).filter((c) => c.id !== carrierUserId)
+    const penalty = SELLER_TRUST_PENALTY_ON_EDIT
+    const storeId = th.storeId?.trim()
+    if (storeId) {
+      get().applyStoreTrustPenalty(storeId, penalty)
+    }
     const sys: Message = {
       id: uid('m'),
       from: 'system',
       type: 'text',
-      text: `${carrier.name} rechazó los cambios en «${sheet.titulo}». Sus tramos quedan libres en la oferta pública; permanece en el chat como integrante (demo).`,
+      text: `${carrier.name} rechazó los cambios en «${sheet.titulo}». Sus tramos quedan libres en la oferta pública; salió del chat. A la tienda se aplicó un ajuste de confianza por la edición no aceptada (demo).`,
       at: now,
     }
     ok = true
     return {
       ...s,
       routeOfferPublic,
-      threads: {
-        ...s.threads,
-        [threadId]: {
-          ...th,
-          routeSheets,
-          chatCarriers: nextChatCarriers,
-          routeSheetEditAcks: nextAcks,
-          messages: [...th.messages, sys],
+        threads: {
+          ...s.threads,
+          [threadId]: {
+            ...th,
+            routeSheets,
+            chatCarriers: nextChatCarriers,
+            routeSheetEditAcks: nextAcks,
+            messages: [...th.messages, sys],
+          },
         },
-      },
     }
   })
   return ok

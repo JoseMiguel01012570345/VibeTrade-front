@@ -6,9 +6,17 @@ type Props = {
   onConfirm: () => void
   /** Etiqueta breve: «acuerdo» o «hoja de ruta». */
   subjectLabel: string
+  /** Acuerdo: riesgo inmediato al perfil como vendedor. Hoja: penalización a la tienda solo si un transportista rechaza. */
+  variant?: 'agreement' | 'routeSheet'
 }
 
-export function TrustRiskEditConfirmModal({ open, onClose, onConfirm, subjectLabel }: Props) {
+export function TrustRiskEditConfirmModal({
+  open,
+  onClose,
+  onConfirm,
+  subjectLabel,
+  variant = 'agreement',
+}: Props) {
   if (!open) return null
 
   return (
@@ -49,7 +57,7 @@ export function TrustRiskEditConfirmModal({ open, onClose, onConfirm, subjectLab
   )
 }
 
-/** Puntos que resta el demo al vendedor al guardar una edición confirmada tras el aviso. */
+/** Puntos que resta el demo a la tienda (rechazo de edición por transportista, eliminar hoja con confirmados, etc.). */
 export const SELLER_TRUST_PENALTY_ON_EDIT = 3
 
 /** Demo: salida del transportista con tramos confirmados antes de entregar la ruta. */

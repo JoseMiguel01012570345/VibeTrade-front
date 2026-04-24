@@ -15,7 +15,10 @@ import { cn } from '../../lib/cn'
 import { notifyChatParticipantsUserLeft } from '../../utils/chat/chatRealtime'
 import { postCarrierWithdrawFromThread } from '../../utils/chat/chatApi'
 import { getSessionToken } from '../../utils/http/sessionToken'
-import { CARRIER_ROUTE_EXIT_TRUST_PENALTY } from './components/modals/TrustRiskEditConfirmModal'
+import {
+  CARRIER_ROUTE_EXIT_TRUST_PENALTY,
+  SELLER_TRUST_PENALTY_ON_EDIT,
+} from './components/modals/TrustRiskEditConfirmModal'
 import { ChatLeaveConfirmModal } from './components/modals/ChatLeaveConfirmModal'
 import { messagePreviewLine } from './lib/chatAttachments'
 
@@ -107,10 +110,17 @@ export function ChatListPage() {
       if (hadAccepted) {
         const reason = globalThis.prompt('Motivo para salir del chat')
         if (reason == null || !String(reason).trim()) return
-        recordChatExitFromList(threadId)
-        toast('Salida registrada. Podría revisarse y afectar tu confianza. El chat se quitó de tu lista.', {
-          icon: '⚠️',
-        })
+        const { appliedPenalty, groupMemberCount } = recordChatExitFromList(threadId, me.id)
+        if (appliedPenalty > 0) {
+          toast(
+            `Tu barra de confianza se ajustó en −${appliedPenalty} por salir con acuerdo aceptado (${groupMemberCount} integrantes × ${SELLER_TRUST_PENALTY_ON_EDIT}, demo). El chat se quitó de tu lista.`,
+            { icon: '⚠️' },
+          )
+        } else {
+          toast('Salida registrada. Podría revisarse. El chat se quitó de tu lista.', {
+            icon: '⚠️',
+          })
+        }
       } else {
         toast.success('Chat eliminado de tu lista. Sin acuerdo aceptado, sin impacto en tu confianza.')
       }
@@ -157,7 +167,8 @@ export function ChatListPage() {
           Tus conversaciones con negocios (una por oferta en esta demo). «Salir» <strong>elimina el chat de tu lista</strong>.
           Como transportista con tramos confirmados, salir antes de que la hoja esté entregada puede des-suscribirte, limpiar
           tus datos en la ruta y ajustar tu barra de confianza (demo). Si sos comprador o vendedor y no hay acuerdo aceptado,
-          no pedimos motivo; si ya lo hay, pedimos motivo y puede revisarse el caso.
+          no pedimos motivo; si ya lo hay, pedimos motivo y se aplica un ajuste de confianza proporcional al número de
+          integrantes del chat (comprador, vendedor y transportistas).
         </div>
       </div>
 

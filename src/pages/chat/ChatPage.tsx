@@ -37,7 +37,10 @@ import { createChatVoiceRecorderSession } from "./lib/chatWavesurferRecorder";
 import { ensureMicPermission } from "./lib/voiceRecording";
 import { ChatRightRail } from "./components/rail/ChatRightRail";
 import { ChatRouteSubscribersPanel } from "./components/ChatRouteSubscribersPanel";
-import type { RouteSheet } from "./domain/routeSheetTypes";
+import {
+  type RouteSheet,
+  routeSheetEditAcksRecordFromSheets,
+} from "./domain/routeSheetTypes";
 import { RouteSheetFormModal } from "./components/modals/RouteSheetFormModal";
 import { TradeAgreementFormModal } from "./components/modals/TradeAgreementFormModal";
 import {
@@ -579,6 +582,11 @@ export function ChatPage() {
           meId,
         );
         if (cancelled) return;
+        const sheetsForThread =
+          routeSheetsRs !== null
+            ? (routeSheetsRs as RouteSheet[])
+            : (existingTh?.routeSheets ?? []);
+        const acksFromSheets = routeSheetEditAcksRecordFromSheets(sheetsForThread);
         useMarketStore.setState((s) => ({
           threads: {
             ...s.threads,
@@ -599,10 +607,15 @@ export function ChatPage() {
               purchaseMode: dto.purchaseMode,
               messages: qaSynced,
               contracts,
-              routeSheets:
-                routeSheetsRs !== null
-                  ? (routeSheetsRs as RouteSheet[])
-                  : (s.threads[tid]?.routeSheets ?? []),
+              routeSheets: sheetsForThread,
+              ...(Object.keys(acksFromSheets).length > 0
+                ? {
+                    routeSheetEditAcks: {
+                      ...(s.threads[tid]?.routeSheetEditAcks ?? {}),
+                      ...acksFromSheets,
+                    },
+                  }
+                : {}),
             },
           },
         }));
@@ -625,17 +638,43 @@ export function ChatPage() {
     const tid = threadId?.trim();
     if (!tid?.startsWith("cth_")) return;
     const uid = useAppStore.getState().me.id;
-    const [sheets, subs] = await Promise.all([
+    const [sheets, subs, serverMsgs] = await Promise.all([
       fetchThreadRouteSheets(tid).catch(() => null),
       fetchThreadRouteTramoSubscriptions(tid).catch(() => null),
+      fetchChatMessages(tid).catch(() => null),
     ]);
+    if (serverMsgs !== null) {
+      mergeChatSenderLabelsIntoProfileStore(serverMsgs);
+      const mapped = serverMsgs.map((d) => mapChatMessageDtoToMessage(d, uid));
+      useMarketStore.setState((s) => {
+        const t = s.threads[tid];
+        if (!t) return s;
+        const validIds = new Set((t.contracts ?? []).map((c) => c.id));
+        const merged = mergePersistedChatMessages(mapped, t.messages, {
+          validTradeAgreementIds: validIds,
+        });
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [tid]: { ...t, messages: merged },
+          },
+        };
+      });
+    }
     if (sheets) {
+      const sh = sheets as RouteSheet[];
+      const acks = routeSheetEditAcksRecordFromSheets(sh);
       useMarketStore.setState((s) => ({
         threads: {
           ...s.threads,
           [tid]: {
             ...(s.threads[tid] ?? {}),
-            routeSheets: sheets as RouteSheet[],
+            routeSheets: sh,
+            routeSheetEditAcks: {
+              ...(s.threads[tid]?.routeSheetEditAcks ?? {}),
+              ...acks,
+            },
           },
         },
       }));
@@ -1024,12 +1063,12 @@ export function ChatPage() {
   function applySellerTrustPenaltyIfQueued() {
     const q = trustPenaltyNextSave.current;
     trustPenaltyNextSave.current = "none";
-    if (q === "none") return;
+    if (q !== "agreement") return;
     setTrustScore(
       Math.max(-10_000, me.trustScore - SELLER_TRUST_PENALTY_ON_EDIT),
     );
     toast(
-      `Tu barra de confianza se ajustó en −${SELLER_TRUST_PENALTY_ON_EDIT} por modificar un ${q === "agreement" ? "acuerdo" : "hoja de ruta"} (demo).`,
+      `Tu barra de confianza se ajustó en −${SELLER_TRUST_PENALTY_ON_EDIT} por modificar un acuerdo (demo).`,
       {
         icon: "⚠️",
       },
@@ -1389,6 +1428,7 @@ export function ChatPage() {
             onOpenRouteSubscribers={(routeSheetId) => {
               setRouteSubscribersSheetId(routeSheetId);
             }}
+            onPersistedRouteDataRefresh={refreshChatRouteData}
             onRequestEditAgreement={(ag) => {
               if (!isActingSeller) return;
               if (ag.sellerEditBlockedUntilBuyerResponse) {
@@ -1450,6 +1490,9 @@ export function ChatPage() {
         subjectLabel={
           trustConfirm?.kind === "routeSheet" ? "hoja de ruta" : "acuerdo"
         }
+        variant={
+          trustConfirm?.kind === "routeSheet" ? "routeSheet" : "agreement"
+        }
         onClose={() => setTrustConfirm(null)}
         onConfirm={() => {
           const t = trustConfirm;
@@ -1463,7 +1506,7 @@ export function ChatPage() {
             setRouteSheetBeingEdited(t.sheet);
             setShowRouteSheetForm(true);
             setRailOpen(true);
-            trustPenaltyNextSave.current = "routeSheet";
+            trustPenaltyNextSave.current = "none";
           }
         }}
       />
@@ -1521,7 +1564,7 @@ export function ChatPage() {
               routeSheetBeingEdited.id,
               payload,
             );
-            if (ok) applySellerTrustPenaltyIfQueued();
+            if (ok && isActingSeller) applySellerTrustPenaltyIfQueued();
             else {
               toast.error(
                 "No se pudo guardar: revisá título, mercancías y al menos un tramo con origen y destino",

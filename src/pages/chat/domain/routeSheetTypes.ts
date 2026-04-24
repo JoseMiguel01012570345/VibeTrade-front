@@ -49,6 +49,23 @@ export type RouteStop = {
   ventanaHoraria?: string
 }
 
+/** Acuse post-edición persistido en servidor (misma forma que en el hilo). */
+export type RouteSheetEditAck = {
+  revision: number
+  byCarrier: Record<string, 'pending' | 'accepted' | 'rejected'>
+}
+
+export function routeSheetEditAcksRecordFromSheets(
+  sheets: RouteSheet[] | undefined,
+): Record<string, RouteSheetEditAck> {
+  const out: Record<string, RouteSheetEditAck> = {}
+  if (!sheets?.length) return out
+  for (const sh of sheets) {
+    if (sh.routeSheetEditAck) out[sh.id] = sh.routeSheetEditAck
+  }
+  return out
+}
+
 export type RouteSheet = {
   id: string
   threadId: string
@@ -66,6 +83,8 @@ export type RouteSheet = {
   publicadaPlataforma?: boolean
   /** true tras guardar desde el formulario de edición; bloquea eliminar si sigue sin publicar. */
   editadaEnFormulario?: boolean
+  /** Fuente de verdad en API para acuses de transportistas tras editar la hoja. */
+  routeSheetEditAck?: RouteSheetEditAck
 }
 
 export type RouteSheetDraft = Omit<RouteSheet, 'id' | 'threadId' | 'creadoEn' | 'actualizadoEn'>

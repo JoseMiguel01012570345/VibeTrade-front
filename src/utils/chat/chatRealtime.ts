@@ -21,6 +21,10 @@ import {
   type ChatThreadDto,
   type RouteTramoSubscriptionItemApi,
 } from "./chatApi";
+import {
+  type RouteSheet,
+  routeSheetEditAcksRecordFromSheets,
+} from "../../pages/chat/domain/routeSheetTypes";
 
 function handleIncomingPersistedChatMessage(dto: ChatMessageDto): void {
   mergeChatSenderLabelsIntoProfileStore([dto]);
@@ -234,6 +238,7 @@ export function startChatRealtime(): void {
         if (tid.startsWith("cth_") && useMarketStore.getState().threads[tid]) {
           try {
             const sheets = await fetchThreadRouteSheets(tid);
+            const acks = routeSheetEditAcksRecordFromSheets(sheets as RouteSheet[]);
             useMarketStore.setState((s) => {
               const t = s.threads[tid];
               if (!t) return s;
@@ -244,10 +249,29 @@ export function startChatRealtime(): void {
                   [tid]: {
                     ...t,
                     routeSheets: sheets as unknown as typeof t.routeSheets,
+                    routeSheetEditAcks: {
+                      ...(t.routeSheetEditAcks ?? {}),
+                      ...acks,
+                    },
                   },
                 },
               };
             });
+            if (change === "sheet_edit_pending") {
+              const t = useMarketStore.getState().threads[tid];
+              const carrierAck = t?.routeSheetEditAcks?.[sid]?.byCarrier?.[me];
+              if (
+                carrierAck === "pending" &&
+                getOpenChatThreadIdFromLocation() !== tid
+              ) {
+                notifyDesktopIfUnfocused({
+                  title: "Cambios en la hoja de ruta",
+                  body: "Aceptá o rechazá la edición en la pestaña Rutas del chat.",
+                  tag: `route-edit-${tid}-${sid}`,
+                  navigateTo: `/chat/${encodeURIComponent(tid)}`,
+                });
+              }
+            }
           } catch {
             /* hilo sin acceso o red */
           }
@@ -280,7 +304,22 @@ export function startChatRealtime(): void {
             "Se rechazó una solicitud en la hoja de ruta."
           : change === "withdraw" ?
             "Un transportista se retiró de la hoja de ruta."
+          : change === "sheet_edit_pending" ?
+            "La hoja de ruta se editó: si tenés un tramo afectado, abrí Rutas para aceptar o rechazar."
+          : change === "sheet_edit_accept" ?
+            "Un transportista aceptó los cambios en la hoja de ruta."
+          : change === "sheet_edit_reject" ?
+            "Un transportista rechazó los cambios en la hoja de ruta."
           : "Se actualizaron las suscripciones a la hoja de ruta.";
+        if (change === "sheet_edit_pending") {
+          const byCarrier =
+            useMarketStore.getState().threads[tid]?.routeSheetEditAcks?.[sid]
+              ?.byCarrier;
+          const mustAck = byCarrier?.[me] === "pending";
+          const ackHydrated = !!byCarrier;
+          if (ackHydrated && !mustAck) return;
+          if (getOpenChatThreadIdFromLocation() === tid) return;
+        }
         toast.success(msg);
       })();
     },

@@ -44,7 +44,8 @@ import {
 } from './marketStoreHelpers'
 import { routeSheetHasConfirmedCarriers } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
-import { resolveBuyerUserId } from '../../utils/chat/chatParticipantLabels'
+import { resolveBuyerUserId, resolveSellerUserId } from '../../utils/chat/chatParticipantLabels'
+import { SELLER_TRUST_PENALTY_ON_EDIT } from '../../pages/chat/components/modals/TrustRiskEditConfirmModal'
 import { isOfferPublishedForBuyerChat } from '../../utils/market/offerPublishedForBuyerChat'
 import { useAppStore } from './useAppStore'
 
@@ -872,13 +873,33 @@ refreshThreadTradeAgreements: async (threadId) => {
   }
 },
 
-recordChatExitFromList: (threadId) => {
+recordChatExitFromList: (threadId, leaverUserId) => {
+  const lid = (leaverUserId ?? '').trim()
+  const th0 = get().threads[threadId]
+  let appliedPenalty = 0
+  let groupMemberCount = 0
+
+  if (th0 && lid.length >= 2 && threadHasAcceptedAgreement(th0)) {
+    const buyerUid = (resolveBuyerUserId(th0, lid) ?? '').trim()
+    const sellerUid = (resolveSellerUserId(th0) ?? '').trim()
+    const leaverIsBuyer = buyerUid.length >= 2 && lid === buyerUid
+    const leaverIsSeller = sellerUid.length >= 2 && lid === sellerUid
+    if (leaverIsBuyer || leaverIsSeller) {
+      let n = 0
+      if (buyerUid.length >= 2) n++
+      if (sellerUid.length >= 2) n++
+      n += th0.chatCarriers?.length ?? 0
+      groupMemberCount = Math.max(1, n)
+      appliedPenalty = SELLER_TRUST_PENALTY_ON_EDIT * groupMemberCount
+      const target = leaverIsBuyer ? buyerUid : sellerUid
+      useAppStore.getState().applyTrustPenalty(target, appliedPenalty)
+    }
+  }
+
   set((s) => {
     const th = s.threads[threadId]
     if (!th) return s
     const next: Partial<Pick<Thread, 'prematureExitUnderInvestigation' | 'chatActionsLocked'>> = {}
-    // Sin acuerdo aceptado: salir no marca investigación ni obliga sanción de confianza (demo).
-    // Con acuerdo aceptado: salida prematura puede revisarse.
     if (threadHasAcceptedAgreement(th)) {
       next.prematureExitUnderInvestigation = true
     }
@@ -894,6 +915,8 @@ recordChatExitFromList: (threadId) => {
       },
     }
   })
+
+  return { appliedPenalty, groupMemberCount }
 },
 
 removeThreadFromList: async (threadId, opts?: { skipServerDelete?: boolean }) => {

@@ -120,8 +120,24 @@ export function carrierUserIdsAffectedByRouteSheetParadas(
   existingSheet: RouteSheet,
   newParadas: RouteStop[],
 ): Set<string> {
-  const affected = new Set<string>()
-  if (!ro || ro.routeSheetId !== routeSheetId) return affected
+  const detail = affectedRouteSheetStopsDetail(ro, routeSheetId, existingSheet, newParadas)
+  return new Set(detail.keys())
+}
+
+export type AffectedRouteSheetStopDetail = {
+  displayName: string
+  tramos: string[]
+}
+
+/** Por transportista: tramos confirmados cuya fila en la hoja cambió o desapareció (misma regla que el acuse). */
+export function affectedRouteSheetStopsDetail(
+  ro: RouteOfferPublicState | undefined,
+  routeSheetId: string,
+  existingSheet: RouteSheet,
+  newParadas: RouteStop[],
+): Map<string, AffectedRouteSheetStopDetail> {
+  const out = new Map<string, AffectedRouteSheetStopDetail>()
+  if (!ro || ro.routeSheetId !== routeSheetId) return out
 
   const oldById = new Map(existingSheet.paradas.map((p) => [p.id, p]))
   const newById = new Map(newParadas.map((p) => [p.id, p]))
@@ -131,15 +147,39 @@ export function carrierUserIdsAffectedByRouteSheetParadas(
     if (!a || a.status !== 'confirmed') continue
     const oldP = oldById.get(t.stopId)
     const newP = newById.get(t.stopId)
-    if (!oldP || !newP) {
-      affected.add(a.userId)
-      continue
-    }
-    if (routeStopAckFingerprint(oldP) !== routeStopAckFingerprint(newP)) {
-      affected.add(a.userId)
-    }
+    const affected =
+      !oldP ||
+      !newP ||
+      routeStopAckFingerprint(oldP) !== routeStopAckFingerprint(newP)
+    if (!affected) continue
+    const label =
+      newP ?
+        `Tramo ${newP.orden} (${newP.origen} → ${newP.destino})`
+      : `Tramo eliminado o reasignado (orden ${oldP?.orden ?? '?'})`
+    const cur = out.get(a.userId)
+    if (cur) cur.tramos.push(label)
+    else out.set(a.userId, { displayName: a.displayName, tramos: [label] })
   }
-  return affected
+  return out
+}
+
+export function buildRouteSheetEditSystemMessage(
+  titulo: string,
+  ro: RouteOfferPublicState | undefined,
+  routeSheetId: string,
+  existingSheet: RouteSheet,
+  newParadas: RouteStop[],
+): string {
+  const detailMap = affectedRouteSheetStopsDetail(ro, routeSheetId, existingSheet, newParadas)
+  if (detailMap.size === 0) return `Hoja de ruta «${titulo}» editada.`
+  const parts: string[] = []
+  for (const { displayName, tramos } of detailMap.values()) {
+    parts.push(`${displayName} (${tramos.join(', ')})`)
+  }
+  if (parts.length === 1) {
+    return `Hoja de ruta «${titulo}» editada. Solo ${parts[0]} puede aceptar o rechazar esta versión en la pestaña Rutas (solo el transportista de ese tramo).`
+  }
+  return `Hoja de ruta «${titulo}» editada. ${parts.join('; ')}: cada transportista solo puede aceptar o rechazar los cambios de su propio tramo en la pestaña Rutas.`
 }
 
 /** userIds con al menos un tramo confirmado en esta oferta (misma hoja). */
@@ -149,6 +189,17 @@ export function confirmedCarrierIdsOnOffer(ro: RouteOfferPublicState | undefined
   for (const t of ro.tramos) {
     const a = t.assignment
     if (a?.status === 'confirmed') ids.add(a.userId)
+  }
+  return ids
+}
+
+/** userIds con asignación en la oferta (pendiente o confirmada) para esta hoja. */
+export function assignedCarrierUserIdsOnOffer(ro: RouteOfferPublicState | undefined, routeSheetId: string): Set<string> {
+  const ids = new Set<string>()
+  if (!ro || ro.routeSheetId !== routeSheetId) return ids
+  for (const t of ro.tramos) {
+    const u = t.assignment?.userId
+    if (u) ids.add(u)
   }
   return ids
 }

@@ -55,12 +55,6 @@ export function AgreementDeleteRouteSheetsModal({
     [contracts.length, routeSheets.length],
   )
 
-  const anySheetDeletable = useMemo(
-    () =>
-      routeSheets.some((rs) => !routeSheetHasConfirmedCarriersOnOffer(routeOffer, rs.id)),
-    [routeSheets, routeOffer],
-  )
-
   const canDeleteAgreementNow =
     !agreementDeleteBlockedByRouteSheetInvariant(contracts.length, routeSheets.length)
 
@@ -89,22 +83,14 @@ export function AgreementDeleteRouteSheetsModal({
             <strong className="text-[var(--text)]">eliminar al menos una hoja de ruta</strong>.
           </p>
           <p className="vt-muted text-[12px] leading-snug">
-            Elegí una hoja en la grilla (vista previa). Sólo podés borrar hojas sin transportistas con tramo ya
-            confirmado en la oferta pública; las solicitudes pendientes no bloquean la eliminación.
+            Elegí una hoja en la grilla. Si la oferta pública tenía transportistas con tramo asignado, al borrar la hoja
+            salen del chat; por cada transportista con tramo confirmado se penaliza la confianza del vendedor (demo).
           </p>
-
-          {!anySheetDeletable && blockedByInvariant ? (
-            <p className="rounded-lg border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_8%,var(--surface))] px-3 py-2 text-[12px] font-semibold leading-snug text-[color-mix(in_oklab,#b45309_95%,var(--text))]">
-              Ninguna hoja se puede eliminar ahora porque todas las que podrían liberarse tienen al menos un tramo con
-              transportista confirmado. Resolvé la operación de transporte o desasigná tramos antes de bajar acuerdos en
-              la demo.
-            </p>
-          ) : null}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {routeSheets.map((rs) => {
               const first = rs.paradas[0]
-              const locked = routeSheetHasConfirmedCarriersOnOffer(routeOffer, rs.id)
+              const hasConfirmed = routeSheetHasConfirmedCarriersOnOffer(routeOffer, rs.id)
               return (
                 <div
                   key={rs.id}
@@ -146,24 +132,23 @@ export function AgreementDeleteRouteSheetsModal({
                     </p>
                   ) : null}
                   <div className="mt-3 flex flex-1 flex-col justify-end gap-1">
-                    {locked ? (
-                      <p className="text-[11px] leading-snug text-[var(--muted)]">
-                        No disponible: hay transportistas con tramo confirmado en la oferta vinculada a esta hoja.
+                    {hasConfirmed ? (
+                      <p className="text-[11px] leading-snug text-[color-mix(in_oklab,#b45309_90%,var(--muted))]">
+                        Hay transportistas confirmados: borrar saca del chat a quienes tenían tramo en la oferta y suma
+                        penalización al vendedor por cada uno (demo).
                       </p>
-                    ) : (
-                      <button
-                        type="button"
-                        className="vt-btn vt-btn-sm inline-flex w-full justify-center gap-1.5 border-[color-mix(in_oklab,#dc2626_28%,var(--border))] bg-[color-mix(in_oklab,#dc2626_6%,var(--surface))] text-[color-mix(in_oklab,#dc2626_88%,var(--text))]"
-                        onClick={() => {
-                          const ok = deleteRouteSheet(threadId, rs.id)
-                          if (ok) toast.success(`Hoja «${rs.titulo}» eliminada`)
-                          else
-                            toast.error('No se pudo eliminar la hoja (p. ej. transportistas confirmados en la oferta).')
-                        }}
-                      >
-                        <Trash2 size={14} aria-hidden /> Eliminar esta hoja
-                      </button>
-                    )}
+                    ) : null}
+                    <button
+                      type="button"
+                      className="vt-btn vt-btn-sm inline-flex w-full justify-center gap-1.5 border-[color-mix(in_oklab,#dc2626_28%,var(--border))] bg-[color-mix(in_oklab,#dc2626_6%,var(--surface))] text-[color-mix(in_oklab,#dc2626_88%,var(--text))]"
+                      onClick={() => {
+                        const ok = deleteRouteSheet(threadId, rs.id)
+                        if (ok) toast.success(`Hoja «${rs.titulo}» eliminada`)
+                        else toast.error('No se pudo eliminar la hoja.')
+                      }}
+                    >
+                      <Trash2 size={14} aria-hidden /> Eliminar esta hoja
+                    </button>
                   </div>
                 </div>
               )
