@@ -32,6 +32,7 @@ import {
 import { cn } from "../../../lib/cn";
 import { VtSelect } from "../../../components/VtSelect";
 import { VtMultiSelect } from "../../../components/VtMultiSelect";
+import { formServiceQualifiesAsTransport } from "../../../utils/user/transportEligibility";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import {
   fixSplitLines,
@@ -176,6 +177,20 @@ export function ServiceEditorModal({
     }
     return [...merged].sort((a, b) => a.localeCompare(b, "es"));
   }, [currencyOptions, form.monedas]);
+
+  const qualifiesTransport = useMemo(
+    () =>
+      formServiceQualifiesAsTransport({
+        category: form.category,
+        tipoServicio: form.tipoServicio,
+      }),
+    [form.category, form.tipoServicio],
+  );
+
+  const servicePhotoUrls = useMemo(
+    () => serviceCatalogImagePhotoUrlsFromSlots(photoSlots),
+    [photoSlots],
+  );
 
   if (!open) return null;
 
@@ -437,10 +452,23 @@ export function ServiceEditorModal({
                 rows={3}
               />
             </label>
-            <div className={fieldRootWithInvalid(false)}>
-              <span className={fieldLabel}>Fotos del servicio (opcional)</span>
+            <div
+              className={fieldRootWithInvalid(
+                showVal &&
+                  qualifiesTransport &&
+                  servicePhotoUrls.filter((u) => u.trim()).length < 1,
+              )}
+            >
+              <span className={fieldLabel}>
+                Fotos del servicio
+                {qualifiesTransport ?
+                  " (obligatorio: al menos una imagen)"
+                : " (opcional)"}
+              </span>
               <p className="vt-muted mb-2 text-[11px] leading-snug">
-                Podés sumar varias imágenes; se muestran en la ficha pública y en la oferta.
+                {qualifiesTransport ?
+                  "Los servicios de transporte o logística deben incluir al menos una foto. Se muestran en la ficha pública y en la oferta."
+                : "Podés sumar varias imágenes; se muestran en la ficha pública y en la oferta."}
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <input
@@ -561,6 +589,7 @@ export function ServiceEditorModal({
                   : [];
                 const draftForValidate: Omit<StoreService, "id" | "storeId"> = {
                   ...form,
+                  photoUrls: serviceCatalogImagePhotoUrlsFromSlots(photoSlots),
                   riesgos: {
                     enabled: form.riesgos.enabled,
                     items: riesgosItems,

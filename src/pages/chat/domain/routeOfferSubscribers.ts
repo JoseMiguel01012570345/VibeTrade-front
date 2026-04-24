@@ -123,3 +123,54 @@ export function subscribersFromApiRouteTramoItems(
     x.displayName.localeCompare(y.displayName, "es", { sensitivity: "base" }),
   );
 }
+
+/** Tramo de la hoja con los transportistas que tienen suscripción en ese tramo. */
+export type RouteOfferTramoSubscriberGroup = {
+  stopId: string;
+  orden: number;
+  origenLine: string;
+  destinoLine: string;
+  carriers: RouteOfferSubscriberSummary[];
+};
+
+/**
+ * Agrupa suscriptores por tramo (stopId). Cada transportista aparece una vez por tramo.
+ */
+export function groupSubscribersByTramo(
+  subscribers: RouteOfferSubscriberSummary[],
+): RouteOfferTramoSubscriberGroup[] {
+  const map = new Map<
+    string,
+    { orden: number; origenLine: string; destinoLine: string; carriers: RouteOfferSubscriberSummary[] }
+  >();
+
+  for (const sub of subscribers) {
+    for (const tr of sub.tramos) {
+      let g = map.get(tr.stopId);
+      if (!g) {
+        g = {
+          orden: tr.orden,
+          origenLine: tr.origenLine,
+          destinoLine: tr.destinoLine,
+          carriers: [],
+        };
+        map.set(tr.stopId, g);
+      } else if (tr.orden < g.orden) {
+        g.orden = tr.orden;
+      }
+      if (!g.carriers.some((c) => c.userId === sub.userId)) {
+        g.carriers.push(sub);
+      }
+    }
+  }
+
+  for (const g of map.values()) {
+    g.carriers.sort((a, b) =>
+      a.displayName.localeCompare(b.displayName, "es", { sensitivity: "base" }),
+    );
+  }
+
+  return [...map.entries()]
+    .map(([stopId, v]) => ({ stopId, ...v }))
+    .sort((a, b) => a.orden - b.orden || a.stopId.localeCompare(b.stopId));
+}

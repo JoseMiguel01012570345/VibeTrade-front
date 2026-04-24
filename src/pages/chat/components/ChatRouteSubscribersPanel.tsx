@@ -8,9 +8,12 @@ import { cn } from "../../../lib/cn";
 import {
   fetchThreadRouteTramoSubscriptions,
   postAcceptRouteTramoSubscriptions,
+  postRejectRouteTramoSubscriptions,
 } from "../../../utils/chat/chatApi";
+import { subscribeRouteTramoSubscriptionsChanged } from "../../../utils/chat/chatRealtime";
 import {
   collectRouteOfferSubscribersForSheet,
+  groupSubscribersByTramo,
   subscribersFromApiRouteTramoItems,
   type RouteOfferSubscriberSummary,
 } from "../domain/routeOfferSubscribers";
@@ -21,8 +24,8 @@ type Props = {
   routeOffer: RouteOfferPublicState | undefined;
   routeSheetId: string;
   routeSheetTitle?: string;
-  /** Comprador o vendedor: pueden confirmar suscripciones en servidor. */
-  canModerateSubscribers?: boolean;
+  /** Solo vendedor del hilo: aceptar o rechazar suscripciones en servidor. */
+  canSellerManageRouteSubscriptions?: boolean;
   onSubscriptionsChanged?: () => void | Promise<void>;
   onClose: () => void;
   /** Desde notificación: abrir detalle y resaltar. */
@@ -30,10 +33,10 @@ type Props = {
 };
 
 function statusLabel(s: RouteOfferSubscriberSummary["tramos"][0]["status"]) {
-  return s === "confirmed" ? "Confirmado" : "Pendiente de validación";
+  if (s === "confirmed") return "Confirmado";
+  return "Pendiente de validación";
 }
 
-/** Ficha pública del servicio (mismo id de oferta en catálogo); no abrir editor de tienda del transportista. */
 function serviceHrefForSubscriber(sub: RouteOfferSubscriberSummary): string | null {
   const sid = sub.storeServiceId?.trim();
   if (!sid) return null;
@@ -45,18 +48,21 @@ export function ChatRouteSubscribersPanel({
   routeOffer,
   routeSheetId,
   routeSheetTitle,
-  canModerateSubscribers = false,
+  canSellerManageRouteSubscriptions = false,
   onSubscriptionsChanged,
   onClose,
   highlightUserId,
 }: Props) {
-  const [selected, setSelected] = useState<RouteOfferSubscriberSummary | null>(null);
+  const [focusTramoId, setFocusTramoId] = useState<string | null>(null);
+  const [focusCarrierId, setFocusCarrierId] = useState<string | null>(null);
   const autoOpenedForHi = useRef<string | null>(null);
   const rowRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [subsLoadState, setSubsLoadState] = useState<"loading" | "ok" | "error">("loading");
   const [serverSubs, setServerSubs] = useState<RouteOfferSubscriberSummary[]>([]);
   const [confirmAcceptOpen, setConfirmAcceptOpen] = useState(false);
+  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
   const [acceptBusy, setAcceptBusy] = useState(false);
+  const [rejectBusy, setRejectBusy] = useState(false);
 
   const reloadSubscriptions = () => {
     const tid = threadId?.trim();
@@ -100,6 +106,29 @@ export function ChatRouteSubscribersPanel({
     };
   }, [threadId, routeSheetId]);
 
+  useEffect(() => {
+    const tid = threadId.trim();
+    const rsid = routeSheetId.trim();
+    if (tid.length < 4 || rsid.length < 1) return () => {};
+
+    const unsub = subscribeRouteTramoSubscriptionsChanged((p) => {
+      if (p.threadId !== tid || p.routeSheetId !== rsid) return;
+      const next = subscribersFromApiRouteTramoItems(p.items, rsid);
+      setServerSubs(next);
+      setSubsLoadState("ok");
+      const groups = groupSubscribersByTramo(next);
+      setFocusTramoId((prevT) => {
+        if (!prevT) return null;
+        return groups.some((g) => g.stopId === prevT) ? prevT : null;
+      });
+      const ch = p.change.toLowerCase();
+      if (ch === "accept" || ch === "reject") {
+        void onSubscriptionsChanged?.();
+      }
+    });
+    return unsub;
+  }, [threadId, routeSheetId, onSubscriptionsChanged]);
+
   const subscribers = useMemo(() => {
     const local = collectRouteOfferSubscribersForSheet(routeOffer, routeSheetId);
     if (subsLoadState === "error") return local;
@@ -107,6 +136,35 @@ export function ChatRouteSubscribersPanel({
     if (serverSubs.length > 0) return serverSubs;
     return local;
   }, [subsLoadState, serverSubs, routeOffer, routeSheetId]);
+
+  const tramoGroups = useMemo(() => groupSubscribersByTramo(subscribers), [subscribers]);
+
+  const selectedTramo = focusTramoId
+    ? (tramoGroups.find((g) => g.stopId === focusTramoId) ?? null)
+    : null;
+  const selectedCarrier =
+    selectedTramo && focusCarrierId
+      ? (selectedTramo.carriers.find((c) => c.userId === focusCarrierId) ?? null)
+      : null;
+
+  useEffect(() => {
+    if (!focusTramoId) {
+      setFocusCarrierId(null);
+      return;
+    }
+    if (!tramoGroups.some((g) => g.stopId === focusTramoId)) {
+      setFocusTramoId(null);
+      setFocusCarrierId(null);
+    }
+  }, [tramoGroups, focusTramoId]);
+
+  useEffect(() => {
+    if (!focusCarrierId || !focusTramoId) return;
+    const g = tramoGroups.find((x) => x.stopId === focusTramoId);
+    if (!g?.carriers.some((c) => c.userId === focusCarrierId)) {
+      setFocusCarrierId(null);
+    }
+  }, [tramoGroups, focusTramoId, focusCarrierId]);
 
   const hi = highlightUserId?.trim() ?? "";
 
@@ -116,39 +174,54 @@ export function ChatRouteSubscribersPanel({
       return;
     }
     if (autoOpenedForHi.current === hi) return;
-    const sub = subscribers.find((s) => s.userId === hi);
-    if (!sub) return;
+    const g = tramoGroups.find((gr) => gr.carriers.some((c) => c.userId === hi));
+    if (!g) return;
     autoOpenedForHi.current = hi;
-    setSelected(sub);
+    setFocusTramoId(g.stopId);
+    setFocusCarrierId(hi);
     requestAnimationFrame(() => {
       rowRefs.current[hi]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     });
-  }, [hi, subscribers]);
+  }, [hi, tramoGroups]);
 
-  const showHighlightRing = hi.length > 0 && selected?.userId === hi;
+  const showHighlightRing = hi.length > 0 && selectedCarrier?.userId === hi;
 
-  const selectedServiceHref = selected ? serviceHrefForSubscriber(selected) : null;
-  const selectedHasPending =
-    !!selected && selected.tramos.some((t) => t.status === "pending");
+  const selectedServiceHref = selectedCarrier ? serviceHrefForSubscriber(selectedCarrier) : null;
+
+  const tramoRowForSelection = selectedCarrier?.tramos.find((t) => t.stopId === focusTramoId);
+
+  const anotherConfirmedOnThisStop = useMemo(() => {
+    if (!focusTramoId || !focusCarrierId) return false;
+    return subscribers.some(
+      (sub) =>
+        sub.userId !== focusCarrierId &&
+        sub.tramos.some((t) => t.stopId === focusTramoId && t.status === "confirmed"),
+    );
+  }, [subscribers, focusTramoId, focusCarrierId]);
+
+  const selectedHasPending = tramoRowForSelection?.status === "pending";
+  const selectedHasAcceptablePending = !!selectedHasPending && !anotherConfirmedOnThisStop;
 
   async function confirmAcceptSubscriber() {
-    if (!selected || !canModerateSubscribers) return;
+    if (!selectedCarrier || !canSellerManageRouteSubscriptions || !focusTramoId) return;
     const tid = threadId.trim();
     const rsid = routeSheetId.trim();
-    const cid = selected.userId.trim();
-    if (!tid || !rsid || !cid) return;
+    const cid = selectedCarrier.userId.trim();
+    const stopId = focusTramoId.trim();
+    if (!tid || !rsid || !cid || !stopId) return;
     setAcceptBusy(true);
     try {
       const { acceptedCount } = await postAcceptRouteTramoSubscriptions(tid, {
         routeSheetId: rsid,
         carrierUserId: cid,
+        stopId,
       });
       if (acceptedCount < 1) {
-        toast.error("No había solicitudes pendientes para confirmar.");
+        toast.error("No había solicitud pendiente para confirmar en este tramo.");
       } else {
         toast.success(
           acceptedCount === 1 ?
-            "Suscripción confirmada. Se notificó al transportista."
+            "Suscripción confirmada en este tramo. Se notificó al transportista."
           : `${acceptedCount} suscripciones confirmadas. Se notificó al transportista.`,
         );
       }
@@ -163,6 +236,70 @@ export function ChatRouteSubscribersPanel({
     }
   }
 
+  async function confirmRejectSubscriber() {
+    if (!selectedCarrier || !canSellerManageRouteSubscriptions || !focusTramoId) return;
+    const tid = threadId.trim();
+    const rsid = routeSheetId.trim();
+    const cid = selectedCarrier.userId.trim();
+    const stopId = focusTramoId.trim();
+    if (!tid || !rsid || !cid || !stopId) return;
+    setRejectBusy(true);
+    try {
+      const { rejectedCount } = await postRejectRouteTramoSubscriptions(tid, {
+        routeSheetId: rsid,
+        carrierUserId: cid,
+        stopId,
+      });
+      if (rejectedCount < 1) {
+        toast.error("No había solicitud pendiente para rechazar en este tramo.");
+      } else {
+        toast.success(
+          rejectedCount === 1 ?
+            "Solicitud rechazada en este tramo. Se notificó al transportista."
+          : `${rejectedCount} solicitudes rechazadas. Se notificó al transportista.`,
+        );
+      }
+      setConfirmRejectOpen(false);
+      setFocusCarrierId(null);
+      reloadSubscriptions();
+      await onSubscriptionsChanged?.();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo rechazar.";
+      toast.error(msg);
+    } finally {
+      setRejectBusy(false);
+    }
+  }
+
+  function headerTitle() {
+    if (selectedCarrier) {
+      return (
+        <button
+          type="button"
+          className="m-0 inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left text-[13px] font-extrabold text-[var(--primary)]"
+          onClick={() => setFocusCarrierId(null)}
+        >
+          <ArrowLeft size={14} aria-hidden /> Volver
+        </button>
+      );
+    }
+    if (selectedTramo) {
+      return (
+        <button
+          type="button"
+          className="m-0 inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left text-[13px] font-extrabold text-[var(--primary)]"
+          onClick={() => {
+            setFocusTramoId(null);
+            setFocusCarrierId(null);
+          }}
+        >
+          <ArrowLeft size={14} aria-hidden /> Volver
+        </button>
+      );
+    }
+    return "Suscriptores por tramo";
+  }
+
   return (
     <>
       <aside
@@ -172,7 +309,7 @@ export function ChatRouteSubscribersPanel({
           showHighlightRing &&
             "ring-2 ring-[color-mix(in_oklab,var(--primary)_55%,var(--border))] ring-offset-2 ring-offset-[var(--surface)]",
         )}
-        aria-label="Suscriptores a la oferta de hoja de ruta"
+        aria-label="Suscriptores a la oferta de hoja de ruta por tramo"
       >
         <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--border)] px-3 py-2.5">
           <div className="min-w-0">
@@ -180,20 +317,15 @@ export function ChatRouteSubscribersPanel({
               Oferta publicada
             </div>
             <div className="mt-0.5 truncate text-[13px] font-extrabold leading-tight text-[var(--text)]">
-              {selected ? (
-                <button
-                  type="button"
-                  className="m-0 inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left text-[13px] font-extrabold text-[var(--primary)]"
-                  onClick={() => setSelected(null)}
-                >
-                  <ArrowLeft size={14} aria-hidden /> Volver
-                </button>
-              ) : (
-                "Suscriptores"
-              )}
+              {headerTitle()}
             </div>
-            {routeSheetTitle && !selected ? (
+            {routeSheetTitle && !selectedTramo ? (
               <p className="vt-muted mb-0 mt-1 line-clamp-2 text-[11px] leading-snug">{routeSheetTitle}</p>
+            ) : null}
+            {selectedTramo && !selectedCarrier ? (
+              <p className="vt-muted mb-0 mt-1 line-clamp-2 text-[11px] leading-snug">
+                Tramo {selectedTramo.orden}: {selectedTramo.origenLine} → {selectedTramo.destinoLine}
+              </p>
             ) : null}
           </div>
           <button
@@ -208,7 +340,7 @@ export function ChatRouteSubscribersPanel({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2.5">
-          {selected ? (
+          {selectedCarrier && focusTramoId ? (
             <div
               className={cn(
                 "px-1 text-[13px]",
@@ -221,15 +353,21 @@ export function ChatRouteSubscribersPanel({
                   Solicitud reciente
                 </p>
               ) : null}
-              <div className="text-[15px] font-black leading-tight">{selected.displayName}</div>
+              <div className="text-[10px] font-black uppercase tracking-wide text-[var(--muted)]">
+                Tramo {tramoRowForSelection?.orden ?? "—"}
+              </div>
+              <p className="mb-0 mt-0.5 text-[11px] font-semibold leading-snug text-[var(--text)]">
+                {selectedTramo?.origenLine} → {selectedTramo?.destinoLine}
+              </p>
+              <div className="mt-3 text-[15px] font-black leading-tight">{selectedCarrier.displayName}</div>
               <p className="vt-muted mb-0 mt-2 text-[11px] leading-snug">
                 <span className="font-extrabold text-[var(--text)]">Confianza: </span>
-                {selected.trustScore}
+                {selectedCarrier.trustScore}
               </p>
               <p className="mb-0 mt-1.5 text-[11px] leading-snug">
                 <span className="font-extrabold text-[var(--muted)]">Teléfono: </span>
                 <span className="font-mono font-semibold tabular-nums text-[var(--text)]">
-                  {selected.phone?.trim() || "—"}
+                  {selectedCarrier.phone?.trim() || "—"}
                 </span>
               </p>
               <div className="mt-3 rounded-lg border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-2.5 py-2">
@@ -237,7 +375,7 @@ export function ChatRouteSubscribersPanel({
                   Servicio de transporte
                 </div>
                 <p className="mb-0 mt-1 text-[12px] font-semibold leading-snug text-[var(--text)]">
-                  {selected.transportServiceLabel?.trim() || "No indicó servicio al suscribirse"}
+                  {selectedCarrier.transportServiceLabel?.trim() || "No indicó servicio al suscribirse"}
                 </p>
                 {selectedServiceHref ? (
                   <Link
@@ -248,54 +386,51 @@ export function ChatRouteSubscribersPanel({
                   </Link>
                 ) : null}
               </div>
-              {canModerateSubscribers && selectedHasPending ? (
-                <div className="mt-3">
+              {canSellerManageRouteSubscriptions && selectedHasPending ? (
+                <div className="mt-3 flex flex-col gap-2">
                   <button
                     type="button"
                     className="vt-btn vt-btn-primary w-full text-[12px] font-extrabold"
+                    disabled={!selectedHasAcceptablePending}
+                    title={
+                      !selectedHasAcceptablePending ?
+                        "En este tramo ya hay otro transportista confirmado."
+                      : undefined
+                    }
                     onClick={() => setConfirmAcceptOpen(true)}
                   >
-                    Aceptar transportista
+                    Aceptar en este tramo
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-btn w-full border-[color-mix(in_oklab,var(--bad)_45%,var(--border))] text-[12px] font-extrabold text-[var(--bad)]"
+                    onClick={() => setConfirmRejectOpen(true)}
+                  >
+                    Rechazar en este tramo
                   </button>
                 </div>
               ) : null}
-              <div className="mt-3">
-                <div className="text-[10px] font-black uppercase tracking-wide text-[var(--muted)]">
-                  Tramos
+              {tramoRowForSelection ? (
+                <div
+                  className={cn(
+                    "mt-3 text-[10px] font-bold",
+                    tramoRowForSelection.status === "confirmed" ?
+                      "text-[color-mix(in_oklab,var(--good)_85%,var(--muted))]"
+                    : "text-[color-mix(in_oklab,var(--primary)_88%,var(--muted))]",
+                  )}
+                >
+                  {statusLabel(tramoRowForSelection.status)}
                 </div>
-                <ul className="m-0 mt-1.5 list-none space-y-2 p-0">
-                  {selected.tramos.map((tr) => (
-                    <li
-                      key={`${tr.stopId}-${tr.orden}`}
-                      className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-[11px] leading-snug"
-                    >
-                      <div className="font-extrabold">
-                        Tramo {tr.orden}: {tr.origenLine} → {tr.destinoLine}
-                      </div>
-                      <div
-                        className={cn(
-                          "mt-1 text-[10px] font-bold",
-                          tr.status === "confirmed" ?
-                            "text-[color-mix(in_oklab,var(--good)_85%,var(--muted))]"
-                          : "text-[color-mix(in_oklab,var(--primary)_88%,var(--muted))]",
-                        )}
-                      >
-                        {statusLabel(tr.status)}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              ) : null}
+              {anotherConfirmedOnThisStop && selectedHasPending ? (
+                <p className="mb-0 mt-2 text-[10px] font-semibold text-[var(--bad)]">
+                  Otro transportista ya está confirmado en este tramo.
+                </p>
+              ) : null}
             </div>
-          ) : subsLoadState === "loading" ? (
-            <p className="vt-muted px-1 py-2 text-[12px] leading-snug">Cargando suscripciones…</p>
-          ) : subscribers.length === 0 ? (
-            <p className="vt-muted px-1 py-2 text-[12px] leading-snug">
-              Todavía no hay transportistas suscritos a esta hoja en la oferta pública.
-            </p>
-          ) : (
+          ) : selectedTramo ? (
             <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
-              {subscribers.map((sub) => (
+              {selectedTramo.carriers.map((sub) => (
                 <li key={sub.userId}>
                   <button
                     type="button"
@@ -308,12 +443,15 @@ export function ChatRouteSubscribersPanel({
                         "border-[color-mix(in_oklab,var(--primary)_45%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_12%,var(--surface))] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_35%,transparent)]"
                       : null,
                     )}
-                    onClick={() => setSelected(sub)}
+                    onClick={() => setFocusCarrierId(sub.userId)}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-left text-[13px] font-extrabold leading-tight">{sub.displayName}</span>
                       <span className="shrink-0 text-[10px] font-bold text-[var(--muted)]">
-                        {sub.tramos.length} tramo{sub.tramos.length === 1 ? "" : "s"}
+                        {(() => {
+                          const tr = sub.tramos.find((t) => t.stopId === selectedTramo.stopId);
+                          return tr ? statusLabel(tr.status) : "—";
+                        })()}
                       </span>
                     </div>
                     {sub.transportServiceLabel ? (
@@ -331,6 +469,44 @@ export function ChatRouteSubscribersPanel({
                 </li>
               ))}
             </ul>
+          ) : subsLoadState === "loading" ? (
+            <p className="vt-muted px-1 py-2 text-[12px] leading-snug">Cargando suscripciones…</p>
+          ) : tramoGroups.length === 0 ? (
+            <p className="vt-muted px-1 py-2 text-[12px] leading-snug">
+              Todavía no hay transportistas suscritos a esta hoja en la oferta pública.
+            </p>
+          ) : (
+            <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+              {tramoGroups.map((g) => (
+                <li key={g.stopId}>
+                  <button
+                    type="button"
+                    className={railItemClass}
+                    onClick={() => {
+                      setFocusTramoId(g.stopId);
+                      setFocusCarrierId(null);
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-left text-[13px] font-extrabold leading-tight">
+                        Tramo {g.orden}
+                      </span>
+                      <span className="shrink-0 text-[10px] font-bold text-[var(--muted)]">
+                        {g.carriers.length} transportista{g.carriers.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <div className="mt-1 line-clamp-2 text-left text-[11px] leading-snug text-[var(--muted)]">
+                      {g.origenLine} → {g.destinoLine}
+                    </div>
+                    <ChevronRight
+                      size={16}
+                      className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-45"
+                      aria-hidden
+                    />
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
       </aside>
@@ -338,7 +514,7 @@ export function ChatRouteSubscribersPanel({
       <ConfirmModal
         open={confirmAcceptOpen}
         title="Confirmar transportista"
-        message="¿Confirmar a este transportista en los tramos pendientes? Se actualizará la hoja con su contacto y recibirá un aviso para abrir este chat."
+        message="¿Confirmar a este transportista solo en este tramo? Se actualizará la hoja con su contacto y recibirá un aviso para abrir este chat."
         confirmLabel="Sí, confirmar"
         cancelLabel="Cancelar"
         confirmBusy={acceptBusy}
@@ -346,6 +522,19 @@ export function ChatRouteSubscribersPanel({
           if (!acceptBusy) setConfirmAcceptOpen(false);
         }}
         onConfirm={() => void confirmAcceptSubscriber()}
+      />
+
+      <ConfirmModal
+        open={confirmRejectOpen}
+        title="Rechazar solicitud"
+        message="¿Rechazar la solicitud de este transportista solo en este tramo? Recibirá un aviso con enlace a la oferta de ruta publicada."
+        confirmLabel="Sí, rechazar"
+        cancelLabel="Cancelar"
+        confirmBusy={rejectBusy}
+        onCancel={() => {
+          if (!rejectBusy) setConfirmRejectOpen(false);
+        }}
+        onConfirm={() => void confirmRejectSubscriber()}
       />
     </>
   );

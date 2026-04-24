@@ -1,4 +1,5 @@
 import type { OwnerStoreFormValues } from '../../app/store/marketStoreTypes'
+import { formServiceQualifiesAsTransport } from '../../utils/user/transportEligibility'
 import { normalizeOwnerWebsiteUrl } from '../../utils/websiteUrl'
 import {
   catalogMonedasList,
@@ -123,6 +124,11 @@ export function validateServiceForm(
 
   const customErr = validateCustomFields(form.customFields)
   if (customErr) return customErr
+
+  const photoUrls = form.photoUrls?.map(norm).filter(Boolean) ?? []
+  if (formServiceQualifiesAsTransport(form) && photoUrls.length < 1) {
+    return 'Los servicios de transporte o logística requieren al menos una foto (subí una imagen desde tu dispositivo).'
+  }
 
   return null
 }

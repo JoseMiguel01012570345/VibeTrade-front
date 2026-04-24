@@ -330,6 +330,10 @@ export function NotificationsBell() {
                     <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
                       Abrir chat de la operación →
                     </div>
+                  ) : n.kind === 'route_tramo_subscribe_rejected' ? (
+                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
+                      Ver oferta de ruta →
+                    </div>
                   ) : n.kind === 'offer_comment' ||
                     n.kind === 'offer_like' ||
                     n.kind === 'qa_comment_like' ||

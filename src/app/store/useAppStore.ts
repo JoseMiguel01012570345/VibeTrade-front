@@ -56,6 +56,7 @@ export type NotificationItem = {
     | 'qa_comment_like'
     | 'route_tramo_subscribe'
     | 'route_tramo_subscribe_accepted'
+    | 'route_tramo_subscribe_rejected'
   title: string
   body: string
   createdAt: number
@@ -253,7 +254,8 @@ export const useAppStore = create<AppState>((set, get) => ({
           x.kind !== 'offer_like' &&
           x.kind !== 'qa_comment_like' &&
           x.kind !== 'route_tramo_subscribe' &&
-          x.kind !== 'route_tramo_subscribe_accepted',
+          x.kind !== 'route_tramo_subscribe_accepted' &&
+          x.kind !== 'route_tramo_subscribe_rejected',
       )
       const fromServer = serverItems.filter((x) => !x.read)
       const merged = [...fromServer, ...local]

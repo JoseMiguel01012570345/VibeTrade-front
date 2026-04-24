@@ -14,6 +14,9 @@ export function notificationDeepLink(
   if (n.kind === 'route_tramo_subscribe_accepted' && n.threadId) {
     return `/chat/${encodeURIComponent(n.threadId)}`
   }
+  if (n.kind === 'route_tramo_subscribe_rejected' && n.offerId) {
+    return `/offer/${encodeURIComponent(n.offerId)}`
+  }
   if (
     n.kind === 'route_tramo_subscribe' &&
     n.threadId &&

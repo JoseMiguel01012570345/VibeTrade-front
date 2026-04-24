@@ -255,7 +255,7 @@ export function ChatRightRail({
               setSelRouteId(null)
             }}
           >
-            <Users size={15} aria-hidden /> Integrantes
+            <Users size={15} aria-hidden /> Integrantes ({participants.length})
           </button>
         </div>
 

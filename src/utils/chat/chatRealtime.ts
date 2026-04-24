@@ -14,9 +14,11 @@ import {
 } from "./chatInboundUi";
 import { mergeChatSenderLabelsIntoProfileStore } from "./chatSenderLabels";
 import {
+  fetchThreadRouteTramoSubscriptions,
   patchChatMessageStatus,
   type ChatMessageDto,
   type ChatThreadDto,
+  type RouteTramoSubscriptionItemApi,
 } from "./chatApi";
 
 function handleIncomingPersistedChatMessage(dto: ChatMessageDto): void {
@@ -81,6 +83,30 @@ function handleIncomingPersistedChatMessage(dto: ChatMessageDto): void {
 let conn: signalR.HubConnection | null = null;
 const joinedThreads = new Set<string>();
 const joinedOffers = new Set<string>();
+
+export type RouteTramoSubscriptionsChangedPayload = {
+  threadId: string;
+  routeSheetId: string;
+  change: string;
+  items: RouteTramoSubscriptionItemApi[];
+  actorUserId: string;
+  /** Publicación emergente <c>emo_*</c>; mismo id que <c>JoinOffer</c> en la ficha. */
+  emergentOfferId: string | null;
+};
+
+const routeTramoSubsListeners = new Set<
+  (p: RouteTramoSubscriptionsChangedPayload) => void
+>();
+
+/** Panel de suscriptores u otros: recibe la misma respuesta del GET ya aplicada al store. */
+export function subscribeRouteTramoSubscriptionsChanged(
+  cb: (p: RouteTramoSubscriptionsChangedPayload) => void,
+): () => void {
+  routeTramoSubsListeners.add(cb);
+  return () => {
+    routeTramoSubsListeners.delete(cb);
+  };
+}
 
 function hubUrl(): string {
   const base =
@@ -175,6 +201,65 @@ export function startChatRealtime(): void {
     if (!oid) return;
     void useMarketStore.getState().refreshOfferQaFromServer(oid);
   });
+
+  conn.on(
+    "routeTramoSubscriptionsChanged",
+    (payload: {
+      threadId?: string;
+      routeSheetId?: string;
+      change?: string;
+      actorUserId?: string | null;
+      emergentOfferId?: string | null;
+    }) => {
+      const tid = payload?.threadId?.trim() ?? "";
+      const sid = payload?.routeSheetId?.trim() ?? "";
+      const change = (payload?.change ?? "").trim().toLowerCase();
+      const actor = payload?.actorUserId?.trim() ?? "";
+      const emergentOfferId = payload?.emergentOfferId?.trim() ?? "";
+      if (tid.length < 4 || sid.length < 1 || change.length < 1) return;
+
+      void (async () => {
+        let items: RouteTramoSubscriptionItemApi[];
+        try {
+          items = await fetchThreadRouteTramoSubscriptions(tid);
+        } catch {
+          return;
+        }
+        const me = useAppStore.getState().me.id;
+        useMarketStore
+          .getState()
+          .applyThreadRouteTramoSubscriptions(tid, items, me);
+
+        const enriched: RouteTramoSubscriptionsChangedPayload = {
+          threadId: tid,
+          routeSheetId: sid,
+          change,
+          items,
+          actorUserId: actor,
+          emergentOfferId:
+            emergentOfferId.length >= 4 ? emergentOfferId : null,
+        };
+        for (const cb of routeTramoSubsListeners) {
+          try {
+            cb(enriched);
+          } catch {
+            /* ignore */
+          }
+        }
+
+        if (actor.length > 0 && me === actor) return;
+        const msg =
+          change === "request" ?
+            "Nueva solicitud de suscripción a la hoja de ruta."
+          : change === "accept" ?
+            "Se confirmó un transportista en la hoja de ruta."
+          : change === "reject" ?
+            "Se rechazó una solicitud en la hoja de ruta."
+          : "Se actualizaron las suscripciones a la hoja de ruta.";
+        toast.success(msg);
+      })();
+    },
+  );
 
   conn.on(
     "participantLeft",

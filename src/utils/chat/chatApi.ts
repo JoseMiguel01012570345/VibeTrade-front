@@ -1,5 +1,9 @@
 import type { RouteSheetPayload } from '../../pages/chat/domain/routeSheetTypes'
 import { apiFetch } from '../http/apiClient'
+import {
+  apiErrorTextToUserMessage,
+  defaultUnexpectedErrorMessage,
+} from '../http/apiErrorMessage'
 import { getSessionToken } from '../http/sessionToken'
 
 export type ChatThreadDto = {
@@ -113,7 +117,7 @@ export type ChatNotificationDto = {
   senderUserId: string
   createdAtUtc: string
   readAtUtc: string | null
-  /** Backend: offer_comment, offer_like, qa_comment_like, route_tramo_subscribe, route_tramo_subscribe_accepted; ausente en avisos de chat por hilo. */
+  /** Backend: offer_comment, offer_like, qa_comment_like, route_tramo_subscribe, route_tramo_subscribe_accepted, route_tramo_subscribe_rejected; ausente en avisos de chat por hilo. */
   kind?: string | null
   /** JSON con routeSheetId, stopId, carrierUserId (camelCase). */
   metaJson?: string | null
@@ -225,8 +229,9 @@ export async function fetchThreadRouteTramoSubscriptions(
 
 export async function postAcceptRouteTramoSubscriptions(
   threadId: string,
-  body: { routeSheetId: string; carrierUserId: string },
+  body: { routeSheetId: string; carrierUserId: string; stopId?: string },
 ): Promise<{ acceptedCount: number }> {
+  const sid = body.stopId?.trim()
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/accept`,
     {
@@ -235,6 +240,33 @@ export async function postAcceptRouteTramoSubscriptions(
       body: JSON.stringify({
         routeSheetId: body.routeSheetId,
         carrierUserId: body.carrierUserId,
+        ...(sid ? { stopId: sid } : {}),
+      }),
+    },
+  )
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(
+      apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()) || `HTTP ${res.status}`,
+    )
+  }
+  return (await res.json()) as { acceptedCount: number }
+}
+
+export async function postRejectRouteTramoSubscriptions(
+  threadId: string,
+  body: { routeSheetId: string; carrierUserId: string; stopId?: string },
+): Promise<{ rejectedCount: number }> {
+  const sid = body.stopId?.trim()
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/reject`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        routeSheetId: body.routeSheetId,
+        carrierUserId: body.carrierUserId,
+        ...(sid ? { stopId: sid } : {}),
       }),
     },
   )
@@ -242,7 +274,7 @@ export async function postAcceptRouteTramoSubscriptions(
     const t = await res.text()
     throw new Error(t || `HTTP ${res.status}`)
   }
-  return (await res.json()) as { acceptedCount: number }
+  return (await res.json()) as { rejectedCount: number }
 }
 
 export async function putThreadRouteSheet(threadId: string, sheet: RouteSheetPayload): Promise<void> {

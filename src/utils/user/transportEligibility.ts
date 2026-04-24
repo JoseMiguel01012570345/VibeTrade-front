@@ -21,15 +21,22 @@ function storeCategoriesImplyTransport(categories: string[]): boolean {
   })
 }
 
-/** Servicio publicado que califica como oferta de transporte / logística. */
-export function serviceQualifiesAsTransport(s: StoreService): boolean {
-  if (s.published === false) return false
-  const tipo = (s.tipoServicio ?? '').trim()
-  const cat = (s.category ?? '').trim()
+/** Categoría o tipo que califica como transporte / logística (sin mirar publicado). */
+export function formServiceQualifiesAsTransport(
+  form: Pick<StoreService, 'category' | 'tipoServicio'>,
+): boolean {
+  const tipo = (form.tipoServicio ?? '').trim()
+  const cat = (form.category ?? '').trim()
   if (cat.length > 0 && TRANSPORT_TAXONOMY_RE.test(cat)) return true
   if (tipo.length > 0 && SERVICE_TRANSPORT_HINT.test(tipo)) return true
   if (cat.length > 0 && SERVICE_TRANSPORT_HINT.test(cat)) return true
   return false
+}
+
+/** Servicio publicado que califica como oferta de transporte / logística. */
+export function serviceQualifiesAsTransport(s: StoreService): boolean {
+  if (s.published === false) return false
+  return formServiceQualifiesAsTransport(s)
 }
 
 /** Oferta orientada a transportistas (tags del feed acotado). */

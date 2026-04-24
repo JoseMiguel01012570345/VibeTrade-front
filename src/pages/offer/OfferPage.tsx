@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Heart, ShoppingCart } from "lucide-react";
 import toast from "react-hot-toast";
@@ -32,6 +39,7 @@ import { trackRecommendationInteraction } from "../../utils/recommendations/reco
 import {
   joinOfferChannel,
   leaveOfferChannel,
+  subscribeRouteTramoSubscriptionsChanged,
 } from "../../utils/chat/chatRealtime";
 import { offerFromStoreCatalogs } from "../../utils/market/offerFromCatalog";
 import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
@@ -164,7 +172,8 @@ export function OfferPage() {
         }
       })
       .catch((err) => {
-        const msg = err instanceof Error ? err.message : "No se pudo cargar la ficha.";
+        const msg =
+          err instanceof Error ? err.message : "No se pudo cargar la ficha.";
         toast.error(msg);
       })
       .finally(() => {
@@ -216,7 +225,8 @@ export function OfferPage() {
   }, [routeOffer, chosenStopId, resolvedOffer?.isEmergentRoutePublication]);
 
   const [subscribeModalOpen, setSubscribeModalOpen] = useState(false);
-  const [subscribeModalSubmitting, setSubscribeModalSubmitting] = useState(false);
+  const [subscribeModalSubmitting, setSubscribeModalSubmitting] =
+    useState(false);
 
   const carrierConfirmedOnRoute = useMemo(
     () =>
@@ -249,12 +259,15 @@ export function OfferPage() {
   /** Persistencia servidor: recuperar suscripciones del transportista sin depender del hilo en memoria (p. ej. tras F5). */
   useEffect(() => {
     if (!sessionReady || me.id === "guest") return;
-    if (!emergentPublicationId || !threadCatalogId || !routeOffer?.routeSheetId) return;
+    if (!emergentPublicationId || !threadCatalogId || !routeOffer?.routeSheetId)
+      return;
     let cancelled = false;
-    void fetchEmergentMyRouteTramoSubscriptions(emergentPublicationId).then((items) => {
-      if (cancelled || !items?.length) return;
-      hydrateRouteOfferCarrierSubscriptions(threadCatalogId, items, me.id);
-    });
+    void fetchEmergentMyRouteTramoSubscriptions(emergentPublicationId).then(
+      (items) => {
+        if (cancelled || !items?.length) return;
+        hydrateRouteOfferCarrierSubscriptions(threadCatalogId, items, me.id);
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -262,6 +275,35 @@ export function OfferPage() {
     emergentPublicationId,
     threadCatalogId,
     routeOffer?.routeSheetId,
+    me.id,
+    sessionReady,
+    hydrateRouteOfferCarrierSubscriptions,
+  ]);
+
+  /** Rechazo/aceptación desde el vendedor: el transportista en <c>/offer/emo_*</c> no suele tener <c>JoinThread</c>; el grupo de oferta sí. */
+  useEffect(() => {
+    if (
+      !emergentPublicationId ||
+      !threadCatalogId ||
+      me.id === "guest" ||
+      !sessionReady
+    )
+      return;
+    const emo = emergentPublicationId.trim();
+    const tc = threadCatalogId.trim();
+    const uid = me.id;
+    const unsub = subscribeRouteTramoSubscriptionsChanged((p) => {
+      const e = p.emergentOfferId?.trim();
+      if (!e || e !== emo) return;
+      void fetchEmergentMyRouteTramoSubscriptions(emo).then((items) => {
+        if (items === null) return;
+        hydrateRouteOfferCarrierSubscriptions(tc, items, uid);
+      });
+    });
+    return unsub;
+  }, [
+    emergentPublicationId,
+    threadCatalogId,
     me.id,
     sessionReady,
     hydrateRouteOfferCarrierSubscriptions,
@@ -280,7 +322,12 @@ export function OfferPage() {
     return () => {
       cancelled = true;
     };
-  }, [threadForThisOffer?.id, me.id, sessionReady, applyThreadRouteTramoSubscriptions]);
+  }, [
+    threadForThisOffer?.id,
+    me.id,
+    sessionReady,
+    applyThreadRouteTramoSubscriptions,
+  ]);
   const carrierInChatThread = useMemo(
     () => !!threadForThisOffer?.chatCarriers?.some((c) => c.id === me.id),
     [threadForThisOffer, me.id],
@@ -299,11 +346,7 @@ export function OfferPage() {
 
   const subscribeBlockedAsBuyerWithAgreement = useMemo(
     () =>
-      routeOfferPublicBlockedForBuyerWithAgreement(
-        routeOffer,
-        threads,
-        me.id,
-      ),
+      routeOfferPublicBlockedForBuyerWithAgreement(routeOffer, threads, me.id),
     [routeOffer, threads, me.id],
   );
 
@@ -348,7 +391,8 @@ export function OfferPage() {
     void (async () => {
       for (const sid of ids) {
         if (cancelled) return;
-        if (useMarketStore.getState().storeCatalogs[sid] !== undefined) continue;
+        if (useMarketStore.getState().storeCatalogs[sid] !== undefined)
+          continue;
         try {
           const data = await fetchStoreDetail(sid, { userId: me.id });
           if (cancelled) return;
@@ -356,7 +400,10 @@ export function OfferPage() {
             stores: { ...s.stores, [sid]: data.store },
             storeCatalogs: {
               ...s.storeCatalogs,
-              [sid]: mergeStoreCatalogWithLocalExtras(s.storeCatalogs[sid], data.catalog),
+              [sid]: mergeStoreCatalogWithLocalExtras(
+                s.storeCatalogs[sid],
+                data.catalog,
+              ),
             },
           }));
         } catch {
@@ -417,7 +464,9 @@ export function OfferPage() {
 
   useEffect(() => {
     if (!offerId || !resolvedOffer) return;
-    void trackRecommendationInteraction(offerId, "click").catch(() => undefined);
+    void trackRecommendationInteraction(offerId, "click").catch(
+      () => undefined,
+    );
   }, [offerId, offerResolved]);
 
   /** Evita repetir scrollIntoView cuando `resolvedOffer`/QA se actualiza (polling o SignalR): obligaba a bajar si el usuario intentaba subir. */
@@ -505,16 +554,21 @@ export function OfferPage() {
         toast.error(ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES);
         return;
       }
-      const opt = transportServiceOptions.find((o) => o.serviceId === storeServiceId);
+      const opt = transportServiceOptions.find(
+        (o) => o.serviceId === storeServiceId,
+      );
       if (!opt) {
         toast.error("Elegí un servicio de transporte válido.");
         return;
       }
       if (resolvedOffer?.id?.startsWith("emo_")) {
-        const st = await fetchEmergentCarrierSubscriptionStatus(resolvedOffer.id);
+        const st = await fetchEmergentCarrierSubscriptionStatus(
+          resolvedOffer.id,
+        );
         if (st && !st.canSubscribe) {
           toast.error(
-            st.message?.trim() || ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
+            st.message?.trim() ||
+              ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
           );
           return;
         }
@@ -522,10 +576,13 @@ export function OfferPage() {
       setSubscribeModalSubmitting(true);
       try {
         if (emergentPublicationId) {
-          const api = await postEmergentTramoSubscriptionRequest(emergentPublicationId, {
-            stopId: chosenStopId,
-            storeServiceId,
-          });
+          const api = await postEmergentTramoSubscriptionRequest(
+            emergentPublicationId,
+            {
+              stopId: chosenStopId,
+              storeServiceId,
+            },
+          );
           if (!api.ok) {
             toast.error(api.message);
             return;
@@ -545,9 +602,9 @@ export function OfferPage() {
         );
         if (ok) {
           toast.success(
-            emergentPublicationId ?
-              "Solicitud enviada. Los participantes del hilo recibieron un aviso. Pendiente de validación."
-            : "Solicitud registrada. Pendiente de validación del vendedor o comprador.",
+            emergentPublicationId
+              ? "Solicitud enviada. Los participantes del hilo recibieron un aviso. Pendiente de validación."
+              : "Solicitud registrada. Pendiente de validación del vendedor o comprador.",
           );
           setPickedStopId(null);
           setSubscribeModalOpen(false);
@@ -665,10 +722,7 @@ export function OfferPage() {
             </div>
           ) : (
             <div
-              className={cn(
-                "relative",
-                heroIsToolPlaceholder && "bg-gray-200",
-              )}
+              className={cn("relative", heroIsToolPlaceholder && "bg-gray-200")}
             >
               <ProtectedMediaImg
                 src={heroImageSrc}
@@ -740,52 +794,55 @@ export function OfferPage() {
                 {resolvedOffer.price}
               </div>
             </div>
-            {isEmergentRouteFicha ?
-              (() => {
-                const legs = resolvedOffer.emergentRouteParadas
-                const anyPerLegPay =
-                  legs?.some(
-                    (l) => l.monedaPago?.trim() || l.precioTransportista?.trim(),
-                  ) ?? false
-                if (anyPerLegPay && legs?.length) {
-                  return (
-                    <div className="m-0 text-sm font-extrabold text-[var(--muted)]">
-                      <span className="block text-[11px] uppercase tracking-wide">
-                        Pago por tramo
-                      </span>
-                      <ul className="mt-1 list-none space-y-1 p-0 text-[var(--text)]">
-                        {legs.map((leg, i) => {
-                          const p = leg.precioTransportista?.trim()
-                          const m = leg.monedaPago?.trim()
-                          if (!p && !m) return null
-                          const label = String.fromCharCode(65 + Math.min(25, i))
-                          const pay = [p, m].filter(Boolean).join(" ")
-                          return (
-                            <li key={`${label}-${p ?? ""}-${m ?? ""}`}>
-                              Tramo {label}:{" "}
-                              <span className="font-black text-[var(--text)]">
-                                {pay}
-                              </span>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    </div>
-                  )
-                }
-                if (resolvedOffer.emergentMonedaPago?.trim()) {
-                  return (
-                    <p className="m-0 text-sm font-extrabold text-[var(--muted)]">
-                      Moneda de pago:{" "}
-                      <span className="text-[var(--text)]">
-                        {resolvedOffer.emergentMonedaPago.trim()}
-                      </span>
-                    </p>
-                  )
-                }
-                return null
-              })()
-            : null}
+            {isEmergentRouteFicha
+              ? (() => {
+                  const legs = resolvedOffer.emergentRouteParadas;
+                  const anyPerLegPay =
+                    legs?.some(
+                      (l) =>
+                        l.monedaPago?.trim() || l.precioTransportista?.trim(),
+                    ) ?? false;
+                  if (anyPerLegPay && legs?.length) {
+                    return (
+                      <div className="m-0 text-sm font-extrabold text-[var(--muted)]">
+                        <span className="block text-[11px] uppercase tracking-wide">
+                          Pago por tramo
+                        </span>
+                        <ul className="mt-1 list-none space-y-1 p-0 text-[var(--text)]">
+                          {legs.map((leg, i) => {
+                            const p = leg.precioTransportista?.trim();
+                            const m = leg.monedaPago?.trim();
+                            if (!p && !m) return null;
+                            const label = String.fromCharCode(
+                              65 + Math.min(25, i),
+                            );
+                            const pay = [p, m].filter(Boolean).join(" ");
+                            return (
+                              <li key={`${label}-${p ?? ""}-${m ?? ""}`}>
+                                Tramo {label}:{" "}
+                                <span className="font-black text-[var(--text)]">
+                                  {pay}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                  }
+                  if (resolvedOffer.emergentMonedaPago?.trim()) {
+                    return (
+                      <p className="m-0 text-sm font-extrabold text-[var(--muted)]">
+                        Moneda de pago:{" "}
+                        <span className="text-[var(--text)]">
+                          {resolvedOffer.emergentMonedaPago.trim()}
+                        </span>
+                      </p>
+                    );
+                  }
+                  return null;
+                })()
+              : null}
 
             <div className="flex flex-wrap items-center gap-2">
               {sessionReady && me.id !== "guest" ? (
@@ -909,8 +966,7 @@ export function OfferPage() {
                   showTramoAddresses={!isEmergentRouteFicha}
                 />
                 {actingAsCarrierOnThisOffer ? (
-                  <div className="mt-3 rounded-[14px] border border-[color-mix(in_oklab,var(--primary)_28%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] p-3.5"
-                  >
+                  <div className="mt-3 rounded-[14px] border border-[color-mix(in_oklab,var(--primary)_28%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] p-3.5">
                     <div className="text-sm font-black tracking-tight">
                       Suscribirme a un tramo
                     </div>
@@ -925,9 +981,9 @@ export function OfferPage() {
                           Elegí un tramo libre y enviá la solicitud. Podés
                           suscribirte a <strong>más de un tramo</strong> en la
                           misma hoja; cada uno se valida por separado. El
-                          vendedor y el comprador deben{" "}
-                          <strong>validar</strong> la suscripción antes de que
-                          puedas entrar al chat operativo de la ruta.
+                          vendedor y el comprador deben <strong>validar</strong>{" "}
+                          la suscripción antes de que puedas entrar al chat
+                          operativo de la ruta.
                         </p>
                         {carrierPendingOnRoute ? (
                           <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_8%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
@@ -965,13 +1021,11 @@ export function OfferPage() {
                                 />
                                 <span className="text-[13px] leading-snug">
                                   <strong>Tramo {t.orden}</strong>
-                                  {isEmergentRouteFicha
-                                    ? null
-                                    : (
-                                        <>
-                                          : {t.origenLine} → {t.destinoLine}
-                                        </>
-                                      )}
+                                  {isEmergentRouteFicha ? null : (
+                                    <>
+                                      : {t.origenLine} → {t.destinoLine}
+                                    </>
+                                  )}
                                 </span>
                               </label>
                             ))}
@@ -1029,9 +1083,12 @@ export function OfferPage() {
                             "chat_start",
                           ).catch(() => undefined);
                           void (async () => {
-                            const threadId = await ensureThreadForOffer(resolvedOffer.id, {
-                              buyerId: me.id,
-                            });
+                            const threadId = await ensureThreadForOffer(
+                              resolvedOffer.id,
+                              {
+                                buyerId: me.id,
+                              },
+                            );
                             if (!threadId) {
                               toast.error(
                                 "Aún no hay conversación con un comprador. Se abrirá cuando alguien te escriba.",
@@ -1056,8 +1113,8 @@ export function OfferPage() {
                     !carrierConfirmedOnRoute &&
                     carrierInChatThread ? (
                       <p className="text-[12px] leading-snug text-[var(--muted)]">
-                        Abrís el chat como integrante del hilo aunque no
-                        tengas un tramo confirmado en este momento (demo).
+                        Abrís el chat como integrante del hilo aunque no tengas
+                        un tramo confirmado en este momento (demo).
                       </p>
                     ) : null}
                   </div>
@@ -1088,10 +1145,14 @@ export function OfferPage() {
                       return;
                     }
                     if (subscribeBlockedAsBuyerWithAgreement) {
-                      toast.error(ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES);
+                      toast.error(
+                        ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
+                      );
                       return;
                     }
-                    if (!userHasTransportService(me.id, stores, storeCatalogs)) {
+                    if (
+                      !userHasTransportService(me.id, stores, storeCatalogs)
+                    ) {
                       toast.error(
                         "Necesitás un servicio de transporte publicado en tu tienda para suscribirte.",
                       );
@@ -1158,7 +1219,9 @@ export function OfferPage() {
                         { buyerId: me.id },
                       );
                       if (!threadId) {
-                        toast.error("No se pudo abrir el chat. Probá de nuevo.");
+                        toast.error(
+                          "No se pudo abrir el chat. Probá de nuevo.",
+                        );
                         return;
                       }
                       nav(`/chat/${threadId}`);
@@ -1184,7 +1247,9 @@ export function OfferPage() {
 
       <RouteTramoSubscribeModal
         open={subscribeModalOpen}
-        onClose={() => !subscribeModalSubmitting && setSubscribeModalOpen(false)}
+        onClose={() =>
+          !subscribeModalSubmitting && setSubscribeModalOpen(false)
+        }
         services={transportServiceOptions}
         initialServiceId={selectedTransportServiceId}
         stopSummary={stopSummaryForModal}
