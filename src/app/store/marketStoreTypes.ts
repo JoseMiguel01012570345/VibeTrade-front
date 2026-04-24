@@ -545,6 +545,11 @@ export type MarketState = {
     threadId: string,
     routeSheetIds: string[],
   ) => void;
+  /** Retira la hoja del mercado (demo) y sincroniza con el API. */
+  unpublishRouteSheetFromPlatform: (
+    threadId: string,
+    routeSheetId: string,
+  ) => void;
   linkAgreementToRouteSheet: (
     threadId: string,
     agreementId: string,

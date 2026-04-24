@@ -39,6 +39,7 @@ export function createRouteSheetsSlice(set: MarketSliceSet, get: MarketSliceGet)
   | 'setRouteSheetStatus'
   | 'toggleRouteStop'
   | 'publishRouteSheetsToPlatform'
+  | 'unpublishRouteSheetFromPlatform'
   | 'linkAgreementToRouteSheet'
   | 'unlinkAgreementFromRouteSheet'
   | 'deleteRouteSheet'
@@ -343,6 +344,52 @@ publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
   })
   if (toSync.length > 0 && threadId.startsWith('cth_') && getSessionToken()) {
     for (const sh of toSync) void putThreadRouteSheet(threadId, sh).catch(() => {})
+  }
+},
+
+unpublishRouteSheetFromPlatform: (threadId, routeSheetId) => {
+  let toSync: RouteSheet | null = null
+  set((s) => {
+    const th = s.threads[threadId]
+    const sheets = th?.routeSheets
+    if (!th || threadIsActionLocked(th) || !sheets?.length) return s
+    const rs = sheets.find((r) => r.id === routeSheetId)
+    if (!rs?.publicadaPlataforma) return s
+    const now = Date.now()
+    const msg: Message = {
+      id: uid('m'),
+      from: 'system',
+      type: 'text',
+      text: `Hoja de ruta «${rs.titulo}» retirada de la plataforma.`,
+      at: now,
+    }
+    const list = sheets.map((r) =>
+      r.id === routeSheetId
+        ? { ...r, publicadaPlataforma: false, actualizadoEn: now }
+        : r,
+    )
+    let routeOfferPublic = s.routeOfferPublic
+    const ro = s.routeOfferPublic[th.offerId]
+    if (ro?.routeSheetId === routeSheetId) {
+      routeOfferPublic = { ...s.routeOfferPublic }
+      delete routeOfferPublic[th.offerId]
+    }
+    toSync = list.find((r) => r.id === routeSheetId) ?? null
+    return {
+      ...s,
+      routeOfferPublic,
+      threads: {
+        ...s.threads,
+        [threadId]: {
+          ...th,
+          routeSheets: list,
+          messages: [...th.messages, msg],
+        },
+      },
+    }
+  })
+  if (toSync && threadId.startsWith('cth_') && getSessionToken()) {
+    void putThreadRouteSheet(threadId, toSync).catch(() => {})
   }
 },
 

@@ -4,7 +4,9 @@ import toast from "react-hot-toast";
 import {
   Check,
   ChevronRight,
+  EyeOff,
   MapPin,
+  Megaphone,
   Pencil,
   ThumbsDown,
   ThumbsUp,
@@ -31,10 +33,13 @@ import { statusPillOk, statusPillPending } from "../../styles/formModalStyles";
 type Props = {
   bodyClassName: string;
   actionsLocked: boolean;
+  /** Dueño de la tienda del hilo: puede publicar u ocultar hojas. */
+  isActingSeller: boolean;
   hasAcceptedContract: boolean;
   /** Cantidad de acuerdos en el hilo: no puede haber más hojas que acuerdos. */
   agreementCount: number;
   routeSheets: RouteSheet[];
+  linkedRouteSheetIds: ReadonlySet<string>;
   selRoute: RouteSheet | undefined;
   setSelRouteId: (id: string | null) => void;
   threadId: string;
@@ -46,6 +51,14 @@ type Props = {
     stopId: string,
   ) => void;
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean;
+  publishRouteSheetsToPlatform: (
+    threadId: string,
+    routeSheetIds: string[],
+  ) => void;
+  unpublishRouteSheetFromPlatform: (
+    threadId: string,
+    routeSheetId: string,
+  ) => void;
   routeOffer: RouteOfferPublicState | undefined;
   onOpenRouteSubscribers?: (routeSheetId: string) => void;
 };
@@ -53,9 +66,11 @@ type Props = {
 export function ChatRightRailRoutesPanel({
   bodyClassName,
   actionsLocked,
+  isActingSeller,
   hasAcceptedContract,
   agreementCount,
   routeSheets,
+  linkedRouteSheetIds,
   selRoute,
   setSelRouteId,
   threadId,
@@ -63,6 +78,8 @@ export function ChatRightRailRoutesPanel({
   onEditRouteSheet,
   toggleRouteStop,
   deleteRouteSheet,
+  publishRouteSheetsToPlatform,
+  unpublishRouteSheetFromPlatform,
   routeOffer,
   onOpenRouteSubscribers,
 }: Props) {
@@ -213,6 +230,56 @@ export function ChatRightRailRoutesPanel({
               </button>
             ) : null}
           </div>
+          {isActingSeller ? (
+            <div className="mb-3">
+              <button
+                type="button"
+                className={cn(
+                  "vt-btn flex w-full justify-center gap-2",
+                  !selRoute.publicadaPlataforma && "vt-btn-primary",
+                )}
+                disabled={
+                  actionsLocked ||
+                  (!selRoute.publicadaPlataforma &&
+                    !linkedRouteSheetIds.has(selRoute.id))
+                }
+                title={
+                  actionsLocked
+                    ? "No disponible hasta registrar el pago"
+                    : !linkedRouteSheetIds.has(selRoute.id)
+                      ? "Vinculá esta hoja a un acuerdo en Contratos antes de publicar"
+                      : selRoute.publicadaPlataforma
+                        ? "Dejar de mostrar la hoja en el mercado y búsqueda"
+                        : "Publicar la hoja en el mercado (demo)"
+                }
+                onClick={() => {
+                  if (selRoute.publicadaPlataforma) {
+                    if (
+                      !globalThis.confirm(
+                        `¿Retirar «${selRoute.titulo}» de la plataforma? Los transportistas dejarán de verla en el mercado.`,
+                      )
+                    )
+                      return;
+                    unpublishRouteSheetFromPlatform(threadId, selRoute.id);
+                    toast.success("Hoja retirada de la plataforma");
+                    return;
+                  }
+                  publishRouteSheetsToPlatform(threadId, [selRoute.id]);
+                  toast.success("Hoja publicada en la plataforma");
+                }}
+              >
+                {selRoute.publicadaPlataforma ? (
+                  <>
+                    <EyeOff size={16} aria-hidden /> Ocultar de la plataforma
+                  </>
+                ) : (
+                  <>
+                    <Megaphone size={16} aria-hidden /> Publicar en la plataforma
+                  </>
+                )}
+              </button>
+            </div>
+          ) : null}
           <div className="mb-1.5 text-[15px] font-black">{selRoute.titulo}</div>
           {myCarrierAck === "pending" && routeSheetEditAcks?.[selRoute.id] ? (
             <div className="mb-3 rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] px-3 py-2.5">
