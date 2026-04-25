@@ -126,32 +126,54 @@ onThreadCreatedFromServer: (dto: ChatThreadDto) => {
     if (s.threads[dto.id]) return s
     const store = s.stores[dto.storeId]
     if (!store) return s
-    return {
-      ...s,
-      threads: {
-        ...s.threads,
-        [dto.id]: {
-          id: dto.id,
-          offerId: dto.offerId,
-          storeId: dto.storeId,
-          store,
-          buyerUserId: dto.buyerUserId,
-          sellerUserId: dto.sellerUserId,
-          purchaseMode: dto.purchaseMode,
-          messages: [],
-          contracts: [],
-          routeSheets: [],
-          ...(peer
-            ? {
-                peerPartyExit: peer,
-                partyExitedUserId: peer.userId,
-                partyExitedReason: peer.reason,
-                partyExitedAtUtc: peer.atUtc,
-              }
-            : {}),
-        },
-      },
+    const oid = (dto.offerId ?? '').trim()
+    const bid = (dto.buyerUserId ?? '').trim()
+    const superseded: string[] = []
+    if (oid.length > 0 && bid.length > 0) {
+      for (const [k, t] of Object.entries(s.threads)) {
+        if (k === dto.id) continue
+        if (t.offerId === oid && (t.buyerUserId ?? '').trim() === bid) superseded.push(k)
+      }
     }
+    const nextThreads: typeof s.threads = { ...s.threads }
+    for (const k of superseded) delete nextThreads[k]
+    nextThreads[dto.id] = {
+      id: dto.id,
+      offerId: dto.offerId,
+      storeId: dto.storeId,
+      store,
+      buyerUserId: dto.buyerUserId,
+      sellerUserId: dto.sellerUserId,
+      purchaseMode: dto.purchaseMode,
+      messages: [],
+      contracts: [],
+      routeSheets: [],
+      ...(peer
+        ? {
+            peerPartyExit: peer,
+            partyExitedUserId: peer.userId,
+            partyExitedReason: peer.reason,
+            partyExitedAtUtc: peer.atUtc,
+          }
+        : {}),
+    }
+    let routeOfferPublic = s.routeOfferPublic
+    for (const k of Object.keys(routeOfferPublic)) {
+      const ro = routeOfferPublic[k]
+      if (ro && superseded.includes((ro.threadId ?? '').trim())) {
+        routeOfferPublic = { ...routeOfferPublic, [k]: { ...ro, threadId: dto.id } }
+      }
+    }
+    let offers = s.offers
+    for (const ok of Object.keys(s.offers)) {
+      const o = s.offers[ok]
+      if (!o) continue
+      const et = (o.emergentThreadId ?? '').trim()
+      if (et && superseded.includes(et)) {
+        offers = { ...offers, [ok]: { ...o, emergentThreadId: dto.id } }
+      }
+    }
+    return { ...s, threads: nextThreads, routeOfferPublic, offers }
   })
 },
 

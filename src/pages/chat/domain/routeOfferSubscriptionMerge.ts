@@ -282,7 +282,38 @@ export function applyViewerRouteTramoSubscriptions(
   const tid = threadId.trim();
   if (!vid || !tid) return null;
 
-  const thread = state.threads[tid];
+  let thread: Thread | undefined = state.threads[tid];
+  if (!thread && items.length) {
+    const rsid0 = (items[0]!.routeSheetId ?? "").trim();
+    if (rsid0) {
+      const roEntry = Object.entries(state.routeOfferPublic).find(
+        ([, r]) => (r.routeSheetId ?? "").trim() === rsid0,
+      );
+      if (roEntry) {
+        const [publicKey] = roEntry;
+        const o = state.offers[publicKey];
+        const storeId = (o?.storeId ?? "").trim();
+        const st =
+          storeId && state.stores[storeId] ?
+            state.stores[storeId]!
+          : {
+              id: storeId,
+              name: "",
+              verified: false,
+              categories: [] as string[],
+              transportIncluded: false,
+              trustScore: 0,
+            };
+        thread = {
+          id: tid,
+          offerId: publicKey,
+          storeId: storeId || st.id,
+          store: st,
+          messages: [],
+        };
+      }
+    }
+  }
   if (!thread) return null;
 
   const ro = resolveRouteOfferPublicForThread(state, thread);
@@ -292,10 +323,10 @@ export function applyViewerRouteTramoSubscriptions(
   let threads = state.threads;
 
   if (ro && key) {
-    const mergedRo = rebuildRouteOfferAssignmentsFromThreadItems(ro, items);
-    if (mergedRo !== undefined && mergedRo !== ro) {
-      routeOfferPublic = { ...state.routeOfferPublic, [key]: mergedRo };
-    }
+    const base = rebuildRouteOfferAssignmentsFromThreadItems(ro, items) ?? ro;
+    // Alinear con el hilo de GET /threads/:id/… (p. ej. cth_ nuevo tras reabrir chat en la misma oferta).
+    const withTid = { ...base, threadId: tid };
+    routeOfferPublic = { ...state.routeOfferPublic, [key]: withTid };
   }
 
   const confirmedAll = items.filter(

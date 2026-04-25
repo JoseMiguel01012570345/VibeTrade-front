@@ -206,6 +206,43 @@ export function OfferPage() {
     });
   }, [threadCatalogId, resolvedOffer]);
 
+  /** Ficha emergente: revalidar en servidor al abrir, el feed puede dejar <c>emergentThreadId</c> en un cth_ archivado. */
+  useEffect(() => {
+    if (!offerId || !resolvedOffer?.isEmergentRoutePublication) return;
+    if (me.id === "guest" || !sessionReady) return;
+    let cancelled = false;
+    void fetchPublicOfferCard(offerId)
+      .then((r) => {
+        if (cancelled || !r) return;
+        const storeKey = r.store.id?.trim() || r.offer.storeId;
+        useMarketStore.setState((s) => {
+          const prevOf = s.offers[r.offer.id] ?? r.offer;
+          const nextStores = { ...s.stores };
+          if (storeKey) {
+            nextStores[storeKey] = {
+              ...s.stores[storeKey],
+              ...r.store,
+              id: storeKey,
+            };
+          }
+          return {
+            ...s,
+            offers: {
+              ...s.offers,
+              [r.offer.id]: { ...prevOf, ...r.offer },
+            },
+            stores: nextStores,
+          };
+        });
+      })
+      .catch(() => {
+        /* sin red: el usuario puede forzar con F5 */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [offerId, resolvedOffer?.isEmergentRoutePublication, me.id, sessionReady]);
+
   const openTramos = useMemo(
     () => routeOffer?.tramos.filter((t) => !t.assignment) ?? [],
     [routeOffer],
@@ -252,15 +289,26 @@ export function OfferPage() {
     [routeOffer, me.id],
   );
 
-  const threadForThisOffer = useMemo(
-    () =>
-      offerId
-        ? Object.values(threads).find(
-            (t) => t.offerId === (threadCatalogId ?? offerId),
-          )
-        : undefined,
-    [threads, offerId, threadCatalogId],
-  );
+  const threadForThisOffer = useMemo(() => {
+    if (!offerId) return undefined;
+    const catalog = (threadCatalogId ?? offerId).trim();
+    const idHint = (
+      routeOffer?.threadId?.trim() ||
+      resolvedOffer?.emergentThreadId?.trim() ||
+      ""
+    ).trim();
+    if (idHint.startsWith("cth_")) {
+      const t = threads[idHint];
+      if (t) return t;
+    }
+    return Object.values(threads).find((t) => t.offerId === catalog);
+  }, [
+    threads,
+    offerId,
+    threadCatalogId,
+    routeOffer?.threadId,
+    resolvedOffer?.emergentThreadId,
+  ]);
 
   /** Persistencia servidor: recuperar suscripciones del transportista sin depender del hilo en memoria (p. ej. tras F5). */
   useEffect(() => {
@@ -316,7 +364,12 @@ export function OfferPage() {
   ]);
 
   useEffect(() => {
-    const tid = threadForThisOffer?.id?.trim();
+    const tid = (
+      routeOffer?.threadId?.trim() ||
+      resolvedOffer?.emergentThreadId?.trim() ||
+      threadForThisOffer?.id?.trim() ||
+      ""
+    ).trim();
     if (!tid || !sessionReady || me.id === "guest") return;
     let cancelled = false;
     void fetchThreadRouteTramoSubscriptions(tid)
@@ -329,6 +382,8 @@ export function OfferPage() {
       cancelled = true;
     };
   }, [
+    routeOffer?.threadId,
+    resolvedOffer?.emergentThreadId,
     threadForThisOffer?.id,
     me.id,
     sessionReady,
@@ -1043,11 +1098,12 @@ export function OfferPage() {
                             resolvedOffer.id,
                             "chat_start",
                           ).catch(() => undefined);
-                          const opThreadId =
-                            threadForThisOffer?.id?.trim() ||
+                          const opThreadId = (
                             routeOffer?.threadId?.trim() ||
                             resolvedOffer.emergentThreadId?.trim() ||
-                            "";
+                            threadForThisOffer?.id?.trim() ||
+                            ""
+                          ).trim();
                           if (!opThreadId.startsWith("cth_")) {
                             toast.error(
                               "No se encontró el hilo de esta operación. Recargá la ficha o entrá desde la notificación del chat.",
