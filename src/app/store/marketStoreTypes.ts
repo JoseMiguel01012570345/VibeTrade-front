@@ -459,7 +459,7 @@ export type MarketState = {
   answer: (offerId: string, qaId: string, answer: string) => void;
   ensureThreadForOffer: (
     offerId: string,
-    opts?: { buyerId?: string },
+    opts?: { buyerId?: string; forceNewThread?: boolean },
   ) => Promise<string>;
   /** `viewerId` = usuario conectado; el comprador del hilo se toma de `thread.buyerUserId`. */
   syncThreadBuyerQa: (threadId: string, viewerId: string) => void;

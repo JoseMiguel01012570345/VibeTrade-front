@@ -126,17 +126,7 @@ onThreadCreatedFromServer: (dto: ChatThreadDto) => {
     if (s.threads[dto.id]) return s
     const store = s.stores[dto.storeId]
     if (!store) return s
-    const oid = (dto.offerId ?? '').trim()
-    const bid = (dto.buyerUserId ?? '').trim()
-    const superseded: string[] = []
-    if (oid.length > 0 && bid.length > 0) {
-      for (const [k, t] of Object.entries(s.threads)) {
-        if (k === dto.id) continue
-        if (t.offerId === oid && (t.buyerUserId ?? '').trim() === bid) superseded.push(k)
-      }
-    }
     const nextThreads: typeof s.threads = { ...s.threads }
-    for (const k of superseded) delete nextThreads[k]
     nextThreads[dto.id] = {
       id: dto.id,
       offerId: dto.offerId,
@@ -157,23 +147,7 @@ onThreadCreatedFromServer: (dto: ChatThreadDto) => {
           }
         : {}),
     }
-    let routeOfferPublic = s.routeOfferPublic
-    for (const k of Object.keys(routeOfferPublic)) {
-      const ro = routeOfferPublic[k]
-      if (ro && superseded.includes((ro.threadId ?? '').trim())) {
-        routeOfferPublic = { ...routeOfferPublic, [k]: { ...ro, threadId: dto.id } }
-      }
-    }
-    let offers = s.offers
-    for (const ok of Object.keys(s.offers)) {
-      const o = s.offers[ok]
-      if (!o) continue
-      const et = (o.emergentThreadId ?? '').trim()
-      if (et && superseded.includes(et)) {
-        offers = { ...offers, [ok]: { ...o, emergentThreadId: dto.id } }
-      }
-    }
-    return { ...s, threads: nextThreads, routeOfferPublic, offers }
+    return { ...s, threads: nextThreads }
   })
 },
 
@@ -268,9 +242,16 @@ ensureThreadForOffer: async (offerId, opts) => {
   const threadCatalogId =
     (offer as { emergentBaseOfferId?: string }).emergentBaseOfferId?.trim() || offerId
 
-  const existing = Object.values(s.threads).find(
+  const viewerBid = (opts?.buyerId ?? '').trim()
+  const sameOffer = Object.values(s.threads).filter(
     (t) => t.offerId === threadCatalogId,
   )
+  const existing =
+    viewerBid.length >= 2
+      ? (sameOffer.find(
+          (t) => (t.buyerUserId ?? '').trim() === viewerBid,
+        ) ?? sameOffer[0])
+      : sameOffer[0]
   const buyerId = opts?.buyerId
   const token = getSessionToken()
   const canPersist = !!token && !!buyerId && buyerId !== 'guest'
@@ -319,7 +300,15 @@ ensureThreadForOffer: async (offerId, opts) => {
       peerExit != null && peerExit.userId.trim() !== meId.trim()
     set((x) => {
       const nextThreads = { ...x.threads }
-      if (existing && existing.id !== threadId) delete nextThreads[existing.id]
+      if (existing && existing.id !== threadId) {
+        const keepPriorPersistedThread =
+          !!opts?.forceNewThread &&
+          existing.id.startsWith("cth_") &&
+          threadId.startsWith("cth_");
+        if (!keepPriorPersistedThread) {
+          delete nextThreads[existing.id]
+        }
+      }
         nextThreads[threadId] = {
         ...baseThread,
         id: threadId,
@@ -373,7 +362,7 @@ ensureThreadForOffer: async (offerId, opts) => {
 
   if (canPersist) {
     try {
-      if (existing?.id.startsWith('cth_')) {
+      if (existing?.id.startsWith('cth_') && !opts?.forceNewThread) {
         const serverMsgs = await fetchChatMessages(existing.id)
         const th = get().threads[existing.id]
         if (th) {
@@ -440,7 +429,7 @@ ensureThreadForOffer: async (offerId, opts) => {
         return ''
       }
 
-      const dto = await createOrGetChatThread(threadCatalogId, true)
+      const dto = await createOrGetChatThread(threadCatalogId, true, !!opts?.forceNewThread)
       const serverMsgs = await fetchChatMessages(dto.id)
       const routeSheets =
         dto.id.startsWith('cth_') && getSessionToken()
@@ -463,11 +452,12 @@ ensureThreadForOffer: async (offerId, opts) => {
       return dto.id
     } catch (e) {
       if (e instanceof Error && e.message === CHAT_CANNOT_MESSAGE_SELF) return ''
+      if (opts?.forceNewThread) return ''
       /* fallback local */
     }
   }
 
-  if (existing) {
+  if (existing && !opts?.forceNewThread) {
     const viewerId = useAppStore.getState().me.id
     const threadBuyerId =
       existing.buyerUserId ?? resolveBuyerUserId(existing, viewerId)

@@ -7,6 +7,7 @@ import { notifyDesktopIfUnfocused } from "../notifications/desktopNotifications"
 import { notificationDeepLink } from "../notifications/notificationRoutes";
 import { syncChatNotificationsFromServer } from "../notifications/notificationsSync";
 import { getSessionToken } from "../http/sessionToken";
+import { postNotifyParticipantLeft } from "./chatApi";
 import {
   getOpenChatThreadIdFromLocation,
   incomingChatAuthorLabel,
@@ -126,7 +127,10 @@ function hubUrl(): string {
 
 export function startChatRealtime(): void {
   const token = getSessionToken();
-  if (!token) return;
+  if (!token) {
+    stopChatRealtime();
+    return;
+  }
   if (conn?.state === signalR.HubConnectionState.Connected) return;
   if (conn) {
     void conn.start().catch((e) => console.error(e));
@@ -189,6 +193,7 @@ export function startChatRealtime(): void {
         (head.kind === "chat_message" ||
           head.kind === "route_tramo_subscribe" ||
           head.kind === "route_tramo_subscribe_accepted" ||
+          head.kind === "route_tramo_seller_expelled" ||
           head.kind === "peer_party_exited") &&
         open &&
         head.threadId === open
@@ -438,21 +443,33 @@ export async function leaveOfferChannel(offerId: string): Promise<void> {
 export async function joinChatThread(threadId: string): Promise<void> {
   if (!threadId.startsWith("cth_")) return;
   joinedThreads.add(threadId);
-  startChatRealtime();
-  let attempts = 0;
-  while (
-    conn &&
-    conn.state !== signalR.HubConnectionState.Connected &&
-    attempts < 80
-  ) {
-    await new Promise((r) => setTimeout(r, 50));
-    attempts++;
-  }
-  if (conn?.state === signalR.HubConnectionState.Connected) {
-    try {
-      await conn.invoke("JoinThread", threadId);
-    } catch (e) {
-      console.error(e);
+  for (let round = 0; round < 2; round++) {
+    startChatRealtime();
+    let attempts = 0;
+    while (
+      conn &&
+      conn.state !== signalR.HubConnectionState.Connected &&
+      attempts < 80
+    ) {
+      await new Promise((r) => setTimeout(r, 50));
+      attempts++;
+    }
+    if (conn?.state === signalR.HubConnectionState.Connected) {
+      try {
+        await conn.invoke("JoinThread", threadId);
+        return;
+      } catch (e) {
+        console.error(e);
+        if (round === 0) {
+          // Negociar de nuevo con el token actual: el WS puede quedar con access_token/identidad
+          // del connect anterior a login o cambio de sesión, y el hub denegaba el grupo del hilo.
+          stopChatRealtime();
+          joinedThreads.add(threadId);
+        }
+      }
+    } else if (round === 0) {
+      stopChatRealtime();
+      joinedThreads.add(threadId);
     }
   }
 }
@@ -476,6 +493,14 @@ export async function notifyChatParticipantsUserLeft(
   threadId: string,
 ): Promise<void> {
   joinedThreads.delete(threadId);
+  if (getSessionToken()) {
+    try {
+      await postNotifyParticipantLeft(threadId);
+      return;
+    } catch (e) {
+      console.error(e);
+    }
+  }
   if (conn?.state === signalR.HubConnectionState.Connected) {
     try {
       await conn.invoke("NotifyOthersUserLeftChat", threadId);

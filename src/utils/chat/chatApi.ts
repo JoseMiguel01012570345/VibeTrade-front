@@ -132,10 +132,11 @@ export const CHAT_CANNOT_MESSAGE_SELF = 'CHAT_CANNOT_MESSAGE_SELF'
 export async function createOrGetChatThread(
   offerId: string,
   purchaseIntent: boolean = true,
+  forceNew: boolean = false,
 ): Promise<ChatThreadDto> {
   const res = await apiFetch('/api/v1/chat/threads', {
     method: 'POST',
-    body: JSON.stringify({ offerId, purchaseIntent }),
+    body: JSON.stringify({ offerId, purchaseIntent, forceNew }),
   })
   if (!res.ok) {
     const t = await res.text()
@@ -152,6 +153,18 @@ export async function createOrGetChatThread(
     throw new Error(t || `HTTP ${res.status}`)
   }
   return (await res.json()) as ChatThreadDto
+}
+
+/** Avisa a la contraparte por SignalR (grupos user:*) de que quien llama salió del chat (lista / sin acuerdo). */
+export async function postNotifyParticipantLeft(threadId: string): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/notify-participant-left`,
+    { method: 'POST' },
+  );
+  if (!res.ok && res.status !== 404) {
+    const t = await res.text().catch(() => '');
+    throw new Error(t || `HTTP ${res.status}`);
+  }
 }
 
 export async function deleteChatThread(threadId: string): Promise<void> {
@@ -246,6 +259,34 @@ export async function fetchThreadRouteTramoSubscriptions(
   )
   if (!res.ok) throw new Error(await res.text())
   return (await res.json()) as RouteTramoSubscriptionItemApi[]
+}
+
+export type CarrierExpelledBySellerApiResult = {
+  withdrawnRowCount: number
+  /** En la demo: penalización a la confianza de la tienda al expulsar a un transportista confirmado. */
+  applyStoreTrustPenalty: boolean
+  storeTrustScoreAfter?: number | null
+}
+
+export async function postSellerExpelCarrier(
+  threadId: string,
+  body: { carrierUserId: string; reason: string },
+): Promise<CarrierExpelledBySellerApiResult> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/seller-expel-carrier`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        carrierUserId: body.carrierUserId,
+        reason: body.reason,
+      }),
+    },
+  )
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(t || `HTTP ${res.status}`)
+  }
+  return (await res.json()) as CarrierExpelledBySellerApiResult
 }
 
 export type CarrierWithdrawFromThreadApiResult = {
@@ -463,8 +504,19 @@ export async function fetchChatThreads(): Promise<ChatThreadSummaryDto[]> {
   return (await res.json()) as ChatThreadSummaryDto[]
 }
 
-export async function fetchChatNotifications(): Promise<ChatNotificationDto[]> {
-  const res = await apiFetch('/api/v1/me/notifications', { method: 'GET' })
+export async function fetchChatNotifications(options?: {
+  /** ISO 8601; inicio del rango (inclusive). */
+  from?: string
+  /** ISO 8601; fin del rango (inclusive). */
+  to?: string
+}): Promise<ChatNotificationDto[]> {
+  const q = new URLSearchParams()
+  if (options?.from?.trim()) q.set('from', options.from.trim())
+  if (options?.to?.trim()) q.set('to', options.to.trim())
+  const qs = q.toString()
+  const url =
+    qs.length > 0 ? `/api/v1/me/notifications?${qs}` : '/api/v1/me/notifications'
+  const res = await apiFetch(url, { method: 'GET' })
   if (!res.ok) throw new Error(await res.text())
   return (await res.json()) as ChatNotificationDto[]
 }

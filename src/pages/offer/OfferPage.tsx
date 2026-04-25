@@ -69,6 +69,12 @@ import {
   postEmergentTramoSubscriptionRequest,
 } from "../../utils/emergentOffers/emergentCarrierSubscriptionApi";
 import { fetchThreadRouteTramoSubscriptions } from "../../utils/chat/chatApi";
+import {
+  catalogItemKind,
+  collectOfferPublishedPhotoUrls,
+  sendPurchaseInterestIntro,
+} from "../../utils/chat/sendPurchaseInterestIntro";
+import { ConfirmModal } from "../../components/ConfirmModal";
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -94,6 +100,8 @@ export function OfferPage() {
   );
   const stores = useMarketStore((s) => s.stores);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
+  const [comprarChatConfirmOpen, setComprarChatConfirmOpen] = useState(false);
+  const [comprarChatBusy, setComprarChatBusy] = useState(false);
   const [publicCardLoadDone, setPublicCardLoadDone] = useState(() => {
     if (!offerId) return true;
     const st = useMarketStore.getState();
@@ -136,6 +144,58 @@ export function OfferPage() {
   );
   /** Sin esto, cada `refreshOfferQaFromServer` sustituye `offers[id]` y `resolvedOffer` cambia de referencia → efectos con `[resolvedOffer]` reejecutan en bucle. */
   const offerResolved = Boolean(resolvedOffer);
+
+  const comprarChatConfirmMessage = useMemo(() => {
+    if (!resolvedOffer) {
+      return "Se abrirá un chat nuevo con la tienda. Se enviará un primer mensaje con tu interés, según el nombre y el tipo de la oferta en la ficha.";
+    }
+    const kind = catalogItemKind(resolvedOffer, storeCatalogs);
+    const n = collectOfferPublishedPhotoUrls(resolvedOffer).length;
+    const t = (resolvedOffer.title || "").trim() || "la oferta";
+    let tipoPapel = "oferta";
+    if (kind === "product") tipoPapel = "producto";
+    else if (kind === "service") tipoPapel = "servicio";
+    const fotos =
+      n > 0
+        ? ` Las fotos publicadas en la ficha (${n}) se envían en el mismo mensaje que el texto.`
+        : " Si no hay fotos de ficha, el mensaje solo incluye el texto, con el detalle adecuado al tipo (producto o servicio).";
+    return `Se creará un chat nuevo y el vendedor recibirá un aviso. El primer mensaje dirá que tenés interés en el ${tipoPapel} «${t}», teniendo en cuenta el tipo y el título de la oferta en la plataforma.${fotos}`;
+  }, [resolvedOffer, storeCatalogs]);
+
+  const runComprarChatAfterConfirm = useCallback(async () => {
+    if (!resolvedOffer) return;
+    setComprarChatBusy(true);
+    try {
+      const threadId = await ensureThreadForOffer(resolvedOffer.id, {
+        buyerId: me.id,
+        forceNewThread: true,
+      });
+      if (!threadId) {
+        toast.error("No se pudo abrir el chat. Probá de nuevo.");
+        return;
+      }
+      try {
+        await sendPurchaseInterestIntro(
+          threadId,
+          resolvedOffer,
+          storeCatalogs,
+        );
+      } catch (e) {
+        console.error(e);
+        toast.error(
+          "El chat se abrió, pero el primer mensaje no pudo enviarse. Escribí desde el chat.",
+        );
+      }
+      setComprarChatConfirmOpen(false);
+      void trackRecommendationInteraction(
+        resolvedOffer.id,
+        "chat_start",
+      ).catch(() => undefined);
+      nav(`/chat/${threadId}`);
+    } finally {
+      setComprarChatBusy(false);
+    }
+  }, [resolvedOffer, storeCatalogs, me.id, ensureThreadForOffer, nav]);
 
   useLayoutEffect(() => {
     if (!offerId || offer || !offerFromCatalog) return;
@@ -1223,23 +1283,7 @@ export function OfferPage() {
                       toast.error(NOT_PUBLISHED_TOAST_ES);
                       return;
                     }
-                    void trackRecommendationInteraction(
-                      resolvedOffer.id,
-                      "chat_start",
-                    ).catch(() => undefined);
-                    void (async () => {
-                      const threadId = await ensureThreadForOffer(
-                        resolvedOffer.id,
-                        { buyerId: me.id },
-                      );
-                      if (!threadId) {
-                        toast.error(
-                          "No se pudo abrir el chat. Probá de nuevo.",
-                        );
-                        return;
-                      }
-                      nav(`/chat/${threadId}`);
-                    })();
+                    setComprarChatConfirmOpen(true);
                   }}
                 >
                   <ShoppingCart size={16} /> Comprar (Chat)
@@ -1258,6 +1302,22 @@ export function OfferPage() {
           submitOfferQuestion={submitOfferQuestion}
         />
       </div>
+
+      <ConfirmModal
+        open={comprarChatConfirmOpen}
+        title="Iniciar chat con la tienda"
+        message={comprarChatConfirmMessage}
+        confirmLabel="Sí, abrir chat"
+        cancelLabel="Cancelar"
+        confirmBusy={comprarChatBusy}
+        onCancel={() => {
+          if (comprarChatBusy) return;
+          setComprarChatConfirmOpen(false);
+        }}
+        onConfirm={() => {
+          void runComprarChatAfterConfirm();
+        }}
+      />
 
       <RouteTramoSubscribeModal
         open={subscribeModalOpen}

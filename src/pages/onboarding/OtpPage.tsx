@@ -6,6 +6,7 @@ import { useAppStore } from '../../app/store/useAppStore'
 import { OtpInput } from './OtpInput'
 import { apiFetch } from '../../utils/http/apiClient'
 import { setSessionToken } from '../../utils/http/sessionToken'
+import { stopChatRealtime } from '../../utils/chat/chatRealtime'
 import { bootstrapWebApp } from '../../utils/bootstrap/bootstrapWebApp'
 import { userFromSessionJson, type SessionUserJson } from '../../utils/auth/sessionUser'
 import type { OnboardingMode } from './OnboardingWelcomePage'
@@ -86,6 +87,7 @@ export function OtpPage() {
       }
       const json = (await res.json()) as { sessionToken: string; user: SessionUserJson }
       setSessionToken(json.sessionToken)
+      stopChatRealtime()
       applySessionUser(userFromSessionJson(json.user))
       toast.success(mode === 'register' ? 'Cuenta verificada' : 'Sesión iniciada')
       setSessionActive(true)

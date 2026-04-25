@@ -421,7 +421,7 @@ export function VtDateField({
         {allowEmpty && value ? (
           <button
             type="button"
-            className="mr-auto font-semibold text-[var(--primary)] underline decoration-[color-mix(in_oklab,var(--primary)_45%,transparent)] underline-offset-2 hover:opacity-90"
+            className="mr-auto cursor-pointer font-semibold text-[var(--primary)] underline decoration-[color-mix(in_oklab,var(--primary)_45%,transparent)] underline-offset-2 hover:opacity-90"
             onClick={() => {
               onChange("");
               setOpen(false);
@@ -432,7 +432,7 @@ export function VtDateField({
         ) : null}
         <button
           type="button"
-          className="font-semibold text-[var(--primary)] underline decoration-[color-mix(in_oklab,var(--primary)_45%,transparent)] underline-offset-2 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className="cursor-pointer font-semibold text-[var(--primary)] underline decoration-[color-mix(in_oklab,var(--primary)_45%,transparent)] underline-offset-2 hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           onClick={() => {
             if (!inRange(todayS)) return;
             onChange(todayS);
@@ -457,7 +457,7 @@ export function VtDateField({
           "shadow-[0_1px_0_rgba(255,255,255,0.8)_inset]",
           "hover:border-[color-mix(in_oklab,var(--primary)_22%,var(--border))]",
           "focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_25%,transparent)] focus-visible:border-[color-mix(in_oklab,var(--primary)_45%,var(--border))]",
-          disabled && "cursor-not-allowed opacity-60",
+          disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
           buttonClassName,
         )}
         aria-haspopup="dialog"

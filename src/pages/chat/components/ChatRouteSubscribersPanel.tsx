@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ChevronRight, ExternalLink, X } from "lucide-react";
 import toast from "react-hot-toast";
@@ -9,6 +9,7 @@ import {
   fetchThreadRouteTramoSubscriptions,
   postAcceptRouteTramoSubscriptions,
   postRejectRouteTramoSubscriptions,
+  postSellerExpelCarrier,
 } from "../../../utils/chat/chatApi";
 import { subscribeRouteTramoSubscriptionsChanged } from "../../../utils/chat/chatRealtime";
 import {
@@ -17,6 +18,8 @@ import {
   subscribersFromApiRouteTramoItems,
   type RouteOfferSubscriberSummary,
 } from "../domain/routeOfferSubscribers";
+import { onBackdropPointerClose } from "../lib/modalClose";
+import { modalShellWide, modalSub } from "../styles/formModalStyles";
 import { railItemClass } from "./rail/chatRailStyles";
 
 type Props = {
@@ -63,6 +66,10 @@ export function ChatRouteSubscribersPanel({
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
   const [acceptBusy, setAcceptBusy] = useState(false);
   const [rejectBusy, setRejectBusy] = useState(false);
+  const [expelOpen, setExpelOpen] = useState(false);
+  const [expelReason, setExpelReason] = useState("");
+  const [expelBusy, setExpelBusy] = useState(false);
+  const expelTitleId = useId();
 
   const reloadSubscriptions = () => {
     const tid = threadId?.trim();
@@ -199,6 +206,11 @@ export function ChatRouteSubscribersPanel({
     );
   }, [subscribers, focusTramoId, focusCarrierId]);
 
+  const selectedCarrierHasConfirmedTramo = useMemo(() => {
+    if (!selectedCarrier) return false;
+    return selectedCarrier.tramos.some((t) => t.status === "confirmed");
+  }, [selectedCarrier]);
+
   const selectedHasPending = tramoRowForSelection?.status === "pending";
   const selectedHasAcceptablePending = !!selectedHasPending && !anotherConfirmedOnThisStop;
 
@@ -233,6 +245,49 @@ export function ChatRouteSubscribersPanel({
       toast.error(msg);
     } finally {
       setAcceptBusy(false);
+    }
+  }
+
+  async function confirmExpelSubscriber() {
+    if (!selectedCarrier || !canSellerManageRouteSubscriptions) return;
+    if (!selectedCarrierHasConfirmedTramo) {
+      toast.error(
+        "Solo podés expulsar a un transportista que tenga al menos un tramo confirmado.",
+      );
+      return;
+    }
+    const tid = threadId.trim();
+    const cid = selectedCarrier.userId.trim();
+    const rsn = expelReason.trim();
+    if (!tid || !cid || rsn.length < 1) {
+      toast.error("Indicá un motivo para retirar al transportista.");
+      return;
+    }
+    setExpelBusy(true);
+    try {
+      const r = await postSellerExpelCarrier(tid, {
+        carrierUserId: cid,
+        reason: rsn,
+      });
+      if (r.withdrawnRowCount < 1) {
+        toast.error("No había suscripciones activas para retirar.");
+      } else {
+        toast.success(
+          r.applyStoreTrustPenalty ?
+            "Transportista retirado. Se le notificó; en la demo se aplicó un ajuste a la confianza de la tienda."
+          : "Transportista retirado de la operación. Se le notificó con el motivo.",
+        );
+      }
+      setExpelOpen(false);
+      setExpelReason("");
+      setFocusCarrierId(null);
+      reloadSubscriptions();
+      await onSubscriptionsChanged?.();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "No se pudo retirar al transportista.";
+      toast.error(msg);
+    } finally {
+      setExpelBusy(false);
     }
   }
 
@@ -410,6 +465,36 @@ export function ChatRouteSubscribersPanel({
                   </button>
                 </div>
               ) : null}
+              {canSellerManageRouteSubscriptions && selectedCarrier ? (
+                <div className="mt-4 border-t border-[var(--border)] pt-3">
+                  <p className="mb-2 mt-0 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
+                    Toda la operación
+                  </p>
+                  {selectedCarrierHasConfirmedTramo ? (
+                    <>
+                      <p className="vt-muted mb-2 text-[11px] leading-snug">
+                        Retirá a este transportista de todos los tramos de este hilo. Solo aplica con al menos un tramo
+                        confirmado: el transportista recibe el aviso y la confianza de la tienda puede ajustarse (demo).
+                      </p>
+                      <button
+                        type="button"
+                        className="vt-btn w-full border-[color-mix(in_oklab,var(--bad)_50%,var(--border))] text-[12px] font-extrabold text-[var(--bad)]"
+                        onClick={() => {
+                          setExpelReason("");
+                          setExpelOpen(true);
+                        }}
+                      >
+                        Expulsar de la operación
+                      </button>
+                    </>
+                  ) : (
+                    <p className="mb-0 text-[11px] font-semibold leading-snug text-[var(--muted)]">
+                      No podés expulsar mientras el transportista no tenga al menos un tramo confirmado. Rechazá
+                      la solicitud en cada tramo pendiente o confirmá y luego retirá si corresponde.
+                    </p>
+                  )}
+                </div>
+              ) : null}
               {tramoRowForSelection ? (
                 <div
                   className={cn(
@@ -536,6 +621,55 @@ export function ChatRouteSubscribersPanel({
         }}
         onConfirm={() => void confirmRejectSubscriber()}
       />
+
+      {expelOpen ? (
+        <div
+          className="vt-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={expelTitleId}
+          onMouseDown={(e) => onBackdropPointerClose(e, expelBusy ? () => {} : () => setExpelOpen(false))}
+        >
+          <div className={modalShellWide} onMouseDown={(e) => e.stopPropagation()}>
+            <div className="vt-modal-title" id={expelTitleId}>
+              Expulsar transportista
+            </div>
+            <div className={modalSub}>
+              Indicá el motivo. El transportista queda retirado de todos los tramos; la tienda puede recibir un
+              ajuste de confianza en la demo.
+            </div>
+            <label className="mb-1 mt-2 block text-[11px] font-extrabold text-[var(--text)]" htmlFor="expel-reason-ta">
+              Motivo (obligatorio)
+            </label>
+            <textarea
+              id="expel-reason-ta"
+              className="vt-input min-h-[88px] w-full resize-y"
+              value={expelReason}
+              onChange={(e) => setExpelReason(e.target.value)}
+              disabled={expelBusy}
+              placeholder="Ej.: incumplimiento de plazos, conducta inadecuada…"
+            />
+            <div className="vt-modal-actions">
+              <button
+                type="button"
+                className="vt-btn"
+                onClick={() => setExpelOpen(false)}
+                disabled={expelBusy}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="vt-btn vt-btn-primary"
+                onClick={() => void confirmExpelSubscriber()}
+                disabled={expelBusy}
+              >
+                Confirmar expulsión
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

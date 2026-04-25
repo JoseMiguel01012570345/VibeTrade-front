@@ -65,6 +65,7 @@ export type NotificationItem = {
     | 'route_tramo_subscribe'
     | 'route_tramo_subscribe_accepted'
     | 'route_tramo_subscribe_rejected'
+    | 'route_tramo_seller_expelled'
     | 'peer_party_exited'
   title: string
   body: string
@@ -400,7 +401,8 @@ export const useAppStore = create<AppState>((set, get) => ({
           x.kind !== 'qa_comment_like' &&
           x.kind !== 'route_tramo_subscribe' &&
           x.kind !== 'route_tramo_subscribe_accepted' &&
-          x.kind !== 'route_tramo_subscribe_rejected',
+          x.kind !== 'route_tramo_subscribe_rejected' &&
+          x.kind !== 'route_tramo_seller_expelled',
       )
       const fromServer = serverItems.filter((x) => !x.read)
       const merged = [...fromServer, ...local]

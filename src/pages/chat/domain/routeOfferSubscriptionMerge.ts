@@ -316,6 +316,17 @@ export function applyViewerRouteTramoSubscriptions(
   }
   if (!thread) return null;
 
+  if (items.length === 0) {
+    const th0 = state.threads[tid] ?? thread;
+    const roCheck = resolveRouteOfferPublicForThread(state, th0);
+    if (
+      (th0.chatCarriers?.length ?? 0) > 0 ||
+      (roCheck?.tramos?.some((t) => t.assignment != null) ?? false)
+    ) {
+      return null;
+    }
+  }
+
   const ro = resolveRouteOfferPublicForThread(state, thread);
   const key = routeOfferPublicKeyForThread(state, thread);
 

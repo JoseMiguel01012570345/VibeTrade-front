@@ -30,7 +30,7 @@ function parseRouteTramoMeta(metaJson: string | null | undefined): Pick<
   }
 }
 
-function mapServerNotification(n: ChatNotificationDto): NotificationItem {
+export function mapServerNotification(n: ChatNotificationDto): NotificationItem {
   if (n.kind === 'route_tramo_subscribe' && n.threadId) {
     const meta = parseRouteTramoMeta(n.metaJson)
     return {
@@ -65,6 +65,21 @@ function mapServerNotification(n: ChatNotificationDto): NotificationItem {
       id: n.id,
       kind: 'route_tramo_subscribe_rejected',
       title: `${n.authorLabel} · confianza ${n.authorTrustScore}`,
+      body: n.messagePreview,
+      createdAt: Date.parse(n.createdAtUtc),
+      read: n.readAtUtc != null,
+      threadId: n.threadId,
+      ...(oid ? { offerId: oid } : {}),
+      trustScore: n.authorTrustScore,
+    }
+  }
+
+  if (n.kind === 'route_tramo_seller_expelled' && n.threadId) {
+    const oid = n.offerId?.trim()
+    return {
+      id: n.id,
+      kind: 'route_tramo_seller_expelled',
+      title: 'Te retiraron de la operación',
       body: n.messagePreview,
       createdAt: Date.parse(n.createdAtUtc),
       read: n.readAtUtc != null,

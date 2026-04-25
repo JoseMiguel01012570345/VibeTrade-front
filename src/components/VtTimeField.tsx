@@ -328,7 +328,7 @@ export function VtTimeField({
           "shadow-[0_1px_0_rgba(255,255,255,0.8)_inset]",
           "hover:border-[color-mix(in_oklab,var(--primary)_22%,var(--border))]",
           "focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_25%,transparent)] focus-visible:border-[color-mix(in_oklab,var(--primary)_45%,var(--border))]",
-          disabled && "cursor-not-allowed opacity-60",
+          disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
           buttonClassName,
         )}
         aria-haspopup="dialog"
