@@ -65,6 +65,7 @@ export type NotificationItem = {
     | 'route_tramo_subscribe'
     | 'route_tramo_subscribe_accepted'
     | 'route_tramo_subscribe_rejected'
+    | 'peer_party_exited'
   title: string
   body: string
   createdAt: number
@@ -274,7 +275,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
   },
 
-  applyTrustPenalty: (userId, penalty, reason = 'Ajuste de confianza (demo)') => {
+  applyTrustPenalty: (
+    userId,
+    penalty,
+    reason = 'Ajuste de confianza (demo)',
+    opts?: { forceLocal?: boolean },
+  ) => {
     if (!userId || userId === 'guest' || penalty <= 0) return
     const clamp = (n: number) => Math.max(-10_000, n)
     const threshold = get().trustThreshold
@@ -379,7 +385,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             )
               return false
             return (
-              x.kind !== 'chat_message' ||
+              (x.kind !== 'chat_message' && x.kind !== 'peer_party_exited') ||
               !x.threadId ||
               x.threadId !== openThread
             )
@@ -388,6 +394,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const local = s.notifications.filter(
         (x) =>
           x.kind !== 'chat_message' &&
+          x.kind !== 'peer_party_exited' &&
           x.kind !== 'offer_comment' &&
           x.kind !== 'offer_like' &&
           x.kind !== 'qa_comment_like' &&

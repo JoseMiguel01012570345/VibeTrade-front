@@ -22,10 +22,9 @@ import { useShallow } from "zustand/react/shallow";
 import { useAppStore } from "../../app/store/useAppStore";
 import { getSessionToken } from "../../utils/http/sessionToken";
 import {
-  postMeTrustAdjust,
+  postStoreTrustAdjust,
   trustHistoryItemFromApi,
 } from "../../utils/trust/trustLedgerApi";
-import type { Offer, StoreBadge } from "../../app/store/marketStoreTypes";
 import {
   threadHasAcceptedAgreement,
   useMarketStore,
@@ -86,6 +85,7 @@ import {
   normalizeThreadMessages,
 } from "../../utils/chat/chatMerge";
 import { fetchPublicProfile } from "../../utils/auth/fetchPublicProfile";
+import { minimalOfferStoreFromChatThreadDto } from "../../utils/chat/chatThreadDtoFallbacks";
 import {
   mergeBuyerLabelFromThreadDto,
   mergeChatSenderLabelsIntoProfileStore,
@@ -103,34 +103,6 @@ import {
 import "./chat.css";
 
 const CHAT_SCROLL_BOTTOM_PX = 80;
-
-/** Si la ficha pública no existe (oferta despublicada, etc.), el hilo sigue siendo visible vía API para transportistas aceptados. */
-function minimalOfferStoreFromChatThreadDto(dto: ChatThreadDto): {
-  offer: Offer;
-  store: StoreBadge;
-} {
-  const sid = dto.storeId?.trim() || "";
-  const oid = dto.offerId?.trim() || "";
-  return {
-    offer: {
-      id: oid,
-      storeId: sid,
-      title: "Oferta del chat",
-      price: "—",
-      tags: [],
-      imageUrl: "",
-    },
-    store: {
-      id: sid,
-      name: "Tienda",
-      verified: false,
-      categories: [],
-      transportIncluded: false,
-      trustScore: 0,
-      ownerUserId: dto.sellerUserId?.trim() || undefined,
-    },
-  };
-}
 
 export function ChatPage() {
   const { threadId } = useParams();
@@ -1110,20 +1082,58 @@ export function ChatPage() {
   function applySellerTrustPenaltyIfQueued() {
     const q = trustPenaltyNextSave.current;
     trustPenaltyNextSave.current = "none";
-    if (q !== "agreement") return;
+    if (q !== "agreement" || !thread) return;
     const reason = "Modificación de acuerdo aceptado (demo)";
+    const sid = thread.storeId?.trim();
     const applyLocal = () => {
-      useAppStore.getState().applyTrustPenalty(me.id, SELLER_TRUST_PENALTY_ON_EDIT, reason, {
-        forceLocal: true,
-      });
+      if (sid) {
+        useMarketStore
+          .getState()
+          .applyStoreTrustPenalty(
+            sid,
+            SELLER_TRUST_PENALTY_ON_EDIT,
+            reason,
+            { forceLocal: true },
+          );
+      } else {
+        useAppStore.getState().applyTrustPenalty(
+          me.id,
+          SELLER_TRUST_PENALTY_ON_EDIT,
+          reason,
+          { forceLocal: true },
+        );
+      }
     };
-    if (getSessionToken()) {
-      void postMeTrustAdjust(-SELLER_TRUST_PENALTY_ON_EDIT, reason)
+    if (getSessionToken() && sid) {
+      void postStoreTrustAdjust(
+        sid,
+        -SELLER_TRUST_PENALTY_ON_EDIT,
+        reason,
+      )
         .then((r) => {
-          setTrustScore(r.trustScore);
+          const score = r.trustScore;
+          useMarketStore.setState((s) => {
+            const nextThreads = { ...s.threads };
+            for (const tid of Object.keys(nextThreads)) {
+              const th = nextThreads[tid];
+              if (th.storeId === sid) {
+                nextThreads[tid] = {
+                  ...th,
+                  store: { ...th.store, trustScore: score },
+                };
+              }
+            }
+            const b = s.stores[sid];
+            if (!b) return { ...s, threads: nextThreads };
+            return {
+              ...s,
+              stores: { ...s.stores, [sid]: { ...b, trustScore: score } },
+              threads: nextThreads,
+            };
+          });
           useAppStore
             .getState()
-            .prependUserTrustHistory(me.id, trustHistoryItemFromApi(r.entry));
+            .prependStoreTrustHistory(sid, trustHistoryItemFromApi(r.entry));
         })
         .catch(() => {
           applyLocal();
@@ -1132,7 +1142,7 @@ export function ChatPage() {
       applyLocal();
     }
     toast(
-      `Tu barra de confianza se ajustó en −${SELLER_TRUST_PENALTY_ON_EDIT} por modificar un acuerdo (demo).`,
+      `La confianza de tu tienda se ajustó en −${SELLER_TRUST_PENALTY_ON_EDIT} por modificar un acuerdo (demo).`,
       {
         icon: "⚠️",
       },

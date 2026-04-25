@@ -25,6 +25,7 @@ import {
   type RouteSheet,
   routeSheetEditAcksRecordFromSheets,
 } from "../../pages/chat/domain/routeSheetTypes";
+import { mergeMissingChatListThreadsFromServer } from "./mergeMissingChatListThreadsFromServer";
 
 function handleIncomingPersistedChatMessage(dto: ChatMessageDto): void {
   mergeChatSenderLabelsIntoProfileStore([dto]);
@@ -187,7 +188,8 @@ export function startChatRealtime(): void {
       if (
         (head.kind === "chat_message" ||
           head.kind === "route_tramo_subscribe" ||
-          head.kind === "route_tramo_subscribe_accepted") &&
+          head.kind === "route_tramo_subscribe_accepted" ||
+          head.kind === "peer_party_exited") &&
         open &&
         head.threadId === open
       )
@@ -234,6 +236,13 @@ export function startChatRealtime(): void {
         useMarketStore
           .getState()
           .applyThreadRouteTramoSubscriptions(tid, items, me);
+
+        if (
+          change === "accept" &&
+          !useMarketStore.getState().threads[tid]
+        ) {
+          void mergeMissingChatListThreadsFromServer();
+        }
 
         if (tid.startsWith("cth_") && useMarketStore.getState().threads[tid]) {
           try {

@@ -74,6 +74,19 @@ function mapServerNotification(n: ChatNotificationDto): NotificationItem {
     }
   }
 
+  if (n.kind === 'peer_party_exited' && n.threadId) {
+    return {
+      id: n.id,
+      kind: 'peer_party_exited',
+      title: 'Salida del chat (acuerdo aceptado)',
+      body: n.messagePreview,
+      createdAt: Date.parse(n.createdAtUtc),
+      read: n.readAtUtc != null,
+      threadId: n.threadId,
+      trustScore: n.authorTrustScore,
+    }
+  }
+
   const isOfferOnly = Boolean(n.offerId && !n.threadId)
   const kind = isOfferOnly
     ? mapOfferNotificationKind(n.kind)

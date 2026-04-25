@@ -19,10 +19,13 @@ import {
   fetchChatMessages,
   fetchChatThread,
   fetchThreadRouteSheets,
+  fetchThreadRouteTramoSubscriptions,
   fetchThreadTradeAgreements,
 } from "./chatApi";
 import { getSessionToken } from "../http/sessionToken";
+import { fetchPublicOfferCard } from "../market/marketPersistence";
 import { peerPartyExitFromDto } from "./threadPeerPartyExit";
+import { minimalOfferStoreFromChatThreadDto } from "./chatThreadDtoFallbacks";
 
 function resolveOffer(
   offerById: Record<string, Offer | undefined>,
@@ -65,9 +68,44 @@ export async function rehydrateCthThreadInStoreForIncomingMessage(
     return false;
   }
 
-  const s = useMarketStore.getState();
-  const offer = resolveOffer(s.offers, dto.offerId);
-  const store = s.stores[dto.storeId];
+  let s = useMarketStore.getState();
+  let offer = resolveOffer(s.offers, dto.offerId);
+  let store = s.stores[dto.storeId];
+  if (!offer || !store) {
+    const card = await fetchPublicOfferCard(dto.offerId).catch(() => null);
+    if (card?.offer?.id) {
+      const storeKey = card.store.id?.trim() || card.offer.storeId;
+      useMarketStore.setState((st) => {
+        const nextStores = { ...st.stores };
+        if (storeKey) {
+          nextStores[storeKey] = {
+            ...st.stores[storeKey],
+            ...card.store,
+            id: storeKey,
+          };
+        }
+        return {
+          ...st,
+          offers: { ...st.offers, [card.offer.id]: card.offer },
+          stores: nextStores,
+        };
+      });
+      s = useMarketStore.getState();
+      offer = resolveOffer(s.offers, dto.offerId);
+      store = s.stores[dto.storeId];
+    }
+  }
+  if (!offer || !store) {
+    const { offer: fo, store: st } = minimalOfferStoreFromChatThreadDto(dto);
+    useMarketStore.setState((st0) => ({
+      ...st0,
+      offers: { ...st0.offers, [fo.id]: fo },
+      stores: { ...st0.stores, [st.id]: st },
+    }));
+    s = useMarketStore.getState();
+    offer = resolveOffer(s.offers, dto.offerId);
+    store = s.stores[dto.storeId];
+  }
   if (!offer || !store) return false;
 
   const meId = useAppStore.getState().me.id;
@@ -147,6 +185,19 @@ export async function rehydrateCthThreadInStoreForIncomingMessage(
     };
     return { ...x, threads: nextThreads };
   });
+
+  const subsRs = await fetchThreadRouteTramoSubscriptions(threadId).catch(
+    () => null,
+  );
+  if (subsRs && Array.isArray(subsRs) && subsRs.length > 0) {
+    useMarketStore
+      .getState()
+      .applyThreadRouteTramoSubscriptions(
+        threadId,
+        subsRs,
+        meId,
+      );
+  }
 
   return true;
 }

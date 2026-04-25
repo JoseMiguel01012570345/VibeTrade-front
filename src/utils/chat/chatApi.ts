@@ -120,7 +120,7 @@ export type ChatNotificationDto = {
   senderUserId: string
   createdAtUtc: string
   readAtUtc: string | null
-  /** Backend: offer_comment, offer_like, qa_comment_like, route_tramo_subscribe, route_tramo_subscribe_accepted, route_tramo_subscribe_rejected; ausente en avisos de chat por hilo. */
+  /** Backend: offer_comment, offer_like, qa_comment_like, route_tramo_subscribe, route_tramo_subscribe_accepted, route_tramo_subscribe_rejected, peer_party_exited; ausente en avisos de chat por hilo. */
   kind?: string | null
   /** JSON con routeSheetId, stopId, carrierUserId (camelCase). */
   metaJson?: string | null

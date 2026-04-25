@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { HelpCircle, LogOut, MessageCircle } from "lucide-react";
 import toast from "react-hot-toast";
@@ -34,6 +34,7 @@ import {
 } from "./components/modals/TrustRiskEditConfirmModal";
 import { ChatLeaveConfirmModal } from "./components/modals/ChatLeaveConfirmModal";
 import { messagePreviewLine } from "./lib/chatAttachments";
+import { mergeMissingChatListThreadsFromServer } from "../../utils/chat/mergeMissingChatListThreadsFromServer";
 
 const PREMATURE_EXIT_TOOLTIP =
   "Este chat se resalta porque registraste una salida con un acuerdo ya aceptado; la plataforma puede revisar el caso.";
@@ -85,6 +86,11 @@ export function ChatListPage() {
   const [leaveModalThreadId, setLeaveModalThreadId] = useState<string | null>(
     null,
   );
+
+  useEffect(() => {
+    if (me.id === "guest") return;
+    void mergeMissingChatListThreadsFromServer();
+  }, [me.id]);
 
   async function runExitChatAfterConfirm(threadId: string) {
     const th = threads[threadId];
