@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { Bell, ChevronLeft, ChevronRight, History, Trash2, X } from 'lucide-react'
@@ -91,6 +91,7 @@ export function NotificationsBell() {
   const [desktopPref, setDesktopPref] = useState(() =>
     getDesktopNotificationsEnabledPreference(),
   )
+  const filteredListAnchorRef = useRef<HTMLDivElement | null>(null)
 
   const desktopEffectiveOn =
     desktopPref && desktopNotifPerm === 'granted'
@@ -202,6 +203,11 @@ export function NotificationsBell() {
     })
   }, [displayItems.length, historyFiltered])
 
+  useEffect(() => {
+    if (!historyFiltered?.length) return
+    filteredListAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [historyFiltered])
+
   const openHistoryWithDefaults = useCallback(() => {
     const end = new Date()
     const start = new Date(end)
@@ -306,7 +312,7 @@ export function NotificationsBell() {
             }}
           >
             <div
-              className="vt-modal flex max-h-[min(78dvh,30rem)] w-[min(100vw-2.25rem,28rem)] max-w-[28rem] flex-col overflow-y-auto overscroll-contain sm:min-w-[20rem]"
+              className="vt-modal flex max-h-[min(88dvh,40rem)] w-[min(100vw-2.25rem,36rem)] max-w-[36rem] flex-col overflow-y-auto overflow-x-hidden overscroll-contain px-5 pt-5 pb-7 [-ms-overflow-style:none] [scrollbar-width:none] sm:min-w-[22rem] sm:px-6 sm:pt-6 sm:pb-8 [&::-webkit-scrollbar]:hidden"
               role="dialog"
               aria-modal="true"
               aria-labelledby="notifications-modal-title"
@@ -524,13 +530,13 @@ export function NotificationsBell() {
               </button>
             </div>
 
-            <div className="mt-3 flex min-h-0 flex-col gap-2">
+            <div ref={filteredListAnchorRef} className="mt-3 flex flex-col gap-2 scroll-mt-3">
               {notifRangeLabel && notifPageCount > 1 ? (
-                <p className="m-0 shrink-0 text-center text-[11px] text-[var(--muted)]" aria-live="polite">
+                <p className="m-0 text-center text-[11px] text-[var(--muted)]" aria-live="polite">
                   {notifRangeLabel.from}–{notifRangeLabel.to} de {notifRangeLabel.total} · Página {notifPageSafe + 1} de {notifPageCount}
                 </p>
               ) : null}
-              <div className="min-h-0 max-h-[min(28dvh,12rem)] overflow-y-auto pr-1">
+              <div className="pr-1">
               {displayItems.length === 0 ? (
                 <div className="vt-muted">
                   {historyFiltered !== null
@@ -609,7 +615,7 @@ export function NotificationsBell() {
               )}
               </div>
               {displayItems.length > 0 && notifPageCount > 1 ? (
-                <div className="mt-2 flex shrink-0 items-center justify-center gap-2 border-t border-[color-mix(in_oklab,var(--border)_70%,transparent)] pt-2">
+                <div className="mt-2 flex shrink-0 items-center justify-center gap-2 border-t border-[color-mix(in_oklab,var(--border)_70%,transparent)] pt-3 pb-1">
                   <button
                     type="button"
                     className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[var(--text)] disabled:pointer-events-none disabled:opacity-35"
