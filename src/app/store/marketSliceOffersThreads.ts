@@ -48,7 +48,10 @@ import { resolveBuyerUserId, resolveSellerUserId } from '../../utils/chat/chatPa
 import {
   CHAT_PARTY_EXIT_TRUST_PER_MEMBER,
 } from '../../pages/chat/components/modals/TrustRiskEditConfirmModal'
-import { peerPartyExitFromDto } from '../../utils/chat/threadPeerPartyExit'
+import {
+  counterpartyAlreadyRecordedPartyExitFromThread,
+  peerPartyExitFromDto,
+} from '../../utils/chat/threadPeerPartyExit'
 import { isOfferPublishedForBuyerChat } from '../../utils/market/offerPublishedForBuyerChat'
 import { useAppStore } from './useAppStore'
 
@@ -295,9 +298,12 @@ ensureThreadForOffer: async (offerId, opts) => {
     set((x) => {
       const nextThreads = { ...x.threads }
       if (existing && existing.id !== threadId) delete nextThreads[existing.id]
-      nextThreads[threadId] = {
+        nextThreads[threadId] = {
         ...baseThread,
         id: threadId,
+        // Evita que un bloqueo local (p. ej. salir de la lista con acuerdo) impida reescribir
+        // al reabrir el hilo con datos del servidor.
+        chatActionsLocked: false,
         ...(purchaseModeOverride !== undefined
           ? { purchaseMode: purchaseModeOverride }
           : {}),
@@ -918,7 +924,13 @@ recordChatExitFromList: (threadId, leaverUserId, opts?: { skipTrustAdjust?: bool
       if (sellerUid.length >= 2) n++
       n += th0.chatCarriers?.length ?? 0
       groupMemberCount = Math.max(1, n)
-      appliedPenalty = CHAT_PARTY_EXIT_TRUST_PER_MEMBER * groupMemberCount
+      const skipForSecondParty = counterpartyAlreadyRecordedPartyExitFromThread(
+        th0,
+        lid,
+      )
+      appliedPenalty = skipForSecondParty
+        ? 0
+        : CHAT_PARTY_EXIT_TRUST_PER_MEMBER * groupMemberCount
       if (!opts?.skipTrustAdjust) {
         if (leaverIsSeller) {
           const storeId = th0.storeId?.trim()

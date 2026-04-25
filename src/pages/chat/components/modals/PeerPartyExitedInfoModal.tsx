@@ -37,8 +37,8 @@ export function PeerPartyExitedInfoModal({
           {reason}
         </p>
         <p className="vt-muted mt-4 mb-0 text-[12px] leading-snug">
-          El hilo sigue disponible para vos; la otra parte ya no lo verá en su
-          lista.
+          El hilo sigue disponible para vos; la otra parte ya fue dada de baja de
+          este hilo (no lo verá en la lista y no tendrá acceso a este mismo hilo).
         </p>
         <div className="vt-modal-actions mt-5">
           <button

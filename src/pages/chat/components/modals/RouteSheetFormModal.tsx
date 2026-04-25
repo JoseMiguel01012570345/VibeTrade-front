@@ -1,12 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import toast from 'react-hot-toast'
-import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet'
-import { cn } from '../../../../lib/cn'
-import { nominatimReverse, nominatimSearch } from '../../../../utils/map/nominatimGeocode'
-import { storeMapPinIcon } from '../../../../utils/map/storeMapPinIcon'
-import 'leaflet/dist/leaflet.css'
-import { ModalFormField as Field } from './ModalFormField'
-import { emptyTramo, expandChainedTramoOrigins } from '../../lib/routeSheetTramoFormUtils'
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import L from "leaflet";
+import toast from "react-hot-toast";
+import { MapContainer, Marker, useMap, useMapEvents } from "react-leaflet";
+import { cn } from "../../../../lib/cn";
+import {
+  nominatimReverse,
+  nominatimSearch,
+} from "../../../../utils/map/nominatimGeocode";
+import {
+  routeMapNumberedWaypointIcon,
+  storeMapPinIcon,
+} from "../../../../utils/map/storeMapPinIcon";
+import "leaflet/dist/leaflet.css";
+import "../../../home/emergentRouteMapMarkers.css";
+import { ModalFormField as Field } from "./ModalFormField";
+import {
+  buildDestinoMapPriorContext,
+  emptyTramo,
+  expandChainedTramoOrigins,
+  parseRouteLatLngInputPair,
+  tramosToLimpios,
+} from "../../lib/routeSheetTramoFormUtils";
 import {
   agrDetailSub,
   detailsBlock,
@@ -25,109 +39,125 @@ import {
   rutaTramoHead,
   rutaTramoRemoveBtn,
   rutaTramosBlock,
-} from '../../styles/formModalStyles'
-import { MapPin, Trash2 } from 'lucide-react'
+} from "../../styles/formModalStyles";
+import { MapPin, Trash2 } from "lucide-react";
 import {
   routeSheetLegacyHead,
   routeStopsToFormInputs,
   type RouteSheet,
   type RouteSheetCreatePayload,
   type RouteTramoFormInput,
-} from '../../domain/routeSheetTypes'
-import type { RouteSheetFormErrors } from '../../domain/routeSheetValidation'
+} from "../../domain/routeSheetTypes";
+import type { RouteSheetFormErrors } from "../../domain/routeSheetValidation";
 import {
   getRouteSheetFormErrors,
   hasRouteSheetFormErrors,
   normalizeRouteSheetParadas,
   routeSheetFormErrorCount,
   validateRouteCoordPair,
-} from '../../domain/routeSheetValidation'
-import type { RouteOfferPublicState } from '../../../../app/store/marketStoreTypes'
+} from "../../domain/routeSheetValidation";
+import type { RouteOfferPublicState } from "../../../../app/store/marketStoreTypes";
 import {
   phoneSelectOptions,
   type TransportistaPhoneOption,
-} from '../../domain/routeSheetRegisteredPhones'
-import { paymentCurrencyVtOptions } from '../../domain/routeSheetMonedaOptions'
-import { fetchCurrencies } from '../../../../utils/market/fetchCurrencies'
-import { VibeMapTileLayer } from '../../../home/EmergentRouteFeedMap'
-import { VtSelect } from '../../../../components/VtSelect'
+} from "../../domain/routeSheetRegisteredPhones";
+import { paymentCurrencyVtOptions } from "../../domain/routeSheetMonedaOptions";
+import { fetchCurrencies } from "../../../../utils/market/fetchCurrencies";
+import { VibeMapTileLayer } from "../../../home/EmergentRouteFeedMap";
+import { LeafletRoadSnappedRoute } from "../../../home/LeafletRoadSnappedRoute";
+import { VtSelect } from "../../../../components/VtSelect";
 
-export type RouteSheetFormPayload = RouteSheetCreatePayload
+export type RouteSheetFormPayload = RouteSheetCreatePayload;
 
 type Props = {
-  open: boolean
-  onClose: () => void
-  initialRouteSheet?: RouteSheet | null
+  open: boolean;
+  onClose: () => void;
+  initialRouteSheet?: RouteSheet | null;
   /** Oferta pública del hilo: completa teléfonos de tramo desde asignaciones aunque la parada aún no los tenga. */
-  routeOfferForSheet?: RouteOfferPublicState | undefined
+  routeOfferForSheet?: RouteOfferPublicState | undefined;
   /** Teléfonos de transportistas ya registrados en el hilo / oferta (selector por tramo). */
-  transportistaPhoneOptions?: TransportistaPhoneOption[]
-  onSubmit: (p: RouteSheetFormPayload) => boolean
-}
+  transportistaPhoneOptions?: TransportistaPhoneOption[];
+  onSubmit: (p: RouteSheetFormPayload) => boolean;
+};
 
-type MapPick = { tramoIndex: number; punto: 'origen' | 'destino' }
+type MapPick = { tramoIndex: number; punto: "origen" | "destino" };
 
-const ROUTE_MAP_DEFAULT_CENTER: [number, number] = [22.526838, -81.128701]
-const ROUTE_MAP_ZOOM = 9
-const ROUTE_MAP_ZOOM_POINT = 13
+const ROUTE_MAP_DEFAULT_CENTER: [number, number] = [22.526838, -81.128701];
+const ROUTE_MAP_ZOOM = 9;
+const ROUTE_MAP_ZOOM_POINT = 13;
 
 function formatPickedCoord(n: number): string {
-  return n.toFixed(6)
+  return n.toFixed(6);
 }
 
-function tryParseLatLngStrings(latRaw: string, lngRaw: string): { lat: number; lng: number } | null {
-  const lat = Number(latRaw.trim().replace(/\s/g, '').replace(',', '.'))
-  const lng = Number(lngRaw.trim().replace(/\s/g, '').replace(',', '.'))
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null
-  return { lat, lng }
-}
-
-function RouteMapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+function RouteMapClickHandler({
+  onPick,
+}: {
+  onPick: (lat: number, lng: number) => void;
+}) {
   useMapEvents({
     click(e) {
-      onPick(e.latlng.lat, e.latlng.lng)
+      onPick(e.latlng.lat, e.latlng.lng);
     },
-  })
-  return null
+  });
+  return null;
 }
 
-function RouteMapViewSync({ center, zoom }: { center: [number, number]; zoom: number }) {
-  const map = useMap()
+/**
+ * Cámara: con destino y trazado previo hace encuadre; con pin actual prioriza el pin; si no, centro/zoom del formulario.
+ */
+function RouteMapCameraSync({
+  defaultCenter,
+  defaultZoom,
+  pickPos,
+  destinoPriorLine,
+}: {
+  defaultCenter: [number, number];
+  defaultZoom: number;
+  pickPos: { lat: number; lng: number } | null;
+  destinoPriorLine: [number, number][];
+}) {
+  const map = useMap();
+  const priorKey = destinoPriorLine.map((p) => `${p[0]},${p[1]}`).join("|");
   useEffect(() => {
-    map.setView(center, zoom)
-  }, [map, center[0], center[1], zoom])
-  return null
+    if (pickPos) {
+      map.setView(
+        [pickPos.lat, pickPos.lng],
+        Math.max(ROUTE_MAP_ZOOM_POINT, 13),
+        { animate: false },
+      );
+      return;
+    }
+    if (destinoPriorLine.length >= 2) {
+      const b = L.latLngBounds(destinoPriorLine);
+      map.fitBounds(b, { padding: [24, 24], maxZoom: 15, animate: false });
+      return;
+    }
+    if (destinoPriorLine.length === 1) {
+      const p0 = destinoPriorLine[0];
+      if (p0) map.setView(p0, 13, { animate: false });
+      return;
+    }
+    map.setView(defaultCenter, defaultZoom, { animate: false });
+  }, [
+    map,
+    defaultCenter[0],
+    defaultCenter[1],
+    defaultZoom,
+    pickPos?.lat,
+    pickPos?.lng,
+    priorKey,
+  ]);
+  return null;
 }
 
 /** En el formulario, el origen del tramo i&gt;0 no se guarda en el estado: se deriva del destino del tramo i−1. */
-function clearDerivedOriginsInForm(tramos: RouteTramoFormInput[]): RouteTramoFormInput[] {
+function clearDerivedOriginsInForm(
+  tramos: RouteTramoFormInput[],
+): RouteTramoFormInput[] {
   return tramos.map((t, i) =>
-    i === 0 ? t : { ...t, origen: '', origenLat: '', origenLng: '' },
-  )
-}
-
-function tramosToLimpios(tramos: RouteTramoFormInput[]): RouteTramoFormInput[] {
-  return tramos.map((p) => ({
-    origen: p.origen.trim(),
-    destino: p.destino.trim(),
-    origenLat: p.origenLat?.trim() ?? '',
-    origenLng: p.origenLng?.trim() ?? '',
-    destinoLat: p.destinoLat?.trim() ?? '',
-    destinoLng: p.destinoLng?.trim() ?? '',
-    tiempoRecogidaEstimado: p.tiempoRecogidaEstimado?.trim() ?? '',
-    tiempoEntregaEstimado: p.tiempoEntregaEstimado?.trim() ?? '',
-    precioTransportista: p.precioTransportista?.trim() ?? '',
-    cargaEnTramo: p.cargaEnTramo?.trim() ?? '',
-    tipoMercanciaCarga: p.tipoMercanciaCarga?.trim() ?? '',
-    tipoMercanciaDescarga: p.tipoMercanciaDescarga?.trim() ?? '',
-    notas: p.notas?.trim() ?? '',
-    responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() ?? '',
-    requisitosEspeciales: p.requisitosEspeciales?.trim() ?? '',
-    tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() ?? '',
-    telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
-    monedaPago: p.monedaPago?.trim() ?? '',
-  }))
+    i === 0 ? t : { ...t, origen: "", origenLat: "", origenLng: "" },
+  );
 }
 
 export function RouteSheetFormModal({
@@ -138,305 +168,334 @@ export function RouteSheetFormModal({
   transportistaPhoneOptions = [],
   onSubmit,
 }: Props) {
-  const [titulo, setTitulo] = useState('')
-  const [merc, setMerc] = useState('')
-  const [notasG, setNotasG] = useState('')
-  const [tramos, setTramos] = useState<RouteTramoFormInput[]>([emptyTramo(), emptyTramo()])
-  const [mapPick, setMapPick] = useState<MapPick | null>(null)
-  const [mapLat, setMapLat] = useState('')
-  const [mapLng, setMapLng] = useState('')
-  const [mapPlaceLabel, setMapPlaceLabel] = useState('')
-  const [mapCoordError, setMapCoordError] = useState<string | undefined>(undefined)
-  const [formErrors, setFormErrors] = useState<RouteSheetFormErrors>({})
+  const [titulo, setTitulo] = useState("");
+  const [merc, setMerc] = useState("");
+  const [notasG, setNotasG] = useState("");
+  const [tramos, setTramos] = useState<RouteTramoFormInput[]>([
+    emptyTramo(),
+    emptyTramo(),
+  ]);
+  const [mapPick, setMapPick] = useState<MapPick | null>(null);
+  const [mapLat, setMapLat] = useState("");
+  const [mapLng, setMapLng] = useState("");
+  const [mapPlaceLabel, setMapPlaceLabel] = useState("");
+  const [mapCoordError, setMapCoordError] = useState<string | undefined>(
+    undefined,
+  );
+  const [formErrors, setFormErrors] = useState<RouteSheetFormErrors>({});
   /** Códigos de moneda permitidos (GET /api/v1/market/currencies), mismo origen que el catálogo. */
-  const [currencyCodes, setCurrencyCodes] = useState<string[]>([])
-  const routeOfferRef = useRef(routeOfferForSheet)
-  routeOfferRef.current = routeOfferForSheet
-  const editBaselineJsonRef = useRef<string | null>(null)
+  const [currencyCodes, setCurrencyCodes] = useState<string[]>([]);
+  const routeOfferRef = useRef(routeOfferForSheet);
+  routeOfferRef.current = routeOfferForSheet;
+  const editBaselineJsonRef = useRef<string | null>(null);
   /** Invalida búsquedas Nominatim al cerrar el mapa o abrir otro punto. */
-  const mapForwardTokenRef = useRef(0)
+  const mapForwardTokenRef = useRef(0);
 
   useEffect(() => {
-    if (!open) return
-    let cancel = false
+    if (!open) return;
+    let cancel = false;
     void (async () => {
       try {
-        const list = await fetchCurrencies()
-        if (!cancel) setCurrencyCodes(list)
+        const list = await fetchCurrencies();
+        if (!cancel) setCurrencyCodes(list);
       } catch {
-        if (!cancel) setCurrencyCodes([])
+        if (!cancel) setCurrencyCodes([]);
       }
-    })()
+    })();
     return () => {
-      cancel = true
-    }
-  }, [open])
+      cancel = true;
+    };
+  }, [open]);
 
   useEffect(() => {
-    if (!open) return
-    setFormErrors({})
-    setMapPick(null)
-    setMapPlaceLabel('')
-    setMapCoordError(undefined)
-    mapForwardTokenRef.current += 1
+    if (!open) return;
+    setFormErrors({});
+    setMapPick(null);
+    setMapPlaceLabel("");
+    setMapCoordError(undefined);
+    mapForwardTokenRef.current += 1;
     if (initialRouteSheet) {
-      const rs = initialRouteSheet
-      const ro = routeOfferRef.current
+      const rs = initialRouteSheet;
+      const ro = routeOfferRef.current;
       const offerMap =
-        ro?.routeSheetId === rs.id ? new Map(ro.tramos.map((t) => [t.stopId, t])) : undefined
+        ro?.routeSheetId === rs.id
+          ? new Map(ro.tramos.map((t) => [t.stopId, t]))
+          : undefined;
       const tramosInitRaw =
         rs.paradas.length > 0
           ? routeStopsToFormInputs(
               rs.paradas,
               routeSheetLegacyHead(rs),
               offerMap,
-              rs.monedaPago ?? '',
+              rs.monedaPago ?? "",
             )
-          : [emptyTramo(), emptyTramo()]
-      const tramosInit = clearDerivedOriginsInForm(tramosInitRaw)
-      setTitulo(rs.titulo)
-      setMerc(rs.mercanciasResumen)
-      setNotasG(rs.notasGenerales ?? '')
-      setTramos(tramosInit)
-      const limpios0 = expandChainedTramoOrigins(tramosToLimpios(tramosInit))
+          : [emptyTramo(), emptyTramo()];
+      const tramosInit = clearDerivedOriginsInForm(tramosInitRaw);
+      setTitulo(rs.titulo);
+      setMerc(rs.mercanciasResumen);
+      setNotasG(rs.notasGenerales ?? "");
+      setTramos(tramosInit);
+      const limpios0 = expandChainedTramoOrigins(tramosToLimpios(tramosInit));
       const draft0: RouteSheetCreatePayload = {
         titulo: rs.titulo.trim(),
         mercanciasResumen: rs.mercanciasResumen.trim(),
         paradas: limpios0,
-        notasGenerales: (rs.notasGenerales ?? '').trim(),
-      }
-      const err0 = getRouteSheetFormErrors(draft0)
+        notasGenerales: (rs.notasGenerales ?? "").trim(),
+      };
+      const err0 = getRouteSheetFormErrors(draft0);
       if (hasRouteSheetFormErrors(err0)) {
-        editBaselineJsonRef.current = null
+        editBaselineJsonRef.current = null;
       } else {
         const persisted0: RouteSheetCreatePayload = {
           ...draft0,
           paradas: normalizeRouteSheetParadas(limpios0),
-        }
-        editBaselineJsonRef.current = JSON.stringify(persisted0)
+        };
+        editBaselineJsonRef.current = JSON.stringify(persisted0);
       }
     } else {
-      editBaselineJsonRef.current = null
-      setTitulo('')
-      setMerc('')
-      setNotasG('')
-      setTramos([emptyTramo(), emptyTramo()])
+      editBaselineJsonRef.current = null;
+      setTitulo("");
+      setMerc("");
+      setNotasG("");
+      setTramos([emptyTramo(), emptyTramo()]);
     }
-  }, [open, initialRouteSheet?.id])
+  }, [open, initialRouteSheet?.id]);
 
   const routeMapCenter = useMemo((): [number, number] => {
-    if (!mapPick) return ROUTE_MAP_DEFAULT_CENTER
-    const p = tryParseLatLngStrings(mapLat, mapLng)
-    if (p) return [p.lat, p.lng]
-    return ROUTE_MAP_DEFAULT_CENTER
-  }, [mapPick, mapLat, mapLng])
+    if (!mapPick) return ROUTE_MAP_DEFAULT_CENTER;
+    const p = parseRouteLatLngInputPair(mapLat, mapLng);
+    if (p) return [p.lat, p.lng];
+    return ROUTE_MAP_DEFAULT_CENTER;
+  }, [mapPick, mapLat, mapLng]);
 
   const routeMapZoom = useMemo(() => {
-    const p = tryParseLatLngStrings(mapLat, mapLng)
-    return p ? ROUTE_MAP_ZOOM_POINT : ROUTE_MAP_ZOOM
-  }, [mapLat, mapLng])
+    const p = parseRouteLatLngInputPair(mapLat, mapLng);
+    return p ? ROUTE_MAP_ZOOM_POINT : ROUTE_MAP_ZOOM;
+  }, [mapLat, mapLng]);
+
+  const destinoMapPrior = useMemo(() => {
+    if (mapPick?.punto !== "destino") return null;
+    return buildDestinoMapPriorContext(tramos, mapPick.tramoIndex);
+  }, [mapPick, tramos]);
 
   const monedaOptionsFor = useCallback(
     (cur: string) => paymentCurrencyVtOptions(cur, currencyCodes),
     [currencyCodes],
-  )
+  );
 
   useEffect(() => {
-    if (!mapPick || !open) return
-    const parsed = tryParseLatLngStrings(mapLat, mapLng)
-    if (!parsed) return
-    const ac = new AbortController()
+    if (!mapPick || !open) return;
+    const parsed = parseRouteLatLngInputPair(mapLat, mapLng);
+    if (!parsed) return;
+    const ac = new AbortController();
     const tid = globalThis.setTimeout(() => {
       void (async () => {
         try {
-          const label = await nominatimReverse(parsed.lat, parsed.lng, ac.signal)
-          if (!ac.signal.aborted && label) setMapPlaceLabel(label)
+          const label = await nominatimReverse(
+            parsed.lat,
+            parsed.lng,
+            ac.signal,
+          );
+          if (!ac.signal.aborted && label) setMapPlaceLabel(label);
         } catch {
           /* cancelado o red */
         }
-      })()
-    }, 450)
+      })();
+    }, 450);
     return () => {
-      globalThis.clearTimeout(tid)
-      ac.abort()
-    }
-  }, [mapPick, mapLat, mapLng, open])
+      globalThis.clearTimeout(tid);
+      ac.abort();
+    };
+  }, [mapPick, mapLat, mapLng, open]);
 
-  if (!open) return null
+  if (!open) return null;
 
-  function openMapPicker(tramoIndex: number, punto: 'origen' | 'destino') {
-    if (punto === 'origen' && tramoIndex > 0) return
-    const t = tramos[tramoIndex]
-    if (!t) return
-    setMapCoordError(undefined)
-    const token = ++mapForwardTokenRef.current
+  function openMapPicker(tramoIndex: number, punto: "origen" | "destino") {
+    if (punto === "origen" && tramoIndex > 0) return;
+    const t = tramos[tramoIndex];
+    if (!t) return;
+    setMapCoordError(undefined);
+    const token = ++mapForwardTokenRef.current;
 
-    let latStr = ''
-    let lngStr = ''
-    let labelStr = ''
-    if (punto === 'origen') {
-      latStr = t.origenLat ?? ''
-      lngStr = t.origenLng ?? ''
-      labelStr = t.origen ?? ''
+    let latStr = "";
+    let lngStr = "";
+    let labelStr = "";
+    if (punto === "origen") {
+      latStr = t.origenLat ?? "";
+      lngStr = t.origenLng ?? "";
+      labelStr = t.origen ?? "";
     } else {
-      latStr = t.destinoLat ?? ''
-      lngStr = t.destinoLng ?? ''
-      labelStr = t.destino ?? ''
+      latStr = t.destinoLat ?? "";
+      lngStr = t.destinoLng ?? "";
+      labelStr = t.destino ?? "";
     }
-    setMapLat(latStr)
-    setMapLng(lngStr)
-    setMapPlaceLabel(labelStr.trim())
-    setMapPick({ tramoIndex, punto })
+    setMapLat(latStr);
+    setMapLng(lngStr);
+    setMapPlaceLabel(labelStr.trim());
+    setMapPick({ tramoIndex, punto });
 
-    if (tryParseLatLngStrings(latStr, lngStr)) return
-    const q = labelStr.trim()
-    if (q.length < 3) return
+    if (parseRouteLatLngInputPair(latStr, lngStr)) return;
+    const q = labelStr.trim();
+    if (q.length < 3) return;
 
     void (async () => {
       try {
-        const r = await nominatimSearch(q)
-        if (mapForwardTokenRef.current !== token || !r) return
-        setMapLat(formatPickedCoord(r.lat))
-        setMapLng(formatPickedCoord(r.lng))
-        setMapPlaceLabel(r.label)
-        setMapCoordError(undefined)
+        const r = await nominatimSearch(q);
+        if (mapForwardTokenRef.current !== token || !r) return;
+        setMapLat(formatPickedCoord(r.lat));
+        setMapLng(formatPickedCoord(r.lng));
+        setMapPlaceLabel(r.label);
+        setMapCoordError(undefined);
       } catch {
         /* ignore */
       }
-    })()
+    })();
   }
 
   async function geocodePlaceToMap() {
-    const q = mapPlaceLabel.trim()
+    const q = mapPlaceLabel.trim();
     if (q.length < 3) {
-      toast.error('Escribí al menos 3 caracteres de dirección')
-      return
+      toast.error("Escribí al menos 3 caracteres de dirección");
+      return;
     }
-    const token = ++mapForwardTokenRef.current
+    const token = ++mapForwardTokenRef.current;
     try {
-      const r = await nominatimSearch(q)
-      if (mapForwardTokenRef.current !== token) return
+      const r = await nominatimSearch(q);
+      if (mapForwardTokenRef.current !== token) return;
       if (!r) {
-        toast.error('No se encontró esa dirección')
-        return
+        toast.error("No se encontró esa dirección");
+        return;
       }
-      setMapLat(formatPickedCoord(r.lat))
-      setMapLng(formatPickedCoord(r.lng))
-      setMapPlaceLabel(r.label)
-      setMapCoordError(undefined)
+      setMapLat(formatPickedCoord(r.lat));
+      setMapLng(formatPickedCoord(r.lng));
+      setMapPlaceLabel(r.label);
+      setMapCoordError(undefined);
     } catch {
       if (mapForwardTokenRef.current === token)
-        toast.error('No se pudo buscar la dirección. Probá de nuevo.')
+        toast.error("No se pudo buscar la dirección. Probá de nuevo.");
     }
   }
 
   function applyMapCoords() {
-    if (!mapPick) return
-    const coordErr = validateRouteCoordPair(mapLat, mapLng)
+    if (!mapPick) return;
+    const coordErr = validateRouteCoordPair(mapLat, mapLng);
     if (coordErr) {
-      setMapCoordError(coordErr)
-      return
+      setMapCoordError(coordErr);
+      return;
     }
-    setMapCoordError(undefined)
-    mapForwardTokenRef.current += 1
-    const lat = mapLat.trim()
-    const lng = mapLng.trim()
-    const place = mapPlaceLabel.trim()
+    setMapCoordError(undefined);
+    mapForwardTokenRef.current += 1;
+    const lat = mapLat.trim();
+    const lng = mapLng.trim();
+    const place = mapPlaceLabel.trim();
     setTramos((prev) => {
-      const next = [...prev]
-      const row = { ...next[mapPick.tramoIndex] }
-      if (mapPick.punto === 'origen') {
-        row.origenLat = lat || undefined
-        row.origenLng = lng || undefined
-        if (place) row.origen = place
+      const next = [...prev];
+      const row = { ...next[mapPick.tramoIndex] };
+      if (mapPick.punto === "origen") {
+        row.origenLat = lat || undefined;
+        row.origenLng = lng || undefined;
+        if (place) row.origen = place;
       } else {
-        row.destinoLat = lat || undefined
-        row.destinoLng = lng || undefined
-        if (place) row.destino = place
+        row.destinoLat = lat || undefined;
+        row.destinoLng = lng || undefined;
+        if (place) row.destino = place;
       }
-      next[mapPick.tramoIndex] = row
-      return next
-    })
-    toast.success('Ubicación guardada')
-    setMapPick(null)
+      next[mapPick.tramoIndex] = row;
+      return next;
+    });
+    toast.success("Ubicación guardada");
+    setMapPick(null);
   }
 
   function trySubmit() {
-    const t = titulo.trim()
-    const m = merc.trim()
-    const limpios = expandChainedTramoOrigins(tramosToLimpios(tramos))
+    const t = titulo.trim();
+    const m = merc.trim();
+    const limpios = expandChainedTramoOrigins(tramosToLimpios(tramos));
     const draft: RouteSheetCreatePayload = {
       titulo: t,
       mercanciasResumen: m,
       paradas: limpios,
       notasGenerales: notasG.trim(),
-    }
-    const e = getRouteSheetFormErrors(draft)
-    setFormErrors(e)
+    };
+    const e = getRouteSheetFormErrors(draft);
+    setFormErrors(e);
     if (hasRouteSheetFormErrors(e)) {
-      const n = routeSheetFormErrorCount(e)
-      toast.error(`Revisá el formulario (${n} error${n === 1 ? '' : 'es'})`)
-      return
+      const n = routeSheetFormErrorCount(e);
+      toast.error(`Revisá el formulario (${n} error${n === 1 ? "" : "es"})`);
+      return;
     }
-    const paradasFinal = normalizeRouteSheetParadas(limpios)
+    const paradasFinal = normalizeRouteSheetParadas(limpios);
     const payload: RouteSheetCreatePayload = {
       ...draft,
       paradas: paradasFinal,
-    }
+    };
     if (initialRouteSheet && editBaselineJsonRef.current !== null) {
       if (JSON.stringify(payload) === editBaselineJsonRef.current) {
-        toast.error('No hay cambios para guardar.')
-        return
+        toast.error("No hay cambios para guardar.");
+        return;
       }
     }
-    const persisted = onSubmit(payload)
-    if (!persisted) return
-    setFormErrors({})
-    onClose()
-    toast.success(initialRouteSheet ? 'Hoja de ruta actualizada' : 'Hoja de ruta creada')
+    const persisted = onSubmit(payload);
+    if (!persisted) return;
+    setFormErrors({});
+    onClose();
+    toast.success(
+      initialRouteSheet ? "Hoja de ruta actualizada" : "Hoja de ruta creada",
+    );
   }
 
   function updateTramo(i: number, patch: Partial<RouteTramoFormInput>) {
     setTramos((prev) => {
-      const next = [...prev]
-      next[i] = { ...next[i], ...patch }
-      return next
-    })
+      const next = [...prev];
+      next[i] = { ...next[i], ...patch };
+      return next;
+    });
   }
 
   function addTramoAfterLast() {
-    setTramos((prev) => [...prev, emptyTramo()])
-    setFormErrors({})
+    setTramos((prev) => [...prev, emptyTramo()]);
+    setFormErrors({});
   }
 
   function removeTramoAt(index: number) {
     setTramos((prev) => {
-      if (prev.length <= 1) return prev
-      return prev.filter((_, j) => j !== index)
-    })
+      if (prev.length <= 1) return prev;
+      return prev.filter((_, j) => j !== index);
+    });
     setMapPick((mp) => {
-      if (!mp) return null
-      if (mp.tramoIndex === index) return null
-      if (mp.tramoIndex > index) return { ...mp, tramoIndex: mp.tramoIndex - 1 }
-      return mp
-    })
-    setFormErrors({})
+      if (!mp) return null;
+      if (mp.tramoIndex === index) return null;
+      if (mp.tramoIndex > index)
+        return { ...mp, tramoIndex: mp.tramoIndex - 1 };
+      return mp;
+    });
+    setFormErrors({});
   }
 
-  const err = formErrors
-  const routeMapMarkerPos = mapPick ? tryParseLatLngStrings(mapLat, mapLng) : null
+  const err = formErrors;
+  const routeMapMarkerPos = mapPick
+    ? parseRouteLatLngInputPair(mapLat, mapLng)
+    : null;
+  const destinoPriorLineForCamera =
+    mapPick?.punto === "destino" ? (destinoMapPrior?.linePositions ?? []) : [];
 
   return (
     <>
-      <div className={mapBackdropLayerAboveChatRail} role="dialog" aria-modal="true">
+      <div
+        className={mapBackdropLayerAboveChatRail}
+        role="dialog"
+        aria-modal="true"
+      >
         <div className={modalShellWide}>
           <div className="vt-modal-title">
-            {initialRouteSheet ? 'Editar hoja de rutas' : 'Nueva hoja de rutas'}
+            {initialRouteSheet ? "Editar hoja de rutas" : "Nueva hoja de rutas"}
           </div>
           <div className={modalSub}>
-            Todos los campos son obligatorios. Tiempos estimados y precio del tramo deben ser números (ej. horas o
-            monto). La moneda de pago se elige en cada tramo. Origen, destino y el mapa se sincronizan (dirección ↔ pin).
-            A partir del segundo tramo, el origen coincide con el destino del tramo anterior (solo editable ahí).
+            Todos los campos son obligatorios. Tiempos estimados y precio del
+            tramo deben ser números (ej. horas o monto). La moneda de pago se
+            elige en cada tramo. Origen, destino y el mapa se sincronizan
+            (dirección ↔ pin). A partir del segundo tramo, el origen coincide
+            con el destino del tramo anterior (solo editable ahí).
           </div>
           <div className={modalFormBody}>
             <Field
@@ -458,17 +517,23 @@ export function RouteSheetFormModal({
             <div className={cn(detailsBlock, rutaTramosBlock)}>
               <strong>Tramos del recorrido</strong>
               {err.paradasGlobal ? (
-                <div className={cn(fieldError, 'mt-2')} role="alert">
+                <div className={cn(fieldError, "mt-2")} role="alert">
                   {err.paradasGlobal}
                 </div>
               ) : null}
               {tramos.map((p, i) => {
-                const te = err.tramos?.[i]
-                const prevStop = i > 0 ? tramos[i - 1] : null
-                const origenLocked = i > 0
-                const origenNombre = origenLocked ? (prevStop?.destino ?? '') : p.origen
-                const origenLatShown = origenLocked ? (prevStop?.destinoLat ?? '') : (p.origenLat ?? '')
-                const origenLngShown = origenLocked ? (prevStop?.destinoLng ?? '') : (p.origenLng ?? '')
+                const te = err.tramos?.[i];
+                const prevStop = i > 0 ? tramos[i - 1] : null;
+                const origenLocked = i > 0;
+                const origenNombre = origenLocked
+                  ? (prevStop?.destino ?? "")
+                  : p.origen;
+                const origenLatShown = origenLocked
+                  ? (prevStop?.destinoLat ?? "")
+                  : (p.origenLat ?? "");
+                const origenLngShown = origenLocked
+                  ? (prevStop?.destinoLng ?? "")
+                  : (p.origenLng ?? "");
                 return (
                   <div key={i} className={rutaTramoCard}>
                     <div className={rutaTramoHead}>
@@ -479,8 +544,8 @@ export function RouteSheetFormModal({
                         disabled={tramos.length <= 1}
                         title={
                           tramos.length <= 1
-                            ? 'Debe quedar al menos un tramo'
-                            : 'Eliminar este tramo'
+                            ? "Debe quedar al menos un tramo"
+                            : "Eliminar este tramo"
                         }
                         onClick={() => removeTramoAt(i)}
                       >
@@ -493,8 +558,8 @@ export function RouteSheetFormModal({
                         label="Origen"
                         value={origenNombre}
                         onChange={(v) => {
-                          if (origenLocked) return
-                          updateTramo(i, { origen: v })
+                          if (origenLocked) return;
+                          updateTramo(i, { origen: v });
                         }}
                         readOnly={origenLocked}
                         error={te?.origen}
@@ -512,7 +577,8 @@ export function RouteSheetFormModal({
                     </div>
                     {origenLocked ? (
                       <p className="vt-muted mb-2 text-[11px] leading-snug">
-                        Mismo lugar y coordenadas que el <b>destino del tramo {i}</b>. Para cambiarlos, editá ese
+                        Mismo lugar y coordenadas que el{" "}
+                        <b>destino del tramo {i}</b>. Para cambiarlos, editá ese
                         destino o sus coordenadas en el mapa.
                       </p>
                     ) : null}
@@ -523,17 +589,17 @@ export function RouteSheetFormModal({
                         disabled={origenLocked}
                         title={
                           origenLocked
-                            ? 'El origen toma las coordenadas del destino del tramo anterior'
+                            ? "El origen toma las coordenadas del destino del tramo anterior"
                             : undefined
                         }
-                        onClick={() => openMapPicker(i, 'origen')}
+                        onClick={() => openMapPicker(i, "origen")}
                       >
                         <MapPin size={14} /> Coordenadas origen (mapa)
                       </button>
                       <button
                         type="button"
                         className={rutaMapBtn}
-                        onClick={() => openMapPicker(i, 'destino')}
+                        onClick={() => openMapPicker(i, "destino")}
                       >
                         <MapPin size={14} /> Coordenadas destino (mapa)
                       </button>
@@ -543,14 +609,15 @@ export function RouteSheetFormModal({
                         {te.coordOrigen}
                         {origenLocked ? (
                           <span className="block pt-1 text-[11px] font-normal opacity-90">
-                            Si falta el mapa del origen, cargá las coordenadas de <b>destino</b> del tramo {i}.
+                            Si falta el mapa del origen, cargá las coordenadas
+                            de <b>destino</b> del tramo {i}.
                           </span>
                         ) : null}
                       </div>
                     ) : null}
-                    {(origenLatShown || origenLngShown) ? (
+                    {origenLatShown || origenLngShown ? (
                       <div className={rutaCoordsHint}>
-                        Origen: {origenLatShown || '—'}, {origenLngShown || '—'}
+                        Origen: {origenLatShown || "—"}, {origenLngShown || "—"}
                       </div>
                     ) : null}
                     {te?.coordDestino ? (
@@ -558,15 +625,17 @@ export function RouteSheetFormModal({
                         {te.coordDestino}
                       </div>
                     ) : null}
-                    {(p.destinoLat || p.destinoLng) ? (
+                    {p.destinoLat || p.destinoLng ? (
                       <div className={rutaCoordsHint}>
-                        Destino: {p.destinoLat ?? '—'}, {p.destinoLng ?? '—'}
+                        Destino: {p.destinoLat ?? "—"}, {p.destinoLng ?? "—"}
                       </div>
                     ) : null}
                     <Field
                       label="Responsabilidad por daños por embalaje (este tramo)"
-                      value={p.responsabilidadEmbalaje ?? ''}
-                      onChange={(v) => updateTramo(i, { responsabilidadEmbalaje: v })}
+                      value={p.responsabilidadEmbalaje ?? ""}
+                      onChange={(v) =>
+                        updateTramo(i, { responsabilidadEmbalaje: v })
+                      }
                       multiline
                       placeholder="Quién responde y en qué casos"
                       error={te?.responsabilidadEmbalaje}
@@ -574,8 +643,10 @@ export function RouteSheetFormModal({
                     />
                     <Field
                       label="Requisitos especiales (este tramo)"
-                      value={p.requisitosEspeciales ?? ''}
-                      onChange={(v) => updateTramo(i, { requisitosEspeciales: v })}
+                      value={p.requisitosEspeciales ?? ""}
+                      onChange={(v) =>
+                        updateTramo(i, { requisitosEspeciales: v })
+                      }
                       multiline
                       placeholder="Frágil, refrigerado, ADR, etc."
                       error={te?.requisitosEspeciales}
@@ -583,35 +654,49 @@ export function RouteSheetFormModal({
                     />
                     <Field
                       label="Tipo de vehículo requerido (este tramo)"
-                      value={p.tipoVehiculoRequerido ?? ''}
-                      onChange={(v) => updateTramo(i, { tipoVehiculoRequerido: v })}
+                      value={p.tipoVehiculoRequerido ?? ""}
+                      onChange={(v) =>
+                        updateTramo(i, { tipoVehiculoRequerido: v })
+                      }
                       placeholder="Ej. camión baranda, refrigerado, sider"
                       error={te?.tipoVehiculoRequerido}
                       inputId={`ruta-tramo-${i}-veh`}
                     />
-                    <label className={fieldRootWithInvalid(!!te?.telefonoTransportista)}>
-                      <span className={fieldLabel}>Teléfono del transportista (este tramo)</span>
+                    <label
+                      className={fieldRootWithInvalid(
+                        !!te?.telefonoTransportista,
+                      )}
+                    >
+                      <span className={fieldLabel}>
+                        Teléfono del transportista (este tramo)
+                      </span>
                       <select
                         id={`ruta-tramo-${i}-tel`}
                         className="vt-input"
-                        value={p.telefonoTransportista ?? ''}
+                        value={p.telefonoTransportista ?? ""}
                         onChange={(e) =>
                           updateTramo(i, {
-                            telefonoTransportista: e.target.value.trim() || undefined,
+                            telefonoTransportista:
+                              e.target.value.trim() || undefined,
                           })
                         }
                         aria-invalid={!!te?.telefonoTransportista}
                       >
                         <option value="">— Ninguno —</option>
-                        {phoneSelectOptions(transportistaPhoneOptions, p.telefonoTransportista ?? '').map((opt) => (
+                        {phoneSelectOptions(
+                          transportistaPhoneOptions,
+                          p.telefonoTransportista ?? "",
+                        ).map((opt) => (
                           <option key={`${i}-${opt.value}`} value={opt.value}>
                             {opt.label}
                           </option>
                         ))}
                       </select>
                       <p className="vt-muted mt-1 text-[11px] leading-snug">
-                        Sólo podés elegir teléfonos de transportistas que ya estén en el chat (integrantes del hilo). Si
-                        falta alguien, validá su suscripción para que entre al hilo antes de cargar el número acá.
+                        Sólo podés elegir teléfonos de transportistas que ya
+                        estén en el chat (integrantes del hilo). Si falta
+                        alguien, validá su suscripción para que entre al hilo
+                        antes de cargar el número acá.
                       </p>
                       {te?.telefonoTransportista ? (
                         <span className={fieldError} role="alert">
@@ -622,8 +707,10 @@ export function RouteSheetFormModal({
                     <div className={rutaTramoGrid}>
                       <Field
                         label="Tiempo estimado recogida (horas, número)"
-                        value={p.tiempoRecogidaEstimado ?? ''}
-                        onChange={(v) => updateTramo(i, { tiempoRecogidaEstimado: v })}
+                        value={p.tiempoRecogidaEstimado ?? ""}
+                        onChange={(v) =>
+                          updateTramo(i, { tiempoRecogidaEstimado: v })
+                        }
                         error={te?.tiempoRecogidaEstimado}
                         inputId={`ruta-tramo-${i}-trec`}
                         inputMode="decimal"
@@ -631,8 +718,10 @@ export function RouteSheetFormModal({
                       />
                       <Field
                         label="Tiempo estimado entrega (horas, número)"
-                        value={p.tiempoEntregaEstimado ?? ''}
-                        onChange={(v) => updateTramo(i, { tiempoEntregaEstimado: v })}
+                        value={p.tiempoEntregaEstimado ?? ""}
+                        onChange={(v) =>
+                          updateTramo(i, { tiempoEntregaEstimado: v })
+                        }
                         error={te?.tiempoEntregaEstimado}
                         inputId={`ruta-tramo-${i}-tent`}
                         inputMode="decimal"
@@ -641,21 +730,31 @@ export function RouteSheetFormModal({
                     </div>
                     <Field
                       label="Precio desglosado (transportista, este tramo)"
-                      value={p.precioTransportista ?? ''}
-                      onChange={(v) => updateTramo(i, { precioTransportista: v })}
+                      value={p.precioTransportista ?? ""}
+                      onChange={(v) =>
+                        updateTramo(i, { precioTransportista: v })
+                      }
                       placeholder="Monto numérico (ej. 150000 o 1500.50)"
                       error={te?.precioTransportista}
                       inputId={`ruta-tramo-${i}-precio`}
                       inputMode="decimal"
                     />
-                    <div className={cn(fieldRootWithInvalid(!!te?.monedaPago), 'w-full')}>
-                      <span className={fieldLabel} id={`ruta-tramo-${i}-moneda-lbl`}>
+                    <div
+                      className={cn(
+                        fieldRootWithInvalid(!!te?.monedaPago),
+                        "w-full",
+                      )}
+                    >
+                      <span
+                        className={fieldLabel}
+                        id={`ruta-tramo-${i}-moneda-lbl`}
+                      >
                         Moneda de pago (este tramo)
                       </span>
                       <VtSelect
-                        value={p.monedaPago ?? ''}
+                        value={p.monedaPago ?? ""}
                         onChange={(v) => updateTramo(i, { monedaPago: v })}
-                        options={monedaOptionsFor(p.monedaPago ?? '')}
+                        options={monedaOptionsFor(p.monedaPago ?? "")}
                         placeholder="Elegir moneda…"
                         listPortal
                         listPortalZIndexClass="z-[400]"
@@ -670,7 +769,7 @@ export function RouteSheetFormModal({
                     </div>
                     <Field
                       label="Carga en este tramo"
-                      value={p.cargaEnTramo ?? ''}
+                      value={p.cargaEnTramo ?? ""}
                       onChange={(v) => updateTramo(i, { cargaEnTramo: v })}
                       multiline
                       placeholder="Qué lleva el transportista en el tramo"
@@ -680,31 +779,39 @@ export function RouteSheetFormModal({
                     <div className={rutaTramoGrid}>
                       <Field
                         label="Tipo de mercancía (carga)"
-                        value={p.tipoMercanciaCarga ?? ''}
-                        onChange={(v) => updateTramo(i, { tipoMercanciaCarga: v })}
+                        value={p.tipoMercanciaCarga ?? ""}
+                        onChange={(v) =>
+                          updateTramo(i, { tipoMercanciaCarga: v })
+                        }
                         error={te?.tipoMercanciaCarga}
                         inputId={`ruta-tramo-${i}-tmc`}
                       />
                       <Field
                         label="Tipo de mercancía (descarga)"
-                        value={p.tipoMercanciaDescarga ?? ''}
-                        onChange={(v) => updateTramo(i, { tipoMercanciaDescarga: v })}
+                        value={p.tipoMercanciaDescarga ?? ""}
+                        onChange={(v) =>
+                          updateTramo(i, { tipoMercanciaDescarga: v })
+                        }
                         error={te?.tipoMercanciaDescarga}
                         inputId={`ruta-tramo-${i}-tmd`}
                       />
                     </div>
                     <Field
                       label="Notas del tramo"
-                      value={p.notas ?? ''}
+                      value={p.notas ?? ""}
                       onChange={(v) => updateTramo(i, { notas: v })}
                       multiline
                       error={te?.notas}
                       inputId={`ruta-tramo-${i}-notas`}
                     />
                   </div>
-                )
+                );
               })}
-              <button type="button" className="vt-btn" onClick={addTramoAfterLast}>
+              <button
+                type="button"
+                className="vt-btn"
+                onClick={addTramoAfterLast}
+              >
                 + Agregar tramo
               </button>
             </div>
@@ -722,8 +829,12 @@ export function RouteSheetFormModal({
             <button type="button" className="vt-btn" onClick={onClose}>
               Cancelar
             </button>
-            <button type="button" className="vt-btn vt-btn-primary" onClick={trySubmit}>
-              {initialRouteSheet ? 'Guardar cambios' : 'Guardar hoja de ruta'}
+            <button
+              type="button"
+              className="vt-btn vt-btn-primary"
+              onClick={trySubmit}
+            >
+              {initialRouteSheet ? "Guardar cambios" : "Guardar hoja de ruta"}
             </button>
           </div>
         </div>
@@ -736,18 +847,29 @@ export function RouteSheetFormModal({
           aria-modal="true"
           aria-label="Coordenadas del mapa"
         >
-          <div className={cn(modalShellWide, 'max-w-[560px]')}>
+          <div className={cn(modalShellWide, "max-w-[560px]")}>
             <div className="vt-modal-title">
-              {mapPick.punto === 'origen' ? 'Origen del recorrido' : 'Destino del recorrido'} (tramo{' '}
-              {mapPick.tramoIndex + 1})
+              {mapPick.punto === "origen"
+                ? "Origen del recorrido"
+                : "Destino del recorrido"}{" "}
+              (tramo {mapPick.tramoIndex + 1})
             </div>
             <div className={modalSub}>
-              Tocá el mapa o escribí la dirección y usá «Buscar en el mapa». El texto y las coordenadas se actualizan
-              entre sí; podés editar la dirección antes de guardar.
+              Tocá el mapa o escribí la dirección y usá «Buscar en el mapa». El
+              texto y las coordenadas se actualizan entre sí; podés editar la
+              dirección antes de guardar.
+              {mapPick.punto === "destino" &&
+              mapPick.tramoIndex > 0 &&
+              destinoMapPrior?.endMarkers.length ? (
+                <span className="mt-1 block text-[12px]">
+                  Tramos anteriores con pin 1, 2, … y trazo: tocá un número para
+                  fijar el fin de este tramo ahí, o elegí otro punto en el mapa.
+                </span>
+              ) : null}
             </div>
             <div
               className="mb-4 overflow-hidden rounded-xl border border-[var(--border)] bg-[#e2e8f0] [&_.leaflet-container]:z-0 [&_.leaflet-control-attribution]:text-[10px]"
-              style={{ minHeight: 'min(52vh, 360px)' }}
+              style={{ minHeight: "min(52vh, 360px)" }}
             >
               <MapContainer
                 key={`${mapPick.tramoIndex}-${mapPick.punto}`}
@@ -758,25 +880,62 @@ export function RouteSheetFormModal({
                 attributionControl
               >
                 <VibeMapTileLayer />
-                <RouteMapViewSync center={routeMapCenter} zoom={routeMapZoom} />
+                <RouteMapCameraSync
+                  defaultCenter={routeMapCenter}
+                  defaultZoom={routeMapZoom}
+                  pickPos={routeMapMarkerPos}
+                  destinoPriorLine={destinoPriorLineForCamera}
+                />
+                {mapPick.punto === "destino" &&
+                destinoMapPrior &&
+                destinoMapPrior.linePositions.length >= 2 ? (
+                  <LeafletRoadSnappedRoute
+                    positions={destinoMapPrior.linePositions}
+                    useRoads
+                    fitMapToRoute={false}
+                  />
+                ) : null}
+                {mapPick.punto === "destino" && destinoMapPrior
+                  ? destinoMapPrior.endMarkers.map((m) => (
+                      <Marker
+                        key={`prior-${m.label}-${m.lat.toFixed(5)}-${m.lng.toFixed(5)}`}
+                        position={[m.lat, m.lng]}
+                        zIndexOffset={300}
+                        icon={routeMapNumberedWaypointIcon(m.label)}
+                        eventHandlers={{
+                          click: () => {
+                            setMapLat(formatPickedCoord(m.lat));
+                            setMapLng(formatPickedCoord(m.lng));
+                            setMapCoordError(undefined);
+                            void nominatimReverse(m.lat, m.lng).then(
+                              (label) => {
+                                if (label) setMapPlaceLabel(label);
+                              },
+                            );
+                          },
+                        }}
+                      />
+                    ))
+                  : null}
                 <RouteMapClickHandler
                   onPick={(lat, lng) => {
-                    setMapLat(formatPickedCoord(lat))
-                    setMapLng(formatPickedCoord(lng))
-                    setMapCoordError(undefined)
+                    setMapLat(formatPickedCoord(lat));
+                    setMapLng(formatPickedCoord(lng));
+                    setMapCoordError(undefined);
                   }}
                 />
                 {routeMapMarkerPos ? (
                   <Marker
                     position={[routeMapMarkerPos.lat, routeMapMarkerPos.lng]}
                     draggable
+                    zIndexOffset={500}
                     icon={storeMapPinIcon()}
                     eventHandlers={{
                       dragend: (e) => {
-                        const ll = e.target.getLatLng()
-                        setMapLat(formatPickedCoord(ll.lat))
-                        setMapLng(formatPickedCoord(ll.lng))
-                        setMapCoordError(undefined)
+                        const ll = e.target.getLatLng();
+                        setMapLat(formatPickedCoord(ll.lat));
+                        setMapLng(formatPickedCoord(ll.lng));
+                        setMapCoordError(undefined);
                       },
                     }}
                   />
@@ -786,7 +945,9 @@ export function RouteSheetFormModal({
             <div className={modalFormBody}>
               <label className={fieldRootWithInvalid(false)}>
                 <span className={fieldLabel}>
-                  {mapPick.punto === 'origen' ? 'Origen (dirección)' : 'Destino (dirección)'}
+                  {mapPick.punto === "origen"
+                    ? "Origen (dirección)"
+                    : "Destino (dirección)"}
                 </span>
                 <textarea
                   className="vt-input min-h-[72px] resize-y"
@@ -798,7 +959,11 @@ export function RouteSheetFormModal({
                 />
               </label>
               <div className="mb-4 flex flex-wrap gap-2">
-                <button type="button" className="vt-btn vt-btn-ghost text-[13px]" onClick={() => void geocodePlaceToMap()}>
+                <button
+                  type="button"
+                  className="vt-btn vt-btn-ghost text-[13px]"
+                  onClick={() => void geocodePlaceToMap()}
+                >
                   Buscar en el mapa
                 </button>
               </div>
@@ -809,8 +974,8 @@ export function RouteSheetFormModal({
                   value={mapLat}
                   inputMode="decimal"
                   onChange={(e) => {
-                    setMapLat(e.target.value)
-                    setMapCoordError(undefined)
+                    setMapLat(e.target.value);
+                    setMapCoordError(undefined);
                   }}
                   aria-invalid={!!mapCoordError}
                 />
@@ -822,8 +987,8 @@ export function RouteSheetFormModal({
                   value={mapLng}
                   inputMode="decimal"
                   onChange={(e) => {
-                    setMapLng(e.target.value)
-                    setMapCoordError(undefined)
+                    setMapLng(e.target.value);
+                    setMapCoordError(undefined);
                   }}
                   aria-invalid={!!mapCoordError}
                 />
@@ -839,14 +1004,18 @@ export function RouteSheetFormModal({
                 type="button"
                 className="vt-btn"
                 onClick={() => {
-                  mapForwardTokenRef.current += 1
-                  setMapPick(null)
-                  setMapCoordError(undefined)
+                  mapForwardTokenRef.current += 1;
+                  setMapPick(null);
+                  setMapCoordError(undefined);
                 }}
               >
                 Cancelar
               </button>
-              <button type="button" className="vt-btn vt-btn-primary" onClick={applyMapCoords}>
+              <button
+                type="button"
+                className="vt-btn vt-btn-primary"
+                onClick={applyMapCoords}
+              >
                 Guardar coordenadas
               </button>
             </div>
@@ -854,5 +1023,5 @@ export function RouteSheetFormModal({
         </div>
       ) : null}
     </>
-  )
+  );
 }

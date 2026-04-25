@@ -18,6 +18,7 @@ import {
 import { mediaApiUrl, uploadMediaBlob } from "../../utils/media/mediaClient";
 import { useAppStore } from "./useAppStore";
 import { mergeChatSenderLabelsIntoProfileStore } from "../../utils/chat/chatSenderLabels";
+import { rehydrateCthThreadInStoreForIncomingMessage } from "../../utils/chat/rehydrateCthThreadInStoreForIncomingMessage";
 
 async function blobUrlToMediaApiUrl(
   blobUrl: string,
@@ -112,6 +113,15 @@ export function createChatMessagesSlice(
     onChatMessageFromServer: (threadId, dto: ChatMessageDto) => {
       mergeChatSenderLabelsIntoProfileStore([dto]);
       const meId = useAppStore.getState().me.id;
+      const t0 = get().threads[threadId];
+      if (!t0 && threadId.startsWith("cth_")) {
+        void rehydrateCthThreadInStoreForIncomingMessage(threadId).then((ok) => {
+          if (ok) {
+            scheduleThreadContractsSyncAfterMessage(get, threadId);
+          }
+        });
+        return;
+      }
       const m = mapChatMessageDtoToMessage(dto, meId);
       set((s) => {
         const t = s.threads[threadId];

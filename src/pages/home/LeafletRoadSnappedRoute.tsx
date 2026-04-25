@@ -56,13 +56,21 @@ type Props = Readonly<{
   positions: [number, number][];
   /** OSRM vía leaflet-routing-machine en el cliente; si false, segmentos rectos */
   useRoads: boolean;
+  /**
+   * Si true (defecto), ajusta la vista al trazo. Desactivar cuando otro control (p. ej. modal) ya fija el encuadre.
+   */
+  fitMapToRoute?: boolean;
 }>;
 
 /**
  * Trazado alineado a calles (leaflet-routing-machine → OSRM en el navegador) o polilínea recta.
  * Las distancias por tramo para UI/precio van por el backend (`/api/v1/routing/leg-distances`).
  */
-export function LeafletRoadSnappedRoute({ positions, useRoads }: Props) {
+export function LeafletRoadSnappedRoute({
+  positions,
+  useRoads,
+  fitMapToRoute = true,
+}: Props) {
   const map = useMap();
   const routeLayerRef = useRef<(L.Layer & { getBounds: () => L.LatLngBounds }) | null>(
     null,
@@ -81,6 +89,7 @@ export function LeafletRoadSnappedRoute({ positions, useRoads }: Props) {
     };
 
     const fitToLayer = (layer: { getBounds: () => L.LatLngBounds }) => {
+      if (!fitMapToRoute) return;
       try {
         map.fitBounds(layer.getBounds(), { padding: [12, 12], maxZoom: 10 });
       } catch {
@@ -136,7 +145,7 @@ export function LeafletRoadSnappedRoute({ positions, useRoads }: Props) {
       cancelled = true;
       clear();
     };
-  }, [map, positions, useRoads]);
+  }, [map, positions, useRoads, fitMapToRoute]);
 
   return null;
 }

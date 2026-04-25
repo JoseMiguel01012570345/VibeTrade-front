@@ -639,6 +639,7 @@ export function ChatPage() {
             [tid]: {
               ...(s.threads[tid] ?? {}),
               id: tid,
+              chatActionsLocked: false,
               offerId: dto.offerId,
               storeId: dto.storeId,
               store,

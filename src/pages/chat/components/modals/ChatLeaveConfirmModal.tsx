@@ -4,7 +4,7 @@ type Props = {
   open: boolean
   onClose: () => void
   onConfirm: () => void | Promise<void>
-  /** Si true, el texto menciona que la lista también se actualizará. */
+  /** Si true, el texto menciona hilo (lista) y la pérdida de acceso al salir. */
   variant?: 'page' | 'list'
 }
 
@@ -15,7 +15,8 @@ export function ChatLeaveConfirmModal({ open, onClose, onConfirm, variant = 'pag
     variant === 'list' ? (
       <span>
         {' '}
-        Además, el chat se <strong className="text-[var(--text)]">quitará de tu lista</strong>.
+        Además, al confirmar, <strong className="text-[var(--text)]">dejás de formar parte de este hilo</strong>: dejará
+        de mostrarse en la lista y no podrás reabrir el mismo hilo.
       </span>
     ) : null
 

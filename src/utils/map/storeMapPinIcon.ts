@@ -9,3 +9,17 @@ export function storeMapPinIcon(): L.DivIcon {
     iconAnchor: [13, 13],
   });
 }
+
+/**
+ * Misma forma que en el feed de rutas: badge numerado 1, 2, …
+ * (requiere `emergentRouteMapMarkers.css` en el bundle).
+ */
+export function routeMapNumberedWaypointIcon(label: string): L.DivIcon {
+  const w = Math.max(28, 16 + label.length * 9);
+  return L.divIcon({
+    className: "emergent-route-legend",
+    html: `<div class="er-mark">${label}</div>`,
+    iconSize: [w, 28],
+    iconAnchor: [w / 2, 14],
+  });
+}

@@ -164,7 +164,7 @@ export async function deleteChatThread(threadId: string): Promise<void> {
   }
 }
 
-/** Comprador/vendedor con acuerdo aceptado: oculta el hilo solo para quien sale; el resto conserva el chat. */
+/** Comprador/vendedor con acuerdo aceptado: expulsa a quien sale del hilo; el resto sigue pudiendo usar el chat. */
 export async function postPartySoftLeaveChatThread(
   threadId: string,
   reason: string,

@@ -41,3 +41,26 @@ export function getThreadPeerPartyExit(th: Thread | undefined): PeerPartyExit | 
           : "",
   };
 }
+
+/**
+ * `partyExitedUserId` en el hilo (última salida “con acuerdo” registrada en servidor) identifica
+ * a quien salió primero. Si no está vacío y no es el usuario que intenta salir ahora, la
+ * contraparte ya se fue: no aplica la penalización de confianza a quien sale segundo.
+ */
+export function counterpartyAlreadyRecordedPartyExit(
+  partyExitedUserId: string | null | undefined,
+  leaverUserId: string,
+): boolean {
+  const p = (partyExitedUserId ?? "").trim();
+  const me = (leaverUserId ?? "").trim();
+  if (p.length < 2 || me.length < 2) return false;
+  return p !== me;
+}
+
+export function counterpartyAlreadyRecordedPartyExitFromThread(
+  th: Thread | undefined,
+  leaverUserId: string,
+): boolean {
+  const peer = getThreadPeerPartyExit(th);
+  return counterpartyAlreadyRecordedPartyExit(peer?.userId, leaverUserId);
+}
