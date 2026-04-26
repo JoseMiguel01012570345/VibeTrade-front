@@ -289,6 +289,7 @@ export function routeSheetFormErrorCount(e: RouteSheetFormErrors): number {
 export function normalizeRouteSheetParadas(paradas: RouteTramoFormInput[]): RouteTramoFormInput[] {
   return paradas
     .map((p) => ({
+      paradaId: norm(p.paradaId) || undefined,
       origen: norm(p.origen),
       destino: norm(p.destino),
       origenLat: norm(p.origenLat) || undefined,

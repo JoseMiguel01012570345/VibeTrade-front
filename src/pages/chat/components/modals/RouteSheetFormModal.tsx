@@ -57,27 +57,37 @@ import {
   validateRouteCoordPair,
 } from "../../domain/routeSheetValidation";
 import type { RouteOfferPublicState } from "../../../../app/store/marketStoreTypes";
-import {
-  phoneSelectOptions,
-  type TransportistaPhoneOption,
-} from "../../domain/routeSheetRegisteredPhones";
 import { paymentCurrencyVtOptions } from "../../domain/routeSheetMonedaOptions";
 import { fetchCurrencies } from "../../../../utils/market/fetchCurrencies";
 import { VibeMapTileLayer } from "../../../home/EmergentRouteFeedMap";
 import { LeafletRoadSnappedRoute } from "../../../home/LeafletRoadSnappedRoute";
 import { VtSelect } from "../../../../components/VtSelect";
+import { postRouteSheetNotifyPreselected } from "../../../../utils/chat/chatApi";
+import { getSessionToken } from "../../../../utils/http/sessionToken";
+import { RouteSheetTransportistaPhoneField } from "./RouteSheetTransportistaPhoneField";
+import {
+  confirmedAssignmentOnFormTramo,
+  effectiveRouteOfferForSheetForm,
+  normRoutePhoneKey,
+} from "../../domain/routeSheetOfferGuards";
 
 export type RouteSheetFormPayload = RouteSheetCreatePayload;
+
+export type RouteSheetSubmitResult =
+  | { ok: false }
+  | { ok: true; routeSheetId: string };
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  /** Hilo del chat (p. ej. <code>cth_…</code>); hace falta para avisar a transportistas tras guardar. */
+  threadId: string;
   initialRouteSheet?: RouteSheet | null;
-  /** Oferta pública del hilo: completa teléfonos de tramo desde asignaciones aunque la parada aún no los tenga. */
+  /** Oferta pública resuelta por hoja (preferida para bloqueo / teléfono). */
   routeOfferForSheet?: RouteOfferPublicState | undefined;
-  /** Teléfonos de transportistas ya registrados en el hilo / oferta (selector por tramo). */
-  transportistaPhoneOptions?: TransportistaPhoneOption[];
-  onSubmit: (p: RouteSheetFormPayload) => boolean;
+  /** Oferta pública del hilo (`resolveRouteOfferPublicForThread`); usada como respaldo si la de arriba es undefined. */
+  routeOfferForThread?: RouteOfferPublicState | undefined;
+  onSubmit: (p: RouteSheetFormPayload) => RouteSheetSubmitResult;
 };
 
 type MapPick = { tramoIndex: number; punto: "origen" | "destino" };
@@ -163,9 +173,10 @@ function clearDerivedOriginsInForm(
 export function RouteSheetFormModal({
   open,
   onClose,
+  threadId,
   initialRouteSheet,
   routeOfferForSheet,
-  transportistaPhoneOptions = [],
+  routeOfferForThread,
   onSubmit,
 }: Props) {
   const [titulo, setTitulo] = useState("");
@@ -183,10 +194,25 @@ export function RouteSheetFormModal({
     undefined,
   );
   const [formErrors, setFormErrors] = useState<RouteSheetFormErrors>({});
+  /** Tras un guardado exitoso, si hay teléfonos en tramos, preguntamos si notificar. */
+  const [notifyAfterSave, setNotifyAfterSave] = useState<{
+    routeSheetId: string;
+    phones: string[];
+  } | null>(null);
+  const [notifyBusy, setNotifyBusy] = useState(false);
   /** Códigos de moneda permitidos (GET /api/v1/market/currencies), mismo origen que el catálogo. */
   const [currencyCodes, setCurrencyCodes] = useState<string[]>([]);
-  const routeOfferRef = useRef(routeOfferForSheet);
-  routeOfferRef.current = routeOfferForSheet;
+  const offerForTramo = useMemo(
+    () =>
+      effectiveRouteOfferForSheetForm(
+        routeOfferForSheet,
+        routeOfferForThread,
+        initialRouteSheet?.id,
+      ),
+    [routeOfferForSheet, routeOfferForThread, initialRouteSheet?.id],
+  );
+  const offerTramoRef = useRef(offerForTramo);
+  offerTramoRef.current = offerForTramo;
   const editBaselineJsonRef = useRef<string | null>(null);
   /** Invalida búsquedas Nominatim al cerrar el mapa o abrir otro punto. */
   const mapForwardTokenRef = useRef(0);
@@ -209,6 +235,8 @@ export function RouteSheetFormModal({
 
   useEffect(() => {
     if (!open) return;
+    setNotifyAfterSave(null);
+    setNotifyBusy(false);
     setFormErrors({});
     setMapPick(null);
     setMapPlaceLabel("");
@@ -216,7 +244,7 @@ export function RouteSheetFormModal({
     mapForwardTokenRef.current += 1;
     if (initialRouteSheet) {
       const rs = initialRouteSheet;
-      const ro = routeOfferRef.current;
+      const ro = offerTramoRef.current;
       const offerMap =
         ro?.routeSheetId === rs.id
           ? new Map(ro.tramos.map((t) => [t.stopId, t]))
@@ -424,6 +452,27 @@ export function RouteSheetFormModal({
       toast.error(`Revisá el formulario (${n} error${n === 1 ? "" : "es"})`);
       return;
     }
+    const limpForLock = expandChainedTramoOrigins(tramosToLimpios(tramos));
+    const sheetIdLock = initialRouteSheet?.id?.trim();
+    if (sheetIdLock && offerForTramo) {
+      for (let i = 0; i < limpForLock.length; i++) {
+        const asg = confirmedAssignmentOnFormTramo(
+          offerForTramo,
+          sheetIdLock,
+          tramos[i]?.paradaId,
+          initialRouteSheet?.paradas[i],
+        );
+        if (!asg) continue;
+        const expected = asg.phone?.trim() ?? "";
+        const actual = limpForLock[i]?.telefonoTransportista?.trim() ?? "";
+        if (normRoutePhoneKey(expected) !== normRoutePhoneKey(actual)) {
+          toast.error(
+            `No podés quitar ni cambiar el contacto del transportista ya confirmado en el tramo ${i + 1} (${asg.displayName?.trim() || "asignado"}).`,
+          );
+          return;
+        }
+      }
+    }
     const paradasFinal = normalizeRouteSheetParadas(limpios);
     const payload: RouteSheetCreatePayload = {
       ...draft,
@@ -436,7 +485,22 @@ export function RouteSheetFormModal({
       }
     }
     const persisted = onSubmit(payload);
-    if (!persisted) return;
+    if (!persisted.ok) return;
+    const phoneList = paradasFinal
+      .map((p) => p.telefonoTransportista?.trim())
+      .filter((x): x is string => !!x && x.length > 0);
+    const uniquePhones = [...new Set(phoneList)];
+    if (
+      uniquePhones.length > 0 &&
+      threadId.startsWith("cth_") &&
+      getSessionToken()
+    ) {
+      setNotifyAfterSave({
+        routeSheetId: persisted.routeSheetId,
+        phones: uniquePhones,
+      });
+      return;
+    }
     setFormErrors({});
     onClose();
     toast.success(
@@ -444,7 +508,63 @@ export function RouteSheetFormModal({
     );
   }
 
+  async function completeSaveAfterNotifyChoice(shouldNotify: boolean) {
+    if (!notifyAfterSave) return;
+    const saved = { ...notifyAfterSave };
+    setNotifyAfterSave(null);
+    if (shouldNotify && threadId.startsWith("cth_")) {
+      setNotifyBusy(true);
+      try {
+        const { notifiedCount } = await postRouteSheetNotifyPreselected(
+          threadId,
+          saved.routeSheetId,
+          saved.phones,
+        );
+        if (notifiedCount > 0) {
+          toast.success(
+            `Hoja guardada. Se notificó a ${notifiedCount} usuario${
+              notifiedCount === 1 ? "" : "s"
+            }.`,
+          );
+        } else {
+          toast.success(
+            "Hoja guardada. Ningún número coincidió con un usuario al que avisar.",
+          );
+        }
+      } catch {
+        toast.error("La hoja se guardó, pero no se pudo enviar el aviso.");
+      } finally {
+        setNotifyBusy(false);
+      }
+    } else {
+      toast.success(
+        initialRouteSheet ? "Hoja de ruta actualizada" : "Hoja de ruta creada",
+      );
+    }
+    setFormErrors({});
+    onClose();
+  }
+
   function updateTramo(i: number, patch: Partial<RouteTramoFormInput>) {
+    if (patch.telefonoTransportista !== undefined) {
+      const row = tramos[i];
+      const asg = confirmedAssignmentOnFormTramo(
+        offerForTramo,
+        initialRouteSheet?.id,
+        row?.paradaId,
+        initialRouteSheet?.paradas[i],
+      );
+      if (asg) {
+        const nxt = patch.telefonoTransportista?.trim() ?? "";
+        const exp = asg.phone?.trim() ?? "";
+        if (normRoutePhoneKey(nxt) !== normRoutePhoneKey(exp)) {
+          toast.error(
+            "No podés quitar ni cambiar el contacto de un transportista confirmado en este tramo.",
+          );
+          return;
+        }
+      }
+    }
     setTramos((prev) => {
       const next = [...prev];
       next[i] = { ...next[i], ...patch };
@@ -458,6 +578,22 @@ export function RouteSheetFormModal({
   }
 
   function removeTramoAt(index: number) {
+    const row = tramos[index];
+    if (
+      initialRouteSheet?.id &&
+      offerForTramo &&
+      confirmedAssignmentOnFormTramo(
+        offerForTramo,
+        initialRouteSheet.id,
+        row?.paradaId,
+        initialRouteSheet?.paradas[index],
+      )
+    ) {
+      toast.error(
+        "No podés eliminar un tramo que ya tiene un transportista confirmado.",
+      );
+      return;
+    }
     setTramos((prev) => {
       if (prev.length <= 1) return prev;
       return prev.filter((_, j) => j !== index);
@@ -523,6 +659,23 @@ export function RouteSheetFormModal({
               ) : null}
               {tramos.map((p, i) => {
                 const te = err.tramos?.[i];
+                const confAsg = confirmedAssignmentOnFormTramo(
+                  offerForTramo,
+                  initialRouteSheet?.id,
+                  p.paradaId,
+                  initialRouteSheet?.paradas[i],
+                );
+                console.log({
+                  offerForTramo,
+                  initialRouteSheet: initialRouteSheet?.id,
+                  paradaId: p.paradaId,
+                  parada: initialRouteSheet?.paradas[i],
+                });
+                const phoneLocked = confAsg != null;
+                const displayTel =
+                  p.telefonoTransportista?.trim() ||
+                  confAsg?.phone?.trim() ||
+                  undefined;
                 const prevStop = i > 0 ? tramos[i - 1] : null;
                 const origenLocked = i > 0;
                 const origenNombre = origenLocked
@@ -535,17 +688,22 @@ export function RouteSheetFormModal({
                   ? (prevStop?.destinoLng ?? "")
                   : (p.origenLng ?? "");
                 return (
-                  <div key={i} className={rutaTramoCard}>
+                  <div
+                    key={p.paradaId ?? `tramo-${i}`}
+                    className={rutaTramoCard}
+                  >
                     <div className={rutaTramoHead}>
                       <span className={agrDetailSub}>Tramo {i + 1}</span>
                       <button
                         type="button"
                         className={rutaTramoRemoveBtn}
-                        disabled={tramos.length <= 1}
+                        disabled={tramos.length <= 1 || phoneLocked}
                         title={
                           tramos.length <= 1
                             ? "Debe quedar al menos un tramo"
-                            : "Eliminar este tramo"
+                            : phoneLocked
+                              ? "No podés eliminar un tramo con transportista confirmado"
+                              : "Eliminar este tramo"
                         }
                         onClick={() => removeTramoAt(i)}
                       >
@@ -662,48 +820,18 @@ export function RouteSheetFormModal({
                       error={te?.tipoVehiculoRequerido}
                       inputId={`ruta-tramo-${i}-veh`}
                     />
-                    <label
-                      className={fieldRootWithInvalid(
-                        !!te?.telefonoTransportista,
-                      )}
-                    >
-                      <span className={fieldLabel}>
-                        Teléfono del transportista (este tramo)
-                      </span>
-                      <select
-                        id={`ruta-tramo-${i}-tel`}
-                        className="vt-input"
-                        value={p.telefonoTransportista ?? ""}
-                        onChange={(e) =>
-                          updateTramo(i, {
-                            telefonoTransportista:
-                              e.target.value.trim() || undefined,
-                          })
-                        }
-                        aria-invalid={!!te?.telefonoTransportista}
-                      >
-                        <option value="">— Ninguno —</option>
-                        {phoneSelectOptions(
-                          transportistaPhoneOptions,
-                          p.telefonoTransportista ?? "",
-                        ).map((opt) => (
-                          <option key={`${i}-${opt.value}`} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="vt-muted mt-1 text-[11px] leading-snug">
-                        Sólo podés elegir teléfonos de transportistas que ya
-                        estén en el chat (integrantes del hilo). Si falta
-                        alguien, validá su suscripción para que entre al hilo
-                        antes de cargar el número acá.
-                      </p>
-                      {te?.telefonoTransportista ? (
-                        <span className={fieldError} role="alert">
-                          {te.telefonoTransportista}
-                        </span>
-                      ) : null}
-                    </label>
+                    <RouteSheetTransportistaPhoneField
+                      tramoIndex={i}
+                      value={displayTel}
+                      onChange={(tel) =>
+                        updateTramo(i, {
+                          telefonoTransportista: tel,
+                        })
+                      }
+                      error={te?.telefonoTransportista}
+                      phoneLocked={phoneLocked}
+                      lockedDisplayName={confAsg?.displayName}
+                    />
                     <div className={rutaTramoGrid}>
                       <Field
                         label="Tiempo estimado recogida (horas, número)"
@@ -839,6 +967,50 @@ export function RouteSheetFormModal({
           </div>
         </div>
       </div>
+
+      {notifyAfterSave ? (
+        <div
+          className={mapBackdropLayerAboveChatRail}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ruta-notify-transportista-title"
+        >
+          <div className={modalShellWide} onClick={(e) => e.stopPropagation()}>
+            <div
+              className="vt-modal-title"
+              id="ruta-notify-transportista-title"
+            >
+              ¿Notificar al transportista?
+            </div>
+            <div className={modalSub}>
+              La hoja ya se guardó. ¿Querés avisar por la app a quien tenga
+              cuenta con el número que indicaste
+              {notifyAfterSave.phones.length > 1
+                ? " en los tramos"
+                : " en el tramo"}{" "}
+              para que sepa que lo elegiste en esta hoja de ruta?
+            </div>
+            <div className="vt-modal-actions">
+              <button
+                type="button"
+                className="vt-btn"
+                disabled={notifyBusy}
+                onClick={() => void completeSaveAfterNotifyChoice(false)}
+              >
+                No notificar
+              </button>
+              <button
+                type="button"
+                className="vt-btn vt-btn-primary"
+                disabled={notifyBusy}
+                onClick={() => void completeSaveAfterNotifyChoice(true)}
+              >
+                {notifyBusy ? "Enviando…" : "Sí, notificar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {mapPick ? (
         <div

@@ -13,6 +13,7 @@ export function parseRouteLatLngInputPair(
 
 export function emptyTramo(): RouteTramoFormInput {
   return {
+    paradaId: undefined,
     origen: "",
     destino: "",
     origenLat: "",
@@ -41,6 +42,7 @@ export function tramosToLimpios(
   tramos: RouteTramoFormInput[],
 ): RouteTramoFormInput[] {
   return tramos.map((p) => ({
+    paradaId: p.paradaId?.trim() || undefined,
     origen: p.origen.trim(),
     destino: p.destino.trim(),
     origenLat: p.origenLat?.trim() ?? "",

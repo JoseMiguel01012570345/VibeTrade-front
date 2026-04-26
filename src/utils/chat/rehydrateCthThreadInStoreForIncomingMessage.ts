@@ -24,6 +24,7 @@ import {
 } from "./chatApi";
 import { getSessionToken } from "../http/sessionToken";
 import { fetchPublicOfferCard } from "../market/marketPersistence";
+import { mergedRouteOfferPublicAfterChatThreadHydration } from "../market/routeOfferPublicFromEmergentCard";
 import { peerPartyExitFromDto } from "./threadPeerPartyExit";
 import { minimalOfferStoreFromChatThreadDto } from "./chatThreadDtoFallbacks";
 
@@ -157,7 +158,7 @@ export async function rehydrateCthThreadInStoreForIncomingMessage(
   useMarketStore.setState((x) => {
     const nextThreads = { ...x.threads };
     if (existing && existing.id !== dto.id) delete nextThreads[existing.id];
-    nextThreads[dto.id] = {
+    const mergedRow: Thread = {
       ...bootstrap,
       id: dto.id,
       chatActionsLocked: false,
@@ -183,7 +184,17 @@ export async function rehydrateCthThreadInStoreForIncomingMessage(
       contracts,
       routeSheets: routeSheets.length > 0 ? routeSheets : bootstrap.routeSheets ?? [],
     };
-    return { ...x, threads: nextThreads };
+    nextThreads[dto.id] = mergedRow;
+    const roNext = mergedRouteOfferPublicAfterChatThreadHydration(
+      x.routeOfferPublic,
+      mergedRow,
+      offer,
+    );
+    return {
+      ...x,
+      threads: nextThreads,
+      ...(roNext ? { routeOfferPublic: roNext } : {}),
+    };
   });
 
   const subsRs = await fetchThreadRouteTramoSubscriptions(threadId).catch(

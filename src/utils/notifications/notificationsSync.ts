@@ -102,6 +102,23 @@ export function mapServerNotification(n: ChatNotificationDto): NotificationItem 
     }
   }
 
+  if (n.kind === 'route_sheet_presel' && n.threadId) {
+    const meta = parseRouteTramoMeta(n.metaJson)
+    const oid = n.offerId?.trim()
+    return {
+      id: n.id,
+      kind: 'route_sheet_presel',
+      title: `${n.authorLabel} · confianza ${n.authorTrustScore}`,
+      body: n.messagePreview,
+      createdAt: Date.parse(n.createdAtUtc),
+      read: n.readAtUtc != null,
+      threadId: n.threadId,
+      ...(oid ? { offerId: oid } : {}),
+      trustScore: n.authorTrustScore,
+      ...meta,
+    }
+  }
+
   const isOfferOnly = Boolean(n.offerId && !n.threadId)
   const kind = isOfferOnly
     ? mapOfferNotificationKind(n.kind)

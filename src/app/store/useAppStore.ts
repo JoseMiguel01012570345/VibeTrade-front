@@ -66,6 +66,7 @@ export type NotificationItem = {
     | 'route_tramo_subscribe_accepted'
     | 'route_tramo_subscribe_rejected'
     | 'route_tramo_seller_expelled'
+    | 'route_sheet_presel'
     | 'peer_party_exited'
   title: string
   body: string

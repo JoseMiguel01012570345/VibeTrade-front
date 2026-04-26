@@ -113,6 +113,8 @@ export function defaultRouteSheetDraft(): Omit<
 
 /** Datos de un tramo al crear/editar hoja (sin id/orden/completada). */
 export type RouteTramoFormInput = {
+  /** Id de la parada en edición; sin migración al crear tramos nuevos. */
+  paradaId?: string
   origen: string
   destino: string
   /** Contacto del transportista elegido para este tramo. */
@@ -211,6 +213,7 @@ export function routeStopsToFormInputs(
     const telFromOffer = ot?.telefonoTransportista?.trim() || ot?.assignment?.phone?.trim() || ''
     const mStop = p.monedaPago?.trim()
     return {
+      paradaId: p.id,
       origen: p.origen?.trim() || p.lugar?.trim() || '',
       destino: p.destino?.trim() || '',
       origenLat: p.origenLat ?? '',

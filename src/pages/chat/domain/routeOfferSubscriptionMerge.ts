@@ -6,6 +6,10 @@ import type {
   ThreadChatCarrier,
 } from "../../../app/store/marketStoreTypes";
 import type { RouteTramoSubscriptionItemApi } from "../../../utils/chat/chatApi";
+import {
+  mergeRouteOfferPublicFromEmergentCard,
+  routeOfferPublicFromThreadRouteSheet,
+} from "../../../utils/market/routeOfferPublicFromEmergentCard";
 import { resolveRouteOfferPublicForThread } from "./routeSheetOfferGuards";
 
 function routeOfferPublicKeyForThread(
@@ -327,17 +331,35 @@ export function applyViewerRouteTramoSubscriptions(
     }
   }
 
-  const ro = resolveRouteOfferPublicForThread(state, thread);
-  const key = routeOfferPublicKeyForThread(state, thread);
-
   let routeOfferPublic = state.routeOfferPublic;
+  let ro = resolveRouteOfferPublicForThread(state, thread);
+  let key = routeOfferPublicKeyForThread(state, thread);
+
+  if ((!ro || !key) && items.length > 0) {
+    const thFull = state.threads[tid] ?? thread;
+    const rsid = (items[0]!.routeSheetId ?? "").trim();
+    const sheet = thFull.routeSheets?.find((r) => r.id === rsid);
+    const oid = thFull.offerId?.trim();
+    if (sheet?.paradas?.length && oid) {
+      const synthetic = routeOfferPublicFromThreadRouteSheet(tid, sheet);
+      const mergedSeed = mergeRouteOfferPublicFromEmergentCard(
+        undefined,
+        synthetic,
+      );
+      routeOfferPublic = { ...routeOfferPublic, [oid]: mergedSeed };
+      const stateSeeded = { ...state, routeOfferPublic };
+      ro = resolveRouteOfferPublicForThread(stateSeeded, thFull);
+      key = routeOfferPublicKeyForThread(stateSeeded, thFull);
+    }
+  }
+
   let threads = state.threads;
 
   if (ro && key) {
     const base = rebuildRouteOfferAssignmentsFromThreadItems(ro, items) ?? ro;
     // Alinear con el hilo de GET /threads/:id/… (p. ej. cth_ nuevo tras reabrir chat en la misma oferta).
     const withTid = { ...base, threadId: tid };
-    routeOfferPublic = { ...state.routeOfferPublic, [key]: withTid };
+    routeOfferPublic = { ...routeOfferPublic, [key]: withTid };
   }
 
   const confirmedAll = items.filter(

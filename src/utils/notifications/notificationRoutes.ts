@@ -23,6 +23,9 @@ export function notificationDeepLink(
   if (n.kind === 'route_tramo_seller_expelled' && n.threadId) {
     return `/chat/${encodeURIComponent(n.threadId)}`
   }
+  if (n.kind === 'route_sheet_presel' && n.threadId) {
+    return `/chat/${encodeURIComponent(n.threadId)}`
+  }
   if (
     n.kind === 'route_tramo_subscribe' &&
     n.threadId &&

@@ -370,6 +370,28 @@ export async function putThreadRouteSheet(threadId: string, sheet: RouteSheetPay
   if (!res.ok) throw new Error(await res.text())
 }
 
+/** Aviso in-app a transportistas cuyo número quedó indicado en la hoja (tras confirmar en el modal del formulario). */
+export async function postRouteSheetNotifyPreselected(
+  threadId: string,
+  routeSheetId: string,
+  phones: string[],
+): Promise<{ notifiedCount: number }> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}/notify-preselected`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phones }),
+    },
+  )
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(t || `HTTP ${res.status}`)
+  }
+  const j = (await res.json()) as { notifiedCount?: number }
+  return { notifiedCount: j.notifiedCount ?? 0 }
+}
+
 export async function deleteThreadRouteSheet(threadId: string, routeSheetId: string): Promise<void> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}`,

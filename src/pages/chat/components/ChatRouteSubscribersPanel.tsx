@@ -5,18 +5,24 @@ import toast from "react-hot-toast";
 import type { RouteOfferPublicState } from "../../../app/store/marketStoreTypes";
 import { ConfirmModal } from "../../../components/ConfirmModal";
 import { cn } from "../../../lib/cn";
+import type { RouteSheetPayload } from "../domain/routeSheetTypes";
 import {
+  fetchThreadRouteSheets,
   fetchThreadRouteTramoSubscriptions,
   postAcceptRouteTramoSubscriptions,
   postRejectRouteTramoSubscriptions,
   postSellerExpelCarrier,
+  type RouteTramoSubscriptionItemApi,
 } from "../../../utils/chat/chatApi";
 import { subscribeRouteTramoSubscriptionsChanged } from "../../../utils/chat/chatRealtime";
 import {
-  collectRouteOfferSubscribersForSheet,
-  groupSubscribersByTramo,
+  buildRouteSheetsMetaForGrouping,
+  collectRouteOfferSubscribersForThreadSheets,
+  groupSubscribersByRouteSheetThenTramo,
   subscribersFromApiRouteTramoItems,
+  type RouteOfferTramoSubscriberGroup,
   type RouteOfferSubscriberSummary,
+  type RouteSheetSubscriberSection,
 } from "../domain/routeOfferSubscribers";
 import { onBackdropPointerClose } from "../lib/modalClose";
 import { modalShellWide, modalSub } from "../styles/formModalStyles";
@@ -25,15 +31,27 @@ import { railItemClass } from "./rail/chatRailStyles";
 type Props = {
   threadId: string;
   routeOffer: RouteOfferPublicState | undefined;
-  routeSheetId: string;
-  routeSheetTitle?: string;
+  /** Hoja desde la que se abrió el visor (rail o deep link); foco inicial entre varias hojas. */
+  contextRouteSheetId: string;
+  /** Hojas del hilo (orden y títulos para el agrupado). */
+  routeSheets: { id: string; titulo: string }[];
   /** Solo vendedor del hilo: aceptar o rechazar suscripciones en servidor. */
   canSellerManageRouteSubscriptions?: boolean;
   onSubscriptionsChanged?: () => void | Promise<void>;
   onClose: () => void;
   /** Desde notificación: abrir detalle y resaltar. */
   highlightUserId?: string | null;
+  /** Tras GET /route-sheets: alinear `thread.routeSheets` en el store con el servidor. */
+  onThreadRouteSheetsSynced?: (sheets: RouteSheetPayload[]) => void;
 };
+
+function countUniqueCarriersInSection(section: RouteSheetSubscriberSection) {
+  const ids = new Set<string>();
+  for (const g of section.tramoGroups) {
+    for (const c of g.carriers) ids.add(c.userId);
+  }
+  return ids.size;
+}
 
 function statusLabel(s: RouteOfferSubscriberSummary["tramos"][0]["status"]) {
   if (s === "confirmed") return "Confirmado";
@@ -49,19 +67,34 @@ function serviceHrefForSubscriber(sub: RouteOfferSubscriberSummary): string | nu
 export function ChatRouteSubscribersPanel({
   threadId,
   routeOffer,
-  routeSheetId,
-  routeSheetTitle,
+  contextRouteSheetId,
+  routeSheets,
   canSellerManageRouteSubscriptions = false,
   onSubscriptionsChanged,
   onClose,
   highlightUserId,
+  onThreadRouteSheetsSynced,
 }: Props) {
+  const [focusRouteSheetId, setFocusRouteSheetId] = useState<string | null>(null);
   const [focusTramoId, setFocusTramoId] = useState<string | null>(null);
   const [focusCarrierId, setFocusCarrierId] = useState<string | null>(null);
+  const didAutoFocusRouteSheet = useRef(false);
+  const focusNavRef = useRef({ focusRouteSheetId, focusTramoId });
+  focusNavRef.current = { focusRouteSheetId, focusTramoId };
   const autoOpenedForHi = useRef<string | null>(null);
   const rowRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [subsLoadState, setSubsLoadState] = useState<"loading" | "ok" | "error">("loading");
   const [serverSubs, setServerSubs] = useState<RouteOfferSubscriberSummary[]>([]);
+  /** Última respuesta cruda del API (ids de hoja por fila). */
+  const [lastRawSubscriptionItems, setLastRawSubscriptionItems] = useState<
+    RouteTramoSubscriptionItemApi[]
+  >([]);
+  /** GET /route-sheets al abrir el visor o tras evento en tiempo real. */
+  const [fetchedRouteSheets, setFetchedRouteSheets] = useState<RouteSheetPayload[] | null>(null);
+  const routeSheetsPropsRef = useRef(routeSheets);
+  routeSheetsPropsRef.current = routeSheets;
+  const fetchedRouteSheetsRef = useRef(fetchedRouteSheets);
+  fetchedRouteSheetsRef.current = fetchedRouteSheets;
   const [confirmAcceptOpen, setConfirmAcceptOpen] = useState(false);
   const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
   const [acceptBusy, setAcceptBusy] = useState(false);
@@ -71,17 +104,34 @@ export function ChatRouteSubscribersPanel({
   const [expelBusy, setExpelBusy] = useState(false);
   const expelTitleId = useId();
 
+  const routeSheetsMeta = useMemo(
+    () =>
+      buildRouteSheetsMetaForGrouping(
+        fetchedRouteSheets,
+        routeSheets,
+        lastRawSubscriptionItems,
+      ),
+    [fetchedRouteSheets, routeSheets, lastRawSubscriptionItems],
+  );
+
   const reloadSubscriptions = () => {
     const tid = threadId?.trim();
     if (!tid) return;
     setSubsLoadState("loading");
-    void fetchThreadRouteTramoSubscriptions(tid)
-      .then((items) => {
-        setServerSubs(subscribersFromApiRouteTramoItems(items, routeSheetId));
+    void Promise.all([
+      fetchThreadRouteTramoSubscriptions(tid),
+      fetchThreadRouteSheets(tid).catch(() => [] as RouteSheetPayload[]),
+    ])
+      .then(([items, sheets]) => {
+        setLastRawSubscriptionItems(items);
+        setServerSubs(subscribersFromApiRouteTramoItems(items));
+        setFetchedRouteSheets(sheets);
+        onThreadRouteSheetsSynced?.(sheets);
         setSubsLoadState("ok");
       })
       .catch(() => {
         setServerSubs([]);
+        setLastRawSubscriptionItems([]);
         setSubsLoadState("error");
       });
   };
@@ -90,6 +140,8 @@ export function ChatRouteSubscribersPanel({
     let cancelled = false;
     setSubsLoadState("loading");
     setServerSubs([]);
+    setLastRawSubscriptionItems([]);
+    setFetchedRouteSheets(null);
     const tid = threadId?.trim();
     if (!tid) {
       setSubsLoadState("error");
@@ -97,62 +149,143 @@ export function ChatRouteSubscribersPanel({
         cancelled = true;
       };
     }
-    void fetchThreadRouteTramoSubscriptions(tid)
-      .then((items) => {
+    void Promise.all([
+      fetchThreadRouteTramoSubscriptions(tid),
+      fetchThreadRouteSheets(tid).catch(() => [] as RouteSheetPayload[]),
+    ])
+      .then(([items, sheets]) => {
         if (cancelled) return;
-        setServerSubs(subscribersFromApiRouteTramoItems(items, routeSheetId));
+        setLastRawSubscriptionItems(items);
+        setServerSubs(subscribersFromApiRouteTramoItems(items));
+        setFetchedRouteSheets(sheets);
+        onThreadRouteSheetsSynced?.(sheets);
         setSubsLoadState("ok");
       })
       .catch(() => {
         if (cancelled) return;
         setServerSubs([]);
+        setLastRawSubscriptionItems([]);
         setSubsLoadState("error");
       });
     return () => {
       cancelled = true;
     };
-  }, [threadId, routeSheetId]);
+  }, [threadId, onThreadRouteSheetsSynced]);
 
   useEffect(() => {
     const tid = threadId.trim();
-    const rsid = routeSheetId.trim();
-    if (tid.length < 4 || rsid.length < 1) return () => {};
+    if (tid.length < 4) return () => {};
 
     const unsub = subscribeRouteTramoSubscriptionsChanged((p) => {
-      if (p.threadId !== tid || p.routeSheetId !== rsid) return;
-      const next = subscribersFromApiRouteTramoItems(p.items, rsid);
+      if (p.threadId !== tid) return;
+      setLastRawSubscriptionItems(p.items);
+      const next = subscribersFromApiRouteTramoItems(p.items);
       setServerSubs(next);
       setSubsLoadState("ok");
-      const groups = groupSubscribersByTramo(next);
-      setFocusTramoId((prevT) => {
-        if (!prevT) return null;
-        return groups.some((g) => g.stopId === prevT) ? prevT : null;
-      });
+      const meta = buildRouteSheetsMetaForGrouping(
+        fetchedRouteSheetsRef.current,
+        routeSheetsPropsRef.current,
+        p.items,
+      );
+      const sections = groupSubscribersByRouteSheetThenTramo(next, meta);
+      const { focusRouteSheetId: fr, focusTramoId: ft } = focusNavRef.current;
+      if (ft) {
+        const tramoOk =
+          (fr
+            && sections
+              .find((s) => s.routeSheetId === fr)
+              ?.tramoGroups.some((g) => g.stopId === ft)) ??
+          false;
+        if (!tramoOk) {
+          setFocusTramoId(null);
+          setFocusCarrierId(null);
+        }
+      }
+      void fetchThreadRouteSheets(tid)
+        .then((sheets) => {
+          setFetchedRouteSheets(sheets);
+          onThreadRouteSheetsSynced?.(sheets);
+        })
+        .catch(() => {});
       const ch = p.change.toLowerCase();
       if (ch === "accept" || ch === "reject" || ch === "withdraw") {
         void onSubscriptionsChanged?.();
       }
     });
     return unsub;
-  }, [threadId, routeSheetId, onSubscriptionsChanged]);
+  }, [threadId, onSubscriptionsChanged, onThreadRouteSheetsSynced]);
 
   const subscribers = useMemo(() => {
-    const local = collectRouteOfferSubscribersForSheet(routeOffer, routeSheetId);
+    const local = collectRouteOfferSubscribersForThreadSheets(routeOffer, routeSheetsMeta);
     if (subsLoadState === "error") return local;
     if (subsLoadState === "loading") return [];
     if (serverSubs.length > 0) return serverSubs;
     return local;
-  }, [subsLoadState, serverSubs, routeOffer, routeSheetId]);
+  }, [subsLoadState, serverSubs, routeOffer, routeSheetsMeta]);
 
-  const tramoGroups = useMemo(() => groupSubscribersByTramo(subscribers), [subscribers]);
+  const sheetSections = useMemo(
+    () => groupSubscribersByRouteSheetThenTramo(subscribers, routeSheetsMeta),
+    [subscribers, routeSheetsMeta],
+  );
 
-  const selectedTramo = focusTramoId
-    ? (tramoGroups.find((g) => g.stopId === focusTramoId) ?? null)
-    : null;
+  const multiSheets = sheetSections.length > 1;
+
+  useEffect(() => {
+    didAutoFocusRouteSheet.current = false;
+  }, [contextRouteSheetId, threadId]);
+
+  useEffect(() => {
+    if (subsLoadState === "loading") return;
+    if (sheetSections.length === 0) {
+      setFocusRouteSheetId(null);
+      return;
+    }
+    if (didAutoFocusRouteSheet.current) return;
+    didAutoFocusRouteSheet.current = true;
+    if (sheetSections.length === 1) {
+      // Una sola hoja: se puede ir directo a tramos; no hay “lista de hojas” útil.
+      setFocusRouteSheetId(sheetSections[0].routeSheetId);
+    } else {
+      // Varias hojas: al abrir siempre el listado de hojas, no entrar a la que abrió el botón del rail.
+      setFocusRouteSheetId(null);
+    }
+  }, [contextRouteSheetId, sheetSections, subsLoadState]);
+
+  const tramoGroups: RouteOfferTramoSubscriberGroup[] = useMemo(() => {
+    if (focusRouteSheetId == null) return [];
+    return (
+      sheetSections.find((s) => s.routeSheetId === focusRouteSheetId)?.tramoGroups ?? []
+    );
+  }, [sheetSections, focusRouteSheetId]);
+
+  const currentSheetTitle = useMemo(() => {
+    if (!focusRouteSheetId) return null;
+    return (
+      routeSheetsMeta.find((r) => r.id === focusRouteSheetId)?.titulo?.trim() ??
+        sheetSections.find((s) => s.routeSheetId === focusRouteSheetId)?.titulo ??
+        "Hoja de ruta"
+    );
+  }, [focusRouteSheetId, routeSheetsMeta, sheetSections]);
+
+  const atRouteSheetList = multiSheets && focusRouteSheetId == null;
+
+  const selectedTramo: RouteOfferTramoSubscriberGroup | null =
+    focusTramoId && focusRouteSheetId
+      ? (tramoGroups.find(
+          (g) => g.stopId === focusTramoId && g.routeSheetId === focusRouteSheetId,
+        ) ?? null)
+      : null;
   const selectedCarrier =
     selectedTramo && focusCarrierId
       ? (selectedTramo.carriers.find((c) => c.userId === focusCarrierId) ?? null)
       : null;
+
+  useEffect(() => {
+    if (focusRouteSheetId == null && focusTramoId != null) {
+      setFocusTramoId(null);
+      setFocusCarrierId(null);
+    }
+  }, [focusRouteSheetId, focusTramoId]);
 
   useEffect(() => {
     if (!focusTramoId) {
@@ -181,30 +314,44 @@ export function ChatRouteSubscribersPanel({
       return;
     }
     if (autoOpenedForHi.current === hi) return;
-    const g = tramoGroups.find((gr) => gr.carriers.some((c) => c.userId === hi));
-    if (!g) return;
-    autoOpenedForHi.current = hi;
-    setFocusTramoId(g.stopId);
-    setFocusCarrierId(hi);
-    requestAnimationFrame(() => {
-      rowRefs.current[hi]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    });
-  }, [hi, tramoGroups]);
+    for (const sec of sheetSections) {
+      const g = sec.tramoGroups.find((gr) => gr.carriers.some((c) => c.userId === hi));
+      if (g) {
+        autoOpenedForHi.current = hi;
+        setFocusRouteSheetId(g.routeSheetId);
+        setFocusTramoId(g.stopId);
+        setFocusCarrierId(hi);
+        requestAnimationFrame(() => {
+          rowRefs.current[hi]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        });
+        return;
+      }
+    }
+  }, [hi, sheetSections]);
 
   const showHighlightRing = hi.length > 0 && selectedCarrier?.userId === hi;
 
   const selectedServiceHref = selectedCarrier ? serviceHrefForSubscriber(selectedCarrier) : null;
 
-  const tramoRowForSelection = selectedCarrier?.tramos.find((t) => t.stopId === focusTramoId);
+  const tramoRowForSelection = selectedCarrier?.tramos.find(
+    (t) =>
+      t.stopId === focusTramoId &&
+      (focusRouteSheetId == null || t.routeSheetId === focusRouteSheetId),
+  );
 
   const anotherConfirmedOnThisStop = useMemo(() => {
-    if (!focusTramoId || !focusCarrierId) return false;
+    if (!focusTramoId || !focusCarrierId || !focusRouteSheetId) return false;
     return subscribers.some(
       (sub) =>
         sub.userId !== focusCarrierId &&
-        sub.tramos.some((t) => t.stopId === focusTramoId && t.status === "confirmed"),
+        sub.tramos.some(
+          (t) =>
+            t.routeSheetId === focusRouteSheetId &&
+            t.stopId === focusTramoId &&
+            t.status === "confirmed",
+        ),
     );
-  }, [subscribers, focusTramoId, focusCarrierId]);
+  }, [subscribers, focusTramoId, focusCarrierId, focusRouteSheetId]);
 
   const selectedCarrierHasConfirmedTramo = useMemo(() => {
     if (!selectedCarrier) return false;
@@ -217,7 +364,7 @@ export function ChatRouteSubscribersPanel({
   async function confirmAcceptSubscriber() {
     if (!selectedCarrier || !canSellerManageRouteSubscriptions || !focusTramoId) return;
     const tid = threadId.trim();
-    const rsid = routeSheetId.trim();
+    const rsid = (selectedTramo?.routeSheetId ?? focusRouteSheetId ?? "").trim();
     const cid = selectedCarrier.userId.trim();
     const stopId = focusTramoId.trim();
     if (!tid || !rsid || !cid || !stopId) return;
@@ -294,7 +441,7 @@ export function ChatRouteSubscribersPanel({
   async function confirmRejectSubscriber() {
     if (!selectedCarrier || !canSellerManageRouteSubscriptions || !focusTramoId) return;
     const tid = threadId.trim();
-    const rsid = routeSheetId.trim();
+    const rsid = (selectedTramo?.routeSheetId ?? focusRouteSheetId ?? "").trim();
     const cid = selectedCarrier.userId.trim();
     const stopId = focusTramoId.trim();
     if (!tid || !rsid || !cid || !stopId) return;
@@ -352,7 +499,26 @@ export function ChatRouteSubscribersPanel({
         </button>
       );
     }
-    return "Suscriptores por tramo";
+    if (focusRouteSheetId && !focusTramoId) {
+      return (
+        <button
+          type="button"
+          className="m-0 inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left text-[13px] font-extrabold text-[var(--primary)]"
+          onClick={() => {
+            if (multiSheets) {
+              setFocusRouteSheetId(null);
+              setFocusTramoId(null);
+              setFocusCarrierId(null);
+            } else {
+              onClose();
+            }
+          }}
+        >
+          <ArrowLeft size={14} aria-hidden /> Volver
+        </button>
+      );
+    }
+    return "Suscriptores";
   }
 
   return (
@@ -364,7 +530,7 @@ export function ChatRouteSubscribersPanel({
           showHighlightRing &&
             "ring-2 ring-[color-mix(in_oklab,var(--primary)_55%,var(--border))] ring-offset-2 ring-offset-[var(--surface)]",
         )}
-        aria-label="Suscriptores a la oferta de hoja de ruta por tramo"
+        aria-label="Suscriptores a la oferta pública, agrupados por hoja de ruta y tramo"
       >
         <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[var(--border)] px-3 py-2.5">
           <div className="min-w-0">
@@ -374,8 +540,15 @@ export function ChatRouteSubscribersPanel({
             <div className="mt-0.5 truncate text-[13px] font-extrabold leading-tight text-[var(--text)]">
               {headerTitle()}
             </div>
-            {routeSheetTitle && !selectedTramo ? (
-              <p className="vt-muted mb-0 mt-1 line-clamp-2 text-[11px] leading-snug">{routeSheetTitle}</p>
+            {atRouteSheetList ? (
+              <p className="vt-muted mb-0 mt-1 line-clamp-2 text-[11px] leading-snug">
+                Elegí una hoja de ruta para ver tramos y suscriptores.
+              </p>
+            ) : null}
+            {currentSheetTitle && !atRouteSheetList && !selectedTramo ? (
+              <p className="vt-muted mb-0 mt-1 line-clamp-2 text-[11px] leading-snug">
+                {currentSheetTitle}
+              </p>
             ) : null}
             {selectedTramo && !selectedCarrier ? (
               <p className="vt-muted mb-0 mt-1 line-clamp-2 text-[11px] leading-snug">
@@ -395,7 +568,7 @@ export function ChatRouteSubscribersPanel({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2.5">
-          {selectedCarrier && focusTramoId ? (
+          {selectedCarrier && focusTramoId && focusRouteSheetId ? (
             <div
               className={cn(
                 "px-1 text-[13px]",
@@ -534,7 +707,11 @@ export function ChatRouteSubscribersPanel({
                       <span className="text-left text-[13px] font-extrabold leading-tight">{sub.displayName}</span>
                       <span className="shrink-0 text-[10px] font-bold text-[var(--muted)]">
                         {(() => {
-                          const tr = sub.tramos.find((t) => t.stopId === selectedTramo.stopId);
+                          const tr = sub.tramos.find(
+                            (t) =>
+                              t.stopId === selectedTramo.stopId &&
+                              t.routeSheetId === selectedTramo.routeSheetId,
+                          );
                           return tr ? statusLabel(tr.status) : "—";
                         })()}
                       </span>
@@ -556,14 +733,56 @@ export function ChatRouteSubscribersPanel({
             </ul>
           ) : subsLoadState === "loading" ? (
             <p className="vt-muted px-1 py-2 text-[12px] leading-snug">Cargando suscripciones…</p>
+          ) : sheetSections.length === 0 ? (
+            <p className="vt-muted px-1 py-2 text-[12px] leading-snug">
+              Todavía no hay transportistas suscritos a ninguna hoja de ruta en la oferta pública.
+            </p>
+          ) : atRouteSheetList ? (
+            <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+              {sheetSections.map((sec) => {
+                const nCar = countUniqueCarriersInSection(sec);
+                return (
+                  <li key={sec.routeSheetId}>
+                    <button
+                      type="button"
+                      className={railItemClass}
+                      onClick={() => {
+                        setFocusRouteSheetId(sec.routeSheetId);
+                        setFocusTramoId(null);
+                        setFocusCarrierId(null);
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="line-clamp-2 text-left text-[13px] font-extrabold leading-tight">
+                          {sec.titulo}
+                        </span>
+                        <span className="shrink-0 text-[10px] font-bold text-[var(--muted)]">
+                          {nCar}
+                        </span>
+                      </div>
+                      <div className="mt-1 line-clamp-2 text-left text-[11px] leading-snug text-[var(--muted)]">
+                        {sec.tramoGroups.length} tramo{sec.tramoGroups.length === 1 ? "" : "s"} · {nCar}{" "}
+                        transportista
+                        {nCar === 1 ? "" : "s"}
+                      </div>
+                      <ChevronRight
+                        size={16}
+                        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-45"
+                        aria-hidden
+                      />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           ) : tramoGroups.length === 0 ? (
             <p className="vt-muted px-1 py-2 text-[12px] leading-snug">
-              Todavía no hay transportistas suscritos a esta hoja en la oferta pública.
+              No hay suscriptores en los tramos de esta hoja.
             </p>
           ) : (
             <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
               {tramoGroups.map((g) => (
-                <li key={g.stopId}>
+                <li key={`${g.routeSheetId}-${g.stopId}`}>
                   <button
                     type="button"
                     className={railItemClass}

@@ -194,6 +194,7 @@ export function startChatRealtime(): void {
           head.kind === "route_tramo_subscribe" ||
           head.kind === "route_tramo_subscribe_accepted" ||
           head.kind === "route_tramo_seller_expelled" ||
+          head.kind === "route_sheet_presel" ||
           head.kind === "peer_party_exited") &&
         open &&
         head.threadId === open

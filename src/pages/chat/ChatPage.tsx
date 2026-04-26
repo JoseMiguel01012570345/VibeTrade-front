@@ -56,16 +56,19 @@ import { PeerPartyExitedInfoModal } from "./components/modals/PeerPartyExitedInf
 import {
   agreementDeleteBlockedByRouteSheetInvariant,
   confirmedStopIdsForCarrier,
+  resolveRouteOfferPublicForSheet,
   resolveRouteOfferPublicForThread,
   tramoNotifyLineFromOffer,
 } from "./domain/routeSheetOfferGuards";
-import { buildRegisteredTransportistaPhoneOptions } from "./domain/routeSheetRegisteredPhones";
 import { tradeAgreementToDraft } from "./domain/tradeAgreementTypes";
+import {
+  mergedRouteOfferPublicAfterChatThreadHydration,
+  routeOfferPublicFromEmergentCardOffer,
+} from "../../utils/market/routeOfferPublicFromEmergentCard";
 import { userHasTransportService } from "../../utils/user/transportEligibility";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
 import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
 import { mergeStoreCatalogWithLocalExtras } from "./domain/storeCatalogTypes";
-import type { ChatThreadDto } from "../../utils/chat/chatApi";
 import {
   fetchChatMessages,
   fetchChatThread,
@@ -323,6 +326,41 @@ export function ChatPage() {
   const [showRouteSheetForm, setShowRouteSheetForm] = useState(false);
   const [routeSheetBeingEdited, setRouteSheetBeingEdited] =
     useState<RouteSheet | null>(null);
+  /**
+   * No usar un selector de Zustand con `routeSheetBeingEdited` en el closure: si solo cambia el estado
+   * de React, el store no se actualiza y el selector puede no volver a ejecutarse → oferta `undefined` en el modal.
+   */
+  const routeOfferPublicSlice = useMarketStore((s) => s.routeOfferPublic);
+  const marketOffersSlice = useMarketStore((s) => s.offers);
+  const routeOfferForEditingRouteSheet = useMemo(() => {
+    const rsid = routeSheetBeingEdited?.id?.trim();
+    const th = thread;
+    const s = useMarketStore.getState();
+    const fromResolve = resolveRouteOfferPublicForSheet(
+      s,
+      th,
+      routeSheetBeingEdited?.id,
+    );
+    if (fromResolve) return fromResolve;
+    if (!th?.id || !rsid) return undefined;
+    const emo = th.offerId?.trim();
+    if (emo) {
+      const atKey = s.routeOfferPublic[emo];
+      if (atKey?.routeSheetId?.trim() === rsid) return atKey;
+    }
+    if (!th.offerId || !rsid) return undefined;
+    const offer = s.offers[th.offerId];
+    const fromCard = offer
+      ? routeOfferPublicFromEmergentCardOffer(offer)
+      : undefined;
+    if (
+      fromCard?.routeSheetId?.trim() === rsid &&
+      fromCard.threadId?.trim() === th.id.trim()
+    ) {
+      return fromCard;
+    }
+    return undefined;
+  }, [thread, routeSheetBeingEdited?.id, routeOfferPublicSlice, marketOffersSlice]);
   const [railOpen, setRailOpen] = useState(false);
   /** Panel izquierdo: suscriptores a la oferta de hoja de ruta (solo comprador). */
   const [routeSubscribersSheetId, setRouteSubscribersSheetId] = useState<
@@ -605,39 +643,46 @@ export function ChatPage() {
             ? (routeSheetsRs as RouteSheet[])
             : (existingTh?.routeSheets ?? []);
         const acksFromSheets = routeSheetEditAcksRecordFromSheets(sheetsForThread);
-        useMarketStore.setState((s) => ({
-          threads: {
-            ...s.threads,
-            [tid]: {
-              ...(s.threads[tid] ?? {}),
-              id: tid,
-              chatActionsLocked: false,
-              offerId: dto.offerId,
-              storeId: dto.storeId,
-              store,
-              buyerUserId: dto.buyerUserId,
-              sellerUserId: dto.sellerUserId,
-              ...(dto.buyerDisplayName?.trim()
-                ? { buyerDisplayName: dto.buyerDisplayName.trim() }
-                : {}),
-              ...(dto.buyerAvatarUrl?.trim()
-                ? { buyerAvatarUrl: dto.buyerAvatarUrl.trim() }
-                : {}),
-              purchaseMode: dto.purchaseMode,
-              messages: qaSynced,
-              contracts,
-              routeSheets: sheetsForThread,
-              ...(Object.keys(acksFromSheets).length > 0
-                ? {
-                    routeSheetEditAcks: {
-                      ...(s.threads[tid]?.routeSheetEditAcks ?? {}),
-                      ...acksFromSheets,
-                    },
-                  }
-                : {}),
-            },
-          },
-        }));
+        useMarketStore.setState((s) => {
+          const nextThread = {
+            ...(s.threads[tid] ?? {}),
+            id: tid,
+            chatActionsLocked: false,
+            offerId: dto.offerId,
+            storeId: dto.storeId,
+            store,
+            buyerUserId: dto.buyerUserId,
+            sellerUserId: dto.sellerUserId,
+            ...(dto.buyerDisplayName?.trim()
+              ? { buyerDisplayName: dto.buyerDisplayName.trim() }
+              : {}),
+            ...(dto.buyerAvatarUrl?.trim()
+              ? { buyerAvatarUrl: dto.buyerAvatarUrl.trim() }
+              : {}),
+            purchaseMode: dto.purchaseMode,
+            messages: qaSynced,
+            contracts,
+            routeSheets: sheetsForThread,
+            ...(Object.keys(acksFromSheets).length > 0
+              ? {
+                  routeSheetEditAcks: {
+                    ...(s.threads[tid]?.routeSheetEditAcks ?? {}),
+                    ...acksFromSheets,
+                  },
+                }
+              : {}),
+          };
+          const roNext = mergedRouteOfferPublicAfterChatThreadHydration(
+            s.routeOfferPublic,
+            nextThread,
+            offer,
+          );
+          return {
+            ...s,
+            threads: { ...s.threads, [tid]: nextThread },
+            ...(roNext ? { routeOfferPublic: roNext } : {}),
+          };
+        });
         if (subsRs && Array.isArray(subsRs)) {
           applyThreadRouteTramoSubscriptions(tid, subsRs, meId);
         }
@@ -684,23 +729,58 @@ export function ChatPage() {
     if (sheets) {
       const sh = sheets as RouteSheet[];
       const acks = routeSheetEditAcksRecordFromSheets(sh);
-      useMarketStore.setState((s) => ({
-        threads: {
-          ...s.threads,
-          [tid]: {
-            ...(s.threads[tid] ?? {}),
-            routeSheets: sh,
-            routeSheetEditAcks: {
-              ...(s.threads[tid]?.routeSheetEditAcks ?? {}),
-              ...acks,
-            },
-          },
-        },
-      }));
+      useMarketStore.setState((s) => {
+        const t = s.threads[tid];
+        if (!t) return s;
+        const nextT = {
+          ...t,
+          routeSheets: sh,
+          routeSheetEditAcks: { ...(t.routeSheetEditAcks ?? {}), ...acks },
+        };
+        const roNext = mergedRouteOfferPublicAfterChatThreadHydration(
+          s.routeOfferPublic,
+          nextT,
+          s.offers[nextT.offerId],
+        );
+        return {
+          ...s,
+          threads: { ...s.threads, [tid]: nextT },
+          ...(roNext ? { routeOfferPublic: roNext } : {}),
+        };
+      });
     }
     if (subs && Array.isArray(subs))
       applyThreadRouteTramoSubscriptions(tid, subs, uid);
   }, [threadId, applyThreadRouteTramoSubscriptions]);
+
+  /** El visor de suscriptores hace GET /route-sheets; aplica al hilo en memoria. */
+  const syncThreadRouteSheetsFromSubscribersPanel = useCallback(
+    (sheets: RouteSheet[]) => {
+      const tid = threadId?.trim();
+      if (!tid?.startsWith("cth_")) return;
+      const acks = routeSheetEditAcksRecordFromSheets(sheets);
+      useMarketStore.setState((s) => {
+        const t = s.threads[tid];
+        if (!t) return s;
+        const nextT = {
+          ...t,
+          routeSheets: sheets,
+          routeSheetEditAcks: { ...(t.routeSheetEditAcks ?? {}), ...acks },
+        };
+        const roNext = mergedRouteOfferPublicAfterChatThreadHydration(
+          s.routeOfferPublic,
+          nextT,
+          s.offers[nextT.offerId],
+        );
+        return {
+          ...s,
+          threads: { ...s.threads, [tid]: nextT },
+          ...(roNext ? { routeOfferPublic: roNext } : {}),
+        };
+      });
+    },
+    [threadId],
+  );
 
   useEffect(() => {
     if (!threadId?.startsWith("cth_")) return;
@@ -887,10 +967,6 @@ export function ChatPage() {
     return a ? tradeAgreementToDraft(a) : null;
   }, [agreementBeingEditedId, thread?.contracts]);
 
-  const transportistaPhoneOptions = useMemo(
-    () => buildRegisteredTransportistaPhoneOptions(thread?.chatCarriers),
-    [thread?.chatCarriers],
-  );
 
   useEffect(() => {
     if (selectedIds.length > 0) draftInputRef.current?.focus();
@@ -1247,18 +1323,18 @@ export function ChatPage() {
           <div className="flex min-h-0 min-w-0 flex-1 flex-row gap-2.5">
             {routeSubscribersSheetId ? (
               <ChatRouteSubscribersPanel
-                key={routeSubscribersSheetId}
+                key={`${thread.id}-route-subscribers`}
                 threadId={thread.id}
                 routeOffer={routeOfferForThisThread}
-                routeSheetId={routeSubscribersSheetId}
-                routeSheetTitle={
-                  thread.routeSheets?.find(
-                    (r) => r.id === routeSubscribersSheetId,
-                  )?.titulo
-                }
+                contextRouteSheetId={routeSubscribersSheetId}
+                routeSheets={(thread.routeSheets ?? []).map((r) => ({
+                  id: r.id,
+                  titulo: (r.titulo ?? "Hoja de ruta").trim() || "Hoja de ruta",
+                }))}
                 canSellerManageRouteSubscriptions={viewerIsThreadSeller}
                 onSubscriptionsChanged={refreshChatRouteData}
                 highlightUserId={highlightSubscriberUserId}
+                onThreadRouteSheetsSynced={syncThreadRouteSheetsFromSubscribersPanel}
                 onClose={() => {
                   setRouteSubscribersSheetId(null);
                   setHighlightSubscriberUserId(null);
@@ -1623,9 +1699,10 @@ export function ChatPage() {
 
       <RouteSheetFormModal
         open={showRouteSheetForm}
+        threadId={thread.id}
         initialRouteSheet={routeSheetBeingEdited}
-        routeOfferForSheet={routeOfferForThisThread}
-        transportistaPhoneOptions={transportistaPhoneOptions}
+        routeOfferForSheet={routeOfferForEditingRouteSheet}
+        routeOfferForThread={routeOfferForThisThread}
         onClose={() => {
           trustPenaltyNextSave.current = "none";
           setShowRouteSheetForm(false);
@@ -1640,11 +1717,15 @@ export function ChatPage() {
             );
             if (ok && isActingSeller) applySellerTrustPenaltyIfQueued();
             else {
-              toast.error(
-                "No se pudo guardar: revisá título, mercancías y al menos un tramo con origen y destino",
-              );
+              if (!ok) {
+                toast.error(
+                  "No se pudo guardar: revisá título, mercancías y al menos un tramo con origen y destino",
+                );
+              }
             }
-            return ok;
+            return ok
+              ? { ok: true, routeSheetId: routeSheetBeingEdited.id }
+              : { ok: false };
           }
           const id = createRouteSheet(thread.id, payload);
           if (!id) {
@@ -1664,9 +1745,9 @@ export function ChatPage() {
                 "Completá título, mercancías y al menos un tramo con origen y destino",
               );
             }
-            return false;
+            return { ok: false };
           }
-          return true;
+          return { ok: true, routeSheetId: id };
         }}
       />
       <PeerPartyExitedInfoModal

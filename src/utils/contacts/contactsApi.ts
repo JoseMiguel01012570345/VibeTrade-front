@@ -19,6 +19,38 @@ export async function fetchContacts(): Promise<UserContact[]> {
   return (await res.json()) as UserContact[];
 }
 
+/** Resuelve un usuario registrado por teléfono sin añadirlo a la agenda. */
+export type PlatformUserByPhone = {
+  userId: string
+  displayName: string
+  phoneDisplay: string | null
+  phoneDigits: string | null
+}
+
+export async function resolvePlatformUserByPhone(
+  phone: string,
+): Promise<PlatformUserByPhone> {
+  const q = new URLSearchParams()
+  q.set('phone', phone)
+  const res = await apiFetch(`/api/v1/auth/contacts/resolve?${q.toString()}`)
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()))
+  }
+  const j = (await res.json()) as {
+    userId: string
+    displayName: string
+    phoneDisplay: string | null
+    phoneDigits: string | null
+  }
+  return {
+    userId: j.userId,
+    displayName: j.displayName,
+    phoneDisplay: j.phoneDisplay,
+    phoneDigits: j.phoneDigits,
+  }
+}
+
 export async function addContactByPhone(phone: string): Promise<UserContact> {
   const res = await apiFetch("/api/v1/auth/contacts", {
     method: "POST",
