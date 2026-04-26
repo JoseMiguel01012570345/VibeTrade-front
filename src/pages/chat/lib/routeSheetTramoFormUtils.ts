@@ -31,6 +31,8 @@ export function emptyTramo(): RouteTramoFormInput {
     requisitosEspeciales: "",
     tipoVehiculoRequerido: "",
     telefonoTransportista: "",
+    transportInvitedStoreServiceId: "",
+    transportInvitedServiceSummary: "",
     monedaPago: "",
   };
 }
@@ -60,6 +62,8 @@ export function tramosToLimpios(
     requisitosEspeciales: p.requisitosEspeciales?.trim() ?? "",
     tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() ?? "",
     telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+    transportInvitedStoreServiceId: p.transportInvitedStoreServiceId?.trim() ?? "",
+    transportInvitedServiceSummary: p.transportInvitedServiceSummary?.trim() ?? "",
     monedaPago: p.monedaPago?.trim() ?? "",
   }));
 }

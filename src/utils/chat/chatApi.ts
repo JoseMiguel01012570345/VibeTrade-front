@@ -279,20 +279,37 @@ export type CarrierExpelledBySellerApiResult = {
   /** En la demo: penalización a la confianza de la tienda al expulsar a un transportista confirmado. */
   applyStoreTrustPenalty: boolean
   storeTrustScoreAfter?: number | null
+  /** Tramos confirmados incluidos en esta expulsión (unidad de penalización por tramo en la demo). */
+  confirmedStopsWithdrawnCount?: number
+  /** Ya no queda ninguna suscripción activa del transportista en el hilo (pierde el chat de esta operación). */
+  carrierFullyRemovedFromThread?: boolean
 }
 
 export async function postSellerExpelCarrier(
   threadId: string,
-  body: { carrierUserId: string; reason: string },
+  body: {
+    carrierUserId: string
+    reason: string
+    /** Ambos o ninguno: un solo tramo vs toda la operación. */
+    routeSheetId?: string
+    stopId?: string
+  },
 ): Promise<CarrierExpelledBySellerApiResult> {
+  const rs = body.routeSheetId?.trim() ?? ''
+  const st = body.stopId?.trim() ?? ''
+  const payload: Record<string, string> = {
+    carrierUserId: body.carrierUserId,
+    reason: body.reason,
+  }
+  if (rs.length > 0 && st.length > 0) {
+    payload.routeSheetId = rs
+    payload.stopId = st
+  }
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/seller-expel-carrier`,
     {
       method: 'POST',
-      body: JSON.stringify({
-        carrierUserId: body.carrierUserId,
-        reason: body.reason,
-      }),
+      body: JSON.stringify(payload),
     },
   )
   if (!res.ok) {

@@ -196,6 +196,7 @@ export function startChatRealtime(): void {
           head.kind === "route_tramo_seller_expelled" ||
           head.kind === "route_sheet_presel" ||
           head.kind === "route_sheet_presel_decl" ||
+          head.kind === "store_trust_penalty" ||
           head.kind === "peer_party_exited") &&
         open &&
         head.threadId === open

@@ -68,6 +68,7 @@ export type NotificationItem = {
     | 'route_tramo_seller_expelled'
     | 'route_sheet_presel'
     | 'route_sheet_presel_decl'
+    | 'store_trust_penalty'
     | 'peer_party_exited'
   title: string
   body: string

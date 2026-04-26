@@ -159,6 +159,22 @@ export function mapServerNotification(n: ChatNotificationDto): NotificationItem 
     }
   }
 
+  if (n.kind === 'store_trust_penalty') {
+    const tid = n.threadId?.trim()
+    const oid = n.offerId?.trim()
+    return {
+      id: n.id,
+      kind: 'store_trust_penalty',
+      title: 'Confianza de tu tienda',
+      body: n.messagePreview,
+      createdAt: Date.parse(n.createdAtUtc),
+      read: n.readAtUtc != null,
+      trustScore: n.authorTrustScore,
+      ...(tid ? { threadId: tid } : {}),
+      ...(oid ? { offerId: oid } : {}),
+    }
+  }
+
   const isOfferOnly = Boolean(n.offerId && !n.threadId)
   const kind = isOfferOnly
     ? mapOfferNotificationKind(n.kind)

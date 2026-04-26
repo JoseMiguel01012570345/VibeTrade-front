@@ -443,6 +443,18 @@ export function CarrierRoutePreselInviteModal({
                           <div>{p.telefonoTransportista}</div>
                         </div>
                       ) : null}
+                      {p.transportInvitedServiceSummary?.trim() ||
+                      p.transportInvitedStoreServiceId?.trim() ? (
+                        <div className="min-[561px]:col-span-2">
+                          <div className="text-[11px] font-bold text-[var(--muted)]">
+                            Servicio con el que te invitan
+                          </div>
+                          <div className="font-semibold">
+                            {p.transportInvitedServiceSummary?.trim() ||
+                              p.transportInvitedStoreServiceId}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 ))}

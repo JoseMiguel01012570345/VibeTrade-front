@@ -84,6 +84,8 @@ createRouteSheet: (threadId, payload) => {
       requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
       tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || undefined,
       telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+      transportInvitedStoreServiceId: p.transportInvitedStoreServiceId?.trim() || undefined,
+      transportInvitedServiceSummary: p.transportInvitedServiceSummary?.trim() || undefined,
       monedaPago: p.monedaPago?.trim() || undefined,
       completada: false,
     }))
@@ -158,6 +160,8 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
       requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
       tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || undefined,
       telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+      transportInvitedStoreServiceId: p.transportInvitedStoreServiceId?.trim() || undefined,
+      transportInvitedServiceSummary: p.transportInvitedServiceSummary?.trim() || undefined,
       monedaPago: p.monedaPago?.trim() || undefined,
       completada: false as boolean | undefined,
     }))

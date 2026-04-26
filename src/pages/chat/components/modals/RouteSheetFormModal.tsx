@@ -666,12 +666,6 @@ export function RouteSheetFormModal({
                   p.paradaId,
                   initialRouteSheet?.paradas[i],
                 );
-                console.log({
-                  offerForTramo,
-                  initialRouteSheet: initialRouteSheet?.id,
-                  paradaId: p.paradaId,
-                  parada: initialRouteSheet?.paradas[i],
-                });
                 const phoneLocked = confAsg != null;
                 const displayTel =
                   p.telefonoTransportista?.trim() ||
@@ -824,9 +818,13 @@ export function RouteSheetFormModal({
                     <RouteSheetTransportistaPhoneField
                       tramoIndex={i}
                       value={displayTel}
-                      onChange={(tel) =>
+                      transportInvitedStoreServiceId={p.transportInvitedStoreServiceId}
+                      transportInvitedServiceSummary={p.transportInvitedServiceSummary}
+                      onChange={(pick) =>
                         updateTramo(i, {
-                          telefonoTransportista: tel,
+                          telefonoTransportista: pick.telefonoTransportista,
+                          transportInvitedStoreServiceId: pick.transportInvitedStoreServiceId,
+                          transportInvitedServiceSummary: pick.transportInvitedServiceSummary,
                         })
                       }
                       error={te?.telefonoTransportista}

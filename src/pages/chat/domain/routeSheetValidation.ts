@@ -307,6 +307,8 @@ export function normalizeRouteSheetParadas(paradas: RouteTramoFormInput[]): Rout
       requisitosEspeciales: norm(p.requisitosEspeciales) || undefined,
       tipoVehiculoRequerido: norm(p.tipoVehiculoRequerido) || undefined,
       telefonoTransportista: norm(p.telefonoTransportista) || undefined,
+      transportInvitedStoreServiceId: norm(p.transportInvitedStoreServiceId) || undefined,
+      transportInvitedServiceSummary: norm(p.transportInvitedServiceSummary) || undefined,
       monedaPago: norm(p.monedaPago) || undefined,
     }))
     .filter((p) => p.origen.length >= PLACE_MIN && p.destino.length >= PLACE_MIN)

@@ -102,6 +102,8 @@ export function routeStopAckFingerprint(p: RouteStop): string {
     t2: (p.tiempoEntregaEstimado ?? '').trim(),
     pr: (p.precioTransportista ?? '').trim(),
     tel: (p.telefonoTransportista ?? '').trim(),
+    invSvc: (p.transportInvitedStoreServiceId ?? '').trim(),
+    invSum: (p.transportInvitedServiceSummary ?? '').trim(),
     cg: (p.cargaEnTramo ?? '').trim(),
     tmc: (p.tipoMercanciaCarga ?? '').trim(),
     tmd: (p.tipoMercanciaDescarga ?? '').trim(),

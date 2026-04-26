@@ -43,6 +43,12 @@ export function notificationDeepLink(
   if (n.kind === 'route_sheet_presel_decl' && n.threadId) {
     return `/chat/${encodeURIComponent(n.threadId)}`
   }
+  if (n.kind === 'store_trust_penalty' && n.threadId) {
+    return `/chat/${encodeURIComponent(n.threadId)}`
+  }
+  if (n.kind === 'store_trust_penalty' && n.offerId) {
+    return `/offer/${encodeURIComponent(n.offerId)}`
+  }
   if (
     n.kind === 'route_tramo_subscribe' &&
     n.threadId &&

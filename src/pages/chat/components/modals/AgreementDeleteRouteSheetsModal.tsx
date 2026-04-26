@@ -55,8 +55,7 @@ export function AgreementDeleteRouteSheetsModal({
     [contracts.length, routeSheets.length],
   )
 
-  const canDeleteAgreementNow =
-    !agreementDeleteBlockedByRouteSheetInvariant(contracts.length, routeSheets.length)
+  const canDeleteAgreementNow = !blockedByInvariant
 
   if (!open) return null
 

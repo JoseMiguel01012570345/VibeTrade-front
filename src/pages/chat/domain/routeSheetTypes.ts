@@ -38,6 +38,10 @@ export type RouteStop = {
   tipoVehiculoRequerido?: string
   /** Teléfono del transportista asignado al tramo (p. ej. tras suscripción y aceptación). */
   telefonoTransportista?: string
+  /** Servicio de vitrina con el que se invita al transportista en este tramo. */
+  transportInvitedStoreServiceId?: string
+  /** Resumen corto para UI (tipo · categoría, etc.). */
+  transportInvitedServiceSummary?: string
   /** Moneda del precio / tarifa de este tramo (ej. USD, CUP). */
   monedaPago?: string
   completada?: boolean
@@ -119,6 +123,8 @@ export type RouteTramoFormInput = {
   destino: string
   /** Contacto del transportista elegido para este tramo. */
   telefonoTransportista?: string
+  transportInvitedStoreServiceId?: string
+  transportInvitedServiceSummary?: string
   origenLat?: string
   origenLng?: string
   destinoLat?: string
@@ -231,6 +237,8 @@ export function routeStopsToFormInputs(
       requisitosEspeciales: p.requisitosEspeciales?.trim() || L.requisitosEspeciales?.trim() || '',
       tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || L.tipoVehiculoRequerido?.trim() || '',
       telefonoTransportista: telFromStop || telFromOffer,
+      transportInvitedStoreServiceId: p.transportInvitedStoreServiceId?.trim() || undefined,
+      transportInvitedServiceSummary: p.transportInvitedServiceSummary?.trim() || undefined,
       monedaPago: mStop || leg,
     }
   })

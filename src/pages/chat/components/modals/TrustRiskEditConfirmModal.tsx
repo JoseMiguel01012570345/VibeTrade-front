@@ -15,7 +15,6 @@ export function TrustRiskEditConfirmModal({
   onClose,
   onConfirm,
   subjectLabel,
-  variant = 'agreement',
 }: Props) {
   if (!open) return null
 

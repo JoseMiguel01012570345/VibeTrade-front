@@ -590,6 +590,14 @@ export function NotificationsBell() {
                     <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
                       Abrir chat de la operación →
                     </div>
+                  ) : n.kind === 'store_trust_penalty' && n.threadId ? (
+                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
+                      Abrir chat de la operación →
+                    </div>
+                  ) : n.kind === 'store_trust_penalty' && n.offerId ? (
+                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
+                      Ver ficha →
+                    </div>
                   ) : n.kind === 'offer_comment' ||
                     n.kind === 'offer_like' ||
                     n.kind === 'qa_comment_like' ||
