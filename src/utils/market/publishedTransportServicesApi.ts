@@ -1,7 +1,7 @@
 import { apiFetch } from '../http/apiClient'
 import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage } from '../http/apiErrorMessage'
 
-/** Ficha de servicio alineada a `MarketCatalogRowJsonSerialization.ServiceToJson` + `storeName`. */
+/** Ficha de servicio (`StoreServiceCatalogRowView`) + `storeName` desde el endpoint de transporte. */
 export type PublishedTransportServiceDto = {
   id: string
   storeId: string
