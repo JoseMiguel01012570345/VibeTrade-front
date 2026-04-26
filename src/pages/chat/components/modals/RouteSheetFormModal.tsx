@@ -40,7 +40,8 @@ import {
   rutaTramoRemoveBtn,
   rutaTramosBlock,
 } from "../../styles/formModalStyles";
-import { MapPin, Trash2 } from "lucide-react";
+import { ExternalLink, MapPin, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   routeSheetLegacyHead,
   routeStopsToFormInputs,
@@ -66,6 +67,7 @@ import { postRouteSheetNotifyPreselected } from "../../../../utils/chat/chatApi"
 import { getSessionToken } from "../../../../utils/http/sessionToken";
 import { RouteSheetTransportistaPhoneField } from "./RouteSheetTransportistaPhoneField";
 import {
+  activeAssignmentOnFormTramo,
   confirmedAssignmentOnFormTramo,
   effectiveRouteOfferForSheetForm,
   normRoutePhoneKey,
@@ -666,6 +668,13 @@ export function RouteSheetFormModal({
                   p.paradaId,
                   initialRouteSheet?.paradas[i],
                 );
+                const activeAsg = activeAssignmentOnFormTramo(
+                  offerForTramo,
+                  initialRouteSheet?.id,
+                  p.paradaId,
+                  initialRouteSheet?.paradas[i],
+                );
+                const carrierServiceOfferId = activeAsg?.storeServiceId?.trim();
                 const phoneLocked = confAsg != null;
                 const displayTel =
                   p.telefonoTransportista?.trim() ||
@@ -706,6 +715,17 @@ export function RouteSheetFormModal({
                         <span>Eliminar tramo</span>
                       </button>
                     </div>
+                    {carrierServiceOfferId ? (
+                      <div className="mb-2 mt-0.5">
+                        <Link
+                          to={`/offer/${encodeURIComponent(carrierServiceOfferId)}`}
+                          className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[var(--primary)] no-underline hover:underline"
+                        >
+                          Ver ficha del servicio del transportista{" "}
+                          <ExternalLink size={12} aria-hidden />
+                        </Link>
+                      </div>
+                    ) : null}
                     <div className={rutaTramoGrid}>
                       <Field
                         label="Origen"

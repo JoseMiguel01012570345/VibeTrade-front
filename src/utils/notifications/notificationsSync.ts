@@ -12,7 +12,11 @@ function mapOfferNotificationKind(k: string | null | undefined): OfferNotifKind 
 
 function parseRouteTramoMeta(metaJson: string | null | undefined): Pick<
   NotificationItem,
-  'routeSheetId' | 'stopId' | 'highlightCarrierUserId' | 'preselStopIds'
+  | 'routeSheetId'
+  | 'stopId'
+  | 'highlightCarrierUserId'
+  | 'preselStopIds'
+  | 'storeServiceId'
 > {
   if (!metaJson?.trim()) return {}
   try {
@@ -27,26 +31,53 @@ function parseRouteTramoMeta(metaJson: string | null | undefined): Pick<
       typeof j.stopId === 'string' ? j.stopId
       : typeof j.StopId === 'string' ? j.StopId
       : undefined
-    const stopId = stopIdRaw?.trim() || undefined
+    let stopId = stopIdRaw?.trim() || undefined
     const carrierUserIdRaw =
       typeof j.carrierUserId === 'string' ? j.carrierUserId
       : typeof j.CarrierUserId === 'string' ? j.CarrierUserId
       : undefined
     const carrierUserId = carrierUserIdRaw?.trim() || undefined
-    const stopIdsRaw = j.stopIds ?? j.StopIds
+
+    let storeServiceId: string | undefined
+    const stopsArr = j.stops ?? j.Stops
+    if (Array.isArray(stopsArr)) {
+      for (const el of stopsArr) {
+        if (!el || typeof el !== 'object') continue
+        const o = el as Record<string, unknown>
+        const sid =
+          typeof o.stopId === 'string' ? o.stopId.trim()
+          : typeof o.StopId === 'string' ? o.StopId.trim()
+          : ''
+        const svc =
+          typeof o.storeServiceId === 'string' ? o.storeServiceId.trim()
+          : typeof o.StoreServiceId === 'string' ? o.StoreServiceId.trim()
+          : ''
+        if (!stopId && sid) stopId = sid
+        if (!storeServiceId && svc) storeServiceId = svc
+      }
+    }
+
     let preselStopIds: string[] | undefined
-    if (Array.isArray(stopIdsRaw)) {
-      preselStopIds = stopIdsRaw
-        .filter((x): x is string => typeof x === 'string')
+    const preselRaw = j.stopIds ?? j.StopIds
+    if (Array.isArray(preselRaw) && preselRaw.every((x) => typeof x === 'string')) {
+      preselStopIds = (preselRaw as string[])
         .map((s) => s.trim())
         .filter(Boolean)
       if (preselStopIds.length === 0) preselStopIds = undefined
     }
+
+    const storeServiceIdRoot =
+      typeof j.storeServiceId === 'string' ? j.storeServiceId.trim()
+      : typeof j.StoreServiceId === 'string' ? j.StoreServiceId.trim()
+      : ''
+    if (!storeServiceId && storeServiceIdRoot) storeServiceId = storeServiceIdRoot
+
     return {
       ...(routeSheetId ? { routeSheetId } : {}),
       ...(stopId ? { stopId } : {}),
       ...(carrierUserId ? { highlightCarrierUserId: carrierUserId } : {}),
       ...(preselStopIds ? { preselStopIds } : {}),
+      ...(storeServiceId ? { storeServiceId } : {}),
     }
   } catch {
     return {}
@@ -70,6 +101,7 @@ export function mapServerNotification(n: ChatNotificationDto): NotificationItem 
   }
 
   if (n.kind === 'route_tramo_subscribe_accepted' && n.threadId) {
+    const meta = parseRouteTramoMeta(n.metaJson)
     return {
       id: n.id,
       kind: 'route_tramo_subscribe_accepted',
@@ -79,6 +111,7 @@ export function mapServerNotification(n: ChatNotificationDto): NotificationItem 
       read: n.readAtUtc != null,
       threadId: n.threadId,
       trustScore: n.authorTrustScore,
+      ...meta,
     }
   }
 

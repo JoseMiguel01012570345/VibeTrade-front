@@ -11,9 +11,16 @@ export function notificationDeepLink(
     | 'highlightCarrierUserId'
     | 'stopId'
     | 'preselStopIds'
+    | 'storeServiceId'
   >,
 ): string | null {
   if (n.kind === 'route_tramo_subscribe_accepted' && n.threadId) {
+    const sheet = n.routeSheetId?.trim()
+    const hi = n.highlightCarrierUserId?.trim()
+    if (sheet && hi) {
+      const q = new URLSearchParams({ subs: '1', sheet, hi })
+      return `/chat/${encodeURIComponent(n.threadId)}?${q.toString()}`
+    }
     return `/chat/${encodeURIComponent(n.threadId)}`
   }
   if (n.kind === 'route_tramo_subscribe_rejected' && n.offerId) {

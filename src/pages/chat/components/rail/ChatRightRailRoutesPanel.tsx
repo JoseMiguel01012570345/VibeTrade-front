@@ -34,6 +34,7 @@ import { confirmedCarrierIdsOnOffer } from "../../../../app/store/marketSliceHel
 import { SELLER_TRUST_PENALTY_ON_EDIT } from "../modals/TrustRiskEditConfirmModal";
 import { railItemClass } from "./chatRailStyles";
 import { statusPillOk, statusPillPending } from "../../styles/formModalStyles";
+import { TramoSubscribedServiceFicha } from "./TramoSubscribedServiceFicha";
 
 type Props = {
   bodyClassName: string;
@@ -128,37 +129,43 @@ export function ChatRightRailRoutesPanel({
     if (routeSheets.length === 0) return null;
     const offerSid = routeOfferResolved?.routeSheetId?.trim();
     if (offerSid && routeSheets.some((r) => r.id === offerSid)) return offerSid;
-    if (selRoute && routeSheets.some((r) => r.id === selRoute.id)) return selRoute.id;
+    if (selRoute && routeSheets.some((r) => r.id === selRoute.id))
+      return selRoute.id;
     return routeSheets[0].id;
   }, [routeSheets, selRoute, routeOfferResolved?.routeSheetId]);
 
   return (
     <div className={bodyClassName}>
-      <div className="mb-3 flex gap-2">
-        <button
-          type="button"
-          className="vt-btn vt-btn-primary flex min-w-0 flex-1 justify-center gap-2"
-          disabled={
-            actionsLocked || !hasAcceptedContract || routeSheetCapReached
-          }
-          title={
-            actionsLocked
-              ? "No disponible hasta registrar el pago en el chat"
-              : !hasAcceptedContract
-                ? "Necesitás al menos un contrato aceptado para crear una hoja de ruta"
-                : routeSheetCapReached
-                  ? "No podés tener más hojas de ruta que acuerdos: emití otro acuerdo o eliminá una hoja"
-                  : undefined
-          }
-          onClick={onOpenNewRouteSheet}
-        >
-          <MapPin size={16} className="shrink-0" aria-hidden />
-          <span className="truncate">Nueva hoja de ruta</span>
-        </button>
+      <div className="mb-3 flex flex-wrap gap-2">
+        {isActingSeller ? (
+          <button
+            type="button"
+            className="vt-btn vt-btn-primary flex min-w-0 flex-1 justify-center gap-2"
+            disabled={
+              actionsLocked || !hasAcceptedContract || routeSheetCapReached
+            }
+            title={
+              actionsLocked
+                ? "No disponible hasta registrar el pago en el chat"
+                : !hasAcceptedContract
+                  ? "Necesitás al menos un contrato aceptado para crear una hoja de ruta"
+                  : routeSheetCapReached
+                    ? "No podés tener más hojas de ruta que acuerdos: emití otro acuerdo o eliminá una hoja"
+                    : undefined
+            }
+            onClick={onOpenNewRouteSheet}
+          >
+            <MapPin size={16} className="shrink-0" aria-hidden />
+            <span className="truncate">Nueva hoja de ruta</span>
+          </button>
+        ) : null}
         {subscribersTargetSheetId && onOpenRouteSubscribers ? (
           <button
             type="button"
-            className="vt-btn inline-flex shrink-0 items-center justify-center gap-1.5 px-3"
+            className={cn(
+              "vt-btn inline-flex shrink-0 items-center justify-center gap-1.5 px-3",
+              !isActingSeller && "min-w-0 flex-1",
+            )}
             title="Ver transportistas suscritos en la oferta pública vinculada a esta hoja (si aplica)"
             onClick={() => onOpenRouteSubscribers(subscribersTargetSheetId)}
           >
@@ -177,23 +184,25 @@ export function ChatRightRailRoutesPanel({
             >
               ← Lista
             </button>
-            <button
-              type="button"
-              className="vt-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
-              disabled={actionsLocked || sheetEditBlockedByCarrierAck}
-              title={
-                actionsLocked
-                  ? "No disponible hasta registrar el pago"
-                  : sheetEditBlockedByCarrierAck
-                    ? "Esperá a que todos los transportistas en el hilo acepten o rechacen la última edición"
-                    : selRoute.publicadaPlataforma
-                      ? "Editar: se notifica en el chat y los transportistas pueden aceptar o rechazar (demo)"
-                      : "Editar hoja de ruta"
-              }
-              onClick={() => onEditRouteSheet(selRoute)}
-            >
-              <Pencil size={14} aria-hidden /> Editar
-            </button>
+            {isActingSeller ? (
+              <button
+                type="button"
+                className="vt-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+                disabled={actionsLocked || sheetEditBlockedByCarrierAck}
+                title={
+                  actionsLocked
+                    ? "No disponible hasta registrar el pago"
+                    : sheetEditBlockedByCarrierAck
+                      ? "Esperá a que todos los transportistas en el hilo acepten o rechacen la última edición"
+                      : selRoute.publicadaPlataforma
+                        ? "Editar: se notifica en el chat y los transportistas pueden aceptar o rechazar (demo)"
+                        : "Editar hoja de ruta"
+                }
+                onClick={() => onEditRouteSheet(selRoute)}
+              >
+                <Pencil size={14} aria-hidden /> Editar
+              </button>
+            ) : null}
             {sheetEditBlockedByCarrierAck ? (
               <p className="vt-muted w-full text-[11px] leading-snug">
                 Hay revisión pendiente: no podés guardar otra edición hasta que
@@ -214,12 +223,13 @@ export function ChatRightRailRoutesPanel({
                 }
                 onClick={() => {
                   const offerForSheet =
-                    routeOfferResolved?.routeSheetId === selRoute.id ?
-                      routeOfferResolved
-                    : undefined;
-                  const nConf = offerForSheet ?
-                    confirmedCarrierIdsOnOffer(offerForSheet, selRoute.id).size
-                  : 0;
+                    routeOfferResolved?.routeSheetId === selRoute.id
+                      ? routeOfferResolved
+                      : undefined;
+                  const nConf = offerForSheet
+                    ? confirmedCarrierIdsOnOffer(offerForSheet, selRoute.id)
+                        .size
+                    : 0;
                   const hasAssigned =
                     !!offerForSheet &&
                     offerForSheet.tramos.some((t) => t.assignment?.userId);
@@ -290,7 +300,8 @@ export function ChatRightRailRoutesPanel({
                   </>
                 ) : (
                   <>
-                    <Megaphone size={16} aria-hidden /> Publicar en la plataforma
+                    <Megaphone size={16} aria-hidden /> Publicar en la
+                    plataforma
                   </>
                 )}
               </button>
@@ -304,8 +315,8 @@ export function ChatRightRailRoutesPanel({
                 {routeSheetEditAcks[selRoute.id].revision})
               </div>
               <p className="vt-muted mb-2 mt-1 text-[11px] leading-snug">
-                La hoja se editó y cambió un tramo que tenés confirmado: solo vos
-                podés aceptar o rechazar esta versión para tu tramo.
+                La hoja se editó y cambió un tramo que tenés confirmado: solo
+                vos podés aceptar o rechazar esta versión para tu tramo.
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -443,23 +454,41 @@ export function ChatRightRailRoutesPanel({
                   <span className="text-[11px] font-black text-[var(--muted)]">
                     {p.orden}
                   </span>
-                  <button
-                    type="button"
-                    className={cn(
-                      "cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5",
-                      p.completada &&
-                        "text-[color-mix(in_oklab,var(--good)_92%,var(--muted))]",
-                    )}
-                    disabled={actionsLocked}
-                    title={
-                      actionsLocked
-                        ? "No disponible hasta registrar el pago"
-                        : "Marcar tramo"
-                    }
-                    onClick={() => toggleRouteStop(threadId, selRoute.id, p.id)}
-                  >
-                    <Check size={16} strokeWidth={2.5} />
-                  </button>
+                  {isActingSeller ? (
+                    <button
+                      type="button"
+                      className={cn(
+                        "cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5",
+                        p.completada &&
+                          "text-[color-mix(in_oklab,var(--good)_92%,var(--muted))]",
+                      )}
+                      disabled={actionsLocked}
+                      title={
+                        actionsLocked
+                          ? "No disponible hasta registrar el pago"
+                          : "Marcar tramo"
+                      }
+                      onClick={() =>
+                        toggleRouteStop(threadId, selRoute.id, p.id)
+                      }
+                    >
+                      <Check size={16} strokeWidth={2.5} />
+                    </button>
+                  ) : (
+                    <span
+                      className={cn(
+                        "inline-flex rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-2 py-0.5",
+                        p.completada &&
+                          "text-[color-mix(in_oklab,var(--good)_92%,var(--muted))]",
+                      )}
+                      title={
+                        p.completada ? "Tramo completado" : "Tramo pendiente"
+                      }
+                      aria-hidden
+                    >
+                      <Check size={16} strokeWidth={2.5} />
+                    </span>
+                  )}
                 </div>
                 <div className="font-extrabold">{tramoResumenLinea(p)}</div>
                 {(p.origenLat || p.origenLng) && (
@@ -531,14 +560,24 @@ export function ChatRightRailRoutesPanel({
                       ? routeOfferResolved.tramos.find((t) => t.stopId === p.id)
                       : undefined;
                   const tel = effectiveTramoContactPhone(p, ot);
-                  return tel ? (
-                    <div className="mt-1 text-xs font-semibold text-[var(--text)]">
-                      <span className="text-[var(--muted)]">
-                        Contacto tramo:{" "}
-                      </span>
-                      {tel}
-                    </div>
-                  ) : null;
+                  console.log({ assignment: ot.assignment });
+                  return (
+                    <>
+                      {tel ? (
+                        <div className="mt-1 text-xs font-semibold text-[var(--text)]">
+                          <span className="text-[var(--muted)]">
+                            Contacto tramo:{" "}
+                          </span>
+                          {tel}
+                        </div>
+                      ) : null}
+                      {ot?.assignment ? (
+                        <TramoSubscribedServiceFicha
+                          assignment={ot.assignment}
+                        />
+                      ) : null}
+                    </>
+                  );
                 })()}
               </li>
             ))}
@@ -547,8 +586,12 @@ export function ChatRightRailRoutesPanel({
       ) : routeSheets.length === 0 ? (
         <p className="vt-muted px-1 py-3 text-[13px]">
           {!hasAcceptedContract
-            ? "Primero tenés que tener al menos un contrato aceptado; después podés crear la hoja de ruta y vincularla al acuerdo."
-            : "Creá una hoja de ruta y vinculála al acuerdo desde Contratos (con mercancías) antes de publicar en la plataforma."}
+            ? isActingSeller
+              ? "Primero tenés que tener al menos un contrato aceptado; después podés crear la hoja de ruta y vincularla al acuerdo."
+              : "Cuando haya un acuerdo aceptado, la tienda podrá crear la hoja de ruta en esta operación."
+            : isActingSeller
+              ? "Creá una hoja de ruta y vinculála al acuerdo desde Contratos (con mercancías) antes de publicar en la plataforma."
+              : "La tienda creará y editará la hoja de ruta; aquí podrás ver el avance cuando exista."}
         </p>
       ) : (
         <ul className="m-0 flex list-none flex-col gap-2 p-0">

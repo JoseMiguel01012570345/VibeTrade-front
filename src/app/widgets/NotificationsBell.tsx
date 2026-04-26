@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { Bell, ChevronLeft, ChevronRight, History, Trash2, X } from 'lucide-react'
+import { Bell, ChevronLeft, ChevronRight, ExternalLink, History, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../store/useAppStore'
 import type { NotificationItem } from '../store/useAppStore'
@@ -567,8 +567,19 @@ export function NotificationsBell() {
                       Ver suscriptor en el chat →
                     </div>
                   ) : n.kind === 'route_tramo_subscribe_accepted' ? (
-                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
-                      Abrir chat de la operación →
+                    <div className="mt-1.5 flex flex-col gap-1">
+                      <div className="text-[11px] font-extrabold text-[var(--primary)]">
+                        Abrir chat de la operación →
+                      </div>
+                      {n.storeServiceId ? (
+                        <Link
+                          to={`/offer/${encodeURIComponent(n.storeServiceId)}`}
+                          className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[var(--primary)] no-underline hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Ver ficha del servicio <ExternalLink size={12} aria-hidden />
+                        </Link>
+                      ) : null}
                     </div>
                   ) : n.kind === 'route_tramo_subscribe_rejected' ? (
                     <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">

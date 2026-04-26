@@ -1211,6 +1211,13 @@ export function ChatPage() {
   const isActingSeller = !!store.ownerUserId && store.ownerUserId === me.id;
   const chatActionsLocked = thread.chatActionsLocked === true;
 
+  useEffect(() => {
+    if (!isActingSeller) {
+      setShowRouteSheetForm(false);
+      setRouteSheetBeingEdited(null);
+    }
+  }, [isActingSeller]);
+
   function applySellerTrustPenaltyIfQueued() {
     const q = trustPenaltyNextSave.current;
     trustPenaltyNextSave.current = "none";
@@ -1592,6 +1599,10 @@ export function ChatPage() {
             focusRouteId={focusRouteId}
             onConsumedRouteFocus={() => setFocusRouteId(null)}
             onOpenNewRouteSheet={() => {
+              if (!isActingSeller) {
+                toast.error("Solo la tienda puede crear hojas de ruta.");
+                return;
+              }
               if (!threadHasAcceptedAgreement(thread)) {
                 toast.error(
                   "Necesitás al menos un contrato aceptado para crear una hoja de ruta.",
@@ -1611,6 +1622,10 @@ export function ChatPage() {
               setRailOpen(true);
             }}
             onEditRouteSheet={(sheet) => {
+              if (!isActingSeller) {
+                toast.error("Solo la tienda puede editar la hoja de ruta.");
+                return;
+              }
               const ack = thread.routeSheetEditAcks?.[sheet.id];
               if (
                 ack &&
@@ -1621,15 +1636,12 @@ export function ChatPage() {
                 );
                 return;
               }
-              if (isActingSeller)
-                setTrustConfirm({ kind: "routeSheet", sheet });
-              else {
-                setRouteSheetBeingEdited(sheet);
-                setShowRouteSheetForm(true);
-                setRailOpen(true);
-              }
+              setTrustConfirm({ kind: "routeSheet", sheet });
             }}
-            toggleRouteStop={toggleRouteStop}
+            toggleRouteStop={(tid, routeSheetId, stopId) => {
+              if (!isActingSeller) return;
+              toggleRouteStop(tid, routeSheetId, stopId);
+            }}
             isActingSeller={isActingSeller}
             onOpenRouteSubscribers={(routeSheetId) => {
               setRouteSubscribersSheetId(routeSheetId);
@@ -1754,7 +1766,7 @@ export function ChatPage() {
       />
 
       <RouteSheetFormModal
-        open={showRouteSheetForm}
+        open={showRouteSheetForm && isActingSeller}
         threadId={thread.id}
         initialRouteSheet={routeSheetBeingEdited}
         routeOfferForSheet={routeOfferForEditingRouteSheet}
@@ -1765,6 +1777,7 @@ export function ChatPage() {
           setRouteSheetBeingEdited(null);
         }}
         onSubmit={(payload) => {
+          if (!isActingSeller) return { ok: false };
           if (routeSheetBeingEdited) {
             const ok = updateRouteSheet(
               thread.id,

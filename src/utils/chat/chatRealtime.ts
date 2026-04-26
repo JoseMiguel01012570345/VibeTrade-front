@@ -327,6 +327,8 @@ export function startChatRealtime(): void {
             "Un transportista aceptó los cambios en la hoja de ruta."
           : change === "sheet_edit_reject" ?
             "Un transportista rechazó los cambios en la hoja de ruta."
+          : change === "presel_decline" ?
+            "Un transportista rechazó la invitación; la hoja de ruta se actualizó."
           : "Se actualizaron las suscripciones a la hoja de ruta.";
         if (change === "sheet_edit_pending") {
           const byCarrier =

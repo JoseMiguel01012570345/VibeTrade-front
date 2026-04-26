@@ -86,6 +86,8 @@ export type NotificationItem = {
   stopId?: string
   /** Tramos del aviso route_sheet_presel (meta <c>stopIds</c>). */
   preselStopIds?: string[]
+  /** Aviso route_tramo_subscribe_accepted: id de oferta de catálogo del servicio (enlace <c>/offer/…</c>). */
+  storeServiceId?: string
 }
 
 type AppState = {

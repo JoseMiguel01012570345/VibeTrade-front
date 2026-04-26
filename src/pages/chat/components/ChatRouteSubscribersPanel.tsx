@@ -1,8 +1,10 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, ChevronRight, ExternalLink, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, X } from "lucide-react";
 import toast from "react-hot-toast";
-import type { RouteOfferPublicState } from "../../../app/store/marketStoreTypes";
+import type {
+  RouteOfferPublicState,
+  RouteOfferTramoAssignment,
+} from "../../../app/store/marketStoreTypes";
 import { ConfirmModal } from "../../../components/ConfirmModal";
 import { cn } from "../../../lib/cn";
 import type { RouteSheetPayload } from "../domain/routeSheetTypes";
@@ -27,6 +29,7 @@ import {
 import { onBackdropPointerClose } from "../lib/modalClose";
 import { modalShellWide, modalSub } from "../styles/formModalStyles";
 import { railItemClass } from "./rail/chatRailStyles";
+import { TramoSubscribedServiceFicha } from "./rail/TramoSubscribedServiceFicha";
 
 type Props = {
   threadId: string;
@@ -58,12 +61,6 @@ function statusLabel(s: RouteOfferSubscriberSummary["tramos"][0]["status"]) {
   return "Pendiente de validación";
 }
 
-function serviceHrefForSubscriber(sub: RouteOfferSubscriberSummary): string | null {
-  const sid = sub.storeServiceId?.trim();
-  if (!sid) return null;
-  return `/offer/${encodeURIComponent(sid)}`;
-}
-
 export function ChatRouteSubscribersPanel({
   threadId,
   routeOffer,
@@ -75,7 +72,9 @@ export function ChatRouteSubscribersPanel({
   highlightUserId,
   onThreadRouteSheetsSynced,
 }: Props) {
-  const [focusRouteSheetId, setFocusRouteSheetId] = useState<string | null>(null);
+  const [focusRouteSheetId, setFocusRouteSheetId] = useState<string | null>(
+    null,
+  );
   const [focusTramoId, setFocusTramoId] = useState<string | null>(null);
   const [focusCarrierId, setFocusCarrierId] = useState<string | null>(null);
   const didAutoFocusRouteSheet = useRef(false);
@@ -83,14 +82,20 @@ export function ChatRouteSubscribersPanel({
   focusNavRef.current = { focusRouteSheetId, focusTramoId };
   const autoOpenedForHi = useRef<string | null>(null);
   const rowRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const [subsLoadState, setSubsLoadState] = useState<"loading" | "ok" | "error">("loading");
-  const [serverSubs, setServerSubs] = useState<RouteOfferSubscriberSummary[]>([]);
+  const [subsLoadState, setSubsLoadState] = useState<
+    "loading" | "ok" | "error"
+  >("loading");
+  const [serverSubs, setServerSubs] = useState<RouteOfferSubscriberSummary[]>(
+    [],
+  );
   /** Última respuesta cruda del API (ids de hoja por fila). */
   const [lastRawSubscriptionItems, setLastRawSubscriptionItems] = useState<
     RouteTramoSubscriptionItemApi[]
   >([]);
   /** GET /route-sheets al abrir el visor o tras evento en tiempo real. */
-  const [fetchedRouteSheets, setFetchedRouteSheets] = useState<RouteSheetPayload[] | null>(null);
+  const [fetchedRouteSheets, setFetchedRouteSheets] = useState<
+    RouteSheetPayload[] | null
+  >(null);
   const routeSheetsPropsRef = useRef(routeSheets);
   routeSheetsPropsRef.current = routeSheets;
   const fetchedRouteSheetsRef = useRef(fetchedRouteSheets);
@@ -193,8 +198,8 @@ export function ChatRouteSubscribersPanel({
       const { focusRouteSheetId: fr, focusTramoId: ft } = focusNavRef.current;
       if (ft) {
         const tramoOk =
-          (fr
-            && sections
+          (fr &&
+            sections
               .find((s) => s.routeSheetId === fr)
               ?.tramoGroups.some((g) => g.stopId === ft)) ??
           false;
@@ -210,7 +215,12 @@ export function ChatRouteSubscribersPanel({
         })
         .catch(() => {});
       const ch = p.change.toLowerCase();
-      if (ch === "accept" || ch === "reject" || ch === "withdraw") {
+      if (
+        ch === "accept" ||
+        ch === "reject" ||
+        ch === "withdraw" ||
+        ch === "presel_decline"
+      ) {
         void onSubscriptionsChanged?.();
       }
     });
@@ -218,7 +228,10 @@ export function ChatRouteSubscribersPanel({
   }, [threadId, onSubscriptionsChanged, onThreadRouteSheetsSynced]);
 
   const subscribers = useMemo(() => {
-    const local = collectRouteOfferSubscribersForThreadSheets(routeOffer, routeSheetsMeta);
+    const local = collectRouteOfferSubscribersForThreadSheets(
+      routeOffer,
+      routeSheetsMeta,
+    );
     if (subsLoadState === "error") return local;
     if (subsLoadState === "loading") return [];
     if (serverSubs.length > 0) return serverSubs;
@@ -256,7 +269,8 @@ export function ChatRouteSubscribersPanel({
   const tramoGroups: RouteOfferTramoSubscriberGroup[] = useMemo(() => {
     if (focusRouteSheetId == null) return [];
     return (
-      sheetSections.find((s) => s.routeSheetId === focusRouteSheetId)?.tramoGroups ?? []
+      sheetSections.find((s) => s.routeSheetId === focusRouteSheetId)
+        ?.tramoGroups ?? []
     );
   }, [sheetSections, focusRouteSheetId]);
 
@@ -264,8 +278,8 @@ export function ChatRouteSubscribersPanel({
     if (!focusRouteSheetId) return null;
     return (
       routeSheetsMeta.find((r) => r.id === focusRouteSheetId)?.titulo?.trim() ??
-        sheetSections.find((s) => s.routeSheetId === focusRouteSheetId)?.titulo ??
-        "Hoja de ruta"
+      sheetSections.find((s) => s.routeSheetId === focusRouteSheetId)?.titulo ??
+      "Hoja de ruta"
     );
   }, [focusRouteSheetId, routeSheetsMeta, sheetSections]);
 
@@ -274,12 +288,15 @@ export function ChatRouteSubscribersPanel({
   const selectedTramo: RouteOfferTramoSubscriberGroup | null =
     focusTramoId && focusRouteSheetId
       ? (tramoGroups.find(
-          (g) => g.stopId === focusTramoId && g.routeSheetId === focusRouteSheetId,
+          (g) =>
+            g.stopId === focusTramoId && g.routeSheetId === focusRouteSheetId,
         ) ?? null)
       : null;
+  console.log("selectedTramo", selectedTramo);
   const selectedCarrier =
     selectedTramo && focusCarrierId
-      ? (selectedTramo.carriers.find((c) => c.userId === focusCarrierId) ?? null)
+      ? (selectedTramo.carriers.find((c) => c.userId === focusCarrierId) ??
+        null)
       : null;
 
   useEffect(() => {
@@ -317,14 +334,19 @@ export function ChatRouteSubscribersPanel({
     }
     if (autoOpenedForHi.current === hi) return;
     for (const sec of sheetSections) {
-      const g = sec.tramoGroups.find((gr) => gr.carriers.some((c) => c.userId === hi));
+      const g = sec.tramoGroups.find((gr) =>
+        gr.carriers.some((c) => c.userId === hi),
+      );
       if (g) {
         autoOpenedForHi.current = hi;
         setFocusRouteSheetId(g.routeSheetId);
         setFocusTramoId(g.stopId);
         setFocusCarrierId(hi);
         requestAnimationFrame(() => {
-          rowRefs.current[hi]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          rowRefs.current[hi]?.scrollIntoView({
+            block: "nearest",
+            behavior: "smooth",
+          });
         });
         return;
       }
@@ -332,8 +354,6 @@ export function ChatRouteSubscribersPanel({
   }, [hi, sheetSections]);
 
   const showHighlightRing = hi.length > 0 && selectedCarrier?.userId === hi;
-
-  const selectedServiceHref = selectedCarrier ? serviceHrefForSubscriber(selectedCarrier) : null;
 
   const tramoRowForSelection = selectedCarrier?.tramos.find(
     (t) =>
@@ -361,12 +381,37 @@ export function ChatRouteSubscribersPanel({
   }, [selectedCarrier]);
 
   const selectedHasPending = tramoRowForSelection?.status === "pending";
-  const selectedHasAcceptablePending = !!selectedHasPending && !anotherConfirmedOnThisStop;
+  const selectedHasAcceptablePending =
+    !!selectedHasPending && !anotherConfirmedOnThisStop;
+
+  const carrierAssignmentForFicha =
+    useMemo((): RouteOfferTramoAssignment | null => {
+      console.log({ selectedCarrier, tramoRowForSelection });
+      if (!selectedCarrier || !tramoRowForSelection) return null;
+      return {
+        userId: selectedCarrier.userId,
+        displayName: selectedCarrier.displayName,
+        phone: selectedCarrier.phone,
+        trustScore: selectedCarrier.trustScore,
+        status: tramoRowForSelection.status,
+        ...(selectedCarrier.transportServiceLabel?.trim()
+          ? { vehicleLabel: selectedCarrier.transportServiceLabel.trim() }
+          : {}),
+        ...(selectedCarrier.storeServiceId?.trim()
+          ? { storeServiceId: selectedCarrier.storeServiceId.trim() }
+          : {}),
+      };
+    }, [selectedCarrier, tramoRowForSelection]);
 
   async function confirmAcceptSubscriber() {
-    if (!selectedCarrier || !canSellerManageRouteSubscriptions || !focusTramoId) return;
+    if (!selectedCarrier || !canSellerManageRouteSubscriptions || !focusTramoId)
+      return;
     const tid = threadId.trim();
-    const rsid = (selectedTramo?.routeSheetId ?? focusRouteSheetId ?? "").trim();
+    const rsid = (
+      selectedTramo?.routeSheetId ??
+      focusRouteSheetId ??
+      ""
+    ).trim();
     const cid = selectedCarrier.userId.trim();
     const stopId = focusTramoId.trim();
     if (!tid || !rsid || !cid || !stopId) return;
@@ -378,12 +423,14 @@ export function ChatRouteSubscribersPanel({
         stopId,
       });
       if (acceptedCount < 1) {
-        toast.error("No había solicitud pendiente para confirmar en este tramo.");
+        toast.error(
+          "No había solicitud pendiente para confirmar en este tramo.",
+        );
       } else {
         toast.success(
-          acceptedCount === 1 ?
-            "Suscripción confirmada en este tramo. Se notificó al transportista."
-          : `${acceptedCount} suscripciones confirmadas. Se notificó al transportista.`,
+          acceptedCount === 1
+            ? "Suscripción confirmada en este tramo. Se notificó al transportista."
+            : `${acceptedCount} suscripciones confirmadas. Se notificó al transportista.`,
         );
       }
       setConfirmAcceptOpen(false);
@@ -423,10 +470,16 @@ export function ChatRouteSubscribersPanel({
       toast.error("Indicá un motivo para retirar al transportista.");
       return;
     }
-    const rsidForStop = (selectedTramo?.routeSheetId ?? focusRouteSheetId ?? "").trim();
+    const rsidForStop = (
+      selectedTramo?.routeSheetId ??
+      focusRouteSheetId ??
+      ""
+    ).trim();
     const stopIdForStop = (focusTramoId ?? "").trim();
     if (scope === "stop" && (!rsidForStop || !stopIdForStop)) {
-      toast.error("No se pudo identificar el tramo. Volvé al tramo e intentá de nuevo.");
+      toast.error(
+        "No se pudo identificar el tramo. Volvé al tramo e intentá de nuevo.",
+      );
       return;
     }
     setExpelBusy(true);
@@ -434,9 +487,9 @@ export function ChatRouteSubscribersPanel({
       const r = await postSellerExpelCarrier(tid, {
         carrierUserId: cid,
         reason: rsn,
-        ...(scope === "stop" ?
-          { routeSheetId: rsidForStop, stopId: stopIdForStop }
-        : {}),
+        ...(scope === "stop"
+          ? { routeSheetId: rsidForStop, stopId: stopIdForStop }
+          : {}),
       });
       if (r.withdrawnRowCount < 1) {
         toast.error("No había suscripciones activas para retirar.");
@@ -446,11 +499,13 @@ export function ChatRouteSubscribersPanel({
         let penaltyTail = "";
         if (r.applyStoreTrustPenalty) {
           penaltyTail =
-            units > 1 ?
-              ` En la demo se aplicaron ${units} ajustes a la confianza de la tienda (uno por tramo confirmado retirado).`
-            : " En la demo se aplicó un ajuste a la confianza de la tienda.";
+            units > 1
+              ? ` En la demo se aplicaron ${units} ajustes a la confianza de la tienda (uno por tramo confirmado retirado).`
+              : " En la demo se aplicó un ajuste a la confianza de la tienda.";
         }
-        const head = full ? "Transportista retirado de la operación." : "Tramo retirado al transportista.";
+        const head = full
+          ? "Transportista retirado de la operación."
+          : "Tramo retirado al transportista.";
         toast.success(`${head}${penaltyTail} Se le notificó con el motivo.`);
       }
       setExpelOpen(false);
@@ -460,7 +515,8 @@ export function ChatRouteSubscribersPanel({
       reloadSubscriptions();
       await onSubscriptionsChanged?.();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "No se pudo retirar al transportista.";
+      const msg =
+        e instanceof Error ? e.message : "No se pudo retirar al transportista.";
       toast.error(msg);
     } finally {
       setExpelBusy(false);
@@ -468,9 +524,14 @@ export function ChatRouteSubscribersPanel({
   }
 
   async function confirmRejectSubscriber() {
-    if (!selectedCarrier || !canSellerManageRouteSubscriptions || !focusTramoId) return;
+    if (!selectedCarrier || !canSellerManageRouteSubscriptions || !focusTramoId)
+      return;
     const tid = threadId.trim();
-    const rsid = (selectedTramo?.routeSheetId ?? focusRouteSheetId ?? "").trim();
+    const rsid = (
+      selectedTramo?.routeSheetId ??
+      focusRouteSheetId ??
+      ""
+    ).trim();
     const cid = selectedCarrier.userId.trim();
     const stopId = focusTramoId.trim();
     if (!tid || !rsid || !cid || !stopId) return;
@@ -482,12 +543,14 @@ export function ChatRouteSubscribersPanel({
         stopId,
       });
       if (rejectedCount < 1) {
-        toast.error("No había solicitud pendiente para rechazar en este tramo.");
+        toast.error(
+          "No había solicitud pendiente para rechazar en este tramo.",
+        );
       } else {
         toast.success(
-          rejectedCount === 1 ?
-            "Solicitud rechazada en este tramo. Se notificó al transportista."
-          : `${rejectedCount} solicitudes rechazadas. Se notificó al transportista.`,
+          rejectedCount === 1
+            ? "Solicitud rechazada en este tramo. Se notificó al transportista."
+            : `${rejectedCount} solicitudes rechazadas. Se notificó al transportista.`,
         );
       }
       setConfirmRejectOpen(false);
@@ -549,7 +612,7 @@ export function ChatRouteSubscribersPanel({
     }
     return "Suscriptores";
   }
-
+  console.log({ carrierAssignmentForFicha });
   return (
     <>
       <aside
@@ -581,7 +644,8 @@ export function ChatRouteSubscribersPanel({
             ) : null}
             {selectedTramo && !selectedCarrier ? (
               <p className="vt-muted mb-0 mt-1 line-clamp-2 text-[11px] leading-snug">
-                Tramo {selectedTramo.orden}: {selectedTramo.origenLine} → {selectedTramo.destinoLine}
+                Tramo {selectedTramo.orden}: {selectedTramo.origenLine} →{" "}
+                {selectedTramo.destinoLine}
               </p>
             ) : null}
           </div>
@@ -616,33 +680,31 @@ export function ChatRouteSubscribersPanel({
               <p className="mb-0 mt-0.5 text-[11px] font-semibold leading-snug text-[var(--text)]">
                 {selectedTramo?.origenLine} → {selectedTramo?.destinoLine}
               </p>
-              <div className="mt-3 text-[15px] font-black leading-tight">{selectedCarrier.displayName}</div>
+              <div className="mt-3 text-[15px] font-black leading-tight">
+                {selectedCarrier.displayName}
+              </div>
               <p className="vt-muted mb-0 mt-2 text-[11px] leading-snug">
-                <span className="font-extrabold text-[var(--text)]">Confianza: </span>
+                <span className="font-extrabold text-[var(--text)]">
+                  Confianza:{" "}
+                </span>
                 {selectedCarrier.trustScore}
               </p>
               <p className="mb-0 mt-1.5 text-[11px] leading-snug">
-                <span className="font-extrabold text-[var(--muted)]">Teléfono: </span>
+                <span className="font-extrabold text-[var(--muted)]">
+                  Teléfono:{" "}
+                </span>
                 <span className="font-mono font-semibold tabular-nums text-[var(--text)]">
                   {selectedCarrier.phone?.trim() || "—"}
                 </span>
               </p>
-              <div className="mt-3 rounded-lg border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-2.5 py-2">
-                <div className="text-[10px] font-black uppercase tracking-wide text-[var(--muted)]">
-                  Servicio de transporte
+              {carrierAssignmentForFicha ? (
+                <div className="mt-3">
+                  <TramoSubscribedServiceFicha
+                    assignment={carrierAssignmentForFicha}
+                    showCarrierLine={false}
+                  />
                 </div>
-                <p className="mb-0 mt-1 text-[12px] font-semibold leading-snug text-[var(--text)]">
-                  {selectedCarrier.transportServiceLabel?.trim() || "No indicó servicio al suscribirse"}
-                </p>
-                {selectedServiceHref ? (
-                  <Link
-                    to={selectedServiceHref}
-                    className="mt-2 inline-flex items-center gap-1 text-[11px] font-extrabold text-[var(--primary)] no-underline hover:underline"
-                  >
-                    Ver ficha del servicio <ExternalLink size={12} aria-hidden />
-                  </Link>
-                ) : null}
-              </div>
+              ) : null}
               {canSellerManageRouteSubscriptions && selectedHasPending ? (
                 <div className="mt-3 flex flex-col gap-2">
                   <button
@@ -650,9 +712,9 @@ export function ChatRouteSubscribersPanel({
                     className="vt-btn vt-btn-primary w-full text-[12px] font-extrabold"
                     disabled={!selectedHasAcceptablePending}
                     title={
-                      !selectedHasAcceptablePending ?
-                        "En este tramo ya hay otro transportista confirmado."
-                      : undefined
+                      !selectedHasAcceptablePending
+                        ? "En este tramo ya hay otro transportista confirmado."
+                        : undefined
                     }
                     onClick={() => setConfirmAcceptOpen(true)}
                   >
@@ -675,9 +737,11 @@ export function ChatRouteSubscribersPanel({
                         Este tramo
                       </p>
                       <p className="vt-muted mb-2 text-[11px] leading-snug">
-                        Retirá a este transportista solo de este tramo confirmado. Por cada tramo confirmado que
-                        retires, en la demo puede aplicarse un ajuste a la confianza de la tienda. Si era su último
-                        tramo en el hilo, pierde el acceso a este chat.
+                        Retirá a este transportista solo de este tramo
+                        confirmado. Por cada tramo confirmado que retires, en la
+                        demo puede aplicarse un ajuste a la confianza de la
+                        tienda. Si era su último tramo en el hilo, pierde el
+                        acceso a este chat.
                       </p>
                       <button
                         type="button"
@@ -699,9 +763,10 @@ export function ChatRouteSubscribersPanel({
                     {selectedCarrierHasConfirmedTramo ? (
                       <>
                         <p className="vt-muted mb-2 text-[11px] leading-snug">
-                          Retirá a este transportista de todos los tramos activos en este hilo. Por cada tramo
-                          confirmado retirado, en la demo puede aplicarse un ajuste a la confianza de la tienda (uno por
-                          tramo).
+                          Retirá a este transportista de todos los tramos
+                          activos en este hilo. Por cada tramo confirmado
+                          retirado, en la demo puede aplicarse un ajuste a la
+                          confianza de la tienda (uno por tramo).
                         </p>
                         <button
                           type="button"
@@ -717,8 +782,10 @@ export function ChatRouteSubscribersPanel({
                       </>
                     ) : (
                       <p className="mb-0 text-[11px] font-semibold leading-snug text-[var(--muted)]">
-                        No podés expulsar de la operación mientras el transportista no tenga al menos un tramo
-                        confirmado. Rechazá la solicitud en cada tramo pendiente o confirmá y luego retirá si corresponde.
+                        No podés expulsar de la operación mientras el
+                        transportista no tenga al menos un tramo confirmado.
+                        Rechazá la solicitud en cada tramo pendiente o confirmá
+                        y luego retirá si corresponde.
                       </p>
                     )}
                   </div>
@@ -728,9 +795,9 @@ export function ChatRouteSubscribersPanel({
                 <div
                   className={cn(
                     "mt-3 text-[10px] font-bold",
-                    tramoRowForSelection.status === "confirmed" ?
-                      "text-[color-mix(in_oklab,var(--good)_85%,var(--muted))]"
-                    : "text-[color-mix(in_oklab,var(--primary)_88%,var(--muted))]",
+                    tramoRowForSelection.status === "confirmed"
+                      ? "text-[color-mix(in_oklab,var(--good)_85%,var(--muted))]"
+                      : "text-[color-mix(in_oklab,var(--primary)_88%,var(--muted))]",
                   )}
                 >
                   {statusLabel(tramoRowForSelection.status)}
@@ -753,14 +820,16 @@ export function ChatRouteSubscribersPanel({
                     }}
                     className={cn(
                       railItemClass,
-                      hi && sub.userId === hi ?
-                        "border-[color-mix(in_oklab,var(--primary)_45%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_12%,var(--surface))] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_35%,transparent)]"
-                      : null,
+                      hi && sub.userId === hi
+                        ? "border-[color-mix(in_oklab,var(--primary)_45%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_12%,var(--surface))] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_35%,transparent)]"
+                        : null,
                     )}
                     onClick={() => setFocusCarrierId(sub.userId)}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-left text-[13px] font-extrabold leading-tight">{sub.displayName}</span>
+                      <span className="text-left text-[13px] font-extrabold leading-tight">
+                        {sub.displayName}
+                      </span>
                       <span className="shrink-0 text-[10px] font-bold text-[var(--muted)]">
                         {(() => {
                           const tr = sub.tramos.find(
@@ -788,10 +857,13 @@ export function ChatRouteSubscribersPanel({
               ))}
             </ul>
           ) : subsLoadState === "loading" ? (
-            <p className="vt-muted px-1 py-2 text-[12px] leading-snug">Cargando suscripciones…</p>
+            <p className="vt-muted px-1 py-2 text-[12px] leading-snug">
+              Cargando suscripciones…
+            </p>
           ) : sheetSections.length === 0 ? (
             <p className="vt-muted px-1 py-2 text-[12px] leading-snug">
-              Todavía no hay transportistas suscritos a ninguna hoja de ruta en la oferta pública.
+              Todavía no hay transportistas suscritos a ninguna hoja de ruta en
+              la oferta pública.
             </p>
           ) : atRouteSheetList ? (
             <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
@@ -817,7 +889,8 @@ export function ChatRouteSubscribersPanel({
                         </span>
                       </div>
                       <div className="mt-1 line-clamp-2 text-left text-[11px] leading-snug text-[var(--muted)]">
-                        {sec.tramoGroups.length} tramo{sec.tramoGroups.length === 1 ? "" : "s"} · {nCar}{" "}
+                        {sec.tramoGroups.length} tramo
+                        {sec.tramoGroups.length === 1 ? "" : "s"} · {nCar}{" "}
                         transportista
                         {nCar === 1 ? "" : "s"}
                       </div>
@@ -852,7 +925,8 @@ export function ChatRouteSubscribersPanel({
                         Tramo {g.orden}
                       </span>
                       <span className="shrink-0 text-[10px] font-bold text-[var(--muted)]">
-                        {g.carriers.length} transportista{g.carriers.length === 1 ? "" : "s"}
+                        {g.carriers.length} transportista
+                        {g.carriers.length === 1 ? "" : "s"}
                       </span>
                     </div>
                     <div className="mt-1 line-clamp-2 text-left text-[11px] leading-snug text-[var(--muted)]">
@@ -906,24 +980,31 @@ export function ChatRouteSubscribersPanel({
           onMouseDown={(e) =>
             onBackdropPointerClose(
               e,
-              expelBusy ? () => {}
-              : () => {
-                  setExpelOpen(false);
-                  setExpelScope(null);
-                },
+              expelBusy
+                ? () => {}
+                : () => {
+                    setExpelOpen(false);
+                    setExpelScope(null);
+                  },
             )
           }
         >
-          <div className={modalShellWide} onMouseDown={(e) => e.stopPropagation()}>
+          <div
+            className={modalShellWide}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <div className="vt-modal-title" id={expelTitleId}>
               Expulsar transportista
             </div>
             <div className={modalSub}>
-              {expelScope === "stop" ?
-                "Indicá el motivo. El transportista queda retirado solo del tramo que estás viendo. En la demo, cada tramo confirmado retirado puede generar un ajuste a la confianza de la tienda. Si no le quedan más tramos en el hilo, pierde este chat."
-              : "Indicá el motivo. El transportista queda retirado de todos sus tramos activos en este hilo. En la demo, cada tramo confirmado retirado puede generar un ajuste a la confianza de la tienda."}
+              {expelScope === "stop"
+                ? "Indicá el motivo. El transportista queda retirado solo del tramo que estás viendo. En la demo, cada tramo confirmado retirado puede generar un ajuste a la confianza de la tienda. Si no le quedan más tramos en el hilo, pierde este chat."
+                : "Indicá el motivo. El transportista queda retirado de todos sus tramos activos en este hilo. En la demo, cada tramo confirmado retirado puede generar un ajuste a la confianza de la tienda."}
             </div>
-            <label className="mb-1 mt-2 block text-[11px] font-extrabold text-[var(--text)]" htmlFor="expel-reason-ta">
+            <label
+              className="mb-1 mt-2 block text-[11px] font-extrabold text-[var(--text)]"
+              htmlFor="expel-reason-ta"
+            >
               Motivo (obligatorio)
             </label>
             <textarea

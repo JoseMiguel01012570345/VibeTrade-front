@@ -6,7 +6,11 @@ import type {
   Thread,
 } from "../../../app/store/marketStoreTypes";
 import { threadHasAcceptedAgreement } from "../../../app/store/marketStoreTypes";
-import type { RouteSheet, RouteSheetCreatePayload, RouteStop } from "./routeSheetTypes";
+import type {
+  RouteSheet,
+  RouteSheetCreatePayload,
+  RouteStop,
+} from "./routeSheetTypes";
 
 /** Mensaje cuando el comprador del hilo intenta suscribirse como transportista a la misma hoja publicada. */
 export const ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES =
@@ -72,8 +76,7 @@ export function preselInvitesForTramoPhoneEdits(
   const invites: RouteSheetPreselectedInvite[] = [];
   for (let i = 0; i < paradasFinal.length; i++) {
     const p = paradasFinal[i]!;
-    const stopId =
-      p.paradaId?.trim() || initial?.paradas[i]?.id?.trim() || "";
+    const stopId = p.paradaId?.trim() || initial?.paradas[i]?.id?.trim() || "";
     const nu = p.telefonoTransportista?.trim() ?? "";
     if (!stopId || !nu) continue;
     const oldStop = initial?.paradas.find(
@@ -128,6 +131,29 @@ export function confirmedAssignmentOnFormTramo(
     sheetId,
     resolveRouteStopIdForFormRow(formParadaId, sheetParadaAtIndex),
   );
+}
+
+/**
+ * Asignación pendiente o confirmada en el tramo del formulario (p. ej. enlace a la ficha del servicio del transportista).
+ */
+export function activeAssignmentOnFormTramo(
+  offer: RouteOfferPublicState | undefined,
+  sheetId: string | undefined,
+  formParadaId: string | undefined,
+  sheetParadaAtIndex: { id: string } | undefined,
+): RouteOfferTramoAssignment | null {
+  const sid = sheetId?.trim();
+  const stopId = resolveRouteStopIdForFormRow(
+    formParadaId,
+    sheetParadaAtIndex,
+  )?.trim();
+  if (!offer?.tramos?.length || !sid || !stopId) return null;
+  if (offer.routeSheetId?.trim() !== sid) return null;
+  const t = offer.tramos.find((x) => x.stopId === stopId);
+  const a = t?.assignment;
+  if (!a) return null;
+  if (a.status !== "pending" && a.status !== "confirmed") return null;
+  return a;
 }
 
 /** Tras borrar un acuerdo quedarían `contracts.length - 1` acuerdos; las hojas no pueden superar ese número. */

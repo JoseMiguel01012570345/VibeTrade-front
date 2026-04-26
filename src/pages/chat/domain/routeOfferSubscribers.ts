@@ -51,6 +51,7 @@ export function collectRouteOfferSubscribersForSheet(
       destinoLine: t.destinoLine,
     };
     const label = a.vehicleLabel?.trim();
+    const svcId = a.storeServiceId?.trim();
     if (!cur) {
       byUser.set(a.userId, {
         userId: a.userId,
@@ -58,12 +59,14 @@ export function collectRouteOfferSubscribersForSheet(
         phone: a.phone,
         trustScore: a.trustScore,
         ...(label ? { transportServiceLabel: label } : {}),
+        ...(svcId ? { storeServiceId: svcId } : {}),
         tramos: [tr],
       });
       return;
     }
     cur.tramos.push(tr);
     if (!cur.transportServiceLabel && label) cur.transportServiceLabel = label;
+    if (!cur.storeServiceId && svcId) cur.storeServiceId = svcId;
   };
 
   for (const t of routeOffer.tramos) {
