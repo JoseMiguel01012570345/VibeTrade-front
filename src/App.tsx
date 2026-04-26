@@ -10,6 +10,7 @@ import { useAppStore } from "./app/store/useAppStore";
 import { AppShell } from "./app/shell/AppShell";
 import { ChatListPage } from "./pages/chat/ChatListPage";
 import { ChatPage } from "./pages/chat/ChatPage";
+import { RoutePreselInvitePage } from "./pages/chat/RoutePreselInvitePage";
 import { HomePage } from "./pages/home/HomePage";
 import { NotificationsPage } from "./pages/notifications/NotificationsPage";
 import { OfferPage } from "./pages/offer/OfferPage";
@@ -76,6 +77,10 @@ export default function App() {
           <Route path="/store/:storeId/services" element={<StorePage />} />
 
           <Route path="/chat" element={<ChatListPage />} />
+          <Route
+            path="/invite/presel/:threadId"
+            element={<RoutePreselInvitePage />}
+          />
           <Route path="/chat/:threadId" element={<ChatPage />} />
           <Route path="/reels" element={<ReelsPage />} />
 

@@ -9,6 +9,8 @@ export function notificationDeepLink(
     | 'offerId'
     | 'routeSheetId'
     | 'highlightCarrierUserId'
+    | 'stopId'
+    | 'preselStopIds'
   >,
 ): string | null {
   if (n.kind === 'route_tramo_subscribe_accepted' && n.threadId) {
@@ -24,6 +26,21 @@ export function notificationDeepLink(
     return `/chat/${encodeURIComponent(n.threadId)}`
   }
   if (n.kind === 'route_sheet_presel' && n.threadId) {
+    const sheet = n.routeSheetId?.trim()
+    if (sheet) {
+      const q = new URLSearchParams({ sheet })
+      const stops =
+        n.preselStopIds?.length ?
+          n.preselStopIds.join(',')
+        : n.stopId?.trim() ?
+          n.stopId.trim()
+        : ''
+      if (stops) q.set('stops', stops)
+      return `/invite/presel/${encodeURIComponent(n.threadId)}?${q.toString()}`
+    }
+    return `/chat/${encodeURIComponent(n.threadId)}`
+  }
+  if (n.kind === 'route_sheet_presel_decl' && n.threadId) {
     return `/chat/${encodeURIComponent(n.threadId)}`
   }
   if (

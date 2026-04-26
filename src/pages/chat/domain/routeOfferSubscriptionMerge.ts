@@ -169,7 +169,7 @@ function mergeChatCarriersForConfirmedItems(
   return chatCarriers;
 }
 
-/** Lista de integrantes transportista en el hilo: solo filas confirmadas del GET (retiros / withdrawn no entran). */
+/** Integrantes: solo transportistas con suscripción confirmada (pending no se lista). */
 function buildChatCarriersFromConfirmedSubscriptionItems(
   confirmedItems: RouteTramoSubscriptionItemApi[],
   ro: RouteOfferPublicState | undefined,
@@ -274,7 +274,7 @@ export function mergeTramoSubscriptionsIntoRouteOffer(
 /**
  * Aplica filas del GET de suscripciones al estado local: oferta pública y chatCarriers.
  * — Oferta pública: comprador/vendedor y transportistas con tramo confirmado fusionan todos los transportistas (misma vista).
- * — Integrantes (chatCarriers): todos los confirmados en el hilo, misma lista para cualquier rol (el GET incluye confirmados ajenos si sos transportista).
+ * — Integrantes (chatCarriers): solo confirmados en el hilo (pending no se muestra como integrante).
  */
 export function applyViewerRouteTramoSubscriptions(
   state: MarketState,
@@ -362,8 +362,8 @@ export function applyViewerRouteTramoSubscriptions(
     routeOfferPublic = { ...routeOfferPublic, [key]: withTid };
   }
 
-  const confirmedAll = items.filter(
-    (x) => x.status?.trim().toLowerCase() === "confirmed",
+  const confirmedForIntegrantes = items.filter(
+    (x) => normSubStatus(x.status) === "confirmed",
   );
   const th0 = threads[tid] ?? thread;
   const roForCarrier = resolveRouteOfferPublicForThread(
@@ -371,7 +371,7 @@ export function applyViewerRouteTramoSubscriptions(
     th0,
   );
   const ccNext = buildChatCarriersFromConfirmedSubscriptionItems(
-    confirmedAll,
+    confirmedForIntegrantes,
     roForCarrier,
   );
   threads = {

@@ -12,18 +12,41 @@ function mapOfferNotificationKind(k: string | null | undefined): OfferNotifKind 
 
 function parseRouteTramoMeta(metaJson: string | null | undefined): Pick<
   NotificationItem,
-  'routeSheetId' | 'stopId' | 'highlightCarrierUserId'
+  'routeSheetId' | 'stopId' | 'highlightCarrierUserId' | 'preselStopIds'
 > {
   if (!metaJson?.trim()) return {}
   try {
     const j = JSON.parse(metaJson) as Record<string, unknown>
-    const routeSheetId = typeof j.routeSheetId === 'string' ? j.routeSheetId : undefined
-    const stopId = typeof j.stopId === 'string' ? j.stopId : undefined
-    const carrierUserId = typeof j.carrierUserId === 'string' ? j.carrierUserId : undefined
+    const routeSheetIdRaw =
+      typeof j.routeSheetId === 'string' ?
+        j.routeSheetId
+      : typeof j.RouteSheetId === 'string' ? j.RouteSheetId
+      : undefined
+    const routeSheetId = routeSheetIdRaw?.trim() || undefined
+    const stopIdRaw =
+      typeof j.stopId === 'string' ? j.stopId
+      : typeof j.StopId === 'string' ? j.StopId
+      : undefined
+    const stopId = stopIdRaw?.trim() || undefined
+    const carrierUserIdRaw =
+      typeof j.carrierUserId === 'string' ? j.carrierUserId
+      : typeof j.CarrierUserId === 'string' ? j.CarrierUserId
+      : undefined
+    const carrierUserId = carrierUserIdRaw?.trim() || undefined
+    const stopIdsRaw = j.stopIds ?? j.StopIds
+    let preselStopIds: string[] | undefined
+    if (Array.isArray(stopIdsRaw)) {
+      preselStopIds = stopIdsRaw
+        .filter((x): x is string => typeof x === 'string')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      if (preselStopIds.length === 0) preselStopIds = undefined
+    }
     return {
       ...(routeSheetId ? { routeSheetId } : {}),
       ...(stopId ? { stopId } : {}),
       ...(carrierUserId ? { highlightCarrierUserId: carrierUserId } : {}),
+      ...(preselStopIds ? { preselStopIds } : {}),
     }
   } catch {
     return {}
@@ -109,6 +132,23 @@ export function mapServerNotification(n: ChatNotificationDto): NotificationItem 
       id: n.id,
       kind: 'route_sheet_presel',
       title: `${n.authorLabel} · confianza ${n.authorTrustScore}`,
+      body: n.messagePreview,
+      createdAt: Date.parse(n.createdAtUtc),
+      read: n.readAtUtc != null,
+      threadId: n.threadId,
+      ...(oid ? { offerId: oid } : {}),
+      trustScore: n.authorTrustScore,
+      ...meta,
+    }
+  }
+
+  if (n.kind === 'route_sheet_presel_decl' && n.threadId) {
+    const meta = parseRouteTramoMeta(n.metaJson)
+    const oid = n.offerId?.trim()
+    return {
+      id: n.id,
+      kind: 'route_sheet_presel_decl',
+      title: 'Invitación a transportista',
       body: n.messagePreview,
       createdAt: Date.parse(n.createdAtUtc),
       read: n.readAtUtc != null,

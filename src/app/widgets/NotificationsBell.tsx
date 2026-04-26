@@ -30,6 +30,8 @@ function notificationHref(n: {
   offerId?: string
   routeSheetId?: string
   highlightCarrierUserId?: string
+  stopId?: string
+  preselStopIds?: string[]
 }): string | null {
   return notificationDeepLink(
     n as Parameters<typeof notificationDeepLink>[0],
@@ -581,6 +583,10 @@ export function NotificationsBell() {
                       Abrir chat →
                     </div>
                   ) : n.kind === 'route_sheet_presel' && n.threadId ? (
+                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
+                      Ver invitación (mapa y datos) →
+                    </div>
+                  ) : n.kind === 'route_sheet_presel_decl' && n.threadId ? (
                     <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
                       Abrir chat de la operación →
                     </div>

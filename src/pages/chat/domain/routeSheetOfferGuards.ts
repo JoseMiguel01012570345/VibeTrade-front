@@ -6,7 +6,7 @@ import type {
   Thread,
 } from "../../../app/store/marketStoreTypes";
 import { threadHasAcceptedAgreement } from "../../../app/store/marketStoreTypes";
-import type { RouteSheet, RouteStop } from "./routeSheetTypes";
+import type { RouteSheet, RouteSheetCreatePayload, RouteStop } from "./routeSheetTypes";
 
 /** Mensaje cuando el comprador del hilo intenta suscribirse como transportista a la misma hoja publicada. */
 export const ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES =
@@ -57,6 +57,34 @@ export function routeSheetHasConfirmedCarriersOnOffer(
 /** Normaliza teléfono para comparar hoja vs asignación en oferta. */
 export function normRoutePhoneKey(phone: string | undefined): string {
   return (phone ?? "").replace(/[\s.]/g, "").replace(/-/g, "");
+}
+
+export type RouteSheetPreselectedInvite = { stopId: string; phone: string };
+
+/**
+ * Invitaciones presel solo donde el teléfono del tramo cambió respecto a la hoja previa
+ * (misma parada por id; en hoja nueva, cualquier número no vacío cuenta como cambio).
+ */
+export function preselInvitesForTramoPhoneEdits(
+  initial: RouteSheet | null | undefined,
+  paradasFinal: RouteSheetCreatePayload["paradas"],
+): RouteSheetPreselectedInvite[] {
+  const invites: RouteSheetPreselectedInvite[] = [];
+  for (let i = 0; i < paradasFinal.length; i++) {
+    const p = paradasFinal[i]!;
+    const stopId =
+      p.paradaId?.trim() || initial?.paradas[i]?.id?.trim() || "";
+    const nu = p.telefonoTransportista?.trim() ?? "";
+    if (!stopId || !nu) continue;
+    const oldStop = initial?.paradas.find(
+      (x) => (x.id ?? "").trim() === stopId,
+    );
+    const ou = oldStop?.telefonoTransportista?.trim() ?? "";
+    if (normRoutePhoneKey(ou) !== normRoutePhoneKey(nu)) {
+      invites.push({ stopId, phone: nu });
+    }
+  }
+  return invites;
 }
 
 /** Hay transportista con tramo confirmado en la oferta pública para esta parada. */
@@ -123,6 +151,23 @@ export function confirmedStopIdsForCarrier(
       out.add(t.stopId);
   }
   return out;
+}
+
+/**
+ * Acceso al hilo como transportista: suscripción registrada (p. ej. invitación presel o postulación),
+ * aún pendiente de confirmación por comprador/vendedor o ya confirmada.
+ */
+export function carrierHasChatAccessTramoOnOffer(
+  ro: RouteOfferPublicState | undefined,
+  userId: string,
+): boolean {
+  const uid = userId.trim();
+  if (!ro || !uid) return false;
+  return ro.tramos.some((t) => {
+    const a = t.assignment;
+    if (a?.userId !== uid) return false;
+    return a.status === "confirmed" || a.status === "pending";
+  });
 }
 
 export function tramoNotifyLineFromOffer(

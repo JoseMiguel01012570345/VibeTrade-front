@@ -69,6 +69,7 @@ import {
   confirmedAssignmentOnFormTramo,
   effectiveRouteOfferForSheetForm,
   normRoutePhoneKey,
+  preselInvitesForTramoPhoneEdits,
 } from "../../domain/routeSheetOfferGuards";
 
 export type RouteSheetFormPayload = RouteSheetCreatePayload;
@@ -197,7 +198,7 @@ export function RouteSheetFormModal({
   /** Tras un guardado exitoso, si hay teléfonos en tramos, preguntamos si notificar. */
   const [notifyAfterSave, setNotifyAfterSave] = useState<{
     routeSheetId: string;
-    phones: string[];
+    invites: { stopId: string; phone: string }[];
   } | null>(null);
   const [notifyBusy, setNotifyBusy] = useState(false);
   /** Códigos de moneda permitidos (GET /api/v1/market/currencies), mismo origen que el catálogo. */
@@ -486,18 +487,18 @@ export function RouteSheetFormModal({
     }
     const persisted = onSubmit(payload);
     if (!persisted.ok) return;
-    const phoneList = paradasFinal
-      .map((p) => p.telefonoTransportista?.trim())
-      .filter((x): x is string => !!x && x.length > 0);
-    const uniquePhones = [...new Set(phoneList)];
+    const invites = preselInvitesForTramoPhoneEdits(
+      initialRouteSheet ?? null,
+      paradasFinal,
+    );
     if (
-      uniquePhones.length > 0 &&
+      invites.length > 0 &&
       threadId.startsWith("cth_") &&
       getSessionToken()
     ) {
       setNotifyAfterSave({
         routeSheetId: persisted.routeSheetId,
-        phones: uniquePhones,
+        invites,
       });
       return;
     }
@@ -518,7 +519,7 @@ export function RouteSheetFormModal({
         const { notifiedCount } = await postRouteSheetNotifyPreselected(
           threadId,
           saved.routeSheetId,
-          saved.phones,
+          saved.invites,
         );
         if (notifiedCount > 0) {
           toast.success(
@@ -985,9 +986,9 @@ export function RouteSheetFormModal({
             <div className={modalSub}>
               La hoja ya se guardó. ¿Querés avisar por la app a quien tenga
               cuenta con el número que indicaste
-              {notifyAfterSave.phones.length > 1
-                ? " en los tramos"
-                : " en el tramo"}{" "}
+              {notifyAfterSave.invites.length > 1
+                ? " en los tramos donde cambiaste el contacto"
+                : " en el tramo donde cambiaste el contacto"}{" "}
               para que sepa que lo elegiste en esta hoja de ruta?
             </div>
             <div className="vt-modal-actions">

@@ -231,6 +231,19 @@ export async function fetchThreadRouteSheets(threadId: string): Promise<RouteShe
   return (await res.json()) as RouteSheetPayload[]
 }
 
+/** Invitación presel: hoja sin acceso al hilo (teléfono del usuario en un tramo). */
+export async function fetchRouteSheetPreselPreview(
+  threadId: string,
+  routeSheetId: string,
+): Promise<RouteSheetPayload> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}/presel-preview`,
+    { method: 'GET', cache: 'no-store' },
+  )
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as RouteSheetPayload
+}
+
 /** Ítem de GET <c>threads/{id}/route-tramo-subscriptions</c> (camelCase). */
 export type RouteTramoSubscriptionItemApi = {
   routeSheetId: string
@@ -334,6 +347,27 @@ export async function postAcceptRouteTramoSubscriptions(
   return (await res.json()) as { acceptedCount: number }
 }
 
+/** Transportista: responde a la invitación por contacto en hoja (<c>accepted</c> = suscripción al hilo; false = aviso al vendedor). */
+export async function postCarrierRespondPreselInvite(
+  threadId: string,
+  body: { routeSheetId: string; stopId?: string; accepted: boolean },
+): Promise<{ ok: boolean; accepted: boolean }> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheet-presel-invite`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        routeSheetId: body.routeSheetId,
+        accepted: body.accepted,
+        ...(body.stopId?.trim() ? { stopId: body.stopId.trim() } : {}),
+      }),
+    },
+  )
+  if (!res.ok) throw new Error(await res.text())
+  return (await res.json()) as { ok: boolean; accepted: boolean }
+}
+
 export async function postRejectRouteTramoSubscriptions(
   threadId: string,
   body: { routeSheetId: string; carrierUserId: string; stopId?: string },
@@ -370,18 +404,20 @@ export async function putThreadRouteSheet(threadId: string, sheet: RouteSheetPay
   if (!res.ok) throw new Error(await res.text())
 }
 
-/** Aviso in-app a transportistas cuyo número quedó indicado en la hoja (tras confirmar en el modal del formulario). */
+export type RouteSheetPreselectedInviteApi = { stopId: string; phone: string };
+
+/** Aviso in-app solo por tramos cuyo teléfono cambió al guardar (tras confirmar en el modal). */
 export async function postRouteSheetNotifyPreselected(
   threadId: string,
   routeSheetId: string,
-  phones: string[],
+  invites: RouteSheetPreselectedInviteApi[],
 ): Promise<{ notifiedCount: number }> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}/notify-preselected`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phones }),
+      body: JSON.stringify({ invites }),
     },
   )
   if (!res.ok) {

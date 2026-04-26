@@ -67,6 +67,7 @@ export type NotificationItem = {
     | 'route_tramo_subscribe_rejected'
     | 'route_tramo_seller_expelled'
     | 'route_sheet_presel'
+    | 'route_sheet_presel_decl'
     | 'peer_party_exited'
   title: string
   body: string
@@ -82,6 +83,8 @@ export type NotificationItem = {
   /** Resaltar transportista en el panel. */
   highlightCarrierUserId?: string
   stopId?: string
+  /** Tramos del aviso route_sheet_presel (meta <c>stopIds</c>). */
+  preselStopIds?: string[]
 }
 
 type AppState = {

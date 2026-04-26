@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { cn } from "../../lib/cn";
 import {
   ArrowLeft,
@@ -55,11 +55,13 @@ import { AgreementDeleteRouteSheetsModal } from "./components/modals/AgreementDe
 import { PeerPartyExitedInfoModal } from "./components/modals/PeerPartyExitedInfoModal";
 import {
   agreementDeleteBlockedByRouteSheetInvariant,
+  carrierHasChatAccessTramoOnOffer,
   confirmedStopIdsForCarrier,
   resolveRouteOfferPublicForSheet,
   resolveRouteOfferPublicForThread,
   tramoNotifyLineFromOffer,
 } from "./domain/routeSheetOfferGuards";
+import { applyViewerRouteTramoSubscriptions } from "./domain/routeOfferSubscriptionMerge";
 import { tradeAgreementToDraft } from "./domain/tradeAgreementTypes";
 import {
   mergedRouteOfferPublicAfterChatThreadHydration,
@@ -129,17 +131,20 @@ export function ChatPage() {
   const updateRouteSheet = useMarketStore((s) => s.updateRouteSheet);
   const toggleRouteStop = useMarketStore((s) => s.toggleRouteStop);
   /** Una sola suscripción: evita referenciar `thread` antes de inicializarlo si el catálogo depende del hilo. */
-  const { thread, sellerCatalog, routeOfferForThisThread } = useMarketStore(
-    useShallow((s) => {
-      const th = threadId ? s.threads[threadId] : undefined;
-      const ro = resolveRouteOfferPublicForThread(s, th);
-      return {
-        thread: th,
-        sellerCatalog: th ? (s.storeCatalogs[th.storeId] ?? null) : null,
-        routeOfferForThisThread: ro,
-      };
-    }),
-  );
+  const { thread, sellerCatalog, routeOfferForThisThread, offerForThread } =
+    useMarketStore(
+      useShallow((s) => {
+        const th = threadId ? s.threads[threadId] : undefined;
+        const ro = resolveRouteOfferPublicForThread(s, th);
+        const oid = th?.offerId?.trim();
+        return {
+          thread: th,
+          sellerCatalog: th ? (s.storeCatalogs[th.storeId] ?? null) : null,
+          routeOfferForThisThread: ro,
+          offerForThread: oid ? s.offers[oid] : undefined,
+        };
+      }),
+    );
   const sendText = useMarketStore((s) => s.sendText);
   const sendAudio = useMarketStore((s) => s.sendAudio);
   const sendDocsBundle = useMarketStore((s) => s.sendDocsBundle);
@@ -538,6 +543,11 @@ export function ChatPage() {
   useEffect(() => {
     const tid = threadId?.trim() ?? "";
     if (!tid.startsWith("cth_")) return;
+    if (
+      searchParams.get("presel") === "1" &&
+      searchParams.get("sheet")?.trim()
+    )
+      return;
     const existingTh = useMarketStore.getState().threads[tid];
     setPersistThreadError(false);
     let cancelled = false;
@@ -677,15 +687,22 @@ export function ChatPage() {
             nextThread,
             offer,
           );
-          return {
+          let next: typeof s = {
             ...s,
             threads: { ...s.threads, [tid]: nextThread },
             ...(roNext ? { routeOfferPublic: roNext } : {}),
           };
+          if (subsRs && Array.isArray(subsRs)) {
+            const mergedSubs = applyViewerRouteTramoSubscriptions(
+              next,
+              tid,
+              subsRs,
+              meId,
+            );
+            if (mergedSubs) next = mergedSubs;
+          }
+          return next;
         });
-        if (subsRs && Array.isArray(subsRs)) {
-          applyThreadRouteTramoSubscriptions(tid, subsRs, meId);
-        }
         if (dto.purchaseMode && dto.offerId?.trim()) {
           void refreshOfferQaFromServer(dto.offerId.trim());
         }
@@ -696,7 +713,7 @@ export function ChatPage() {
     return () => {
       cancelled = true;
     };
-  }, [threadId, applyThreadRouteTramoSubscriptions, refreshOfferQaFromServer]);
+  }, [threadId, refreshOfferQaFromServer, searchParams]);
 
   const refreshChatRouteData = useCallback(async () => {
     const tid = threadId?.trim();
@@ -742,15 +759,25 @@ export function ChatPage() {
           nextT,
           s.offers[nextT.offerId],
         );
-        return {
+        let next: typeof s = {
           ...s,
           threads: { ...s.threads, [tid]: nextT },
           ...(roNext ? { routeOfferPublic: roNext } : {}),
         };
+        if (subs && Array.isArray(subs)) {
+          const mergedSubs = applyViewerRouteTramoSubscriptions(
+            next,
+            tid,
+            subs,
+            uid,
+          );
+          if (mergedSubs) next = mergedSubs;
+        }
+        return next;
       });
-    }
-    if (subs && Array.isArray(subs))
+    } else if (subs && Array.isArray(subs)) {
       applyThreadRouteTramoSubscriptions(tid, subs, uid);
+    }
   }, [threadId, applyThreadRouteTramoSubscriptions]);
 
   /** El visor de suscriptores hace GET /route-sheets; aplica al hilo en memoria. */
@@ -784,11 +811,16 @@ export function ChatPage() {
 
   useEffect(() => {
     if (!threadId?.startsWith("cth_")) return;
+    if (
+      searchParams.get("presel") === "1" &&
+      searchParams.get("sheet")?.trim()
+    )
+      return;
     void joinChatThread(threadId);
     return () => {
       void disconnectFromChatThread(threadId);
     };
-  }, [threadId]);
+  }, [threadId, searchParams]);
 
   /** Evita reenviar PATCH si ya hubo intento exitoso por id en esta sesión de hilo. */
   const markReadAttemptedIdsRef = useRef<Set<string>>(new Set());
@@ -1079,6 +1111,22 @@ export function ChatPage() {
   }
 
   if (!threadId) return null;
+  const legacyPreselSheet = searchParams.get("sheet")?.trim();
+  if (
+    threadId.startsWith("cth_") &&
+    searchParams.get("presel") === "1" &&
+    legacyPreselSheet
+  ) {
+    const q = new URLSearchParams({ sheet: legacyPreselSheet });
+    const st = searchParams.get("stops")?.trim();
+    if (st) q.set("stops", st);
+    return (
+      <Navigate
+        to={`/invite/presel/${encodeURIComponent(threadId)}?${q}`}
+        replace
+      />
+    );
+  }
   if (!thread) {
     if (threadId.startsWith("cth_") && !persistThreadError) {
       return (
@@ -1110,16 +1158,23 @@ export function ChatPage() {
   const sellerUid = thread.sellerUserId?.trim() || thread.store.ownerUserId;
   const viewerIsThreadSeller = !!sellerUid && sellerUid === me.id;
   /** Comprador/vendedor pueden tener servicio de transporte publicado; no son “transportista bloqueado”. */
+  const threadHasRouteCarriageContext =
+    (thread.routeSheets?.length ?? 0) > 0 ||
+    !!routeOfferForThisThread ||
+    offerForThread?.isEmergentRoutePublication === true ||
+    !!offerForThread?.emergentRouteSheetId ||
+    (offerForThread?.emergentRouteParadas?.length ?? 0) > 0 ||
+    thread.offerId?.startsWith("emo_") === true;
+  const carrierHasResolvedTramoAccess =
+    !!routeOfferForThisThread &&
+    routeOfferForThisThread.threadId === thread.id &&
+    carrierHasChatAccessTramoOnOffer(routeOfferForThisThread, me.id);
   const carrierBlockedFromRouteChat =
     hasTransportService &&
     !viewerIsThreadBuyer &&
     !viewerIsThreadSeller &&
-    routeOfferForThisThread &&
-    routeOfferForThisThread.threadId === thread.id &&
-    !routeOfferForThisThread.tramos.some(
-      (t) =>
-        t.assignment?.userId === me.id && t.assignment.status === "confirmed",
-    ) &&
+    threadHasRouteCarriageContext &&
+    !carrierHasResolvedTramoAccess &&
     !carrierInThreadIntegrantes;
 
   if (carrierBlockedFromRouteChat) {
@@ -1130,9 +1185,10 @@ export function ChatPage() {
             Chat no disponible aún
           </div>
           <p className="vt-muted mt-2 text-[13px] leading-snug">
-            Como transportista, el acceso al chat de esta operación se habilita
-            cuando el vendedor o el comprador aceptan tu suscripción a un tramo
-            de la hoja de ruta publicada.
+            Como transportista, necesitás una suscripción a un tramo de la hoja de
+            ruta publicada (incluida una invitación aceptada). Si aún no te
+            postulaste o no figura tu teléfono en la hoja, no podés entrar a este
+            chat.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" className="vt-btn" onClick={() => nav(-1)}>
