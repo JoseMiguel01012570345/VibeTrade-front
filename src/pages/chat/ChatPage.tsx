@@ -105,9 +105,23 @@ import {
   buildPurchaseThreadSystemOnly,
   syncOwnQaIntoMessages,
 } from "../../app/store/marketStoreHelpers";
+import type { Message } from "../../app/store/marketStoreTypes";
 import "./chat.css";
 
 const CHAT_SCROLL_BOTTOM_PX = 80;
+
+/** Misma familia de tipos que el ping de entregado vía <c>messageCreated</c> (chatRealtime). */
+function incomingMessageSupportsDeliveryAck(m: Message): boolean {
+  if (m.from !== "other" || !m.id || m.id.startsWith("pend_")) return false;
+  return (
+    m.type === "text" ||
+    m.type === "image" ||
+    m.type === "audio" ||
+    m.type === "doc" ||
+    m.type === "docs" ||
+    m.type === "agreement"
+  );
+}
 
 export function ChatPage() {
   const { threadId } = useParams();
@@ -163,6 +177,14 @@ export function ChatPage() {
   const hasTransportService = useMemo(
     () => userHasTransportService(me.id, stores, storeCatalogs),
     [me.id, stores, storeCatalogs],
+  );
+
+  const isActingSeller = useMemo(
+    () =>
+      !!thread &&
+      !!thread.store.ownerUserId &&
+      thread.store.ownerUserId === me.id,
+    [thread, me.id],
   );
 
   /** Panel "gente": el comprador no es `me` cuando el vendedor abre el chat (antes se mostraba la ficha del vendedor). */
@@ -828,6 +850,27 @@ export function ChatPage() {
     markReadAttemptedIdsRef.current = new Set();
   }, [threadId]);
 
+  const deliveredAckIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    deliveredAckIdsRef.current = new Set();
+  }, [threadId]);
+
+  /**
+   * Si faltó <c>messageCreated</c> (cliente apagado), al hidratar el hilo: ACK entregado para todos
+   * los entrantes. El "visto" (API <c>read</c>) se envía con el scroll en <c>ChatMessageList</c>.
+   */
+  useEffect(() => {
+    if (!threadId?.startsWith("cth_") || !thread) return;
+    const candidates = thread.messages.filter(incomingMessageSupportsDeliveryAck);
+    for (const m of candidates) {
+      if (deliveredAckIdsRef.current.has(m.id)) continue;
+      deliveredAckIdsRef.current.add(m.id);
+      void patchChatMessageStatus(threadId, m.id, "delivered").catch(() => {
+        deliveredAckIdsRef.current.delete(m.id);
+      });
+    }
+  }, [threadId, thread, me.id]);
+
   const onIncomingMessageVisibleForRead = useCallback(
     (messageId: string) => {
       if (!threadId?.startsWith("cth_")) return;
@@ -882,6 +925,13 @@ export function ChatPage() {
   useEffect(() => {
     if (thread?.chatActionsLocked) setSelected({});
   }, [thread?.chatActionsLocked]);
+
+  useEffect(() => {
+    if (!isActingSeller) {
+      setShowRouteSheetForm(false);
+      setRouteSheetBeingEdited(null);
+    }
+  }, [isActingSeller]);
 
   const onChatListScroll = useCallback(() => {
     const el = listRef.current;
@@ -1208,15 +1258,7 @@ export function ChatPage() {
   }
 
   const store = thread.store;
-  const isActingSeller = !!store.ownerUserId && store.ownerUserId === me.id;
   const chatActionsLocked = thread.chatActionsLocked === true;
-
-  useEffect(() => {
-    if (!isActingSeller) {
-      setShowRouteSheetForm(false);
-      setRouteSheetBeingEdited(null);
-    }
-  }, [isActingSeller]);
 
   function applySellerTrustPenaltyIfQueued() {
     const q = trustPenaltyNextSave.current;

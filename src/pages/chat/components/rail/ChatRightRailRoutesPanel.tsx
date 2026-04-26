@@ -560,7 +560,6 @@ export function ChatRightRailRoutesPanel({
                       ? routeOfferResolved.tramos.find((t) => t.stopId === p.id)
                       : undefined;
                   const tel = effectiveTramoContactPhone(p, ot);
-                  console.log({ assignment: ot.assignment });
                   return (
                     <>
                       {tel ? (

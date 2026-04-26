@@ -58,8 +58,6 @@ export function TramoSubscribedServiceFicha({
     };
   }, [storeServiceId]);
 
-  console.log({ storeServiceId });
-
   return (
     <div className="mt-2 rounded-lg border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-2.5 py-2">
       <div className="text-[10px] font-black uppercase tracking-wide text-[var(--muted)]">

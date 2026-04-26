@@ -292,7 +292,6 @@ export function ChatRouteSubscribersPanel({
             g.stopId === focusTramoId && g.routeSheetId === focusRouteSheetId,
         ) ?? null)
       : null;
-  console.log("selectedTramo", selectedTramo);
   const selectedCarrier =
     selectedTramo && focusCarrierId
       ? (selectedTramo.carriers.find((c) => c.userId === focusCarrierId) ??
@@ -386,7 +385,6 @@ export function ChatRouteSubscribersPanel({
 
   const carrierAssignmentForFicha =
     useMemo((): RouteOfferTramoAssignment | null => {
-      console.log({ selectedCarrier, tramoRowForSelection });
       if (!selectedCarrier || !tramoRowForSelection) return null;
       return {
         userId: selectedCarrier.userId,
@@ -612,7 +610,6 @@ export function ChatRouteSubscribersPanel({
     }
     return "Suscriptores";
   }
-  console.log({ carrierAssignmentForFicha });
   return (
     <>
       <aside

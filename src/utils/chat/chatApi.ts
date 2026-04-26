@@ -596,6 +596,19 @@ export async function fetchChatNotifications(options?: {
   return (await res.json()) as ChatNotificationDto[]
 }
 
+/**
+ * Tras el login: el backend marca <c>delivered</c> en bloque en mensajes entrantes pendientes
+ * (hasta 500 recientes por hilo) para notificar a emisores vía hub.
+ */
+export async function postAckPendingDeliveryOnLogin(): Promise<number> {
+  const res = await apiFetch('/api/v1/chat/ack-pending-delivery-on-login', {
+    method: 'POST',
+  })
+  if (!res.ok) throw new Error(await res.text())
+  const j = (await res.json()) as { applied: number }
+  return typeof j.applied === 'number' ? j.applied : 0
+}
+
 export async function patchChatMessageStatus(
   threadId: string,
   messageId: string,

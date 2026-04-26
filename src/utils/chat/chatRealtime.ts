@@ -133,7 +133,9 @@ export function startChatRealtime(): void {
   }
   if (conn?.state === signalR.HubConnectionState.Connected) return;
   if (conn) {
-    void conn.start().catch((e) => console.error(e));
+    if (conn.state === signalR.HubConnectionState.Disconnected) {
+      void conn.start().catch((e) => console.error(e));
+    }
     return;
   }
 

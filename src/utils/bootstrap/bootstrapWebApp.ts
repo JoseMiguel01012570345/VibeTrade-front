@@ -15,6 +15,7 @@ import {
 import { getOrCreateGuestId } from "../auth/guestId";
 import { syncChatNotificationsFromServer } from "../notifications/notificationsSync";
 import { startChatRealtime } from "../chat/chatRealtime";
+import { postAckPendingDeliveryOnLogin } from "../chat/chatApi";
 
 function normalizeReelsCovers(items: BootstrapResponse["reels"]["items"]) {
   return items.map((r) => ({
@@ -159,5 +160,12 @@ export async function bootstrapWebApp(): Promise<void> {
   if (token && active) {
     void syncChatNotificationsFromServer();
     startChatRealtime();
+    void (async () => {
+      try {
+        await postAckPendingDeliveryOnLogin();
+      } catch {
+        /* sin toast: el hilo aún puede reconocer al abrir chat */
+      }
+    })();
   }
 }
