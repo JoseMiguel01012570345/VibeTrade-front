@@ -91,7 +91,6 @@ export function routeSheetHasConfirmedCarriers(
 /** Huella del tramo para saber si un transportista debe volver a acusar la hoja. */
 export function routeStopAckFingerprint(p: RouteStop): string {
   return JSON.stringify({
-    orden: p.orden,
     origen: (p.origen ?? '').trim(),
     destino: (p.destino ?? '').trim(),
     olat: (p.origenLat ?? '').trim(),

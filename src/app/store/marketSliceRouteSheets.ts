@@ -139,32 +139,6 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
   if (paradasNorm.length === 0) return false
   const titulo = payload.titulo.trim()
   const merc = payload.mercanciasResumen.trim()
-  const built = paradasNorm
-    .map((p, i) => ({
-      id: uid('stop'),
-      orden: i + 1,
-      origen: p.origen.trim(),
-      destino: p.destino.trim(),
-      origenLat: p.origenLat?.trim() || undefined,
-      origenLng: p.origenLng?.trim() || undefined,
-      destinoLat: p.destinoLat?.trim() || undefined,
-      destinoLng: p.destinoLng?.trim() || undefined,
-      tiempoRecogidaEstimado: p.tiempoRecogidaEstimado?.trim() || undefined,
-      tiempoEntregaEstimado: p.tiempoEntregaEstimado?.trim() || undefined,
-      precioTransportista: p.precioTransportista?.trim() || undefined,
-      cargaEnTramo: p.cargaEnTramo?.trim() || undefined,
-      tipoMercanciaCarga: p.tipoMercanciaCarga?.trim() || undefined,
-      tipoMercanciaDescarga: p.tipoMercanciaDescarga?.trim() || undefined,
-      notas: p.notas?.trim() || undefined,
-      responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() || undefined,
-      requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
-      tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || undefined,
-      telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
-      transportInvitedStoreServiceId: p.transportInvitedStoreServiceId?.trim() || undefined,
-      transportInvitedServiceSummary: p.transportInvitedServiceSummary?.trim() || undefined,
-      monedaPago: p.monedaPago?.trim() || undefined,
-      completada: false as boolean | undefined,
-    }))
   let ok = false
   set((s) => {
     const th = s.threads[threadId]
@@ -172,11 +146,39 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
     const idx = th.routeSheets.findIndex((rs) => rs.id === routeSheetId)
     if (idx < 0) return s
     const existing = th.routeSheets[idx]
-    const paradas: RouteStop[] = built.map((p, i) => ({
-      ...p,
-      id: existing.paradas[i]?.id ?? p.id,
-      completada: existing.paradas[i]?.completada ?? false,
-    }))
+    const paradas: RouteStop[] = paradasNorm.map((p, i) => {
+      const paradaId = p.paradaId?.trim()
+      const existingStop =
+        paradaId && paradaId.length > 0
+          ? existing.paradas.find((st) => (st.id ?? '').trim() === paradaId)
+          : undefined
+      const id = existingStop?.id ?? uid('stop')
+      return {
+        id,
+        orden: i + 1,
+        origen: p.origen.trim(),
+        destino: p.destino.trim(),
+        origenLat: p.origenLat?.trim() || undefined,
+        origenLng: p.origenLng?.trim() || undefined,
+        destinoLat: p.destinoLat?.trim() || undefined,
+        destinoLng: p.destinoLng?.trim() || undefined,
+        tiempoRecogidaEstimado: p.tiempoRecogidaEstimado?.trim() || undefined,
+        tiempoEntregaEstimado: p.tiempoEntregaEstimado?.trim() || undefined,
+        precioTransportista: p.precioTransportista?.trim() || undefined,
+        cargaEnTramo: p.cargaEnTramo?.trim() || undefined,
+        tipoMercanciaCarga: p.tipoMercanciaCarga?.trim() || undefined,
+        tipoMercanciaDescarga: p.tipoMercanciaDescarga?.trim() || undefined,
+        notas: p.notas?.trim() || undefined,
+        responsabilidadEmbalaje: p.responsabilidadEmbalaje?.trim() || undefined,
+        requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
+        tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || undefined,
+        telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+        transportInvitedStoreServiceId: p.transportInvitedStoreServiceId?.trim() || undefined,
+        transportInvitedServiceSummary: p.transportInvitedServiceSummary?.trim() || undefined,
+        monedaPago: p.monedaPago?.trim() || undefined,
+        completada: existingStop?.completada ?? false,
+      }
+    })
     const now = Date.now()
     const sheet: RouteSheet = {
       ...stripLegacyRouteSheetHead(existing),

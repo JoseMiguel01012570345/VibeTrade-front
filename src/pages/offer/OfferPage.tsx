@@ -50,7 +50,7 @@ import { toggleOfferLike } from "../../utils/market/offerEngagementApi";
 import { emergentRoutePublicationUserDescription } from "../../utils/market/emergentRouteOfferDisplay";
 import {
   buildEmergentMapLegs,
-  tramoParadaNumeros,
+  tramoMapSubrouteHint,
 } from "../../utils/map/emergentRouteMapLegs";
 import { useLegKmForEmergentLegs } from "../../hooks/useEmergentRouteLegKm";
 import {
@@ -1064,7 +1064,7 @@ export function OfferPage() {
                               );
                               const meta = li >= 0 ? fichaMapLegs[li] : null;
                               const km = li >= 0 ? (fichaLegKm[li] ?? 0) : 0;
-                              const { fromN, toN } = tramoParadaNumeros(
+                              const mapHint = tramoMapSubrouteHint(
                                 fichaMapLegs,
                                 t.orden,
                               );
@@ -1091,7 +1091,7 @@ export function OfferPage() {
                                       <strong>Tramo {t.orden}</strong>
                                       <span className="font-extrabold text-[var(--muted)]">
                                         {" "}
-                                        · {fromN} → {toN}
+                                        · {mapHint}
                                       </span>
                                     </span>
                                     <span className="mt-0.5 block text-[12px] font-semibold leading-snug text-[var(--muted)]">

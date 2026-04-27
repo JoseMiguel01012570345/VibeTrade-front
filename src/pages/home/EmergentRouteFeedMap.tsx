@@ -2,8 +2,15 @@ import { useEffect, useMemo } from "react";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { EmergentMapLeg } from "../../utils/map/emergentRouteMapLegs";
-import { emergentMapWaypoints } from "../../utils/map/emergentRouteMapLegs";
-import { storeMapPinIcon } from "../../utils/map/storeMapPinIcon";
+import {
+  emergentMapIslandMarkers,
+  emergentMapRouteSegmentColors,
+  emergentMapRouteSegments,
+} from "../../utils/map/emergentRouteMapLegs";
+import {
+  routeMapFinishWaypointIcon,
+  storeMapPinIcon,
+} from "../../utils/map/storeMapPinIcon";
 import { cn } from "../../lib/cn";
 import { LeafletRoadSnappedRoute } from "./LeafletRoadSnappedRoute";
 import "leaflet/dist/leaflet.css";
@@ -12,11 +19,11 @@ import "./emergentRouteMapMarkers.css";
 /** Evita que los paneles de Leaflet (z-index altos) compitan con el chrome fijo (p. ej. barra de confianza z-50). */
 const embedRootClass = "relative isolate z-0 min-h-0";
 
-function routeWaypointIcon(label: string) {
+function routeWaypointIcon(label: string, fillColor: string) {
   const w = Math.max(28, 16 + label.length * 9);
   return L.divIcon({
     className: "emergent-route-legend",
-    html: `<div class="er-mark">${label}</div>`,
+    html: `<div class="er-mark" style="background:${fillColor}">${label}</div>`,
     iconSize: [w, 28],
     iconAnchor: [w / 2, 14],
   });
@@ -59,14 +66,13 @@ type Props = Readonly<{
 }>;
 
 /**
- * Mapa (solo lectura) con N+1 marcas numeradas en los vértices de la ruta (inicio, fin de cada tramo) y trazo entre ellos.
+ * Mapa (solo lectura): trazos por tramo (no conexos entre sí) y marcas por subruta conexa
+ * (número en el origen de **cada** tramo de la subruta; 🏁 = fin del último tramo de esa subruta).
  */
 export function EmergentRouteFeedMap({ legs, className, mapKey, interactive = false }: Props) {
-  const waypoints = useMemo(() => emergentMapWaypoints(legs), [legs]);
-  const linePositions = useMemo(
-    () => waypoints.map((w) => [w.lat, w.lng] as [number, number]),
-    [waypoints],
-  );
+  const islandMarkers = useMemo(() => emergentMapIslandMarkers(legs), [legs]);
+  const routeSegments = useMemo(() => emergentMapRouteSegments(legs), [legs]);
+  const segmentColors = useMemo(() => emergentMapRouteSegmentColors(legs), [legs]);
   const useRoadSnapping = useMemo(() => legs.every((leg) => !leg.synthetic), [legs]);
 
   if (legs.length === 0) {
@@ -82,8 +88,8 @@ export function EmergentRouteFeedMap({ legs, className, mapKey, interactive = fa
     );
   }
 
-  const w0 = waypoints[0];
-  const w1 = waypoints[waypoints.length - 1];
+  const w0 = islandMarkers[0];
+  const w1 = islandMarkers[islandMarkers.length - 1];
   const center: [number, number] =
     w0 && w1 ? [(w0.lat + w1.lat) / 2, (w0.lng + w1.lng) / 2] : [0, 0];
 
@@ -110,14 +116,22 @@ export function EmergentRouteFeedMap({ legs, className, mapKey, interactive = fa
               : undefined
           }
         />
-        {linePositions.length >= 2 ? (
-          <LeafletRoadSnappedRoute positions={linePositions} useRoads={useRoadSnapping} />
+        {routeSegments.length > 0 ? (
+          <LeafletRoadSnappedRoute
+            segments={routeSegments}
+            segmentColors={segmentColors}
+            useRoads={useRoadSnapping}
+          />
         ) : null}
-        {waypoints.map((w) => (
+        {islandMarkers.map((m, idx) => (
           <Marker
-            key={`wp-${w.label}-${w.lat}-${w.lng}`}
-            position={[w.lat, w.lng]}
-            icon={routeWaypointIcon(w.label)}
+            key={`${m.kind}-${idx}-${m.lat.toFixed(5)}-${m.lng.toFixed(5)}-${m.tramoOrden ?? ""}`}
+            position={[m.lat, m.lng]}
+            icon={
+              m.kind === "tramo"
+                ? routeWaypointIcon(String(m.tramoOrden ?? ""), m.lineColor)
+                : routeMapFinishWaypointIcon(m.lineColor)
+            }
             zIndexOffset={400}
           />
         ))}

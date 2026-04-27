@@ -1,8 +1,25 @@
+import type { MouseEvent } from 'react'
 import { GitBranch } from 'lucide-react'
 import { cn } from '../../../../lib/cn'
 import type { ReplyQuote } from '../../../../app/store/useMarketStore'
 
-export function ChatReplyQuotes({ quotes, inThread }: { quotes: ReplyQuote[]; inThread?: boolean }) {
+export function ChatReplyQuotes({
+  quotes,
+  inThread,
+  onQuoteActivate,
+}: {
+  quotes: ReplyQuote[]
+  inThread?: boolean
+  /** Pulsar la tarjeta citada lleva al mensaje original en el hilo. */
+  onQuoteActivate?: (quotedMessageId: string) => void
+}) {
+  const quoteBodyClass = cn(
+    'flex min-w-0 flex-col gap-0.5 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_55%,transparent)] px-2 py-1.5 text-left',
+    !inThread && 'flex-1',
+    onQuoteActivate &&
+      'cursor-pointer transition-colors hover:bg-[color-mix(in_oklab,var(--bg)_72%,var(--surface))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]',
+  )
+
   return (
     <div className="flex flex-col gap-1.5" aria-label="Mensajes citados">
       <div
@@ -21,15 +38,25 @@ export function ChatReplyQuotes({ quotes, inThread }: { quotes: ReplyQuote[]; in
             )}
             aria-hidden
           />
-          <div
-            className={cn(
-              'flex min-w-0 flex-col gap-0.5 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_55%,transparent)] px-2 py-1.5',
-              !inThread && 'flex-1',
-            )}
-          >
-            <span className="text-xs font-extrabold text-[#25d366]">{q.author}</span>
-            <span className="break-words text-xs leading-snug text-[var(--muted)]">{q.preview}</span>
-          </div>
+          {onQuoteActivate ? (
+            <button
+              type="button"
+              className={quoteBodyClass}
+              title="Ir al mensaje citado"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation()
+                onQuoteActivate(q.id)
+              }}
+            >
+              <span className="text-xs font-extrabold text-[#25d366]">{q.author}</span>
+              <span className="break-words text-xs leading-snug text-[var(--muted)]">{q.preview}</span>
+            </button>
+          ) : (
+            <div className={quoteBodyClass}>
+              <span className="text-xs font-extrabold text-[#25d366]">{q.author}</span>
+              <span className="break-words text-xs leading-snug text-[var(--muted)]">{q.preview}</span>
+            </div>
+          )}
         </div>
       ))}
     </div>

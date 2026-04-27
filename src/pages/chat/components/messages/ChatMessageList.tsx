@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -150,7 +151,12 @@ function TrackedMessageRow({
   }, [shouldTrack, m.id, onIncomingMessageVisible, listRef]);
 
   return (
-    <div ref={rowRef} className={className} onClick={onClick}>
+    <div
+      ref={rowRef}
+      className={className}
+      onClick={onClick}
+      data-chat-message-row={m.id}
+    >
       {children}
     </div>
   );
@@ -229,6 +235,17 @@ export function ChatMessageList({
   const orderedMessages = useMemo(
     () => normalizeThreadMessages(thread.messages),
     [thread.messages],
+  );
+
+  const scrollToQuotedMessage = useCallback(
+    (messageId: string) => {
+      const root = listRef.current;
+      if (!root || !messageId) return;
+      const rows = root.querySelectorAll<HTMLElement>("[data-chat-message-row]");
+      const el = [...rows].find((r) => r.dataset.chatMessageRow === messageId);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    },
+    [listRef],
   );
 
   /** Solo el comprador puede aceptar/rechazar; el vendedor ve estado pendiente sin esas acciones. */
@@ -384,6 +401,7 @@ export function ChatMessageList({
               ) : null}
               <MessageBody
                 m={m}
+                onReplyQuoteNavigate={scrollToQuotedMessage}
                 onImageOpen={setLightboxUrl}
                 agreementDoc={agreementDoc}
                 onAcceptAgreement={

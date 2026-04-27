@@ -13,6 +13,7 @@ import { ytThread } from "./chatMediaThreadStyles";
 export function MessageBody({
   m,
   onImageOpen,
+  onReplyQuoteNavigate,
   agreementDoc,
   onAcceptAgreement,
   onRejectAgreement,
@@ -22,6 +23,8 @@ export function MessageBody({
 }: {
   m: Message;
   onImageOpen: (url: string) => void;
+  /** Al pulsar la cita de una réplica, desplazar el hilo al mensaje original. */
+  onReplyQuoteNavigate?: (quotedMessageId: string) => void;
   agreementDoc?: TradeAgreement | null;
   onAcceptAgreement?: () => void;
   onRejectAgreement?: () => void;
@@ -33,7 +36,13 @@ export function MessageBody({
     const hasThread = m.replyQuotes && m.replyQuotes.length > 0;
     return (
       <div className={cn("flex min-w-0 flex-col gap-2", hasThread && ytThread)}>
-        {hasThread && <ChatReplyQuotes quotes={m.replyQuotes!} inThread />}
+        {hasThread && (
+          <ChatReplyQuotes
+            quotes={m.replyQuotes!}
+            inThread
+            onQuoteActivate={onReplyQuoteNavigate}
+          />
+        )}
         <div className={cn(hasThread && "pt-0.5")}>{m.text}</div>
       </div>
     );
@@ -42,7 +51,13 @@ export function MessageBody({
     const hasThread = m.replyQuotes && m.replyQuotes.length > 0;
     return (
       <div className={cn("flex min-w-0 flex-col gap-2", hasThread && ytThread)}>
-        {hasThread && <ChatReplyQuotes quotes={m.replyQuotes!} inThread />}
+        {hasThread && (
+          <ChatReplyQuotes
+            quotes={m.replyQuotes!}
+            inThread
+            onQuoteActivate={onReplyQuoteNavigate}
+          />
+        )}
         <ImageGrid images={m.images} onOpen={onImageOpen} />
         {m.embeddedAudio ? (
           <AudioMicro
@@ -68,7 +83,13 @@ export function MessageBody({
           hasThread && ytThread,
         )}
       >
-        {hasThread && <ChatReplyQuotes quotes={m.replyQuotes!} inThread />}
+        {hasThread && (
+          <ChatReplyQuotes
+            quotes={m.replyQuotes!}
+            inThread
+            onQuoteActivate={onReplyQuoteNavigate}
+          />
+        )}
         <div className={cn("min-w-0 w-full", hasThread && "pt-0.5")}>
           <AudioMicro url={m.url} seconds={m.seconds} isMine={isMine} />
         </div>
@@ -79,7 +100,13 @@ export function MessageBody({
     const hasThread = m.replyQuotes && m.replyQuotes.length > 0;
     return (
       <div className={cn("flex min-w-0 flex-col gap-2", hasThread && ytThread)}>
-        {hasThread && <ChatReplyQuotes quotes={m.replyQuotes!} inThread />}
+        {hasThread && (
+          <ChatReplyQuotes
+            quotes={m.replyQuotes!}
+            inThread
+            onQuoteActivate={onReplyQuoteNavigate}
+          />
+        )}
         <DocGrid documents={m.documents} isMine={isMine} />
         {m.embeddedAudio ? (
           <AudioMicro
@@ -100,7 +127,13 @@ export function MessageBody({
     const hasThread = m.replyQuotes && m.replyQuotes.length > 0;
     return (
       <div className={cn("flex min-w-0 flex-col gap-2", hasThread && ytThread)}>
-        {hasThread && <ChatReplyQuotes quotes={m.replyQuotes!} inThread />}
+        {hasThread && (
+          <ChatReplyQuotes
+            quotes={m.replyQuotes!}
+            inThread
+            onQuoteActivate={onReplyQuoteNavigate}
+          />
+        )}
         <DocRow
           name={m.name}
           size={m.size}

@@ -11,6 +11,11 @@ import {
 import type { RouteSheet, RouteStop } from "../../domain/routeSheetTypes";
 import { VibeMapTileLayer } from "../../../home/EmergentRouteFeedMap";
 import { LeafletRoadSnappedRoute } from "../../../home/LeafletRoadSnappedRoute";
+import {
+  emergentMapLegsFromRouteStops,
+  emergentMapRouteSegmentColors,
+  emergentMapRouteSegments,
+} from "../../../../utils/map/emergentRouteMapLegs";
 import { routeMapNumberedWaypointIcon } from "../../../../utils/map/storeMapPinIcon";
 import {
   mapBackdropLayerAboveChatRail,
@@ -52,24 +57,6 @@ function haversineKm(a: [number, number], b: [number, number]): number {
       Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(x)));
-}
-
-function routePositionsFromSheet(sheet: RouteSheet): [number, number][] {
-  const out: [number, number][] = [];
-  const same = (a: [number, number], b: [number, number]) =>
-    Math.abs(a[0] - b[0]) < 1e-5 && Math.abs(a[1] - b[1]) < 1e-5;
-  for (const p of sheet.paradas) {
-    const o = coordPair(p, "origen");
-    const d = coordPair(p, "destino");
-    if (out.length === 0) {
-      if (o) out.push(o);
-      if (d && (!o || !same(o, d))) out.push(d);
-    } else {
-      if (o && !same(out[out.length - 1]!, o)) out.push(o);
-      if (d && (!out.length || !same(out[out.length - 1]!, d))) out.push(d);
-    }
-  }
-  return out;
 }
 
 function FitRouteBounds({ positions }: { positions: [number, number][] }) {
@@ -148,10 +135,30 @@ export function CarrierRoutePreselInviteModal({
     };
   }, [open, threadId, routeSheetId]);
 
-  const mapPositions = useMemo(() => {
-    if (!sheet) return [] as [number, number][];
-    return routePositionsFromSheet(sheet);
-  }, [sheet]);
+  const mapEmergentLegs = useMemo(
+    () => (sheet ? emergentMapLegsFromRouteStops(sheet.paradas) : []),
+    [sheet],
+  );
+  const mapRouteSegments = useMemo(
+    () => emergentMapRouteSegments(mapEmergentLegs),
+    [mapEmergentLegs],
+  );
+  const mapSegmentColors = useMemo(
+    () => emergentMapRouteSegmentColors(mapEmergentLegs),
+    [mapEmergentLegs],
+  );
+  const lineColorByTramoOrden = useMemo(() => {
+    const m = new Map<number, string>();
+    mapEmergentLegs.forEach((leg, i) => {
+      m.set(leg.orden, mapSegmentColors[i] ?? "#2563eb");
+    });
+    return m;
+  }, [mapEmergentLegs, mapSegmentColors]);
+
+  const mapBoundsPositions = useMemo(
+    () => mapRouteSegments.flat(),
+    [mapRouteSegments],
+  );
 
   const isHighlighted = useCallback(
     (stopId: string) =>
@@ -275,27 +282,35 @@ export function CarrierRoutePreselInviteModal({
 
               <div className="grid gap-3 min-[720px]:grid-cols-2">
                 <div className="min-h-[220px] overflow-hidden rounded-xl border border-[var(--border)]">
-                  {mapPositions.length >= 2 ? (
+                  {mapRouteSegments.length > 0 ? (
                     <MapContainer
-                      center={mapPositions[0] ?? [22.5, -81]}
+                      center={mapBoundsPositions[0] ?? [22.5, -81]}
                       zoom={9}
                       className="h-[260px] w-full"
                       scrollWheelZoom
                     >
                       <VibeMapTileLayer />
-                      <FitRouteBounds positions={mapPositions} />
-                      <LeafletRoadSnappedRoute positions={mapPositions} useRoads />
+                      <FitRouteBounds positions={mapBoundsPositions} />
+                      <LeafletRoadSnappedRoute
+                        segments={mapRouteSegments}
+                        segmentColors={mapSegmentColors}
+                        useRoads
+                      />
                       {sheet.paradas.flatMap((p) => {
                         if (!isHighlighted(p.id)) return [];
                         const o = coordPair(p, "origen");
                         const d = coordPair(p, "destino");
+                        const lineC = lineColorByTramoOrden.get(p.orden) ?? "#2563eb";
                         const out: JSX.Element[] = [];
                         if (o)
                           out.push(
                             <Marker
                               key={`${p.id}-o`}
                               position={o}
-                              icon={routeMapNumberedWaypointIcon(`${p.orden}a`)}
+                              icon={routeMapNumberedWaypointIcon(
+                                `${p.orden}a`,
+                                lineC,
+                              )}
                             />,
                           );
                         if (d)
@@ -303,7 +318,10 @@ export function CarrierRoutePreselInviteModal({
                             <Marker
                               key={`${p.id}-d`}
                               position={d}
-                              icon={routeMapNumberedWaypointIcon(`${p.orden}b`)}
+                              icon={routeMapNumberedWaypointIcon(
+                                `${p.orden}b`,
+                                lineC,
+                              )}
                             />,
                           );
                         return out;

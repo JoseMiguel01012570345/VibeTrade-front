@@ -67,7 +67,7 @@ export type RouteSheetPreselectedInvite = { stopId: string; phone: string };
 
 /**
  * Invitaciones presel solo donde el teléfono del tramo cambió respecto a la hoja previa
- * (misma parada por id; en hoja nueva, cualquier número no vacío cuenta como cambio).
+ * (misma parada por `paradaId`; sin id de parada persistida no se presel-notifica — p. ej. tramo recién insertado).
  */
 export function preselInvitesForTramoPhoneEdits(
   initial: RouteSheet | null | undefined,
@@ -76,7 +76,7 @@ export function preselInvitesForTramoPhoneEdits(
   const invites: RouteSheetPreselectedInvite[] = [];
   for (let i = 0; i < paradasFinal.length; i++) {
     const p = paradasFinal[i]!;
-    const stopId = p.paradaId?.trim() || initial?.paradas[i]?.id?.trim() || "";
+    const stopId = p.paradaId?.trim() || "";
     const nu = p.telefonoTransportista?.trim() ?? "";
     if (!stopId || !nu) continue;
     const oldStop = initial?.paradas.find(

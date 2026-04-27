@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import L from "leaflet";
 import toast from "react-hot-toast";
 import { MapContainer, Marker, useMap, useMapEvents } from "react-leaflet";
@@ -17,7 +24,11 @@ import { ModalFormField as Field } from "./ModalFormField";
 import {
   buildDestinoMapPriorContext,
   emptyTramo,
+  emptyTramoInsertedBeforeFirst,
+  emptyTramoInsertedBetween,
   expandChainedTramoOrigins,
+  expandedTramoDestinoCoords,
+  expandedTramoOrigenCoords,
   parseRouteLatLngInputPair,
   tramosToLimpios,
 } from "../../lib/routeSheetTramoFormUtils";
@@ -40,13 +51,14 @@ import {
   rutaTramoRemoveBtn,
   rutaTramosBlock,
 } from "../../styles/formModalStyles";
-import { ExternalLink, MapPin, Trash2 } from "lucide-react";
+import { ExternalLink, MapPin, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   routeSheetLegacyHead,
   routeStopsToFormInputs,
   type RouteSheet,
   type RouteSheetCreatePayload,
+  type RouteStop,
   type RouteTramoFormInput,
 } from "../../domain/routeSheetTypes";
 import type { RouteSheetFormErrors } from "../../domain/routeSheetValidation";
@@ -101,6 +113,17 @@ const ROUTE_MAP_ZOOM_POINT = 13;
 
 function formatPickedCoord(n: number): string {
   return n.toFixed(6);
+}
+
+/** Parada persistida que corresponde a la fila (por `paradaId`), no por índice (tras insertar tramos). */
+function sheetStopMatchingFormRow(
+  row: RouteTramoFormInput | undefined,
+  sheet: RouteSheet | null | undefined,
+): RouteStop | undefined {
+  if (!sheet || !row) return undefined;
+  const pid = row.paradaId?.trim();
+  if (!pid) return undefined;
+  return sheet.paradas.find((x) => (x.id ?? "").trim() === pid);
 }
 
 function RouteMapClickHandler({
@@ -162,15 +185,6 @@ function RouteMapCameraSync({
     priorKey,
   ]);
   return null;
-}
-
-/** En el formulario, el origen del tramo i&gt;0 no se guarda en el estado: se deriva del destino del tramo i−1. */
-function clearDerivedOriginsInForm(
-  tramos: RouteTramoFormInput[],
-): RouteTramoFormInput[] {
-  return tramos.map((t, i) =>
-    i === 0 ? t : { ...t, origen: "", origenLat: "", origenLng: "" },
-  );
 }
 
 export function RouteSheetFormModal({
@@ -261,12 +275,11 @@ export function RouteSheetFormModal({
               rs.monedaPago ?? "",
             )
           : [emptyTramo(), emptyTramo()];
-      const tramosInit = clearDerivedOriginsInForm(tramosInitRaw);
       setTitulo(rs.titulo);
       setMerc(rs.mercanciasResumen);
       setNotasG(rs.notasGenerales ?? "");
-      setTramos(tramosInit);
-      const limpios0 = expandChainedTramoOrigins(tramosToLimpios(tramosInit));
+      setTramos(tramosInitRaw);
+      const limpios0 = expandChainedTramoOrigins(tramosToLimpios(tramosInitRaw));
       const draft0: RouteSheetCreatePayload = {
         titulo: rs.titulo.trim(),
         mercanciasResumen: rs.mercanciasResumen.trim(),
@@ -309,6 +322,32 @@ export function RouteSheetFormModal({
     return buildDestinoMapPriorContext(tramos, mapPick.tramoIndex);
   }, [mapPick, tramos]);
 
+  /** En modal de origen: destino del tramo anterior; en modal de destino: origen del tramo siguiente (cadena expandida). */
+  const mapAdjacentSnap = useMemo(() => {
+    if (!mapPick) return null;
+    const k = mapPick.tramoIndex;
+    if (mapPick.punto === "origen") {
+      if (k < 1) return null;
+      const place = expandedTramoDestinoCoords(tramos, k - 1);
+      if (!place) return null;
+      return {
+        buttonLabel: `Usar destino del tramo ${k}`,
+        lat: place.lat,
+        lng: place.lng,
+        placeLabel: place.placeLabel,
+      };
+    }
+    if (k >= tramos.length - 1) return null;
+    const place = expandedTramoOrigenCoords(tramos, k + 1);
+    if (!place) return null;
+    return {
+      buttonLabel: `Usar origen del tramo ${k + 2}`,
+      lat: place.lat,
+      lng: place.lng,
+      placeLabel: place.placeLabel,
+    };
+  }, [mapPick, tramos]);
+
   const monedaOptionsFor = useCallback(
     (cur: string) => paymentCurrencyVtOptions(cur, currencyCodes),
     [currencyCodes],
@@ -342,7 +381,6 @@ export function RouteSheetFormModal({
   if (!open) return null;
 
   function openMapPicker(tramoIndex: number, punto: "origen" | "destino") {
-    if (punto === "origen" && tramoIndex > 0) return;
     const t = tramos[tramoIndex];
     if (!t) return;
     setMapCoordError(undefined);
@@ -352,9 +390,19 @@ export function RouteSheetFormModal({
     let lngStr = "";
     let labelStr = "";
     if (punto === "origen") {
-      latStr = t.origenLat ?? "";
-      lngStr = t.origenLng ?? "";
-      labelStr = t.origen ?? "";
+      const prev = tramoIndex > 0 ? tramos[tramoIndex - 1] : null;
+      const ownLat = (t.origenLat ?? "").trim();
+      const ownLng = (t.origenLng ?? "").trim();
+      const hasOwnCoords = ownLat !== "" && ownLng !== "";
+      if (hasOwnCoords || tramoIndex === 0) {
+        latStr = t.origenLat ?? "";
+        lngStr = t.origenLng ?? "";
+        labelStr = t.origen ?? "";
+      } else if (prev) {
+        latStr = prev.destinoLat ?? "";
+        lngStr = prev.destinoLng ?? "";
+        labelStr = prev.destino ?? "";
+      }
     } else {
       latStr = t.destinoLat ?? "";
       lngStr = t.destinoLng ?? "";
@@ -463,7 +511,7 @@ export function RouteSheetFormModal({
           offerForTramo,
           sheetIdLock,
           tramos[i]?.paradaId,
-          initialRouteSheet?.paradas[i],
+          sheetStopMatchingFormRow(tramos[i], initialRouteSheet),
         );
         if (!asg) continue;
         const expected = asg.phone?.trim() ?? "";
@@ -555,7 +603,7 @@ export function RouteSheetFormModal({
         offerForTramo,
         initialRouteSheet?.id,
         row?.paradaId,
-        initialRouteSheet?.paradas[i],
+        sheetStopMatchingFormRow(row, initialRouteSheet),
       );
       if (asg) {
         const nxt = patch.telefonoTransportista?.trim() ?? "";
@@ -575,11 +623,6 @@ export function RouteSheetFormModal({
     });
   }
 
-  function addTramoAfterLast() {
-    setTramos((prev) => [...prev, emptyTramo()]);
-    setFormErrors({});
-  }
-
   function removeTramoAt(index: number) {
     const row = tramos[index];
     if (
@@ -589,7 +632,7 @@ export function RouteSheetFormModal({
         offerForTramo,
         initialRouteSheet.id,
         row?.paradaId,
-        initialRouteSheet?.paradas[index],
+        sheetStopMatchingFormRow(row, initialRouteSheet),
       )
     ) {
       toast.error(
@@ -599,13 +642,59 @@ export function RouteSheetFormModal({
     }
     setTramos((prev) => {
       if (prev.length <= 1) return prev;
-      return prev.filter((_, j) => j !== index);
+      const removed = prev[index];
+      const filtered = prev.filter((_, j) => j !== index);
+      /** Tramo i&gt;0 no guarda origen en estado. Si se elimina el primero, el que sube toma origen = destino del eliminado. */
+      if (index === 0 && filtered.length > 0 && removed) {
+        const head = filtered[0];
+        const oName = removed.destino?.trim() ?? "";
+        const oLat = removed.destinoLat?.trim() ?? "";
+        const oLng = removed.destinoLng?.trim() ?? "";
+        filtered[0] = {
+          ...head,
+          origen: oName || head.origen?.trim() || "",
+          origenLat: oLat || head.origenLat?.trim() || "",
+          origenLng: oLng || head.origenLng?.trim() || "",
+        };
+      }
+      return filtered;
     });
     setMapPick((mp) => {
       if (!mp) return null;
       if (mp.tramoIndex === index) return null;
       if (mp.tramoIndex > index)
         return { ...mp, tramoIndex: mp.tramoIndex - 1 };
+      return mp;
+    });
+    setFormErrors({});
+  }
+
+  function insertTramoAt(ins: number) {
+    const n = tramos.length;
+    if (ins < 0 || ins > n) return;
+
+    let newRow: RouteTramoFormInput;
+    if (ins === n) {
+      newRow = emptyTramo();
+    } else if (ins === 0) {
+      const head = tramos[0];
+      newRow = head ? emptyTramoInsertedBeforeFirst(head) : emptyTramo();
+    } else {
+      const prevLeg = tramos[ins - 1];
+      const nextLeg = tramos[ins];
+      if (!prevLeg || !nextLeg) return;
+      newRow = emptyTramoInsertedBetween(prevLeg, nextLeg);
+    }
+
+    setTramos((prev) => {
+      const next = [...prev];
+      next.splice(ins, 0, newRow);
+      return next;
+    });
+    setMapPick((mp) => {
+      if (!mp) return null;
+      if (mp.tramoIndex >= ins)
+        return { ...mp, tramoIndex: mp.tramoIndex + 1 };
       return mp;
     });
     setFormErrors({});
@@ -633,8 +722,11 @@ export function RouteSheetFormModal({
             Todos los campos son obligatorios. Tiempos estimados y precio del
             tramo deben ser números (ej. horas o monto). La moneda de pago se
             elige en cada tramo. Origen, destino y el mapa se sincronizan
-            (dirección ↔ pin). A partir del segundo tramo, el origen coincide
-            con el destino del tramo anterior (solo editable ahí).
+            (dirección ↔ pin). Por defecto el origen del tramo 2+ sigue al
+            destino del anterior; podés fijar otro con «Coordenadas origen
+            (mapa)». Podés insertar un tramo en cualquier punto: el nuevo tramo
+            propone origen = fin del anterior y destino = inicio del que seguía;
+            ambos son editables.
           </div>
           <div className={modalFormBody}>
             <Field
@@ -660,19 +752,33 @@ export function RouteSheetFormModal({
                   {err.paradasGlobal}
                 </div>
               ) : null}
+              <div className="flex justify-center py-1">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 border-0 bg-transparent p-1 text-[12px] font-extrabold text-[var(--primary)] hover:underline"
+                  onClick={() => insertTramoAt(0)}
+                >
+                  <Plus size={14} strokeWidth={2.5} aria-hidden />
+                  Añadir tramo al inicio
+                </button>
+              </div>
               {tramos.map((p, i) => {
                 const te = err.tramos?.[i];
+                const sheetStopRow = sheetStopMatchingFormRow(
+                  p,
+                  initialRouteSheet,
+                );
                 const confAsg = confirmedAssignmentOnFormTramo(
                   offerForTramo,
                   initialRouteSheet?.id,
                   p.paradaId,
-                  initialRouteSheet?.paradas[i],
+                  sheetStopRow,
                 );
                 const activeAsg = activeAssignmentOnFormTramo(
                   offerForTramo,
                   initialRouteSheet?.id,
                   p.paradaId,
-                  initialRouteSheet?.paradas[i],
+                  sheetStopRow,
                 );
                 const carrierServiceOfferId = activeAsg?.storeServiceId?.trim();
                 const phoneLocked = confAsg != null;
@@ -681,60 +787,70 @@ export function RouteSheetFormModal({
                   confAsg?.phone?.trim() ||
                   undefined;
                 const prevStop = i > 0 ? tramos[i - 1] : null;
-                const origenLocked = i > 0;
-                const origenNombre = origenLocked
-                  ? (prevStop?.destino ?? "")
-                  : p.origen;
-                const origenLatShown = origenLocked
-                  ? (prevStop?.destinoLat ?? "")
-                  : (p.origenLat ?? "");
-                const origenLngShown = origenLocked
-                  ? (prevStop?.destinoLng ?? "")
-                  : (p.origenLng ?? "");
+                const ownOLat = (p.origenLat ?? "").trim();
+                const ownOLng = (p.origenLng ?? "").trim();
+                const hasStoredOriginCoords =
+                  ownOLat !== "" && ownOLng !== "";
+                const origenTextReadOnly = i > 0 && !hasStoredOriginCoords;
+                let origenNombre: string;
+                let origenLatShown: string;
+                let origenLngShown: string;
+                if (i === 0) {
+                  origenNombre = p.origen;
+                  origenLatShown = p.origenLat ?? "";
+                  origenLngShown = p.origenLng ?? "";
+                } else if (hasStoredOriginCoords) {
+                  origenNombre =
+                    p.origen.trim() || prevStop?.destino?.trim() || "";
+                  origenLatShown = p.origenLat ?? "";
+                  origenLngShown = p.origenLng ?? "";
+                } else {
+                  origenNombre = prevStop?.destino ?? "";
+                  origenLatShown = prevStop?.destinoLat ?? "";
+                  origenLngShown = prevStop?.destinoLng ?? "";
+                }
                 return (
-                  <div
-                    key={p.paradaId ?? `tramo-${i}`}
-                    className={rutaTramoCard}
-                  >
-                    <div className={rutaTramoHead}>
-                      <span className={agrDetailSub}>Tramo {i + 1}</span>
-                      <button
-                        type="button"
-                        className={rutaTramoRemoveBtn}
-                        disabled={tramos.length <= 1 || phoneLocked}
-                        title={
-                          tramos.length <= 1
-                            ? "Debe quedar al menos un tramo"
-                            : phoneLocked
-                              ? "No podés eliminar un tramo con transportista confirmado"
-                              : "Eliminar este tramo"
-                        }
-                        onClick={() => removeTramoAt(i)}
-                      >
-                        <Trash2 size={14} aria-hidden />
-                        <span>Eliminar tramo</span>
-                      </button>
-                    </div>
-                    {carrierServiceOfferId ? (
-                      <div className="mb-2 mt-0.5">
-                        <Link
-                          to={`/offer/${encodeURIComponent(carrierServiceOfferId)}`}
-                          className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[var(--primary)] no-underline hover:underline"
+                  <Fragment key={p.paradaId ?? `tramo-${i}`}>
+                    <div className={rutaTramoCard}>
+                      <div className={rutaTramoHead}>
+                        <span className={agrDetailSub}>Tramo {i + 1}</span>
+                        <button
+                          type="button"
+                          className={rutaTramoRemoveBtn}
+                          disabled={tramos.length <= 1 || phoneLocked}
+                          title={
+                            tramos.length <= 1
+                              ? "Debe quedar al menos un tramo"
+                              : phoneLocked
+                                ? "No podés eliminar un tramo con transportista confirmado"
+                                : "Eliminar este tramo"
+                          }
+                          onClick={() => removeTramoAt(i)}
                         >
-                          Ver ficha del servicio del transportista{" "}
-                          <ExternalLink size={12} aria-hidden />
-                        </Link>
+                          <Trash2 size={14} aria-hidden />
+                          <span>Eliminar tramo</span>
+                        </button>
                       </div>
-                    ) : null}
-                    <div className={rutaTramoGrid}>
+                      {carrierServiceOfferId ? (
+                        <div className="mb-2 mt-0.5">
+                          <Link
+                            to={`/offer/${encodeURIComponent(carrierServiceOfferId)}`}
+                            className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[var(--primary)] no-underline hover:underline"
+                          >
+                            Ver ficha del servicio del transportista{" "}
+                            <ExternalLink size={12} aria-hidden />
+                          </Link>
+                        </div>
+                      ) : null}
+                      <div className={rutaTramoGrid}>
                       <Field
                         label="Origen"
                         value={origenNombre}
                         onChange={(v) => {
-                          if (origenLocked) return;
+                          if (origenTextReadOnly) return;
                           updateTramo(i, { origen: v });
                         }}
-                        readOnly={origenLocked}
+                        readOnly={origenTextReadOnly}
                         error={te?.origen}
                         placeholder="Ubicación de origen"
                         inputId={`ruta-tramo-${i}-origen`}
@@ -748,21 +864,25 @@ export function RouteSheetFormModal({
                         inputId={`ruta-tramo-${i}-destino`}
                       />
                     </div>
-                    {origenLocked ? (
+                    {origenTextReadOnly ? (
                       <p className="vt-muted mb-2 text-[11px] leading-snug">
-                        Mismo lugar y coordenadas que el{" "}
-                        <b>destino del tramo {i}</b>. Para cambiarlos, editá ese
-                        destino o sus coordenadas en el mapa.
+                        Por defecto, mismo lugar que el{" "}
+                        <b>destino del tramo {i}</b>. Para otro punto de salida,
+                        usá «Coordenadas origen (mapa)» o editá ese destino.
+                      </p>
+                    ) : i > 0 ? (
+                      <p className="vt-muted mb-2 text-[11px] leading-snug">
+                        Origen con coordenadas propias (podés ajustar el texto o
+                        reabrir el mapa).
                       </p>
                     ) : null}
                     <div className={rutaCoordsRow}>
                       <button
                         type="button"
                         className={rutaMapBtn}
-                        disabled={origenLocked}
                         title={
-                          origenLocked
-                            ? "El origen toma las coordenadas del destino del tramo anterior"
+                          i > 0 && !hasStoredOriginCoords
+                            ? "Por defecto coincide con el destino del tramo anterior; abrí el mapa para otro origen"
                             : undefined
                         }
                         onClick={() => openMapPicker(i, "origen")}
@@ -780,7 +900,7 @@ export function RouteSheetFormModal({
                     {te?.coordOrigen ? (
                       <div className={fieldError} role="alert">
                         {te.coordOrigen}
-                        {origenLocked ? (
+                        {origenTextReadOnly ? (
                           <span className="block pt-1 text-[11px] font-normal opacity-90">
                             Si falta el mapa del origen, cargá las coordenadas
                             de <b>destino</b> del tramo {i}.
@@ -952,15 +1072,21 @@ export function RouteSheetFormModal({
                       inputId={`ruta-tramo-${i}-notas`}
                     />
                   </div>
+                  <div className="flex justify-center py-1">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 border-0 bg-transparent p-1 text-[12px] font-extrabold text-[var(--primary)] hover:underline"
+                      onClick={() => insertTramoAt(i + 1)}
+                    >
+                      <Plus size={14} strokeWidth={2.5} aria-hidden />
+                      {i + 1 === tramos.length
+                        ? "Añadir tramo al final"
+                        : `Añadir tramo entre ${i + 1} y ${i + 2}`}
+                    </button>
+                  </div>
+                  </Fragment>
                 );
               })}
-              <button
-                type="button"
-                className="vt-btn"
-                onClick={addTramoAfterLast}
-              >
-                + Agregar tramo
-              </button>
             </div>
 
             <Field
@@ -1079,20 +1205,24 @@ export function RouteSheetFormModal({
                 />
                 {mapPick.punto === "destino" &&
                 destinoMapPrior &&
-                destinoMapPrior.linePositions.length >= 2 ? (
+                destinoMapPrior.routeSegments.length > 0 ? (
                   <LeafletRoadSnappedRoute
-                    positions={destinoMapPrior.linePositions}
+                    segments={destinoMapPrior.routeSegments}
+                    segmentColors={destinoMapPrior.segmentColors}
                     useRoads
                     fitMapToRoute={false}
                   />
                 ) : null}
                 {mapPick.punto === "destino" && destinoMapPrior
-                  ? destinoMapPrior.endMarkers.map((m) => (
+                  ? destinoMapPrior.endMarkers.map((m, i) => (
                       <Marker
                         key={`prior-${m.label}-${m.lat.toFixed(5)}-${m.lng.toFixed(5)}`}
                         position={[m.lat, m.lng]}
                         zIndexOffset={300}
-                        icon={routeMapNumberedWaypointIcon(m.label)}
+                        icon={routeMapNumberedWaypointIcon(
+                          m.label,
+                          destinoMapPrior.segmentColors[i] ?? "#2563eb",
+                        )}
                         eventHandlers={{
                           click: () => {
                             setMapLat(formatPickedCoord(m.lat));
@@ -1157,6 +1287,20 @@ export function RouteSheetFormModal({
                 >
                   Buscar en el mapa
                 </button>
+                {mapAdjacentSnap ? (
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-ghost text-[13px]"
+                    onClick={() => {
+                      setMapLat(formatPickedCoord(mapAdjacentSnap.lat));
+                      setMapLng(formatPickedCoord(mapAdjacentSnap.lng));
+                      setMapPlaceLabel(mapAdjacentSnap.placeLabel);
+                      setMapCoordError(undefined);
+                    }}
+                  >
+                    {mapAdjacentSnap.buttonLabel}
+                  </button>
+                ) : null}
               </div>
               <label className={fieldRootWithInvalid(!!mapCoordError)}>
                 <span className={fieldLabel}>Latitud</span>
