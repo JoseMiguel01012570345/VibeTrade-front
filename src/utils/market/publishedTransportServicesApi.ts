@@ -34,6 +34,27 @@ export function summarizeTransportServiceForInvite(s: PublishedTransportServiceD
   return 'Servicio de transporte'
 }
 
+function normalizeServicesPayload(raw: unknown): PublishedTransportServiceDto[] {
+  if (!raw || typeof raw !== 'object') return []
+  const j = raw as { services?: unknown }
+  const arr = j.services
+  if (!Array.isArray(arr)) return []
+  return arr.map((item) => {
+    // Backend histórico: { service: {...}, storeName }; contrato actual: ficha plana + storeName.
+    if (item && typeof item === 'object' && item !== null && 'service' in item) {
+      const w = item as {
+        service?: PublishedTransportServiceDto
+        storeName?: string
+      }
+      return {
+        ...(w.service ?? {}),
+        storeName: w.storeName,
+      }
+    }
+    return item as PublishedTransportServiceDto
+  })
+}
+
 export async function fetchPublishedTransportServicesForUser(
   userId: string,
 ): Promise<PublishedTransportServiceDto[]> {
@@ -44,6 +65,6 @@ export async function fetchPublishedTransportServicesForUser(
     const t = await res.text().catch(() => '')
     throw new Error(apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()))
   }
-  const j = (await res.json()) as { services?: PublishedTransportServiceDto[] }
-  return j.services ?? []
+  const j = await res.json()
+  return normalizeServicesPayload(j)
 }
