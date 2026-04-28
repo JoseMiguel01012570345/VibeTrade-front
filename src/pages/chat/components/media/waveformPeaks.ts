@@ -1,3 +1,5 @@
+import { apiFetch } from '../../../../utils/http/apiClient'
+import { isProtectedMediaUrl } from '../../../../utils/media/mediaClient'
 import { getSharedAudioContext } from '../../lib/sharedAudioContext'
 
 /** Altura uniforme antes de decodificar (evita saltos de layout; no es un “falso” dibujo único). */
@@ -11,16 +13,28 @@ export function uniformWaveformPeaks(n: number): number[] {
  * Picos reales del audio (envolvente por segmento), normalizados ~[0,1].
  * Misma URL → misma forma; cada clip es distinto.
  */
+async function fetchAudioArrayBuffer(url: string): Promise<ArrayBuffer> {
+  if (isProtectedMediaUrl(url)) {
+    const res = await apiFetch(url, { method: 'GET' })
+    if (!res.ok) throw new Error('fetch failed')
+    return res.arrayBuffer()
+  }
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('fetch failed')
+  return res.arrayBuffer()
+}
+
 export async function computeWaveformPeaksFromUrl(
   url: string,
   n: number,
 ): Promise<number[]> {
   try {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error('fetch failed')
-    const buf = await res.arrayBuffer()
+    const buf = await fetchAudioArrayBuffer(url)
     const copy = buf.slice(0)
     const ctx = getSharedAudioContext()
+    if (ctx.state === 'suspended') {
+      await ctx.resume().catch(() => {})
+    }
     const audioBuffer = await ctx.decodeAudioData(copy)
     const ch0 = audioBuffer.getChannelData(0)
     const len = ch0.length

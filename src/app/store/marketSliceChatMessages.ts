@@ -34,6 +34,46 @@ async function blobUrlToMediaApiUrl(
   return mediaApiUrl(uploaded.id);
 }
 
+/**
+ * Convive con MediaRecorder según dispositivo (p. ej. Samsung: audio/mp4 opus).
+ * Subir todo como `.webm` + `audio/webm` corrompe el objeto y Chrome no decodifica / <audio> falla.
+ */
+function voiceBlobFileNameAndMime(blob: Blob): { fileName: string; mime: string } {
+  const raw = (blob.type ?? "").trim();
+  const t = raw.toLowerCase();
+
+  if (!t || t === "application/octet-stream") {
+    return { fileName: "voice.webm", mime: "audio/webm" };
+  }
+  if (t.includes("webm")) {
+    return { fileName: "voice.webm", mime: raw };
+  }
+  if (t.includes("mp4") || t.includes("m4a") || t.includes("mpeg4")) {
+    return { fileName: "voice.m4a", mime: raw || "audio/mp4" };
+  }
+  if (t.includes("aac")) {
+    return { fileName: "voice.aac", mime: raw };
+  }
+  if (t.includes("ogg")) {
+    return { fileName: "voice.ogg", mime: raw || "audio/ogg" };
+  }
+  if (t.includes("mpeg") || t.includes("mp3")) {
+    return { fileName: "voice.mp3", mime: raw || "audio/mpeg" };
+  }
+  if (t.includes("3gpp") || t.includes("3gp")) {
+    return { fileName: "voice.3gp", mime: raw };
+  }
+
+  return { fileName: "voice.audio", mime: raw };
+}
+
+async function blobUrlToUploadedVoice(blobUrl: string): Promise<string> {
+  const blob = await fetch(blobUrl).then((r) => r.blob());
+  const { fileName, mime } = voiceBlobFileNameAndMime(blob);
+  const uploaded = await uploadMediaBlob(blob, fileName, mime);
+  return mediaApiUrl(uploaded.id);
+}
+
 const threadContractsRefreshAfterMessageTimer = new Map<
   string,
   ReturnType<typeof setTimeout>
@@ -285,11 +325,7 @@ export function createChatMessagesSlice(
       if (threadId.startsWith("cth_")) {
         void (async () => {
           try {
-            const url = await blobUrlToMediaApiUrl(
-              payload.url,
-              "voice.webm",
-              "audio/webm",
-            );
+            const url = await blobUrlToUploadedVoice(payload.url);
             const body: Record<string, unknown> = {
               type: "audio",
               url,
@@ -446,11 +482,7 @@ export function createChatMessagesSlice(
             const cap = options?.caption?.trim();
             if (cap) body.caption = cap;
             if (options?.embeddedAudio) {
-              const au = await blobUrlToMediaApiUrl(
-                options.embeddedAudio.url,
-                "voice-embed.webm",
-                "audio/webm",
-              );
+              const au = await blobUrlToUploadedVoice(options.embeddedAudio.url);
               body.embeddedAudio = {
                 url: au,
                 seconds: Math.max(
@@ -554,11 +586,7 @@ export function createChatMessagesSlice(
             const cap = options?.caption?.trim();
             if (cap) body.caption = cap;
             if (payload.embeddedAudio) {
-              const au = await blobUrlToMediaApiUrl(
-                payload.embeddedAudio.url,
-                "voice-embed.webm",
-                "audio/webm",
-              );
+              const au = await blobUrlToUploadedVoice(payload.embeddedAudio.url);
               body.embeddedAudio = {
                 url: au,
                 seconds: Math.max(1, Math.round(payload.embeddedAudio.seconds)),

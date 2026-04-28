@@ -10,6 +10,11 @@ import {
 import { Pause, Play } from "lucide-react";
 import { cn } from "../../../../lib/cn";
 import {
+  fetchMediaObjectUrl,
+  getCachedMediaObjectUrl,
+  isProtectedMediaUrl,
+} from "../../../../utils/media/mediaClient";
+import {
   claimChatVoicePlayback,
   releaseChatVoicePlayback,
 } from "../../lib/voicePlaybackCoordinator";
@@ -47,6 +52,12 @@ export function AudioMicro({
   const [playing, setPlaying] = useState(false);
   const [cur, setCur] = useState(0);
   const [dur, setDur] = useState(() => finiteDuration(seconds, seconds));
+  /** `/api/v1/media/…` necesita Bearer: mismo patrón que imágenes (fetch → blob URL). */
+  const [playbackSrc, setPlaybackSrc] = useState(() => {
+    if (!url) return "";
+    if (!isProtectedMediaUrl(url)) return url;
+    return getCachedMediaObjectUrl(url) ?? "";
+  });
 
   useLayoutEffect(() => {
     paletteRef.current = readAudioMicroPalette(isMine);
@@ -179,6 +190,30 @@ export function AudioMicro({
   }, [url, seconds]);
 
   useEffect(() => {
+    if (!url) {
+      setPlaybackSrc("");
+      return;
+    }
+    if (!isProtectedMediaUrl(url)) {
+      setPlaybackSrc(url);
+      return;
+    }
+    const cached = getCachedMediaObjectUrl(url);
+    if (cached) {
+      setPlaybackSrc(cached);
+      return;
+    }
+    setPlaybackSrc("");
+    let cancelled = false;
+    void fetchMediaObjectUrl(url).then((u) => {
+      if (!cancelled) setPlaybackSrc(u);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  useEffect(() => {
     peaksRef.current = uniformWaveformPeaks(WAVE_BARS);
     const gen = ++decodeGenRef.current;
     let cancelled = false;
@@ -201,7 +236,7 @@ export function AudioMicro({
     a.currentTime = 0;
     setPlaying(false);
     a.load();
-  }, [url]);
+  }, [playbackSrc]);
 
   useEffect(() => {
     const a = ref.current;
@@ -238,7 +273,7 @@ export function AudioMicro({
       a.removeEventListener("play", onPlay);
       a.removeEventListener("pause", onPause);
     };
-  }, [seconds, url]);
+  }, [seconds, playbackSrc]);
 
   const total = finiteDuration(dur, seconds);
   const pct = total > 0 ? Math.min(100, (cur / total) * 100) : 0;
@@ -323,7 +358,7 @@ export function AudioMicro({
       >
         <audio
           ref={ref}
-          src={url}
+          src={playbackSrc || undefined}
           preload="auto"
           playsInline
           className="hidden"
