@@ -9,6 +9,7 @@ import {
   postCarrierRespondPreselInvite,
 } from "../../../../utils/chat/chatApi";
 import type { RouteSheet, RouteStop } from "../../domain/routeSheetTypes";
+import { formatRouteEstimadoDisplay } from "../../domain/routeSheetDateTime";
 import { VibeMapTileLayer } from "../../../home/EmergentRouteFeedMap";
 import { LeafletRoadSnappedRoute } from "../../../home/LeafletRoadSnappedRoute";
 import {
@@ -410,7 +411,7 @@ export function CarrierRoutePreselInviteModal({
                           <div className="text-[11px] font-bold text-[var(--muted)]">
                             Recogida
                           </div>
-                          <div>{p.tiempoRecogidaEstimado}</div>
+                          <div>{formatRouteEstimadoDisplay(p.tiempoRecogidaEstimado)}</div>
                         </div>
                       ) : null}
                       {p.tiempoEntregaEstimado?.trim() ? (
@@ -418,7 +419,7 @@ export function CarrierRoutePreselInviteModal({
                           <div className="text-[11px] font-bold text-[var(--muted)]">
                             Entrega
                           </div>
-                          <div>{p.tiempoEntregaEstimado}</div>
+                          <div>{formatRouteEstimadoDisplay(p.tiempoEntregaEstimado)}</div>
                         </div>
                       ) : null}
                       {p.cargaEnTramo?.trim() ? (

@@ -1,4 +1,5 @@
 import type { RouteSheetCreatePayload, RouteTramoFormInput } from './routeSheetTypes'
+import { estimadoInstantMs, ROUTE_ESTIMADO_ISO_LOCAL_RE, todayIsoDateLocal } from './routeSheetDateTime'
 
 const TITLE_MIN = 3
 const TITLE_MAX = 200
@@ -55,6 +56,26 @@ function requiredNonNegativeNumber(raw: string | undefined): string | undefined 
   const n = Number(t.replace(/\s/g, '').replace(',', '.'))
   if (!Number.isFinite(n)) return 'Indicá un número válido'
   if (n < 0) return 'El valor no puede ser negativo'
+  return undefined
+}
+
+/** Recogida / entrega: fecha + hora locales (`YYYY-MM-DDTHH:mm`). */
+function requiredEstimadoDateTime(
+  raw: string | undefined,
+  kind: 'recogida' | 'entrega',
+): string | undefined {
+  const t = norm(raw)
+  const short =
+    kind === 'recogida' ? 'fecha y hora de recogida' : 'fecha y hora de entrega'
+  if (t === '') return `Indicá ${short}`
+  const m = t.match(ROUTE_ESTIMADO_ISO_LOCAL_RE)
+  if (!m) return `Completá ${short}`
+  const isoLocal = `${m[1]}T${m[2]}:00`
+  const dt = new Date(isoLocal)
+  if (Number.isNaN(dt.getTime())) return 'Fecha u hora inválida'
+  if (kind === 'recogida' && m[1] < todayIsoDateLocal()) {
+    return 'La fecha de recogida no puede ser anterior a hoy'
+  }
   return undefined
 }
 
@@ -188,18 +209,35 @@ export function getRouteSheetFormErrors(p: RouteSheetCreatePayload): RouteSheetF
     const od = requiredCoordPair(raw.destinoLat, raw.destinoLng, 'destino')
     if (od) mergeTramo(e, i, { coordDestino: od })
 
-    const t1 = requiredNonNegativeNumber(raw.tiempoRecogidaEstimado)
+    const t1 = requiredEstimadoDateTime(raw.tiempoRecogidaEstimado, 'recogida')
     if (t1) {
       mergeTramo(e, i, { tiempoRecogidaEstimado: t1 })
     } else if (norm(raw.tiempoRecogidaEstimado).length > 200) {
       mergeTramo(e, i, { tiempoRecogidaEstimado: 'Máximo 200 caracteres' })
     }
 
-    const t2 = requiredNonNegativeNumber(raw.tiempoEntregaEstimado)
+    const t2 = requiredEstimadoDateTime(raw.tiempoEntregaEstimado, 'entrega')
     if (t2) {
       mergeTramo(e, i, { tiempoEntregaEstimado: t2 })
     } else if (norm(raw.tiempoEntregaEstimado).length > 200) {
       mergeTramo(e, i, { tiempoEntregaEstimado: 'Máximo 200 caracteres' })
+    }
+
+    if (!t1 && !t2) {
+      const msRec = estimadoInstantMs(raw.tiempoRecogidaEstimado)
+      const msEnt = estimadoInstantMs(raw.tiempoEntregaEstimado)
+      if (
+        msRec !== null &&
+        msEnt !== null &&
+        msRec >= msEnt
+      ) {
+        mergeTramo(e, i, {
+          tiempoRecogidaEstimado:
+            'La recogida debe ser anterior a la entrega (no puede coincidir ni ser posterior)',
+          tiempoEntregaEstimado:
+            'La entrega debe ser posterior a la recogida (no puede coincidir ni ser anterior)',
+        })
+      }
     }
 
     const pr = requiredNonNegativeNumber(raw.precioTransportista)
@@ -254,7 +292,71 @@ export function getRouteSheetFormErrors(p: RouteSheetCreatePayload): RouteSheetF
     }
   })
 
+  /**
+   * Construye sub-rutas (cadenas) y valida tiempos solo dentro de cada cadena.
+   * Una cadena agrupa nodos `(tramoIndex, origen, destino)` consecutivos donde
+   * `origen` del nodo siguiente coincide con `destino` del anterior (mismas coords lat/lng).
+   * Si el origen es independiente (otra pierna logística), arranca una cadena nueva.
+   */
+  const tramoChains = buildTramoChainsByCoords(paradas)
+  const MSG_ENTREGA_VS_SIGUIENTE =
+    'La entrega estimada no puede ser posterior a la recogida estimada del tramo siguiente'
+  const MSG_RECOGIDA_VS_ANTERIOR =
+    'La recogida estimada no puede ser anterior a la entrega estimada del tramo anterior'
+  for (const chain of tramoChains) {
+    for (let k = 0; k < chain.length - 1; k++) {
+      const a = chain[k]
+      const b = chain[k + 1]
+      if (a === undefined || b === undefined) continue
+      const msEnt = estimadoInstantMs(paradas[a]?.tiempoEntregaEstimado)
+      const msRecNext = estimadoInstantMs(paradas[b]?.tiempoRecogidaEstimado)
+      if (msEnt === null || msRecNext === null) continue
+      if (msEnt > msRecNext) {
+        if (!e.tramos?.[a]?.tiempoEntregaEstimado) {
+          mergeTramo(e, a, { tiempoEntregaEstimado: MSG_ENTREGA_VS_SIGUIENTE })
+        }
+        if (!e.tramos?.[b]?.tiempoRecogidaEstimado) {
+          mergeTramo(e, b, { tiempoRecogidaEstimado: MSG_RECOGIDA_VS_ANTERIOR })
+        }
+      }
+    }
+  }
+
   return e
+}
+
+/**
+ * Sub-rutas: lista de listas con índices de tramos (0-based). Dos tramos consecutivos quedan en la misma cadena
+ * si el origen del segundo coincide con el destino del primero (lat/lng tras `trim`); si difieren, abre cadena nueva.
+ */
+function buildTramoChainsByCoords(paradas: RouteTramoFormInput[]): number[][] {
+  const chains: number[][] = []
+  if (paradas.length === 0) return chains
+  let current: number[] = [0]
+  for (let i = 1; i < paradas.length; i++) {
+    const anterior = paradas[i - 1]
+    const siguiente = paradas[i]
+    if (anterior && siguiente && origenCoincideConDestinoAnterior(anterior, siguiente)) {
+      current.push(i)
+    } else {
+      chains.push(current)
+      current = [i]
+    }
+  }
+  chains.push(current)
+  return chains
+}
+
+function origenCoincideConDestinoAnterior(
+  anterior: RouteTramoFormInput,
+  siguiente: RouteTramoFormInput,
+): boolean {
+  const dLat = norm(anterior.destinoLat)
+  const dLng = norm(anterior.destinoLng)
+  const oLat = norm(siguiente.origenLat)
+  const oLng = norm(siguiente.origenLng)
+  if (!dLat || !dLng || !oLat || !oLng) return false
+  return dLat === oLat && dLng === oLng
 }
 
 export function hasRouteSheetFormErrors(e: RouteSheetFormErrors): boolean {

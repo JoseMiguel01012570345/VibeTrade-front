@@ -10,6 +10,8 @@ import L from "leaflet";
 import toast from "react-hot-toast";
 import { MapContainer, Marker, useMap, useMapEvents } from "react-leaflet";
 import { cn } from "../../../../lib/cn";
+import { VtDateField } from "../../../../components/VtDateField";
+import { VtTimeField } from "../../../../components/VtTimeField";
 import {
   nominatimReverse,
   nominatimSearch,
@@ -79,12 +81,21 @@ import { postRouteSheetNotifyPreselected } from "../../../../utils/chat/chatApi"
 import { getSessionToken } from "../../../../utils/http/sessionToken";
 import { RouteSheetTransportistaPhoneField } from "./RouteSheetTransportistaPhoneField";
 import {
+  joinRouteEstimadoStored,
+  maxIsoDate,
+  splitRouteEstimadoStored,
+  todayIsoDateLocal,
+} from "../../domain/routeSheetDateTime";
+import {
   activeAssignmentOnFormTramo,
   confirmedAssignmentOnFormTramo,
   effectiveRouteOfferForSheetForm,
   normRoutePhoneKey,
   preselInvitesForTramoPhoneEdits,
 } from "../../domain/routeSheetOfferGuards";
+
+/** Por encima del modal y de los `VtSelect` con listPortal z-[400]. */
+const ROUTE_SHEET_DT_POPOVER_Z = "z-[500]";
 
 export type RouteSheetFormPayload = RouteSheetCreatePayload;
 
@@ -279,7 +290,9 @@ export function RouteSheetFormModal({
       setMerc(rs.mercanciasResumen);
       setNotasG(rs.notasGenerales ?? "");
       setTramos(tramosInitRaw);
-      const limpios0 = expandChainedTramoOrigins(tramosToLimpios(tramosInitRaw));
+      const limpios0 = expandChainedTramoOrigins(
+        tramosToLimpios(tramosInitRaw),
+      );
       const draft0: RouteSheetCreatePayload = {
         titulo: rs.titulo.trim(),
         mercanciasResumen: rs.mercanciasResumen.trim(),
@@ -693,8 +706,7 @@ export function RouteSheetFormModal({
     });
     setMapPick((mp) => {
       if (!mp) return null;
-      if (mp.tramoIndex >= ins)
-        return { ...mp, tramoIndex: mp.tramoIndex + 1 };
+      if (mp.tramoIndex >= ins) return { ...mp, tramoIndex: mp.tramoIndex + 1 };
       return mp;
     });
     setFormErrors({});
@@ -719,14 +731,15 @@ export function RouteSheetFormModal({
             {initialRouteSheet ? "Editar hoja de rutas" : "Nueva hoja de rutas"}
           </div>
           <div className={modalSub}>
-            Todos los campos son obligatorios. Tiempos estimados y precio del
-            tramo deben ser números (ej. horas o monto). La moneda de pago se
-            elige en cada tramo. Origen, destino y el mapa se sincronizan
-            (dirección ↔ pin). Por defecto el origen del tramo 2+ sigue al
-            destino del anterior; podés fijar otro con «Coordenadas origen
-            (mapa)». Podés insertar un tramo en cualquier punto: el nuevo tramo
-            propone origen = fin del anterior y destino = inicio del que seguía;
-            ambos son editables.
+            Todos los campos son obligatorios. Indicá{" "}
+            <strong>fecha y hora</strong> estimadas de recogida y de entrega con
+            los selectores. El precio del tramo debe ser un número (monto). La
+            moneda de pago se elige en cada tramo. Origen, destino y el mapa se
+            sincronizan (dirección ↔ pin). Por defecto el origen del tramo 2+
+            sigue al destino del anterior; podés fijar otro con «Coordenadas
+            origen (mapa)». Podés insertar un tramo en cualquier punto: el nuevo
+            tramo propone origen = fin del anterior y destino = inicio del que
+            seguía; ambos son editables.
           </div>
           <div className={modalFormBody}>
             <Field
@@ -786,11 +799,18 @@ export function RouteSheetFormModal({
                   p.telefonoTransportista?.trim() ||
                   confAsg?.phone?.trim() ||
                   undefined;
+                const recEst = splitRouteEstimadoStored(
+                  p.tiempoRecogidaEstimado,
+                );
+                const entEst = splitRouteEstimadoStored(
+                  p.tiempoEntregaEstimado,
+                );
+                const minRecogidaD = todayIsoDateLocal();
+                const minEntregaD = maxIsoDate(minRecogidaD, recEst.date);
                 const prevStop = i > 0 ? tramos[i - 1] : null;
                 const ownOLat = (p.origenLat ?? "").trim();
                 const ownOLng = (p.origenLng ?? "").trim();
-                const hasStoredOriginCoords =
-                  ownOLat !== "" && ownOLng !== "";
+                const hasStoredOriginCoords = ownOLat !== "" && ownOLng !== "";
                 const origenTextReadOnly = i > 0 && !hasStoredOriginCoords;
                 let origenNombre: string;
                 let origenLatShown: string;
@@ -843,247 +863,339 @@ export function RouteSheetFormModal({
                         </div>
                       ) : null}
                       <div className={rutaTramoGrid}>
+                        <Field
+                          label="Origen"
+                          value={origenNombre}
+                          onChange={(v) => {
+                            if (origenTextReadOnly) return;
+                            updateTramo(i, { origen: v });
+                          }}
+                          readOnly={origenTextReadOnly}
+                          error={te?.origen}
+                          placeholder="Ubicación de origen"
+                          inputId={`ruta-tramo-${i}-origen`}
+                        />
+                        <Field
+                          label="Destino"
+                          value={p.destino}
+                          onChange={(v) => updateTramo(i, { destino: v })}
+                          error={te?.destino}
+                          placeholder="Ubicación de destino"
+                          inputId={`ruta-tramo-${i}-destino`}
+                        />
+                      </div>
+                      {origenTextReadOnly ? (
+                        <p className="vt-muted mb-2 text-[11px] leading-snug">
+                          Por defecto, mismo lugar que el{" "}
+                          <b>destino del tramo {i}</b>. Para otro punto de
+                          salida, usá «Coordenadas origen (mapa)» o editá ese
+                          destino.
+                        </p>
+                      ) : i > 0 ? (
+                        <p className="vt-muted mb-2 text-[11px] leading-snug">
+                          Origen con coordenadas propias (podés ajustar el texto
+                          o reabrir el mapa).
+                        </p>
+                      ) : null}
+                      <div className={rutaCoordsRow}>
+                        <button
+                          type="button"
+                          className={rutaMapBtn}
+                          title={
+                            i > 0 && !hasStoredOriginCoords
+                              ? "Por defecto coincide con el destino del tramo anterior; abrí el mapa para otro origen"
+                              : undefined
+                          }
+                          onClick={() => openMapPicker(i, "origen")}
+                        >
+                          <MapPin size={14} /> Coordenadas origen (mapa)
+                        </button>
+                        <button
+                          type="button"
+                          className={rutaMapBtn}
+                          onClick={() => openMapPicker(i, "destino")}
+                        >
+                          <MapPin size={14} /> Coordenadas destino (mapa)
+                        </button>
+                      </div>
+                      {te?.coordOrigen ? (
+                        <div className={fieldError} role="alert">
+                          {te.coordOrigen}
+                          {origenTextReadOnly ? (
+                            <span className="block pt-1 text-[11px] font-normal opacity-90">
+                              Si falta el mapa del origen, cargá las coordenadas
+                              de <b>destino</b> del tramo {i}.
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {origenLatShown || origenLngShown ? (
+                        <div className={rutaCoordsHint}>
+                          Origen: {origenLatShown || "—"},{" "}
+                          {origenLngShown || "—"}
+                        </div>
+                      ) : null}
+                      {te?.coordDestino ? (
+                        <div className={fieldError} role="alert">
+                          {te.coordDestino}
+                        </div>
+                      ) : null}
+                      {p.destinoLat || p.destinoLng ? (
+                        <div className={rutaCoordsHint}>
+                          Destino: {p.destinoLat ?? "—"}, {p.destinoLng ?? "—"}
+                        </div>
+                      ) : null}
                       <Field
-                        label="Origen"
-                        value={origenNombre}
-                        onChange={(v) => {
-                          if (origenTextReadOnly) return;
-                          updateTramo(i, { origen: v });
-                        }}
-                        readOnly={origenTextReadOnly}
-                        error={te?.origen}
-                        placeholder="Ubicación de origen"
-                        inputId={`ruta-tramo-${i}-origen`}
-                      />
-                      <Field
-                        label="Destino"
-                        value={p.destino}
-                        onChange={(v) => updateTramo(i, { destino: v })}
-                        error={te?.destino}
-                        placeholder="Ubicación de destino"
-                        inputId={`ruta-tramo-${i}-destino`}
-                      />
-                    </div>
-                    {origenTextReadOnly ? (
-                      <p className="vt-muted mb-2 text-[11px] leading-snug">
-                        Por defecto, mismo lugar que el{" "}
-                        <b>destino del tramo {i}</b>. Para otro punto de salida,
-                        usá «Coordenadas origen (mapa)» o editá ese destino.
-                      </p>
-                    ) : i > 0 ? (
-                      <p className="vt-muted mb-2 text-[11px] leading-snug">
-                        Origen con coordenadas propias (podés ajustar el texto o
-                        reabrir el mapa).
-                      </p>
-                    ) : null}
-                    <div className={rutaCoordsRow}>
-                      <button
-                        type="button"
-                        className={rutaMapBtn}
-                        title={
-                          i > 0 && !hasStoredOriginCoords
-                            ? "Por defecto coincide con el destino del tramo anterior; abrí el mapa para otro origen"
-                            : undefined
+                        label="Responsabilidad por daños por embalaje (este tramo)"
+                        value={p.responsabilidadEmbalaje ?? ""}
+                        onChange={(v) =>
+                          updateTramo(i, { responsabilidadEmbalaje: v })
                         }
-                        onClick={() => openMapPicker(i, "origen")}
+                        multiline
+                        placeholder="Quién responde y en qué casos"
+                        error={te?.responsabilidadEmbalaje}
+                        inputId={`ruta-tramo-${i}-resp-emb`}
+                      />
+                      <Field
+                        label="Requisitos especiales (este tramo)"
+                        value={p.requisitosEspeciales ?? ""}
+                        onChange={(v) =>
+                          updateTramo(i, { requisitosEspeciales: v })
+                        }
+                        multiline
+                        placeholder="Frágil, refrigerado, ADR, etc."
+                        error={te?.requisitosEspeciales}
+                        inputId={`ruta-tramo-${i}-req`}
+                      />
+                      <Field
+                        label="Tipo de vehículo requerido (este tramo)"
+                        value={p.tipoVehiculoRequerido ?? ""}
+                        onChange={(v) =>
+                          updateTramo(i, { tipoVehiculoRequerido: v })
+                        }
+                        placeholder="Ej. camión baranda, refrigerado, sider"
+                        error={te?.tipoVehiculoRequerido}
+                        inputId={`ruta-tramo-${i}-veh`}
+                      />
+                      <RouteSheetTransportistaPhoneField
+                        tramoIndex={i}
+                        value={displayTel}
+                        transportInvitedStoreServiceId={
+                          p.transportInvitedStoreServiceId
+                        }
+                        transportInvitedServiceSummary={
+                          p.transportInvitedServiceSummary
+                        }
+                        onChange={(pick) =>
+                          updateTramo(i, {
+                            telefonoTransportista: pick.telefonoTransportista,
+                            transportInvitedStoreServiceId:
+                              pick.transportInvitedStoreServiceId,
+                            transportInvitedServiceSummary:
+                              pick.transportInvitedServiceSummary,
+                          })
+                        }
+                        error={te?.telefonoTransportista}
+                        phoneLocked={phoneLocked}
+                        lockedDisplayName={confAsg?.displayName}
+                      />
+                      <div className="flex flex-col gap-3">
+                        <div
+                          className={fieldRootWithInvalid(
+                            !!te?.tiempoRecogidaEstimado,
+                          )}
+                        >
+                          <span
+                            className={fieldLabel}
+                            id={`ruta-tramo-${i}-rec-lbl`}
+                          >
+                            Recogida estimada
+                          </span>
+                          <div className={rutaTramoGrid}>
+                            <VtDateField
+                              aria-label={`Tramo ${i + 1}: fecha de recogida estimada`}
+                              value={recEst.date}
+                              allowEmpty
+                              min={minRecogidaD}
+                              placeholder="Fecha"
+                              popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
+                              onChange={(d) => {
+                                const cur = splitRouteEstimadoStored(
+                                  p.tiempoRecogidaEstimado,
+                                );
+                                updateTramo(i, {
+                                  tiempoRecogidaEstimado:
+                                    joinRouteEstimadoStored(d, cur.time),
+                                });
+                              }}
+                              buttonClassName="vt-input min-h-[42px] w-full justify-between shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[inset_0_1px_0_rgba(0,0,0,0.45)]"
+                            />
+                            <VtTimeField
+                              aria-label={`Tramo ${i + 1}: hora de recogida estimada`}
+                              value={recEst.time}
+                              placeholder="Hora"
+                              popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
+                              onChange={(tm) => {
+                                const cur = splitRouteEstimadoStored(
+                                  p.tiempoRecogidaEstimado,
+                                );
+                                updateTramo(i, {
+                                  tiempoRecogidaEstimado:
+                                    joinRouteEstimadoStored(cur.date, tm),
+                                });
+                              }}
+                              buttonClassName="vt-input min-h-[42px] w-full justify-between shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[inset_0_1px_0_rgba(0,0,0,0.45)]"
+                            />
+                          </div>
+                          {te?.tiempoRecogidaEstimado ? (
+                            <span className={fieldError} role="alert">
+                              {te.tiempoRecogidaEstimado}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div
+                          className={fieldRootWithInvalid(
+                            !!te?.tiempoEntregaEstimado,
+                          )}
+                        >
+                          <span
+                            className={fieldLabel}
+                            id={`ruta-tramo-${i}-ent-lbl`}
+                          >
+                            Entrega estimada
+                          </span>
+                          <div className={rutaTramoGrid}>
+                            <VtDateField
+                              aria-label={`Tramo ${i + 1}: fecha de entrega estimada`}
+                              value={entEst.date}
+                              allowEmpty
+                              min={minEntregaD}
+                              placeholder="Fecha"
+                              popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
+                              onChange={(d) => {
+                                const cur = splitRouteEstimadoStored(
+                                  p.tiempoEntregaEstimado,
+                                );
+                                updateTramo(i, {
+                                  tiempoEntregaEstimado:
+                                    joinRouteEstimadoStored(d, cur.time),
+                                });
+                              }}
+                              buttonClassName="vt-input min-h-[42px] w-full justify-between shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[inset_0_1px_0_rgba(0,0,0,0.45)]"
+                            />
+                            <VtTimeField
+                              aria-label={`Tramo ${i + 1}: hora de entrega estimada`}
+                              value={entEst.time}
+                              placeholder="Hora"
+                              popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
+                              onChange={(tm) => {
+                                const cur = splitRouteEstimadoStored(
+                                  p.tiempoEntregaEstimado,
+                                );
+                                updateTramo(i, {
+                                  tiempoEntregaEstimado:
+                                    joinRouteEstimadoStored(cur.date, tm),
+                                });
+                              }}
+                              buttonClassName="vt-input min-h-[42px] w-full justify-between shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[inset_0_1px_0_rgba(0,0,0,0.45)]"
+                            />
+                          </div>
+                          {te?.tiempoEntregaEstimado ? (
+                            <span className={fieldError} role="alert">
+                              {te.tiempoEntregaEstimado}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <Field
+                        label="Precio desglosado (transportista, este tramo)"
+                        value={p.precioTransportista ?? ""}
+                        onChange={(v) =>
+                          updateTramo(i, { precioTransportista: v })
+                        }
+                        placeholder="Monto numérico (ej. 150000 o 1500.50)"
+                        error={te?.precioTransportista}
+                        inputId={`ruta-tramo-${i}-precio`}
+                        inputMode="decimal"
+                      />
+                      <div
+                        className={cn(
+                          fieldRootWithInvalid(!!te?.monedaPago),
+                          "w-full",
+                        )}
                       >
-                        <MapPin size={14} /> Coordenadas origen (mapa)
-                      </button>
-                      <button
-                        type="button"
-                        className={rutaMapBtn}
-                        onClick={() => openMapPicker(i, "destino")}
-                      >
-                        <MapPin size={14} /> Coordenadas destino (mapa)
-                      </button>
-                    </div>
-                    {te?.coordOrigen ? (
-                      <div className={fieldError} role="alert">
-                        {te.coordOrigen}
-                        {origenTextReadOnly ? (
-                          <span className="block pt-1 text-[11px] font-normal opacity-90">
-                            Si falta el mapa del origen, cargá las coordenadas
-                            de <b>destino</b> del tramo {i}.
+                        <span
+                          className={fieldLabel}
+                          id={`ruta-tramo-${i}-moneda-lbl`}
+                        >
+                          Moneda de pago (este tramo)
+                        </span>
+                        <VtSelect
+                          value={p.monedaPago ?? ""}
+                          onChange={(v) => updateTramo(i, { monedaPago: v })}
+                          options={monedaOptionsFor(p.monedaPago ?? "")}
+                          placeholder="Elegir moneda…"
+                          listPortal
+                          listPortalZIndexClass="z-[400]"
+                          ariaLabel={`Moneda de pago del tramo ${i + 1}`}
+                          buttonClassName="vt-input w-full min-h-[2.5rem] justify-between"
+                        />
+                        {te?.monedaPago ? (
+                          <span className={fieldError} role="alert">
+                            {te.monedaPago}
                           </span>
                         ) : null}
                       </div>
-                    ) : null}
-                    {origenLatShown || origenLngShown ? (
-                      <div className={rutaCoordsHint}>
-                        Origen: {origenLatShown || "—"}, {origenLngShown || "—"}
-                      </div>
-                    ) : null}
-                    {te?.coordDestino ? (
-                      <div className={fieldError} role="alert">
-                        {te.coordDestino}
-                      </div>
-                    ) : null}
-                    {p.destinoLat || p.destinoLng ? (
-                      <div className={rutaCoordsHint}>
-                        Destino: {p.destinoLat ?? "—"}, {p.destinoLng ?? "—"}
-                      </div>
-                    ) : null}
-                    <Field
-                      label="Responsabilidad por daños por embalaje (este tramo)"
-                      value={p.responsabilidadEmbalaje ?? ""}
-                      onChange={(v) =>
-                        updateTramo(i, { responsabilidadEmbalaje: v })
-                      }
-                      multiline
-                      placeholder="Quién responde y en qué casos"
-                      error={te?.responsabilidadEmbalaje}
-                      inputId={`ruta-tramo-${i}-resp-emb`}
-                    />
-                    <Field
-                      label="Requisitos especiales (este tramo)"
-                      value={p.requisitosEspeciales ?? ""}
-                      onChange={(v) =>
-                        updateTramo(i, { requisitosEspeciales: v })
-                      }
-                      multiline
-                      placeholder="Frágil, refrigerado, ADR, etc."
-                      error={te?.requisitosEspeciales}
-                      inputId={`ruta-tramo-${i}-req`}
-                    />
-                    <Field
-                      label="Tipo de vehículo requerido (este tramo)"
-                      value={p.tipoVehiculoRequerido ?? ""}
-                      onChange={(v) =>
-                        updateTramo(i, { tipoVehiculoRequerido: v })
-                      }
-                      placeholder="Ej. camión baranda, refrigerado, sider"
-                      error={te?.tipoVehiculoRequerido}
-                      inputId={`ruta-tramo-${i}-veh`}
-                    />
-                    <RouteSheetTransportistaPhoneField
-                      tramoIndex={i}
-                      value={displayTel}
-                      transportInvitedStoreServiceId={p.transportInvitedStoreServiceId}
-                      transportInvitedServiceSummary={p.transportInvitedServiceSummary}
-                      onChange={(pick) =>
-                        updateTramo(i, {
-                          telefonoTransportista: pick.telefonoTransportista,
-                          transportInvitedStoreServiceId: pick.transportInvitedStoreServiceId,
-                          transportInvitedServiceSummary: pick.transportInvitedServiceSummary,
-                        })
-                      }
-                      error={te?.telefonoTransportista}
-                      phoneLocked={phoneLocked}
-                      lockedDisplayName={confAsg?.displayName}
-                    />
-                    <div className={rutaTramoGrid}>
                       <Field
-                        label="Tiempo estimado recogida (horas, número)"
-                        value={p.tiempoRecogidaEstimado ?? ""}
-                        onChange={(v) =>
-                          updateTramo(i, { tiempoRecogidaEstimado: v })
-                        }
-                        error={te?.tiempoRecogidaEstimado}
-                        inputId={`ruta-tramo-${i}-trec`}
-                        inputMode="decimal"
-                        placeholder="Ej. 2 o 3.5"
+                        label="Carga en este tramo"
+                        value={p.cargaEnTramo ?? ""}
+                        onChange={(v) => updateTramo(i, { cargaEnTramo: v })}
+                        multiline
+                        placeholder="Qué lleva el transportista en el tramo"
+                        error={te?.cargaEnTramo}
+                        inputId={`ruta-tramo-${i}-carga`}
                       />
+                      <div className={rutaTramoGrid}>
+                        <Field
+                          label="Tipo de mercancía (carga)"
+                          value={p.tipoMercanciaCarga ?? ""}
+                          onChange={(v) =>
+                            updateTramo(i, { tipoMercanciaCarga: v })
+                          }
+                          error={te?.tipoMercanciaCarga}
+                          inputId={`ruta-tramo-${i}-tmc`}
+                        />
+                        <Field
+                          label="Tipo de mercancía (descarga)"
+                          value={p.tipoMercanciaDescarga ?? ""}
+                          onChange={(v) =>
+                            updateTramo(i, { tipoMercanciaDescarga: v })
+                          }
+                          error={te?.tipoMercanciaDescarga}
+                          inputId={`ruta-tramo-${i}-tmd`}
+                        />
+                      </div>
                       <Field
-                        label="Tiempo estimado entrega (horas, número)"
-                        value={p.tiempoEntregaEstimado ?? ""}
-                        onChange={(v) =>
-                          updateTramo(i, { tiempoEntregaEstimado: v })
-                        }
-                        error={te?.tiempoEntregaEstimado}
-                        inputId={`ruta-tramo-${i}-tent`}
-                        inputMode="decimal"
-                        placeholder="Ej. 4"
+                        label="Notas del tramo"
+                        value={p.notas ?? ""}
+                        onChange={(v) => updateTramo(i, { notas: v })}
+                        multiline
+                        error={te?.notas}
+                        inputId={`ruta-tramo-${i}-notas`}
                       />
                     </div>
-                    <Field
-                      label="Precio desglosado (transportista, este tramo)"
-                      value={p.precioTransportista ?? ""}
-                      onChange={(v) =>
-                        updateTramo(i, { precioTransportista: v })
-                      }
-                      placeholder="Monto numérico (ej. 150000 o 1500.50)"
-                      error={te?.precioTransportista}
-                      inputId={`ruta-tramo-${i}-precio`}
-                      inputMode="decimal"
-                    />
-                    <div
-                      className={cn(
-                        fieldRootWithInvalid(!!te?.monedaPago),
-                        "w-full",
-                      )}
-                    >
-                      <span
-                        className={fieldLabel}
-                        id={`ruta-tramo-${i}-moneda-lbl`}
+                    <div className="flex justify-center py-1">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1.5 border-0 bg-transparent p-1 text-[12px] font-extrabold text-[var(--primary)] hover:underline"
+                        onClick={() => insertTramoAt(i + 1)}
                       >
-                        Moneda de pago (este tramo)
-                      </span>
-                      <VtSelect
-                        value={p.monedaPago ?? ""}
-                        onChange={(v) => updateTramo(i, { monedaPago: v })}
-                        options={monedaOptionsFor(p.monedaPago ?? "")}
-                        placeholder="Elegir moneda…"
-                        listPortal
-                        listPortalZIndexClass="z-[400]"
-                        ariaLabel={`Moneda de pago del tramo ${i + 1}`}
-                        buttonClassName="vt-input w-full min-h-[2.5rem] justify-between"
-                      />
-                      {te?.monedaPago ? (
-                        <span className={fieldError} role="alert">
-                          {te.monedaPago}
-                        </span>
-                      ) : null}
+                        <Plus size={14} strokeWidth={2.5} aria-hidden />
+                        {i + 1 === tramos.length
+                          ? "Añadir tramo al final"
+                          : `Añadir tramo entre ${i + 1} y ${i + 2}`}
+                      </button>
                     </div>
-                    <Field
-                      label="Carga en este tramo"
-                      value={p.cargaEnTramo ?? ""}
-                      onChange={(v) => updateTramo(i, { cargaEnTramo: v })}
-                      multiline
-                      placeholder="Qué lleva el transportista en el tramo"
-                      error={te?.cargaEnTramo}
-                      inputId={`ruta-tramo-${i}-carga`}
-                    />
-                    <div className={rutaTramoGrid}>
-                      <Field
-                        label="Tipo de mercancía (carga)"
-                        value={p.tipoMercanciaCarga ?? ""}
-                        onChange={(v) =>
-                          updateTramo(i, { tipoMercanciaCarga: v })
-                        }
-                        error={te?.tipoMercanciaCarga}
-                        inputId={`ruta-tramo-${i}-tmc`}
-                      />
-                      <Field
-                        label="Tipo de mercancía (descarga)"
-                        value={p.tipoMercanciaDescarga ?? ""}
-                        onChange={(v) =>
-                          updateTramo(i, { tipoMercanciaDescarga: v })
-                        }
-                        error={te?.tipoMercanciaDescarga}
-                        inputId={`ruta-tramo-${i}-tmd`}
-                      />
-                    </div>
-                    <Field
-                      label="Notas del tramo"
-                      value={p.notas ?? ""}
-                      onChange={(v) => updateTramo(i, { notas: v })}
-                      multiline
-                      error={te?.notas}
-                      inputId={`ruta-tramo-${i}-notas`}
-                    />
-                  </div>
-                  <div className="flex justify-center py-1">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1.5 border-0 bg-transparent p-1 text-[12px] font-extrabold text-[var(--primary)] hover:underline"
-                      onClick={() => insertTramoAt(i + 1)}
-                    >
-                      <Plus size={14} strokeWidth={2.5} aria-hidden />
-                      {i + 1 === tramos.length
-                        ? "Añadir tramo al final"
-                        : `Añadir tramo entre ${i + 1} y ${i + 2}`}
-                    </button>
-                  </div>
                   </Fragment>
                 );
               })}

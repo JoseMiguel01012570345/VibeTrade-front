@@ -21,6 +21,7 @@ import { getSessionToken } from "../../../../utils/http/sessionToken";
 import { cn } from "../../../../lib/cn";
 import type { RouteOfferPublicState } from "../../../../app/store/marketStoreTypes";
 import type { RouteSheet } from "../../domain/routeSheetTypes";
+import { formatRouteEstimadoDisplay } from "../../domain/routeSheetDateTime";
 import {
   routeStatusLabel,
   tramoResumenLinea,
@@ -503,12 +504,12 @@ export function ChatRightRailRoutesPanel({
                 )}
                 {p.tiempoRecogidaEstimado ? (
                   <div className="vt-muted">
-                    Recogida: {p.tiempoRecogidaEstimado}
+                    Recogida: {formatRouteEstimadoDisplay(p.tiempoRecogidaEstimado)}
                   </div>
                 ) : null}
                 {p.tiempoEntregaEstimado ? (
                   <div className="vt-muted">
-                    Entrega: {p.tiempoEntregaEstimado}
+                    Entrega: {formatRouteEstimadoDisplay(p.tiempoEntregaEstimado)}
                   </div>
                 ) : null}
                 {p.ventanaHoraria ? (

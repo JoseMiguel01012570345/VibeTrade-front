@@ -26,6 +26,8 @@ type Props = Readonly<{
   buttonClassName?: string;
   /** Placeholder en el gatillo si no hay valor. */
   placeholder?: string;
+  /** z-index del popover portaled (alinear con `VtDateField` en modales apilados). */
+  popoverZIndexClass?: string;
   "aria-label"?: string;
 }>;
 
@@ -108,6 +110,7 @@ export function VtTimeField({
   className,
   buttonClassName,
   placeholder = "Elegir hora",
+  popoverZIndexClass = "z-[220]",
   "aria-label": ariaLabel,
 }: Props) {
   const genId = useId();
@@ -242,7 +245,10 @@ export function VtTimeField({
   const popover = open && box && !disabled && (
     <div
       ref={listRef}
-      className="fixed z-[220] max-w-[min(100vw-24px,340px)] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[0_18px_50px_rgba(2,6,23,0.22)]"
+      className={cn(
+        "fixed max-w-[min(100vw-24px,340px)] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[0_18px_50px_rgba(2,6,23,0.22)]",
+        popoverZIndexClass,
+      )}
       style={{
         top: box.top,
         left: box.left,

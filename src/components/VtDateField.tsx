@@ -25,6 +25,8 @@ type Props = Readonly<{
   disabled?: boolean;
   className?: string;
   buttonClassName?: string;
+  /** z-index del popover portaled (p. ej. `z-[500]` sobre modales con selects a z-[400]). */
+  popoverZIndexClass?: string;
   "aria-label"?: string;
 }>;
 
@@ -122,6 +124,7 @@ export function VtDateField({
   disabled = false,
   className,
   buttonClassName,
+  popoverZIndexClass = "z-[220]",
   "aria-label": ariaLabel,
 }: Props) {
   const genId = useId();
@@ -305,7 +308,10 @@ export function VtDateField({
   const popover = open && box && !disabled && (
     <div
       ref={listRef}
-      className="fixed z-[220] max-w-[min(100vw-24px,360px)] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[0_18px_50px_rgba(2,6,23,0.22)]"
+      className={cn(
+        "fixed max-w-[min(100vw-24px,360px)] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[0_18px_50px_rgba(2,6,23,0.22)]",
+        popoverZIndexClass,
+      )}
       style={{ top: box.top, left: box.left, width: box.width, maxWidth: "min(100vw - 24px, 360px)" }}
       role="dialog"
       aria-label="Calendario"

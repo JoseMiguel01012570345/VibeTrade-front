@@ -5,6 +5,7 @@ import type {
   RouteOfferTramoPublic,
 } from '../../app/store/marketStoreTypes'
 import { routeStatusLabel, type RouteSheetStatus } from '../chat/domain/routeSheetTypes'
+import { formatRouteEstimadoDisplay } from '../chat/domain/routeSheetDateTime'
 
 function trustHue(score: number): number {
   const t = Math.max(0, Math.min(100, score)) / 100
@@ -85,8 +86,13 @@ function TramoPublicDetails({ t, compact }: { t: RouteOfferTramoPublic; compact:
     rows.push({ label: 'Vehículo requerido (hoja)', value: t.tipoVehiculoRequerido.trim() })
   if (t.tiempoRecogidaEstimado?.trim() || t.tiempoEntregaEstimado?.trim()) {
     rows.push({
-      label: 'Ventana estimada (h)',
-      value: [t.tiempoRecogidaEstimado?.trim(), t.tiempoEntregaEstimado?.trim()].filter(Boolean).join(' → '),
+      label: 'Ventana estimada (recogida → entrega)',
+      value: [
+        formatRouteEstimadoDisplay(t.tiempoRecogidaEstimado),
+        formatRouteEstimadoDisplay(t.tiempoEntregaEstimado),
+      ]
+        .filter(Boolean)
+        .join(' → '),
     })
   }
   if (t.precioTransportista?.trim())
