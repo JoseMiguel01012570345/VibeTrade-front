@@ -55,6 +55,7 @@ import {
 import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
 import { buildEmergentMapLegs } from "../../utils/map/emergentRouteMapLegs";
 import { EmergentRouteFeedMap } from "../home/EmergentRouteFeedMap";
+import { PaymentGatewayConfigModal } from "./PaymentGatewayConfigModal";
 
 function isValidEmail(value: string): boolean {
   const t = value.trim();
@@ -286,6 +287,7 @@ export function ProfilePage() {
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [contactsModalOpen, setContactsModalOpen] = useState(false);
+  const [paymentConfigOpen, setPaymentConfigOpen] = useState(false);
 
   const tab: ProfileSection =
     sectionParam && isProfileSection(sectionParam) ? sectionParam : "account";
@@ -908,7 +910,11 @@ export function ProfilePage() {
                     Elegí una pasarela y añadí credenciales necesarias por
                     pasarela (demo).
                   </div>
-                  <button type="button" className="vt-btn">
+                  <button
+                    type="button"
+                    className="vt-btn"
+                    onClick={() => setPaymentConfigOpen(true)}
+                  >
                     Configurar
                   </button>
                 </div>
@@ -1140,6 +1146,11 @@ export function ProfilePage() {
             }
           })();
         }}
+      />
+
+      <PaymentGatewayConfigModal
+        open={paymentConfigOpen}
+        onClose={() => setPaymentConfigOpen(false)}
       />
 
       <ImageLightbox
