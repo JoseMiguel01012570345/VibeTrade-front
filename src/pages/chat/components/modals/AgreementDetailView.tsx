@@ -336,12 +336,14 @@ export function AgreementDetailView({
             "vt-btn vt-btn-sm inline-flex shrink-0 items-center gap-1.5",
           )}
           onClick={() => {
-            try {
-              downloadTradeAgreementPdf(a, catalog);
-              toast.success("PDF generado.");
-            } catch {
-              toast.error("No se pudo generar el PDF.");
-            }
+            void (async () => {
+              try {
+                await downloadTradeAgreementPdf(a, catalog);
+                toast.success("PDF generado.");
+              } catch {
+                toast.error("No se pudo generar el PDF.");
+              }
+            })();
           }}
         >
           <Download size={14} aria-hidden />

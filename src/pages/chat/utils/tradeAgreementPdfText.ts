@@ -42,6 +42,112 @@ function norm(s?: string): string {
   return (s ?? "").trim();
 }
 
+/**
+ * Absolute `http:`/`https:` URL usable in QR/PDF.
+ * Converts server paths like `/api/v1/media/...` relative to `window.location.origin`.
+ * Returns `null` for empty strings, malformed values, or `blob:` URLs (solo válidos en la sesión del navegador).
+ */
+export function resolveAgreementAttachmentUrlForQr(raw: unknown): string | null {
+  const s = `${raw ?? ""}`.trim();
+  if (!s) return null;
+  if (/^blob:/i.test(s)) return null;
+
+  try {
+    const u = new URL(s);
+    if (u.protocol === "http:" || u.protocol === "https:") return u.href;
+  } catch {
+    /* relative paths */
+  }
+
+  /** Root-relative path (/api/v1/media/…) */
+  if (s.startsWith("/")) {
+    if (typeof globalThis.window === "undefined") return null;
+    try {
+      return new URL(s, globalThis.window.location.href).href;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Protocol-relative (//…) */
+  if (s.startsWith("//")) {
+    if (typeof globalThis.window === "undefined") return null;
+    try {
+      const proto =
+        typeof globalThis.window.location?.protocol === "string"
+          ? globalThis.window.location.protocol
+          : "https:";
+      return new URL(`${proto}${s}`).href;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+
+
+/**
+ * Enlaces de archivos (fotos/documentos) declarados en campos extra del acuerdo
+ * y la URL externa de hoja de ruta, útiles para anexar códigos QR al PDF.
+ */
+export function collectAgreementQrLinkEntries(
+  a: TradeAgreement,
+): { readonly label: string; readonly url: string }[] {
+  const out: { label: string; url: string }[] = [];
+  const seen = new Set<string>();
+
+  const pushOne = (label: string, rawUrl: string) => {
+    const url = resolveAgreementAttachmentUrlForQr(rawUrl);
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    out.push({ label: label.slice(0, 200), url });
+  };
+
+  const route = norm(a.routeSheetUrl ?? "");
+  if (route) {
+    pushOne("Hoja de ruta (enlace externo)", route);
+  }
+
+  const fields = a.extraFields ?? [];
+  let iImg = 0;
+  let iDoc = 0;
+  for (const f of fields) {
+    if (f.valueKind !== "image" && f.valueKind !== "document") continue;
+    const mu = norm(f.mediaUrl);
+    const title = norm(f.title) || "(sin título)";
+    const hint =
+      f.valueKind === "image"
+        ? `Campo adjunto (${++iImg}) — foto`
+        : `Campo adjunto (${++iDoc}) — documento`;
+    pushOne(`${hint}: ${title}`, mu);
+  }
+
+  if (agreementDeclaresService(a)) {
+    const services = normalizeAgreementServices(a);
+    let svcImg = 0;
+    let svcDoc = 0;
+    services.forEach((sv, svcIndex) => {
+      for (const f of sv.condicionesExtras ?? []) {
+        if (f.valueKind !== "image" && f.valueKind !== "document") continue;
+        const mu = norm(f.mediaUrl);
+        const title = norm(f.title) || "(sin título)";
+        const kind =
+          f.valueKind === "image"
+            ? `foto (${++svcImg})`
+            : `documento (${++svcDoc})`;
+        pushOne(
+          `Servicio ${svcIndex + 1} — cláusula extra (${kind}): ${title}`,
+          mu,
+        );
+      }
+    });
+  }
+
+  return out;
+}
+
 function statusEs(s: TradeAgreement["status"]): string {
   switch (s) {
     case "accepted":
@@ -261,12 +367,20 @@ function extraFieldsText(
     if (f.valueKind === "text") {
       o.push(`   ${norm(f.textValue) || "-"}`);
     } else if (f.mediaUrl.trim()) {
+      const mu = norm(f.mediaUrl);
       o.push(
-        `   (${f.valueKind === "image" ? "Imagen" : "Documento"}: ${norm(f.fileName) || norm(f.mediaUrl)})`,
+        `   (${f.valueKind === "image" ? "Imagen" : "Documento"}: ${norm(f.fileName) || mu})`,
       );
-      o.push(
-        "   (Abrir el acuerdo en VibeTrade para ver o descargar el archivo.)",
-      );
+      const abs = resolveAgreementAttachmentUrlForQr(mu);
+      if (abs) {
+        o.push(
+          `   Enlace (también en código QR en anexos del PDF): ${abs}`,
+        );
+      } else {
+        o.push(
+          "   (Abrir el acuerdo en VibeTrade para ver o descargar el archivo.)",
+        );
+      }
     } else {
       o.push("   -");
     }
@@ -292,7 +406,10 @@ export function buildTradeAgreementPlainDocument(
   sections.push(`ID del acuerdo: ${a.id}`);
   sections.push("");
   if (norm(a.routeSheetUrl || "")) {
-    sections.push(`Enlace hoja de ruta (referencia externa): ${a.routeSheetUrl}`);
+    const rs = resolveAgreementAttachmentUrlForQr(a.routeSheetUrl);
+    sections.push(
+      `Enlace hoja de ruta (referencia externa): ${rs ?? norm(a.routeSheetUrl)}`,
+    );
     sections.push("");
   }
 
@@ -365,7 +482,7 @@ export function buildTradeAgreementPlainDocument(
 
   sections.push("");
   sections.push(
-    "--- Los datos incluyen texto y tablas configurados en VibeTrade. Imagenes y documentos adjuntos en campos adicionales pueden requerir abrir la app. ---",
+    "--- Los datos incluyen texto y tablas configurados en VibeTrade. Fotos y documentos con URL pública pueden incluirse al final de este archivo como código QR ---",
   );
   return sections.join("\n");
 }
