@@ -87,16 +87,16 @@ export function AppShell() {
               ) : null}
               <div
                 className={cn(
-                  "flex items-center gap-2.5",
+                  "flex flex-wrap items-center gap-x-2.5 gap-y-2 md:flex-nowrap",
                   isSessionActive && "pt-2.5",
                 )}
               >
-                <h1 className="shrink-0 text-lg font-black tracking-[-0.03em] text-[var(--text)]">
+                <h1 className="order-1 shrink-0 text-lg font-black tracking-[-0.03em] text-[var(--text)]">
                   Ofertas
                 </h1>
                 <button
                   type="button"
-                  className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+                  className="order-3 flex w-full min-w-0 basis-full items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 md:order-2 md:w-auto md:flex-1 md:basis-auto"
                   onClick={() => navigate("/search")}
                   aria-label="Abrir búsqueda de tiendas, productos y servicios"
                 >
@@ -106,11 +106,11 @@ export function AppShell() {
                     className="shrink-0 text-[var(--muted)]"
                     aria-hidden
                   />
-                  <span className="truncate text-[var(--muted)]">
+                  <span className="min-w-0 text-[var(--muted)] max-md:whitespace-normal max-md:break-words max-md:leading-snug md:truncate">
                     Buscar tiendas, productos o servicios…
                   </span>
                 </button>
-                <div className="flex shrink-0 items-center gap-2 self-center">
+                <div className="order-2 ml-auto flex shrink-0 items-center gap-2 self-center md:order-3 md:ml-0">
                   {isSessionActive ? (
                     <>
                       <UserTrustHistoryButton />
@@ -162,8 +162,11 @@ export function AppShell() {
 
       <main
         className={cn(
-          "vt-main min-h-0 flex-1 py-4",
-          hideBottomNav ? "pb-4" : "pb-[88px]",
+          "vt-main min-h-0 flex-1 pt-4",
+          /* Hilo de chat (sin nav inferior): en móvil el padding inferior vive en el compositor (área segura); main sin hueco extra. */
+          hideBottomNav
+            ? "max-[960px]:pb-0 min-[961px]:pb-4"
+            : "pb-[88px]",
         )}
       >
         <Outlet />

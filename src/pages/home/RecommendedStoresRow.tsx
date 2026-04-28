@@ -28,6 +28,7 @@ export function RecommendedStoresRow({
   storeCatalogs,
   embedded,
   orientation = "horizontal",
+  hideTitle = false,
 }: Readonly<{
   storeIds: string[];
   stores: Record<string, StoreBadge>;
@@ -35,6 +36,8 @@ export function RecommendedStoresRow({
   /** Dentro del feed intercalado (menos margen vertical). */
   embedded?: boolean;
   orientation?: "horizontal" | "vertical";
+  /** Por ejemplo panels con header propio (sheet home móvil). */
+  hideTitle?: boolean;
 }>) {
   const navigate = useNavigate();
   const resolved = useMemo(
@@ -196,7 +199,9 @@ export function RecommendedStoresRow({
           embedded ? "" : "mb-4",
         )}
       >
-        <p className={titleClass}>Tiendas para vos</p>
+        {!hideTitle ? (
+          <p className={titleClass}>Tiendas para vos</p>
+        ) : null}
         <div
           ref={scrollerRef}
           data-home-stores-scroll

@@ -69,9 +69,11 @@ export function TrustBar() {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-2.5 py-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <div className="font-bold tracking-[-0.02em]">Barra de confianza</div>
+      <div className="grid grid-cols-1 gap-2 py-3 max-[960px]:gap-1.5 max-[960px]:py-1.5 md:gap-2.5 md:py-3">
+        <div className="flex items-baseline justify-between gap-3 max-[960px]:justify-end">
+          <div className="hidden font-bold tracking-[-0.02em] min-[961px]:block">
+            Barra de confianza
+          </div>
           <div
             className={cn(
               'text-xs text-[var(--muted)]',

@@ -15,8 +15,11 @@ import {
   AlertTriangle,
   ChevronDown,
   FileText,
+  MoreVertical,
   PanelRight,
   ShieldCheck,
+  Wallet,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useShallow } from "zustand/react/shallow";
@@ -103,6 +106,23 @@ import type { Message } from "../../app/store/marketStoreTypes";
 import "./chat.css";
 
 const CHAT_SCROLL_BOTTOM_PX = 80;
+
+function useMinWidth961() {
+  const [wide, setWide] = useState(() => {
+    if (typeof globalThis === "undefined" || !("matchMedia" in globalThis)) {
+      return true;
+    }
+    return globalThis.matchMedia("(min-width: 961px)").matches;
+  });
+  useEffect(() => {
+    const mq = globalThis.matchMedia("(min-width: 961px)");
+    const sync = () => setWide(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return wide;
+}
 
 /** Misma familia de tipos que el ping de entregado vía <c>messageCreated</c> (chatRealtime). */
 function incomingMessageSupportsDeliveryAck(m: Message): boolean {
@@ -387,6 +407,7 @@ export function ChatPage() {
   const [routeSubscribersSheetId, setRouteSubscribersSheetId] = useState<
     string | null
   >(null);
+  const subsSheetWideLayout = useMinWidth961();
   const [highlightSubscriberUserId, setHighlightSubscriberUserId] = useState<
     string | null
   >(null);
@@ -397,6 +418,8 @@ export function ChatPage() {
   const [agreementDeleteSheetsModal, setAgreementDeleteSheetsModal] =
     useState<null | { agreementId: string; title: string }>(null);
   const [chatPayOpen, setChatPayOpen] = useState(false);
+  /** Móvil: acciones Panel / Pagar / Emitir desde FAB + hoja inferior (más alto útil para mensajes). */
+  const [mobileChatActionsOpen, setMobileChatActionsOpen] = useState(false);
   const [peerPartyExitedInfo, setPeerPartyExitedInfo] = useState<{
     roleLabel: string;
     reason: string;
@@ -912,6 +935,49 @@ export function ChatPage() {
   ]);
 
   useEffect(() => {
+    if (!routeSubscribersSheetId || subsSheetWideLayout) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [routeSubscribersSheetId, subsSheetWideLayout]);
+
+  useEffect(() => {
+    if (!routeSubscribersSheetId || subsSheetWideLayout) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setRouteSubscribersSheetId(null);
+      setHighlightSubscriberUserId(null);
+    };
+    globalThis.addEventListener("keydown", onKey);
+    return () => globalThis.removeEventListener("keydown", onKey);
+  }, [routeSubscribersSheetId, subsSheetWideLayout]);
+
+  useEffect(() => {
+    if (!mobileChatActionsOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileChatActionsOpen]);
+
+  useEffect(() => {
+    if (!mobileChatActionsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setMobileChatActionsOpen(false);
+    };
+    globalThis.addEventListener("keydown", onKey);
+    return () => globalThis.removeEventListener("keydown", onKey);
+  }, [mobileChatActionsOpen]);
+
+  useEffect(() => {
+    if (railOpen || routeSubscribersSheetId) setMobileChatActionsOpen(false);
+  }, [railOpen, routeSubscribersSheetId]);
+
+  useEffect(() => {
     if (thread?.chatActionsLocked) setSelected({});
   }, [thread?.chatActionsLocked]);
 
@@ -1335,50 +1401,35 @@ export function ChatPage() {
 
   const canSend = !recording && hasComposeToSend && !chatActionsLocked;
 
+  const closeSubscriberRouteSheet = useCallback(() => {
+    setRouteSubscribersSheetId(null);
+    setHighlightSubscriberUserId(null);
+  }, []);
+
   return (
     <div className="container vt-page vt-chat-page">
       <div
         className={cn(
           "grid min-h-0 flex-1 grid-cols-1 items-stretch gap-5",
           "max-[960px]:grid-rows-[minmax(0,1fr)_auto] max-[960px]:gap-x-4 max-[960px]:row-gap-0",
-          "min-[961px]:grid-cols-[minmax(0,1fr)_minmax(340px,480px)]",
+          "min-[961px]:[grid-template-columns:minmax(520px,_1fr)_minmax(260px,_320px)]",
         )}
       >
-        <div className="flex min-h-0 min-w-0 flex-col px-1 min-[961px]:pl-2 min-[961px]:pr-1">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-row gap-2.5">
-            {routeSubscribersSheetId ? (
-              <ChatRouteSubscribersPanel
-                key={`${thread.id}-route-subscribers`}
-                threadId={thread.id}
-                routeOffer={routeOfferForThisThread}
-                contextRouteSheetId={routeSubscribersSheetId}
-                routeSheets={(thread.routeSheets ?? []).map((r) => ({
-                  id: r.id,
-                  titulo: (r.titulo ?? "Hoja de ruta").trim() || "Hoja de ruta",
-                }))}
-                canSellerManageRouteSubscriptions={viewerIsThreadSeller}
-                onSubscriptionsChanged={refreshChatRouteData}
-                highlightUserId={highlightSubscriberUserId}
-                onThreadRouteSheetsSynced={syncThreadRouteSheetsFromSubscribersPanel}
-                onClose={() => {
-                  setRouteSubscribersSheetId(null);
-                  setHighlightSubscriberUserId(null);
-                }}
-              />
-            ) : null}
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3.5">
-              <div className="vt-card shrink-0 px-[22px] py-[18px]">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <button
-                    className="vt-btn"
-                    onClick={() => nav("/chat")}
-                    aria-label="Volver a la lista de chats"
-                  >
-                    <ArrowLeft size={16} />
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <div className="font-black tracking-[-0.03em]">
+        <div className="flex h-full min-h-0 min-w-0 flex-col px-0 min-[961px]:px-1">
+          <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 max-[960px]:gap-2">
+              <div className="vt-card shrink-0 px-3 py-2 sm:px-[22px] sm:py-[18px]">
+                {/* Móvil: columna para evitar botones tapados por título/tags; escritorio: fila */}
+                <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:gap-x-3 md:gap-y-3">
+                  <div className="flex min-w-0 w-full items-start gap-2.5 md:min-h-0 md:min-w-0 md:flex-1 md:items-start">
+                    <button
+                      className="vt-btn shrink-0"
+                      onClick={() => nav("/chat")}
+                      aria-label="Volver a la lista de chats"
+                    >
+                      <ArrowLeft size={16} />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-black tracking-[-0.03em] break-words text-[clamp(14px,3.9vw,18px)] leading-snug">
                         {thread
                           ? chatThreadHeaderTitle(
                               thread,
@@ -1387,36 +1438,38 @@ export function ChatPage() {
                             )
                           : store.name}
                       </div>
-                    </div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                      <span
-                        className={
-                          store.verified ?
-                            "vt-pill inline-flex items-center gap-1"
-                          : "vt-badge-verify-warn inline-flex items-center gap-1"
-                        }
-                      >
-                        {store.verified ?
-                          <ShieldCheck size={14} aria-hidden />
-                        : <AlertTriangle size={14} aria-hidden />}
-                        {store.verified
-                          ? "Credenciales validadas"
-                          : "No verificado"}
-                      </span>
-                      <span
-                        className="vt-pill"
-                        title="Disponibilidad de transporte indicada por el perfil del negocio."
-                      >
-                        Transporte:{" "}
-                        {store.transportIncluded ? "incluido" : "NO incluido"}
-                      </span>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-2">
+                        <span
+                          className={
+                            store.verified ?
+                              "vt-pill inline-flex max-w-full items-center gap-1"
+                            : "vt-badge-verify-warn inline-flex max-w-full items-center gap-1"
+                          }
+                        >
+                          {store.verified ?
+                            <ShieldCheck size={14} aria-hidden />
+                          : <AlertTriangle size={14} aria-hidden />}
+                          <span className="min-w-0">
+                            {store.verified
+                              ? "Credenciales validadas"
+                              : "No verificado"}
+                          </span>
+                        </span>
+                        <span
+                          className="vt-pill max-w-full"
+                          title="Disponibilidad de transporte indicada por el perfil del negocio."
+                        >
+                          Transporte:{" "}
+                          {store.transportIncluded ? "incluido" : "NO incluido"}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="hidden w-full min-w-0 shrink-0 flex-wrap items-center gap-y-2 min-[961px]:ml-auto min-[961px]:flex min-[961px]:w-auto min-[961px]:max-w-[52%] min-[961px]:justify-end lg:max-w-none">
                     <button
                       type="button"
-                      className="vt-btn vt-chat-rail-toggle"
+                      className="vt-btn vt-chat-rail-toggle min-h-10 shrink-0"
                       onClick={() => setRailOpen((o) => !o)}
                       title="Contratos y hojas de ruta"
                     >
@@ -1425,7 +1478,7 @@ export function ChatPage() {
                     {!isActingSeller ? (
                       <button
                         type="button"
-                        className="vt-btn"
+                        className="vt-btn min-h-10 shrink-0"
                         onClick={() => setChatPayOpen(true)}
                         title="Pagar"
                       >
@@ -1435,7 +1488,7 @@ export function ChatPage() {
                     {isActingSeller ? (
                       <button
                         type="button"
-                        className="vt-btn"
+                        className="vt-btn min-h-10 min-w-0 shrink"
                         disabled={chatActionsLocked}
                         title={
                           chatActionsLocked
@@ -1447,7 +1500,8 @@ export function ChatPage() {
                           setShowAgreementForm(true);
                         }}
                       >
-                        <FileText size={16} /> Emitir acuerdo
+                        <FileText size={16} className="shrink-0" />{" "}
+                        <span className="truncate">Emitir acuerdo</span>
                       </button>
                     ) : null}
                   </div>
@@ -1544,9 +1598,138 @@ export function ChatPage() {
                 markThreadPaymentCompleted={markThreadPaymentCompleted}
                 pushNotification={pushNotification}
                 setTrustScore={setTrustScore}
+                composerMobileActions={
+                  <div
+                    className={cn(
+                      "min-[961px]:hidden",
+                      railOpen && "pointer-events-none opacity-0",
+                    )}
+                    aria-hidden={railOpen || undefined}
+                  >
+                    {/* Móvil: encima del micrófono en el compositor; el contenedor viene de ChatComposerSection. */}
+                    <button
+                      type="button"
+                      className={cn(
+                        "flex size-14 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_oklab,var(--primary)_78%,var(--border))]",
+                        "bg-[var(--primary)] text-white shadow-[0_10px_28px_rgba(37,99,235,0.35)] transition",
+                        "hover:bg-[var(--primary-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] active:translate-y-[0.5px]",
+                      )}
+                      aria-expanded={mobileChatActionsOpen}
+                      aria-haspopup="dialog"
+                      aria-label="Abrir acciones del chat"
+                      title="Contratos, pago u emitir acuerdo"
+                      onClick={() =>
+                        setMobileChatActionsOpen((open) => !open)
+                      }
+                    >
+                      <MoreVertical size={24} strokeWidth={2.25} aria-hidden />
+                    </button>
+                  </div>
+                }
               />
+
+              {mobileChatActionsOpen ? (
+                <div
+                  className="fixed inset-0 z-[109] hidden max-[960px]:block"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="vt-chat-actions-sheet-title"
+                >
+                  <button
+                    type="button"
+                    className="absolute inset-0 bg-[rgba(2,6,23,0.52)] backdrop-blur-[3px]"
+                    aria-label="Cerrar menú de acciones"
+                    onClick={() => setMobileChatActionsOpen(false)}
+                  />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 flex max-h-[min(70dvh,420px)] w-full flex-col justify-end pb-[env(safe-area-inset-bottom,0px)] pt-10">
+                    <div className="pointer-events-auto flex max-h-[min(70dvh,420px)] flex-col rounded-t-[1.125rem] border border-b-0 border-[var(--border)] bg-[var(--surface)] pt-4 shadow-[0_-12px_40px_rgba(2,6,23,0.28)]">
+                      <div className="flex items-center justify-between gap-3 border-b border-[color-mix(in_oklab,var(--border)_80%,transparent)] px-4 pb-3 pt-1">
+                        <span
+                          id="vt-chat-actions-sheet-title"
+                          className="text-[15px] font-extrabold text-[var(--text)]"
+                        >
+                          Acciones del chat
+                        </span>
+                        <button
+                          type="button"
+                          className="grid size-11 shrink-0 place-items-center rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[var(--muted)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+                          aria-label="Cerrar"
+                          onClick={() => setMobileChatActionsOpen(false)}
+                        >
+                          <X size={20} strokeWidth={2.25} aria-hidden />
+                        </button>
+                      </div>
+                      <div className="overflow-y-auto px-3 pb-4 pt-3">
+                        <div className="flex flex-col gap-2">
+                          <button
+                            type="button"
+                            className="flex min-h-12 w-full shrink-0 items-center justify-start gap-2.5 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] px-4 py-3 text-left text-[13px] font-bold text-[var(--text)] transition hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))]"
+                            onClick={() => {
+                              setRailOpen(true);
+                              setMobileChatActionsOpen(false);
+                            }}
+                          >
+                            <PanelRight
+                              size={18}
+                              className="shrink-0 text-[var(--primary)]"
+                              aria-hidden
+                            />
+                            Panel (contratos y rutas)
+                          </button>
+                          {!isActingSeller ? (
+                            <button
+                              type="button"
+                              className="flex min-h-12 w-full shrink-0 items-center justify-start gap-2.5 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] px-4 py-3 text-left text-[13px] font-bold text-[var(--text)] transition hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))]"
+                              onClick={() => {
+                                setChatPayOpen(true);
+                                setMobileChatActionsOpen(false);
+                              }}
+                            >
+                              <Wallet
+                                size={18}
+                                className="shrink-0 text-[var(--primary)]"
+                                aria-hidden
+                              />
+                              Pagar
+                            </button>
+                          ) : null}
+                          {isActingSeller ? (
+                            <button
+                              type="button"
+                              className={cn(
+                                "flex min-h-12 w-full shrink-0 items-center justify-start gap-2.5 rounded-xl border px-4 py-3 text-left text-[13px] font-bold transition",
+                                chatActionsLocked
+                                  ? "cursor-not-allowed border-[color-mix(in_oklab,var(--muted)_40%,var(--border))] opacity-65"
+                                  : "border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))]",
+                              )}
+                              disabled={chatActionsLocked}
+                              title={
+                                chatActionsLocked
+                                  ? "No disponible hasta registrar el pago"
+                                  : undefined
+                              }
+                              onClick={() => {
+                                if (chatActionsLocked) return;
+                                setAgreementBeingEditedId(null);
+                                setShowAgreementForm(true);
+                                setMobileChatActionsOpen(false);
+                              }}
+                            >
+                              <FileText
+                                size={18}
+                                className="shrink-0 text-[var(--primary)]"
+                                aria-hidden
+                              />
+                              Emitir acuerdo
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
-          </div>
         </div>
 
         <div
@@ -1670,8 +1853,74 @@ export function ChatPage() {
               })();
             }}
           />
+          {routeSubscribersSheetId && subsSheetWideLayout ? (
+            <div className="absolute inset-0 z-[38] flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]">
+              <ChatRouteSubscribersPanel
+                embedded
+                key={`${thread.id}-route-subscribers-desk`}
+                threadId={thread.id}
+                routeOffer={routeOfferForThisThread}
+                contextRouteSheetId={routeSubscribersSheetId}
+                routeSheets={(thread.routeSheets ?? []).map((r) => ({
+                  id: r.id,
+                  titulo: (r.titulo ?? "Hoja de ruta").trim() || "Hoja de ruta",
+                }))}
+                canSellerManageRouteSubscriptions={viewerIsThreadSeller}
+                onSubscriptionsChanged={refreshChatRouteData}
+                highlightUserId={highlightSubscriberUserId}
+                onThreadRouteSheetsSynced={
+                  syncThreadRouteSheetsFromSubscribersPanel
+                }
+                onClose={closeSubscriberRouteSheet}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
+
+      {routeSubscribersSheetId && !subsSheetWideLayout ? (
+        <div
+          className="fixed inset-0 z-[110] min-[961px]:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="vt-chat-subs-sheet-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-[rgba(2,6,23,0.52)] backdrop-blur-[3px]"
+            aria-label="Cerrar suscriptores a la ruta"
+            onClick={closeSubscriberRouteSheet}
+          />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex max-h-[min(88dvh,820px)] min-h-[40dvh] w-full flex-col pb-[env(safe-area-inset-bottom,0px)] pt-0">
+            <div className="pointer-events-auto flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-none rounded-t-[1.125rem] border-x-0 border-b-0 border-t border-[var(--border)] bg-[var(--surface)] shadow-[0_-12px_40px_rgba(2,6,23,0.28)]">
+              <div
+                id="vt-chat-subs-sheet-title"
+                className="sr-only"
+              >
+                Suscriptores a la hoja de ruta
+              </div>
+              <ChatRouteSubscribersPanel
+                embedded
+                key={`${thread.id}-route-subscribers-mob`}
+                threadId={thread.id}
+                routeOffer={routeOfferForThisThread}
+                contextRouteSheetId={routeSubscribersSheetId}
+                routeSheets={(thread.routeSheets ?? []).map((r) => ({
+                  id: r.id,
+                  titulo: (r.titulo ?? "Hoja de ruta").trim() || "Hoja de ruta",
+                }))}
+                canSellerManageRouteSubscriptions={viewerIsThreadSeller}
+                onSubscriptionsChanged={refreshChatRouteData}
+                highlightUserId={highlightSubscriberUserId}
+                onThreadRouteSheetsSynced={
+                  syncThreadRouteSheetsFromSubscribersPanel
+                }
+                onClose={closeSubscriberRouteSheet}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
 

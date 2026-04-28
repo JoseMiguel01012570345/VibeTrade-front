@@ -1,34 +1,32 @@
 /*
- * Chat: panel lateral (drawer móvil). Mensajes, modales y formularios: Tailwind + formModalStyles.ts.
- * Scroll del documento y container: index.css
- *
- * El drawer fijo (position) debe aplicar siempre en viewport angosto, no solo cuando está
- * cerrado; si no, al abrir se pierde la regla :not(.--open) y el panel vuelve al flujo
- * (fila con altura 0) y no se ve.
+ * Chat: en viewport angosto el rail (Contratos/Rutas/Integrantes) es un bottom-sheet
+ * fijo desde abajo (similar al FAB de tiendas en Home). Escritorio: columna estable.
  */
 
 @media (max-width: 960px) {
   .vt-chat-rail-wrap .vt-chat-rail {
     position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: min(100vw - 20px, 440px);
+    inset: auto 0 max(0px, env(safe-area-inset-bottom, 0px)) 0;
+    width: 100%;
+    max-width: 100vw;
+    max-height: min(88dvh, 820px);
+    min-height: min(44dvh, 420px);
     z-index: 80;
-    max-height: none;
+    border-radius: 1.125rem 1.125rem 0 0;
+    box-shadow: 0 -12px 40px rgba(2, 6, 23, 0.28);
     transition:
-      transform 0.22s ease,
-      visibility 0.22s;
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0.28s;
   }
 
   .vt-chat-rail-wrap:not(.vt-chat-rail-wrap--open) .vt-chat-rail {
-    transform: translateX(105%);
+    transform: translateY(108%);
     visibility: hidden;
     pointer-events: none;
   }
 
   .vt-chat-rail-wrap--open .vt-chat-rail {
-    transform: translateX(0);
+    transform: translateY(0);
     visibility: visible;
     pointer-events: auto;
   }
@@ -40,8 +38,9 @@
     border: none;
     padding: 0;
     margin: 0;
-    background: rgba(2, 6, 23, 0.45);
+    background: rgba(2, 6, 23, 0.5);
     cursor: pointer;
+    backdrop-filter: blur(3px);
   }
 }
 

@@ -314,21 +314,6 @@ export function ChatListPage() {
       />
       <div className="mb-4">
         <h1 className="vt-h1">Chats</h1>
-        <div className="vt-muted">
-          Tus conversaciones con negocios (una por oferta en esta demo). «Salir» como{" "}
-          <strong>comprador o vendedor con acuerdo aceptado</strong> te expulsa
-          de ese hilo: no lo verás en la lista y el servidor deja de darte
-          acceso. Sin acuerdo, «Salir» cierra el hilo para vos sin ajuste de
-          confianza. Como transportista con tramos confirmados, salir antes de
-          que la hoja esté entregada puede des-suscribirte, limpiar tus datos en
-          la ruta y ajustar tu barra de confianza, salvo que comprador y
-          vendedor ya hubieran sido expulsados del hilo con acuerdo: en ese caso
-          no se aplica penalización al retirarse. Con acuerdo, pedimos motivo y
-          se aplica un ajuste de confianza proporcional a los integrantes
-          (comprador, vendedor y transportistas). Como vendedor, el ajuste
-          impacta la confianza del negocio; las hojas de ruta publicadas se
-          despublican.
-        </div>
       </div>
 
       <div className="vt-card vt-card-pad">

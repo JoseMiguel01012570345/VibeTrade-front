@@ -34,6 +34,11 @@ import { TramoSubscribedServiceFicha } from "./rail/TramoSubscribedServiceFicha"
 type Props = {
   threadId: string;
   routeOffer: RouteOfferPublicState | undefined;
+  /**
+   * Ocupa todo el contenedor (overlay sobre el rail escritorio o sheet móvil).
+   * Sin ancho fijo lateral (evita comprimir el área de mensajes).
+   */
+  embedded?: boolean;
   /** Hoja desde la que se abrió el visor (rail o deep link); foco inicial entre varias hojas. */
   contextRouteSheetId: string;
   /** Hojas del hilo (orden y títulos para el agrupado). */
@@ -64,6 +69,7 @@ function statusLabel(s: RouteOfferSubscriberSummary["tramos"][0]["status"]) {
 export function ChatRouteSubscribersPanel({
   threadId,
   routeOffer,
+  embedded = false,
   contextRouteSheetId,
   routeSheets,
   canSellerManageRouteSubscriptions = false,
@@ -614,8 +620,9 @@ export function ChatRouteSubscribersPanel({
     <>
       <aside
         className={cn(
-          "flex max-h-full min-h-0 w-[min(100%,280px)] shrink-0 flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_4px_24px_rgba(15,23,42,0.08)]",
-          "max-[640px]:max-h-[42vh] max-[640px]:w-full",
+          embedded
+            ? "flex max-h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-[var(--surface)] shadow-none"
+            : "flex max-h-full min-h-0 w-[min(100%,280px)] shrink-0 flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_4px_24px_rgba(15,23,42,0.08)] max-[640px]:max-h-[42vh] max-[640px]:w-full",
           showHighlightRing &&
             "ring-2 ring-[color-mix(in_oklab,var(--primary)_55%,var(--border))] ring-offset-2 ring-offset-[var(--surface)]",
         )}

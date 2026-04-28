@@ -1,6 +1,7 @@
 import type {
   ChangeEvent,
   Dispatch,
+  ReactNode,
   Ref,
   RefObject,
   SetStateAction,
@@ -74,6 +75,8 @@ type Props = {
     body: string;
   }) => void;
   setTrustScore: (n: number) => void;
+  /** Móvil (p. ej. FAB de acciones del chat encima del micrófono). */
+  composerMobileActions?: ReactNode;
 };
 
 export function ChatComposerSection({
@@ -106,10 +109,17 @@ export function ChatComposerSection({
   markThreadPaymentCompleted: _markThreadPaymentCompleted,
   pushNotification: _pushNotification,
   setTrustScore: _setTrustScore,
+  composerMobileActions,
 }: Props) {
   const profileDisplayNames = useAppStore((s) => s.profileDisplayNames);
   return (
-    <div className="vt-card vt-card-pad flex shrink-0 flex-col gap-2.5">
+    <div
+      className={cn(
+        "vt-card flex shrink-0 flex-col gap-2.5 overflow-visible p-4",
+        /* Mismo redondeado que vt-card; área segura en el borde inferior (móvil). */
+        "max-[960px]:[padding-bottom:calc(theme(spacing.4)+max(5px,env(safe-area-inset-bottom,0px)))]",
+      )}
+    >
       {selectedIds.length > 0 && (
         <div
           className="overflow-hidden rounded-xl border border-[color-mix(in_oklab,var(--muted)_22%,var(--border))] border-l-4 border-l-[#25d366] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] shadow-[0_1px_0_rgba(15,23,42,0.06)]"
@@ -456,27 +466,35 @@ export function ChatComposerSection({
               }
             }}
           />
-          <button
-            type="button"
-            className={cn(
-              "grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[#111b21]",
-              recording &&
-                "animate-[vt-rec-pulse_1.2s_ease-in-out_infinite] bg-[color-mix(in_oklab,var(--primary)_22%,var(--surface))] text-[var(--primary)] hover:bg-[color-mix(in_oklab,var(--primary)_22%,var(--surface))] hover:text-[var(--primary-2)]",
-            )}
-            disabled={chatActionsLocked && !recording}
-            aria-label={
-              recording ? "Detener y enviar nota de voz" : "Grabar nota de voz"
-            }
-            title={recording ? "Detener grabación" : "Nota de voz"}
-            onClick={toggleVoiceRecording}
-          >
-            {recording ? (
-              <Square size={18} fill="currentColor" />
-            ) : (
-              <Mic size={22} strokeWidth={2} />
-            )}
-          </button>
-          {hasComposeToSend && (
+          <div className="relative shrink-0">
+            {/* FAB encima del mic (móvil): no reduce el ancho del input */}
+            {composerMobileActions ? (
+              <div className="pointer-events-none absolute bottom-[calc(100%+0.25rem)] left-1/2 z-30 w-max max-w-none -translate-x-1/2">
+                <div className="pointer-events-auto">{composerMobileActions}</div>
+              </div>
+            ) : null}
+            <button
+              type="button"
+              className={cn(
+                "grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[#54656f] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[#111b21]",
+                recording &&
+                  "animate-[vt-rec-pulse_1.2s_ease-in-out_infinite] bg-[color-mix(in_oklab,var(--primary)_22%,var(--surface))] text-[var(--primary)] hover:bg-[color-mix(in_oklab,var(--primary)_22%,var(--surface))] hover:text-[var(--primary-2)]",
+              )}
+              disabled={chatActionsLocked && !recording}
+              aria-label={
+                recording ? "Detener y enviar nota de voz" : "Grabar nota de voz"
+              }
+              title={recording ? "Detener grabación" : "Nota de voz"}
+              onClick={toggleVoiceRecording}
+            >
+              {recording ? (
+                <Square size={18} fill="currentColor" />
+              ) : (
+                <Mic size={22} strokeWidth={2} />
+              )}
+            </button>
+          </div>
+          {hasComposeToSend ? (
             <button
               type="button"
               className={cn(
@@ -494,7 +512,7 @@ export function ChatComposerSection({
             >
               <Send size={22} strokeWidth={2.25} />
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

@@ -258,7 +258,7 @@ export function ChatMessageList({
     <div
       ref={listRef as RefObject<HTMLDivElement>}
       onScroll={onListScroll}
-      className="vt-card flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[color-mix(in_oklab,var(--bg)_60%,var(--surface))] to-[var(--surface)] px-6 py-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      className="vt-card flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[color-mix(in_oklab,var(--bg)_60%,var(--surface))] to-[var(--surface)] px-3 pb-4 pt-3 sm:gap-3.5 sm:px-5 sm:pb-5 sm:pt-4 md:px-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
     >
       {orderedMessages.map((m) => {
         const mine = m.from === "me";
@@ -335,9 +335,10 @@ export function ChatMessageList({
               className={cn(
                 isAudio
                   ? "w-[min(420px,100%)] max-w-[420px] min-w-0 [contain:inline-size]"
-                  : "w-fit max-w-[min(920px,96%)] min-w-0",
-                "break-words rounded-2xl border border-[var(--border)] px-4 py-3 shadow-[0_10px_25px_rgba(15,23,42,0.06)] [overflow-wrap:anywhere]",
-                system && "col-start-1 bg-[var(--surface)]",
+                  : "w-fit min-w-0 max-w-full sm:max-w-[min(920px,96%)]",
+                "break-words rounded-xl border border-[var(--border)] px-3 py-2.5 shadow-[0_10px_25px_rgba(15,23,42,0.06)] [overflow-wrap:anywhere] sm:rounded-2xl sm:px-4 sm:py-3",
+                system &&
+                  "col-start-1 w-full min-w-0 bg-[var(--surface)]",
                 !system &&
                   mine &&
                   !waVoiceSent &&

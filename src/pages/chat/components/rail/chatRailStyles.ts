@@ -9,7 +9,7 @@ import {
 export type ContractFilter = "all" | "store" | "buyer";
 
 export const RAIL_ROOT =
-  "vt-chat-rail flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)] max-[960px]:min-h-[min(480px,70vh)]";
+  "vt-chat-rail flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)] max-[960px]:rounded-b-none max-[960px]:border-b-0 max-[960px]:shadow-none";
 
 export const RAIL_BODY =
   "min-h-0 flex-1 overflow-auto px-3.5 py-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
