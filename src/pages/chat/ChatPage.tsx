@@ -46,6 +46,7 @@ import { TradeAgreementFormModal } from "./components/modals/TradeAgreementFormM
 import { TrustRiskEditConfirmModal } from "./components/modals/TrustRiskEditConfirmModal";
 import { AgreementDeleteRouteSheetsModal } from "./components/modals/AgreementDeleteRouteSheetsModal";
 import { PeerPartyExitedInfoModal } from "./components/modals/PeerPartyExitedInfoModal";
+import { ChatPaymentModal } from "./components/modals/ChatPaymentModal";
 import {
   agreementDeleteBlockedByRouteSheetInvariant,
   carrierHasChatAccessTramoOnOffer,
@@ -395,6 +396,7 @@ export function ChatPage() {
     useState<RouteSheet | null>(null);
   const [agreementDeleteSheetsModal, setAgreementDeleteSheetsModal] =
     useState<null | { agreementId: string; title: string }>(null);
+  const [chatPayOpen, setChatPayOpen] = useState(false);
   const [peerPartyExitedInfo, setPeerPartyExitedInfo] = useState<{
     roleLabel: string;
     reason: string;
@@ -1420,6 +1422,16 @@ export function ChatPage() {
                     >
                       <PanelRight size={16} /> Panel
                     </button>
+                    {!isActingSeller ? (
+                      <button
+                        type="button"
+                        className="vt-btn"
+                        onClick={() => setChatPayOpen(true)}
+                        title="Pagar"
+                      >
+                        Pagar
+                      </button>
+                    ) : null}
                     {isActingSeller ? (
                       <button
                         type="button"
@@ -1670,6 +1682,13 @@ export function ChatPage() {
         agreementTitle={agreementDeleteSheetsModal?.title ?? ""}
         onClose={() => setAgreementDeleteSheetsModal(null)}
         onAgreementDeleted={() => setAgreementDeleteSheetsModal(null)}
+      />
+
+      <ChatPaymentModal
+        open={chatPayOpen}
+        threadId={thread.id}
+        onClose={() => setChatPayOpen(false)}
+        onPaymentSuccess={() => markThreadPaymentCompleted(thread.id)}
       />
 
       <TrustRiskEditConfirmModal
