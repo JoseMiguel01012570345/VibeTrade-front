@@ -6,6 +6,7 @@ import type {
 import {
   coerceServiceSchedule,
   monedasFromRecurrenciaPagos,
+  normalizeExtraScope,
 } from "./tradeAgreementTypes";
 import { validateVigenciaRange } from "./serviceVigenciaDates";
 import type { StoreCatalog } from "./storeCatalogTypes";
@@ -24,6 +25,8 @@ export type TradeAgreementFormErrors = {
   /** Al menos un servicio; errores por índice de servicio */
   serviceItems?: string;
   serviceErrors?: Record<number, string[]>;
+  /** Campos adicionales (mercancía + servicio), una cadena por fila problemática */
+  extraFieldsLines?: Record<number, string>;
 };
 
 const TITLE_MIN = 3;
@@ -258,6 +261,36 @@ export function validateTradeAgreementDraft(
     }
   }
 
+  const xf = d.extraFields ?? [];
+  const xfErr: Record<number, string> = {};
+  xf.forEach((row, i) => {
+    const scope = normalizeExtraScope(row.scope as string | undefined);
+    if (scope === "merchandise" && !d.includeMerchandise) return;
+    if (scope === "service" && !d.includeService) return;
+    if (
+      scope === "legacy_combined" &&
+      !(d.includeMerchandise && d.includeService)
+    )
+      return;
+
+    const ti = norm(row.title);
+    const tx = norm(row.textValue);
+    const mu = norm(row.mediaUrl);
+    if (!ti.length && !tx.length && !mu.length) return;
+    if (!ti.length) {
+      xfErr[i] = "Completá el título del campo adicional.";
+      return;
+    }
+    if (row.valueKind === "text") {
+      const te =
+        tx.length === 0
+          ? "Escribí el contenido para este campo."
+          : optionalTextMax(row.textValue, "Contenido del campo adicional", true);
+      if (te) xfErr[i] = te;
+    } else if (!mu.length) xfErr[i] = "Subí un archivo para este campo.";
+  });
+  if (Object.keys(xfErr).length) errors.extraFieldsLines = xfErr;
+
   return errors;
 }
 
@@ -433,6 +466,47 @@ export function validateServiceWizardAdvance(
   }
 }
 
+/**
+ * Errores por fila para `AgreementExtraFieldsEditor` — mismos criterios y textos que
+ * `validateTradeAgreementDraft` para `extraFields` (bloques mercancía / servicio del modal).
+ */
+export function condicionesExtrasRowErrors(
+  sv: ServiceItem,
+): Record<number, string> | undefined {
+  const rows = sv.condicionesExtras ?? [];
+  const out: Record<number, string> = {};
+  rows.forEach((row, i) => {
+    const ti = norm(row.title);
+    const tx = norm(row.textValue);
+    const mu = norm(row.mediaUrl);
+    if (!ti.length && !tx.length && !mu.length) return;
+    if (!ti.length) {
+      out[i] = "Completá el título del campo adicional.";
+      return;
+    }
+    if (row.valueKind === "text") {
+      const te =
+        tx.length === 0
+          ? "Escribí el contenido para este campo."
+          : optionalTextMax(row.textValue, "Contenido del campo adicional", true);
+      if (te) out[i] = te;
+    } else if (!mu.length) {
+      out[i] = "Subí un archivo para este campo.";
+    }
+  });
+  return Object.keys(out).length ? out : undefined;
+}
+
+/** Lista de mensajes (orden por índice de fila) para validar el ítem de servicio completo. */
+export function collectCondicionesExtrasErrors(sv: ServiceItem): string[] {
+  const m = condicionesExtrasRowErrors(sv);
+  if (!m) return [];
+  return Object.keys(m)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map((i) => m[i]);
+}
+
 /** Validación de un ítem de servicio ya configurado (emitir acuerdo). */
 export function validateServiceItem(sv: ServiceItem): string[] {
   const msgs: string[] = [];
@@ -505,6 +579,8 @@ export function validateServiceItem(sv: ServiceItem): string[] {
     }
   }
 
+  collectCondicionesExtrasErrors(sv).forEach((m) => msgs.push(m));
+
   return [...new Set(msgs)];
 }
 
@@ -522,6 +598,9 @@ export function validationErrorCount(e: TradeAgreementFormErrors): number {
     Object.values(e.serviceErrors).forEach((arr) => {
       n += arr?.length ?? 0;
     });
+  }
+  if (e.extraFieldsLines) {
+    n += Object.keys(e.extraFieldsLines).length;
   }
   return n;
 }

@@ -18,6 +18,7 @@ export function AgreementBubble({
   onAccept,
   onReject,
   canRespond,
+  viewerIsBuyer,
   onOpenRouteSheet,
 }: {
   title: string;
@@ -25,6 +26,8 @@ export function AgreementBubble({
   onAccept?: () => void;
   onReject?: () => void;
   canRespond?: boolean;
+  /** Si el mensaje lo ve el comprador, el texto de «pendiente» usa segunda persona («tu respuesta»), no «del comprador». */
+  viewerIsBuyer?: boolean;
   onOpenRouteSheet?: () => void;
 }) {
   const st = agreement?.status;
@@ -80,7 +83,9 @@ export function AgreementBubble({
       {st === "pending_buyer" && !canRespond ? (
         <div className="mt-2">
           <span className={statusPillPending}>
-            Pendiente de respuesta del comprador
+            {viewerIsBuyer
+              ? "Tu respuesta pendiente"
+              : "Pendiente de respuesta del comprador"}
           </span>
         </div>
       ) : null}

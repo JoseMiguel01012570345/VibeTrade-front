@@ -445,6 +445,7 @@ export function ChatMessageList({
                   !chatActionsLocked &&
                   viewerIsBuyer
                 }
+                agreementViewerIsBuyer={viewerIsBuyer}
                 onOpenAgreementRouteSheet={
                   m.type === "agreement" &&
                   agreementDoc?.status !== "deleted" &&

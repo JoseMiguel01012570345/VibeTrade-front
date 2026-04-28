@@ -1,15 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
+import { Download } from "lucide-react";
 import { VtSelect, type VtSelectOption } from "../../../../components/VtSelect";
+import { ProtectedMediaImg } from "../../../../components/media/ProtectedMediaImg";
 import { useMarketStore } from "../../../../app/store/useMarketStore";
 import { cn } from "../../../../lib/cn";
 import {
   agreementDeclaresMerchandise,
   agreementDeclaresService,
+  legacyCombinedExtraFields,
+  merchandiseScopedExtraFields,
   normalizeAgreementServices,
   normalizeMerchandiseLine,
+  serviceScopedExtraFields,
   type MerchandiseLine,
   type MerchandiseSectionMeta,
   type TradeAgreement,
+  type TradeAgreementExtraFieldDraft,
 } from "../../domain/tradeAgreementTypes";
 import type {
   StoreCatalog,
@@ -21,6 +28,7 @@ import {
 } from "../../domain/storeCatalogTypes";
 import { ServiceItemPreview } from "./serviceConfig/ServiceItemPreview";
 import type { RouteSheet } from "../../domain/routeSheetTypes";
+import { downloadTradeAgreementPdf } from "../../utils/tradeAgreementPdfDownload";
 import {
   agrDetailBlock,
   agrDetailCard,
@@ -44,6 +52,52 @@ function Row({ label, value }: { label: string; value: string }) {
       <div className={agrDetailLabel}>{label}</div>
       <div className={agrDetailValue}>{value}</div>
     </div>
+  );
+}
+
+function ExtraFieldClauseCards({
+  fields,
+}: {
+  fields: TradeAgreementExtraFieldDraft[];
+}) {
+  if (!fields.length) return null;
+  return (
+    <>
+      {fields.map((f) => (
+        <div
+          key={f.id}
+          className="mb-4 rounded-xl border border-[color-mix(in_oklab,var(--border)_72%,transparent)] p-3 last:mb-0"
+        >
+          <div className="mb-2 font-extrabold text-[var(--text)]">
+            {f.title.trim() || "(sin título)"}
+          </div>
+          {f.valueKind === "text" && (f.textValue ?? "").trim() ? (
+            <div className="whitespace-pre-wrap text-sm text-[var(--text)]">
+              {(f.textValue ?? "").trim()}
+            </div>
+          ) : null}
+          {f.valueKind === "image" && (f.mediaUrl ?? "").trim() ? (
+            <div className="mt-2 max-w-lg">
+              <ProtectedMediaImg
+                src={(f.mediaUrl ?? "").trim()}
+                alt=""
+                className="max-h-72 w-full rounded border border-[var(--border)] object-contain"
+              />
+            </div>
+          ) : null}
+          {f.valueKind === "document" && (f.mediaUrl ?? "").trim() ? (
+            <a
+              href={(f.mediaUrl ?? "").trim()}
+              target="_blank"
+              rel="noreferrer"
+              className={agrDetailLink}
+            >
+              {f.fileName?.trim() || "Abrir documento adjunto"}
+            </a>
+          ) : null}
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -272,86 +326,117 @@ export function AgreementDetailView({
 
   return (
     <div className={agrDetailRoot}>
-      <Row label="Título" value={a.title} />
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <Row label="Título" value={a.title} />
+        </div>
+        <button
+          type="button"
+          className={cn(
+            "vt-btn vt-btn-sm inline-flex shrink-0 items-center gap-1.5",
+          )}
+          onClick={() => {
+            try {
+              downloadTradeAgreementPdf(a, catalog);
+              toast.success("PDF generado.");
+            } catch {
+              toast.error("No se pudo generar el PDF.");
+            }
+          }}
+        >
+          <Download size={14} aria-hidden />
+          Descargar PDF
+        </button>
+      </div>
 
-      {onLinkRouteSheet ? (
+      {onLinkRouteSheet || a.routeSheetId || a.routeSheetUrl ? (
         <div className={agrDetailBlock}>
           <div className={agrDetailH}>Hoja de ruta (roadmap)</div>
-          <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
-            Elegí una sola hoja de ruta del chat para este acuerdo. Podés
-            cambiarla mientras la hoja no esté publicada a transportistas.
-          </p>
-          {routeSheets.length === 0 ? (
-            <p className={cn("vt-muted", agrDetailHint)}>
-              No hay hojas de ruta en este chat. Creá una en la pestaña Rutas y
-              volvé para vincularla.
-            </p>
-          ) : (
+          {onLinkRouteSheet ? (
             <>
-              {linkActionsDisabled ? (
-                <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
-                  La vinculación de hojas de ruta no está disponible hasta
-                  registrar el pago en el chat.
+              <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
+                Elegí una sola hoja de ruta del chat para este acuerdo. Podés
+                cambiarla mientras la hoja no esté publicada a transportistas.
+              </p>
+              {routeSheets.length === 0 ? (
+                <p className={cn("vt-muted", agrDetailHint)}>
+                  No hay hojas de ruta en este chat. Creá una en la pestaña Rutas y
+                  volvé para vincularla.
                 </p>
-              ) : null}
-              <div className={linkRutaRow}>
-                <div className={linkRutaSelect}>
-                  <span className={fieldLabel}>Roadmap vinculado</span>
-                  <VtSelect
-                    value={pickId}
-                    onChange={setPickId}
-                    options={routeSheetSelectOptions}
-                    placeholder="Sin vincular — seleccionar…"
-                    disabled={selectRouteSheetDisabled}
-                    ariaLabel="Seleccionar hoja de ruta para el acuerdo"
-                    listPortal
-                    listPortalZIndexClass="z-[220]"
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="vt-btn vt-btn-primary shrink-0"
-                  disabled={vincularDisabled}
-                  onClick={() => {
-                    if (!pickId || !onLinkRouteSheet || vincularDisabled)
-                      return;
-                    onLinkRouteSheet(a.id, pickId);
-                  }}
-                >
-                  {routeLinked &&
-                  !linkPublishedLocked &&
-                  pickId !== (a.routeSheetId ?? "")
-                    ? "Actualizar vínculo"
-                    : "Vincular"}
-                </button>
-                {canUnlinkRoute ? (
-                  <button
-                    type="button"
-                    className="vt-btn shrink-0"
-                    disabled={linkActionsDisabled}
-                    onClick={() => {
-                      if (linkActionsDisabled || !onUnlinkRouteSheet) return;
-                      onUnlinkRouteSheet(a.id);
-                    }}
-                  >
-                    Desvincular
-                  </button>
-                ) : null}
-              </div>
-              {linkPublishedLocked ? (
-                <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
-                  Esta hoja ya está{" "}
-                  <strong className="text-[var(--text)]">publicada</strong> en
-                  la plataforma: el roadmap vinculado no se puede modificar ni
-                  quitar desde aquí.
-                </p>
-              ) : routeLinked ? (
-                <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
-                  Podés elegir otra hoja en el selector y usar «Actualizar
-                  vínculo», o desvincular para dejar el acuerdo sin roadmap.
-                </p>
-              ) : null}
+              ) : (
+                <>
+                  {linkActionsDisabled ? (
+                    <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
+                      La vinculación de hojas de ruta no está disponible hasta
+                      registrar el pago en el chat.
+                    </p>
+                  ) : null}
+                  <div className={linkRutaRow}>
+                    <div className={linkRutaSelect}>
+                      <span className={fieldLabel}>Roadmap vinculado</span>
+                      <VtSelect
+                        value={pickId}
+                        onChange={setPickId}
+                        options={routeSheetSelectOptions}
+                        placeholder="Sin vincular — seleccionar…"
+                        disabled={selectRouteSheetDisabled}
+                        ariaLabel="Seleccionar hoja de ruta para el acuerdo"
+                        listPortal
+                        listPortalZIndexClass="z-[220]"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="vt-btn vt-btn-primary shrink-0"
+                      disabled={vincularDisabled}
+                      onClick={() => {
+                        if (!pickId || !onLinkRouteSheet || vincularDisabled)
+                          return;
+                        onLinkRouteSheet(a.id, pickId);
+                      }}
+                    >
+                      {routeLinked &&
+                      !linkPublishedLocked &&
+                      pickId !== (a.routeSheetId ?? "")
+                        ? "Actualizar vínculo"
+                        : "Vincular"}
+                    </button>
+                    {canUnlinkRoute ? (
+                      <button
+                        type="button"
+                        className="vt-btn shrink-0"
+                        disabled={linkActionsDisabled}
+                        onClick={() => {
+                          if (linkActionsDisabled || !onUnlinkRouteSheet)
+                            return;
+                          onUnlinkRouteSheet(a.id);
+                        }}
+                      >
+                        Desvincular
+                      </button>
+                    ) : null}
+                  </div>
+                  {linkPublishedLocked ? (
+                    <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
+                      Esta hoja ya está{" "}
+                      <strong className="text-[var(--text)]">publicada</strong>{" "}
+                      en la plataforma: el roadmap vinculado no se puede modificar
+                      ni quitar desde aquí.
+                    </p>
+                  ) : routeLinked ? (
+                    <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
+                      Podés elegir otra hoja en el selector y usar «Actualizar
+                      vínculo», o desvincular para dejar el acuerdo sin roadmap.
+                    </p>
+                  ) : null}
+                </>
+              )}
             </>
+          ) : (
+            <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
+              Solo la tienda puede vincular o actualizar la hoja de ruta cuando
+              el estado del acuerdo y el chat lo permitan.
+            </p>
           )}
           {a.routeSheetId ? (
             <p className={cn("vt-muted", agrDetailHint, "mt-2")}>
@@ -390,6 +475,15 @@ export function AgreementDetailView({
         <MerchandiseBlock lines={a.merchandise} catalog={catalog} />
       ) : null}
 
+      {showMerch && merchandiseScopedExtraFields(a.extraFields).length ? (
+        <div className={agrDetailBlock}>
+          <div className={agrDetailH}>Otras cláusulas (mercancía)</div>
+          <ExtraFieldClauseCards
+            fields={merchandiseScopedExtraFields(a.extraFields)}
+          />
+        </div>
+      ) : null}
+
       {showMerch && legacyMerchandiseMetaHasContent(m) ? (
         <div className={agrDetailBlock}>
           <div className={agrDetailH}>
@@ -417,7 +511,9 @@ export function AgreementDetailView({
         </div>
       ) : null}
 
-      {showService && services.length > 0 ? (
+      {showService &&
+      (services.length > 0 ||
+        serviceScopedExtraFields(a.extraFields).length) ? (
         <div className={agrDetailBlock}>
           <div className={agrDetailH}>Servicios</div>
           {services.map((sv, i) => {
@@ -439,6 +535,27 @@ export function AgreementDetailView({
               </div>
             );
           })}
+          {serviceScopedExtraFields(a.extraFields).length ? (
+            <div className="mt-6 border-t border-[color-mix(in_oklab,var(--border)_72%,transparent)] pt-4">
+              <div className={agrDetailSub}>Otras cláusulas (servicio)</div>
+              <ExtraFieldClauseCards
+                fields={serviceScopedExtraFields(a.extraFields)}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {legacyCombinedExtraFields(a.extraFields).length ? (
+        <div className={agrDetailBlock}>
+          <div className={agrDetailH}>Campos adicionales conjuntos (histórico)</div>
+          <p className={cn("vt-muted", agrDetailHint, "mb-2 text-[13px]")}>
+            Pactados cuando el bloque mercancía y el de servicios compartían una
+            sola lista de cláusulas extra.
+          </p>
+          <ExtraFieldClauseCards
+            fields={legacyCombinedExtraFields(a.extraFields)}
+          />
         </div>
       ) : null}
     </div>

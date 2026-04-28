@@ -132,9 +132,9 @@ export function ChatRightRailContractsPanel({
                     <strong className="text-[var(--text)]">acepte o rechace</strong> esta versión en el chat.
                   </>
                 : agreementForDetail.status === 'accepted' ?
-                  'Antes de abrir el formulario verás un aviso: editar puede impactar en tu barra de confianza.'
+                  'Podés editar; cada nueva versión queda pendiente. En la demo, la penalización a la tienda aplica cuando el comprador rechaza después de haber aceptado al menos una vez, no sólo por editar.'
                 : agreementForDetail.status === 'rejected' ?
-                  'Tras guardar, el acuerdo volverá a quedar pendiente para que el comprador lo acepte o rechace.'
+                  'Podés enviar una nueva propuesta sin aviso especial. El ajuste de confianza (demo) aplica cuando el comprador rechaza tras una aceptación previa.'
                 : 'Podés corregir el texto; el comprador deberá aceptar o rechazar los cambios si el acuerdo ya estaba aceptado, o seguirá pendiente si aún no lo aceptó.'}
               </p>
             </div>
@@ -143,16 +143,28 @@ export function ChatRightRailContractsPanel({
             a={agreementForDetail}
             routeSheets={routeSheets}
             linkActionsDisabled={actionsLocked || agreementForDetail.status === 'deleted'}
-            onLinkRouteSheet={async (agreementId, routeSheetId) => {
-              const ok = await linkAgreementToRouteSheet(threadId, agreementId, routeSheetId)
-              if (ok) toast.success('Vinculación registrada; se notificó en el chat')
-              else toast.error('No se pudo vincular (elegí otra hoja).')
-            }}
-            onUnlinkRouteSheet={async (agreementId) => {
-              const ok = await unlinkAgreementFromRouteSheet(threadId, agreementId)
-              if (ok) toast.success('Vínculo quitado; se notificó en el chat')
-              else toast.error('No se pudo desvincular (la hoja ya está publicada).')
-            }}
+            onLinkRouteSheet={
+              isActingSeller
+                ? async (agreementId, routeSheetId) => {
+                    const ok = await linkAgreementToRouteSheet(
+                      threadId,
+                      agreementId,
+                      routeSheetId,
+                    )
+                    if (ok) toast.success('Vinculación registrada; se notificó en el chat')
+                    else toast.error('No se pudo vincular (elegí otra hoja).')
+                  }
+                : undefined
+            }
+            onUnlinkRouteSheet={
+              isActingSeller
+                ? async (agreementId) => {
+                    const ok = await unlinkAgreementFromRouteSheet(threadId, agreementId)
+                    if (ok) toast.success('Vínculo quitado; se notificó en el chat')
+                    else toast.error('No se pudo desvincular (la hoja ya está publicada).')
+                  }
+                : undefined
+            }
             onOpenRouteSheet={(rid) => openRouteFromContract(rid)}
           />
         </div>

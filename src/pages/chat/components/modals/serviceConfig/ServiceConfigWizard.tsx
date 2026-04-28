@@ -13,7 +13,11 @@ import {
 } from '../../../domain/storeCatalogTypes'
 import type { ServiceItem } from '../../../domain/tradeAgreementTypes'
 import { validateVigenciaRange } from '../../../domain/serviceVigenciaDates'
-import { validateServiceWizardAdvance } from '../../../domain/tradeAgreementValidation'
+import {
+  collectCondicionesExtrasErrors,
+  condicionesExtrasRowErrors,
+  validateServiceWizardAdvance,
+} from '../../../domain/tradeAgreementValidation'
 import {
   clampServiceScheduleToVigencia,
   coerceServiceSchedule,
@@ -37,6 +41,7 @@ import { ServicePaymentRecurrenceModal } from './ServicePaymentRecurrenceModal'
 import { ServiceScheduleFlowModal } from './ServiceScheduleFlowModal'
 import { ServiceTimeModal } from './ServiceTimeModal'
 import { StringListModal } from './StringListModal'
+import { AgreementExtraFieldsEditor } from '../AgreementExtraFieldsEditor'
 
 const STEPS = [
   'Tipo de servicio',
@@ -118,6 +123,8 @@ export function ServiceConfigWizard({
   const [schedFlowModalKey, setSchedFlowModalKey] = useState(0)
   const [payOpen, setPayOpen] = useState(false)
   const [listKind, setListKind] = useState<'riesgos' | 'dependencias' | 'causas' | null>(null)
+  /** Tras «Guardar» con filas de cláusulas incompletas: mostrar errores en título como en el modal de acuerdo. */
+  const [showCondicionesExtrasFieldErrors, setShowCondicionesExtrasFieldErrors] = useState(false)
   /** Solo al abrir: si dependemos de `initial` en cada cambio de referencia, se pierde el estado al re-renderizar el padre. */
   const wizardOpenRef = useRef(false)
 
@@ -141,6 +148,7 @@ export function ServiceConfigWizard({
   useEffect(() => {
     if (!open) {
       wizardOpenRef.current = false
+      setShowCondicionesExtrasFieldErrors(false)
       return
     }
     if (!wizardOpenRef.current) {
@@ -159,9 +167,14 @@ export function ServiceConfigWizard({
       }
       setSv(applyMonedasAndSchedule(copy))
       setStep(0)
+      setShowCondicionesExtrasFieldErrors(false)
       wizardOpenRef.current = true
     }
   }, [open, initial, sellerCatalog, contextOfferId])
+
+  useEffect(() => {
+    if (step !== 7) setShowCondicionesExtrasFieldErrors(false)
+  }, [step])
 
   const ficha = !!sv.linkedStoreServiceId
 
@@ -240,6 +253,12 @@ export function ServiceConfigWizard({
     }
     if (!sv.nivelResponsabilidad.trim() || !sv.propIntelectual.trim()) {
       toast.error('Completá nivel de responsabilidad y propiedad intelectual.')
+      return
+    }
+    const ce = collectCondicionesExtrasErrors(sv)
+    if (ce.length) {
+      setShowCondicionesExtrasFieldErrors(true)
+      toast.error(ce[0])
       return
     }
     onSave(applyMonedasAndSchedule({ ...sv, configured: true }))
@@ -701,6 +720,27 @@ export function ServiceConfigWizard({
                   />
                 </div>
               )}
+              <div className="min-[560px]:col-span-2 mt-4 border-t border-[color-mix(in_oklab,var(--border)_80%,transparent)] pt-4">
+                <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
+                  Otras características o cláusulas (servicio)
+                </div>
+                <AgreementExtraFieldsEditor
+                  newRowScope="service"
+                  fields={sv.condicionesExtras ?? []}
+                  errors={
+                    showCondicionesExtrasFieldErrors
+                      ? condicionesExtrasRowErrors(sv)
+                      : undefined
+                  }
+                  onChange={(rows) => {
+                    setShowCondicionesExtrasFieldErrors(false)
+                    setSv((s) => ({
+                      ...s,
+                      condicionesExtras: rows.map((r) => ({ ...r, scope: 'service' })),
+                    }))
+                  }}
+                />
+              </div>
             </div>
           ) : null}
         </div>

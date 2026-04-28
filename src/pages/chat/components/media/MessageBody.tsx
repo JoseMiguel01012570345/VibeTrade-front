@@ -18,6 +18,7 @@ export function MessageBody({
   onAcceptAgreement,
   onRejectAgreement,
   canRespondAgreement,
+  agreementViewerIsBuyer,
   onOpenAgreementRouteSheet,
   isMine,
 }: {
@@ -29,6 +30,7 @@ export function MessageBody({
   onAcceptAgreement?: () => void;
   onRejectAgreement?: () => void;
   canRespondAgreement?: boolean;
+  agreementViewerIsBuyer?: boolean;
   onOpenAgreementRouteSheet?: () => void;
   isMine?: boolean;
 }) {
@@ -167,6 +169,7 @@ export function MessageBody({
         onAccept={onAcceptAgreement}
         onReject={onRejectAgreement}
         canRespond={canRespondAgreement}
+        viewerIsBuyer={agreementViewerIsBuyer}
         onOpenRouteSheet={onOpenAgreementRouteSheet}
       />
     );

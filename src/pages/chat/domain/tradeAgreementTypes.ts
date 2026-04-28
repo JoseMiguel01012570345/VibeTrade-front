@@ -123,6 +123,8 @@ export type ServiceItem = {
   penalIncumplimiento: string;
   nivelResponsabilidad: string;
   propIntelectual: string;
+  /** Cláusulas libres configuradas en el asistente (paso Condiciones comerciales). */
+  condicionesExtras?: TradeAgreementExtraFieldDraft[];
 };
 
 export type AgreementStatus =
@@ -130,6 +132,90 @@ export type AgreementStatus =
   | "accepted"
   | "rejected"
   | "deleted";
+
+export type TradeAgreementExtraValueKind = "text" | "image" | "document";
+
+/** Alcance del campo libre: bloque mercancía, bloque servicio o acuerdos emitidos antes de discriminar sección. */
+export type TradeAgreementExtraFieldScope =
+  | "merchandise"
+  | "service"
+  | "legacy_combined";
+
+/** Campo libre adicional dentro del bloque de mercancía o de servicio (y legado combinado). */
+export type TradeAgreementExtraFieldDraft = {
+  /** Id estable al editar (local o servidor). */
+  id: string;
+  /** merchandise | service | legacy_combined */
+  scope: TradeAgreementExtraFieldScope;
+  title: string;
+  valueKind: TradeAgreementExtraValueKind;
+  textValue: string;
+  /** `/api/v1/media/…` tras subida. */
+  mediaUrl: string;
+  fileName: string;
+};
+
+export function normalizeExtraScope(
+  raw: string | undefined,
+): TradeAgreementExtraFieldScope {
+  if (raw === "merchandise" || raw === "service") return raw;
+  return "legacy_combined";
+}
+
+export function newAgreementExtraFieldId(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? `xf-${crypto.randomUUID()}`
+    : `xf-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function emptyTradeAgreementExtraField(
+  scope: TradeAgreementExtraFieldScope = "merchandise",
+): TradeAgreementExtraFieldDraft {
+  return {
+    id: newAgreementExtraFieldId(),
+    scope,
+    title: "",
+    valueKind: "text",
+    textValue: "",
+    mediaUrl: "",
+    fileName: "",
+  };
+}
+
+export function merchandiseScopedExtraFields(
+  xf?: TradeAgreementExtraFieldDraft[],
+): TradeAgreementExtraFieldDraft[] {
+  return (xf ?? []).filter((f) => f.scope === "merchandise");
+}
+
+export function serviceScopedExtraFields(
+  xf?: TradeAgreementExtraFieldDraft[],
+): TradeAgreementExtraFieldDraft[] {
+  return (xf ?? []).filter((f) => f.scope === "service");
+}
+
+export function legacyCombinedExtraFields(
+  xf?: TradeAgreementExtraFieldDraft[],
+): TradeAgreementExtraFieldDraft[] {
+  return (xf ?? []).filter((f) => f.scope === "legacy_combined");
+}
+
+export function rebuildExtraFieldsFromSections(
+  merchandise: TradeAgreementExtraFieldDraft[],
+  service: TradeAgreementExtraFieldDraft[],
+  legacy: TradeAgreementExtraFieldDraft[],
+): TradeAgreementExtraFieldDraft[] {
+  const m = merchandise.map((f) => ({
+    ...f,
+    scope: "merchandise" as const,
+  }));
+  const s = service.map((f) => ({ ...f, scope: "service" as const }));
+  const l = legacy.map((f) => ({
+    ...f,
+    scope: "legacy_combined" as const,
+  }));
+  return [...m, ...s, ...l];
+}
 
 export type TradeAgreement = {
   id: string;
@@ -147,6 +233,8 @@ export type TradeAgreement = {
    * Se limpia al responder el comprador.
    */
   sellerEditBlockedUntilBuyerResponse?: boolean;
+  /** El comprador llegó a aceptar al menos una vez; rechazar después implica riesgo para la confianza de la tienda (demo). */
+  hadBuyerAcceptance?: boolean;
   /** Si el acuerdo declara el bloque de mercancías (al menos uno de mercancías/servicio debe ser true). */
   includeMerchandise: boolean;
   /** Si el acuerdo declara el bloque de servicios. */
@@ -165,6 +253,8 @@ export type TradeAgreement = {
   routeSheetId?: string;
   /** Solo lectura: datos antiguos; ya no se emite desde el formulario. */
   routeSheetUrl?: string;
+  /** Cláusulas adicionales (título + texto o adjunto) por bloque o legado combinado. */
+  extraFields?: TradeAgreementExtraFieldDraft[];
 };
 
 type TradeAgreementDraftBase = Omit<
@@ -507,6 +597,7 @@ export function emptyServiceItem(): ServiceItem {
     penalIncumplimiento: "",
     nivelResponsabilidad: "",
     propIntelectual: "",
+    condicionesExtras: [],
   };
 }
 
@@ -605,6 +696,7 @@ export function defaultAgreementDraft(): TradeAgreementDraft {
     includeService: true,
     merchandise: [emptyMerchandiseLine()],
     services: [],
+    extraFields: [],
   };
 }
 
@@ -615,12 +707,23 @@ export function tradeAgreementToDraft(a: TradeAgreement): TradeAgreementDraft {
       ? a.merchandise.map((l) => normalizeMerchandiseLine(l))
       : [emptyMerchandiseLine()];
   const services = normalizeAgreementServices(a);
+  const xfRaw =
+    a.extraFields && a.extraFields.length > 0
+      ? (JSON.parse(
+          JSON.stringify(a.extraFields),
+        ) as TradeAgreementExtraFieldDraft[])
+      : [];
+  const xf = xfRaw.map((f) => ({
+    ...f,
+    scope: normalizeExtraScope(f.scope as string | undefined),
+  }));
   return {
     title: a.title,
     includeMerchandise: a.includeMerchandise !== false,
     includeService: a.includeService !== false,
     merchandise,
     services: services.length ? JSON.parse(JSON.stringify(services)) : [],
+    extraFields: xf,
   };
 }
 

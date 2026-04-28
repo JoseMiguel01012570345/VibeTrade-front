@@ -49,7 +49,7 @@ function normalizeServicesPayload(raw: unknown): PublishedTransportServiceDto[] 
       return {
         ...(w.service ?? {}),
         storeName: w.storeName,
-      }
+      } as PublishedTransportServiceDto
     }
     return item as PublishedTransportServiceDto
   })

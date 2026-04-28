@@ -1,5 +1,7 @@
 import { CalendarClock, ClipboardList, CreditCard, Scale, ShieldAlert } from 'lucide-react'
-import { monedasFromRecurrenciaPagos, type ServiceItem } from '../../../domain/tradeAgreementTypes'
+import { ProtectedMediaImg } from '../../../../../components/media/ProtectedMediaImg'
+import { agrDetailLink } from '../../../styles/formModalStyles'
+import { monedasFromRecurrenciaPagos, type ServiceItem, type TradeAgreementExtraFieldDraft } from '../../../domain/tradeAgreementTypes'
 import { formatPaymentSummary } from './serviceItemFormat'
 import { ServiceScheduleReadView } from './ServiceScheduleReadView'
 
@@ -18,6 +20,42 @@ function Block({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <div className="mb-1 text-[11px] font-bold text-[var(--muted)]">{label}</div>
       <div className="whitespace-pre-wrap text-sm leading-snug text-[var(--text)]">{children}</div>
+    </div>
+  )
+}
+
+function CondicionesExtrasCards({ fields }: { fields: TradeAgreementExtraFieldDraft[] }) {
+  if (!fields.length) return null
+  return (
+    <div className="mt-3 space-y-3 border-t border-[var(--border)] pt-3">
+      <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+        Otras características o cláusulas (servicio)
+      </div>
+      {fields.map((f) => (
+        <div
+          key={f.id}
+          className="rounded-xl border border-[color-mix(in_oklab,var(--border)_72%,transparent)] p-3 last:mb-0"
+        >
+          <div className="mb-2 font-extrabold text-[var(--text)]">{f.title.trim() || '(sin título)'}</div>
+          {f.valueKind === 'text' && (f.textValue ?? '').trim() ? (
+            <div className="whitespace-pre-wrap text-sm text-[var(--text)]">{(f.textValue ?? '').trim()}</div>
+          ) : null}
+          {f.valueKind === 'image' && (f.mediaUrl ?? '').trim() ? (
+            <div className="mt-2 max-w-lg">
+              <ProtectedMediaImg
+                src={(f.mediaUrl ?? '').trim()}
+                alt=""
+                className="max-h-72 w-full rounded border border-[var(--border)] object-contain"
+              />
+            </div>
+          ) : null}
+          {f.valueKind === 'document' && (f.mediaUrl ?? '').trim() ? (
+            <a href={(f.mediaUrl ?? '').trim()} target="_blank" rel="noreferrer" className={agrDetailLink}>
+              {f.fileName?.trim() || 'Abrir documento adjunto'}
+            </a>
+          ) : null}
+        </div>
+      ))}
     </div>
   )
 }
@@ -154,6 +192,7 @@ export function ServiceItemPreview({ sv }: { sv: ServiceItem }) {
           <Block label="Nivel de responsabilidad">{sv.nivelResponsabilidad || '—'}</Block>
           <Block label="Propiedad intelectual / licencias">{sv.propIntelectual || '—'}</Block>
         </div>
+        <CondicionesExtrasCards fields={sv.condicionesExtras ?? []} />
       </div>
     </div>
   )

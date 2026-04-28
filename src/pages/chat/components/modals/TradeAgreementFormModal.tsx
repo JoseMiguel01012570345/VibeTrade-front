@@ -18,11 +18,17 @@ import { ModalFormField as Field } from "./ModalFormField";
 import type {
   MerchandiseLine,
   TradeAgreementDraft,
+  TradeAgreementExtraFieldDraft,
 } from "../../domain/tradeAgreementTypes";
 import {
   defaultAgreementDraft,
   emptyMerchandiseLine,
   emptyServiceItem,
+  emptyTradeAgreementExtraField,
+  legacyCombinedExtraFields,
+  merchandiseScopedExtraFields,
+  rebuildExtraFieldsFromSections,
+  serviceScopedExtraFields,
 } from "../../domain/tradeAgreementTypes";
 import type { TradeAgreementFormErrors } from "../../domain/tradeAgreementValidation";
 import {
@@ -35,9 +41,24 @@ import {
   mergeMerchandiseLineWithStoreProduct,
   mergeServiceItemWithStoreService,
 } from "../../domain/storeCatalogTypes";
+import { AgreementExtraFieldsEditor } from "./AgreementExtraFieldsEditor";
 import { ServiceConfigWizard } from "./serviceConfig/ServiceConfigWizard";
 import { ServiceItemPreview } from "./serviceConfig/ServiceItemPreview";
 import { serviceItemSummaryLine } from "./serviceConfig/serviceItemFormat";
+
+function localExtraFieldErrors(
+  slice: TradeAgreementExtraFieldDraft[],
+  all: TradeAgreementExtraFieldDraft[] | undefined,
+  global: Record<number, string> | undefined,
+): Record<number, string> | undefined {
+  if (!global || !all?.length) return undefined;
+  const out: Record<number, string> = {};
+  slice.forEach((row, localI) => {
+    const g = all.findIndex((x) => x.id === row.id);
+    if (g >= 0 && global[g]) out[localI] = global[g];
+  });
+  return Object.keys(out).length ? out : undefined;
+}
 
 type Props = {
   open: boolean;
@@ -151,27 +172,62 @@ export function TradeAgreementFormModal({
   const merchandiseCheckboxDisabled = sellerCatalog?.products.length === 0;
   const servicesCheckboxDisabled = sellerCatalog?.services.length === 0;
 
+  /** Borrador nuevo sin filas extras: una línea plantilla por cada bloque incluido (solo alta, no edición). */
+  useEffect(() => {
+    if (!open || editingAgreementId || initialDraft) return;
+    setDraft((d) => {
+      const prev = d.extraFields ?? [];
+      if (prev.length > 0) return d;
+
+      const leg: TradeAgreementExtraFieldDraft[] = [];
+      const merch = d.includeMerchandise
+        ? [emptyTradeAgreementExtraField("merchandise")]
+        : [];
+      const svc = d.includeService
+        ? [emptyTradeAgreementExtraField("service")]
+        : [];
+      if (!merch.length && !svc.length) return d;
+
+      return {
+        ...d,
+        extraFields: rebuildExtraFieldsFromSections(merch, svc, leg),
+      };
+    });
+  }, [
+    open,
+    editingAgreementId,
+    initialDraft,
+    draft.includeMerchandise,
+    draft.includeService,
+  ]);
+
   useEffect(() => {
     if (!open || sellerCatalog == null) return;
     setDraft((d) => {
       let includeMerchandise = d.includeMerchandise;
       let includeService = d.includeService;
       let services = d.services;
+      let extraFields = d.extraFields;
       if (sellerCatalog.products.length === 0 && includeMerchandise) {
         includeMerchandise = false;
+        extraFields = (extraFields ?? []).filter(
+          (f) => f.scope !== "merchandise",
+        );
       }
       if (sellerCatalog.services.length === 0 && includeService) {
         includeService = false;
         if (services.length) services = [];
+        extraFields = (extraFields ?? []).filter((f) => f.scope !== "service");
       }
       if (
         includeMerchandise === d.includeMerchandise &&
         includeService === d.includeService &&
-        services === d.services
+        services === d.services &&
+        extraFields === d.extraFields
       ) {
         return d;
       }
-      return { ...d, includeMerchandise, includeService, services };
+      return { ...d, includeMerchandise, includeService, services, extraFields };
     });
   }, [open, sellerCatalog]);
 
@@ -320,9 +376,15 @@ export function TradeAgreementFormModal({
                 }
                 onChange={(e) => {
                   if (merchandiseCheckboxDisabled) return;
+                  const checked = e.target.checked;
                   setDraft((d) => ({
                     ...d,
-                    includeMerchandise: e.target.checked,
+                    includeMerchandise: checked,
+                    extraFields: checked
+                      ? d.extraFields
+                      : (d.extraFields ?? []).filter(
+                          (f) => f.scope !== "merchandise",
+                        ),
                   }));
                 }}
               />
@@ -347,9 +409,16 @@ export function TradeAgreementFormModal({
                 }
                 onChange={(e) => {
                   if (servicesCheckboxDisabled) return;
+                  const checked = e.target.checked;
                   setDraft((d) => ({
                     ...d,
-                    includeService: e.target.checked,
+                    includeService: checked,
+                    services: checked ? d.services : [],
+                    extraFields: checked
+                      ? d.extraFields
+                      : (d.extraFields ?? []).filter(
+                          (f) => f.scope !== "service",
+                        ),
                   }));
                 }}
               />
@@ -390,6 +459,32 @@ export function TradeAgreementFormModal({
               <button type="button" className="vt-btn" onClick={addLine}>
                 + Añadir tipo de mercancía
               </button>
+            ) : null}
+            {draft.includeMerchandise ? (
+              <div className="mt-4 border-t border-[color-mix(in_oklab,var(--border)_80%,transparent)] pt-4">
+                <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
+                  Otras características o cláusulas (mercancía)
+                </div>
+                <AgreementExtraFieldsEditor
+                  newRowScope="merchandise"
+                  fields={merchandiseScopedExtraFields(draft.extraFields)}
+                  errors={localExtraFieldErrors(
+                    merchandiseScopedExtraFields(draft.extraFields),
+                    draft.extraFields,
+                    errors.extraFieldsLines,
+                  )}
+                  onChange={(merchRows) =>
+                    setDraft((d) => ({
+                      ...d,
+                      extraFields: rebuildExtraFieldsFromSections(
+                        merchRows,
+                        serviceScopedExtraFields(d.extraFields),
+                        legacyCombinedExtraFields(d.extraFields),
+                      ),
+                    }))
+                  }
+                />
+              </div>
             ) : null}
           </details>
 
@@ -448,6 +543,31 @@ export function TradeAgreementFormModal({
                 <button type="button" className="vt-btn" onClick={addService}>
                   + Añadir servicio
                 </button>
+
+                <div className="border-t border-[color-mix(in_oklab,var(--border)_80%,transparent)] pt-4">
+                  <div className="mb-2 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
+                    Otras características o cláusulas (servicio)
+                  </div>
+                  <AgreementExtraFieldsEditor
+                    newRowScope="service"
+                    fields={serviceScopedExtraFields(draft.extraFields)}
+                    errors={localExtraFieldErrors(
+                      serviceScopedExtraFields(draft.extraFields),
+                      draft.extraFields,
+                      errors.extraFieldsLines,
+                    )}
+                    onChange={(svcRows) =>
+                      setDraft((d) => ({
+                        ...d,
+                        extraFields: rebuildExtraFieldsFromSections(
+                          merchandiseScopedExtraFields(d.extraFields),
+                          svcRows,
+                          legacyCombinedExtraFields(d.extraFields),
+                        ),
+                      }))
+                    }
+                  />
+                </div>
               </div>
             ) : (
               <p className="vt-muted" style={{ fontSize: 13 }}>
@@ -456,6 +576,35 @@ export function TradeAgreementFormModal({
               </p>
             )}
           </details>
+
+          {legacyCombinedExtraFields(draft.extraFields).length > 0 ? (
+            <details className={detailsBlock} open>
+              <summary>Campos adicionales (versión previa conjunta)</summary>
+              <p className="vt-muted mb-3 text-[13px]">
+                Párrafos o adjuntos guardados antes de poder asignarlos solo al
+                bloque de mercancía o solo al de servicio. Podés editarlos o eliminarlos.
+              </p>
+              <AgreementExtraFieldsEditor
+                newRowScope="legacy_combined"
+                fields={legacyCombinedExtraFields(draft.extraFields)}
+                errors={localExtraFieldErrors(
+                  legacyCombinedExtraFields(draft.extraFields),
+                  draft.extraFields,
+                  errors.extraFieldsLines,
+                )}
+                onChange={(legRows) =>
+                  setDraft((d) => ({
+                    ...d,
+                    extraFields: rebuildExtraFieldsFromSections(
+                      merchandiseScopedExtraFields(d.extraFields),
+                      serviceScopedExtraFields(d.extraFields),
+                      legRows,
+                    ),
+                  }))
+                }
+              />
+            </details>
+          ) : null}
         </div>
 
         <div className="vt-modal-actions">

@@ -20,11 +20,6 @@ import {
 import toast from "react-hot-toast";
 import { useShallow } from "zustand/react/shallow";
 import { useAppStore } from "../../app/store/useAppStore";
-import { getSessionToken } from "../../utils/http/sessionToken";
-import {
-  postStoreTrustAdjust,
-  trustHistoryItemFromApi,
-} from "../../utils/trust/trustLedgerApi";
 import {
   threadHasAcceptedAgreement,
   useMarketStore,
@@ -47,10 +42,7 @@ import {
 } from "./domain/routeSheetTypes";
 import { RouteSheetFormModal } from "./components/modals/RouteSheetFormModal";
 import { TradeAgreementFormModal } from "./components/modals/TradeAgreementFormModal";
-import {
-  SELLER_TRUST_PENALTY_ON_EDIT,
-  TrustRiskEditConfirmModal,
-} from "./components/modals/TrustRiskEditConfirmModal";
+import { TrustRiskEditConfirmModal } from "./components/modals/TrustRiskEditConfirmModal";
 import { AgreementDeleteRouteSheetsModal } from "./components/modals/AgreementDeleteRouteSheetsModal";
 import { PeerPartyExitedInfoModal } from "./components/modals/PeerPartyExitedInfoModal";
 import {
@@ -398,11 +390,8 @@ export function ChatPage() {
   >(null);
   const [focusRouteId, setFocusRouteId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [trustConfirm, setTrustConfirm] = useState<
-    | null
-    | { kind: "agreement"; agreementId: string }
-    | { kind: "routeSheet"; sheet: RouteSheet }
-  >(null);
+  const [pendingRouteSheetTrustConfirm, setPendingRouteSheetTrustConfirm] =
+    useState<RouteSheet | null>(null);
   const [agreementDeleteSheetsModal, setAgreementDeleteSheetsModal] =
     useState<null | { agreementId: string; title: string }>(null);
   const [peerPartyExitedInfo, setPeerPartyExitedInfo] = useState<{
@@ -410,9 +399,6 @@ export function ChatPage() {
     reason: string;
   } | null>(null);
   const peerExitModalPrimedRef = useRef<string | null>(null);
-  const trustPenaltyNextSave = useRef<"none" | "agreement" | "routeSheet">(
-    "none",
-  );
   const listRef = useRef<HTMLDivElement | null>(null);
   const listEndRef = useRef<HTMLDivElement | null>(null);
   /** Sigue true si el usuario estaba al final del hilo (para decidir autoscroll al llegar mensajes). */
@@ -1260,75 +1246,6 @@ export function ChatPage() {
   const store = thread.store;
   const chatActionsLocked = thread.chatActionsLocked === true;
 
-  function applySellerTrustPenaltyIfQueued() {
-    const q = trustPenaltyNextSave.current;
-    trustPenaltyNextSave.current = "none";
-    if (q !== "agreement" || !thread) return;
-    const reason = "Modificación de acuerdo aceptado (demo)";
-    const sid = thread.storeId?.trim();
-    const applyLocal = () => {
-      if (sid) {
-        useMarketStore
-          .getState()
-          .applyStoreTrustPenalty(
-            sid,
-            SELLER_TRUST_PENALTY_ON_EDIT,
-            reason,
-            { forceLocal: true },
-          );
-      } else {
-        useAppStore.getState().applyTrustPenalty(
-          me.id,
-          SELLER_TRUST_PENALTY_ON_EDIT,
-          reason,
-          { forceLocal: true },
-        );
-      }
-    };
-    if (getSessionToken() && sid) {
-      void postStoreTrustAdjust(
-        sid,
-        -SELLER_TRUST_PENALTY_ON_EDIT,
-        reason,
-      )
-        .then((r) => {
-          const score = r.trustScore;
-          useMarketStore.setState((s) => {
-            const nextThreads = { ...s.threads };
-            for (const tid of Object.keys(nextThreads)) {
-              const th = nextThreads[tid];
-              if (th.storeId === sid) {
-                nextThreads[tid] = {
-                  ...th,
-                  store: { ...th.store, trustScore: score },
-                };
-              }
-            }
-            const b = s.stores[sid];
-            if (!b) return { ...s, threads: nextThreads };
-            return {
-              ...s,
-              stores: { ...s.stores, [sid]: { ...b, trustScore: score } },
-              threads: nextThreads,
-            };
-          });
-          useAppStore
-            .getState()
-            .prependStoreTrustHistory(sid, trustHistoryItemFromApi(r.entry));
-        })
-        .catch(() => {
-          applyLocal();
-        });
-    } else {
-      applyLocal();
-    }
-    toast(
-      `La confianza de tu tienda se ajustó en −${SELLER_TRUST_PENALTY_ON_EDIT} por modificar un acuerdo (demo).`,
-      {
-        icon: "⚠️",
-      },
-    );
-  }
 
   function toggleSelectRow(e: MouseEvent, id: string) {
     if (chatActionsLocked) return;
@@ -1678,7 +1595,7 @@ export function ChatPage() {
                 );
                 return;
               }
-              setTrustConfirm({ kind: "routeSheet", sheet });
+              setPendingRouteSheetTrustConfirm(sheet);
             }}
             toggleRouteStop={(tid, routeSheetId, stopId) => {
               if (!isActingSeller) return;
@@ -1697,7 +1614,8 @@ export function ChatPage() {
                 );
                 return;
               }
-              setTrustConfirm({ kind: "agreement", agreementId: ag.id });
+              setAgreementBeingEditedId(ag.id);
+              setShowAgreementForm(true);
             }}
             onDeleteAgreement={(ag) => {
               const contracts = thread.contracts ?? [];
@@ -1746,35 +1664,21 @@ export function ChatPage() {
       />
 
       <TrustRiskEditConfirmModal
-        open={trustConfirm !== null}
-        subjectLabel={
-          trustConfirm?.kind === "routeSheet" ? "hoja de ruta" : "acuerdo"
-        }
-        variant={
-          trustConfirm?.kind === "routeSheet" ? "routeSheet" : "agreement"
-        }
-        onClose={() => setTrustConfirm(null)}
+        open={pendingRouteSheetTrustConfirm !== null}
+        onClose={() => setPendingRouteSheetTrustConfirm(null)}
         onConfirm={() => {
-          const t = trustConfirm;
-          setTrustConfirm(null);
-          if (!t) return;
-          if (t.kind === "agreement") {
-            setAgreementBeingEditedId(t.agreementId);
-            setShowAgreementForm(true);
-            trustPenaltyNextSave.current = "agreement";
-          } else {
-            setRouteSheetBeingEdited(t.sheet);
-            setShowRouteSheetForm(true);
-            setRailOpen(true);
-            trustPenaltyNextSave.current = "none";
-          }
+          const sheet = pendingRouteSheetTrustConfirm;
+          setPendingRouteSheetTrustConfirm(null);
+          if (!sheet) return;
+          setRouteSheetBeingEdited(sheet);
+          setShowRouteSheetForm(true);
+          setRailOpen(true);
         }}
       />
 
       <TradeAgreementFormModal
         open={showAgreementForm && isActingSeller}
         onClose={() => {
-          trustPenaltyNextSave.current = "none";
           setShowAgreementForm(false);
           setAgreementBeingEditedId(null);
         }}
@@ -1793,7 +1697,6 @@ export function ChatPage() {
             );
             if (ok) {
               toast.success("Acuerdo actualizado");
-              applySellerTrustPenaltyIfQueued();
             } else toast.error("No se pudo guardar el acuerdo.");
             return ok;
           }
@@ -1814,7 +1717,6 @@ export function ChatPage() {
         routeOfferForSheet={routeOfferForEditingRouteSheet}
         routeOfferForThread={routeOfferForThisThread}
         onClose={() => {
-          trustPenaltyNextSave.current = "none";
           setShowRouteSheetForm(false);
           setRouteSheetBeingEdited(null);
         }}
@@ -1826,13 +1728,10 @@ export function ChatPage() {
               routeSheetBeingEdited.id,
               payload,
             );
-            if (ok && isActingSeller) applySellerTrustPenaltyIfQueued();
-            else {
-              if (!ok) {
-                toast.error(
-                  "No se pudo guardar: revisá título, mercancías y al menos un tramo con origen y destino",
-                );
-              }
+            if (!ok) {
+              toast.error(
+                "No se pudo guardar: revisá título, mercancías y al menos un tramo con origen y destino",
+              );
             }
             return ok
               ? { ok: true, routeSheetId: routeSheetBeingEdited.id }

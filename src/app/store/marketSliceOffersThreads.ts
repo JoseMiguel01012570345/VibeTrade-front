@@ -1,5 +1,11 @@
-import type { TradeAgreement } from '../../pages/chat/domain/tradeAgreementTypes'
-import { normalizeMerchandiseLine } from '../../pages/chat/domain/tradeAgreementTypes'
+import type {
+  TradeAgreement,
+  TradeAgreementDraft,
+} from "../../pages/chat/domain/tradeAgreementTypes";
+import {
+  normalizeExtraScope,
+  normalizeMerchandiseLine,
+} from '../../pages/chat/domain/tradeAgreementTypes'
 import { hasValidationErrors, validateTradeAgreementDraft } from '../../pages/chat/domain/tradeAgreementValidation'
 import { fetchOfferQaFromServer, postOfferInquiry } from '../../utils/market/marketPersistence'
 import type { RouteSheetPayload } from '../../pages/chat/domain/routeSheetTypes'
@@ -47,13 +53,94 @@ import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
 import { resolveBuyerUserId, resolveSellerUserId } from '../../utils/chat/chatParticipantLabels'
 import {
   CHAT_PARTY_EXIT_TRUST_PER_MEMBER,
+  SELLER_TRUST_PENALTY_ON_EDIT,
 } from '../../pages/chat/components/modals/TrustRiskEditConfirmModal'
 import {
   counterpartyAlreadyRecordedPartyExitFromThread,
   peerPartyExitFromDto,
 } from '../../utils/chat/threadPeerPartyExit'
 import { isOfferPublishedForBuyerChat } from '../../utils/market/offerPublishedForBuyerChat'
-import { useAppStore } from './useAppStore'
+import { useAppStore } from "./useAppStore";
+
+function extraFieldsPayloadForApi(
+  draft: TradeAgreementDraft,
+):
+  | Array<{
+      title: string;
+      valueKind: "text" | "image" | "document";
+      scope: "merchandise" | "service" | "legacy_combined";
+      textValue?: string;
+      mediaUrl?: string;
+      fileName?: string;
+    }>
+  | undefined {
+  const rows = draft.extraFields ?? [];
+  const out: Array<{
+    title: string;
+    valueKind: "text" | "image" | "document";
+    scope: "merchandise" | "service" | "legacy_combined";
+    textValue?: string;
+    mediaUrl?: string;
+    fileName?: string;
+  }> = [];
+  for (const r of rows) {
+    const scope = normalizeExtraScope(r.scope as string | undefined);
+    if (scope === "merchandise" && !draft.includeMerchandise) continue;
+    if (scope === "service" && !draft.includeService) continue;
+    if (
+      scope === "legacy_combined" &&
+      !(draft.includeMerchandise && draft.includeService)
+    )
+      continue;
+    const title = r.title.trim();
+    const text = r.textValue.trim();
+    const url = r.mediaUrl.trim();
+    if (!title.length && !text.length && !url.length) continue;
+    if (r.valueKind === "text") {
+      out.push({
+        title: title.length ? title : "",
+        scope,
+        valueKind: "text",
+        ...(text.length ? { textValue: text } : {}),
+      });
+    } else {
+      const kind =
+        r.valueKind === "document"
+          ? ("document" as const)
+          : ("image" as const);
+      out.push({
+        title: title.length ? title : "",
+        scope,
+        valueKind: kind,
+        ...(url.length ? { mediaUrl: url } : {}),
+        ...(r.fileName.trim().length ? { fileName: r.fileName.trim() } : {}),
+      });
+    }
+  }
+  return out.length ? out : undefined;
+}
+
+/** Filas locales que siguen aplicando al inclusives actuales (para snapshot offline). */
+function snapshotDraftExtraFields(
+  draft: TradeAgreementDraft,
+): TradeAgreement["extraFields"] {
+  const rows = draft.extraFields ?? [];
+  const kept = rows.filter((r) => {
+    const scope = normalizeExtraScope(r.scope as string | undefined);
+    if (scope === "merchandise" && draft.includeMerchandise) return true;
+    if (scope === "service" && draft.includeService) return true;
+    if (
+      scope === "legacy_combined" &&
+      draft.includeMerchandise &&
+      draft.includeService
+    )
+      return true;
+    return false;
+  });
+  return kept.length
+    ? (JSON.parse(JSON.stringify(kept)) as TradeAgreement["extraFields"])
+    : undefined;
+}
 
 async function syncPersistedAgreementsAndMessages(
   set: MarketSliceSet,
@@ -590,13 +677,15 @@ emitTradeAgreement: async (threadId, draft) => {
   const persist = !!getSessionToken() && threadId.startsWith('cth_')
   if (persist) {
     try {
+      const xfApi = extraFieldsPayloadForApi(draft);
       const body = {
         title: draft.title,
         includeMerchandise: draft.includeMerchandise,
         includeService: draft.includeService,
         merchandise: draft.merchandise,
         services: draft.services,
-      }
+        ...(xfApi ? { extraFields: xfApi } : {}),
+      };
       const created = await postThreadTradeAgreement(threadId, body)
       await syncPersistedAgreementsAndMessages(set, get, threadId)
       return created.id
@@ -622,7 +711,9 @@ emitTradeAgreement: async (threadId, draft) => {
         ? draft.merchandise.map((l) => normalizeMerchandiseLine(l))
         : [],
       services: draft.includeService ? draft.services : [],
+      extraFields: snapshotDraftExtraFields(draft),
       routeSheetId: undefined,
+      hadBuyerAcceptance: false,
     }
     const msg: Message = {
       id: uid('m'),
@@ -658,13 +749,15 @@ updatePendingTradeAgreement: async (threadId, agreementId, draft) => {
   const persist = !!getSessionToken() && threadId.startsWith('cth_')
   if (persist) {
     try {
+      const xfApi = extraFieldsPayloadForApi(draft);
       const body = {
         title: draft.title,
         includeMerchandise: draft.includeMerchandise,
         includeService: draft.includeService,
         merchandise: draft.merchandise,
         services: draft.services,
-      }
+        ...(xfApi ? { extraFields: xfApi } : {}),
+      };
       await patchThreadTradeAgreement(threadId, agreementId, body)
       await syncPersistedAgreementsAndMessages(set, get, threadId)
       return true
@@ -704,6 +797,7 @@ updatePendingTradeAgreement: async (threadId, agreementId, draft) => {
         ? draft.merchandise.map((l) => normalizeMerchandiseLine(l))
         : [],
       services: draft.includeService ? draft.services : [],
+      extraFields: snapshotDraftExtraFields(draft),
       service: undefined,
       routeSheetId: nextRouteSheetId,
       status: 'pending_buyer',
@@ -858,7 +952,23 @@ respondTradeAgreement: async (threadId, agreementId, response) => {
       status: response === 'accept' ? 'accepted' : 'rejected',
       respondedAt: Date.now(),
       sellerEditBlockedUntilBuyerResponse: false,
+      hadBuyerAcceptance:
+        response === 'accept' ? true : ag.hadBuyerAcceptance === true,
     }
+
+    const rejectAfterPriorAccept =
+      response !== 'accept' && ag.hadBuyerAcceptance === true
+    if (rejectAfterPriorAccept) {
+      const sid = (th.storeId ?? '').trim()
+      if (sid.length >= 2) {
+        get().applyStoreTrustPenalty(
+          sid,
+          SELLER_TRUST_PENALTY_ON_EDIT,
+          'Rechazo del comprador tras una aceptación previa del acuerdo (demo)',
+        )
+      }
+    }
+
     const sysText =
       response === 'accept'
         ? `Acuerdo «${ag.title}» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.`

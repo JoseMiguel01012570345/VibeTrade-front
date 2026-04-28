@@ -34,6 +34,17 @@ export type ChatMessageStatusApi =
   | 'read'
   | 'error'
 
+export type TradeAgreementExtraFieldApiDto = {
+  id?: string
+  title: string
+  valueKind: 'text' | 'image' | 'document'
+  textValue?: string | null
+  mediaUrl?: string | null
+  fileName?: string | null
+  /** merchandise | service | legacy_combined */
+  scope?: 'merchandise' | 'service' | 'legacy_combined'
+}
+
 /** Coincide con el JSON de payload del backend (camelCase). */
 /** Respuesta GET/POST/PATCH acuerdos (camelCase API). */
 export type TradeAgreementApiDto = {
@@ -47,11 +58,14 @@ export type TradeAgreementApiDto = {
   deletedAt?: number | null
   respondedAt?: number | null
   sellerEditBlockedUntilBuyerResponse?: boolean | null
+  hadBuyerAcceptance?: boolean | null
   includeMerchandise: boolean
   includeService: boolean
   merchandise: Record<string, unknown>[]
   merchandiseMeta?: Record<string, unknown> | null
   services: Record<string, unknown>[]
+  /** Cláusulas extras cuando el acuerdo tiene mercancías y servicios. */
+  extraFields?: TradeAgreementExtraFieldApiDto[]
   routeSheetId?: string | null
   routeSheetUrl?: string | null
 }
