@@ -4,8 +4,14 @@ import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import App from './App.tsx'
 import './index.css'
+import {
+  applyColorSchemeToDocument,
+  readStoredColorScheme,
+} from './utils/theme/colorScheme'
 import { bootstrapWebApp } from './utils/bootstrap/bootstrapWebApp'
 import { restoreAuthSession } from './utils/auth/restoreAuthSession'
+
+applyColorSchemeToDocument(readStoredColorScheme())
 
 async function start() {
   try {

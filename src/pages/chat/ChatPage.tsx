@@ -12,6 +12,7 @@ import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-
 import { cn } from "../../lib/cn";
 import {
   ArrowLeft,
+  AlertTriangle,
   ChevronDown,
   FileText,
   PanelRight,
@@ -1386,8 +1387,16 @@ export function ChatPage() {
                       </div>
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                      <span className="vt-pill inline-flex items-center gap-1">
-                        <ShieldCheck size={14} aria-hidden />
+                      <span
+                        className={
+                          store.verified ?
+                            "vt-pill inline-flex items-center gap-1"
+                          : "vt-badge-verify-warn inline-flex items-center gap-1"
+                        }
+                      >
+                        {store.verified ?
+                          <ShieldCheck size={14} aria-hidden />
+                        : <AlertTriangle size={14} aria-hidden />}
                         {store.verified
                           ? "Credenciales validadas"
                           : "No verificado"}

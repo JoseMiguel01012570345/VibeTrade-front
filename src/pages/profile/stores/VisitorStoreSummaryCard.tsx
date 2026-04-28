@@ -56,10 +56,10 @@ export function VisitorStoreSummaryCard({
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-base font-black tracking-[-0.02em]">{b.name}</span>
               {b.verified ?
-                <span className="rounded-full bg-[color-mix(in_oklab,var(--good)_14%,transparent)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-green-900">
+                <span className="rounded-full bg-[color-mix(in_oklab,var(--good)_14%,transparent)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-green-900 dark:text-emerald-300">
                   Verificado
                 </span>
-              : <span className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_oklab,#d97706_16%,transparent)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-amber-950">
+              : <span className="vt-badge-verify-warn-compact">
                   <AlertTriangle size={12} aria-hidden /> No verificado
                 </span>}
             </div>

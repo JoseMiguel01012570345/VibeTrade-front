@@ -132,18 +132,13 @@ export function StoreIdentityBlock({
             <span
               className={cn(
                 "inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-2.5 py-2 text-xs font-black",
-                "bg-[color-mix(in_oklab,var(--good)_12%,transparent)] text-[color-mix(in_oklab,var(--good)_85%,var(--text))]",
+                "bg-[color-mix(in_oklab,var(--good)_12%,transparent)] text-[color-mix(in_oklab,var(--good)_85%,var(--text))] dark:text-emerald-300",
               )}
             >
               <CheckCircle2 size={16} /> Verificado
             </span>
           ) : (
-            <span
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-2.5 py-2 text-xs font-black",
-                "bg-[color-mix(in_oklab,var(--bad)_10%,transparent)] text-[color-mix(in_oklab,var(--bad)_80%,var(--text))]",
-              )}
-            >
+            <span className="vt-badge-verify-warn">
               <AlertTriangle size={16} /> No verificado
             </span>
           )}

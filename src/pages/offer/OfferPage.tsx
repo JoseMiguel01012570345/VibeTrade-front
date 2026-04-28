@@ -10,6 +10,10 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Heart, ShoppingCart } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
+import {
+  offerHeroChromeBtnClass,
+  offerHeroSaveBtnChromeClass,
+} from "../store/storePageStyles";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { ImageLightbox } from "../chat/components/media/ImageLightbox";
 import { useAppStore } from "../../app/store/useAppStore";
@@ -799,14 +803,14 @@ export function OfferPage() {
           <div className="pointer-events-none absolute left-3 right-3 top-3 z-[2] flex items-center justify-between gap-2">
             <button
               type="button"
-              className="pointer-events-auto vt-btn border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
+              className={offerHeroChromeBtnClass}
               onClick={() => nav(-1)}
             >
               <ArrowLeft size={16} />
             </button>
             <OfferSaveButton
               offerId={offerId ?? ""}
-              className="pointer-events-auto border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
+              className={offerHeroSaveBtnChromeClass}
             />
           </div>
           {showRouteMapHero ? (
@@ -983,7 +987,7 @@ export function OfferPage() {
                     Verificado
                   </span>
                 ) : (
-                  <span className="ml-2 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bad)_10%,transparent)] px-2 py-1 text-[11px] font-black text-[color-mix(in_oklab,var(--bad)_80%,var(--text))]">
+                  <span className="vt-badge-verify-warn ml-2 py-1 text-[11px] font-extrabold">
                     No verificado
                   </span>
                 )}

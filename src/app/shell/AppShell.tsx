@@ -15,6 +15,7 @@ import { NotificationsBell } from "../widgets/NotificationsBell";
 import { UserTrustHistoryButton } from "../widgets/UserTrustHistoryButton";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { AuthEntryModal } from "../../pages/onboarding/AuthEntryModal";
+import { ThemeToggle } from "../widgets/ThemeToggle";
 import { syncChatNotificationsFromServer } from "../../utils/notifications/notificationsSync";
 
 const tabs = [
@@ -114,15 +115,19 @@ export function AppShell() {
                     <>
                       <UserTrustHistoryButton />
                       <NotificationsBell />
+                      <ThemeToggle />
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      className="vt-btn vt-btn-primary"
-                      onClick={openAuthModal}
-                    >
-                      <LogIn size={16} aria-hidden /> Iniciar sesión
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="vt-btn vt-btn-primary"
+                        onClick={openAuthModal}
+                      >
+                        <LogIn size={16} aria-hidden /> Iniciar sesión
+                      </button>
+                      <ThemeToggle />
+                    </>
                   )}
                 </div>
               </div>
@@ -132,9 +137,9 @@ export function AppShell() {
               <div className="min-w-0 flex-1">
                 {isSessionActive ? <TrustBar /> : null}
               </div>
-              {!isOnboarding ? (
-                <div className="flex shrink-0 items-center gap-2 self-center">
-                  {isSessionActive ? (
+              <div className="flex shrink-0 items-center gap-2 self-center">
+                {!isOnboarding &&
+                  (isSessionActive ? (
                     <>
                       <UserTrustHistoryButton />
                       <NotificationsBell />
@@ -147,9 +152,9 @@ export function AppShell() {
                     >
                       <LogIn size={16} aria-hidden /> Iniciar sesión
                     </button>
-                  )}
-                </div>
-              ) : null}
+                  ))}
+                <ThemeToggle />
+              </div>
             </div>
           )}
         </div>

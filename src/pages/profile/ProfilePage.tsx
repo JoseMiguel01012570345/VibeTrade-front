@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
+import { backRowBtnClass } from "../store/storePageStyles";
 import { type SocialNetworkId, useAppStore } from "../../app/store/useAppStore";
 import type { Offer } from "../../app/store/marketStoreTypes";
 import { useMarketStore } from "../../app/store/useMarketStore";
@@ -576,7 +577,7 @@ export function ProfilePage() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              className="vt-btn z-[2] shrink-0 border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.72)] shadow-[0_10px_25px_rgba(2,6,23,0.18)] backdrop-blur-[10px] hover:bg-[rgba(255,255,255,0.86)]"
+              className={backRowBtnClass}
               onClick={() => nav(-1)}
               aria-label="Volver"
               style={{

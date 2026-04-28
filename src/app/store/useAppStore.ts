@@ -1,4 +1,10 @@
 import { create } from 'zustand'
+import {
+  applyColorSchemeToDocument,
+  COLOR_SCHEME_STORAGE_KEY,
+  readStoredColorScheme,
+  type ColorScheme,
+} from '../../utils/theme/colorScheme'
 import { getOpenChatThreadIdFromLocation } from '../../utils/chat/getOpenChatThreadIdFromLocation'
 import { getSessionToken } from '../../utils/http/sessionToken'
 import {
@@ -115,6 +121,9 @@ type AppState = {
 
   /** Modal global de autenticación (login/registro). */
   authModalOpen: boolean
+  /** Preferencia de tema (persistida en `localStorage`). */
+  colorScheme: ColorScheme
+  setColorScheme: (scheme: ColorScheme) => void
   /**
    * Scroll vertical guardado al navegar fuera de Home (restaurar con POP).
    * No se escribe en localhost (ver HomePage).
@@ -193,6 +202,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   savedOffers: {},
   authModalOpen: false,
   homeFeedScrollY: null,
+  colorScheme: readStoredColorScheme(),
+
+  setColorScheme: (scheme) => {
+    try {
+      localStorage.setItem(COLOR_SCHEME_STORAGE_KEY, scheme)
+    } catch {
+      /* noop */
+    }
+    applyColorSchemeToDocument(scheme)
+    set({ colorScheme: scheme })
+  },
 
   setHomeFeedScrollY: (y) => set({ homeFeedScrollY: y }),
 

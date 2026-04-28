@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Manual toggle: clase `dark` en `<html>` (ver `utils/theme/colorScheme.ts`). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Leaflet: pin personalizado (divIcon) */
 .store-map-pin-wrap {
   background: transparent !important;
@@ -42,12 +45,29 @@
       "Segoe UI Emoji";
     line-height: 1.5;
     font-weight: 400;
+    color-scheme: light;
     color: var(--text);
     background: var(--bg);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  :root.dark {
+    color-scheme: dark;
+    --bg: #0b1220;
+    --surface: #141c2b;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --border: rgba(241, 245, 249, 0.14);
+    --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+
+    --primary: #3b82f6;
+    --primary-2: #2563eb;
+
+    --good: #4ade80;
+    --bad: #f87171;
   }
 
   *,
@@ -75,8 +95,17 @@
     text-decoration: none;
   }
 
+  a.vt-btn {
+    color: var(--text);
+    text-decoration: none;
+  }
+
   a:hover {
     color: var(--primary-2);
+  }
+
+  a.vt-btn:hover {
+    color: var(--text);
   }
 
   button,
@@ -286,6 +315,33 @@
     @apply rounded-full border border-[var(--border)] px-2.5 py-1.5 text-xs text-[var(--muted)];
   }
 
+  /** Estado advertencia / no verificado (legible en modo oscuro). */
+  .vt-badge-verify-warn {
+    @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-xs font-black;
+    border-color: color-mix(in oklab, #ea580c 40%, var(--border));
+    background: color-mix(in oklab, #fed7aa 22%, var(--surface));
+    color: #c2410c;
+  }
+
+  :root.dark .vt-badge-verify-warn {
+    border-color: color-mix(in oklab, #fbbf24 45%, var(--border));
+    background: color-mix(in oklab, #78350f 42%, var(--surface));
+    color: #fde68a;
+  }
+
+  .vt-badge-verify-warn-compact {
+    @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide;
+    border-color: color-mix(in oklab, #ea580c 40%, var(--border));
+    background: color-mix(in oklab, #fed7aa 18%, var(--surface));
+    color: #c2410c;
+  }
+
+  :root.dark .vt-badge-verify-warn-compact {
+    border-color: color-mix(in oklab, #fbbf24 45%, var(--border));
+    background: color-mix(in oklab, #78350f 48%, var(--surface));
+    color: #fde68a;
+  }
+
   .vt-divider {
     @apply h-px bg-[var(--border)];
   }
@@ -381,6 +437,33 @@
     animation-duration: 620ms, 1100ms;
   }
 
+  /* Modo oscuro: degradado más apagado y ondas menos brillantes */
+  :root.dark .vt-trust-fill {
+    background: linear-gradient(
+      90deg,
+      #8f2d2d,
+      #9a3412,
+      #a16207,
+      #3d6b2e
+    );
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  :root.dark .vt-trust-fill::before {
+    opacity: 0.14;
+    filter: blur(0.2px);
+  }
+
+  :root.dark .vt-trust-fill::after {
+    opacity: 0.08;
+    filter: blur(0.35px);
+  }
+
+  :root.dark .vt-trust-fill[data-moving="1"]::before,
+  :root.dark .vt-trust-fill[data-moving="1"]::after {
+    opacity: 0.28;
+  }
+
   .vt-trust-threshold {
     position: absolute;
     top: -10px;
@@ -406,6 +489,36 @@
     display: flex;
     justify-content: center;
     align-items: center;
+  }
+
+  :root.dark .vt-trust-score {
+    color: rgba(248, 250, 252, 0.96);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  }
+
+  :root.dark .vt-trust-threshold {
+    background: rgba(248, 250, 252, 0.92);
+    box-shadow:
+      0 0 0 3px rgba(15, 23, 42, 0.82),
+      0 10px 18px rgba(0, 0, 0, 0.35),
+      0 0 18px rgba(59, 130, 246, 0.28);
+  }
+
+  :root.dark .vt-trust-bar {
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
+  }
+
+  :root.dark .vt-card {
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+  }
+
+  :root.dark .vt-input:where(
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"]
+  ) {
+    color-scheme: dark;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
   }
 }
 
