@@ -691,7 +691,7 @@ export function StorePage() {
 
   if (!storeId) {
     return (
-      <div className="container vt-page">
+      <div className="container vt-page min-w-0 max-w-full overflow-x-clip">
         <div className="vt-card vt-card-pad">Tienda no encontrada.</div>
       </div>
     );
@@ -701,7 +701,7 @@ export function StorePage() {
 
   if (detailStatus === "loading") {
     return (
-      <div className="container vt-page">
+      <div className="container vt-page min-w-0 max-w-full overflow-x-clip">
         <div className="vt-card vt-card-pad flex flex-col items-center justify-center gap-2 py-20 text-center">
           <div className="text-lg font-black tracking-[-0.02em]">
             Cargando tienda…
@@ -716,7 +716,7 @@ export function StorePage() {
 
   if (detailStatus === "error") {
     return (
-      <div className="container vt-page">
+      <div className="container vt-page min-w-0 max-w-full overflow-x-clip">
         <div className="vt-card vt-card-pad flex flex-col items-center gap-4 py-16 text-center">
           <div className="font-bold">
             No se pudieron cargar los datos de la tienda.
@@ -736,7 +736,7 @@ export function StorePage() {
   // If we got here, we attempted loading and didn't error; if store is still missing, treat as not found.
   if (!store) {
     return (
-      <div className="container vt-page">
+      <div className="container vt-page min-w-0 max-w-full overflow-x-clip">
         <div className="vt-card vt-card-pad">Tienda no encontrada.</div>
       </div>
     );
@@ -861,7 +861,7 @@ export function StorePage() {
   );
 
   return (
-    <div className="container vt-page relative pb-24">
+    <div className="container vt-page relative min-w-0 max-w-full overflow-x-clip pb-24">
       <div className="flex flex-col gap-3.5">
         {isOwner ? (
           <datalist id="store-cat-hints">
@@ -909,7 +909,7 @@ export function StorePage() {
                   : " Solo ves lo publicado en vitrina."}
               </p>
               <div className="vt-divider my-3" />
-              <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[560px]:flex-nowrap min-[560px]:overflow-visible">
+              <div className="flex flex-col gap-3 min-[560px]:flex-row min-[560px]:snap-x min-[560px]:snap-mandatory min-[560px]:gap-3 min-[560px]:overflow-x-auto min-[560px]:pb-1 min-[560px]:[-ms-overflow-style:none] min-[560px]:[scrollbar-width:none] min-[560px]:[&::-webkit-scrollbar]:hidden">
                 {catalogProductTile}
                 {catalogServiceTile}
               </div>

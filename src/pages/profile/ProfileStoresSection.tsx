@@ -473,8 +473,8 @@ export function ProfileStoresSection({
           ))}
         </datalist>
 
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+        <div className="flex flex-col gap-3 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-start min-[520px]:justify-between min-[520px]:gap-3">
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <div className="vt-h2">Mis tiendas</div>
               <button
@@ -501,7 +501,7 @@ export function ProfileStoresSection({
           </div>
           <button
             type="button"
-            className="vt-btn vt-btn-primary inline-flex items-center gap-2"
+            className="vt-btn vt-btn-primary inline-flex w-full shrink-0 items-center justify-center gap-2 min-[520px]:w-auto"
             onClick={() => setCreateOpen(true)}
           >
             <Plus size={18} /> Nueva tienda

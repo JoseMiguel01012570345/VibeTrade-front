@@ -33,15 +33,15 @@ export function VisitorStoreSummaryCard({
   const publishedServices = (cat?.services ?? []).filter((s) => s.published !== false)
 
   return (
-    <div className="relative overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
+    <div className="relative min-w-0 max-w-full overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
       <Link
         to={`/store/${b.id}`}
         className="absolute inset-0 z-[1] rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
         aria-label={`Abrir tienda ${b.name}`}
       />
       <div className="relative z-[2] p-3.5 pointer-events-none">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 gap-3">
+      <div className="flex w-full min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 gap-3 max-[379px]:w-full">
           <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
             {b.avatarUrl ?
               <ProtectedMediaImg
@@ -52,9 +52,11 @@ export function VisitorStoreSummaryCard({
               />
             : <Store size={22} className="text-[var(--muted)]" aria-hidden />}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-base font-black tracking-[-0.02em]">{b.name}</span>
+              <span className="min-w-0 break-words text-base font-black tracking-[-0.02em]">
+                {b.name}
+              </span>
               {b.verified ?
                 <span className="rounded-full bg-[color-mix(in_oklab,var(--good)_14%,transparent)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-green-900 dark:text-emerald-300">
                   Verificado
@@ -79,7 +81,9 @@ export function VisitorStoreSummaryCard({
               const pitchText = (cat?.pitch ?? b.pitch ?? "").trim();
               if (!pitchText) return null;
               return (
-                <p className="mt-2 text-[13px] leading-snug">{pitchText}</p>
+                <p className="mt-2 break-words text-[13px] leading-snug">
+                  {pitchText}
+                </p>
               );
             })()}
             <div className="vt-muted mt-1 text-xs">{b.categories.join(' · ')}</div>

@@ -25,7 +25,7 @@ export function StoreSearchResultCard({
   distanceKm,
 }: Props) {
   return (
-    <div className="relative overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
+    <div className="relative min-w-0 max-w-full overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
       <Link
         to={`/store/${s.id}/vitrina`}
         className="absolute inset-0 z-[1] rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
@@ -48,10 +48,10 @@ export function StoreSearchResultCard({
               )}
             </div>
             <div className="min-w-0">
-              <div className="truncate text-base font-black tracking-[-0.02em]">
+              <div className="line-clamp-2 break-words text-base font-black tracking-[-0.02em]">
                 {s.name}
               </div>
-              <div className="vt-muted mt-1 truncate text-xs">
+              <div className="vt-muted mt-1 line-clamp-2 break-words text-xs leading-snug">
                 {s.categories.join(" · ")}
               </div>
               {s.websiteUrl ? (

@@ -2,7 +2,8 @@ import { ChevronRight, Package, Wrench } from "lucide-react";
 import { cn } from "../../lib/cn";
 
 const tileClass = cn(
-  "flex min-w-[min(100%,240px)] flex-1 snap-start flex-col gap-2 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4 text-left transition-colors",
+  "flex w-full min-w-0 flex-col gap-2 rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-4 text-left transition-colors",
+  "min-[560px]:min-w-[min(100%,240px)] min-[560px]:flex-1 min-[560px]:snap-start",
   "hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] hover:bg-[color-mix(in_oklab,var(--primary)_6%,var(--surface))]",
 );
 

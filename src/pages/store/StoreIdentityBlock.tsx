@@ -70,8 +70,8 @@ export function StoreIdentityBlock({
   }, [trustHistoryOpen, store.id]);
 
   return (
-    <div className="vt-card vt-card-pad">
-      <div className="flex items-start justify-between gap-3">
+    <div className="vt-card vt-card-pad min-w-0 max-w-full">
+      <div className="flex flex-col gap-3 min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between min-[480px]:gap-3">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           {store.avatarUrl ? (
             <div className="relative mt-0.5 h-14 w-14 shrink-0">
@@ -90,11 +90,13 @@ export function StoreIdentityBlock({
               />
             </div>
           ) : null}
-          <div className="min-w-0">
-            <div className="text-[22px] font-black tracking-[-0.03em]">
+          <div className="min-w-0 flex-1">
+            <div className="break-words text-[clamp(17px,4.8vw,22px)] font-black tracking-[-0.03em]">
               {store.name}
             </div>
-            <div className="vt-muted mt-1">{store.categories.join(" · ")}</div>
+            <div className="vt-muted mt-1 break-words text-[13px] leading-snug">
+              {store.categories.join(" · ")}
+            </div>
             {(() => {
               const text = (catalog?.pitch ?? store.pitch ?? "").trim();
               if (!text) return null;
@@ -127,18 +129,18 @@ export function StoreIdentityBlock({
             ) : null}
           </div>
         </div>
-        <div>
+        <div className="shrink-0 self-start min-[480px]:ml-auto">
           {store.verified ? (
             <span
               className={cn(
-                "inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-2.5 py-2 text-xs font-black",
+                "inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--border)] px-2.5 py-2 text-xs font-black",
                 "bg-[color-mix(in_oklab,var(--good)_12%,transparent)] text-[color-mix(in_oklab,var(--good)_85%,var(--text))] dark:text-emerald-300",
               )}
             >
               <CheckCircle2 size={16} /> Verificado
             </span>
           ) : (
-            <span className="vt-badge-verify-warn">
+            <span className="vt-badge-verify-warn inline-flex max-w-full">
               <AlertTriangle size={16} /> No verificado
             </span>
           )}

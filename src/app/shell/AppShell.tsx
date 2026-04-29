@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useAppStore } from "../store/useAppStore";
+import { TrustBar } from "../widgets/TrustBar";
 import { NotificationsBell } from "../widgets/NotificationsBell";
 import { UserTrustHistoryButton } from "../widgets/UserTrustHistoryButton";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
@@ -44,11 +45,6 @@ function isChatThreadPath(pathname: string) {
   return pathname.startsWith("/chat/") && pathname.length > "/chat/".length;
 }
 
-/** Lista de hilos o hilo abierto: sin historial / campana en el header (más espacio para el chat). */
-function isChatRoute(pathname: string) {
-  return pathname === "/chat" || pathname.startsWith("/chat/");
-}
-
 export function AppShell() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -60,13 +56,6 @@ export function AppShell() {
   const authOpen = useAppStore((s) => s.authModalOpen);
   const openAuthModal = useAppStore((s) => s.openAuthModal);
   const closeAuthModal = useAppStore((s) => s.closeAuthModal);
-
-  /** Historial de confianza y campana: en todas las rutas salvo lista/hilo de chat. */
-  const showHeaderTrustHistoryAndBell =
-    isSessionActive && !isChatRoute(pathname);
-
-  /** Sin barra global en chat: evita la línea/borde inferior del shell y el padding vacío. */
-  const hideShellHeaderForChat = isChatRoute(pathname) && !isOnboarding;
 
   useEffect(() => {
     if (!isSessionActive) return;
@@ -87,11 +76,21 @@ export function AppShell() {
 
   return (
     <div className="vt-app flex min-h-screen flex-col">
-      {!hideShellHeaderForChat ? (
-        <div className="sticky top-0 z-50 overflow-visible border-b border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_65%,transparent)] pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-[10px]">
-          <div className="container pb-2.5">
-            {isHome && !isOnboarding ? (
-              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 md:flex-nowrap">
+      <div className="sticky top-0 z-50 overflow-visible border-b border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_65%,transparent)] pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-[10px]">
+        <div className="container pb-2.5">
+          {isHome && !isOnboarding ? (
+            <>
+              {isSessionActive ? (
+                <div className="pb-2.5">
+                  <TrustBar />
+                </div>
+              ) : null}
+              <div
+                className={cn(
+                  "flex flex-wrap items-center gap-x-2.5 gap-y-2 md:flex-nowrap",
+                  isSessionActive && "pt-2.5",
+                )}
+              >
                 <h1 className="order-1 shrink-0 text-lg font-black tracking-[-0.03em] text-[var(--text)]">
                   Ofertas
                 </h1>
@@ -112,13 +111,13 @@ export function AppShell() {
                   </span>
                 </button>
                 <div className="order-2 ml-auto flex shrink-0 items-center gap-2 self-center md:order-3 md:ml-0">
-                  {showHeaderTrustHistoryAndBell ? (
+                  {isSessionActive ? (
                     <>
                       <UserTrustHistoryButton />
                       <NotificationsBell />
+                      <ThemeToggle />
                     </>
-                  ) : null}
-                  {!isSessionActive ? (
+                  ) : (
                     <>
                       <button
                         type="button"
@@ -129,19 +128,23 @@ export function AppShell() {
                       </button>
                       <ThemeToggle />
                     </>
-                  ) : null}
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="flex items-center justify-end gap-3">
-                {!isOnboarding && showHeaderTrustHistoryAndBell ? (
-                  <>
-                    <UserTrustHistoryButton />
-                    <NotificationsBell />
-                  </>
-                ) : null}
-                {!isOnboarding && !isSessionActive ? (
-                  <>
+            </>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                {isSessionActive ? <TrustBar /> : null}
+              </div>
+              <div className="flex shrink-0 items-center gap-2 self-center">
+                {!isOnboarding &&
+                  (isSessionActive ? (
+                    <>
+                      <UserTrustHistoryButton />
+                      <NotificationsBell />
+                    </>
+                  ) : (
                     <button
                       type="button"
                       className="vt-btn vt-btn-primary"
@@ -149,21 +152,17 @@ export function AppShell() {
                     >
                       <LogIn size={16} aria-hidden /> Iniciar sesión
                     </button>
-                    <ThemeToggle />
-                  </>
-                ) : null}
+                  ))}
+                <ThemeToggle />
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      ) : null}
+      </div>
 
       <main
         className={cn(
-          "vt-main min-h-0 flex-1",
-          hideShellHeaderForChat ?
-            "pt-[max(4px,env(safe-area-inset-top,0px))]"
-          : "pt-4",
+          "vt-main min-h-0 min-w-0 w-full flex-1 pt-4",
           /* Hilo de chat (sin nav inferior): en móvil el padding inferior vive en el compositor (área segura); main sin hueco extra. */
           hideBottomNav
             ? "max-[960px]:pb-0 min-[961px]:pb-4"
