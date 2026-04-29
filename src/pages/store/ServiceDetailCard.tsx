@@ -17,7 +17,7 @@ export function ServiceDetailCard({ s }: { s: StoreService }) {
   const commentTotal = s.publicCommentCount ?? 0;
   const offerLikes = s.offerLikeCount ?? 0;
   return (
-    <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3.5">
+    <div className="min-w-0 max-w-full overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3.5">
       <div className="flex items-start gap-2">
         <Wrench
           size={20}
@@ -29,7 +29,7 @@ export function ServiceDetailCard({ s }: { s: StoreService }) {
             {s.category}
           </div>
           <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-            <span className="font-black tracking-[-0.02em]">
+            <span className="min-w-0 flex-1 break-words font-black tracking-[-0.02em]">
               {s.tipoServicio}
             </span>
             <Link

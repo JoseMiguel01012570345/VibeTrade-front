@@ -162,7 +162,7 @@ export function AppShell() {
 
       <main
         className={cn(
-          "vt-main min-h-0 flex-1 pt-4",
+          "vt-main min-h-0 min-w-0 w-full flex-1 pt-4",
           /* Hilo de chat (sin nav inferior): en móvil el padding inferior vive en el compositor (área segura); main sin hueco extra. */
           hideBottomNav
             ? "max-[960px]:pb-0 min-[961px]:pb-4"

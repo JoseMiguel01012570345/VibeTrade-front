@@ -18,8 +18,8 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
   const commentTotal = p.publicCommentCount ?? 0;
   const offerLikes = p.offerLikeCount ?? 0;
   return (
-    <div className="overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
-      <div className="grid min-[640px]:grid-cols-[160px_1fr]">
+    <div className="min-w-0 max-w-full overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
+      <div className="grid min-w-0 min-[640px]:grid-cols-[160px_1fr]">
         <div className="relative min-h-[120px] bg-[color-mix(in_oklab,var(--bg)_75%,var(--surface))]">
           {p.photoUrls[0] ? (
             <>
@@ -43,11 +43,11 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
             </div>
           )}
         </div>
-        <div className="p-3.5">
+        <div className="min-w-0 p-3.5">
           <div className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
             {p.category}
           </div>
-          <div className="mt-1 text-base font-black tracking-[-0.02em]">
+          <div className="mt-1 break-words text-base font-black tracking-[-0.02em]">
             {p.name}
             {p.model ? (
               <span className="font-bold text-[var(--muted)]">
@@ -56,8 +56,8 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
               </span>
             ) : null}
           </div>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm font-bold text-[color-mix(in_oklab,var(--primary)_90%,var(--text))]">
+          <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0 text-sm font-bold text-[color-mix(in_oklab,var(--primary)_90%,var(--text))]">
               {p.price}
               {precioMoneda ? (
                 <span className="ml-1.5 font-semibold text-[var(--muted)]">
@@ -123,12 +123,12 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
               </div>
             </div>
           ) : null}
-          <dl className="mt-3 space-y-2 text-[13px] leading-snug">
+          <dl className="mt-3 space-y-2 text-[13px] leading-snug [&_dd]:break-words">
             <div>
               <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
                 Descripción breve
               </dt>
-              <dd>{p.shortDescription}</dd>
+              <dd className="break-words">{p.shortDescription}</dd>
             </div>
             <div>
               <dt className="text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">

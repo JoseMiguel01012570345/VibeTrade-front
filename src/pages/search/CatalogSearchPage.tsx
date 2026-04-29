@@ -335,19 +335,24 @@ export function CatalogSearchPage() {
 
   return (
     <div
-      className={`container vt-page transition-opacity duration-500 ease-out ${
+      className={`container vt-page min-w-0 max-w-full overflow-x-clip transition-opacity duration-500 ease-out ${
         visible ? "opacity-100" : "opacity-0"
       }`}
     >
-      <div className="mb-3 mt-2 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="vt-h1">Buscar</h1>
+      <div className="mb-3 mt-2 flex flex-col gap-2 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between min-[420px]:gap-3">
+        <div className="min-w-0">
+          <h1 className="vt-h1 break-words text-[clamp(22px,6vw,28px)]">
+            Buscar
+          </h1>
           <div className="vt-muted">
             Tiendas, productos, servicios y hojas de ruta. Elegí filtros y pulsá
             la lupa.
           </div>
         </div>
-        <Link className="vt-btn" to="/home">
+        <Link
+          className="vt-btn w-fit shrink-0 self-start min-[420px]:self-auto"
+          to="/home"
+        >
           Volver
         </Link>
       </div>
