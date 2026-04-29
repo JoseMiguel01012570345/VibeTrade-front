@@ -72,6 +72,8 @@ export type CreateStripePaymentIntentBody = {
 
 export type CreateStripePaymentIntentResult = {
   clientSecret: string;
+  /** Server chose not to create a Stripe PaymentIntent (e.g. VIBETRADE_SKIP_PAYMENT_INTENTS). */
+  paymentSkipped?: boolean;
 };
 
 export async function createStripePaymentIntent(

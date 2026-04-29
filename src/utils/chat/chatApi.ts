@@ -627,7 +627,7 @@ export async function patchChatMessageStatus(
   threadId: string,
   messageId: string,
   status: 'delivered' | 'read',
-): Promise<ChatMessageDto> {
+): Promise<ChatMessageDto | null> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/status`,
     {
@@ -635,6 +635,8 @@ export async function patchChatMessageStatus(
       body: JSON.stringify({ status }),
     },
   )
+  // Mensaje ya no existe / no visible para este hilo: no reintentar en loop.
+  if (res.status === 404) return null
   if (!res.ok) throw new Error(await res.text())
   return (await res.json()) as ChatMessageDto
 }

@@ -127,6 +127,9 @@ function useMinWidth961() {
 /** Misma familia de tipos que el ping de entregado vía <c>messageCreated</c> (chatRealtime). */
 function incomingMessageSupportsDeliveryAck(m: Message): boolean {
   if (m.from !== "other" || !m.id || m.id.startsWith("pend_")) return false;
+  // Q&A públicas espejadas en chat (offerQaId) no son filas de chat persistidas; evitar 404 en /status.
+  if (m.type === "text" && "offerQaId" in m && !!m.offerQaId) return false;
+  if (m.chatStatus === "delivered" || m.chatStatus === "read") return false;
   return (
     m.type === "text" ||
     m.type === "image" ||
@@ -199,6 +202,14 @@ export function ChatPage() {
       !!thread.store.ownerUserId &&
       thread.store.ownerUserId === me.id,
     [thread, me.id],
+  );
+
+  const acceptedAgreementsForPayment = useMemo(
+    () =>
+      thread ?
+        (thread.contracts ?? []).filter((c) => c.status === "accepted")
+      : [],
+    [thread],
   );
 
   /** Panel "gente": el comprador no es `me` cuando el vendedor abre el chat (antes se mostraba la ficha del vendedor). */
@@ -527,6 +538,23 @@ export function ChatPage() {
     setRouteSubscribersSheetId(null);
     setHighlightSubscriberUserId(null);
   }, [threadId]);
+
+  /** QR/PDF «abrir chat en esta hoja» — ?presel=1&sheet= */
+  useEffect(() => {
+    if (!thread?.id) return;
+    if (searchParams.get("presel") !== "1") return;
+    const sheet = searchParams.get("sheet")?.trim();
+    if (!sheet) return;
+    /** El flujo subs+sheet+hi usa y borra estos query params. */
+    if (searchParams.get("subs") === "1") return;
+
+    setFocusRouteId(sheet);
+    setRailOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("presel");
+    next.delete("sheet");
+    setSearchParams(next, { replace: true });
+  }, [thread?.id, searchParams, setSearchParams]);
 
   /** Deep link desde notificación: ?subs=1&sheet=&hi= */
   useEffect(() => {
@@ -1206,6 +1234,11 @@ export function ChatPage() {
     };
   }, [recording, threadId, sendAudio]);
 
+  const closeSubscriberRouteSheet = useCallback(() => {
+    setRouteSubscribersSheetId(null);
+    setHighlightSubscriberUserId(null);
+  }, []);
+
   function toggleVoiceRecording() {
     if (!recording && thread?.chatActionsLocked === true) return;
     if (recording) {
@@ -1400,11 +1433,6 @@ export function ChatPage() {
     pendingAudio !== null;
 
   const canSend = !recording && hasComposeToSend && !chatActionsLocked;
-
-  const closeSubscriberRouteSheet = useCallback(() => {
-    setRouteSubscribersSheetId(null);
-    setHighlightSubscriberUserId(null);
-  }, []);
 
   return (
     <div className="container vt-page vt-chat-page">
@@ -1936,8 +1964,9 @@ export function ChatPage() {
       <ChatPaymentModal
         open={chatPayOpen}
         threadId={thread.id}
+        agreements={acceptedAgreementsForPayment}
         onClose={() => setChatPayOpen(false)}
-        onPaymentSuccess={() => markThreadPaymentCompleted(thread.id)}
+        onPaymentFullySettled={() => markThreadPaymentCompleted(thread.id)}
       />
 
       <TrustRiskEditConfirmModal

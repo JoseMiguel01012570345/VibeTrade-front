@@ -1,75 +1,322 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
-import { CreditCard, X } from "lucide-react";
+import { CreditCard, FileDown, X } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { cn } from "../../../../lib/cn";
+import { useNavigate } from "react-router-dom";
 import { postChatTextMessage } from "../../../../utils/chat/chatApi";
 import {
-  createStripePaymentIntent,
+  executeAgreementCurrencyPayment,
+  fetchAgreementCheckoutBreakdown,
+  fetchAgreementPaymentStatuses,
+  type AgreementCheckoutBreakdownApi,
+  type AgreementPaymentStatusApi,
+} from "../../../../utils/chat/agreementCheckoutApi";
+import {
   getStripeConfig,
   listStripeCards,
   type StripeSavedCard,
 } from "../../../../utils/payments/stripeApi";
+import { useAppStore } from "../../../../app/store/useAppStore";
+import type { TradeAgreement } from "../../domain/tradeAgreementTypes";
+import {
+  minorToMajor,
+  paymentFeeLabels,
+  stripeMinorDecimals,
+} from "../../domain/paymentFeePolicy";
+import { downloadPaymentCheckoutInformePdf } from "../../utils/paymentCheckoutPdfDownload";
+import { collectAgreementInformePreviewEntries } from "../../utils/tradeAgreementPdfText";
+import { ProtectedMediaImg } from "../../../../components/media/ProtectedMediaImg";
+import {
+  VtSelect,
+  type VtSelectOption,
+} from "../../../../components/VtSelect";
 
 type Props = {
   open: boolean;
   threadId: string;
+  agreements: TradeAgreement[];
   onClose: () => void;
-  onPaymentSuccess: () => void;
+  onPaymentFullySettled?: () => void;
 };
+
+function fmt(amountMinor: number, curLower: string): string {
+  const maj = minorToMajor(amountMinor, curLower);
+  const frac = stripeMinorDecimals(curLower);
+  try {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: curLower.slice(0, 3).toUpperCase(),
+      minimumFractionDigits: frac,
+      maximumFractionDigits: frac,
+    }).format(maj);
+  } catch {
+    return `${maj.toFixed(frac)} ${curLower.toUpperCase()}`;
+  }
+}
+
+function currencyPaid(
+  statuses: AgreementPaymentStatusApi[],
+  curLower: string,
+): boolean {
+  return statuses.some(
+    (x) =>
+      x.status === "succeeded" &&
+      x.currency.trim().toLowerCase() === curLower.trim().toLowerCase(),
+  );
+}
 
 export function ChatPaymentModal({
   open,
   threadId,
+  agreements,
   onClose,
-  onPaymentSuccess,
+  onPaymentFullySettled,
 }: Props) {
-  const [loading, setLoading] = useState(false);
+  const nav = useNavigate();
+  const me = useAppStore((s) => s.me);
+
+  const [busyInit, setBusyInit] = useState(false);
+  const [busyPay, setBusyPay] = useState(false);
+
+  const [agreementId, setAgreementId] = useState<string>("");
+  const [breakdown, setBreakdown] = useState<AgreementCheckoutBreakdownApi | null>(
+    null,
+  );
+  const [statuses, setStatuses] = useState<AgreementPaymentStatusApi[]>([]);
   const [cards, setCards] = useState<StripeSavedCard[]>([]);
-  const [selectedId, setSelectedId] = useState<string>("");
-  const [busy, setBusy] = useState(false);
+  const [selectedCardId, setSelectedCardId] = useState<string>("");
 
-  const hasCards = cards.length > 0;
-  const canPay = hasCards && !!selectedId.trim() && !busy && !loading;
+  /** Reintentos mismos montos mismo intento cliente. */
+  const [idemByCurrency] = useState(() => ({
+    refs: {} as Record<string, string>,
+  }));
 
-  // Demo amount: 10.00 USD. (Se reemplaza en el feature real con total del acuerdo.)
-  const payAmountMinor = 1000;
-  const payCurrency = "usd";
-  const payDescription = useMemo(
-    () => `Pago demo chat ${threadId}`,
-    [threadId],
+  const [acceptedInforme, setAcceptedInforme] = useState(false);
+  const settledNotifiedAgreementIdRef = useRef<string | null>(null);
+
+  const selectedAgreement = useMemo(
+    () => agreements.find((a) => a.id === agreementId) ?? agreements[0] ?? null,
+    [agreementId, agreements],
   );
 
+  const previews = useMemo(
+    () => (selectedAgreement ? collectAgreementInformePreviewEntries(selectedAgreement) : []),
+    [selectedAgreement],
+  );
+
+  const agreementOptions = useMemo<VtSelectOption[]>(
+    () =>
+      agreements.map((a) => ({
+        value: a.id,
+        label: (a.title ?? "").trim() || "(sin título)",
+      })),
+    [agreements],
+  );
+
+  const cardOptions = useMemo<VtSelectOption[]>(
+    () =>
+      cards.map((c) => ({
+        value: c.id,
+        label: `${c.brand} •••• ${c.last4}`,
+      })),
+    [cards],
+  );
+
+  const pendingCurrencies = useMemo(() => {
+    const bc = breakdown?.byCurrency ?? [];
+    const out: string[] = [];
+    for (const b of bc) {
+      const c = b.currencyLower.trim().toLowerCase();
+      if (!currencyPaid(statuses, c)) out.push(c);
+    }
+    return out;
+  }, [breakdown?.byCurrency, statuses]);
+
+  const allPaid =
+    breakdown !== null &&
+    breakdown.ok &&
+    breakdown.byCurrency.length > 0 &&
+    pendingCurrencies.length === 0;
+
+  const reloadCheckout = useCallback(async () => {
+    const ag = selectedAgreement ?? agreements[0];
+    if (!ag) {
+      setBreakdown(null);
+      setStatuses([]);
+      return;
+    }
+    setBusyInit(true);
+    try {
+      const [bd, ps] = await Promise.all([
+        fetchAgreementCheckoutBreakdown(threadId, ag.id),
+        fetchAgreementPaymentStatuses(threadId, ag.id),
+      ]);
+      setBreakdown(bd);
+      setStatuses(ps);
+    } catch (e) {
+      setBreakdown(null);
+      setStatuses([]);
+      toast.error((e as Error)?.message ?? "No se pudo cargar el informe de pago.");
+    } finally {
+      setBusyInit(false);
+    }
+  }, [threadId, selectedAgreement, agreements]);
+
   useEffect(() => {
-    if (!open) return;
-    setSelectedId("");
-    setLoading(true);
-    void (async () => {
-      try {
-        await getStripeConfig(); // for friendly errors
-        const cs = await listStripeCards();
-        setCards(cs);
-        if (cs.length > 0) setSelectedId(cs[0]?.id ?? "");
-      } catch (e) {
-        setCards([]);
-        toast.error((e as Error)?.message ?? "No se pudieron cargar las tarjetas.");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    if (!open) {
+      settledNotifiedAgreementIdRef.current = null;
+      return;
+    }
   }, [open]);
 
   useEffect(() => {
+    if (!open || !breakdown?.ok) return;
+    if (!breakdown.byCurrency.length) return;
+    const settled = breakdown.byCurrency.every((bc) =>
+      currencyPaid(statuses, bc.currencyLower),
+    );
+    if (!settled) return;
+
+    const aid = (selectedAgreement?.id ?? agreementId ?? "").trim();
+    if (!aid) return;
+    if (settledNotifiedAgreementIdRef.current === aid) return;
+    settledNotifiedAgreementIdRef.current = aid;
+    onPaymentFullySettled?.();
+  }, [open, breakdown, statuses, onPaymentFullySettled, selectedAgreement?.id, agreementId]);
+
+  useEffect(() => {
+    if (!open || !agreements.length) return;
+    if (!agreementId || !agreements.some((x) => x.id === agreementId))
+      setAgreementId(agreements[0]?.id ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, agreements]);
+
+  useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
+    setAcceptedInforme(false);
+    void (async () => {
+      try {
+        await getStripeConfig();
+        const cs = await listStripeCards();
+        setCards(cs);
+        if (cs[0]?.id) setSelectedCardId(cs[0].id);
+        else setSelectedCardId("");
+      } catch {
+        setCards([]);
+      }
+      await reloadCheckout();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, agreementId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const k = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    globalThis.addEventListener?.("keydown", onKey);
-    return () => globalThis.removeEventListener?.("keydown", onKey);
+    globalThis.addEventListener?.("keydown", k);
+    return () => globalThis.removeEventListener?.("keydown", k);
   }, [open, onClose]);
 
   if (!open) return null;
+
+  const hasAgreement = agreements.length > 0;
+  const primaryCurrency = pendingCurrencies[0] ?? "";
+  const informeReady =
+    breakdown !== null &&
+    breakdown.ok === true &&
+    breakdown.byCurrency.length > 0;
+
+  async function handlePayCurrency(curLower: string) {
+    const ag = selectedAgreement ?? agreements[0];
+    const pmId = selectedCardId.trim();
+    if (!ag || !pmId) {
+      toast.error("Seleccioná una tarjeta guardada.");
+      return;
+    }
+    if (!acceptedInforme) {
+      toast.error("Confirmá que leíste el informe de montos antes de pagar.");
+      return;
+    }
+    let ik = idemByCurrency.refs[curLower]?.trim();
+    if (!ik || ik.length < 8)
+      ik = crypto.randomUUID();
+    idemByCurrency.refs[curLower] = ik;
+
+    setBusyPay(true);
+    try {
+      const cfg = await getStripeConfig();
+      const r = await executeAgreementCurrencyPayment({
+        threadId,
+        agreementId: ag.id,
+        currency: curLower,
+        paymentMethodId: pmId,
+        idempotencyKey: ik,
+      });
+
+      if (!r.accepted && (r.errorCode === "stripe_no_customer")) {
+        toast.error(
+          r.stripeErrorMessage ?? "Debés tener un cliente Stripe (tarjetas en perfil).",
+        );
+        return;
+      }
+      if (!r.accepted && (r.errorCode === "checkout_invalid")) {
+        toast.error(
+          r.stripeErrorMessage ?? "Los montos ya no aplican.",
+        );
+        await reloadCheckout();
+        return;
+      }
+
+      const needs = (r.clientSecretForConfirmation ?? "").trim();
+      if (
+        !r.succeeded &&
+        needs &&
+        cfg.enabled &&
+        (cfg.publishableKey ?? "").trim()
+      ) {
+        const stripe = await loadStripe(cfg.publishableKey!);
+        const res = await stripe?.confirmCardPayment(needs);
+        if (res?.error) {
+          toast.error(res.error.message ?? "No se pudo autenticar el pago.");
+          await reloadCheckout();
+          return;
+        }
+      } else if (!r.succeeded) {
+        if ((r.stripeErrorMessage ?? "").trim())
+          toast.error(r.stripeErrorMessage!.trim());
+        await reloadCheckout();
+        return;
+      }
+
+      toast.success(`Pago en ${curLower.toUpperCase()} registrado.`);
+      await reloadCheckout();
+      try {
+        await postChatTextMessage(
+          threadId,
+          `Pago registrado (${curLower.toUpperCase()}).`,
+        );
+      } catch {
+        /* noop */
+      }
+    } catch (e) {
+      toast.error((e as Error)?.message ?? "No se pudo completar el pago.");
+    } finally {
+      setBusyPay(false);
+    }
+  }
+
+  async function handlePdfDownload() {
+    const ag = selectedAgreement ?? agreements[0];
+    if (!ag || !breakdown || busyInit) return;
+    try {
+      await downloadPaymentCheckoutInformePdf(ag, breakdown, threadId);
+    } catch (e) {
+      toast.error((e as Error)?.message ?? "No se pudo generar el PDF.");
+    }
+  }
 
   return createPortal(
     <button
@@ -79,7 +326,7 @@ export function ChatPaymentModal({
     >
       <div
         className={cn(
-          "vt-modal flex max-h-[min(85vh,720px)] w-full max-w-[560px] flex-col overflow-hidden p-0",
+          "vt-modal flex max-h-[min(88vh,780px)] w-full max-w-[560px] flex-col overflow-hidden p-0",
         )}
         role="dialog"
         aria-modal="true"
@@ -88,11 +335,16 @@ export function ChatPaymentModal({
       >
         <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
           <div className="min-w-0">
-            <div id="chat-pay-title" className="vt-modal-title flex items-center gap-2">
-              <CreditCard size={18} aria-hidden /> Pagar
+            <div
+              id="chat-pay-title"
+              className="vt-modal-title flex items-center gap-2"
+            >
+              <CreditCard size={18} aria-hidden /> Pago del acuerdo
             </div>
             <p className="vt-muted mt-1 text-[12px] leading-snug">
-              Elige una tarjeta guardada para registrar el pago del chat (demo).
+              Clima {paymentFeeLabels.climateRateDisplay} sobre subtotal más estimación Stripe (
+              {paymentFeeLabels.stripePctDisplay}). Un cobro por moneda agrupando mercadería,
+              servicios y tramos incluidos.
             </p>
           </div>
           <button
@@ -105,108 +357,245 @@ export function ChatPaymentModal({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          {loading ? (
-            <p className="vt-muted py-6 text-center text-[13px] leading-snug">
-              Cargando tarjetas…
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          {!hasAgreement ?
+            <p className="text-[13px] text-[var(--text)] leading-snug">
+              No hay un acuerdo aceptado en este chat. El vendedor debe emitir uno y vos aceptarlo
+              antes de pagar aquí.
             </p>
-          ) : !hasCards ? (
-            <div className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] p-3 text-[13px]">
-              <div className="font-extrabold text-[var(--text)]">
-                No hay tarjetas guardadas.
-              </div>
-              <div className="vt-muted mt-1 leading-snug">
-                Para guardar una tarjeta: abre tu perfil → “Configurar tarjetas de pago” → “Crear nueva tarjeta”.
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              <div className="text-[12px] font-black uppercase tracking-wide text-[var(--muted)]">
-                Tarjetas disponibles
-              </div>
-              <ul className="flex flex-col gap-2">
-                {cards.map((c) => (
-                  <li key={c.id}>
-                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-3 py-2">
-                      <input
-                        type="radio"
-                        name="chat-pay-card"
-                        value={c.id}
-                        aria-label={`Seleccionar tarjeta terminada en ${c.last4}`}
-                        checked={selectedId === c.id}
-                        onChange={() => setSelectedId(c.id)}
-                      />
-                      <div className="min-w-0">
-                        <div className="font-extrabold text-[var(--text)]">
-                          {c.brand || "Card"} •••• {c.last4}
-                        </div>
-                        <div className="vt-muted text-[12px]">
-                          Exp {String(c.expMonth).padStart(2, "0")}/{c.expYear}
-                        </div>
+          : <>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                  Acuerdo
+                </span>
+                <VtSelect
+                  value={agreementId}
+                  onChange={(value) => {
+                    setAgreementId(value);
+                    setAcceptedInforme(false);
+                  }}
+                  options={agreementOptions}
+                  listPortal
+                  ariaLabel="Seleccionar acuerdo"
+                  buttonClassName="min-h-10 bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] border-[color-mix(in_oklab,var(--border)_90%,transparent)] shadow-[inset_0_1px_0_rgba(2,6,23,0.55)]"
+                />
+              </label>
+
+              {busyInit ?
+                <p className="vt-muted py-6 text-center text-[13px]">Calculando montos…</p>
+              : breakdown && !breakdown.ok ?
+                <div className="rounded-2xl border border-[color-mix(in_oklab,var(--bad)_42%,var(--border))] bg-[color-mix(in_oklab,var(--bad)_10%,var(--surface))] p-3 text-[13px] leading-snug">
+                  {breakdown.errors.map((e) => (
+                    <div key={e}>• {e}</div>
+                  ))}
+                </div>
+              : breakdown && breakdown.ok && breakdown.byCurrency.length === 0 ?
+                <div className="vt-muted text-[13px]">Sin montos a cobrar en este momento.</div>
+              : informeReady ?
+                <>
+                  <section className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
+                    <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                      Informe
+                    </div>
+                    <div className="mt-2 space-y-3">
+                      {breakdown.byCurrency.map((bc) => {
+                        const c = bc.currencyLower;
+                        const paid = currencyPaid(statuses, c);
+                        return (
+                          <div
+                            key={c}
+                            className="rounded-xl border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] px-3 py-2"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="text-[13px] font-black">
+                                Moneda {c.toUpperCase()}{paid ?
+                                  <span className="vt-muted ml-2 text-[11px] font-bold">
+                                    — cobro OK
+                                  </span>
+                                : null}
+                              </div>
+                              <div className="font-mono text-[13px] font-bold">
+                                {fmt(bc.totalMinor, c)}
+                              </div>
+                            </div>
+                            <div className="vt-muted mt-1 grid gap-0.5 text-[12px]">
+                              <div>Subtotal: {fmt(bc.subtotalMinor, c)} · Climate{" "}
+                                {fmt(bc.climateMinor, c)}{" "}
+                                · Tarifa est. Stripe {fmt(bc.stripeFeeMinor, c)}
+                              </div>
+                            </div>
+                            <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-[12px] text-[var(--text)] opacity-92">
+                              {bc.lines.map((ln, ix) => (
+                                <li key={`${ln.label}-${ix}`}>
+                                  {ln.label} — <span className="font-mono">{fmt(ln.amountMinor, c)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  {previews.length > 0 ?
+                    <section>
+                      <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                        Previsualización de adjuntos
                       </div>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+                      <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                        {previews.map((p) =>
+                          p.kind === "image" ?
+                            <div
+                              key={p.url}
+                              className="overflow-hidden rounded-xl border border-[var(--border)]"
+                            >
+                              <div className="bg-[color-mix(in_oklab,var(--bg)_52%,var(--surface))] px-2 py-1 text-[11px] font-bold leading-tight">
+                                {p.label}
+                              </div>
+                              <ProtectedMediaImg
+                                src={p.url}
+                                alt=""
+                                wrapperClassName="aspect-[4/3] w-full bg-[var(--surface)]"
+                                className="max-h-[180px] w-full object-contain"
+                              />
+                            </div>
+                          : (
+                            <a
+                              key={p.url}
+                              href={p.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_52%,var(--surface))] p-3 text-[13px] font-semibold text-[var(--primary)] underline"
+                            >
+                              {p.label} — abrir documento / enlace
+                            </a>
+                          ),
+                        )}
+                      </div>
+                    </section>
+                  : null}
+
+                  <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_52%,var(--surface))] p-3 text-[13px] leading-snug">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={acceptedInforme || allPaid}
+                      onChange={(e) => setAcceptedInforme(e.target.checked)}
+                    />
+                    <span>
+                      Confirmé el desglose de montos, conceptos incluidos y adjuntos declarados por el
+                      vendedor antes de cargar cobros Stripe.
+                    </span>
+                  </label>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="vt-btn inline-flex items-center gap-2"
+                      disabled={busyInit}
+                      onClick={() => void handlePdfDownload()}
+                    >
+                      <FileDown size={16} aria-hidden />
+                      Descargar PDF informe (+ QR enlaces solo en archivo)
+                    </button>
+                  </div>
+                </>
+              : !busyInit && !breakdown ?
+                <p className="vt-muted text-[13px] leading-snug">
+                  No pudimos obtener el informe desde el servidor. Revisa la conexión o volvé a intentar más
+                  tarde.
+                </p>
+              : null}
+
+              {!allPaid && breakdown?.ok ?
+                <button
+                  type="button"
+                  className="vt-btn vt-btn-ghost w-full justify-center text-[13px]"
+                  onClick={() =>
+                    nav(
+                      `/profile/${encodeURIComponent(me.id)}/account?stripeCards=1`,
+                    )
+                  }
+                >
+                  Abrir configuración de tarjetas en el perfil
+                </button>
+              : null}
+            </>
+          }
         </div>
 
-        <div className="vt-modal-actions border-t border-[var(--border)] px-4 py-3">
-          <button type="button" className="vt-btn vt-btn-ghost" onClick={onClose} disabled={busy}>
-            Cancelar
-          </button>
+        <div className="vt-modal-actions flex flex-col gap-3 border-t border-[var(--border)] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <button
             type="button"
-            className="vt-btn vt-btn-primary"
-            disabled={!canPay}
-            onClick={async () => {
-              const pm = selectedId.trim();
-              if (!pm) return;
-              setBusy(true);
-              try {
-                const cfg = await getStripeConfig();
-                const r = await createStripePaymentIntent({
-                  amountMinor: payAmountMinor,
-                  currency: payCurrency,
-                  description: payDescription,
-                  paymentMethodId: pm,
-                });
-
-                // Si Stripe necesita autenticación, el backend devuelve clientSecret para completar.
-                if (cfg.enabled && cfg.publishableKey) {
-                  const stripe = await loadStripe(cfg.publishableKey);
-                  if (stripe) {
-                    const res = await stripe.confirmCardPayment(r.clientSecret);
-                    if (res.error) {
-                      toast.error(res.error.message ?? "No se pudo completar el pago.");
-                      return;
-                    }
-                  }
-                }
-
-                try {
-                  await postChatTextMessage(threadId, "Pago realizado.");
-                } catch {
-                  // El pago ya se completó: si falla la notificación, no bloqueamos el flujo.
-                }
-
-                toast.success("Pago registrado.");
-                onPaymentSuccess();
-                onClose();
-              } catch (e) {
-                toast.error((e as Error)?.message ?? "No se pudo registrar el pago.");
-              } finally {
-                setBusy(false);
-              }
-            }}
+            className="vt-btn vt-btn-ghost shrink-0"
+            onClick={onClose}
+            disabled={busyPay}
           >
-            Pagar
+            Cerrar
           </button>
+          {allPaid ?
+            <div className="rounded-xl px-3 py-2 text-[13px] font-bold text-emerald-600 sm:ml-auto">
+              Cobros listos en todas las monedas necesarias del acuerdo.
+            </div>
+          : null}
+          {!allPaid && hasAgreement && !cards.length ?
+            <button
+              type="button"
+              className="vt-btn vt-btn-primary sm:ml-auto"
+              onClick={() =>
+                nav(
+                  `/profile/${encodeURIComponent(me.id)}/account?stripeCards=1`,
+                )
+              }
+            >
+              Ir al perfil a guardar tarjeta
+            </button>
+          : null}
+          {!allPaid && hasAgreement && cards.length > 0 ?
+            <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+              <VtSelect
+                className="w-full sm:w-[min(300px,92vw)] md:max-w-[260px]"
+                value={selectedCardId}
+                onChange={setSelectedCardId}
+                options={cardOptions}
+                listPortal
+                ariaLabel="Seleccionar tarjeta"
+                buttonClassName="min-h-10 border-[color-mix(in_oklab,var(--border)_90%,transparent)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] shadow-[inset_0_1px_0_rgba(2,6,23,0.55)]"
+              />
+              <div className="flex flex-wrap gap-2 sm:justify-end">
+                <button
+                  type="button"
+                  className="vt-btn"
+                  disabled={busyPay || !primaryCurrency}
+                  title={
+                    pendingCurrencies[1] ?
+                      "Luego quedará la siguiente moneda."
+                    : undefined
+                  }
+                  onClick={() => void handlePayCurrency(primaryCurrency)}
+                >
+                  {busyPay ?
+                    "Procesando…"
+                  : `Pagar ${primaryCurrency.toUpperCase()}`}
+                </button>
+                <button
+                  type="button"
+                  className="vt-btn vt-btn-ghost border border-[var(--border)] px-4 py-2 shadow-none"
+                  disabled={
+                    busyPay ||
+                    primaryCurrency.trim().length < 3 ||
+                    !acceptedInforme
+                  }
+                  onClick={() => void handlePayCurrency(primaryCurrency)}
+                >
+                  Reintentar
+                </button>
+              </div>
+            </div>
+          : null}
         </div>
       </div>
     </button>,
     document.body,
   );
 }
-
