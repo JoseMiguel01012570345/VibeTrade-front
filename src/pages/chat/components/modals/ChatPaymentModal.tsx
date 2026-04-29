@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
-import { CreditCard, X } from "lucide-react";
+import { CreditCard, FileText, X } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { cn } from "../../../../lib/cn";
 import { postChatTextMessage } from "../../../../utils/chat/chatApi";
@@ -11,46 +11,80 @@ import {
   listStripeCards,
   type StripeSavedCard,
 } from "../../../../utils/payments/stripeApi";
+import type { TradeAgreement } from "../../domain/tradeAgreementTypes";
+import { previewPaymentForAcceptedAgreement } from "../../utils/chatPaymentAmountPreview";
 
 type Props = {
   open: boolean;
   threadId: string;
+  /** Solo acuerdos aceptados en el hilo (el comprador elige cuál pagar). */
+  acceptedAgreements: TradeAgreement[];
   onClose: () => void;
   onPaymentSuccess: () => void;
 };
 
+function formatMoney(amountMinor: number, currency: string) {
+  const major = amountMinor / 100;
+  try {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: currency.toUpperCase(),
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(major);
+  } catch {
+    return `${major.toFixed(2)} ${currency.toUpperCase()}`;
+  }
+}
+
 export function ChatPaymentModal({
   open,
   threadId,
+  acceptedAgreements,
   onClose,
   onPaymentSuccess,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [cards, setCards] = useState<StripeSavedCard[]>([]);
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [selectedCardId, setSelectedCardId] = useState<string>("");
+  const [selectedAgreementId, setSelectedAgreementId] = useState<string>("");
   const [busy, setBusy] = useState(false);
 
-  const hasCards = cards.length > 0;
-  const canPay = hasCards && !!selectedId.trim() && !busy && !loading;
+  const previewById = useMemo(() => {
+    const m = new Map<
+      string,
+      ReturnType<typeof previewPaymentForAcceptedAgreement>
+    >();
+    for (const ag of acceptedAgreements) {
+      m.set(ag.id, previewPaymentForAcceptedAgreement(ag));
+    }
+    return m;
+  }, [acceptedAgreements]);
 
-  // Demo: Stripe usa centavos para USD → 1000 = US$10,00. (En producción: total del acuerdo en centavos.)
-  const payAmountUsdCents = 1000;
-  const payCurrency = "usd";
-  const payDescription = useMemo(
-    () => `Pago demo chat ${threadId}`,
-    [threadId],
-  );
+  const selectedPreview =
+    selectedAgreementId.trim().length > 0
+      ? previewById.get(selectedAgreementId.trim())
+      : undefined;
+
+  const hasCards = cards.length > 0;
+  const canPay =
+    hasCards &&
+    !!selectedCardId.trim() &&
+    selectedPreview?.ok === true &&
+    !busy &&
+    !loading;
 
   useEffect(() => {
     if (!open) return;
-    setSelectedId("");
+    setSelectedCardId("");
+    setSelectedAgreementId("");
     setLoading(true);
     void (async () => {
       try {
-        await getStripeConfig(); // for friendly errors
+        await getStripeConfig();
         const cs = await listStripeCards();
         setCards(cs);
-        if (cs.length > 0) setSelectedId(cs[0]?.id ?? "");
+        if (cs.length > 0) setSelectedCardId(cs[0]?.id ?? "");
       } catch (e) {
         setCards([]);
         toast.error(
@@ -62,6 +96,13 @@ export function ChatPaymentModal({
     })();
   }, [open]);
 
+  /** Una sola opción: seleccionada por defecto al abrir. */
+  useEffect(() => {
+    if (!open || acceptedAgreements.length !== 1) return;
+    const id = acceptedAgreements[0]?.id?.trim();
+    if (id) setSelectedAgreementId(id);
+  }, [open, acceptedAgreements]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -72,6 +113,8 @@ export function ChatPaymentModal({
   }, [open, onClose]);
 
   if (!open) return null;
+
+  const noAgreements = acceptedAgreements.length === 0;
 
   return createPortal(
     <button type="button" className="vt-modal-backdrop" onMouseDown={onClose}>
@@ -93,7 +136,7 @@ export function ChatPaymentModal({
               <CreditCard size={18} aria-hidden /> Pagar
             </div>
             <p className="vt-muted mt-1 text-[12px] leading-snug">
-              Elegí una tarjeta guardada para registrar el pago del chat (demo).
+              Elegí el acuerdo y el monto a pagar; después la tarjeta guardada.
             </p>
           </div>
           <button
@@ -107,49 +150,126 @@ export function ChatPaymentModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          {loading ? (
-            <p className="vt-muted py-6 text-center text-[13px] leading-snug">
-              Cargando tarjetas…
-            </p>
-          ) : !hasCards ? (
+          {noAgreements ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] p-3 text-[13px]">
               <div className="font-extrabold text-[var(--text)]">
-                No hay tarjetas guardadas.
+                No hay acuerdos aceptados.
               </div>
               <div className="vt-muted mt-1 leading-snug">
-                Para guardar una tarjeta: abrí tu perfil → “Configurar tarjetas
-                de pago” → “Crear nueva tarjeta”.
+                El comercio debe emitir un acuerdo y vos aceptarlo antes de pagar
+                desde el chat.
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-2.5">
-              <div className="text-[12px] font-black uppercase tracking-wide text-[var(--muted)]">
-                Tarjetas disponibles
+            <div className="flex flex-col gap-4">
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-[12px] font-black uppercase tracking-wide text-[var(--muted)]">
+                  <FileText size={14} aria-hidden /> 1. Acuerdo y monto
+                </div>
+                <ul className="flex flex-col gap-2">
+                  {acceptedAgreements.map((ag) => {
+                    const pv = previewById.get(ag.id);
+                    const checked = selectedAgreementId === ag.id;
+                    return (
+                      <li key={ag.id}>
+                        <label
+                          className={cn(
+                            "flex cursor-pointer flex-col gap-1 rounded-xl border px-3 py-2.5",
+                            checked
+                              ? "border-[color-mix(in_oklab,var(--primary)_45%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]"
+                              : "border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))]",
+                          )}
+                        >
+                          <div className="flex items-start gap-2">
+                            <input
+                              type="radio"
+                              name="chat-pay-agreement"
+                              value={ag.id}
+                              className="mt-0.5"
+                              aria-label={`Acuerdo ${ag.title}`}
+                              checked={checked}
+                              onChange={() => setSelectedAgreementId(ag.id)}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="font-extrabold text-[var(--text)]">
+                                {(ag.title ?? "").trim() || "Acuerdo"}
+                              </div>
+                              {pv === undefined ? (
+                                <div className="vt-muted mt-0.5 text-[12px]">—</div>
+                              ) : pv.ok ? (
+                                <>
+                                  <div className="mt-0.5 text-[13px] font-bold text-[var(--primary)]">
+                                    Total a pagar ahora:{" "}
+                                    {formatMoney(pv.amountMinor, pv.currency)}
+                                  </div>
+                                  {pv.summaryLines.length > 0 ? (
+                                    <ul className="vt-muted mt-1 list-inside list-disc text-[11px] leading-snug">
+                                      {pv.summaryLines.map((line, i) => (
+                                        <li key={`${ag.id}-s${i}`}>{line}</li>
+                                      ))}
+                                    </ul>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <div className="vt-muted mt-0.5 text-[12px] leading-snug">
+                                  {pv.reason}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
-              <ul className="flex flex-col gap-2">
-                {cards.map((c) => (
-                  <li key={c.id}>
-                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-3 py-2">
-                      <input
-                        type="radio"
-                        name="chat-pay-card"
-                        value={c.id}
-                        aria-label={`Seleccionar tarjeta terminada en ${c.last4}`}
-                        checked={selectedId === c.id}
-                        onChange={() => setSelectedId(c.id)}
-                      />
-                      <div className="min-w-0">
-                        <div className="font-extrabold text-[var(--text)]">
-                          {c.brand || "Card"} •••• {c.last4}
-                        </div>
-                        <div className="vt-muted text-[12px]">
-                          Exp {String(c.expMonth).padStart(2, "0")}/{c.expYear}
-                        </div>
-                      </div>
-                    </label>
-                  </li>
-                ))}
-              </ul>
+
+              <div>
+                <div className="mb-2 text-[12px] font-black uppercase tracking-wide text-[var(--muted)]">
+                  2. Tarjeta
+                </div>
+                {loading ? (
+                  <p className="vt-muted py-4 text-center text-[13px] leading-snug">
+                    Cargando tarjetas…
+                  </p>
+                ) : !hasCards ? (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] p-3 text-[13px]">
+                    <div className="font-extrabold text-[var(--text)]">
+                      No hay tarjetas guardadas.
+                    </div>
+                    <div className="vt-muted mt-1 leading-snug">
+                      Para guardar una tarjeta: Perfil → “Configurar tarjetas de
+                      pago” → “Crear nueva tarjeta”.
+                    </div>
+                  </div>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {cards.map((c) => (
+                      <li key={c.id}>
+                        <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-3 py-2">
+                          <input
+                            type="radio"
+                            name="chat-pay-card"
+                            value={c.id}
+                            aria-label={`Seleccionar tarjeta terminada en ${c.last4}`}
+                            checked={selectedCardId === c.id}
+                            onChange={() => setSelectedCardId(c.id)}
+                          />
+                          <div className="min-w-0">
+                            <div className="font-extrabold text-[var(--text)]">
+                              {c.brand || "Card"} •••• {c.last4}
+                            </div>
+                            <div className="vt-muted text-[12px]">
+                              Exp {String(c.expMonth).padStart(2, "0")}/
+                              {c.expYear}
+                            </div>
+                          </div>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -168,19 +288,19 @@ export function ChatPaymentModal({
             className="vt-btn vt-btn-primary"
             disabled={!canPay}
             onClick={async () => {
-              const pm = selectedId.trim();
-              if (!pm) return;
+              const pm = selectedCardId.trim();
+              if (!pm || selectedPreview?.ok !== true) return;
               setBusy(true);
               try {
                 const cfg = await getStripeConfig();
+                const desc = `Pago «${selectedPreview.title}» · chat ${threadId}`;
                 const r = await createStripePaymentIntent({
-                  amountMinor: payAmountUsdCents,
-                  currency: payCurrency,
-                  description: payDescription,
+                  amountMinor: selectedPreview.amountMinor,
+                  currency: selectedPreview.currency,
+                  description: desc,
                   paymentMethodId: pm,
                 });
 
-                // Si Stripe necesita autenticación, el backend devuelve clientSecret para completar.
                 if (cfg.enabled && cfg.publishableKey) {
                   const stripe = await loadStripe(cfg.publishableKey);
                   if (stripe) {
@@ -195,9 +315,12 @@ export function ChatPaymentModal({
                 }
 
                 try {
-                  await postChatTextMessage(threadId, "Pago realizado.");
+                  await postChatTextMessage(
+                    threadId,
+                    `Pago realizado: ${formatMoney(selectedPreview.amountMinor, selectedPreview.currency)} · ${selectedPreview.title}.`,
+                  );
                 } catch {
-                  // El pago ya se completó: si falla la notificación, no bloqueamos el flujo.
+                  /* el cobro ya ok */
                 }
 
                 toast.success("Pago registrado.");
@@ -212,7 +335,9 @@ export function ChatPaymentModal({
               }
             }}
           >
-            Pagar
+            {selectedPreview?.ok
+              ? `Pagar ${formatMoney(selectedPreview.amountMinor, selectedPreview.currency)}`
+              : "Pagar"}
           </button>
         </div>
       </div>

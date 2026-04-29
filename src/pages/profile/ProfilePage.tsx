@@ -56,6 +56,8 @@ import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
 import { buildEmergentMapLegs } from "../../utils/map/emergentRouteMapLegs";
 import { EmergentRouteFeedMap } from "../home/EmergentRouteFeedMap";
 import { PaymentGatewayConfigModal } from "./PaymentGatewayConfigModal";
+import { TrustBar } from "../../app/widgets/TrustBar";
+import { ThemeToggle } from "../../app/widgets/ThemeToggle";
 
 function isValidEmail(value: string): boolean {
   const t = value.trim();
@@ -651,6 +653,18 @@ export function ProfilePage() {
           <div className="vt-card vt-card-pad">
             <div className="vt-h2">Configuración del usuario</div>
             <div className="vt-divider my-3" />
+
+            {isMe ? (
+              <div className="mb-4 flex flex-col gap-3 border-b border-[var(--border)] pb-4">
+                <TrustBar />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-xs font-black text-[var(--muted)]">
+                    Apariencia (modo claro / oscuro)
+                  </span>
+                  <ThemeToggle />
+                </div>
+              </div>
+            ) : null}
 
             {!isMe ? (
               <div className="mb-4 flex flex-col items-center gap-3 border-b border-[var(--border)] pb-4 text-center sm:flex-row sm:items-start sm:text-left">

@@ -1,7 +1,6 @@
 import type {
   ChangeEvent,
   Dispatch,
-  ReactNode,
   Ref,
   RefObject,
   SetStateAction,
@@ -75,8 +74,6 @@ type Props = {
     body: string;
   }) => void;
   setTrustScore: (n: number) => void;
-  /** Móvil (p. ej. FAB de acciones del chat encima del micrófono). */
-  composerMobileActions?: ReactNode;
 };
 
 export function ChatComposerSection({
@@ -109,7 +106,6 @@ export function ChatComposerSection({
   markThreadPaymentCompleted: _markThreadPaymentCompleted,
   pushNotification: _pushNotification,
   setTrustScore: _setTrustScore,
-  composerMobileActions,
 }: Props) {
   const profileDisplayNames = useAppStore((s) => s.profileDisplayNames);
   return (
@@ -467,12 +463,6 @@ export function ChatComposerSection({
             }}
           />
           <div className="relative shrink-0">
-            {/* FAB encima del mic (móvil): no reduce el ancho del input */}
-            {composerMobileActions ? (
-              <div className="pointer-events-none absolute bottom-[calc(100%+0.25rem)] left-1/2 z-30 w-max max-w-none -translate-x-1/2">
-                <div className="pointer-events-auto">{composerMobileActions}</div>
-              </div>
-            ) : null}
             <button
               type="button"
               className={cn(

@@ -1464,6 +1464,26 @@ export function ChatPage() {
                         </span>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      className={cn(
+                        "flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)]",
+                        "bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] text-[var(--text)] transition",
+                        "hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] hover:bg-[color-mix(in_oklab,var(--primary)_6%,var(--surface))]",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]",
+                        "max-[960px]:inline-flex min-[961px]:hidden",
+                        railOpen && "pointer-events-none opacity-0",
+                      )}
+                      aria-expanded={mobileChatActionsOpen}
+                      aria-haspopup="dialog"
+                      aria-label="Abrir acciones del chat"
+                      title="Contratos, pago u emitir acuerdo"
+                      onClick={() =>
+                        setMobileChatActionsOpen((open) => !open)
+                      }
+                    >
+                      <MoreVertical size={20} strokeWidth={2.25} aria-hidden />
+                    </button>
                   </div>
 
                   <div className="hidden w-full min-w-0 shrink-0 flex-wrap items-center gap-y-2 min-[961px]:ml-auto min-[961px]:flex min-[961px]:w-auto min-[961px]:max-w-[52%] min-[961px]:justify-end lg:max-w-none">
@@ -1598,34 +1618,6 @@ export function ChatPage() {
                 markThreadPaymentCompleted={markThreadPaymentCompleted}
                 pushNotification={pushNotification}
                 setTrustScore={setTrustScore}
-                composerMobileActions={
-                  <div
-                    className={cn(
-                      "min-[961px]:hidden",
-                      railOpen && "pointer-events-none opacity-0",
-                    )}
-                    aria-hidden={railOpen || undefined}
-                  >
-                    {/* Móvil: encima del micrófono en el compositor; el contenedor viene de ChatComposerSection. */}
-                    <button
-                      type="button"
-                      className={cn(
-                        "flex size-14 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_oklab,var(--primary)_78%,var(--border))]",
-                        "bg-[var(--primary)] text-white shadow-[0_10px_28px_rgba(37,99,235,0.35)] transition",
-                        "hover:bg-[var(--primary-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] active:translate-y-[0.5px]",
-                      )}
-                      aria-expanded={mobileChatActionsOpen}
-                      aria-haspopup="dialog"
-                      aria-label="Abrir acciones del chat"
-                      title="Contratos, pago u emitir acuerdo"
-                      onClick={() =>
-                        setMobileChatActionsOpen((open) => !open)
-                      }
-                    >
-                      <MoreVertical size={24} strokeWidth={2.25} aria-hidden />
-                    </button>
-                  </div>
-                }
               />
 
               {mobileChatActionsOpen ? (
@@ -1936,6 +1928,9 @@ export function ChatPage() {
       <ChatPaymentModal
         open={chatPayOpen}
         threadId={thread.id}
+        acceptedAgreements={(thread.contracts ?? []).filter(
+          (c) => c.status === "accepted",
+        )}
         onClose={() => setChatPayOpen(false)}
         onPaymentSuccess={() => markThreadPaymentCompleted(thread.id)}
       />
