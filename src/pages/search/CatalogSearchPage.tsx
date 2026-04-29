@@ -5,7 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { VtMultiSelect } from "../../components/VtMultiSelect";
 import type { VtSelectOption } from "../../components/VtSelect";
@@ -19,6 +19,7 @@ import {
 import { VtAutocompleteInput } from "../../components/VtAutocompleteInput";
 import { StoreSearchResultCard } from "../home/StoreSearchResultCard";
 import { CatalogOfferSearchCard } from "./CatalogOfferSearchCard";
+import { backRowBtnClass } from "../store/storePageStyles";
 
 type LocationState = { initialQuery?: string } | null;
 
@@ -339,8 +340,22 @@ export function CatalogSearchPage() {
         visible ? "opacity-100" : "opacity-0"
       }`}
     >
-      <div className="mb-3 mt-2 flex flex-col gap-2 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between min-[420px]:gap-3">
-        <div className="min-w-0">
+      <div className="mb-3 mt-2 flex min-w-0 items-start gap-2 pr-[3.25rem]">
+        <Link
+          to="/home"
+          className={backRowBtnClass}
+          aria-label="Volver"
+          style={{
+            minWidth: 40,
+            minHeight: 40,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <ArrowLeft size={20} aria-hidden />
+        </Link>
+        <div className="min-w-0 flex-1">
           <h1 className="vt-h1 break-words text-[clamp(22px,6vw,28px)]">
             Buscar
           </h1>
@@ -349,12 +364,6 @@ export function CatalogSearchPage() {
             la lupa.
           </div>
         </div>
-        <Link
-          className="vt-btn w-fit shrink-0 self-start min-[420px]:self-auto"
-          to="/home"
-        >
-          Volver
-        </Link>
       </div>
 
       <div className="vt-card vt-card-pad">
@@ -412,36 +421,38 @@ export function CatalogSearchPage() {
             />
           </label>
 
-          <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-44">
-            <span>Radio (km)</span>
-            <input
-              inputMode="decimal"
-              className="vt-input"
-              placeholder="Ej: 10"
-              value={km}
-              onChange={(e) => {
-                const next = e.target.value;
-                setKm(next);
-                const kmNum = Number(next.trim());
-                if (!Number.isFinite(kmNum) || kmNum <= 0) setGeo(null);
-              }}
-              aria-label="Radio de búsqueda en km"
-            />
-          </label>
+          <div className="flex w-full min-w-0 gap-2 min-[520px]:contents">
+            <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-44">
+              <span>Radio (km)</span>
+              <input
+                inputMode="decimal"
+                className="vt-input"
+                placeholder="Ej: 10"
+                value={km}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setKm(next);
+                  const kmNum = Number(next.trim());
+                  if (!Number.isFinite(kmNum) || kmNum <= 0) setGeo(null);
+                }}
+                aria-label="Radio de búsqueda en km"
+              />
+            </label>
 
-          <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-44">
-            <span>Confianza mínima</span>
-            <input
-              inputMode="decimal"
-              className="vt-input"
-              placeholder="Ej: 80"
-              value={trustMin}
-              onChange={(e) => setTrustMin(e.target.value)}
-              min={TRUST_SCORE_FILTER_MIN}
-              max={TRUST_SCORE_MAX}
-              aria-label="Confianza mínima de la tienda"
-            />
-          </label>
+            <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-44">
+              <span>Confianza mínima</span>
+              <input
+                inputMode="decimal"
+                className="vt-input"
+                placeholder="Ej: 80"
+                value={trustMin}
+                onChange={(e) => setTrustMin(e.target.value)}
+                min={TRUST_SCORE_FILTER_MIN}
+                max={TRUST_SCORE_MAX}
+                aria-label="Confianza mínima de la tienda"
+              />
+            </label>
+          </div>
 
           <div className="flex w-full min-[520px]:w-auto min-[520px]:shrink-0">
             <button
