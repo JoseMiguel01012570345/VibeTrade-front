@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 import { CreditCard, X } from "lucide-react";
@@ -21,27 +21,6 @@ type Props = {
   open: boolean;
   onClose: () => void;
 };
-
-function onlyDigits(s: string): string {
-  return (s ?? "").replace(/\D/g, "");
-}
-
-function formatCardNumber(raw: string): string {
-  // 19 max (algunas tarjetas), agrupado 4-4-4-4-3
-  const d = onlyDigits(raw).slice(0, 19);
-  return d.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
-}
-
-function formatExp(raw: string): string {
-  const d = onlyDigits(raw).slice(0, 4); // MMYY
-  if (d.length <= 2) return d;
-  return `${d.slice(0, 2)}/${d.slice(2)}`;
-}
-
-function formatCvc(raw: string): string {
-  // 4 max (Amex)
-  return onlyDigits(raw).slice(0, 4);
-}
 
 function StripeCardSetupInner({
   clientSecret,
@@ -71,18 +50,43 @@ function StripeCardSetupInner({
             if (!stripe || !elements) return;
             setBusy(true);
             try {
+              // Obligatorio con Payment Element (validación + wallets); sin esto Stripe
+              // lanza IntegrationError y el flujo falla sin mensaje claro.
+              const { error: submitError } = await elements.submit();
+              if (submitError) {
+                toast.error(submitError.message ?? "Revisá los datos de la tarjeta.");
+                return;
+              }
+              const returnUrl =
+                typeof globalThis.location?.href === "string" && globalThis.location.href.length > 0
+                  ? globalThis.location.href
+                  : `${globalThis.location?.origin ?? ""}/`;
               const r = await stripe.confirmSetup({
                 elements,
                 clientSecret,
-                confirmParams: { return_url: globalThis.location?.href ?? "" },
+                confirmParams: {
+                  return_url: returnUrl,
+                  payment_method_data: { allow_redisplay: "always" },
+                },
                 redirect: "if_required",
               });
               if (r.error) {
                 toast.error(r.error.message ?? "No se pudo guardar la tarjeta.");
                 return;
               }
+              const st = r.setupIntent?.status;
+              if (st && st !== "succeeded") {
+                toast.error(
+                  st === "requires_action"
+                    ? "Stripe requiere un paso extra de autenticación. Probá de nuevo."
+                    : `No se completó el guardado (estado: ${st}).`,
+                );
+                return;
+              }
               toast.success("Tarjeta guardada.");
               onDone();
+            } catch (e) {
+              toast.error((e as Error)?.message ?? "Error inesperado al guardar la tarjeta.");
             } finally {
               setBusy(false);
             }
@@ -103,18 +107,12 @@ export function PaymentGatewayConfigModal({ open, onClose }: Props) {
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [cards, setCards] = useState<StripeSavedCard[]>([]);
   const [cardsLoading, setCardsLoading] = useState(false);
-  const [manualNewCardOpen, setManualNewCardOpen] = useState(false);
-  const [manualCard, setManualCard] = useState({
-    name: "",
-    number: "",
-    exp: "",
-    cvc: "",
-  });
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     setClientSecret(null);
-    setManualNewCardOpen(false);
     setLoading(true);
     void (async () => {
       try {
@@ -146,16 +144,16 @@ export function PaymentGatewayConfigModal({ open, onClose }: Props) {
         setLoading(false);
       }
     })();
-  }, [open, onClose]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     globalThis.addEventListener?.("keydown", onKey);
     return () => globalThis.removeEventListener?.("keydown", onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -238,7 +236,9 @@ export function PaymentGatewayConfigModal({ open, onClose }: Props) {
                     className="vt-btn"
                     onClick={async () => {
                       if (!enabled) {
-                        setManualNewCardOpen(true);
+                        toast.error(
+                          "Pagos con tarjeta no están activos. Revisá que el servidor tenga STRIPE_SECRET_KEY y STRIPE_PUBLISHABLE_KEY en el entorno.",
+                        );
                         return;
                       }
                       try {
@@ -266,95 +266,16 @@ export function PaymentGatewayConfigModal({ open, onClose }: Props) {
                       void (async () => {
                         try {
                           setCards(await listStripeCards());
-                        } catch {
-                          /* ignore */
+                        } catch (e) {
+                          toast.error(
+                            (e as Error)?.message ??
+                              "No se pudieron actualizar las tarjetas en la lista.",
+                          );
                         }
                       })();
                     }}
                   />
                 </Elements>
-              ) : null}
-
-              {manualNewCardOpen ? (
-                <div className="mt-2 rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] p-3">
-                  <div className="text-[12px] font-black uppercase tracking-wide text-[var(--muted)]">
-                    Nueva tarjeta
-                  </div>
-                  <div className="mt-2 grid grid-cols-12 gap-2">
-                    <label className="col-span-12">
-                      <div className="text-[12px] font-bold text-[var(--muted)]">Nombre</div>
-                      <input
-                        className="vt-input mt-1 w-full"
-                        value={manualCard.name}
-                        onChange={(e) => setManualCard((p) => ({ ...p, name: e.target.value }))}
-                        placeholder="Nombre en la tarjeta"
-                      />
-                    </label>
-                    <label className="col-span-12">
-                      <div className="text-[12px] font-bold text-[var(--muted)]">Número</div>
-                      <input
-                        className="vt-input mt-1 w-full font-mono"
-                        value={manualCard.number}
-                        onChange={(e) =>
-                          setManualCard((p) => ({
-                            ...p,
-                            number: formatCardNumber(e.target.value),
-                          }))
-                        }
-                        inputMode="numeric"
-                        placeholder="4242 4242 4242 4242"
-                      />
-                    </label>
-                    <label className="col-span-6">
-                      <div className="text-[12px] font-bold text-[var(--muted)]">Exp</div>
-                      <input
-                        className="vt-input mt-1 w-full font-mono"
-                        value={manualCard.exp}
-                        onChange={(e) =>
-                          setManualCard((p) => ({ ...p, exp: formatExp(e.target.value) }))
-                        }
-                        placeholder="MM/AA"
-                      />
-                    </label>
-                    <label className="col-span-6">
-                      <div className="text-[12px] font-bold text-[var(--muted)]">CVC</div>
-                      <input
-                        className="vt-input mt-1 w-full font-mono"
-                        value={manualCard.cvc}
-                        onChange={(e) =>
-                          setManualCard((p) => ({ ...p, cvc: formatCvc(e.target.value) }))
-                        }
-                        inputMode="numeric"
-                        placeholder="123"
-                      />
-                    </label>
-                  </div>
-                  <div className="vt-modal-actions mt-3">
-                    <button
-                      type="button"
-                      className="vt-btn vt-btn-ghost"
-                      onClick={() => setManualNewCardOpen(false)}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      className="vt-btn"
-                      onClick={async () => {
-                        try {
-                          // Intentar guardar en backend: si Stripe no está habilitado, aquí debe fallar.
-                          await createStripeSetupIntent();
-                          toast.success("Tarjeta guardada.");
-                          setManualNewCardOpen(false);
-                        } catch (e) {
-                          toast.error((e as Error)?.message ?? "No se pudo guardar la tarjeta.");
-                        }
-                      }}
-                    >
-                      Guardar
-                    </button>
-                  </div>
-                </div>
               ) : null}
             </div>
           )}

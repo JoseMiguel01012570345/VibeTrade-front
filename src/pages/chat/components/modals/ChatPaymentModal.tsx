@@ -33,8 +33,8 @@ export function ChatPaymentModal({
   const hasCards = cards.length > 0;
   const canPay = hasCards && !!selectedId.trim() && !busy && !loading;
 
-  // Demo amount: 10.00 USD. (Se reemplaza en el feature real con total del acuerdo.)
-  const payAmountMinor = 1000;
+  // Demo: Stripe usa centavos para USD → 1000 = US$10,00. (En producción: total del acuerdo en centavos.)
+  const payAmountUsdCents = 1000;
   const payCurrency = "usd";
   const payDescription = useMemo(
     () => `Pago demo chat ${threadId}`,
@@ -53,7 +53,9 @@ export function ChatPaymentModal({
         if (cs.length > 0) setSelectedId(cs[0]?.id ?? "");
       } catch (e) {
         setCards([]);
-        toast.error((e as Error)?.message ?? "No se pudieron cargar las tarjetas.");
+        toast.error(
+          (e as Error)?.message ?? "No se pudieron cargar las tarjetas.",
+        );
       } finally {
         setLoading(false);
       }
@@ -72,11 +74,7 @@ export function ChatPaymentModal({
   if (!open) return null;
 
   return createPortal(
-    <button
-      type="button"
-      className="vt-modal-backdrop"
-      onMouseDown={onClose}
-    >
+    <button type="button" className="vt-modal-backdrop" onMouseDown={onClose}>
       <div
         className={cn(
           "vt-modal flex max-h-[min(85vh,720px)] w-full max-w-[560px] flex-col overflow-hidden p-0",
@@ -88,7 +86,10 @@ export function ChatPaymentModal({
       >
         <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
           <div className="min-w-0">
-            <div id="chat-pay-title" className="vt-modal-title flex items-center gap-2">
+            <div
+              id="chat-pay-title"
+              className="vt-modal-title flex items-center gap-2"
+            >
               <CreditCard size={18} aria-hidden /> Pagar
             </div>
             <p className="vt-muted mt-1 text-[12px] leading-snug">
@@ -116,7 +117,8 @@ export function ChatPaymentModal({
                 No hay tarjetas guardadas.
               </div>
               <div className="vt-muted mt-1 leading-snug">
-                Para guardar una tarjeta: abrí tu perfil → “Configurar tarjetas de pago” → “Crear nueva tarjeta”.
+                Para guardar una tarjeta: abrí tu perfil → “Configurar tarjetas
+                de pago” → “Crear nueva tarjeta”.
               </div>
             </div>
           ) : (
@@ -153,7 +155,12 @@ export function ChatPaymentModal({
         </div>
 
         <div className="vt-modal-actions border-t border-[var(--border)] px-4 py-3">
-          <button type="button" className="vt-btn vt-btn-ghost" onClick={onClose} disabled={busy}>
+          <button
+            type="button"
+            className="vt-btn vt-btn-ghost"
+            onClick={onClose}
+            disabled={busy}
+          >
             Cancelar
           </button>
           <button
@@ -167,7 +174,7 @@ export function ChatPaymentModal({
               try {
                 const cfg = await getStripeConfig();
                 const r = await createStripePaymentIntent({
-                  amountMinor: payAmountMinor,
+                  amountMinor: payAmountUsdCents,
                   currency: payCurrency,
                   description: payDescription,
                   paymentMethodId: pm,
@@ -179,7 +186,9 @@ export function ChatPaymentModal({
                   if (stripe) {
                     const res = await stripe.confirmCardPayment(r.clientSecret);
                     if (res.error) {
-                      toast.error(res.error.message ?? "No se pudo completar el pago.");
+                      toast.error(
+                        res.error.message ?? "No se pudo completar el pago.",
+                      );
                       return;
                     }
                   }
@@ -195,7 +204,9 @@ export function ChatPaymentModal({
                 onPaymentSuccess();
                 onClose();
               } catch (e) {
-                toast.error((e as Error)?.message ?? "No se pudo registrar el pago.");
+                toast.error(
+                  (e as Error)?.message ?? "No se pudo registrar el pago.",
+                );
               } finally {
                 setBusy(false);
               }
@@ -209,4 +220,3 @@ export function ChatPaymentModal({
     document.body,
   );
 }
-

@@ -64,6 +64,10 @@ export async function createStripeSetupIntent(): Promise<CreateStripeSetupIntent
 }
 
 export type CreateStripePaymentIntentBody = {
+  /**
+   * Monto en la unidad mínima de la moneda (Stripe `amount`), p. ej. USD → centavos:
+   * `1000` = US$10,00.
+   */
   amountMinor: number;
   currency: string;
   description?: string;
