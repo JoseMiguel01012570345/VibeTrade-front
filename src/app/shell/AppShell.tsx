@@ -10,9 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useAppStore } from "../store/useAppStore";
-import { TrustBar } from "../widgets/TrustBar";
 import { NotificationsBell } from "../widgets/NotificationsBell";
-import { UserTrustHistoryButton } from "../widgets/UserTrustHistoryButton";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
 import { AuthEntryModal } from "../../pages/onboarding/AuthEntryModal";
 import { ThemeToggle } from "../widgets/ThemeToggle";
@@ -45,6 +43,10 @@ function isChatThreadPath(pathname: string) {
   return pathname.startsWith("/chat/") && pathname.length > "/chat/".length;
 }
 
+function isReelsRoute(pathname: string) {
+  return pathname === "/reels" || pathname.startsWith("/reels/");
+}
+
 export function AppShell() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -52,6 +54,17 @@ export function AppShell() {
   const isHome = pathname === "/home";
   const hideBottomNav = isChatThreadPath(pathname);
   const isSessionActive = useAppStore((s) => s.isSessionActive);
+  /** Sin campana en hilo de chat ni en Reels; en listado `/chat` sí. */
+  const showNotificationsBell =
+    isSessionActive &&
+    !isChatThreadPath(pathname) &&
+    !isReelsRoute(pathname);
+  /** Home / invitado u onboarding: barra superior con altura. Sesión en resto de rutas: sin franja vacía (campana superpuesta). */
+  const showStickyShellHeader =
+    (isHome && !isOnboarding) ||
+    (!isHome && (!isSessionActive || isOnboarding));
+  const shellNotificationsOverlay =
+    showNotificationsBell && isSessionActive && !isOnboarding && !isHome;
   const me = useAppStore((s) => s.me);
   const authOpen = useAppStore((s) => s.authModalOpen);
   const openAuthModal = useAppStore((s) => s.openAuthModal);
@@ -76,89 +89,82 @@ export function AppShell() {
 
   return (
     <div className="vt-app flex min-h-screen flex-col">
-      <div className="sticky top-0 z-50 overflow-visible border-b border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_65%,transparent)] pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-[10px]">
-        <div className="container pb-2.5">
-          {isHome && !isOnboarding ? (
-            <>
-              {isSessionActive ? (
-                <div className="pb-2.5">
-                  <TrustBar />
+      {showStickyShellHeader ? (
+        <div className="sticky top-0 z-50 overflow-visible bg-[color-mix(in_oklab,var(--bg)_65%,transparent)] pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-[10px]">
+          <div className="container pb-2.5">
+            {isHome && !isOnboarding ? (
+              <>
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 pt-2.5 md:flex-nowrap">
+                  <h1 className="order-1 shrink-0 text-lg font-black tracking-[-0.03em] text-[var(--text)]">
+                    Ofertas
+                  </h1>
+                  <button
+                    type="button"
+                    className="order-3 flex w-full min-w-0 basis-full items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 md:order-2 md:w-auto md:flex-1 md:basis-auto"
+                    onClick={() => navigate("/search")}
+                    aria-label="Abrir búsqueda de tiendas, productos y servicios"
+                  >
+                    <Search
+                      size={18}
+                      strokeWidth={2.25}
+                      className="shrink-0 text-[var(--muted)]"
+                      aria-hidden
+                    />
+                    <span className="min-w-0 text-[var(--muted)] max-md:whitespace-normal max-md:break-words max-md:leading-snug md:truncate">
+                      Buscar tiendas, productos o servicios…
+                    </span>
+                  </button>
+                  <div className="order-2 ml-auto flex shrink-0 items-center gap-2 self-center md:order-3 md:ml-0">
+                    {isSessionActive ? (
+                      <>
+                        {showNotificationsBell ? <NotificationsBell /> : null}
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="vt-btn vt-btn-primary"
+                          onClick={openAuthModal}
+                        >
+                          <LogIn size={16} aria-hidden /> Iniciar sesión
+                        </button>
+                        <ThemeToggle />
+                      </>
+                    )}
+                  </div>
                 </div>
-              ) : null}
-              <div
-                className={cn(
-                  "flex flex-wrap items-center gap-x-2.5 gap-y-2 md:flex-nowrap",
-                  isSessionActive && "pt-2.5",
-                )}
-              >
-                <h1 className="order-1 shrink-0 text-lg font-black tracking-[-0.03em] text-[var(--text)]">
-                  Ofertas
-                </h1>
-                <button
-                  type="button"
-                  className="order-3 flex w-full min-w-0 basis-full items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 md:order-2 md:w-auto md:flex-1 md:basis-auto"
-                  onClick={() => navigate("/search")}
-                  aria-label="Abrir búsqueda de tiendas, productos y servicios"
-                >
-                  <Search
-                    size={18}
-                    strokeWidth={2.25}
-                    className="shrink-0 text-[var(--muted)]"
-                    aria-hidden
-                  />
-                  <span className="min-w-0 text-[var(--muted)] max-md:whitespace-normal max-md:break-words max-md:leading-snug md:truncate">
-                    Buscar tiendas, productos o servicios…
-                  </span>
-                </button>
-                <div className="order-2 ml-auto flex shrink-0 items-center gap-2 self-center md:order-3 md:ml-0">
-                  {isSessionActive ? (
-                    <>
-                      <UserTrustHistoryButton />
-                      <NotificationsBell />
-                      <ThemeToggle />
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="vt-btn vt-btn-primary"
-                        onClick={openAuthModal}
-                      >
-                        <LogIn size={16} aria-hidden /> Iniciar sesión
-                      </button>
-                      <ThemeToggle />
-                    </>
-                  )}
-                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-end gap-2 pb-2.5 pt-2.5">
+                {!isOnboarding && !isSessionActive ? (
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-primary"
+                    onClick={openAuthModal}
+                  >
+                    <LogIn size={16} aria-hidden /> Iniciar sesión
+                  </button>
+                ) : null}
+                {(!isSessionActive || isOnboarding) && <ThemeToggle />}
               </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                {isSessionActive ? <TrustBar /> : null}
-              </div>
-              <div className="flex shrink-0 items-center gap-2 self-center">
-                {!isOnboarding &&
-                  (isSessionActive ? (
-                    <>
-                      <UserTrustHistoryButton />
-                      <NotificationsBell />
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      className="vt-btn vt-btn-primary"
-                      onClick={openAuthModal}
-                    >
-                      <LogIn size={16} aria-hidden /> Iniciar sesión
-                    </button>
-                  ))}
-                <ThemeToggle />
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      ) : null}
+
+      {shellNotificationsOverlay ? (
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-[55]">
+          {/*
+            Misma banda vertical que el contenido con `main` pt-4 + cabecera típica (~vt-card p-4).
+            Margen extra respecto al borde + safe-area para que el botón no quede pegado.
+          */}
+          <div className="container flex justify-end pt-[calc(env(safe-area-inset-top,0px)+1.625rem)]">
+            <div className="pointer-events-auto mt-1 shrink-0 pb-1 ps-2 pe-[max(10px,calc(env(safe-area-inset-right,0px)+10px))] pt-0.5 sm:pe-4">
+              <NotificationsBell />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <main
         className={cn(

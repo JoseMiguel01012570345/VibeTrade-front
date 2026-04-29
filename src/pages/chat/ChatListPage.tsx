@@ -312,7 +312,10 @@ export function ChatListPage() {
           await runExitChatAfterConfirm(id);
         }}
       />
-      <div className="mb-4">
+      {/*
+        Margen inferior amplio: la campana es fixed y su parte baja llegaba a solapar el borde / primera fila del listado.
+      */}
+      <div className="mb-8 pr-[3.25rem] sm:mb-10">
         <h1 className="vt-h1">Chats</h1>
       </div>
 

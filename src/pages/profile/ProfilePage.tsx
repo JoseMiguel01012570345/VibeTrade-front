@@ -56,6 +56,9 @@ import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
 import { buildEmergentMapLegs } from "../../utils/map/emergentRouteMapLegs";
 import { EmergentRouteFeedMap } from "../home/EmergentRouteFeedMap";
 import { PaymentGatewayConfigModal } from "./PaymentGatewayConfigModal";
+import { TrustBar } from "../../app/widgets/TrustBar";
+import { ThemeToggle } from "../../app/widgets/ThemeToggle";
+import { UserTrustHistoryButton } from "../../app/widgets/UserTrustHistoryButton";
 
 function isValidEmail(value: string): boolean {
   const t = value.trim();
@@ -358,9 +361,7 @@ export function ProfilePage() {
       (i) => useAppStore.getState().savedOffers[i],
     );
     if (ids.length === 0) return;
-    const missing = ids.filter(
-      (id) => !useMarketStore.getState().offers[id],
-    );
+    const missing = ids.filter((id) => !useMarketStore.getState().offers[id]);
     if (missing.length === 0) return;
     let cancelled = false;
     void (async () => {
@@ -576,7 +577,7 @@ export function ProfilePage() {
 
       <div className="flex flex-col gap-3.5">
         <div className="vt-card vt-card-pad">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3 pr-[3.25rem]">
             <button
               type="button"
               className={backRowBtnClass}
@@ -651,6 +652,16 @@ export function ProfilePage() {
           <div className="vt-card vt-card-pad">
             <div className="vt-h2">Configuración del usuario</div>
             <div className="vt-divider my-3" />
+
+            {isMe ? (
+              <div className="mb-4 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_22%,var(--surface))] px-2 py-1 sm:px-3">
+                <TrustBar />
+                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border)] px-1 pb-2 pt-3 sm:px-0">
+                  <UserTrustHistoryButton />
+                  <ThemeToggle />
+                </div>
+              </div>
+            ) : null}
 
             {!isMe ? (
               <div className="mb-4 flex flex-col items-center gap-3 border-b border-[var(--border)] pb-4 text-center sm:flex-row sm:items-start sm:text-left">
@@ -978,8 +989,9 @@ export function ProfilePage() {
                       to={`/offer/${o.id}`}
                       className={cn(
                         "vt-card col-span-12 overflow-hidden min-[640px]:col-span-6 no-underline text-[var(--text)]",
-                        isEmergentRouteCard ? "group"
-                        : !isToolPlaceholder && "group",
+                        isEmergentRouteCard
+                          ? "group"
+                          : !isToolPlaceholder && "group",
                       )}
                     >
                       <div className="relative h-[160px] overflow-hidden bg-gray-200">
