@@ -650,18 +650,16 @@ export function ProfilePage() {
 
         {tab === "account" && (
           <div className="vt-card vt-card-pad">
-            <div className="vt-h2">Configuración del usuario</div>
-            <div className="vt-divider my-3" />
-
-            {isMe ? (
-              <div className="mb-4 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_22%,var(--surface))] px-2 py-1 sm:px-3">
-                <TrustBar />
-                <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border)] px-1 pb-2 pt-3 sm:px-0">
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+              <div className="vt-h2">Configuración del usuario</div>
+              {isMe ? (
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                   <UserTrustHistoryButton />
                   <ThemeToggle />
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
+            <div className="vt-divider my-3" />
 
             {!isMe ? (
               <div className="mb-4 flex flex-col items-center gap-3 border-b border-[var(--border)] pb-4 text-center sm:flex-row sm:items-start sm:text-left">
@@ -696,46 +694,51 @@ export function ProfilePage() {
             ) : null}
 
             {isMe ? (
-              <div className="mb-4 flex flex-col items-center gap-3 border-b border-[var(--border)] pb-4 text-center sm:flex-row sm:items-start sm:text-left">
-                <UserAvatarBadge
-                  avatarUrl={profileAvatarDisplayUrl}
-                  fallbackLetter={letter}
-                  sizeClass="h-[88px] w-[88px] shrink-0 text-2xl"
-                  title="Elegir foto de perfil"
-                  interactive
-                  onPickClick={() => profileAvatarInputRef.current?.click()}
-                  onPreviewClick={() =>
-                    setAvatarPreviewUrl(profileAvatarDisplayUrl ?? null)
-                  }
-                />
-                <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <div>
-                    <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
-                      <ImageIcon size={14} /> Foto de perfil
+              <div className="mb-4 border-b border-[var(--border)] pb-4">
+                <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:text-left">
+                  <UserAvatarBadge
+                    avatarUrl={profileAvatarDisplayUrl}
+                    fallbackLetter={letter}
+                    sizeClass="h-[88px] w-[88px] shrink-0 text-2xl"
+                    title="Elegir foto de perfil"
+                    interactive
+                    onPickClick={() => profileAvatarInputRef.current?.click()}
+                    onPreviewClick={() =>
+                      setAvatarPreviewUrl(profileAvatarDisplayUrl ?? null)
+                    }
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <div>
+                      <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+                        <ImageIcon size={14} /> Foto de perfil
+                      </div>
+                      <p className="vt-muted mt-1 max-w-md text-[13px] leading-snug">
+                        Elegí una imagen desde tu dispositivo y guardala con el
+                        botón (vista previa local con URL blob).
+                      </p>
                     </div>
-                    <p className="vt-muted mt-1 max-w-md text-[13px] leading-snug">
-                      Elegí una imagen desde tu dispositivo y guardala con el
-                      botón (vista previa local con URL blob).
-                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                      <button
+                        type="button"
+                        className="vt-btn vt-btn-primary vt-btn-sm inline-flex items-center gap-1.5"
+                        disabled={!profileAvatarDirty}
+                        onClick={saveProfileAvatar}
+                      >
+                        <Save size={14} aria-hidden /> Guardar foto
+                      </button>
+                      <button
+                        type="button"
+                        className="vt-btn vt-btn-ghost vt-btn-sm"
+                        disabled={!profileAvatarDirty}
+                        onClick={discardProfileAvatarDraft}
+                      >
+                        Descartar
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                    <button
-                      type="button"
-                      className="vt-btn vt-btn-primary vt-btn-sm inline-flex items-center gap-1.5"
-                      disabled={!profileAvatarDirty}
-                      onClick={saveProfileAvatar}
-                    >
-                      <Save size={14} aria-hidden /> Guardar foto
-                    </button>
-                    <button
-                      type="button"
-                      className="vt-btn vt-btn-ghost vt-btn-sm"
-                      disabled={!profileAvatarDirty}
-                      onClick={discardProfileAvatarDraft}
-                    >
-                      Descartar
-                    </button>
-                  </div>
+                </div>
+                <div className="mt-4 min-w-0">
+                  <TrustBar />
                 </div>
               </div>
             ) : null}
