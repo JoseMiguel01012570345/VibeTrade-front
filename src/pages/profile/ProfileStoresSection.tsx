@@ -200,7 +200,7 @@ export function ProfileStoresSection({
         const file = picked[0];
         if (!file) return;
         if (!file.type.startsWith("image/")) {
-          toast.error("Elegí un archivo de imagen.");
+          toast.error("Elige un archivo de imagen.");
           return;
         }
         setStoreAvatarUploadBusy(true);
@@ -212,7 +212,7 @@ export function ProfileStoresSection({
             if (oldDraft) revokeIfBlob(oldDraft);
             return { ...prev, [storeId]: url };
           });
-          toast.success("Revisá la imagen y tocá Guardar foto para confirmar.");
+          toast.success("Revisa la imagen y toca Guardar foto para confirmar.");
         } catch (err) {
           const msg =
             err instanceof Error && err.message
@@ -342,7 +342,7 @@ export function ProfileStoresSection({
             </button>
           </div>
           <p className="vt-muted mt-1.5 max-w-[640px] text-[13px] leading-snug">
-            Tiendas públicas de este usuario: tocá una tarjeta para ver el
+            Tiendas públicas de este usuario: toca una tarjeta para ver el
             catálogo y la vitrina.
           </p>
           <div className="vt-divider my-3" />
@@ -496,7 +496,7 @@ export function ProfileStoresSection({
             <p className="vt-muted mt-1.5 max-w-[640px] text-[13px] leading-snug">
               Configurá nombre, categorías, descripción del catálogo,
               verificación (soporte), transporte y foto. Para cargar o editar
-              productos y servicios abrí la tienda desde la tarjeta.
+              productos y servicios abre la tienda desde la tarjeta.
             </p>
           </div>
           <button
@@ -511,7 +511,7 @@ export function ProfileStoresSection({
 
         {myStores.length === 0 ? (
           <p className="vt-muted text-[13px]">
-            Todavía no creaste tiendas. Usá «Nueva tienda» para empezar.
+            Todavía no creaste tiendas. Usa «Nueva tienda» para empezar.
           </p>
         ) : (
           <>
@@ -638,7 +638,7 @@ export function ProfileStoresSection({
                 }
               } catch {
                 toast.error(
-                  "Tienda creada en el dispositivo, pero no se pudo confirmar en el servidor. Reintentá recargar.",
+                  "Tienda creada en el dispositivo, pero no se pudo confirmar en el servidor. Reintenta recargar.",
                 );
                 return true;
               }

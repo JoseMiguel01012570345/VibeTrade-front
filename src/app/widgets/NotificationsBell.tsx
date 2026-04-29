@@ -135,7 +135,7 @@ export function NotificationsBell() {
     }
     if (desktopNotifPerm === 'denied') {
       toast.error(
-        'Este sitio no tiene permiso. Abrí el candado de la barra de direcciones o la configuración del navegador y permití notificaciones.',
+        'Este sitio no tiene permiso. Abre el candado de la barra de direcciones o la configuración del navegador y permití notificaciones.',
       )
       return
     }
@@ -226,7 +226,7 @@ export function NotificationsBell() {
     const fromMs = localDateAndTimeToMs(historyFromDate, historyFromTime)
     const toMs = localDateAndTimeToMs(historyToDate, historyToTime)
     if (fromMs === null || toMs === null) {
-      toast.error('Elegí fecha y hora de inicio y de fin.')
+      toast.error('Elige fecha y hora de inicio y de fin.')
       return
     }
     if (fromMs > toMs) {
@@ -439,7 +439,7 @@ export function NotificationsBell() {
                   <p className="mb-0 mt-2 text-[11px] text-[var(--muted)]">
                     {displayItems.length} notificación
                     {displayItems.length === 1 ? '' : 'es'} en el rango elegido
-                    {notifPageCount > 1 ? ' (usá Anterior / Siguiente abajo)' : ''}.
+                    {notifPageCount > 1 ? ' (usa Anterior / Siguiente abajo)' : ''}.
                   </p>
                 ) : null}
               </div>
@@ -521,7 +521,7 @@ export function NotificationsBell() {
                 disabled={items.length === 0 || historyFiltered !== null}
                 title={
                   historyFiltered !== null
-                    ? 'Volvé a “avisos recientes” para limpiar la bandeja en esta vista.'
+                    ? 'Vuelve a “avisos recientes” para limpiar la bandeja en esta vista.'
                     : undefined
                 }
                 aria-label="Limpiar todas las notificaciones"

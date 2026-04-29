@@ -56,7 +56,7 @@ export function OfferSaveButton({
     e.preventDefault();
     e.stopPropagation();
     if (!isSessionActive || me.id === "guest") {
-      toast.error("Iniciá sesión para guardar ofertas.");
+      toast.error("Inicia sesión para guardar ofertas.");
       return;
     }
     if (busy) return;

@@ -123,7 +123,7 @@ export function OwnerStoreCard({
               </div>
               <p className="vt-muted mt-2 max-w-full text-[12px] leading-snug sm:max-w-md">
                 Gestioná productos y servicios desde el catálogo al abrir la
-                tienda. Elegí una imagen con el avatar y guardala con el botón
+                tienda. Elige una imagen con el avatar y guárdala con el botón
                 (vista previa local con URL blob).
               </p>
               <div className="pointer-events-auto mt-2 flex min-w-0 flex-col gap-2 min-[360px]:flex-row min-[360px]:flex-wrap">

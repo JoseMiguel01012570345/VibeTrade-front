@@ -1,4 +1,12 @@
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  type ChangeEvent,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -59,6 +67,12 @@ import { PaymentGatewayConfigModal } from "./PaymentGatewayConfigModal";
 import { TrustBar } from "../../app/widgets/TrustBar";
 import { ThemeToggle } from "../../app/widgets/ThemeToggle";
 
+/** Carga diferida: evita dependencias circulares que dejan el símbolo sin definir en tiempo de ejecución. */
+const UserTrustHistoryButton = lazy(async () => {
+  const m = await import("../../app/widgets/UserTrustHistoryButton");
+  return { default: m.UserTrustHistoryButton };
+});
+
 function isValidEmail(value: string): boolean {
   const t = value.trim();
   if (t.length < 5) return false;
@@ -80,7 +94,7 @@ const SOCIAL_META: Record<
 > = {
   instagram: {
     title: "Conectar Instagram",
-    hint: "Podés guardar tu @usuario o un enlace a tu perfil.",
+    hint: "Puedes guardar tu @usuario o un enlace a tu perfil.",
     placeholder: "@mi_empresa o https://instagram.com/…",
     short: "Instagram",
   },
@@ -360,9 +374,7 @@ export function ProfilePage() {
       (i) => useAppStore.getState().savedOffers[i],
     );
     if (ids.length === 0) return;
-    const missing = ids.filter(
-      (id) => !useMarketStore.getState().offers[id],
-    );
+    const missing = ids.filter((id) => !useMarketStore.getState().offers[id]);
     if (missing.length === 0) return;
     let cancelled = false;
     void (async () => {
@@ -416,7 +428,7 @@ export function ProfilePage() {
     const file = picked[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Elegí un archivo de imagen.");
+      toast.error("Elige un archivo de imagen.");
       return;
     }
     setProfileUploadBusy(true);
@@ -427,7 +439,7 @@ export function ProfilePage() {
         revokeBlobUrlLocal(prev);
         return url;
       });
-      toast.success("Revisá la imagen y tocá Guardar para confirmar.");
+      toast.success("Revisa la imagen y toca Guardar para confirmar.");
     } catch (err) {
       const msg =
         err instanceof Error && err.message
@@ -442,7 +454,7 @@ export function ProfilePage() {
   async function saveProfileAvatar() {
     if (!avatarDraftUrl) return;
     if (!avatarDraftUrl.startsWith("/api/v1/media/")) {
-      toast.error("Guardá de nuevo: la foto debe subirse al servidor.");
+      toast.error("Guarda de nuevo: la foto debe subirse al servidor.");
       return;
     }
     setProfileUploadBusy(true);
@@ -578,7 +590,7 @@ export function ProfilePage() {
 
       <div className="flex flex-col gap-3.5">
         <div className="vt-card vt-card-pad">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3 pr-[3.25rem]">
             <button
               type="button"
               className={backRowBtnClass}
@@ -651,7 +663,16 @@ export function ProfilePage() {
 
         {tab === "account" && (
           <div className="vt-card vt-card-pad">
-            <div className="vt-h2">Configuración del usuario</div>
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+              <div className="vt-h2">Configuración del usuario</div>
+              {isMe ? (
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                  <Suspense fallback={null}>
+                    <UserTrustHistoryButton />
+                  </Suspense>
+                </div>
+              ) : null}
+            </div>
             <div className="vt-divider my-3" />
 
             {isMe ? (
@@ -699,45 +720,47 @@ export function ProfilePage() {
             ) : null}
 
             {isMe ? (
-              <div className="mb-4 flex flex-col items-center gap-3 border-b border-[var(--border)] pb-4 text-center sm:flex-row sm:items-start sm:text-left">
-                <UserAvatarBadge
-                  avatarUrl={profileAvatarDisplayUrl}
-                  fallbackLetter={letter}
-                  sizeClass="h-[88px] w-[88px] shrink-0 text-2xl"
-                  title="Elegir foto de perfil"
-                  interactive
-                  onPickClick={() => profileAvatarInputRef.current?.click()}
-                  onPreviewClick={() =>
-                    setAvatarPreviewUrl(profileAvatarDisplayUrl ?? null)
-                  }
-                />
-                <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <div>
-                    <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
-                      <ImageIcon size={14} /> Foto de perfil
+              <div className="mb-4 border-b border-[var(--border)] pb-4">
+                <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:text-left">
+                  <UserAvatarBadge
+                    avatarUrl={profileAvatarDisplayUrl}
+                    fallbackLetter={letter}
+                    sizeClass="h-[88px] w-[88px] shrink-0 text-2xl"
+                    title="Elegir foto de perfil"
+                    interactive
+                    onPickClick={() => profileAvatarInputRef.current?.click()}
+                    onPreviewClick={() =>
+                      setAvatarPreviewUrl(profileAvatarDisplayUrl ?? null)
+                    }
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <div>
+                      <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+                        <ImageIcon size={14} /> Foto de perfil
+                      </div>
+                      <p className="vt-muted mt-1 max-w-md text-[13px] leading-snug">
+                        Elige una imagen desde tu dispositivo y guárdala con el
+                        botón (vista previa local con URL blob).
+                      </p>
                     </div>
-                    <p className="vt-muted mt-1 max-w-md text-[13px] leading-snug">
-                      Elegí una imagen desde tu dispositivo y guardala con el
-                      botón (vista previa local con URL blob).
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                    <button
-                      type="button"
-                      className="vt-btn vt-btn-primary vt-btn-sm inline-flex items-center gap-1.5"
-                      disabled={!profileAvatarDirty}
-                      onClick={saveProfileAvatar}
-                    >
-                      <Save size={14} aria-hidden /> Guardar foto
-                    </button>
-                    <button
-                      type="button"
-                      className="vt-btn vt-btn-ghost vt-btn-sm"
-                      disabled={!profileAvatarDirty}
-                      onClick={discardProfileAvatarDraft}
-                    >
-                      Descartar
-                    </button>
+                    <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                      <button
+                        type="button"
+                        className="vt-btn vt-btn-primary vt-btn-sm inline-flex items-center gap-1.5"
+                        disabled={!profileAvatarDirty}
+                        onClick={saveProfileAvatar}
+                      >
+                        <Save size={14} aria-hidden /> Guardar foto
+                      </button>
+                      <button
+                        type="button"
+                        className="vt-btn vt-btn-ghost vt-btn-sm"
+                        disabled={!profileAvatarDirty}
+                        onClick={discardProfileAvatarDraft}
+                      >
+                        Descartar
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -827,7 +850,7 @@ export function ProfilePage() {
                     <Users size={14} /> Agenda en la plataforma
                   </div>
                   <p className="vt-muted max-w-md text-[13px] leading-snug">
-                    Guardá números de otros usuarios registrados para verlos con
+                    Guarda números de otros usuarios registrados para verlos con
                     nombre y teléfono del perfil.
                   </p>
                   <button
@@ -921,7 +944,7 @@ export function ProfilePage() {
                     propietario)
                   </div>
                   <div className="vt-muted">
-                    Elegí una pasarela y añadí credenciales necesarias por
+                    Elige una pasarela y añade credenciales necesarias por
                     pasarela (demo).
                   </div>
                   <button
@@ -960,7 +983,7 @@ export function ProfilePage() {
           <div className="vt-card vt-card-pad">
             <div className="vt-h2">Ofertas guardadas</div>
             <div className="vt-muted mt-1.5">
-              Tocá una tarjeta para abrir la oferta. Podés guardar desde el
+              Toca una tarjeta para abrir la oferta. Puedes guardar desde el
               ícono de marcador en el listado o en el detalle.
             </div>
             <div className="vt-divider my-3" />
@@ -992,8 +1015,9 @@ export function ProfilePage() {
                       to={`/offer/${o.id}`}
                       className={cn(
                         "vt-card col-span-12 overflow-hidden min-[640px]:col-span-6 no-underline text-[var(--text)]",
-                        isEmergentRouteCard ? "group"
-                        : !isToolPlaceholder && "group",
+                        isEmergentRouteCard
+                          ? "group"
+                          : !isToolPlaceholder && "group",
                       )}
                     >
                       <div className="relative h-[160px] overflow-hidden bg-gray-200">
@@ -1142,7 +1166,7 @@ export function ProfilePage() {
       <ConfirmModal
         open={logoutConfirmOpen}
         title="¿Cerrar sesión?"
-        message="Vas a salir de tu cuenta en este dispositivo. Podés volver a iniciar sesión cuando quieras."
+        message="Vas a salir de tu cuenta en este dispositivo. Puedes volver a iniciar sesión cuando quieras."
         cancelLabel="Cancelar"
         confirmLabel="Cerrar sesión"
         confirmBusy={logoutBusy}

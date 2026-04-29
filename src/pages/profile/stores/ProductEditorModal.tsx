@@ -333,7 +333,7 @@ export function ProductEditorModal({
                     )
                   }
                   ariaLabel="Monedas aceptadas para el pago (obligatorio)"
-                  placeholder="Elegí una o más…"
+                  placeholder="Elige una o más…"
                   options={allCurrencyCodes.map((c) => ({
                     value: c,
                     label: c,
@@ -473,8 +473,8 @@ export function ProductEditorModal({
                 Fotos del producto (al menos una)
               </span>
               <p className="vt-muted mb-2 text-[11px] leading-snug">
-                Subí una o varias imágenes desde tu dispositivo (podés elegir
-                varias a la vez). Quitá archivos individuales o vaciá toda la
+                Sube una o varias imágenes desde tu dispositivo (puedes elegir
+                varias a la vez). Quita archivos individuales o vacía toda la
                 galería antes de guardar si hace falta.
               </p>
               <div className="flex flex-wrap items-center gap-2">

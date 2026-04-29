@@ -451,19 +451,19 @@ export function ChatRouteSubscribersPanel({
   async function confirmExpelSubscriber() {
     if (!selectedCarrier || !canSellerManageRouteSubscriptions) return;
     if (!expelScope) {
-      toast.error("Volvé a elegir expulsar de este tramo o de la operación.");
+      toast.error("Vuelve a elegir expulsar de este tramo o de la operación.");
       return;
     }
     const scope = expelScope;
     if (scope === "all" && !selectedCarrierHasConfirmedTramo) {
       toast.error(
-        "Solo podés expulsar a un transportista que tenga al menos un tramo confirmado.",
+        "Solo puedes expulsar a un transportista que tenga al menos un tramo confirmado.",
       );
       return;
     }
     if (scope === "stop") {
       if (tramoRowForSelection?.status !== "confirmed") {
-        toast.error("Solo podés expulsar de un tramo que esté confirmado.");
+        toast.error("Solo puedes expulsar de un tramo que esté confirmado.");
         return;
       }
     }
@@ -471,7 +471,7 @@ export function ChatRouteSubscribersPanel({
     const cid = selectedCarrier.userId.trim();
     const rsn = expelReason.trim();
     if (!tid || !cid || rsn.length < 1) {
-      toast.error("Indicá un motivo para retirar al transportista.");
+      toast.error("Indica un motivo para retirar al transportista.");
       return;
     }
     const rsidForStop = (
@@ -482,7 +482,7 @@ export function ChatRouteSubscribersPanel({
     const stopIdForStop = (focusTramoId ?? "").trim();
     if (scope === "stop" && (!rsidForStop || !stopIdForStop)) {
       toast.error(
-        "No se pudo identificar el tramo. Volvé al tramo e intentá de nuevo.",
+        "No se pudo identificar el tramo. Vuelve al tramo e intenta de nuevo.",
       );
       return;
     }
@@ -638,7 +638,7 @@ export function ChatRouteSubscribersPanel({
             </div>
             {atRouteSheetList ? (
               <p className="vt-muted mb-0 mt-1 line-clamp-2 text-[11px] leading-snug">
-                Elegí una hoja de ruta para ver tramos y suscriptores.
+                Elige una hoja de ruta para ver tramos y suscriptores.
               </p>
             ) : null}
             {currentSheetTitle && !atRouteSheetList && !selectedTramo ? (
@@ -786,9 +786,9 @@ export function ChatRouteSubscribersPanel({
                       </>
                     ) : (
                       <p className="mb-0 text-[11px] font-semibold leading-snug text-[var(--muted)]">
-                        No podés expulsar de la operación mientras el
+                        No puedes expulsar de la operación mientras el
                         transportista no tenga al menos un tramo confirmado.
-                        Rechazá la solicitud en cada tramo pendiente o confirmá
+                        Rechaza la solicitud en cada tramo pendiente o confirmá
                         y luego retirá si corresponde.
                       </p>
                     )}
@@ -1002,8 +1002,8 @@ export function ChatRouteSubscribersPanel({
             </div>
             <div className={modalSub}>
               {expelScope === "stop"
-                ? "Indicá el motivo. El transportista queda retirado solo del tramo que estás viendo. En la demo, cada tramo confirmado retirado puede generar un ajuste a la confianza de la tienda. Si no le quedan más tramos en el hilo, pierde este chat."
-                : "Indicá el motivo. El transportista queda retirado de todos sus tramos activos en este hilo. En la demo, cada tramo confirmado retirado puede generar un ajuste a la confianza de la tienda."}
+                ? "Indica el motivo. El transportista queda retirado solo del tramo que estás viendo. En la demo, cada tramo confirmado retirado puede generar un ajuste a la confianza de la tienda. Si no le quedan más tramos en el hilo, pierde este chat."
+                : "Indica el motivo. El transportista queda retirado de todos sus tramos activos en este hilo. En la demo, cada tramo confirmado retirado puede generar un ajuste a la confianza de la tienda."}
             </div>
             <label
               className="mb-1 mt-2 block text-[11px] font-extrabold text-[var(--text)]"

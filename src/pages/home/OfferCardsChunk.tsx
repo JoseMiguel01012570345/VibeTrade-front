@@ -269,7 +269,7 @@ export function OfferCardsChunk({
                         }
                         if (!userHasTransportService(me.id, allStores, storeCatalogs)) {
                           toast.error(
-                            "Necesitás un servicio de transporte publicado en tu tienda para suscribirte.",
+                            "Necesitas un servicio de transporte publicado en tu tienda para suscribirte.",
                           );
                           return;
                         }

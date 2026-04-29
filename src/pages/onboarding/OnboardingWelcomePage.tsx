@@ -12,7 +12,7 @@ export function OnboardingWelcomePage() {
         <div className="flex flex-col gap-1.5 text-center">
           <h1 className="vt-h1">Bienvenido a VibeTrade</h1>
           <div className="vt-muted">
-            Elegí cómo querés continuar. En ambos casos verificamos tu número con un código por SMS.
+            Elige cómo quieres continuar. En ambos casos verificamos tu número con un código por SMS.
           </div>
         </div>
 
@@ -51,7 +51,7 @@ export function OnboardingWelcomePage() {
                   Ya tengo cuenta
                 </div>
                 <div className="mt-1 text-sm text-[var(--muted)]">
-                  Iniciá sesión con el mismo número que usaste al registrarte.
+                  Inicia sesión con el mismo número que usaste al registrarte.
                 </div>
               </div>
             </div>

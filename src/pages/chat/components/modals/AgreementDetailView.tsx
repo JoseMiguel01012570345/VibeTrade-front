@@ -357,12 +357,12 @@ export function AgreementDetailView({
           {onLinkRouteSheet ? (
             <>
               <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
-                Elegí una sola hoja de ruta del chat para este acuerdo. Podés
+                Elige una sola hoja de ruta del chat para este acuerdo. Podés
                 cambiarla mientras la hoja no esté publicada a transportistas.
               </p>
               {routeSheets.length === 0 ? (
                 <p className={cn("vt-muted", agrDetailHint)}>
-                  No hay hojas de ruta en este chat. Creá una en la pestaña Rutas y
+                  No hay hojas de ruta en este chat. Crea una en la pestaña Rutas y
                   volvé para vincularla.
                 </p>
               ) : (

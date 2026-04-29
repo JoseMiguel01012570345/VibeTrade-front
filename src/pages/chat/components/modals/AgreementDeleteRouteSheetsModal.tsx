@@ -68,21 +68,21 @@ export function AgreementDeleteRouteSheetsModal({
     >
       <div className={modalShellWide}>
         <div id="agr-del-routes-title" className="vt-modal-title">
-          No podés eliminar este acuerdo todavía
+          No puedes eliminar este acuerdo todavía
         </div>
         <div className="vt-modal-body mt-1 flex min-h-0 flex-1 flex-col gap-4 overflow-auto text-sm text-[var(--text)]">
           <p className="vt-muted text-[13px] leading-snug">
             En esta operación la cantidad de <strong className="text-[var(--text)]">hojas de ruta</strong> no puede ser{' '}
             <strong className="text-[var(--text)]">mayor</strong> que la de{' '}
-            <strong className="text-[var(--text)]">acuerdos</strong> (puede ser igual o menor). Si eliminás el acuerdo «
+            <strong className="text-[var(--text)]">acuerdos</strong> (puede ser igual o menor). Si eliminas el acuerdo «
             {agreementTitle}», quedarían <strong className="text-[var(--text)]">{contracts.length - 1}</strong> acuerdo
-            {contracts.length - 1 === 1 ? '' : 's'} y ahora tenés{' '}
+            {contracts.length - 1 === 1 ? '' : 's'} y ahora tienes{' '}
             <strong className="text-[var(--text)]">{routeSheets.length}</strong> hoja
-            {routeSheets.length === 1 ? '' : 's'}: primero tenés que{' '}
+            {routeSheets.length === 1 ? '' : 's'}: primero tienes que{' '}
             <strong className="text-[var(--text)]">eliminar al menos una hoja de ruta</strong>.
           </p>
           <p className="vt-muted text-[12px] leading-snug">
-            Elegí una hoja en la grilla. Si la oferta pública tenía transportistas con tramo asignado, al borrar la hoja
+            Elige una hoja en la grilla. Si la oferta pública tenía transportistas con tramo asignado, al borrar la hoja
             salen del chat; por cada transportista con tramo confirmado se penaliza la confianza del vendedor (demo).
           </p>
 

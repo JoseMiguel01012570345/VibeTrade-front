@@ -91,7 +91,7 @@ export function MerchandiseLineEditor({
     [sellerCatalog, contextOfferId],
   )
   const canPickProduct = !!sellerCatalog && anchorProducts.length > 0
-  let productSelectPlaceholder = 'Elegí un producto (obligatorio)'
+  let productSelectPlaceholder = 'Elige un producto (obligatorio)'
   if (!sellerCatalog) {
     productSelectPlaceholder = 'Catálogo no disponible'
   } else if (anchorProducts.length === 0) {

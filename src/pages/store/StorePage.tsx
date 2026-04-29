@@ -903,7 +903,7 @@ export function StorePage() {
             <div className="vt-card vt-card-pad">
               <div className="vt-h2">Catálogo de la tienda</div>
               <p className="vt-muted mt-1.5 text-[13px] leading-snug">
-                Elegí Productos o Servicios: ahí están los filtros y el listado.
+                Elige Productos o Servicios: ahí están los filtros y el listado.
                 {isOwner
                   ? " Como dueño también gestionás ítems (borradores y publicados)."
                   : " Solo ves lo publicado en vitrina."}
@@ -945,7 +945,7 @@ export function StorePage() {
                   </div>
                   <p className="vt-muted mt-1 max-w-[720px] text-[13px] leading-snug">
                     Fichas completas de productos y servicios publicados en
-                    vitrina. Usá los filtros para acotar.
+                    vitrina. Usa los filtros para acotar.
                   </p>
                 </div>
                 <button
@@ -1014,7 +1014,7 @@ export function StorePage() {
                 <p className="vt-muted rounded-xl border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-3 text-[13px] leading-snug">
                   {vitrinaNoPublishedAtAll
                     ? "Esta tienda aún no tiene contenido publicado en vitrina."
-                    : "Ningún resultado con los filtros actuales. Probá otro nombre, categoría o moneda."}
+                    : "Ningún resultado con los filtros actuales. Prueba otro nombre, categoría o moneda."}
                 </p>
               ) : null}
             </div>
@@ -1061,7 +1061,7 @@ export function StorePage() {
                 <>
                   <div className="vt-h2">Gestionar productos</div>
                   <p className="vt-muted mt-1.5 text-[13px] leading-snug">
-                    Borradores y publicados. Publicá para que aparezcan en la
+                    Borradores y publicados. Publica para que aparezcan en la
                     vitrina.
                   </p>
                   <div className="vt-divider my-3" />
@@ -1105,7 +1105,7 @@ export function StorePage() {
                           );
                         } catch {
                           toast.error(
-                            "No se pudo guardar en el servidor. Reintentá.",
+                            "No se pudo guardar en el servidor. Reintenta.",
                           );
                         }
                       })();
@@ -1177,7 +1177,7 @@ export function StorePage() {
                 <>
                   <div className="vt-h2">Gestionar servicios</div>
                   <p className="vt-muted mt-1.5 text-[13px] leading-snug">
-                    Borradores y publicados. Publicá para que aparezcan en la
+                    Borradores y publicados. Publica para que aparezcan en la
                     vitrina.
                   </p>
                   <div className="vt-divider my-3" />
@@ -1221,7 +1221,7 @@ export function StorePage() {
                           );
                         } catch {
                           toast.error(
-                            "No se pudo guardar en el servidor. Reintentá.",
+                            "No se pudo guardar en el servidor. Reintenta.",
                           );
                         }
                       })();
@@ -1290,7 +1290,7 @@ export function StorePage() {
                     await deleteStoreProductApi(sid, target.productId);
                   } catch {
                     toast.error(
-                      "No se pudo eliminar en el servidor. Reintentá.",
+                      "No se pudo eliminar en el servidor. Reintenta.",
                     );
                     return;
                   }
@@ -1307,7 +1307,7 @@ export function StorePage() {
                     await deleteStoreServiceApi(sid, target.serviceId);
                   } catch {
                     toast.error(
-                      "No se pudo eliminar en el servidor. Reintentá.",
+                      "No se pudo eliminar en el servidor. Reintenta.",
                     );
                     return;
                   }
@@ -1397,13 +1397,13 @@ export function StorePage() {
                       });
                     } else {
                       toast.error(
-                        "No se pudo añadir el producto. Revisá que seas el dueño o recargá la tienda.",
+                        "No se pudo añadir el producto. Revisa que seas el dueño o recarga la tienda.",
                       );
                     }
                   }
                 } catch {
                   toast.error(
-                    "No se pudo guardar el producto en el servidor. Reintentá.",
+                    "No se pudo guardar el producto en el servidor. Reintenta.",
                   );
                 }
               })();
@@ -1478,13 +1478,13 @@ export function StorePage() {
                       });
                     } else {
                       toast.error(
-                        "No se pudo añadir el servicio. Revisá que seas el dueño o recargá la tienda.",
+                        "No se pudo añadir el servicio. Revisa que seas el dueño o recarga la tienda.",
                       );
                     }
                   }
                 } catch {
                   toast.error(
-                    "No se pudo guardar el servicio en el servidor. Reintentá.",
+                    "No se pudo guardar el servicio en el servidor. Reintenta.",
                   );
                 }
               })();

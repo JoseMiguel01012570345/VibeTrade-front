@@ -100,7 +100,7 @@ export function DocRow({
         setOpenUrl(result.openUrl)
       }
     } catch {
-      toast.error('No se pudo descargar. Probá abrir el enlace desde el navegador.')
+      toast.error('No se pudo descargar. Prueba abrir el enlace desde el navegador.')
     } finally {
       setDownloading(false)
     }
@@ -152,7 +152,7 @@ export function DocRow({
           {downloaded ? (
             <>
               {size} · {kindLabel(kind)} ·{' '}
-              <span className="font-semibold text-[#027eb5]">Tocá para abrir</span>
+              <span className="font-semibold text-[#027eb5]">Toca para abrir</span>
             </>
           ) : (
             <>

@@ -19,7 +19,7 @@ export function RoutePreselInvitePage() {
     return (
       <div className="container vt-page">
         <div className="vt-card vt-card-pad">
-          Enlace inválido o incompleto. Abrí la invitación desde la
+          Enlace inválido o incompleto. Abre la invitación desde la
           notificación.
         </div>
       </div>

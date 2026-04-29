@@ -922,7 +922,7 @@ export function ChatPage() {
     for (const sid of now) {
       if (!prev.has(sid)) {
         toast.success(
-          `Te asignaron a ${tramoNotifyLineFromOffer(routeOfferForThisThread, sid)}. Revisá la hoja en Rutas.`,
+          `Te asignaron a ${tramoNotifyLineFromOffer(routeOfferForThisThread, sid)}. Revisa la hoja en Rutas.`,
         );
       }
     }
@@ -1126,7 +1126,7 @@ export function ChatPage() {
     const ok = await ensureMicPermission();
     if (!ok) {
       toast.error(
-        "No se pudo acceder al micrófono. Permití el permiso y usá HTTPS o localhost.",
+        "No se pudo acceder al micrófono. Permite el permiso y usa HTTPS o localhost.",
       );
       return;
     }
@@ -1244,7 +1244,7 @@ export function ChatPage() {
       return (
         <div className="container vt-page">
           <div className="vt-card vt-card-pad">
-            No se pudo cargar este chat. ¿Iniciaste sesión y tenés acceso al
+            No se pudo cargar este chat. ¿Iniciaste sesión y tienes acceso al
             hilo?
           </div>
         </div>
@@ -1292,7 +1292,7 @@ export function ChatPage() {
           <p className="vt-muted mt-2 text-[13px] leading-snug">
             Como transportista, necesitás una suscripción a un tramo de la hoja de
             ruta publicada (incluida una invitación aceptada). Si aún no te
-            postulaste o no figura tu teléfono en la hoja, no podés entrar a este
+            postulaste o no figura tu teléfono en la hoja, no puedes entrar a este
             chat.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -1535,7 +1535,7 @@ export function ChatPage() {
                 >
                   Chat restringido: saliste con un acuerdo{" "}
                   <strong>aceptado</strong> y el pago aún no registrado. Solo
-                  podés usar <strong>Pago</strong> para continuar; no podés
+                  puedes usar <strong>Pago</strong> para continuar; no puedes
                   enviar mensajes ni crear acuerdos u hojas de ruta hasta
                   entonces.
                 </div>
@@ -1760,7 +1760,7 @@ export function ChatPage() {
               }
               if (!threadHasAcceptedAgreement(thread)) {
                 toast.error(
-                  "Necesitás al menos un contrato aceptado para crear una hoja de ruta.",
+                  "Necesitas al menos un contrato aceptado para crear una hoja de ruta.",
                 );
                 return;
               }
@@ -1768,7 +1768,7 @@ export function ChatPage() {
               const nSh = thread.routeSheets?.length ?? 0;
               if (nSh >= nAg) {
                 toast.error(
-                  "No podés tener más hojas de ruta que acuerdos. Emití otro acuerdo o eliminá una hoja existente.",
+                  "No puedes tener más hojas de ruta que acuerdos. Emite otro acuerdo o elimina una hoja existente.",
                 );
                 return;
               }
@@ -1787,7 +1787,7 @@ export function ChatPage() {
                 Object.values(ack.byCarrier).some((v) => v === "pending")
               ) {
                 toast.error(
-                  "No podés editar de nuevo hasta que los transportistas del hilo acepten o rechacen la última versión de la hoja.",
+                  "No puedes editar de nuevo hasta que los transportistas del hilo acepten o rechacen la última versión de la hoja.",
                 );
                 return;
               }
@@ -1830,7 +1830,7 @@ export function ChatPage() {
               }
               if (
                 !globalThis.confirm(
-                  `¿Eliminar el acuerdo «${ag.title}»? No podés eliminar acuerdos ya aceptados.`,
+                  `¿Eliminar el acuerdo «${ag.title}»? No puedes eliminar acuerdos ya aceptados.`,
                 )
               )
                 return;
@@ -1928,9 +1928,6 @@ export function ChatPage() {
       <ChatPaymentModal
         open={chatPayOpen}
         threadId={thread.id}
-        acceptedAgreements={(thread.contracts ?? []).filter(
-          (c) => c.status === "accepted",
-        )}
         onClose={() => setChatPayOpen(false)}
         onPaymentSuccess={() => markThreadPaymentCompleted(thread.id)}
       />
@@ -1976,7 +1973,7 @@ export function ChatPage() {
           if (id) toast.success("Acuerdo emitido al chat");
           else
             toast.error(
-              "No se pudo emitir: revisá los datos del acuerdo (validación del servidor).",
+              "No se pudo emitir: revisa los datos del acuerdo (validación del servidor).",
             );
           return id != null;
         }}
@@ -2002,7 +1999,7 @@ export function ChatPage() {
             );
             if (!ok) {
               toast.error(
-                "No se pudo guardar: revisá título, mercancías y al menos un tramo con origen y destino",
+                "No se pudo guardar: revisa título, mercancías y al menos un tramo con origen y destino",
               );
             }
             return ok
@@ -2013,18 +2010,18 @@ export function ChatPage() {
           if (!id) {
             if (!threadHasAcceptedAgreement(thread)) {
               toast.error(
-                "Necesitás al menos un contrato aceptado para crear una hoja de ruta.",
+                "Necesitas al menos un contrato aceptado para crear una hoja de ruta.",
               );
             } else if (
               (thread.routeSheets?.length ?? 0) >=
               (thread.contracts?.length ?? 0)
             ) {
               toast.error(
-                "No podés tener más hojas de ruta que acuerdos. Emití otro acuerdo o eliminá una hoja.",
+                "No puedes tener más hojas de ruta que acuerdos. Emite otro acuerdo o elimina una hoja.",
               );
             } else {
               toast.error(
-                "Completá título, mercancías y al menos un tramo con origen y destino",
+                "Completa título, mercancías y al menos un tramo con origen y destino",
               );
             }
             return { ok: false };

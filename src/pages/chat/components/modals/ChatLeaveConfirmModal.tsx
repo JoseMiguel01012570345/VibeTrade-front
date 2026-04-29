@@ -30,7 +30,7 @@ export function ChatLeaveConfirmModal({ open, onClose, onConfirm, variant = 'pag
           Los demás participantes verán un aviso de que saliste de la conversación.{listExtra}
         </p>
         <p className="vt-muted mb-0 text-[12px] leading-snug">
-          Si solo querés volver atrás sin avisar, usá «Volver» o navegá a otra pantalla.
+          Si solo quieres volver atrás sin avisar, usa «Volver» o navega a otra pantalla.
         </p>
         <div className="vt-modal-actions mt-5">
           <button type="button" className="vt-btn" onClick={onClose}>

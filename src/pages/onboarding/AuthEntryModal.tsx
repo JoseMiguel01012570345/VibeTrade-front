@@ -38,7 +38,7 @@ export function AuthEntryModal({ open, onClose }: Props) {
           </button>
         </div>
         <div className="mt-1 text-sm text-[var(--muted)]">
-          Elegí cómo querés continuar. En ambos casos verificamos tu número con
+          Elige cómo quieres continuar. En ambos casos verificamos tu número con
           un código por SMS.
         </div>
 
@@ -78,7 +78,7 @@ export function AuthEntryModal({ open, onClose }: Props) {
                   Ya tengo cuenta
                 </div>
                 <div className="mt-1 text-[13px] text-[var(--muted)]">
-                  Iniciá sesión con el mismo número que usaste al registrarte.
+                  Inicia sesión con el mismo número que usaste al registrarte.
                 </div>
               </div>
             </div>

@@ -164,7 +164,7 @@ export function PhoneEntryPage() {
                       ) {
                         toast.error(
                           errPayload.message ??
-                            'Este número ya está registrado. Iniciá sesión si es tu cuenta.',
+                            'Este número ya está registrado. Inicia sesión si es tu cuenta.',
                         )
                         return
                       }

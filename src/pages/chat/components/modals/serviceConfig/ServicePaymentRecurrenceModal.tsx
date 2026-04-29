@@ -36,7 +36,7 @@ const MES = [
 ] as const;
 
 /** Mismo aviso vía toast que al guardar con mes/día repetidos (id evita toasts dobles al re-render). */
-const TOAST_PAGO_DUPLICADO = "No podés repetir el mismo mes y día del mes en dos filas." as const;
+const TOAST_PAGO_DUPLICADO = "No puedes repetir el mismo mes y día del mes en dos filas." as const;
 const TOAST_ID_PAGO_DUPLICADO = "service-payment-duplicate-mes-dia" as const;
 
 type Props = {
@@ -314,12 +314,12 @@ export function ServicePaymentRecurrenceModal({
   function save() {
     if (!pickerMonths.length) {
       toast.error(
-        "No hay meses con servicio: revisá el paso de horarios o la vigencia.",
+        "No hay meses con servicio: revisa el paso de horarios o la vigencia.",
       );
       return;
     }
     if (!st.months.length) {
-      toast.error("Elegí al menos un mes.");
+      toast.error("Elige al menos un mes.");
       return;
     }
     for (const m of st.months) {
@@ -329,7 +329,7 @@ export function ServicePaymentRecurrenceModal({
       }
     }
     if (!st.entries.length) {
-      toast.error("Agregá al menos una fila de pago.");
+      toast.error("Añade al menos una fila de pago.");
       return;
     }
     const seen = new Set<string>();
@@ -350,7 +350,7 @@ export function ServicePaymentRecurrenceModal({
       );
       if (!allowedDays.length || !allowedDays.includes(en.day)) {
         toast.error(
-          `Fila ${i + 1}: elegí un día de la grilla de horarios (y vigencia) para ese mes.`,
+          `Fila ${i + 1}: elige un día de la grilla de horarios (y vigencia) para ese mes.`,
         );
         return;
       }
@@ -362,7 +362,7 @@ export function ServicePaymentRecurrenceModal({
       seen.add(key);
       const mon = String(en.moneda ?? "").trim();
       if (!mon) {
-        toast.error(`Fila ${i + 1}: elegí la moneda.`);
+        toast.error(`Fila ${i + 1}: elige la moneda.`);
         return;
       }
       if (!monedaOptions.includes(mon)) {
@@ -390,13 +390,13 @@ export function ServicePaymentRecurrenceModal({
         <div className="vt-modal-title">Recurrencia de pagos</div>
         <p className="vt-muted mb-3 text-[13px]">
           Los meses y días coinciden con la grilla de horarios (y la vigencia del contrato). En cada fila
-          indicá mes, día, moneda y monto; las monedas posibles dependen de la ficha (si anclaste el servicio) o
+          indica mes, día, moneda y monto; las monedas posibles dependen de la ficha (si anclaste el servicio) o
           de la lista general del asistente.
         </p>
 
         {!pickerMonths.length ? (
           <p className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-sm text-[var(--muted)]">
-            No hay meses de servicio definidos. Completá el paso de horarios (meses) antes de
+            No hay meses de servicio definidos. Completa el paso de horarios (meses) antes de
             recurrentes.
           </p>
         ) : null}

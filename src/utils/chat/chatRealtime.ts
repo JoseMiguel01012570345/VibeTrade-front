@@ -285,7 +285,7 @@ export function startChatRealtime(): void {
               ) {
                 notifyDesktopIfUnfocused({
                   title: "Cambios en la hoja de ruta",
-                  body: "Aceptá o rechazá la edición en la pestaña Rutas del chat.",
+                  body: "Aceptá o rechaza la edición en la pestaña Rutas del chat.",
                   tag: `route-edit-${tid}-${sid}`,
                   navigateTo: `/chat/${encodeURIComponent(tid)}`,
                 });
@@ -324,7 +324,7 @@ export function startChatRealtime(): void {
           : change === "withdraw" ?
             "Un transportista se retiró de la hoja de ruta."
           : change === "sheet_edit_pending" ?
-            "La hoja de ruta se editó: si tenés un tramo afectado, abrí Rutas para aceptar o rechazar."
+            "La hoja de ruta se editó: si tienes un tramo afectado, abre Rutas para aceptar o rechazar."
           : change === "sheet_edit_accept" ?
             "Un transportista aceptó los cambios en la hoja de ruta."
           : change === "sheet_edit_reject" ?

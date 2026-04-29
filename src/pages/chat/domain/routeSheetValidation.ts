@@ -43,7 +43,7 @@ function optionalMax(s: string, max: number): string | undefined {
 
 function requiredText(raw: string | undefined, minLen: number, maxLen: number): string | undefined {
   const t = norm(raw)
-  if (t === '') return 'Completá este campo'
+  if (t === '') return 'Completa este campo'
   if (t.length < minLen) return `Mínimo ${minLen} caracteres`
   if (t.length > maxLen) return `Máximo ${maxLen} caracteres`
   return undefined
@@ -52,9 +52,9 @@ function requiredText(raw: string | undefined, minLen: number, maxLen: number): 
 /** Tiempos / precio: obligatorio y número finito ≥ 0. */
 function requiredNonNegativeNumber(raw: string | undefined): string | undefined {
   const t = norm(raw)
-  if (t === '') return 'Completá este campo'
+  if (t === '') return 'Completa este campo'
   const n = Number(t.replace(/\s/g, '').replace(',', '.'))
-  if (!Number.isFinite(n)) return 'Indicá un número válido'
+  if (!Number.isFinite(n)) return 'Indica un número válido'
   if (n < 0) return 'El valor no puede ser negativo'
   return undefined
 }
@@ -67,9 +67,9 @@ function requiredEstimadoDateTime(
   const t = norm(raw)
   const short =
     kind === 'recogida' ? 'fecha y hora de recogida' : 'fecha y hora de entrega'
-  if (t === '') return `Indicá ${short}`
+  if (t === '') return `Indica ${short}`
   const m = t.match(ROUTE_ESTIMADO_ISO_LOCAL_RE)
-  if (!m) return `Completá ${short}`
+  if (!m) return `Completa ${short}`
   const isoLocal = `${m[1]}T${m[2]}:00`
   const dt = new Date(isoLocal)
   if (Number.isNaN(dt.getTime())) return 'Fecha u hora inválida'
@@ -87,7 +87,7 @@ function requiredCoordPair(
 ): string | undefined {
   const latS = norm(latRaw)
   const lngS = norm(lngRaw)
-  const needBoth = `Indicá latitud y longitud de ${lugar}`
+  const needBoth = `Indica latitud y longitud de ${lugar}`
   if (latS === '' && lngS === '') return needBoth
   if (latS === '' || lngS === '') return needBoth
   if (parseLat(latRaw) === null) return 'Latitud inválida (entre -90 y 90)'
@@ -107,7 +107,7 @@ function validateCoordPairInner(latRaw: string | undefined, lngRaw: string | und
   const latS = norm(latRaw)
   const lngS = norm(lngRaw)
   if (latS === '' && lngS === '') return undefined
-  if (latS === '' || lngS === '') return 'Indicá latitud y longitud, o dejá ambas vacías'
+  if (latS === '' || lngS === '') return 'Indica latitud y longitud, o deja ambas vacías'
   if (parseLat(latRaw) === null) return 'Latitud inválida (entre -90 y 90)'
   if (parseLng(lngRaw) === null) return 'Longitud inválida (entre -180 y 180)'
   return undefined
@@ -160,7 +160,7 @@ export function getRouteSheetFormErrors(p: RouteSheetCreatePayload): RouteSheetF
   const titulo = norm(p.titulo)
   if (titulo.length < TITLE_MIN) {
     e.titulo =
-      titulo.length === 0 ? 'Completá este campo' : `Mínimo ${TITLE_MIN} caracteres`
+      titulo.length === 0 ? 'Completa este campo' : `Mínimo ${TITLE_MIN} caracteres`
   } else if (titulo.length > TITLE_MAX) {
     e.titulo = `Máximo ${TITLE_MAX} caracteres`
   }
@@ -168,7 +168,7 @@ export function getRouteSheetFormErrors(p: RouteSheetCreatePayload): RouteSheetF
   const merc = norm(p.mercanciasResumen)
   if (merc.length < MERC_MIN) {
     e.mercanciasResumen =
-      merc.length === 0 ? 'Completá este campo' : `Describí con al menos ${MERC_MIN} caracteres`
+      merc.length === 0 ? 'Completa este campo' : `Describe con al menos ${MERC_MIN} caracteres`
   } else {
     const mx = optionalMax(merc, MERC_MAX)
     if (mx) e.mercanciasResumen = mx
@@ -182,13 +182,13 @@ export function getRouteSheetFormErrors(p: RouteSheetCreatePayload): RouteSheetF
   const paradas = p.paradas ?? []
 
   if (paradas.length === 0) {
-    e.paradasGlobal = 'Agregá al menos un tramo al recorrido'
+    e.paradasGlobal = 'Añade al menos un tramo al recorrido'
   }
 
   paradas.forEach((raw, i) => {
     const o = norm(raw.origen)
     if (o === '') {
-      mergeTramo(e, i, { origen: 'Completá este campo' })
+      mergeTramo(e, i, { origen: 'Completa este campo' })
     } else if (o.length < PLACE_MIN) {
       mergeTramo(e, i, { origen: `Mínimo ${PLACE_MIN} caracteres` })
     } else if (o.length > PLACE_MAX) {
@@ -197,7 +197,7 @@ export function getRouteSheetFormErrors(p: RouteSheetCreatePayload): RouteSheetF
 
     const d = norm(raw.destino)
     if (d === '') {
-      mergeTramo(e, i, { destino: 'Completá este campo' })
+      mergeTramo(e, i, { destino: 'Completa este campo' })
     } else if (d.length < PLACE_MIN) {
       mergeTramo(e, i, { destino: `Mínimo ${PLACE_MIN} caracteres` })
     } else if (d.length > PLACE_MAX) {
@@ -258,7 +258,7 @@ export function getRouteSheetFormErrors(p: RouteSheetCreatePayload): RouteSheetF
 
     const nt = norm(raw.notas)
     if (nt === '') {
-      mergeTramo(e, i, { notas: 'Completá este campo' })
+      mergeTramo(e, i, { notas: 'Completa este campo' })
     } else if (nt.length < NOTA_TRAMO_MIN) {
       mergeTramo(e, i, { notas: `Mínimo ${NOTA_TRAMO_MIN} caracteres` })
     } else if (nt.length > NOTA_TRAMO_MAX) {

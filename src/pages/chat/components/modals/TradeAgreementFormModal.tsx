@@ -295,7 +295,7 @@ export function TradeAgreementFormModal({
     setErrors(e);
     if (hasValidationErrors(e)) {
       const n = validationErrorCount(e);
-      toast.error(`Revisá el formulario (${n} error${n === 1 ? "" : "es"})`);
+      toast.error(`Revisa el formulario (${n} error${n === 1 ? "" : "es"})`);
       return;
     }
     if (isEdit && editBaselineJsonRef.current !== null) {
@@ -323,7 +323,7 @@ export function TradeAgreementFormModal({
         <div className={modalSub}>
           {isEdit ? (
             <>
-              Podés guardar si el acuerdo está <b>pendiente</b> o fue{" "}
+              Puedes guardar si el acuerdo está <b>pendiente</b> o fue{" "}
               <b>rechazado</b> (en ese caso volverá a quedar pendiente para el
               comprador). Si ya fue <b>aceptado</b>, no se puede modificar.
             </>
@@ -430,7 +430,7 @@ export function TradeAgreementFormModal({
             style={{ fontSize: 12, marginTop: 0, marginBottom: 12 }}
           >
             {merchandiseCheckboxDisabled && servicesCheckboxDisabled
-              ? "No tenés productos ni servicios en la ficha: agregalos en tu tienda para poder incluirlos en el acuerdo."
+              ? "No tienes productos ni servicios en la ficha: agregalos en tu tienda para poder incluirlos en el acuerdo."
               : "Al menos uno debe estar disponible y marcado. Solo se validan los bloques que incluyas."}
           </p>
 
@@ -533,7 +533,7 @@ export function TradeAgreementFormModal({
                       </div>
                     ) : (
                       <p className="vt-muted text-xs">
-                        Usá «Configurar servicio» para completar el asistente y
+                        Usa «Configurar servicio» para completar el asistente y
                         generar la vista previa.
                       </p>
                     )}

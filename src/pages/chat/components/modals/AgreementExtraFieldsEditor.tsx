@@ -73,7 +73,7 @@ export function AgreementExtraFieldsEditor({
       });
     } catch {
       toast.error(
-        "No se pudo subir el archivo. Reintentá con otro tamaño o formato.",
+        "No se pudo subir el archivo. Reintenta con otro tamaño o formato.",
       );
     } finally {
       setUploadingRowKey(null);
@@ -84,7 +84,7 @@ export function AgreementExtraFieldsEditor({
     <div className="flex flex-col gap-3">
       <p className="vt-muted mb-1 text-[13px]">
         Titulá cada punto y definí si el contenido es texto libre o un archivo que
-        subís (foto o documento). Podés sumar todas las filas que necesiten las
+        subís (foto o documento). Puedes sumar todas las filas que necesiten las
         partes.
       </p>
       {fields.map((row, i) => {

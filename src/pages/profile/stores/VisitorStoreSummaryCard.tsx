@@ -168,7 +168,7 @@ export function VisitorStoreSummaryCard({
 
       <p className="vt-muted mt-2 flex items-start gap-1.5 text-[11px] leading-snug pointer-events-none">
         <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[var(--good)]" aria-hidden />
-        Tocá la tarjeta para ver el catálogo y la vitrina pública de la tienda.
+        Toca la tarjeta para ver el catálogo y la vitrina pública de la tienda.
       </p>
       </div>
     </div>

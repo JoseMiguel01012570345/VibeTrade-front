@@ -235,7 +235,7 @@ export function CarrierRoutePreselInviteModal({
               Invitación como transportista
             </h2>
             <p className={modalSub}>
-              Revisá el trazo, la tarifa y los datos de la hoja. Podés integrarte
+              Revisa el trazo, la tarifa y los datos de la hoja. Podés integrarte
               al chat o rechazar; si rechazás, se notifica al vendedor.
             </p>
           </div>
@@ -267,7 +267,7 @@ export function CarrierRoutePreselInviteModal({
                     onChange={(e) => setScope(e.target.value)}
                   >
                     <option value="all">
-                      Todos los tramos donde figurás (
+                      Todos los tramos donde figuras (
                       {highlightStopIds.length})
                     </option>
                     {sheet.paradas
@@ -331,7 +331,7 @@ export function CarrierRoutePreselInviteModal({
                   ) : (
                     <div className="grid h-[260px] place-items-center px-3 text-center text-sm text-[var(--muted)]">
                       Esta hoja no tiene coordenadas en el mapa para dibujar el
-                      trazo. Igual podés revisar los datos del texto.
+                      trazo. Igual puedes revisar los datos del texto.
                     </div>
                   )}
                 </div>

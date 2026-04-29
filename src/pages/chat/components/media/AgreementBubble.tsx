@@ -126,7 +126,7 @@ export function AgreementBubble({
       {canRespond && st === "pending_buyer" ? (
         <div className="mt-3 space-y-2">
           <p className="text-sm leading-snug text-[var(--muted)]">
-            Confirmá la compra según este acuerdo o rechazá la propuesta.
+            Confirma la compra según este acuerdo o rechaza la propuesta.
           </p>
           <div className="flex flex-wrap gap-2">
             <button

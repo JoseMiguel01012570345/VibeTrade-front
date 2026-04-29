@@ -46,20 +46,20 @@ function buildIntroCaption(
   const book = rawTitle.length > 0 ? `«${rawTitle}»` : "esta oferta";
   if (kind === "product") {
     if (hasRealPhotos) {
-      return `Hola, tengo interés en el producto ${book}. Vi las fotos publicadas en la ficha y me gustaría coordinar con vos.`;
+      return `Hola, tengo interés en el producto ${book}. Vi las fotos publicadas en la ficha y me gustaría coordinar contigo.`;
     }
-    return `Hola, tengo interés en el producto ${book}. Quiero charlar con vos para avanzar con la compra.`;
+    return `Hola, tengo interés en el producto ${book}. Quiero charlar contigo para avanzar con la compra.`;
   }
   if (kind === "service") {
     if (hasRealPhotos) {
-      return `Hola, tengo interés en el servicio ${book}. Vi las imágenes de la ficha y me gustaría coordinar con vos.`;
+      return `Hola, tengo interés en el servicio ${book}. Vi las imágenes de la ficha y me gustaría coordinar contigo.`;
     }
-    return `Hola, tengo interés en el servicio ${book}. Me gustaría charlar con vos para avanzar.`;
+    return `Hola, tengo interés en el servicio ${book}. Me gustaría charlar contigo para avanzar.`;
   }
   if (hasRealPhotos) {
-    return `Hola, tengo interés en la oferta ${book}. Comparto referencia de la ficha y me gustaría charlar con vos.`;
+    return `Hola, tengo interés en la oferta ${book}. Comparto referencia de la ficha y me gustaría charlar contigo.`;
   }
-  return `Hola, tengo interés en la oferta ${book}. Quiero abrir un canal con vos para charlarlo.`;
+  return `Hola, tengo interés en la oferta ${book}. Quiero abrir un canal contigo para charlarlo.`;
 }
 
 async function publicImageUrlToMediaRef(

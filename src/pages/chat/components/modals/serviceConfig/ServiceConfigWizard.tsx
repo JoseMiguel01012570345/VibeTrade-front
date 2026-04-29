@@ -209,11 +209,11 @@ export function ServiceConfigWizard({
     if (step === 0) {
       if (canSelectServiceFromCatalog) {
         if (!sv.linkedStoreServiceId) {
-          toast.error('Elegí un servicio de tu catálogo.')
+          toast.error('Elige un servicio de tu catálogo.')
           return
         }
       } else if (sv.tipoServicio.trim().length < 2) {
-        toast.error('Indicá el tipo de servicio (mín. 2 caracteres).')
+        toast.error('Indica el tipo de servicio (mín. 2 caracteres).')
         return
       }
     }
@@ -244,15 +244,15 @@ export function ServiceConfigWizard({
 
   function finish() {
     if (monedasFromRecurrenciaPagos(sv.recurrenciaPagos).length === 0) {
-      toast.error('Indicá moneda y monto en cada fila de la recurrencia de pagos (paso «Pagos recurrentes»).')
+      toast.error('Indica moneda y monto en cada fila de la recurrencia de pagos (paso «Pagos recurrentes»).')
       return
     }
     if (!sv.medicionCumplimiento.trim() || !sv.penalIncumplimiento.trim()) {
-      toast.error('Completá medición del cumplimiento y penalizaciones por incumplimiento.')
+      toast.error('Completa medición del cumplimiento y penalizaciones por incumplimiento.')
       return
     }
     if (!sv.nivelResponsabilidad.trim() || !sv.propIntelectual.trim()) {
-      toast.error('Completá nivel de responsabilidad y propiedad intelectual.')
+      toast.error('Completa nivel de responsabilidad y propiedad intelectual.')
       return
     }
     const ce = collectCondicionesExtrasErrors(sv)
@@ -328,7 +328,7 @@ export function ServiceConfigWizard({
                       )
                     }}
                     options={serviceSelectOptions}
-                    placeholder="Elegí un servicio (obligatorio)"
+                    placeholder="Elige un servicio (obligatorio)"
                     listPortal
                     listPortalZIndexClass="z-[220]"
                     ariaLabel="Servicio de la ficha de la tienda"
@@ -336,7 +336,7 @@ export function ServiceConfigWizard({
                     buttonClassName="min-h-[42px]"
                   />
                   <span className="vt-muted mt-1 block text-[11px] leading-snug">
-                    Elegí qué ficha de servicio ancla este ítem. Por defecto se usa el servicio asociado al
+                    Elige qué ficha de servicio ancla este ítem. Por defecto se usa el servicio asociado al
                     anuncio de este chat, si está en tu catálogo.
                   </span>
                 </div>
@@ -638,7 +638,7 @@ export function ServiceConfigWizard({
               {ficha ? (
                 <p className="min-[560px]:col-span-2 text-sm text-[var(--muted)]">
                   Las monedas de pago se definen en cada fila del paso «Pagos recurrentes». La propiedad intelectual
-                  puede venir de la ficha del catálogo; podés ajustarla en la tienda o desanclar el servicio.
+                  puede venir de la ficha del catálogo; puedes ajustarla en la tienda o desanclar el servicio.
                 </p>
               ) : null}
               <div className="min-[560px]:col-span-2">

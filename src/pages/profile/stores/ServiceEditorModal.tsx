@@ -266,7 +266,7 @@ export function ServiceEditorModal({
                   value={form.monedas ?? []}
                   onChange={(monedas) => setForm({ ...form, monedas })}
                   ariaLabel="Monedas aceptadas para el pago (obligatorio)"
-                  placeholder="Elegí una o más…"
+                  placeholder="Elige una o más…"
                   options={currencySelectOptions.map((c) => ({
                     value: c,
                     label: c,
@@ -468,7 +468,7 @@ export function ServiceEditorModal({
               <p className="vt-muted mb-2 text-[11px] leading-snug">
                 {qualifiesTransport ?
                   "Los servicios de transporte o logística deben incluir al menos una foto. Se muestran en la ficha pública y en la oferta."
-                : "Podés sumar varias imágenes; se muestran en la ficha pública y en la oferta."}
+                : "Puedes sumar varias imágenes; se muestran en la ficha pública y en la oferta."}
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <input

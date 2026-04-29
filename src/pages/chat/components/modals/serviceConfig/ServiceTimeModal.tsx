@@ -64,7 +64,7 @@ export function ServiceTimeModal({ open, startDate, endDate, onSave, onClose }: 
       <div className={modalShellNarrow}>
         <div className="vt-modal-title">Tiempo del servicio</div>
         <p className="vt-muted mb-3 text-[13px]">
-          Indicá el período en que se presta el servicio. La fecha de inicio es obligatoria. Las fechas deben
+          Indica el período en que se presta el servicio. La fecha de inicio es obligatoria. Las fechas deben
           ser desde hoy y como máximo 50 años en el futuro.
         </p>
         <div className="flex flex-col gap-3">
