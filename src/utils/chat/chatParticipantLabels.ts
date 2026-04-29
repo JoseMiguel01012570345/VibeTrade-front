@@ -108,7 +108,7 @@ export function chatThreadHeaderTitle(
   return `${storeName} \u00b7 ${buyerName}`;
 }
 
-/** Encabezado de burbuja para un mensaje (vos / el otro). */
+/** Encabezado de burbuja para un mensaje (tú / el otro). */
 export function chatBubbleHeaderLabel(
   mine: boolean,
   th: Thread,

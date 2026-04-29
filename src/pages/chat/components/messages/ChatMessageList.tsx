@@ -416,7 +416,7 @@ export function ChatMessageList({
                           );
                           if (ok) {
                             toast.success(
-                              "Compra aceptada. No puede derogarse; podés emitir otros contratos nuevos.",
+                              "Compra aceptada. No puede derogarse; puedes emitir otros contratos nuevos.",
                             );
                           } else {
                             toast.error("No se pudo confirmar la compra.");

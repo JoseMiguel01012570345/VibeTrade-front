@@ -129,7 +129,7 @@ export function StoreFormModal({
                 </div>
               ) : (
                 <div className="vt-muted text-[12px]">
-                  Elegí una o más categorías desde el desplegable.
+                  Elige una o más categorías desde el desplegable.
                 </div>
               )}
             </div>

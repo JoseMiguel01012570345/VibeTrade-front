@@ -130,8 +130,8 @@ export function CustomFieldsEditor({
         </button>
       </div>
       <p className="vt-muted mb-2 text-[11px] leading-snug">
-        Cada campo debe quedar completo antes de guardar. Subí imágenes o
-        PDF/documentos con el botón; podés quitar o reemplazar archivos desde
+        Cada campo debe quedar completo antes de guardar. Sube imágenes o
+        PDF/documentos con el botón; puedes quitar o reemplazar archivos desde
         esta misma vista en modo edición.
       </p>
       <div className="flex flex-col gap-3">

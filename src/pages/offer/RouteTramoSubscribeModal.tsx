@@ -59,7 +59,7 @@ export function RouteTramoSubscribeModal({
               Servicio de transporte
             </div>
             <p className="vt-modal-body mb-0 mt-1">
-              Elegí con qué servicio de <strong>tus tiendas</strong> te suscribís. El servidor comprueba que el
+              Elige con qué servicio de <strong>tus tiendas</strong> te suscribes. El servidor comprueba que el
               servicio califique como transporte y avisa al comprador y al vendedor del hilo.
             </p>
             <p className="mt-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
@@ -79,7 +79,7 @@ export function RouteTramoSubscribeModal({
 
         {services.length === 0 ? (
           <p className="mt-3 text-[13px] text-[var(--bad)]">
-            No tenés servicios de transporte publicados en tus tiendas. Creá o publicá uno en el catálogo.
+            No tienes servicios de transporte publicados en tus tiendas. Crea o publica uno en el catálogo.
           </p>
         ) : (
           <ul className="m-0 mt-3 max-h-[min(50vh,280px)] list-none space-y-2 overflow-y-auto p-0 pr-1">

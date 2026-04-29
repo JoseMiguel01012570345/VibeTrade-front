@@ -128,7 +128,7 @@ export function ChatRightRailContractsPanel({
               <p className="vt-muted text-[11px] leading-snug">
                 {agreementForDetail.sellerEditBlockedUntilBuyerResponse ?
                   <>
-                    Ya enviaste cambios: no podés editar de nuevo hasta que el comprador{' '}
+                    Ya enviaste cambios: no puedes editar de nuevo hasta que el comprador{' '}
                     <strong className="text-[var(--text)]">acepte o rechace</strong> esta versión en el chat.
                   </>
                 : agreementForDetail.status === 'accepted' ?
@@ -152,7 +152,7 @@ export function ChatRightRailContractsPanel({
                       routeSheetId,
                     )
                     if (ok) toast.success('Vinculación registrada; se notificó en el chat')
-                    else toast.error('No se pudo vincular (elegí otra hoja).')
+                    else toast.error('No se pudo vincular (elige otra hoja).')
                   }
                 : undefined
             }

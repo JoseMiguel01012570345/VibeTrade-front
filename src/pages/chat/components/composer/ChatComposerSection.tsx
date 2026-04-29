@@ -395,7 +395,7 @@ export function ChatComposerSection({
               aria-hidden
             />
             <p className="text-[11px] leading-snug text-[var(--muted)]">
-              Tocá el botón cuadrado para terminar y enviar.
+              Toca el botón cuadrado para terminar y enviar.
             </p>
           </div>
         )}

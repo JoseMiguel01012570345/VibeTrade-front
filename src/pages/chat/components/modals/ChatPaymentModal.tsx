@@ -92,7 +92,7 @@ export function ChatPaymentModal({
               <CreditCard size={18} aria-hidden /> Pagar
             </div>
             <p className="vt-muted mt-1 text-[12px] leading-snug">
-              Elegí una tarjeta guardada para registrar el pago del chat (demo).
+              Elige una tarjeta guardada para registrar el pago del chat (demo).
             </p>
           </div>
           <button
@@ -116,7 +116,7 @@ export function ChatPaymentModal({
                 No hay tarjetas guardadas.
               </div>
               <div className="vt-muted mt-1 leading-snug">
-                Para guardar una tarjeta: abrí tu perfil → “Configurar tarjetas de pago” → “Crear nueva tarjeta”.
+                Para guardar una tarjeta: abre tu perfil → “Configurar tarjetas de pago” → “Crear nueva tarjeta”.
               </div>
             </div>
           ) : (

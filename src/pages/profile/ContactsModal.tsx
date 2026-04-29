@@ -128,7 +128,7 @@ export function ContactsModal({ open, onClose }: Props) {
           Contactos
         </div>
         <div className={modalSub}>
-          Solo podés guardar números que estén registrados en VibeTrade. Al
+          Solo puedes guardar números que estén registrados en VibeTrade. Al
           añadir uno, validamos el teléfono y mostramos el nombre del perfil.
         </div>
         <div className={modalFormBody}>
@@ -171,7 +171,7 @@ export function ContactsModal({ open, onClose }: Props) {
             </div>
           ) : items.length === 0 ? (
             <div className="py-8 text-center text-[13px] text-[var(--muted)]">
-              Todavía no tenés contactos guardados.
+              Todavía no tienes contactos guardados.
             </div>
           ) : (
             <ul className="flex flex-col gap-2">

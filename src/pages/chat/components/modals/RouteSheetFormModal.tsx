@@ -447,7 +447,7 @@ export function RouteSheetFormModal({
   async function geocodePlaceToMap() {
     const q = mapPlaceLabel.trim();
     if (q.length < 3) {
-      toast.error("Escribí al menos 3 caracteres de dirección");
+      toast.error("Escribe al menos 3 caracteres de dirección");
       return;
     }
     const token = ++mapForwardTokenRef.current;
@@ -464,7 +464,7 @@ export function RouteSheetFormModal({
       setMapCoordError(undefined);
     } catch {
       if (mapForwardTokenRef.current === token)
-        toast.error("No se pudo buscar la dirección. Probá de nuevo.");
+        toast.error("No se pudo buscar la dirección. Prueba de nuevo.");
     }
   }
 
@@ -513,7 +513,7 @@ export function RouteSheetFormModal({
     setFormErrors(e);
     if (hasRouteSheetFormErrors(e)) {
       const n = routeSheetFormErrorCount(e);
-      toast.error(`Revisá el formulario (${n} error${n === 1 ? "" : "es"})`);
+      toast.error(`Revisa el formulario (${n} error${n === 1 ? "" : "es"})`);
       return;
     }
     const limpForLock = expandChainedTramoOrigins(tramosToLimpios(tramos));
@@ -531,7 +531,7 @@ export function RouteSheetFormModal({
         const actual = limpForLock[i]?.telefonoTransportista?.trim() ?? "";
         if (normRoutePhoneKey(expected) !== normRoutePhoneKey(actual)) {
           toast.error(
-            `No podés quitar ni cambiar el contacto del transportista ya confirmado en el tramo ${i + 1} (${asg.displayName?.trim() || "asignado"}).`,
+            `No puedes quitar ni cambiar el contacto del transportista ya confirmado en el tramo ${i + 1} (${asg.displayName?.trim() || "asignado"}).`,
           );
           return;
         }
@@ -623,7 +623,7 @@ export function RouteSheetFormModal({
         const exp = asg.phone?.trim() ?? "";
         if (normRoutePhoneKey(nxt) !== normRoutePhoneKey(exp)) {
           toast.error(
-            "No podés quitar ni cambiar el contacto de un transportista confirmado en este tramo.",
+            "No puedes quitar ni cambiar el contacto de un transportista confirmado en este tramo.",
           );
           return;
         }
@@ -649,7 +649,7 @@ export function RouteSheetFormModal({
       )
     ) {
       toast.error(
-        "No podés eliminar un tramo que ya tiene un transportista confirmado.",
+        "No puedes eliminar un tramo que ya tiene un transportista confirmado.",
       );
       return;
     }
@@ -736,7 +736,7 @@ export function RouteSheetFormModal({
             los selectores. El precio del tramo debe ser un número (monto). La
             moneda de pago se elige en cada tramo. Origen, destino y el mapa se
             sincronizan (dirección ↔ pin). Por defecto el origen del tramo 2+
-            sigue al destino del anterior; podés fijar otro con «Coordenadas
+            sigue al destino del anterior; puedes fijar otro con «Coordenadas
             origen (mapa)». Podés insertar un tramo en cualquier punto: el nuevo
             tramo propone origen = fin del anterior y destino = inicio del que
             seguía; ambos son editables.
@@ -842,7 +842,7 @@ export function RouteSheetFormModal({
                             tramos.length <= 1
                               ? "Debe quedar al menos un tramo"
                               : phoneLocked
-                                ? "No podés eliminar un tramo con transportista confirmado"
+                                ? "No puedes eliminar un tramo con transportista confirmado"
                                 : "Eliminar este tramo"
                           }
                           onClick={() => removeTramoAt(i)}
@@ -888,12 +888,12 @@ export function RouteSheetFormModal({
                         <p className="vt-muted mb-2 text-[11px] leading-snug">
                           Por defecto, mismo lugar que el{" "}
                           <b>destino del tramo {i}</b>. Para otro punto de
-                          salida, usá «Coordenadas origen (mapa)» o editá ese
+                          salida, usa «Coordenadas origen (mapa)» o editá ese
                           destino.
                         </p>
                       ) : i > 0 ? (
                         <p className="vt-muted mb-2 text-[11px] leading-snug">
-                          Origen con coordenadas propias (podés ajustar el texto
+                          Origen con coordenadas propias (puedes ajustar el texto
                           o reabrir el mapa).
                         </p>
                       ) : null}
@@ -903,7 +903,7 @@ export function RouteSheetFormModal({
                           className={rutaMapBtn}
                           title={
                             i > 0 && !hasStoredOriginCoords
-                              ? "Por defecto coincide con el destino del tramo anterior; abrí el mapa para otro origen"
+                              ? "Por defecto coincide con el destino del tramo anterior; abre el mapa para otro origen"
                               : undefined
                           }
                           onClick={() => openMapPicker(i, "origen")}
@@ -1284,15 +1284,15 @@ export function RouteSheetFormModal({
               (tramo {mapPick.tramoIndex + 1})
             </div>
             <div className={modalSub}>
-              Tocá el mapa o escribí la dirección y usá «Buscar en el mapa». El
-              texto y las coordenadas se actualizan entre sí; podés editar la
+              Toca el mapa o escribí la dirección y usa «Buscar en el mapa». El
+              texto y las coordenadas se actualizan entre sí; puedes editar la
               dirección antes de guardar.
               {mapPick.punto === "destino" &&
               mapPick.tramoIndex > 0 &&
               destinoMapPrior?.endMarkers.length ? (
                 <span className="mt-1 block text-[12px]">
-                  Tramos anteriores con pin 1, 2, … y trazo: tocá un número para
-                  fijar el fin de este tramo ahí, o elegí otro punto en el mapa.
+                  Tramos anteriores con pin 1, 2, … y trazo: toca un número para
+                  fijar el fin de este tramo ahí, o elige otro punto en el mapa.
                 </span>
               ) : null}
             </div>

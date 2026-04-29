@@ -139,7 +139,7 @@ export function RouteSheetTransportistaPhoneField({
       const sid = selectedSvcId?.trim();
       const sel = sid ? services.find((x) => x.id === sid) : undefined;
       if (!sel) {
-        toast.error("Elegí un servicio de la lista.");
+        toast.error("Elige un servicio de la lista.");
         return;
       }
       const summary = summarizeTransportServiceForInvite(sel);
@@ -175,7 +175,7 @@ export function RouteSheetTransportistaPhoneField({
         <p className="vt-muted mb-2 text-[11px] leading-snug">
           {phoneLocked
             ? "Este tramo ya tiene un transportista confirmado en la oferta. El contacto no se puede quitar ni cambiar acá."
-            : "Buscá por número como en Contactos: la cuenta tiene que existir en VibeTrade. Luego elegí una ficha de servicio publicada (transporte)."}
+            : "Buscá por número como en Contactos: la cuenta tiene que existir en VibeTrade. Luego elige una ficha de servicio publicada (transporte)."}
         </p>
         {phoneLocked && v ? (
           <div className="rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-3 py-2.5">
@@ -215,7 +215,7 @@ export function RouteSheetTransportistaPhoneField({
               ) : (
                 !pickedLabel && (
                   <p className="vt-muted mt-1 text-[11px]">
-                    Cargado en la hoja; podés quitar y buscar de nuevo.
+                    Cargado en la hoja; puedes quitar y buscar de nuevo.
                   </p>
                 )
               )}
@@ -387,7 +387,7 @@ export function RouteSheetTransportistaPhoneField({
                       <TransportServiceFichaDetail s={selectedService} />
                     ) : (
                       <p className="text-[var(--muted)] text-sm">
-                        Elegí un servicio de la lista.
+                        Elige un servicio de la lista.
                       </p>
                     )}
                   </div>

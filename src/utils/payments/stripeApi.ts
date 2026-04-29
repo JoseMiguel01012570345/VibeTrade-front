@@ -13,10 +13,10 @@ async function friendlyError(res: Response): Promise<Error> {
   const code = (parsed?.error ?? "").trim();
   const msg = (parsed?.message ?? "").trim();
   if (code === "stripe_not_configured") {
-    return new Error("Pagos con tarjeta no están disponibles ahora. Probá más tarde.");
+    return new Error("Pagos con tarjeta no están disponibles ahora. Prueba más tarde.");
   }
   if (code === "missing_payment_method") {
-    return new Error("Seleccioná una tarjeta para pagar.");
+    return new Error("Selecciona una tarjeta para pagar.");
   }
   if (code === "payment_method_not_owned") {
     return new Error("La tarjeta seleccionada no pertenece a tu cuenta.");

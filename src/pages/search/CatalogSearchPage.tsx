@@ -360,7 +360,7 @@ export function CatalogSearchPage() {
             Buscar
           </h1>
           <div className="vt-muted">
-            Tiendas, productos, servicios y hojas de ruta. Elegí filtros y pulsá
+            Tiendas, productos, servicios y hojas de ruta. Elige filtros y pulsa
             la lupa.
           </div>
         </div>
@@ -468,7 +468,7 @@ export function CatalogSearchPage() {
 
         {status === "idle" ? (
           <div className="vt-muted text-[13px]">
-            Elegí filtros y pulsá la{" "}
+            Elige filtros y pulsa la{" "}
             <span className="font-semibold text-[var(--text)]">lupa</span> para
             ver resultados.
           </div>

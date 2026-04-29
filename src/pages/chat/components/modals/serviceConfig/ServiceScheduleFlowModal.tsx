@@ -76,9 +76,9 @@ function isEndStrictlyAfterStart(start: string, end: string): boolean {
 const TOAST_HORARIO_FIN_TRAS_INICIO =
   "El horario de fin debe ser posterior al de inicio (no puede ser igual ni más temprano).";
 const TOAST_EXC_MES =
-  "Elegí un mes que tenga servicio y entre en el período de vigencia del contrato.";
+  "Elige un mes que tenga servicio y entre en el período de vigencia del contrato.";
 const TOAST_EXC_DIA =
-  "Elegí un día en el que el servicio esté habilitado en la grilla de ese mes (paso 2).";
+  "Elige un día en el que el servicio esté habilitado en la grilla de ese mes (paso 2).";
 
 /**
  * Ajusta `coerced` a la vigencia: año, meses permitidos y días/override coherentes.
@@ -466,7 +466,7 @@ export function ServiceScheduleFlowModal({
 
   function finish() {
     if (!st.months.length) {
-      toast.error("Elegí al menos un mes.");
+      toast.error("Elige al menos un mes.");
       return;
     }
     if (!isEndStrictlyAfterStart(st.defaultWindow.start, st.defaultWindow.end)) {
@@ -476,7 +476,7 @@ export function ServiceScheduleFlowModal({
     for (const [, v] of Object.entries(st.dayHourOverrides)) {
       if (!isEndStrictlyAfterStart(v.start, v.end)) {
         toast.error(
-          "Revisá las excepciones: en cada fila, el fin debe ser posterior al inicio.",
+          "Revisa las excepciones: en cada fila, el fin debe ser posterior al inicio.",
         );
         return;
       }
@@ -522,7 +522,7 @@ export function ServiceScheduleFlowModal({
                   ariaLabel="Año de referencia"
                 />
                 <span className="min-w-0 text-[11px] leading-snug text-[var(--muted)]">
-                  Solo podés marcar meses calendario que entren en el período de vigencia (
+                  Solo puedes marcar meses calendario que entren en el período de vigencia (
                   {vigenciaResumen}).
                 </span>
               </div>
@@ -815,7 +815,7 @@ export function ServiceScheduleFlowModal({
                   }
                   if (sub === 1) {
                     if (!st.months.length) {
-                      toast.error("Elegí al menos un mes.");
+                      toast.error("Elige al menos un mes.");
                       return;
                     }
                     const next = ensureDaysForSelectedMonths(st);

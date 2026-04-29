@@ -14,7 +14,7 @@ import type {
 
 /** Mensaje cuando el comprador del hilo intenta suscribirse como transportista a la misma hoja publicada. */
 export const ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES =
-  "No podés suscribirte como transportista: en esta operación sos el comprador con un acuerdo aceptado.";
+  "No puedes suscribirte como transportista: en esta operación eres el comprador con un acuerdo aceptado.";
 
 /** Prioridad: teléfono en la parada de la hoja → asignación en la oferta → campo público del tramo. */
 export function effectiveTramoContactPhone(

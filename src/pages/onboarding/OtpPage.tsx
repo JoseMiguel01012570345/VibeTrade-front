@@ -76,7 +76,7 @@ export function OtpPage() {
           if (errPayload?.error === 'phone_already_registered') {
             toast.error(
               errPayload.message ??
-                'Este número ya está registrado. Iniciá sesión si es tu cuenta.',
+                'Este número ya está registrado. Inicia sesión si es tu cuenta.',
             )
             return
           }
@@ -164,7 +164,7 @@ export function OtpPage() {
                     ) {
                       toast.error(
                         errPayload.message ??
-                          'Este número ya está registrado. Iniciá sesión si es tu cuenta.',
+                          'Este número ya está registrado. Inicia sesión si es tu cuenta.',
                       )
                       return
                     }

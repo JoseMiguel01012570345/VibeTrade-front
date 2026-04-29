@@ -163,7 +163,7 @@ export function OfferPage() {
       n > 0
         ? ` Las fotos publicadas en la ficha (${n}) se envían en el mismo mensaje que el texto.`
         : " Si no hay fotos de ficha, el mensaje solo incluye el texto, con el detalle adecuado al tipo (producto o servicio).";
-    return `Se creará un chat nuevo y el vendedor recibirá un aviso. El primer mensaje dirá que tenés interés en el ${tipoPapel} «${t}», teniendo en cuenta el tipo y el título de la oferta en la plataforma.${fotos}`;
+    return `Se creará un chat nuevo y el vendedor recibirá un aviso. El primer mensaje dirá que tienes interés en el ${tipoPapel} «${t}», teniendo en cuenta el tipo y el título de la oferta en la plataforma.${fotos}`;
   }, [resolvedOffer, storeCatalogs]);
 
   const runComprarChatAfterConfirm = useCallback(async () => {
@@ -175,7 +175,7 @@ export function OfferPage() {
         forceNewThread: true,
       });
       if (!threadId) {
-        toast.error("No se pudo abrir el chat. Probá de nuevo.");
+        toast.error("No se pudo abrir el chat. Prueba de nuevo.");
         return;
       }
       try {
@@ -187,7 +187,7 @@ export function OfferPage() {
       } catch (e) {
         console.error(e);
         toast.error(
-          "El chat se abrió, pero el primer mensaje no pudo enviarse. Escribí desde el chat.",
+          "El chat se abrió, pero el primer mensaje no pudo enviarse. Escribe desde el chat.",
         );
       }
       setComprarChatConfirmOpen(false);
@@ -549,7 +549,7 @@ export function OfferPage() {
     for (const sid of now) {
       if (!prev.has(sid)) {
         toast.success(
-          `Te asignaron a ${tramoNotifyLineFromOffer(routeOffer, sid)}. Podés abrir el chat de la operación.`,
+          `Te asignaron a ${tramoNotifyLineFromOffer(routeOffer, sid)}. Puedes abrir el chat de la operación.`,
         );
       }
     }
@@ -685,7 +685,7 @@ export function OfferPage() {
         (o) => o.serviceId === storeServiceId,
       );
       if (!opt) {
-        toast.error("Elegí un servicio de transporte válido.");
+        toast.error("Elige un servicio de transporte válido.");
         return;
       }
       if (resolvedOffer?.id?.startsWith("emo_")) {
@@ -959,7 +959,7 @@ export function OfferPage() {
               ) : (
                 <span
                   className="inline-flex items-center gap-1.5 text-sm font-extrabold text-[var(--muted)]"
-                  title="Iniciá sesión para dar me gusta a la ficha"
+                  title="Inicia sesión para dar me gusta a la ficha"
                 >
                   <Heart size={18} aria-hidden />
                   <span className="tabular-nums">
@@ -1033,7 +1033,7 @@ export function OfferPage() {
                     {!subscribeBlockedAsBuyerWithAgreement ? (
                       <>
                         <p className="vt-muted mt-1.5 text-[13px] leading-snug">
-                          Elegí un tramo libre y enviá la solicitud. Podés
+                          Elige un tramo libre y envía la solicitud. Puedes
                           suscribirte a <strong>más de un tramo</strong> en la
                           misma hoja; cada uno se valida por separado. El
                           vendedor y el comprador deben <strong>validar</strong>{" "}
@@ -1042,16 +1042,16 @@ export function OfferPage() {
                         </p>
                         {carrierPendingOnRoute ? (
                           <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_8%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
-                            Tenés al menos una solicitud pendiente de
-                            validación. Mientras tanto podés pedir otro tramo si
+                            Tienes al menos una solicitud pendiente de
+                            validación. Mientras tanto puedes pedir otro tramo si
                             sigue libre; cuando te acepten en cualquiera de
-                            ellos podés habilitar el chat (según reglas de la
+                            ellos puedes habilitar el chat (según reglas de la
                             demo).
                           </p>
                         ) : null}
                         {carrierConfirmedOnRoute ? (
                           <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,var(--good)_30%,var(--border))] bg-[color-mix(in_oklab,var(--good)_7%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
-                            Suscripción confirmada: ya podés abrir el chat de la
+                            Suscripción confirmada: ya puedes abrir el chat de la
                             operación.
                           </p>
                         ) : null}
@@ -1125,7 +1125,7 @@ export function OfferPage() {
                           }
                           title={
                             transportServiceOptions.length === 0
-                              ? "Necesitás al menos un servicio de transporte publicado en tu tienda"
+                              ? "Necesitas al menos un servicio de transporte publicado en tu tienda"
                               : undefined
                           }
                           onClick={() => setSubscribeModalOpen(true)}
@@ -1140,12 +1140,12 @@ export function OfferPage() {
                         title={
                           canOpenRouteChat
                             ? "Abrir el chat de la operación"
-                            : "Disponible con tramo validado o si ya figurás como integrante del hilo"
+                            : "Disponible con tramo validado o si ya figuras como integrante del hilo"
                         }
                         onClick={() => {
                           if (!canOpenRouteChat) {
                             toast.error(
-                              "El chat se habilita con tramo validado o cuando ya sos integrante del hilo de esta oferta.",
+                              "El chat se habilita con tramo validado o cuando ya eres miembro del hilo de esta oferta.",
                             );
                             return;
                           }
@@ -1170,7 +1170,7 @@ export function OfferPage() {
                           ).trim();
                           if (!opThreadId.startsWith("cth_")) {
                             toast.error(
-                              "No se encontró el hilo de esta operación. Recargá la ficha o entrá desde la notificación del chat.",
+                              "No se encontró el hilo de esta operación. Recarga la ficha o entra desde la notificación del chat.",
                             );
                             return;
                           }
@@ -1191,7 +1191,7 @@ export function OfferPage() {
                     !carrierConfirmedOnRoute &&
                     carrierInChatThread ? (
                       <p className="text-[12px] leading-snug text-[var(--muted)]">
-                        Abrís el chat como integrante del hilo aunque no tengas
+                        Abres el chat como integrante del hilo aunque no tengas
                         un tramo confirmado en este momento (demo).
                       </p>
                     ) : null}
@@ -1208,7 +1208,7 @@ export function OfferPage() {
                   disabled={isOwnOffer || subscribeBlockedAsBuyerWithAgreement}
                   title={
                     isOwnOffer
-                      ? "No podés suscribirte a tu propia publicación."
+                      ? "No puedes suscribirte a tu propia publicación."
                       : subscribeBlockedAsBuyerWithAgreement
                         ? ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES
                         : undefined
@@ -1219,7 +1219,7 @@ export function OfferPage() {
                       return;
                     }
                     if (isOwnOffer) {
-                      toast.error("No podés suscribirte a tu propia oferta.");
+                      toast.error("No puedes suscribirte a tu propia oferta.");
                       return;
                     }
                     if (subscribeBlockedAsBuyerWithAgreement) {
@@ -1232,13 +1232,13 @@ export function OfferPage() {
                       !userHasTransportService(me.id, stores, storeCatalogs)
                     ) {
                       toast.error(
-                        "Necesitás un servicio de transporte publicado en tu tienda para suscribirte.",
+                        "Necesitas un servicio de transporte publicado en tu tienda para suscribirte.",
                       );
                       return;
                     }
                     if (!routeOffer) {
                       toast.error(
-                        "Aún no tenemos la hoja de ruta en esta sesión. Entrá desde el inicio o recargá la página.",
+                        "Aún no tenemos la hoja de ruta en esta sesión. Entra desde el inicio o recarga la página.",
                       );
                       return;
                     }
@@ -1258,9 +1258,9 @@ export function OfferPage() {
                   }
                   title={
                     isOwnOffer
-                      ? "No podés chatear con vos mismo en tu propia oferta."
+                      ? "No puedes chatear contigo mismo en tu propia oferta."
                       : actingAsCarrierOnThisOffer && routeOffer
-                        ? "Como transportista: suscribite a un tramo y esperá la validación para usar el chat de la ruta."
+                        ? "Como transportista: suscríbete a un tramo y espera la validación para usar el chat de la ruta."
                         : undefined
                   }
                   onClick={() => {
@@ -1269,12 +1269,12 @@ export function OfferPage() {
                       return;
                     }
                     if (isOwnOffer) {
-                      toast.error("No podés chatear con vos mismo.");
+                      toast.error("No puedes chatear contigo mismo.");
                       return;
                     }
                     if (actingAsCarrierOnThisOffer && routeOffer) {
                       toast.error(
-                        "Usá la suscripción al tramo; el chat se habilita tras la validación.",
+                        "Usa la suscripción al tramo; el chat se habilita tras la validación.",
                       );
                       return;
                     }

@@ -37,9 +37,9 @@ function validateCustomFields(fields: StoreCustomField[]): string | null {
 }
 
 export function validateOwnerStoreForm(values: OwnerStoreFormValues): string | null {
-  if (!norm(values.name)) return 'Indicá el nombre de la tienda.'
+  if (!norm(values.name)) return 'Indica el nombre de la tienda.'
   if (!values.categories?.length || !values.categories.some((c) => norm(c).length >= TITLE_MIN)) {
-    return 'Indicá al menos una categoría (texto significativo).'
+    return 'Indica al menos una categoría (texto significativo).'
   }
   if (norm(values.categoryPitch).length < DESC_MIN) {
     return `La descripción de categorías del catálogo debe tener al menos ${DESC_MIN} caracteres.`
@@ -54,27 +54,27 @@ export function validateOwnerStoreForm(values: OwnerStoreFormValues): string | n
 export type ProductFormSnapshot = Omit<StoreProduct, 'id' | 'storeId'>
 
 export function validateProductForm(form: ProductFormSnapshot): string | null {
-  if (norm(form.category).length < TITLE_MIN) return 'Completá la categoría.'
-  if (norm(form.name).length < TITLE_MIN) return 'Completá el nombre del producto.'
-  if (!norm(form.price)) return 'Completá el precio.'
+  if (norm(form.category).length < TITLE_MIN) return 'Completa la categoría.'
+  if (norm(form.name).length < TITLE_MIN) return 'Completa el nombre del producto.'
+  if (!norm(form.price)) return 'Completa el precio.'
   if (!norm(form.monedaPrecio ?? '')) {
-    return 'Elegí la moneda del precio (tipo de moneda).'
+    return 'Elige la moneda del precio (tipo de moneda).'
   }
   if (catalogMonedasList(form).length < 1) {
-    return 'Indicá al menos una moneda aceptada para el pago.'
+    return 'Indica al menos una moneda aceptada para el pago.'
   }
   if (norm(form.shortDescription).length < DESC_MIN) return `La descripción breve debe tener al menos ${DESC_MIN} caracteres.`
   if (norm(form.mainBenefit).length < DESC_MIN) return `El beneficio principal debe tener al menos ${DESC_MIN} caracteres.`
   if (norm(form.technicalSpecs).length < DESC_MIN) return `Las características técnicas deben tener al menos ${DESC_MIN} caracteres.`
   if (norm(form.taxesShippingInstall ?? '').length < LINE_MIN) {
-    return 'Indicá impuestos, envío o instalación (podés escribir «No aplica» si corresponde).'
+    return 'Indica impuestos, envío o instalación (puedes escribir «No aplica» si corresponde).'
   }
   if (norm(form.availability).length < DESC_MIN) return `La disponibilidad debe tener al menos ${DESC_MIN} caracteres.`
   if (norm(form.warrantyReturn).length < DESC_MIN) return `Garantía y devolución: al menos ${DESC_MIN} caracteres.`
   if (norm(form.contentIncluded).length < DESC_MIN) return `Contenido incluido: al menos ${DESC_MIN} caracteres.`
   if (norm(form.usageConditions).length < DESC_MIN) return `Condiciones de uso: al menos ${DESC_MIN} caracteres.`
   if (!form.photoUrls?.length || !form.photoUrls.some((u) => norm(u))) {
-    return 'Subí al menos una foto del producto (imagen desde tu dispositivo).'
+    return 'Sube al menos una foto del producto (imagen desde tu dispositivo).'
   }
 
   const customErr = validateCustomFields(form.customFields)
@@ -90,16 +90,16 @@ export function validateServiceForm(
   riesgosLines: string[],
   dependenciasLines: string[],
 ): string | null {
-  if (norm(form.category).length < TITLE_MIN) return 'Completá la categoría.'
-  if (norm(form.tipoServicio).length < TITLE_MIN) return 'Completá el tipo de servicio.'
+  if (norm(form.category).length < TITLE_MIN) return 'Completa la categoría.'
+  if (norm(form.tipoServicio).length < TITLE_MIN) return 'Completa el tipo de servicio.'
   if (catalogMonedasList(form).length < 1) {
-    return 'Indicá al menos una moneda aceptada para el pago.'
+    return 'Indica al menos una moneda aceptada para el pago.'
   }
   if (norm(form.descripcion).length < DESC_MIN) return `La descripción del servicio debe tener al menos ${DESC_MIN} caracteres.`
 
   if (form.riesgos.enabled) {
     const items = riesgosLines.map((l) => l.trim()).filter(Boolean)
-    if (items.length < 1) return 'Activaste riesgos: agregá al menos una descripción (una línea por riesgo).'
+    if (items.length < 1) return 'Activaste riesgos: añade al menos una descripción (una línea por riesgo).'
     if (items.some((l) => l.length < LINE_MIN)) return 'Cada riesgo debe tener al menos 3 caracteres útiles.'
   }
 
@@ -108,14 +108,14 @@ export function validateServiceForm(
 
   if (form.dependencias.enabled) {
     const items = dependenciasLines.map((l) => l.trim()).filter(Boolean)
-    if (items.length < 1) return 'Activaste dependencias: agregá al menos una (una línea por ítem).'
+    if (items.length < 1) return 'Activaste dependencias: añade al menos una (una línea por ítem).'
     if (items.some((l) => l.length < LINE_MIN)) return 'Cada dependencia debe tener al menos 3 caracteres útiles.'
   }
 
   if (norm(form.entregables).length < DESC_MIN) return `«Qué se entrega» debe tener al menos ${DESC_MIN} caracteres.`
 
   if (form.garantias.enabled) {
-    if (norm(form.garantias.texto).length < DESC_MIN) return 'Activaste garantías: completá el texto (mín. caracteres).'
+    if (norm(form.garantias.texto).length < DESC_MIN) return 'Activaste garantías: completa el texto (mín. caracteres).'
   }
 
   if (norm(form.propIntelectual).length < DESC_MIN) {

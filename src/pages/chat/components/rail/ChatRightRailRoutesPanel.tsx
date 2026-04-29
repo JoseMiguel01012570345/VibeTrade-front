@@ -149,9 +149,9 @@ export function ChatRightRailRoutesPanel({
               actionsLocked
                 ? "No disponible hasta registrar el pago en el chat"
                 : !hasAcceptedContract
-                  ? "Necesitás al menos un contrato aceptado para crear una hoja de ruta"
+                  ? "Necesitas al menos un contrato aceptado para crear una hoja de ruta"
                   : routeSheetCapReached
-                    ? "No podés tener más hojas de ruta que acuerdos: emití otro acuerdo o eliminá una hoja"
+                    ? "No puedes tener más hojas de ruta que acuerdos: emite otro acuerdo o elimina una hoja"
                     : undefined
             }
             onClick={onOpenNewRouteSheet}
@@ -206,7 +206,7 @@ export function ChatRightRailRoutesPanel({
             ) : null}
             {sheetEditBlockedByCarrierAck ? (
               <p className="vt-muted w-full text-[11px] leading-snug">
-                Hay revisión pendiente: no podés guardar otra edición hasta que
+                Hay revisión pendiente: no puedes guardar otra edición hasta que
                 cada transportista en el hilo{" "}
                 <strong className="text-[var(--text)]">acepte o rechace</strong>{" "}
                 esta versión de la hoja.
@@ -316,8 +316,8 @@ export function ChatRightRailRoutesPanel({
                 {routeSheetEditAcks[selRoute.id].revision})
               </div>
               <p className="vt-muted mb-2 mt-1 text-[11px] leading-snug">
-                La hoja se editó y cambió un tramo que tenés confirmado: solo
-                vos podés aceptar o rechazar esta versión para tu tramo.
+                La hoja se editó y cambió un tramo que tienes confirmado: solo
+                puedes aceptar o rechazar esta versión para tu tramo.
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -587,10 +587,10 @@ export function ChatRightRailRoutesPanel({
         <p className="vt-muted px-1 py-3 text-[13px]">
           {!hasAcceptedContract
             ? isActingSeller
-              ? "Primero tenés que tener al menos un contrato aceptado; después podés crear la hoja de ruta y vincularla al acuerdo."
+              ? "Primero tienes que tener al menos un contrato aceptado; después puedes crear la hoja de ruta y vincularla al acuerdo."
               : "Cuando haya un acuerdo aceptado, la tienda podrá crear la hoja de ruta en esta operación."
             : isActingSeller
-              ? "Creá una hoja de ruta y vinculála al acuerdo desde Contratos (con mercancías) antes de publicar en la plataforma."
+              ? "Crea una hoja de ruta y vinculála al acuerdo desde Contratos (con mercancías) antes de publicar en la plataforma."
               : "La tienda creará y editará la hoja de ruta; aquí podrás ver el avance cuando exista."}
         </p>
       ) : (

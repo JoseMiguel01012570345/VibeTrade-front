@@ -81,7 +81,7 @@ const SOCIAL_META: Record<
 > = {
   instagram: {
     title: "Conectar Instagram",
-    hint: "Podés guardar tu @usuario o un enlace a tu perfil.",
+    hint: "Puedes guardar tu @usuario o un enlace a tu perfil.",
     placeholder: "@mi_empresa o https://instagram.com/…",
     short: "Instagram",
   },
@@ -415,7 +415,7 @@ export function ProfilePage() {
     const file = picked[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Elegí un archivo de imagen.");
+      toast.error("Elige un archivo de imagen.");
       return;
     }
     setProfileUploadBusy(true);
@@ -426,7 +426,7 @@ export function ProfilePage() {
         revokeBlobUrlLocal(prev);
         return url;
       });
-      toast.success("Revisá la imagen y tocá Guardar para confirmar.");
+      toast.success("Revisa la imagen y toca Guardar para confirmar.");
     } catch (err) {
       const msg =
         err instanceof Error && err.message
@@ -441,7 +441,7 @@ export function ProfilePage() {
   async function saveProfileAvatar() {
     if (!avatarDraftUrl) return;
     if (!avatarDraftUrl.startsWith("/api/v1/media/")) {
-      toast.error("Guardá de nuevo: la foto debe subirse al servidor.");
+      toast.error("Guarda de nuevo: la foto debe subirse al servidor.");
       return;
     }
     setProfileUploadBusy(true);
@@ -713,7 +713,7 @@ export function ProfilePage() {
                         <ImageIcon size={14} /> Foto de perfil
                       </div>
                       <p className="vt-muted mt-1 max-w-md text-[13px] leading-snug">
-                        Elegí una imagen desde tu dispositivo y guardala con el
+                        Elige una imagen desde tu dispositivo y guárdala con el
                         botón (vista previa local con URL blob).
                       </p>
                     </div>
@@ -827,7 +827,7 @@ export function ProfilePage() {
                     <Users size={14} /> Agenda en la plataforma
                   </div>
                   <p className="vt-muted max-w-md text-[13px] leading-snug">
-                    Guardá números de otros usuarios registrados para verlos con
+                    Guarda números de otros usuarios registrados para verlos con
                     nombre y teléfono del perfil.
                   </p>
                   <button
@@ -921,7 +921,7 @@ export function ProfilePage() {
                     propietario)
                   </div>
                   <div className="vt-muted">
-                    Elegí una pasarela y añadí credenciales necesarias por
+                    Elige una pasarela y añade credenciales necesarias por
                     pasarela (demo).
                   </div>
                   <button
@@ -960,7 +960,7 @@ export function ProfilePage() {
           <div className="vt-card vt-card-pad">
             <div className="vt-h2">Ofertas guardadas</div>
             <div className="vt-muted mt-1.5">
-              Tocá una tarjeta para abrir la oferta. Podés guardar desde el
+              Toca una tarjeta para abrir la oferta. Puedes guardar desde el
               ícono de marcador en el listado o en el detalle.
             </div>
             <div className="vt-divider my-3" />
@@ -1143,7 +1143,7 @@ export function ProfilePage() {
       <ConfirmModal
         open={logoutConfirmOpen}
         title="¿Cerrar sesión?"
-        message="Vas a salir de tu cuenta en este dispositivo. Podés volver a iniciar sesión cuando quieras."
+        message="Vas a salir de tu cuenta en este dispositivo. Puedes volver a iniciar sesión cuando quieras."
         cancelLabel="Cancelar"
         confirmLabel="Cerrar sesión"
         confirmBusy={logoutBusy}

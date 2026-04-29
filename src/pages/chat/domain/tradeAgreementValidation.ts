@@ -60,7 +60,7 @@ function requireDecimal(
   const t = norm(raw);
   if (t === "") return `${label}: valor requerido`;
   const n = parseDecimal(t);
-  if (n === null) return `${label}: ingresá un número válido`;
+  if (n === null) return `${label}: ingresa un número válido`;
   if (opts.positive && n <= 0) return `${label}: debe ser mayor que cero`;
   if (!opts.allowZero && !opts.positive && n < 0)
     return `${label}: no puede ser negativo`;
@@ -103,7 +103,7 @@ function validateListField(raw: string, label: string): string | undefined {
     .map((l) => l.trim())
     .filter(Boolean);
   if (lines.length < 1)
-    return `${label}: indicá al menos un punto (podés usar una línea por ítem)`;
+    return `${label}: indica al menos un punto (puedes usar una línea por ítem)`;
   const shortest = Math.min(...lines.map((l) => l.length));
   if (shortest < 2)
     return `${label}: cada ítem debería tener al menos 2 caracteres`;
@@ -116,7 +116,7 @@ function validateAvisoDias(raw: string): string | undefined {
   const t = norm(raw);
   const num = parseInt(t.replace(/\D/g, ""), 10);
   if (!Number.isFinite(num) || num <= 0) {
-    return "Indicá un número de días (ej. 30)";
+    return "Indica un número de días (ej. 30)";
   }
   if (num > 3650) return "Periodo de aviso demasiado alto (máx. 3650 días)";
   return optionalTextMax(raw, "Periodo de aviso", false);
@@ -171,14 +171,14 @@ export function validateTradeAgreementDraft(
         "No hay productos ni servicios en la ficha de la tienda. Cargalos en la vitrina para poder acordar.";
     } else {
       errors.scope =
-        "Debés incluir al menos mercancías o servicios (podés marcar ambos).";
+        "Debes incluir al menos mercancías o servicios (puedes marcar ambos).";
     }
   }
 
   if (d.includeMerchandise && !hasMerchandise(d)) {
     errors.scope =
       errors.scope ??
-      "Con «Incluir mercancías» activado, elegí al menos un producto del catálogo y completá los datos del comprador.";
+      "Con «Incluir mercancías» activado, elige al menos un producto del catálogo y completa los datos del comprador.";
   }
 
   const lineErrors: NonNullable<TradeAgreementFormErrors["merchandiseLines"]> =
@@ -189,7 +189,7 @@ export function validateTradeAgreementDraft(
     if (isSkippableEmptyMerchLine(line)) return;
     if (!line.linkedStoreProductId) {
       lineErrors[i] = {
-        tipo: "Seleccioná un producto del catálogo de la tienda",
+        tipo: "Selecciona un producto del catálogo de la tienda",
       };
       return;
     }
@@ -247,7 +247,7 @@ export function validateTradeAgreementDraft(
     const services = d.services ?? [];
     if (!services.length) {
       errors.serviceItems =
-        "Agregá al menos un servicio y configurá cada uno con el asistente.";
+        "Añade al menos un servicio y configurá cada uno con el asistente.";
     } else {
       const serviceErrors: NonNullable<
         TradeAgreementFormErrors["serviceErrors"]
@@ -278,16 +278,16 @@ export function validateTradeAgreementDraft(
     const mu = norm(row.mediaUrl);
     if (!ti.length && !tx.length && !mu.length) return;
     if (!ti.length) {
-      xfErr[i] = "Completá el título del campo adicional.";
+      xfErr[i] = "Completa el título del campo adicional.";
       return;
     }
     if (row.valueKind === "text") {
       const te =
         tx.length === 0
-          ? "Escribí el contenido para este campo."
+          ? "Escribe el contenido para este campo."
           : optionalTextMax(row.textValue, "Contenido del campo adicional", true);
       if (te) xfErr[i] = te;
-    } else if (!mu.length) xfErr[i] = "Subí un archivo para este campo.";
+    } else if (!mu.length) xfErr[i] = "Sube un archivo para este campo.";
   });
   if (Object.keys(xfErr).length) errors.extraFieldsLines = xfErr;
 
@@ -298,26 +298,26 @@ function collectServiceHorarioErrors(sv: ServiceItem): string[] {
   const msgs: string[] = [];
   const hor = coerceServiceSchedule(sv.horarios);
   if (!hor.months.length)
-    msgs.push("Indicá al menos un mes para horarios del servicio");
+    msgs.push("Indica al menos un mes para horarios del servicio");
   for (const m of hor.months) {
     const days = hor.daysByMonth[m];
     if (!days?.length)
-      msgs.push(`Mes ${m}: elegí al menos un día en el calendario`);
+      msgs.push(`Mes ${m}: elige al menos un día en el calendario`);
   }
   const defS = norm(sv.horarios.defaultWindow.start);
   const defE = norm(sv.horarios.defaultWindow.end);
   if (!defS || !defE)
-    msgs.push("Horario por defecto: indicá inicio y fin (ej. 09:00–17:00)");
+    msgs.push("Horario por defecto: indica inicio y fin (ej. 09:00–17:00)");
   return msgs;
 }
 
 function collectServicePagoErrors(sv: ServiceItem): string[] {
   const msgs: string[] = [];
   if (!sv.recurrenciaPagos.months.length)
-    msgs.push("Recurrencia de pagos: elegí al menos un mes");
+    msgs.push("Recurrencia de pagos: elige al menos un mes");
   if (sv.recurrenciaPagos.entries.length < 1) {
     msgs.push(
-      "Recurrencia de pagos: agregá al menos una fila con mes, día y monto",
+      "Recurrencia de pagos: añade al menos una fila con mes, día y monto",
     );
   } else {
     const seenDay = new Set<string>();
@@ -328,7 +328,7 @@ function collectServicePagoErrors(sv: ServiceItem): string[] {
         );
       }
       if (!norm(String(en.moneda ?? "")))
-        msgs.push(`Pago ${i + 1}: indicá la moneda`);
+        msgs.push(`Pago ${i + 1}: indica la moneda`);
       if (en.day < 1 || en.day > 31) msgs.push(`Pago ${i + 1}: día inválido`);
       const y = new Date().getFullYear();
       const dim =
@@ -481,17 +481,17 @@ export function condicionesExtrasRowErrors(
     const mu = norm(row.mediaUrl);
     if (!ti.length && !tx.length && !mu.length) return;
     if (!ti.length) {
-      out[i] = "Completá el título del campo adicional.";
+      out[i] = "Completa el título del campo adicional.";
       return;
     }
     if (row.valueKind === "text") {
       const te =
         tx.length === 0
-          ? "Escribí el contenido para este campo."
+          ? "Escribe el contenido para este campo."
           : optionalTextMax(row.textValue, "Contenido del campo adicional", true);
       if (te) out[i] = te;
     } else if (!mu.length) {
-      out[i] = "Subí un archivo para este campo.";
+      out[i] = "Sube un archivo para este campo.";
     }
   });
   return Object.keys(out).length ? out : undefined;
@@ -542,7 +542,7 @@ export function validateServiceItem(sv: ServiceItem): string[] {
 
   if (monedasFromRecurrenciaPagos(sv.recurrenciaPagos).length === 0) {
     msgs.push(
-      "Indicá la moneda en cada fila de la recurrencia de pagos (paso «Pagos recurrentes»).",
+      "Indica la moneda en cada fila de la recurrencia de pagos (paso «Pagos recurrentes»).",
     );
   }
 
@@ -572,7 +572,7 @@ export function validateServiceItem(sv: ServiceItem): string[] {
   if (ePi) {
     if (sv.linkedStoreServiceId && !norm(sv.propIntelectual)) {
       msgs.push(
-        "Completá la propiedad intelectual en la ficha del servicio o desanclá el catálogo.",
+        "Completa la propiedad intelectual en la ficha del servicio o desancla el catálogo.",
       );
     } else {
       msgs.push(ePi);

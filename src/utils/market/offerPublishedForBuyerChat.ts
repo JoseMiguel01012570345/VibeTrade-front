@@ -2,7 +2,7 @@ import type { Offer } from "../../app/store/marketStoreTypes";
 import type { StoreCatalog } from "../../pages/chat/domain/storeCatalogTypes";
 
 const NOT_PUBLISHED_TOAST_ES =
-  "Esta oferta no está publicada. No podés iniciar un chat.";
+  "Esta oferta no está publicada. No puedes iniciar un chat.";
 
 export { NOT_PUBLISHED_TOAST_ES };
 

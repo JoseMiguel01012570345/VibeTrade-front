@@ -14,7 +14,7 @@ export function StoreTrustMini({
 }: Readonly<{
   score: number;
   className?: string;
-  /** Por defecto: confianza de tienda; usá p. ej. "Confianza del usuario" para el dueño. */
+  /** Por defecto: confianza de tienda; usa p. ej. "Confianza del usuario" para el dueño. */
   ariaLabel?: string;
 }>) {
   const safe = Number.isFinite(score) ? score : 0;

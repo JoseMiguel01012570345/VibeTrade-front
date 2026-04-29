@@ -119,7 +119,7 @@ export function OfferCommentsSection({
         listRef.current?.scrollTo({ top: listRef.current.scrollHeight }),
       )
     } catch (e) {
-      toast.error(errorToUserMessage(e, 'No se pudo enviar. Probá de nuevo.'))
+      toast.error(errorToUserMessage(e, 'No se pudo enviar. Prueba de nuevo.'))
     } finally {
       setSending(false)
     }
@@ -176,7 +176,7 @@ export function OfferCommentsSection({
                 ) : !c.id.endsWith("_legacy_ans") ? (
                   <span
                     className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-[11px] font-extrabold text-[var(--muted)]"
-                    title="Iniciá sesión para dar me gusta"
+                    title="Inicia sesión para dar me gusta"
                   >
                     <Heart size={14} aria-hidden />
                     <span className="tabular-nums">{c.likeCount ?? 0}</span>
@@ -268,11 +268,11 @@ export function OfferCommentsSection({
         ) : null}
         {!sessionReady || me.id === 'guest' ? (
           <p className="mb-2 text-xs text-[var(--muted)]">
-            <strong>Iniciá sesión</strong> para comentar y dar me gusta en esta ficha.
+            <strong>Inicia sesión</strong> para comentar y dar me gusta en esta ficha.
           </p>
         ) : composerLocked ? (
           <p className="mb-2 text-xs text-[var(--muted)]">
-            Como vendedor, usá <strong>Responder</strong> en un comentario para publicar aquí.
+            Como vendedor, usa <strong>Responder</strong> en un comentario para publicar aquí.
           </p>
         ) : null}
         <div className="flex items-stretch gap-2.5">
@@ -282,9 +282,9 @@ export function OfferCommentsSection({
             disabled={sending || composerLocked}
             placeholder={
               !sessionReady || me.id === 'guest'
-                ? 'Iniciá sesión para comentar…'
+                ? 'Inicia sesión para comentar…'
                 : composerLocked
-                  ? 'Elegí «Responder» en un comentario…'
+                  ? 'Elige «Responder» en un comentario…'
                   : replyingTo
                     ? 'Escribe una respuesta…'
                     : 'Escribe un comentario…'

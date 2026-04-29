@@ -64,7 +64,7 @@ export function StoreLocationMapModal({
       >
         <div className="vt-modal-title">Ubicación de la tienda</div>
         <div className="vt-muted mb-3 text-[13px] leading-snug">
-          Tocá el mapa para colocar el pin. Podés arrastrarlo para ajustar. Es
+          Toca el mapa para colocar el pin. Podés arrastrarlo para ajustar. Es
           opcional y visible para quien visite la tienda.
         </div>
         <div className="store-map-modal-frame overflow-hidden rounded-xl border border-[var(--border)] bg-[#e2e8f0] [&_.leaflet-control-attribution]:text-[10px]">

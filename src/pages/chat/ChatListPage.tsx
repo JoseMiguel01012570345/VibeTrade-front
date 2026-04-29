@@ -327,9 +327,9 @@ export function ChatListPage() {
               strokeWidth={1.25}
               className="mb-3 opacity-[0.35]"
             />
-            <div className="vt-muted">Todavía no tenés conversaciones.</div>
+            <div className="vt-muted">Todavía no tienes conversaciones.</div>
             <div className="vt-muted mt-1.5 text-[13px]">
-              Abrí una oferta y tocá «Comprar» para iniciar un chat.
+              Abre una oferta y toca «Comprar» para iniciar un chat.
             </div>
             <Link to="/home" className="vt-btn vt-btn-primary mt-4 inline-flex">
               Ver ofertas

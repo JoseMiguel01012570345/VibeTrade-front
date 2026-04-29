@@ -192,7 +192,7 @@ export function RouteOfferPreview({ state, compact, className, showTramoAddresse
                 <div className={compact ? 'mt-1.5' : 'mt-2'}>
                   <AssignmentBlock a={t.assignment} />
                 </div>
-              : <div className="vt-muted mt-1.5 text-[11px] font-semibold">Libre — podés suscribirte a este tramo</div>}
+              : <div className="vt-muted mt-1.5 text-[11px] font-semibold">Libre — puedes suscribirte a este tramo</div>}
             </li>
           )
         })}
