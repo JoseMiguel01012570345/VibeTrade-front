@@ -532,16 +532,17 @@ export type MarketState = {
     },
     options?: { replyToIds?: string[]; caption?: string },
   ) => void;
+  /** `message` incluye el texto del API cuando falla la persistencia (p. ej. 409 nombre duplicado). */
   emitTradeAgreement: (
     threadId: string,
     draft: TradeAgreementDraft,
-  ) => Promise<string | null>;
+  ) => Promise<{ ok: true; agreementId: string } | { ok: false; message?: string }>;
   /** Si `pending_buyer` o `rejected` (en ese caso pasa otra vez a pendiente). Emisor = tienda del hilo. */
   updatePendingTradeAgreement: (
     threadId: string,
     agreementId: string,
     draft: TradeAgreementDraft,
-  ) => Promise<boolean>;
+  ) => Promise<{ ok: true } | { ok: false; message?: string }>;
   /** Sólo si el acuerdo no está aceptado y, tras el borrado, hojas ≤ acuerdos. */
   deleteTradeAgreement: (threadId: string, agreementId: string) => Promise<boolean>;
   respondTradeAgreement: (

@@ -2077,23 +2077,28 @@ export function ChatPage() {
         onSubmit={async (draft) => {
           if (!isActingSeller) return false;
           if (agreementBeingEditedId) {
-            const ok = await updatePendingTradeAgreement(
+            const r = await updatePendingTradeAgreement(
               thread.id,
               agreementBeingEditedId,
               draft,
             );
-            if (ok) {
+            if (r.ok) {
               toast.success("Acuerdo actualizado");
-            } else toast.error("No se pudo guardar el acuerdo.");
-            return ok;
+            } else {
+              toast.error(
+                r.message ?? "No se pudo guardar el acuerdo.",
+              );
+            }
+            return r.ok;
           }
-          const id = await emitTradeAgreement(thread.id, draft);
-          if (id) toast.success("Acuerdo emitido al chat");
+          const r = await emitTradeAgreement(thread.id, draft);
+          if (r.ok) toast.success("Acuerdo emitido al chat");
           else
             toast.error(
-              "No se pudo emitir: revisa los datos del acuerdo (validación del servidor).",
+              r.message ??
+                "No se pudo emitir el acuerdo.",
             );
-          return id != null;
+          return r.ok;
         }}
       />
 

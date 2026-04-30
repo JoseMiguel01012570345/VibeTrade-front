@@ -514,20 +514,23 @@ export async function patchThreadTradeAgreementRouteLink(
       body: JSON.stringify({ routeSheetId }),
     },
   )
-  if (!res.ok) {
-    const text = await res.text()
-    let message = text
-    try {
-      const j = JSON.parse(text) as { message?: string }
-      if (typeof j.message === 'string' && j.message.trim()) message = j.message.trim()
-    } catch {
-      /* raw body */
-    }
-    const err = new Error(message) as Error & { status?: number }
-    err.status = res.status
-    throw err
-  }
+  await throwIfTradeAgreementResponseNotOk(res)
   return (await res.json()) as TradeAgreementApiDto
+}
+
+async function throwIfTradeAgreementResponseNotOk(res: Response): Promise<void> {
+  if (res.ok) return
+  const text = await res.text().catch(() => '')
+  let message = text
+  try {
+    const j = JSON.parse(text) as { message?: string }
+    if (typeof j.message === 'string' && j.message.trim()) message = j.message.trim()
+  } catch {
+    /* raw body */
+  }
+  const err = new Error(message || `HTTP ${res.status}`) as Error & { status?: number }
+  err.status = res.status
+  throw err
 }
 
 export async function postThreadTradeAgreement(
@@ -538,7 +541,7 @@ export async function postThreadTradeAgreement(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements`,
     { method: 'POST', body: JSON.stringify(body) },
   )
-  if (!res.ok) throw new Error(await res.text())
+  await throwIfTradeAgreementResponseNotOk(res)
   return (await res.json()) as TradeAgreementApiDto
 }
 
@@ -551,7 +554,7 @@ export async function patchThreadTradeAgreement(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}`,
     { method: 'PATCH', body: JSON.stringify(body) },
   )
-  if (!res.ok) throw new Error(await res.text())
+  await throwIfTradeAgreementResponseNotOk(res)
   return (await res.json()) as TradeAgreementApiDto
 }
 

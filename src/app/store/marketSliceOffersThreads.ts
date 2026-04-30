@@ -667,12 +667,22 @@ refreshOfferQaFromServer: async (offerId) => {
 },
 
 emitTradeAgreement: async (threadId, draft) => {
-  if (hasValidationErrors(validateTradeAgreementDraft(draft))) return null
-  if (threadIsActionLocked(get().threads[threadId])) return null
+  const fail = (message?: string) =>
+    ({ ok: false as const, message: message?.trim() || undefined })
+  const okOf = (agreementId: string) =>
+    ({ ok: true as const, agreementId })
+  if (hasValidationErrors(validateTradeAgreementDraft(draft))) {
+    return fail('Revisa el acuerdo: hay datos incorrectos.')
+  }
+  if (threadIsActionLocked(get().threads[threadId])) {
+    return fail('Este chat no permite enviar ese cambio.')
+  }
   const title = draft.title.trim()
-  if (!title) return null
+  if (!title) return fail('Indica el título del acuerdo.')
   const th0 = get().threads[threadId]
-  if (!th0 || threadIsActionLocked(th0)) return null
+  if (!th0 || threadIsActionLocked(th0)) {
+    return fail('Este chat no permite enviar ese cambio.')
+  }
 
   const persist = !!getSessionToken() && threadId.startsWith('cth_')
   if (persist) {
@@ -688,9 +698,11 @@ emitTradeAgreement: async (threadId, draft) => {
       };
       const created = await postThreadTradeAgreement(threadId, body)
       await syncPersistedAgreementsAndMessages(set, get, threadId)
-      return created.id
-    } catch {
-      return null
+      return okOf(created.id)
+    } catch (e: unknown) {
+      const apiMsg =
+        e instanceof Error && e.message.trim() ? e.message.trim() : undefined
+      return fail(apiMsg || 'No se pudo emitir el acuerdo.')
     }
   }
 
@@ -737,14 +749,20 @@ emitTradeAgreement: async (threadId, draft) => {
       },
     }
   })
-  return aid
+  return okOf(aid)
 },
 
 updatePendingTradeAgreement: async (threadId, agreementId, draft) => {
-  if (hasValidationErrors(validateTradeAgreementDraft(draft))) return false
-  if (threadIsActionLocked(get().threads[threadId])) return false
+  const fail = (message?: string) =>
+    ({ ok: false as const, message: message?.trim() || undefined })
+  if (hasValidationErrors(validateTradeAgreementDraft(draft))) {
+    return fail('Revisa el acuerdo: hay datos incorrectos.')
+  }
+  if (threadIsActionLocked(get().threads[threadId])) {
+    return fail('Este chat no permite enviar ese cambio.')
+  }
   const title = draft.title.trim()
-  if (!title) return false
+  if (!title) return fail('Indica el título del acuerdo.')
 
   const persist = !!getSessionToken() && threadId.startsWith('cth_')
   if (persist) {
@@ -760,9 +778,11 @@ updatePendingTradeAgreement: async (threadId, agreementId, draft) => {
       };
       await patchThreadTradeAgreement(threadId, agreementId, body)
       await syncPersistedAgreementsAndMessages(set, get, threadId)
-      return true
-    } catch {
-      return false
+      return { ok: true as const }
+    } catch (e: unknown) {
+      const apiMsg =
+        e instanceof Error && e.message.trim() ? e.message.trim() : undefined
+      return fail(apiMsg || 'No se pudo guardar el acuerdo.')
     }
   }
 
@@ -844,7 +864,7 @@ updatePendingTradeAgreement: async (threadId, agreementId, draft) => {
       },
     }
   })
-  return applied
+  return applied ? { ok: true as const } : fail('No se pudo actualizar el acuerdo.')
 },
 
 deleteTradeAgreement: async (threadId, agreementId) => {
