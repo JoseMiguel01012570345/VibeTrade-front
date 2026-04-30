@@ -520,6 +520,7 @@ export function ServiceScheduleFlowModal({
                   listPortal
                   listPortalZIndexClass="z-[200]"
                   ariaLabel="Año de referencia"
+                  buttonClassName="min-h-10 bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] border-[color-mix(in_oklab,var(--border)_90%,transparent)] shadow-[inset_0_1px_0_rgba(2,6,23,0.6)]"
                 />
                 <span className="min-w-0 text-[11px] leading-snug text-[var(--muted)]">
                   Solo puedes marcar meses calendario que entren en el período de vigencia (
@@ -568,6 +569,7 @@ export function ServiceScheduleFlowModal({
                 listPortal
                 listPortalZIndexClass="z-[200]"
                 ariaLabel="Año de referencia del calendario"
+                buttonClassName="min-h-10 bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] border-[color-mix(in_oklab,var(--border)_90%,transparent)] shadow-[inset_0_1px_0_rgba(2,6,23,0.6)]"
               />
               <span className="text-[11px] text-[var(--muted)]">
                 Los días del mes dependen del año (feriados no se marcan
@@ -640,6 +642,7 @@ export function ServiceScheduleFlowModal({
                     })
                   }
                   aria-label="Hora inicio del horario predeterminado"
+                  buttonClassName="min-h-10 bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] border-[color-mix(in_oklab,var(--border)_90%,transparent)] shadow-[inset_0_1px_0_rgba(2,6,23,0.6)]"
                 />
               </label>
               <label className="flex flex-col gap-1">
@@ -661,6 +664,7 @@ export function ServiceScheduleFlowModal({
                     })
                   }
                   aria-label="Hora fin del horario predeterminado"
+                  buttonClassName="min-h-10 bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] border-[color-mix(in_oklab,var(--border)_90%,transparent)] shadow-[inset_0_1px_0_rgba(2,6,23,0.6)]"
                 />
               </label>
             </div>
@@ -692,6 +696,7 @@ export function ServiceScheduleFlowModal({
                     listPortalZIndexClass="z-[220]"
                     className="min-w-[7.5rem] max-w-[10rem] sm:max-w-none"
                     ariaLabel="Mes de la excepción"
+                    buttonClassName="min-h-10 bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] border-[color-mix(in_oklab,var(--border)_90%,transparent)] shadow-[inset_0_1px_0_rgba(2,6,23,0.6)]"
                   />
                 </label>
                 <label className="flex flex-col gap-1">
@@ -711,6 +716,7 @@ export function ServiceScheduleFlowModal({
                     listPortalZIndexClass="z-[220]"
                     className="min-w-[4.5rem] max-w-[5.5rem]"
                     ariaLabel="Día del mes de la excepción"
+                    buttonClassName="min-h-10 bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] border-[color-mix(in_oklab,var(--border)_90%,transparent)] shadow-[inset_0_1px_0_rgba(2,6,23,0.6)]"
                   />
                 </label>
               </div>
@@ -730,6 +736,7 @@ export function ServiceScheduleFlowModal({
                       setOvStart(t);
                     }}
                     aria-label="Hora inicio de la excepción"
+                    buttonClassName="min-h-10 bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] border-[color-mix(in_oklab,var(--border)_90%,transparent)] shadow-[inset_0_1px_0_rgba(2,6,23,0.6)]"
                   />
                 </label>
                 <label className="flex flex-col gap-1 min-w-0">
@@ -747,6 +754,7 @@ export function ServiceScheduleFlowModal({
                       setOvEnd(t);
                     }}
                     aria-label="Hora fin de la excepción"
+                    buttonClassName="min-h-10 bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] border-[color-mix(in_oklab,var(--border)_90%,transparent)] shadow-[inset_0_1px_0_rgba(2,6,23,0.6)]"
                   />
                 </label>
               </div>

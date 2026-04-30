@@ -163,7 +163,7 @@ export function validateTradeAgreementDraft(
   else if (title.length > TITLE_MAX)
     errors.title = `El título no puede superar ${TITLE_MAX} caracteres`;
 
-  if (!d.includeMerchandise && !d.includeService) {
+  if (d.includeMerchandise === d.includeService) {
     const c = options?.sellerCatalog;
     if (
       c != null &&
@@ -174,7 +174,7 @@ export function validateTradeAgreementDraft(
         "No hay productos ni servicios en la ficha de la tienda. Cargalos en la vitrina para poder acordar.";
     } else {
       errors.scope =
-        "Debes incluir al menos mercancías o servicios (puedes marcar ambos).";
+        "Debes elegir si el acuerdo es de mercancías o de servicios (solo uno).";
     }
   }
 
@@ -302,11 +302,7 @@ export function validateTradeAgreementDraft(
     const scope = normalizeExtraScope(row.scope as string | undefined);
     if (scope === "merchandise" && !d.includeMerchandise) return;
     if (scope === "service" && !d.includeService) return;
-    if (
-      scope === "legacy_combined" &&
-      !(d.includeMerchandise && d.includeService)
-    )
-      return;
+    // `legacy_combined` es compatibilidad: en acuerdos nuevos (XOR) se trata como el bloque activo.
 
     const ti = norm(row.title);
     const tx = norm(row.textValue);

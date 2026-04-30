@@ -161,6 +161,7 @@ export function ServiceConfigWizard({
       return
     }
     if (!wizardOpenRef.current) {
+      const blocked = new Set(excludeLinkedServiceIds.filter(Boolean))
       let copy = JSON.parse(JSON.stringify(initial)) as ServiceItem
       const services = sellerCatalog?.services ?? []
       if (services.length > 0 && !copy.linkedStoreServiceId) {
@@ -169,7 +170,12 @@ export function ServiceConfigWizard({
             ? services.find((s) => s.id === contextOfferId)
             : undefined
         const ordered = sortCatalogItemsByContextId(services, contextOfferId)
-        const preferred = fromOffer ?? ordered[0]
+        const preferredRaw = fromOffer ?? ordered[0]
+        // Respetar exclusión: el ítem nuevo no puede auto-anclarse a un servicio ya usado por otro ítem.
+        const preferred =
+          preferredRaw && !blocked.has(preferredRaw.id)
+            ? preferredRaw
+            : ordered.find((s) => !blocked.has(s.id))
         if (preferred) {
           copy = mergeServiceItemWithStoreService(copy, preferred)
         }
@@ -179,7 +185,7 @@ export function ServiceConfigWizard({
       setShowCondicionesExtrasFieldErrors(false)
       wizardOpenRef.current = true
     }
-  }, [open, initial, sellerCatalog, contextOfferId])
+  }, [open, initial, sellerCatalog, contextOfferId, excludeLinkedServiceIds])
 
   useEffect(() => {
     if (step !== 7) setShowCondicionesExtrasFieldErrors(false)
@@ -330,11 +336,24 @@ export function ServiceConfigWizard({
                         }))
                         return
                       }
+                      if (
+                        excludeLinkedServiceIds.includes(id) &&
+                        id.trim() !== (sv.linkedStoreServiceId ?? '').trim()
+                      ) {
+                        toast.error(
+                          'Este servicio ya está en otro ítem del acuerdo. Elige otro servicio.',
+                        )
+                        return
+                      }
                       const svc = sellerCatalog?.services.find((x) => x.id === id)
                       if (!svc) return
-                      setSv((s) =>
-                        applyMonedasAndSchedule(mergeServiceItemWithStoreService(s, svc)),
-                      )
+                      setSv((s) => {
+                        const prev = (s.linkedStoreServiceId ?? '').trim()
+                        const next = id.trim()
+                        // Si el usuario cambia explícitamente la ficha ancla, el título debe reflejar la nueva ficha.
+                        const base = prev && prev !== next ? { ...s, tipoServicio: '' } : s
+                        return applyMonedasAndSchedule(mergeServiceItemWithStoreService(base, svc))
+                      })
                     }}
                     options={serviceSelectOptions}
                     placeholder="Elige un servicio (obligatorio)"

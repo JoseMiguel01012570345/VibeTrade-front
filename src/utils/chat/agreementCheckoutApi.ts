@@ -27,10 +27,33 @@ export type AgreementCheckoutBreakdownApi = {
 export async function fetchAgreementCheckoutBreakdown(
   threadId: string,
   agreementId: string,
+  opts?: {
+    selectedServicePayments?: Array<{
+      serviceItemId: string;
+      entryKey: { month: number; day: number };
+    }>;
+  },
 ): Promise<AgreementCheckoutBreakdownApi> {
-  const res = await apiFetch(
-    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/agreements/${encodeURIComponent(agreementId)}/checkout`,
-  );
+  const picks = opts?.selectedServicePayments ?? [];
+  const hasPicks = picks.length > 0;
+  const res = hasPicks
+    ? await apiFetch(
+        `/api/v1/chat/threads/${encodeURIComponent(threadId)}/agreements/${encodeURIComponent(agreementId)}/checkout-breakdown`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            selectedServicePayments: picks.map((p) => ({
+              serviceItemId: p.serviceItemId,
+              entryMonth: p.entryKey.month,
+              entryDay: p.entryKey.day,
+            })),
+          }),
+        },
+      )
+    : await apiFetch(
+        `/api/v1/chat/threads/${encodeURIComponent(threadId)}/agreements/${encodeURIComponent(agreementId)}/checkout`,
+      );
   if (!res.ok) {
     const t = await res.text().catch(() => "");
     throw new Error(t || `HTTP ${res.status}`);
@@ -78,6 +101,10 @@ export async function executeAgreementCurrencyPayment(args: {
   paymentMethodId: string;
   /** Reutilizar la misma clave entre reintentos del mismo cobro. */
   idempotencyKey?: string | null;
+  selectedServicePayments?: Array<{
+    serviceItemId: string;
+    entryKey: { month: number; day: number };
+  }>;
 }): Promise<AgreementExecutePaymentResultApi> {
   const headers: HeadersInit = { "Content-Type": "application/json" };
   const ik = args.idempotencyKey?.trim();
@@ -93,6 +120,11 @@ export async function executeAgreementCurrencyPayment(args: {
         currency: args.currency.trim().toLowerCase(),
         paymentMethodId: args.paymentMethodId.trim(),
         idempotencyKey: ik ?? null,
+        selectedServicePayments: (args.selectedServicePayments ?? []).map((p) => ({
+          serviceItemId: p.serviceItemId,
+          entryMonth: p.entryKey.month,
+          entryDay: p.entryKey.day,
+        })),
       }),
     },
   );

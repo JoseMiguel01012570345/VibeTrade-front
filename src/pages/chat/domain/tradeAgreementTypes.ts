@@ -696,7 +696,7 @@ export function defaultAgreementDraft(): TradeAgreementDraft {
   return {
     title: "",
     includeMerchandise: true,
-    includeService: true,
+    includeService: false,
     merchandise: [emptyMerchandiseLine()],
     services: [],
     extraFields: [],

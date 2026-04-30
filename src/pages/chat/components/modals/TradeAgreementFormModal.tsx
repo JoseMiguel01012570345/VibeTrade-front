@@ -172,6 +172,37 @@ export function TradeAgreementFormModal({
   const merchandiseCheckboxDisabled = sellerCatalog?.products.length === 0;
   const servicesCheckboxDisabled = sellerCatalog?.services.length === 0;
 
+  function remapLegacyCombinedToActiveScope(
+    rows: TradeAgreementExtraFieldDraft[] | undefined,
+    scope: "merchandise" | "service",
+  ): TradeAgreementExtraFieldDraft[] | undefined {
+    if (!rows || rows.length === 0) return rows;
+    let changed = false;
+    const next = rows.map((r) => {
+      if (r.scope !== "legacy_combined") return r;
+      changed = true;
+      return { ...r, scope };
+    });
+    return changed ? next : rows;
+  }
+
+  function setAgreementScope(scope: "merchandise" | "service") {
+    setDraft((d) => {
+      const includeMerchandise = scope === "merchandise";
+      const includeService = scope === "service";
+      const nextExtra = remapLegacyCombinedToActiveScope(d.extraFields, scope);
+      return {
+        ...d,
+        includeMerchandise,
+        includeService,
+        services: includeService ? d.services : [],
+        extraFields: includeMerchandise
+          ? (nextExtra ?? []).filter((f) => f.scope !== "service")
+          : (nextExtra ?? []).filter((f) => f.scope !== "merchandise"),
+      };
+    });
+  }
+
   /** Borrador nuevo sin filas extras: una línea plantilla por cada bloque incluido (solo alta, no edición). */
   useEffect(() => {
     if (!open || editingAgreementId || initialDraft) return;
@@ -364,7 +395,8 @@ export function TradeAgreementFormModal({
               )}
             >
               <input
-                type="checkbox"
+                type="radio"
+                name="agreement-scope"
                 disabled={merchandiseCheckboxDisabled}
                 title={
                   merchandiseCheckboxDisabled
@@ -376,16 +408,8 @@ export function TradeAgreementFormModal({
                 }
                 onChange={(e) => {
                   if (merchandiseCheckboxDisabled) return;
-                  const checked = e.target.checked;
-                  setDraft((d) => ({
-                    ...d,
-                    includeMerchandise: checked,
-                    extraFields: checked
-                      ? d.extraFields
-                      : (d.extraFields ?? []).filter(
-                          (f) => f.scope !== "merchandise",
-                        ),
-                  }));
+                  if (!e.target.checked) return;
+                  setAgreementScope("merchandise");
                 }}
               />
               <span>Incluir mercancías</span>
@@ -397,7 +421,8 @@ export function TradeAgreementFormModal({
               )}
             >
               <input
-                type="checkbox"
+                type="radio"
+                name="agreement-scope"
                 disabled={servicesCheckboxDisabled}
                 title={
                   servicesCheckboxDisabled
@@ -409,17 +434,8 @@ export function TradeAgreementFormModal({
                 }
                 onChange={(e) => {
                   if (servicesCheckboxDisabled) return;
-                  const checked = e.target.checked;
-                  setDraft((d) => ({
-                    ...d,
-                    includeService: checked,
-                    services: checked ? d.services : [],
-                    extraFields: checked
-                      ? d.extraFields
-                      : (d.extraFields ?? []).filter(
-                          (f) => f.scope !== "service",
-                        ),
-                  }));
+                  if (!e.target.checked) return;
+                  setAgreementScope("service");
                 }}
               />
               <span>Incluir servicios</span>
@@ -431,7 +447,7 @@ export function TradeAgreementFormModal({
           >
             {merchandiseCheckboxDisabled && servicesCheckboxDisabled
               ? "No tienes productos ni servicios en la ficha: agregalos en tu tienda para poder incluirlos en el acuerdo."
-              : "Al menos uno debe estar disponible y marcado. Solo se validan los bloques que incluyas."}
+              : "Elige si el acuerdo es de mercancías o de servicios. Solo se valida el bloque elegido."}
           </p>
 
           <details open={draft.includeMerchandise} className={detailsBlock}>

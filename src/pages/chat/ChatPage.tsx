@@ -453,6 +453,8 @@ export function ChatPage() {
   const [chatPayOpen, setChatPayOpen] = useState(false);
   /** Comprador: refresco de acuerdos/hojas antes de abrir el modal de pago. */
   const [chatPayPreparing, setChatPayPreparing] = useState(false);
+  const [contractsLoading, setContractsLoading] = useState(false);
+  const [routeSheetsLoading, setRouteSheetsLoading] = useState(false);
   const chatPayOpenInFlightRef = useRef(false);
   /** Móvil: acciones Panel / Pagar / Emitir desde FAB + hoja inferior (más alto útil para mensajes). */
   const [mobileChatActionsOpen, setMobileChatActionsOpen] = useState(false);
@@ -463,6 +465,7 @@ export function ChatPage() {
     if (!tid) return;
     chatPayOpenInFlightRef.current = true;
     setChatPayPreparing(true);
+    setContractsLoading(true);
     try {
       if (tid.startsWith("cth_")) {
         await refreshThreadTradeAgreements(tid);
@@ -472,6 +475,7 @@ export function ChatPage() {
     } finally {
       chatPayOpenInFlightRef.current = false;
       setChatPayPreparing(false);
+      setContractsLoading(false);
       setChatPayOpen(true);
     }
   }, [thread?.id, refreshThreadTradeAgreements]);
@@ -701,6 +705,10 @@ export function ChatPage() {
           if (!cancelled) setPersistThreadError(true);
           return;
         }
+        if (!cancelled) {
+          setContractsLoading(true);
+          setRouteSheetsLoading(true);
+        }
         const [msgs, agResult, routeSheetsRs, subsRs] = await Promise.all([
           fetchChatMessages(tid),
           fetchThreadTradeAgreements(tid)
@@ -813,6 +821,11 @@ export function ChatPage() {
         }
       } catch {
         if (!cancelled) setPersistThreadError(true);
+      } finally {
+        if (!cancelled) {
+          setContractsLoading(false);
+          setRouteSheetsLoading(false);
+        }
       }
     })();
     return () => {
@@ -824,64 +837,69 @@ export function ChatPage() {
     const tid = threadId?.trim();
     if (!tid?.startsWith("cth_")) return;
     const uid = useAppStore.getState().me.id;
-    const [sheets, subs, serverMsgs] = await Promise.all([
-      fetchThreadRouteSheets(tid).catch(() => null),
-      fetchThreadRouteTramoSubscriptions(tid).catch(() => null),
-      fetchChatMessages(tid).catch(() => null),
-    ]);
-    if (serverMsgs !== null) {
-      mergeChatSenderLabelsIntoProfileStore(serverMsgs);
-      const mapped = serverMsgs.map((d) => mapChatMessageDtoToMessage(d, uid));
-      useMarketStore.setState((s) => {
-        const t = s.threads[tid];
-        if (!t) return s;
-        const validIds = new Set((t.contracts ?? []).map((c) => c.id));
-        const merged = mergePersistedChatMessages(mapped, t.messages, {
-          validTradeAgreementIds: validIds,
+    setRouteSheetsLoading(true);
+    try {
+      const [sheets, subs, serverMsgs] = await Promise.all([
+        fetchThreadRouteSheets(tid).catch(() => null),
+        fetchThreadRouteTramoSubscriptions(tid).catch(() => null),
+        fetchChatMessages(tid).catch(() => null),
+      ]);
+      if (serverMsgs !== null) {
+        mergeChatSenderLabelsIntoProfileStore(serverMsgs);
+        const mapped = serverMsgs.map((d) => mapChatMessageDtoToMessage(d, uid));
+        useMarketStore.setState((s) => {
+          const t = s.threads[tid];
+          if (!t) return s;
+          const validIds = new Set((t.contracts ?? []).map((c) => c.id));
+          const merged = mergePersistedChatMessages(mapped, t.messages, {
+            validTradeAgreementIds: validIds,
+          });
+          return {
+            ...s,
+            threads: {
+              ...s.threads,
+              [tid]: { ...t, messages: merged },
+            },
+          };
         });
-        return {
-          ...s,
-          threads: {
-            ...s.threads,
-            [tid]: { ...t, messages: merged },
-          },
-        };
-      });
-    }
-    if (sheets) {
-      const sh = sheets as RouteSheet[];
-      const acks = routeSheetEditAcksRecordFromSheets(sh);
-      useMarketStore.setState((s) => {
-        const t = s.threads[tid];
-        if (!t) return s;
-        const nextT = {
-          ...t,
-          routeSheets: sh,
-          routeSheetEditAcks: { ...(t.routeSheetEditAcks ?? {}), ...acks },
-        };
-        const roNext = mergedRouteOfferPublicAfterChatThreadHydration(
-          s.routeOfferPublic,
-          nextT,
-          s.offers[nextT.offerId],
-        );
-        let next: typeof s = {
-          ...s,
-          threads: { ...s.threads, [tid]: nextT },
-          ...(roNext ? { routeOfferPublic: roNext } : {}),
-        };
-        if (subs && Array.isArray(subs)) {
-          const mergedSubs = applyViewerRouteTramoSubscriptions(
-            next,
-            tid,
-            subs,
-            uid,
+      }
+      if (sheets) {
+        const sh = sheets as RouteSheet[];
+        const acks = routeSheetEditAcksRecordFromSheets(sh);
+        useMarketStore.setState((s) => {
+          const t = s.threads[tid];
+          if (!t) return s;
+          const nextT = {
+            ...t,
+            routeSheets: sh,
+            routeSheetEditAcks: { ...(t.routeSheetEditAcks ?? {}), ...acks },
+          };
+          const roNext = mergedRouteOfferPublicAfterChatThreadHydration(
+            s.routeOfferPublic,
+            nextT,
+            s.offers[nextT.offerId],
           );
-          if (mergedSubs) next = mergedSubs;
-        }
-        return next;
-      });
-    } else if (subs && Array.isArray(subs)) {
-      applyThreadRouteTramoSubscriptions(tid, subs, uid);
+          let next: typeof s = {
+            ...s,
+            threads: { ...s.threads, [tid]: nextT },
+            ...(roNext ? { routeOfferPublic: roNext } : {}),
+          };
+          if (subs && Array.isArray(subs)) {
+            const mergedSubs = applyViewerRouteTramoSubscriptions(
+              next,
+              tid,
+              subs,
+              uid,
+            );
+            if (mergedSubs) next = mergedSubs;
+          }
+          return next;
+        });
+      } else if (subs && Array.isArray(subs)) {
+        applyThreadRouteTramoSubscriptions(tid, subs, uid);
+      }
+    } finally {
+      setRouteSheetsLoading(false);
     }
   }, [threadId, applyThreadRouteTramoSubscriptions]);
 
@@ -1822,6 +1840,8 @@ export function ChatPage() {
             threadStoreId={thread.storeId}
             contracts={thread.contracts ?? []}
             routeSheets={thread.routeSheets ?? []}
+            contractsLoading={contractsLoading}
+            routeSheetsLoading={routeSheetsLoading}
             actionsLocked={chatActionsLocked}
             storeName={store.name}
             buyerName={buyerForRail.name}

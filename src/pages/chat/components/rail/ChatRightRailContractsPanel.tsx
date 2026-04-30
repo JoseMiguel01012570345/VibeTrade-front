@@ -21,6 +21,7 @@ type Props = {
   setSelContract: (c: TradeAgreement | null) => void
   agreementForDetail: TradeAgreement | null
   displayContracts: TradeAgreement[]
+  contractsLoading?: boolean
   routeSheets: RouteSheet[]
   actionsLocked: boolean
   threadId: string
@@ -47,6 +48,7 @@ export function ChatRightRailContractsPanel({
   setSelContract,
   agreementForDetail,
   displayContracts,
+  contractsLoading = false,
   routeSheets,
   actionsLocked,
   threadId,
@@ -60,6 +62,11 @@ export function ChatRightRailContractsPanel({
 }: Props) {
   return (
     <div className={bodyClassName}>
+      {contractsLoading ? (
+        <div className="vt-muted mb-2 px-1 text-[13px] font-semibold">
+          Cargando acuerdos...
+        </div>
+      ) : null}
       <div className="mb-2.5 flex flex-wrap gap-1.5">
         <button type="button" className={filterChipClass(cFilter === 'all')} onClick={() => setCFilter('all')}>
           Todos
@@ -150,6 +157,8 @@ export function ChatRightRailContractsPanel({
           ) : null}
           <AgreementDetailView
             a={agreementForDetail}
+            threadId={threadId}
+            isActingSeller={isActingSeller}
             routeSheets={routeSheets}
             linkActionsDisabled={
               actionsLocked ||

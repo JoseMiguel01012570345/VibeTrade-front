@@ -47,6 +47,7 @@ type Props = {
   hasAcceptedContract: boolean;
   /** Cantidad de acuerdos en el hilo: no puede haber más hojas que acuerdos. */
   agreementCount: number;
+  routeSheetsLoading?: boolean;
   routeSheets: RouteSheet[];
   linkedRouteSheetIds: ReadonlySet<string>;
   selRoute: RouteSheet | undefined;
@@ -79,6 +80,7 @@ export function ChatRightRailRoutesPanel({
   isActingSeller,
   hasAcceptedContract,
   agreementCount,
+  routeSheetsLoading = false,
   routeSheets,
   linkedRouteSheetIds,
   selRoute,
@@ -148,6 +150,11 @@ export function ChatRightRailRoutesPanel({
 
   return (
     <div className={bodyClassName}>
+      {routeSheetsLoading ? (
+        <div className="vt-muted mb-2 px-1 text-[13px] font-semibold">
+          Cargando hojas de ruta...
+        </div>
+      ) : null}
       <div className="mb-3 flex flex-wrap gap-2">
         {isActingSeller ? (
           <button

@@ -21,6 +21,11 @@ import {
 import { useAppStore } from "../../../../app/store/useAppStore";
 import type { TradeAgreement } from "../../domain/tradeAgreementTypes";
 import {
+  agreementDeclaresMerchandise,
+  agreementDeclaresService,
+  normalizeAgreementServices,
+} from "../../domain/tradeAgreementTypes";
+import {
   minorToMajor,
   paymentFeeLabels,
   stripeMinorDecimals,
@@ -33,6 +38,7 @@ import {
   VtSelect,
   type VtSelectOption,
 } from "../../../../components/VtSelect";
+import { VtMultiSelect } from "../../../../components/VtMultiSelect";
 
 type Props = {
   open: boolean;
@@ -103,6 +109,49 @@ export function ChatPaymentModal({
     [agreementId, agreements],
   );
 
+  const serviceOnlyAgreement = useMemo(() => {
+    if (!selectedAgreement) return false;
+    return (
+      agreementDeclaresService(selectedAgreement) &&
+      !agreementDeclaresMerchandise(selectedAgreement)
+    );
+  }, [selectedAgreement]);
+
+  const [selectedServiceEntriesByServiceId, setSelectedServiceEntriesByServiceId] =
+    useState<Record<string, string[]>>({});
+
+  const serviceItems = useMemo(
+    () => (selectedAgreement ? normalizeAgreementServices(selectedAgreement) : []),
+    [selectedAgreement],
+  );
+
+  const selectedServicePayments = useMemo(() => {
+    const ids = new Set(serviceItems.map((s) => s.id));
+    const out: Array<{ serviceItemId: string; entryKey: { month: number; day: number } }> =
+      [];
+    for (const [sid, keys] of Object.entries(selectedServiceEntriesByServiceId)) {
+      if (!ids.has(sid)) continue;
+      for (const k of keys) {
+        const [mm, dd] = String(k).split("-").map((x) => Number(x));
+        if (!Number.isFinite(mm) || !Number.isFinite(dd)) continue;
+        out.push({ serviceItemId: sid, entryKey: { month: mm, day: dd } });
+      }
+    }
+    return out;
+  }, [selectedServiceEntriesByServiceId, serviceItems]);
+
+  const selectedServicePaymentsReady = useMemo(() => {
+    if (!serviceOnlyAgreement) return true;
+    if (serviceItems.length === 0) return false;
+    const ids = new Set(serviceItems.map((s) => s.id));
+    if (selectedServicePayments.length === 0) return false;
+    for (const sel of selectedServicePayments) {
+      if (!ids.has(sel.serviceItemId)) return false;
+      if (sel.entryKey.month <= 0 || sel.entryKey.day <= 0) return false;
+    }
+    return true;
+  }, [serviceOnlyAgreement, serviceItems, selectedServicePayments]);
+
   const previews = useMemo(
     () => (selectedAgreement ? collectAgreementInformePreviewEntries(selectedAgreement) : []),
     [selectedAgreement],
@@ -150,28 +199,44 @@ export function ChatPaymentModal({
         setStatuses([]);
         return;
       }
+      if (serviceOnlyAgreement && !selectedServicePaymentsReady) {
+        setBreakdown(null);
+        setStatuses([]);
+        return;
+      }
       const skipBusy = opts?.skipBusyToggle === true;
       if (!skipBusy) setBusyInit(true);
       setBreakdown(null);
       setStatuses([]);
       try {
         const [bd, ps] = await Promise.all([
-          fetchAgreementCheckoutBreakdown(threadId, ag.id),
+          fetchAgreementCheckoutBreakdown(threadId, ag.id, {
+            selectedServicePayments: serviceOnlyAgreement
+              ? selectedServicePayments
+              : undefined,
+          }),
           fetchAgreementPaymentStatuses(threadId, ag.id),
         ]);
         setBreakdown(bd);
         setStatuses(ps);
       } catch (e) {
-        setBreakdown(null);
+        const msg =
+          (e as Error)?.message?.trim() || "No se pudo cargar el informe de pago.";
+        setBreakdown({ ok: false, errors: [msg], byCurrency: [] });
         setStatuses([]);
-        toast.error(
-          (e as Error)?.message ?? "No se pudo cargar el informe de pago.",
-        );
+        toast.error(msg);
       } finally {
         if (!skipBusy) setBusyInit(false);
       }
     },
-    [threadId, selectedAgreement, agreements],
+    [
+      threadId,
+      selectedAgreement,
+      agreements,
+      serviceOnlyAgreement,
+      selectedServicePaymentsReady,
+      selectedServicePayments,
+    ],
   );
 
   useEffect(() => {
@@ -216,6 +281,12 @@ export function ChatPaymentModal({
       setAgreementId(agreements[0]?.id ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, agreements]);
+
+  useEffect(() => {
+    if (!open) return;
+    // Al cambiar de acuerdo, resetear selección específica de servicios.
+    setSelectedServiceEntriesByServiceId({});
+  }, [open, agreementId]);
 
   useEffect(() => {
     if (!open) return;
@@ -278,6 +349,9 @@ export function ChatPaymentModal({
         currency: curLower,
         paymentMethodId: pmId,
         idempotencyKey: ik,
+        selectedServicePayments: serviceOnlyAgreement
+          ? selectedServicePayments
+          : undefined,
       });
 
       if (!r.accepted && (r.errorCode === "stripe_no_customer")) {
@@ -408,7 +482,97 @@ export function ChatPaymentModal({
                 />
               </label>
 
-              {busyInit ?
+              {serviceOnlyAgreement ? (
+                <section className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
+                  <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                    Servicios a pagar
+                  </div>
+                  <p className="vt-muted mt-1 text-[12px] leading-snug">
+                    Este acuerdo contiene solo servicios. Selecciona uno o varios servicios y, para cada uno,
+                    elige la recurrencia (entrada) que deseas pagar.
+                  </p>
+                  {serviceItems.length === 0 ? (
+                    <p className="vt-muted mt-2 text-[13px]">
+                      No hay servicios configurados en este acuerdo.
+                    </p>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      {serviceItems.map((sv) => {
+                        const checked =
+                          (selectedServiceEntriesByServiceId[sv.id]?.length ?? 0) > 0;
+                        const entryOptions =
+                          sv.recurrenciaPagos?.entries?.map((e) => ({
+                            value: `${e.month}-${e.day}`,
+                            label: `Mes ${e.month} · Día ${e.day} · ${e.amount} ${e.moneda}`,
+                            raw: e,
+                          })) ?? [];
+                        const pickedKeys = selectedServiceEntriesByServiceId[sv.id] ?? [];
+                        return (
+                          <div
+                            key={sv.id}
+                            className="rounded-xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] p-2.5"
+                          >
+                            <label className="flex cursor-pointer items-start gap-2 text-[13px] font-bold text-[var(--text)]">
+                              <input
+                                type="checkbox"
+                                className="mt-0.5"
+                                checked={checked}
+                                onChange={(e) => {
+                                  const nextOn = e.target.checked;
+                                  setSelectedServiceEntriesByServiceId((prev) => {
+                                    if (nextOn) {
+                                      const first = entryOptions[0]?.raw;
+                                      const def =
+                                        first ? [`${first.month}-${first.day}`] : [];
+                                      return { ...prev, [sv.id]: prev[sv.id]?.length ? prev[sv.id] : def };
+                                    }
+                                    const { [sv.id]: _drop, ...rest } = prev;
+                                    return rest;
+                                  });
+                                  setAcceptedInforme(false);
+                                }}
+                              />
+                              <span className="min-w-0 break-words">{sv.tipoServicio || "Servicio"}</span>
+                            </label>
+                            {checked ? (
+                              <div className="mt-2">
+                                <div className="vt-muted mb-1 text-[11px] font-black uppercase tracking-wide">
+                                  Recurrencias a pagar
+                                </div>
+                                <VtMultiSelect
+                                  value={pickedKeys}
+                                  onChange={(next) => {
+                                    setSelectedServiceEntriesByServiceId((prev) => {
+                                      if (next.length === 0) {
+                                        const { [sv.id]: _drop, ...rest } = prev;
+                                        return rest;
+                                      }
+                                      return { ...prev, [sv.id]: next };
+                                    });
+                                    setAcceptedInforme(false);
+                                  }}
+                                  options={entryOptions.map((o) => ({
+                                    value: o.value,
+                                    label: o.label,
+                                  }))}
+                                  ariaLabel={`Seleccionar recurrencias para ${sv.tipoServicio || "servicio"}`}
+                                  buttonClassName="min-h-10 bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] border-[color-mix(in_oklab,var(--border)_90%,transparent)] shadow-[inset_0_1px_0_rgba(2,6,23,0.55)]"
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              ) : null}
+
+              {!selectedServicePaymentsReady ? (
+                <div className="rounded-2xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3 text-[13px] leading-snug text-[var(--text)]">
+                  Selecciona al menos un servicio y una recurrencia para ver el desglose de pago.
+                </div>
+              ) : busyInit ?
                 <div
                   className="flex flex-col items-center justify-center gap-3 py-10"
                   role="status"
@@ -596,7 +760,8 @@ export function ChatPaymentModal({
                   busyPay ||
                   !acceptedInforme ||
                   !selectedCardId.trim() ||
-                  !curOk;
+                  !curOk ||
+                  !selectedServicePaymentsReady;
                 const retryDisabled = busyPay || !curOk || !acceptedInforme;
                 return (
                   <div

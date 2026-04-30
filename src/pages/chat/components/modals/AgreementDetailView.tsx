@@ -1,6 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Download } from "lucide-react";
+import {
+  BadgeCheck,
+  Download,
+  FileText,
+  Loader2,
+  Pencil,
+  Upload,
+  XCircle,
+} from "lucide-react";
 import { VtSelect, type VtSelectOption } from "../../../../components/VtSelect";
 import { ProtectedMediaImg } from "../../../../components/media/ProtectedMediaImg";
 import { useMarketStore } from "../../../../app/store/useMarketStore";
@@ -31,6 +39,15 @@ import type { RouteSheet } from "../../domain/routeSheetTypes";
 import { agreementHasMerchandiseForRouteLink } from "../../domain/tradeAgreementValidation";
 import { downloadTradeAgreementPdf } from "../../utils/tradeAgreementPdfDownload";
 import {
+  decideServiceEvidence,
+  listAgreementServicePayments,
+  upsertServiceEvidence,
+  type AgreementServicePaymentApi,
+  type ServiceEvidenceAttachmentApi,
+} from "../../../../utils/chat/agreementServiceEvidenceApi";
+import { uploadMedia, mediaApiUrl } from "../../../../utils/media/mediaClient";
+import { minorToMajor, stripeMinorDecimals } from "../../domain/paymentFeePolicy";
+import {
   agrDetailBlock,
   agrDetailCard,
   agrDetailH,
@@ -54,6 +71,82 @@ function Row({ label, value }: { label: string; value: string }) {
       <div className={agrDetailValue}>{value}</div>
     </div>
   );
+}
+
+function fmtMoneyMinor(amountMinor: number, currencyLower: string): string {
+  const cur = currencyLower.trim().toLowerCase();
+  const pow = stripeMinorDecimals(cur);
+  const maj = minorToMajor(amountMinor, cur);
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: cur.toUpperCase(),
+      maximumFractionDigits: pow,
+    }).format(maj);
+  } catch {
+    return `${maj.toFixed(pow)} ${cur.toUpperCase()}`;
+  }
+}
+
+function EvidenceAttachmentsList({
+  atts,
+  onRemove,
+}: {
+  atts: ServiceEvidenceAttachmentApi[];
+  onRemove?: (id: string) => void;
+}) {
+  if (atts.length === 0) return null;
+  return (
+    <div className="mt-2 space-y-2">
+      {atts.map((a) => (
+        <div
+          key={a.id}
+          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_52%,var(--surface))] px-2.5 py-2 text-[13px]"
+        >
+          <a
+            href={a.url}
+            target="_blank"
+            rel="noreferrer"
+            className="min-w-0 break-words font-semibold text-[var(--primary)] underline"
+          >
+            {a.fileName || "Abrir adjunto"}
+          </a>
+          {onRemove ? (
+            <button
+              type="button"
+              className="vt-btn vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-1.5 text-[12px]"
+              onClick={() => onRemove(a.id)}
+            >
+              <XCircle size={14} aria-hidden />
+              Quitar
+            </button>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function normalizeEvidenceForCompare(
+  text: string,
+  atts: ServiceEvidenceAttachmentApi[],
+): { text: string; attsKey: string } {
+  const t = (text ?? "").trim();
+  const key = (atts ?? [])
+    .map((a) => ({
+      url: (a.url ?? "").trim(),
+      fileName: (a.fileName ?? "").trim(),
+      kind: (a.kind ?? "").trim(),
+    }))
+    .sort((a, b) =>
+      `${a.url}|${a.fileName}|${a.kind}`.localeCompare(
+        `${b.url}|${b.fileName}|${b.kind}`,
+        "es",
+      ),
+    )
+    .map((a) => `${a.url}|${a.fileName}|${a.kind}`)
+    .join(";;");
+  return { text: t, attsKey: key };
 }
 
 function ExtraFieldClauseCards({
@@ -272,6 +365,8 @@ function MerchandiseBlock({
 
 export function AgreementDetailView({
   a,
+  threadId,
+  isActingSeller = false,
   onOpenRouteSheet,
   routeSheets = [],
   onLinkRouteSheet,
@@ -279,6 +374,8 @@ export function AgreementDetailView({
   linkActionsDisabled = false,
 }: {
   a: TradeAgreement;
+  threadId: string;
+  isActingSeller?: boolean;
   onOpenRouteSheet?: (routeSheetId: string) => void;
   routeSheets?: RouteSheet[];
   onLinkRouteSheet?: (agreementId: string, routeSheetId: string) => void;
@@ -294,6 +391,61 @@ export function AgreementDetailView({
   useEffect(() => {
     setPickId(a.routeSheetId ?? "");
   }, [a.id, a.routeSheetId]);
+
+  const [servicePays, setServicePays] = useState<AgreementServicePaymentApi[]>([]);
+  const [servicePaysBusy, setServicePaysBusy] = useState(false);
+  const [evidenceModal, setEvidenceModal] = useState<{
+    pay: AgreementServicePaymentApi;
+    text: string;
+    attachments: ServiceEvidenceAttachmentApi[];
+    busy: boolean;
+    uploading: boolean;
+  } | null>(null);
+
+  const lastMsg = useMarketStore((s) => {
+    const msgs = s.threads[threadId]?.messages;
+    return msgs && msgs.length > 0 ? msgs[msgs.length - 1] : undefined;
+  });
+  const lastEvidenceRefreshMsgIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setServicePaysBusy(true);
+    void (async () => {
+      try {
+        const list = await listAgreementServicePayments(threadId, a.id);
+        if (!cancelled) setServicePays(list);
+      } catch (e) {
+        if (!cancelled)
+          toast.error(
+            (e as Error)?.message ?? "No se pudieron cargar pagos de servicios.",
+          );
+      } finally {
+        if (!cancelled) setServicePaysBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [threadId, a.id]);
+
+  useEffect(() => {
+    if (!lastMsg) return;
+    if (lastEvidenceRefreshMsgIdRef.current === lastMsg.id) return;
+    if (lastMsg.from !== "system") return;
+    if (lastMsg.type !== "text") return;
+    const t = (lastMsg.text ?? "").toLowerCase();
+    if (!t.includes("evidencia")) return;
+    lastEvidenceRefreshMsgIdRef.current = lastMsg.id;
+    void (async () => {
+      try {
+        const list = await listAgreementServicePayments(threadId, a.id);
+        setServicePays(list);
+      } catch {
+        // no-op: evitar spam de toasts por mensajes automáticos
+      }
+    })();
+  }, [lastMsg, threadId, a.id]);
 
   const linkedSheet = a.routeSheetId
     ? routeSheets.find((r) => r.id === a.routeSheetId)
@@ -533,6 +685,9 @@ export function AgreementDetailView({
           <div className={agrDetailH}>Servicios</div>
           {services.map((sv, i) => {
             const linked = findStoreService(catalog, sv.linkedStoreServiceId);
+            const paysForService = servicePays.filter(
+              (p) => p.serviceItemId === sv.id,
+            );
             return (
               <div key={sv.id} className="mb-4 last:mb-0">
                 <div className={agrDetailSub}>Servicio {i + 1}</div>
@@ -546,6 +701,165 @@ export function AgreementDetailView({
                 ) : null}
                 <div className="mt-2">
                   <ServiceItemPreview sv={sv} />
+                </div>
+
+                <div className="mt-3 rounded-xl border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                      Pagos y evidencia
+                    </div>
+                    {servicePaysBusy ? (
+                      <div className="vt-muted text-[12px]">Cargando…</div>
+                    ) : null}
+                  </div>
+                  {paysForService.length === 0 ? (
+                    <div className="vt-muted mt-1 text-[13px]">
+                      Aún no hay pagos registrados para este servicio.
+                    </div>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      {paysForService.map((p) => {
+                        const ev = p.evidence;
+                        const evStatus = (ev?.status ?? "").trim().toLowerCase();
+                        const released = p.status === "released";
+                        const canEditSeller =
+                          isActingSeller &&
+                          !released &&
+                          evStatus !== "accepted";
+                        const canDecideBuyer =
+                          !isActingSeller && evStatus === "submitted";
+                        return (
+                          <div
+                            key={p.id}
+                            className="rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--surface)_96%,transparent)] p-2.5"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="min-w-0 text-[13px] font-bold text-[var(--text)]">
+                                {released ? (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <BadgeCheck size={16} aria-hidden />
+                                    Pago liberado
+                                  </span>
+                                ) : (
+                                  "Pago retenido"
+                                )}{" "}
+                                <span className="vt-muted">
+                                  — mes {p.entryMonth} día {p.entryDay}
+                                </span>
+                              </div>
+                              <div className="font-mono text-[13px] font-bold">
+                                {fmtMoneyMinor(p.amountMinor, p.currencyLower)}
+                              </div>
+                            </div>
+
+                            <div className="vt-muted mt-1 text-[12px]">
+                              Evidencia:{" "}
+                              <b className="text-[var(--text)]">
+                                {evStatus ? evStatus : "—"}
+                              </b>
+                            </div>
+
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {(ev || canEditSeller) ? (
+                                <button
+                                  type="button"
+                                  className="vt-btn vt-btn-sm inline-flex items-center gap-1.5"
+                                  onClick={() =>
+                                    setEvidenceModal({
+                                      pay: p,
+                                      text: ev?.text ?? "",
+                                      attachments: ev?.attachments ?? [],
+                                      busy: false,
+                                      uploading: false,
+                                    })
+                                  }
+                                >
+                                  {canEditSeller ? (
+                                    <>
+                                      <Pencil size={14} aria-hidden />
+                                      {ev ? "Editar evidencia" : "Añadir evidencia"}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <FileText size={14} aria-hidden />
+                                      Ver evidencia
+                                    </>
+                                  )}
+                                </button>
+                              ) : null}
+
+                              {canDecideBuyer ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="vt-btn vt-btn-sm inline-flex items-center gap-1.5"
+                                    onClick={() =>
+                                      void (async () => {
+                                        try {
+                                          await decideServiceEvidence({
+                                            threadId,
+                                            agreementId: a.id,
+                                            paymentId: p.id,
+                                            decision: "accept",
+                                          });
+                                          toast.success("Evidencia aceptada.");
+                                          const list =
+                                            await listAgreementServicePayments(
+                                              threadId,
+                                              a.id,
+                                            );
+                                          setServicePays(list);
+                                        } catch (e) {
+                                          toast.error(
+                                            (e as Error)?.message ??
+                                              "No se pudo aceptar.",
+                                          );
+                                        }
+                                      })()
+                                    }
+                                  >
+                                    <BadgeCheck size={14} aria-hidden />
+                                    Aceptar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="vt-btn vt-btn-sm vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)]"
+                                    onClick={() =>
+                                      void (async () => {
+                                        try {
+                                          await decideServiceEvidence({
+                                            threadId,
+                                            agreementId: a.id,
+                                            paymentId: p.id,
+                                            decision: "reject",
+                                          });
+                                          toast.success("Evidencia rechazada.");
+                                          const list =
+                                            await listAgreementServicePayments(
+                                              threadId,
+                                              a.id,
+                                            );
+                                          setServicePays(list);
+                                        } catch (e) {
+                                          toast.error(
+                                            (e as Error)?.message ??
+                                              "No se pudo rechazar.",
+                                          );
+                                        }
+                                      })()
+                                    }
+                                  >
+                                    <XCircle size={14} aria-hidden />
+                                    Rechazar
+                                  </button>
+                                </>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -571,6 +885,364 @@ export function AgreementDetailView({
           <ExtraFieldClauseCards
             fields={legacyCombinedExtraFields(a.extraFields)}
           />
+        </div>
+      ) : null}
+
+      {evidenceModal ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xl">
+            <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+              <div className="min-w-0">
+                <div className="text-[13px] font-black text-[var(--text)]">
+                  Evidencia — mes {evidenceModal.pay.entryMonth} día{" "}
+                  {evidenceModal.pay.entryDay}
+                </div>
+                <div className="vt-muted mt-0.5 text-[12px]">
+                  {fmtMoneyMinor(
+                    evidenceModal.pay.amountMinor,
+                    evidenceModal.pay.currencyLower,
+                  )}{" "}
+                  · Estado pago: {evidenceModal.pay.status}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="vt-btn vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-2"
+                onClick={() => setEvidenceModal(null)}
+                disabled={evidenceModal.busy}
+              >
+                <XCircle size={16} aria-hidden /> Cerrar
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto px-4 py-3">
+              {isActingSeller ? (
+                <>
+                  <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                    Texto
+                  </div>
+                  <textarea
+                    className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3 text-[13px] text-[var(--text)] outline-none"
+                    rows={6}
+                    value={evidenceModal.text}
+                    onChange={(e) =>
+                      setEvidenceModal((m) =>
+                        m ? { ...m, text: e.target.value } : m,
+                      )
+                    }
+                    placeholder="Describe la evidencia del servicio…"
+                    disabled={evidenceModal.busy}
+                  />
+
+                  <div className="mt-3 text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                    Adjuntos
+                  </div>
+                  <p className="vt-muted mt-1 text-[12px]">
+                    Podés subir imágenes o documentos.
+                  </p>
+                  <EvidenceAttachmentsList
+                    atts={evidenceModal.attachments}
+                    onRemove={(id) =>
+                      setEvidenceModal((m) =>
+                        m
+                          ? {
+                              ...m,
+                              attachments: m.attachments.filter((a) => a.id !== id),
+                            }
+                          : m,
+                      )
+                    }
+                  />
+
+                  <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_52%,var(--surface))] px-3 py-2 text-[13px] font-semibold text-[var(--text)]">
+                    <Upload size={16} aria-hidden />
+                    Subir archivos
+                    {evidenceModal.uploading ? (
+                      <Loader2 className="animate-spin" size={16} aria-hidden />
+                    ) : null}
+                    <input
+                      type="file"
+                      className="hidden"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files ?? []);
+                        e.target.value = "";
+                        if (!files.length) return;
+                        void (async () => {
+                          setEvidenceModal((m) =>
+                            m ? { ...m, busy: true, uploading: true } : m,
+                          );
+                          try {
+                            const uploaded: ServiceEvidenceAttachmentApi[] = [];
+                            for (const f of files) {
+                              const r = await uploadMedia(f);
+                              const kind =
+                                r.mimeType?.startsWith("image/") ?
+                                  "image"
+                                : "document";
+                              uploaded.push({
+                                id: crypto.randomUUID(),
+                                url: mediaApiUrl(r.id),
+                                fileName: r.fileName,
+                                kind,
+                              });
+                            }
+                            setEvidenceModal((m) =>
+                              m
+                                ? {
+                                    ...m,
+                                    attachments: [...m.attachments, ...uploaded],
+                                  }
+                                : m,
+                            );
+                          } catch (err) {
+                            toast.error(
+                              (err as Error)?.message ??
+                                "No se pudo subir el adjunto.",
+                            );
+                          } finally {
+                            setEvidenceModal((m) =>
+                              m ? { ...m, busy: false, uploading: false } : m,
+                            );
+                          }
+                        })();
+                      }}
+                      disabled={evidenceModal.busy}
+                    />
+                  </label>
+                </>
+              ) : evidenceModal.pay.evidence ? (
+                <>
+                  <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                    Texto
+                  </div>
+                  <div className="mt-1 whitespace-pre-wrap rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3 text-[13px] text-[var(--text)]">
+                    {evidenceModal.pay.evidence.text?.trim() || "—"}
+                  </div>
+                  <div className="mt-3 text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                    Adjuntos
+                  </div>
+                  <EvidenceAttachmentsList
+                    atts={evidenceModal.pay.evidence.attachments ?? []}
+                  />
+                </>
+              ) : (
+                <div className="vt-muted text-[13px]">
+                  Aún no hay evidencia cargada.
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 border-t border-[var(--border)] px-4 py-3">
+              {isActingSeller ? (
+                <>
+                  {(() => {
+                    const original = evidenceModal.pay.evidence;
+                    const a0 = normalizeEvidenceForCompare(
+                      original?.text ?? "",
+                      original?.attachments ?? [],
+                    );
+                    const a1 = normalizeEvidenceForCompare(
+                      evidenceModal.text,
+                      evidenceModal.attachments,
+                    );
+                    const dirty = a0.text !== a1.text || a0.attsKey !== a1.attsKey;
+                    const noChanges = !dirty;
+                    const disabled = evidenceModal.busy || noChanges;
+                    return (
+                      <>
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-ghost inline-flex items-center gap-2 border border-[var(--border)] px-5 py-2.5"
+                    disabled={disabled}
+                    onClick={() =>
+                      void (async () => {
+                        if (noChanges) {
+                          toast.error("No hay cambios para guardar.");
+                          return;
+                        }
+                        setEvidenceModal((m) => (m ? { ...m, busy: true } : m));
+                        try {
+                          await upsertServiceEvidence({
+                            threadId,
+                            agreementId: a.id,
+                            paymentId: evidenceModal.pay.id,
+                            text: evidenceModal.text,
+                            attachments: evidenceModal.attachments,
+                            submit: false,
+                          });
+                          toast.success("Evidencia guardada.");
+                          const list = await listAgreementServicePayments(
+                            threadId,
+                            a.id,
+                          );
+                          setServicePays(list);
+                          setEvidenceModal(null);
+                        } catch (e) {
+                          toast.error(
+                            (e as Error)?.message ??
+                              "No se pudo guardar la evidencia.",
+                          );
+                        } finally {
+                          setEvidenceModal((m) =>
+                            m ? { ...m, busy: false } : m,
+                          );
+                        }
+                      })()
+                    }
+                  >
+                    <Pencil size={16} aria-hidden />
+                    Guardar borrador
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-primary inline-flex items-center gap-2"
+                    disabled={disabled}
+                    onClick={() =>
+                      void (async () => {
+                        if (noChanges) {
+                          toast.error("No hay cambios para enviar.");
+                          return;
+                        }
+                        const lastSent = evidenceModal.pay.evidence;
+                        const lastSentNorm = normalizeEvidenceForCompare(
+                          lastSent?.lastSubmittedText ?? "",
+                          lastSent?.lastSubmittedAttachments ?? [],
+                        );
+                        const nowNorm = normalizeEvidenceForCompare(
+                          evidenceModal.text,
+                          evidenceModal.attachments,
+                        );
+                        if (
+                          lastSentNorm.text === nowNorm.text &&
+                          lastSentNorm.attsKey === nowNorm.attsKey
+                        ) {
+                          toast.error(
+                            "No hay cambios desde la última evidencia enviada.",
+                          );
+                          return;
+                        }
+                        setEvidenceModal((m) => (m ? { ...m, busy: true } : m));
+                        try {
+                          await upsertServiceEvidence({
+                            threadId,
+                            agreementId: a.id,
+                            paymentId: evidenceModal.pay.id,
+                            text: evidenceModal.text,
+                            attachments: evidenceModal.attachments,
+                            submit: true,
+                          });
+                          toast.success("Evidencia enviada.");
+                          const list = await listAgreementServicePayments(
+                            threadId,
+                            a.id,
+                          );
+                          setServicePays(list);
+                          setEvidenceModal(null);
+                        } catch (e) {
+                          toast.error(
+                            (e as Error)?.message ??
+                              "No se pudo enviar la evidencia.",
+                          );
+                        } finally {
+                          setEvidenceModal((m) =>
+                            m ? { ...m, busy: false } : m,
+                          );
+                        }
+                      })()
+                    }
+                  >
+                    <BadgeCheck size={16} aria-hidden />
+                    Enviar evidencia
+                  </button>
+                      </>
+                    );
+                  })()}
+                </>
+              ) : (evidenceModal.pay.evidence?.status ?? "")
+                    .trim()
+                    .toLowerCase() === "submitted" ? (
+                <>
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-primary inline-flex items-center gap-2"
+                    disabled={evidenceModal.busy}
+                    onClick={() =>
+                      void (async () => {
+                        setEvidenceModal((m) => (m ? { ...m, busy: true } : m));
+                        try {
+                          await decideServiceEvidence({
+                            threadId,
+                            agreementId: a.id,
+                            paymentId: evidenceModal.pay.id,
+                            decision: "accept",
+                          });
+                          toast.success("Evidencia aceptada.");
+                          const list = await listAgreementServicePayments(
+                            threadId,
+                            a.id,
+                          );
+                          setServicePays(list);
+                          setEvidenceModal(null);
+                        } catch (e) {
+                          toast.error(
+                            (e as Error)?.message ??
+                              "No se pudo aceptar la evidencia.",
+                          );
+                        } finally {
+                          setEvidenceModal((m) =>
+                            m ? { ...m, busy: false } : m,
+                          );
+                        }
+                      })()
+                    }
+                  >
+                    <BadgeCheck size={16} aria-hidden /> Aceptar
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-ghost inline-flex items-center gap-2 border border-[var(--border)] px-5 py-2.5"
+                    disabled={evidenceModal.busy}
+                    onClick={() =>
+                      void (async () => {
+                        setEvidenceModal((m) => (m ? { ...m, busy: true } : m));
+                        try {
+                          await decideServiceEvidence({
+                            threadId,
+                            agreementId: a.id,
+                            paymentId: evidenceModal.pay.id,
+                            decision: "reject",
+                          });
+                          toast.success("Evidencia rechazada.");
+                          const list = await listAgreementServicePayments(
+                            threadId,
+                            a.id,
+                          );
+                          setServicePays(list);
+                          setEvidenceModal(null);
+                        } catch (e) {
+                          toast.error(
+                            (e as Error)?.message ??
+                              "No se pudo rechazar la evidencia.",
+                          );
+                        } finally {
+                          setEvidenceModal((m) =>
+                            m ? { ...m, busy: false } : m,
+                          );
+                        }
+                      })()
+                    }
+                  >
+                    <XCircle size={16} aria-hidden /> Rechazar
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </div>
         </div>
       ) : null}
     </div>
