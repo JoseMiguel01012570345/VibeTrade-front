@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom'
 import {
-  AlertTriangle,
+  BadgeCheck,
   Calendar,
   CheckCircle2,
   Package,
   RefreshCw,
   Store,
-  Truck,
   Wrench,
 } from 'lucide-react'
 import type { StoreBadge } from '../../../app/store/marketStoreTypes'
@@ -57,21 +56,19 @@ export function VisitorStoreSummaryCard({
               <span className="min-w-0 break-words text-base font-black tracking-[-0.02em]">
                 {b.name}
               </span>
-              {b.verified ?
-                <span className="rounded-full bg-[color-mix(in_oklab,var(--good)_14%,transparent)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-green-900 dark:text-emerald-300">
-                  Verificado
+              {b.verified ? (
+                <span
+                  className="inline-flex items-center text-[var(--primary)]"
+                  title="Verificado"
+                  aria-label="Verificado"
+                >
+                  <BadgeCheck size={16} aria-hidden />
                 </span>
-              : <span className="vt-badge-verify-warn-compact">
-                  <AlertTriangle size={12} aria-hidden /> No verificado
-                </span>}
+              ) : null}
             </div>
             <div className="vt-muted mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
               <span className="inline-flex items-center gap-1">
                 <Calendar size={12} aria-hidden /> Alta: {joined}
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <Truck size={12} aria-hidden /> Transporte:{' '}
-                {b.transportIncluded ? 'incluido' : 'no incluido'}
               </span>
             </div>
             <div className="mt-2 max-w-[320px]">

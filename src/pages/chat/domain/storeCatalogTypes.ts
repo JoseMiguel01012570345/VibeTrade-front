@@ -34,6 +34,11 @@ export type StoreProduct = {
   technicalSpecs: string;
   condition: MerchandiseCondition;
   price: string;
+  /**
+   * Si el transporte está incluido en la compra de este producto (según ficha).
+   * Campo nuevo: puede faltar en productos antiguos hasta que se editen.
+   */
+  transportIncluded?: boolean;
   /** Moneda en la que está expresado el precio (una sola); opcional. */
   monedaPrecio?: string;
   /** Códigos de moneda aceptados (p. ej. USD, CUP); opcional. */

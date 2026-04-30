@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart, MessageCircle, Package } from "lucide-react";
+import { Heart, MessageCircle, Package, Truck } from "lucide-react";
 import {
   catalogMonedasList,
   type StoreProduct,
@@ -65,6 +65,15 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
                 </span>
               ) : null}
             </div>
+            {p.transportIncluded !== undefined ? (
+              <span
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-2 py-1 text-[11px] font-black text-[var(--muted)]"
+                title="Transporte incluido según la ficha del producto."
+              >
+                <Truck size={14} aria-hidden />
+                {p.transportIncluded ? "Transporte incluido" : "Sin transporte"}
+              </span>
+            ) : null}
             <Link
               to={`/offer/${encodeURIComponent(p.id)}#offer-comments`}
               className="inline-flex shrink-0 items-center gap-3 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-2.5 py-1 text-[11px] font-extrabold text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))]"

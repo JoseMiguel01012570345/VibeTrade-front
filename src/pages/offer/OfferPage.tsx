@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Heart, ShoppingCart } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Heart, ShoppingCart, Truck } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
 import {
@@ -787,6 +787,13 @@ export function OfferPage() {
 
   const heroIsToolPlaceholder = isToolPlaceholderUrl(heroImageSrc);
   const isEmergentRouteFicha = !!resolvedOffer.isEmergentRoutePublication;
+  const productFicha = useMemo(() => {
+    const cat = storeCatalogs[resolvedOffer.storeId];
+    if (!cat) return null;
+    const oid = (resolvedOffer.emergentBaseOfferId?.trim() || resolvedOffer.id).trim();
+    if (!oid) return null;
+    return cat.products.find((p) => p.id === oid) ?? null;
+  }, [resolvedOffer, storeCatalogs]);
   const showRouteMapHero = isEmergentRouteFicha && fichaMapLegs.length > 0;
   const fichaDescriptionText = emergentRoutePublicationUserDescription(
     resolvedOffer,
@@ -983,15 +990,28 @@ export function OfferPage() {
                 <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
                 {store.name}
                 {store.verified ? (
-                  <span className="ml-2 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--good)_12%,transparent)] px-2 py-1 text-[11px] font-black text-[color-mix(in_oklab,var(--good)_85%,var(--text))]">
-                    Verificado
+                  <span
+                    className="ml-2 inline-flex items-center text-[var(--primary)]"
+                    title="Verificado"
+                    aria-label="Verificado"
+                  >
+                    <BadgeCheck size={16} aria-hidden />
                   </span>
-                ) : (
-                  <span className="vt-badge-verify-warn ml-2 py-1 text-[11px] font-extrabold">
-                    No verificado
-                  </span>
-                )}
+                ) : null}
               </Link>
+              {productFicha?.transportIncluded !== undefined ? (
+                <span
+                  className="vt-pill max-w-full"
+                  title="Transporte incluido según la ficha del producto."
+                >
+                  <span className="inline-flex items-center gap-1">
+                    <Truck size={14} aria-hidden />{" "}
+                    {productFicha.transportIncluded
+                      ? "Transporte incluido"
+                      : "Sin transporte"}
+                  </span>
+                </span>
+              ) : null}
               <Trust
                 score={store.trustScore}
                 helper="Indicador de confianza. A mayor número, mayor reputación."

@@ -17,13 +17,12 @@ import {
 import { cn } from "../../lib/cn";
 import {
   ArrowLeft,
-  AlertTriangle,
+  BadgeCheck,
   ChevronDown,
   FileText,
   Loader2,
   MoreVertical,
   PanelRight,
-  ShieldCheck,
   Wallet,
   X,
 } from "lucide-react";
@@ -431,11 +430,11 @@ export function ChatPage() {
   const routeSheetLockedByPaidAgreement = useMemo(() => {
     const rs = routeSheetBeingEdited;
     if (!rs?.id) return false;
-    return (thread.contracts ?? []).some(
+    return (thread?.contracts ?? []).some(
       (c) =>
         c.routeSheetId === rs.id && c.hasSucceededPayments === true,
     );
-  }, [thread.contracts, routeSheetBeingEdited?.id]);
+  }, [thread?.contracts, routeSheetBeingEdited?.id]);
   const [railOpen, setRailOpen] = useState(false);
   /** Panel izquierdo: suscriptores a la oferta de hoja de ruta (solo comprador). */
   const [routeSubscribersSheetId, setRouteSubscribersSheetId] = useState<
@@ -1490,7 +1489,7 @@ export function ChatPage() {
             <div className="vt-card shrink-0 px-3 py-2 sm:px-[22px] sm:py-[18px]">
               {/* Móvil: columna para evitar botones tapados por título/tags; escritorio: fila */}
               <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:gap-x-3 md:gap-y-3">
-                <div className="flex min-w-0 w-full items-start gap-2.5 md:min-h-0 md:min-w-0 md:flex-1 md:items-start">
+                <div className="flex min-w-0 w-full items-center gap-2.5 md:min-h-0 md:min-w-0 md:flex-1">
                   <button
                     className="vt-btn shrink-0"
                     onClick={() => nav("/chat")}
@@ -1499,39 +1498,43 @@ export function ChatPage() {
                     <ArrowLeft size={16} />
                   </button>
                   <div className="min-w-0 flex-1">
-                    <div className="font-black tracking-[-0.03em] break-words text-[clamp(14px,3.9vw,18px)] leading-snug">
-                      {thread
-                        ? chatThreadHeaderTitle(thread, me, profileDisplayNames)
-                        : store.name}
-                    </div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-2">
-                      <span
-                        className={
-                          store.verified
-                            ? "vt-pill inline-flex max-w-full items-center gap-1"
-                            : "vt-badge-verify-warn inline-flex max-w-full items-center gap-1"
-                        }
-                      >
-                        {store.verified ? (
-                          <ShieldCheck size={14} aria-hidden />
-                        ) : (
-                          <AlertTriangle size={14} aria-hidden />
-                        )}
-                        <span className="min-w-0">
-                          {store.verified
-                            ? "Credenciales validadas"
-                            : "No verificado"}
+                    <div className="flex flex-wrap items-center gap-2 font-black tracking-[-0.03em] break-words text-[clamp(14px,3.9vw,18px)] leading-snug">
+                      <span>
+                        {thread
+                          ? chatThreadHeaderTitle(thread, me, profileDisplayNames)
+                          : store.name}
+                      </span>
+                      {store.verified ? (
+                        <span
+                          className="inline-flex items-center text-[var(--primary)]"
+                          title="Verificado"
+                          aria-label="Verificado"
+                        >
+                          <BadgeCheck size={16} aria-hidden />
                         </span>
-                      </span>
-                      <span
-                        className="vt-pill max-w-full"
-                        title="Disponibilidad de transporte indicada por el perfil del negocio."
-                      >
-                        Transporte:{" "}
-                        {store.transportIncluded ? "incluido" : "NO incluido"}
-                      </span>
+                      ) : null}
                     </div>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-2" />
                   </div>
+                  <button
+                    type="button"
+                    className={cn(
+                      "min-[961px]:hidden",
+                      "grid size-11 shrink-0 place-items-center rounded-full border border-[var(--border)]",
+                      "bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[var(--muted)] shadow-sm transition",
+                      "hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] hover:text-[var(--text)]",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]",
+                      railOpen && "pointer-events-none opacity-0",
+                    )}
+                    aria-hidden={railOpen || undefined}
+                    aria-expanded={mobileChatActionsOpen}
+                    aria-haspopup="dialog"
+                    aria-label="Abrir acciones del chat"
+                    title="Acciones del chat"
+                    onClick={() => setMobileChatActionsOpen((open) => !open)}
+                  >
+                    <MoreVertical size={22} strokeWidth={2.25} aria-hidden />
+                  </button>
                 </div>
 
                 <div className="hidden w-full min-w-0 shrink-0 flex-wrap items-center gap-y-2 min-[961px]:ml-auto min-[961px]:flex min-[961px]:w-auto min-[961px]:max-w-[52%] min-[961px]:justify-end lg:max-w-none">
@@ -1679,32 +1682,7 @@ export function ChatPage() {
               markThreadPaymentCompleted={markThreadPaymentCompleted}
               pushNotification={pushNotification}
               setTrustScore={setTrustScore}
-              composerMobileActions={
-                <div
-                  className={cn(
-                    "min-[961px]:hidden",
-                    railOpen && "pointer-events-none opacity-0",
-                  )}
-                  aria-hidden={railOpen || undefined}
-                >
-                  {/* Móvil: encima del micrófono en el compositor; el contenedor viene de ChatComposerSection. */}
-                  <button
-                    type="button"
-                    className={cn(
-                      "flex size-14 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_oklab,var(--primary)_78%,var(--border))]",
-                      "bg-[var(--primary)] text-white shadow-[0_10px_28px_rgba(37,99,235,0.35)] transition",
-                      "hover:bg-[var(--primary-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] active:translate-y-[0.5px]",
-                    )}
-                    aria-expanded={mobileChatActionsOpen}
-                    aria-haspopup="dialog"
-                    aria-label="Abrir acciones del chat"
-                    title="Contratos, pago u emitir acuerdo"
-                    onClick={() => setMobileChatActionsOpen((open) => !open)}
-                  >
-                    <MoreVertical size={24} strokeWidth={2.25} aria-hidden />
-                  </button>
-                </div>
-              }
+              composerMobileActions={null}
             />
 
             {mobileChatActionsOpen ? (

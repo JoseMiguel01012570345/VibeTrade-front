@@ -33,7 +33,6 @@ export function minorToMajor(amountMinor: number, currency: string): number {
 /** Recargo Climate policy: 0.05 % del subtotal (minor units). */
 export function climateMinorFromSubtotalMinor(
   subtotalMinor: number,
-  currency: string,
 ): number {
   if (subtotalMinor <= 0) return 0;
   const frac = CLIMATE_RATE * subtotalMinor;

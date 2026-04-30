@@ -258,7 +258,7 @@ export function buildPaymentCheckoutBreakdown(
 
   bucket.forEach((b) => {
     const currency = b.currency.toLowerCase();
-    const climate = climateMinorFromSubtotalMinor(b.subtotalMinor, currency);
+    const climate = climateMinorFromSubtotalMinor(b.subtotalMinor);
     const stripeFee = stripeFeeMinorEstimate(b.subtotalMinor, climate, currency);
     const total = b.subtotalMinor + climate + stripeFee;
     byCurrency.push({

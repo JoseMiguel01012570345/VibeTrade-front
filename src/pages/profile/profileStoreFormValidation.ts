@@ -56,6 +56,9 @@ export type ProductFormSnapshot = Omit<StoreProduct, 'id' | 'storeId'>
 export function validateProductForm(form: ProductFormSnapshot): string | null {
   if (norm(form.category).length < TITLE_MIN) return 'Completa la categoría.'
   if (norm(form.name).length < TITLE_MIN) return 'Completa el nombre del producto.'
+  if (form.transportIncluded === undefined) {
+    return 'Indica si el transporte está incluido en este producto.'
+  }
   if (!norm(form.price)) return 'Completa el precio.'
   if (!norm(form.monedaPrecio ?? '')) {
     return 'Elige la moneda del precio (tipo de moneda).'

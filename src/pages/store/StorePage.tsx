@@ -1345,6 +1345,7 @@ export function StorePage() {
                     technicalSpecs: productEditing.technicalSpecs,
                     condition: productEditing.condition,
                     price: productEditing.price,
+                    transportIncluded: productEditing.transportIncluded,
                     monedaPrecio: productEditing.monedaPrecio ?? "",
                     monedas: catalogMonedasList(productEditing),
                     taxesShippingInstall: productEditing.taxesShippingInstall,

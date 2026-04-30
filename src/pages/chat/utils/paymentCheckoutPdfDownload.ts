@@ -11,7 +11,6 @@ import { collectAgreementQrLinkEntries } from "./tradeAgreementPdfText";
 import type { PaymentFeeReceiptPayload } from "../domain/paymentFeeReceiptTypes";
 import { STRIPE_PRICING_PAGE_URL } from "../domain/stripePricingLinks";
 
-const LINE_GAP_MM = 5;
 const BODY_PT = 9.5;
 const ITEM_PT = 8.5;
 const TITLE_PT = 15;
