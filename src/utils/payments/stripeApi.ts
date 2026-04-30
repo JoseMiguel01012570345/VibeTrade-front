@@ -42,6 +42,8 @@ export type StripeSavedCard = {
   last4: string;
   expMonth: number;
   expYear: number;
+  /** País de emisión ISO-3166-1 alpha-2 (Stripe). */
+  country?: string | null;
 };
 
 export async function listStripeCards(): Promise<StripeSavedCard[]> {

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import {
+  AlertTriangle,
   BadgeCheck,
+  CreditCard,
   Download,
   FileText,
   Loader2,
@@ -9,6 +11,7 @@ import {
   Upload,
   XCircle,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { VtSelect, type VtSelectOption } from "../../../../components/VtSelect";
 import { ProtectedMediaImg } from "../../../../components/media/ProtectedMediaImg";
 import { useMarketStore } from "../../../../app/store/useMarketStore";
@@ -41,12 +44,22 @@ import { downloadTradeAgreementPdf } from "../../utils/tradeAgreementPdfDownload
 import {
   decideServiceEvidence,
   listAgreementServicePayments,
+  recordSellerServicePayout,
   upsertServiceEvidence,
   type AgreementServicePaymentApi,
   type ServiceEvidenceAttachmentApi,
 } from "../../../../utils/chat/agreementServiceEvidenceApi";
+import {
+  getStripeConfig,
+  listStripeCards,
+  type StripeSavedCard,
+} from "../../../../utils/payments/stripeApi";
 import { uploadMedia, mediaApiUrl } from "../../../../utils/media/mediaClient";
-import { minorToMajor, stripeMinorDecimals } from "../../domain/paymentFeePolicy";
+import {
+  minorToMajor,
+  stripeMinorDecimals,
+} from "../../domain/paymentFeePolicy";
+import { STRIPE_PRICING_PAGE_URL } from "../../domain/stripePricingLinks";
 import {
   agrDetailBlock,
   agrDetailCard,
@@ -382,6 +395,7 @@ export function AgreementDetailView({
   onUnlinkRouteSheet?: (agreementId: string) => void;
   linkActionsDisabled?: boolean;
 }) {
+  const nav = useNavigate();
   const m = a.merchandiseMeta ?? undefined;
   const catalog = useMarketStore((s) => s.storeCatalogs[a.issuedByStoreId]);
   const services = normalizeAgreementServices(a);
@@ -392,7 +406,9 @@ export function AgreementDetailView({
     setPickId(a.routeSheetId ?? "");
   }, [a.id, a.routeSheetId]);
 
-  const [servicePays, setServicePays] = useState<AgreementServicePaymentApi[]>([]);
+  const [servicePays, setServicePays] = useState<AgreementServicePaymentApi[]>(
+    [],
+  );
   const [servicePaysBusy, setServicePaysBusy] = useState(false);
   const [evidenceModal, setEvidenceModal] = useState<{
     pay: AgreementServicePaymentApi;
@@ -400,6 +416,13 @@ export function AgreementDetailView({
     attachments: ServiceEvidenceAttachmentApi[];
     busy: boolean;
     uploading: boolean;
+  } | null>(null);
+  const [sellerPayoutModal, setSellerPayoutModal] = useState<{
+    pay: AgreementServicePaymentApi;
+    cards: StripeSavedCard[];
+    selectedCardId: string;
+    loadingCards: boolean;
+    busy: boolean;
   } | null>(null);
 
   const lastMsg = useMarketStore((s) => {
@@ -418,7 +441,8 @@ export function AgreementDetailView({
       } catch (e) {
         if (!cancelled)
           toast.error(
-            (e as Error)?.message ?? "No se pudieron cargar pagos de servicios.",
+            (e as Error)?.message ??
+              "No se pudieron cargar pagos de servicios.",
           );
       } finally {
         if (!cancelled) setServicePaysBusy(false);
@@ -435,7 +459,7 @@ export function AgreementDetailView({
     if (lastMsg.from !== "system") return;
     if (lastMsg.type !== "text") return;
     const t = (lastMsg.text ?? "").toLowerCase();
-    if (!t.includes("evidencia")) return;
+    if (!t.includes("evidencia") && !t.includes("depósito")) return;
     lastEvidenceRefreshMsgIdRef.current = lastMsg.id;
     void (async () => {
       try {
@@ -521,14 +545,14 @@ export function AgreementDetailView({
               {!merchOkForRouteLink ? (
                 <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
                   Solo podés vincular una hoja de ruta si el acuerdo incluye
-                  mercancía con al menos una línea con cantidad, precio unitario y
-                  moneda válidos.
+                  mercancía con al menos una línea con cantidad, precio unitario
+                  y moneda válidos.
                 </p>
               ) : null}
               {routeSheets.length === 0 ? (
                 <p className={cn("vt-muted", agrDetailHint)}>
-                  No hay hojas de ruta en este chat. Crea una en la pestaña Rutas y
-                  volvé para vincularla.
+                  No hay hojas de ruta en este chat. Crea una en la pestaña
+                  Rutas y volvé para vincularla.
                 </p>
               ) : (
                 <>
@@ -587,8 +611,8 @@ export function AgreementDetailView({
                     <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
                       Esta hoja ya está{" "}
                       <strong className="text-[var(--text)]">publicada</strong>{" "}
-                      en la plataforma: el roadmap vinculado no se puede modificar
-                      ni quitar desde aquí.
+                      en la plataforma: el roadmap vinculado no se puede
+                      modificar ni quitar desde aquí.
                     </p>
                   ) : routeLinked ? (
                     <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
@@ -720,7 +744,9 @@ export function AgreementDetailView({
                     <div className="mt-2 space-y-2">
                       {paysForService.map((p) => {
                         const ev = p.evidence;
-                        const evStatus = (ev?.status ?? "").trim().toLowerCase();
+                        const evStatus = (ev?.status ?? "")
+                          .trim()
+                          .toLowerCase();
                         const released = p.status === "released";
                         const canEditSeller =
                           isActingSeller &&
@@ -728,6 +754,9 @@ export function AgreementDetailView({
                           evStatus !== "accepted";
                         const canDecideBuyer =
                           !isActingSeller && evStatus === "submitted";
+                        const payoutDone = Boolean(p.sellerPayoutRecordedAtUtc);
+                        const canSellerPayout =
+                          isActingSeller && released && !payoutDone;
                         return (
                           <div
                             key={p.id}
@@ -759,8 +788,28 @@ export function AgreementDetailView({
                               </b>
                             </div>
 
+                            {payoutDone ? (
+                              <div className="vt-muted mt-1 space-y-0.5 text-[12px]">
+                                <div>
+                                  Depósito registrado:{" "}
+                                  <b className="text-[var(--text)]">
+                                    {(p.sellerPayoutCardBrand ?? "").trim()}{" "}
+                                    ••••{" "}
+                                    {p.sellerPayoutCardLast4?.trim()
+                                      ? p.sellerPayoutCardLast4
+                                      : "—"}
+                                  </b>
+                                </div>
+                                {p.sellerPayoutStripeTransferId?.trim() ? (
+                                  <div className="font-mono text-[11px]">
+                                    Stripe: {p.sellerPayoutStripeTransferId}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
+
                             <div className="mt-2 flex flex-wrap gap-2">
-                              {(ev || canEditSeller) ? (
+                              {ev || canEditSeller ? (
                                 <button
                                   type="button"
                                   className="vt-btn vt-btn-sm inline-flex items-center gap-1.5"
@@ -777,7 +826,9 @@ export function AgreementDetailView({
                                   {canEditSeller ? (
                                     <>
                                       <Pencil size={14} aria-hidden />
-                                      {ev ? "Editar evidencia" : "Añadir evidencia"}
+                                      {ev
+                                        ? "Editar evidencia"
+                                        : "Añadir evidencia"}
                                     </>
                                   ) : (
                                     <>
@@ -786,6 +837,57 @@ export function AgreementDetailView({
                                     </>
                                   )}
                                 </button>
+                              ) : null}
+
+                              {canSellerPayout ? (
+                                <div className="flex w-full min-w-[12rem] flex-col gap-1">
+                                  <button
+                                    type="button"
+                                    className="vt-btn vt-btn-sm inline-flex items-center gap-1.5"
+                                    onClick={() => {
+                                      setSellerPayoutModal({
+                                        pay: p,
+                                        cards: [],
+                                        selectedCardId: "",
+                                        loadingCards: true,
+                                        busy: false,
+                                      });
+                                      void (async () => {
+                                        try {
+                                          const cfg = await getStripeConfig();
+                                          if (!cfg.enabled) {
+                                            setSellerPayoutModal(null);
+                                            toast.error(
+                                              "Los pagos con tarjeta no están disponibles ahora.",
+                                            );
+                                            return;
+                                          }
+                                          const cards = await listStripeCards();
+                                          setSellerPayoutModal((m) =>
+                                            m?.pay.id === p.id
+                                              ? {
+                                                  ...m,
+                                                  cards,
+                                                  selectedCardId:
+                                                    cards[0]?.id ?? "",
+                                                  loadingCards: false,
+                                                }
+                                              : m,
+                                          );
+                                        } catch (e) {
+                                          setSellerPayoutModal(null);
+                                          toast.error(
+                                            (e as Error)?.message ??
+                                              "No se pudieron cargar las tarjetas.",
+                                          );
+                                        }
+                                      })();
+                                    }}
+                                  >
+                                    <CreditCard size={14} aria-hidden />
+                                    Liquidar depósito
+                                  </button>
+                                </div>
                               ) : null}
 
                               {canDecideBuyer ? (
@@ -877,7 +979,9 @@ export function AgreementDetailView({
 
       {legacyCombinedExtraFields(a.extraFields).length ? (
         <div className={agrDetailBlock}>
-          <div className={agrDetailH}>Campos adicionales conjuntos (histórico)</div>
+          <div className={agrDetailH}>
+            Campos adicionales conjuntos (histórico)
+          </div>
           <p className={cn("vt-muted", agrDetailHint, "mb-2 text-[13px]")}>
             Pactados cuando el bloque mercancía y el de servicios compartían una
             sola lista de cláusulas extra.
@@ -951,7 +1055,9 @@ export function AgreementDetailView({
                         m
                           ? {
                               ...m,
-                              attachments: m.attachments.filter((a) => a.id !== id),
+                              attachments: m.attachments.filter(
+                                (a) => a.id !== id,
+                              ),
                             }
                           : m,
                       )
@@ -980,9 +1086,8 @@ export function AgreementDetailView({
                             const uploaded: ServiceEvidenceAttachmentApi[] = [];
                             for (const f of files) {
                               const r = await uploadMedia(f);
-                              const kind =
-                                r.mimeType?.startsWith("image/") ?
-                                  "image"
+                              const kind = r.mimeType?.startsWith("image/")
+                                ? "image"
                                 : "document";
                               uploaded.push({
                                 id: crypto.randomUUID(),
@@ -995,7 +1100,10 @@ export function AgreementDetailView({
                               m
                                 ? {
                                     ...m,
-                                    attachments: [...m.attachments, ...uploaded],
+                                    attachments: [
+                                      ...m.attachments,
+                                      ...uploaded,
+                                    ],
                                   }
                                 : m,
                             );
@@ -1050,122 +1158,127 @@ export function AgreementDetailView({
                       evidenceModal.text,
                       evidenceModal.attachments,
                     );
-                    const dirty = a0.text !== a1.text || a0.attsKey !== a1.attsKey;
+                    const dirty =
+                      a0.text !== a1.text || a0.attsKey !== a1.attsKey;
                     const noChanges = !dirty;
                     const disabled = evidenceModal.busy || noChanges;
                     return (
                       <>
-                  <button
-                    type="button"
-                    className="vt-btn vt-btn-ghost inline-flex items-center gap-2 border border-[var(--border)] px-5 py-2.5"
-                    disabled={disabled}
-                    onClick={() =>
-                      void (async () => {
-                        if (noChanges) {
-                          toast.error("No hay cambios para guardar.");
-                          return;
-                        }
-                        setEvidenceModal((m) => (m ? { ...m, busy: true } : m));
-                        try {
-                          await upsertServiceEvidence({
-                            threadId,
-                            agreementId: a.id,
-                            paymentId: evidenceModal.pay.id,
-                            text: evidenceModal.text,
-                            attachments: evidenceModal.attachments,
-                            submit: false,
-                          });
-                          toast.success("Evidencia guardada.");
-                          const list = await listAgreementServicePayments(
-                            threadId,
-                            a.id,
-                          );
-                          setServicePays(list);
-                          setEvidenceModal(null);
-                        } catch (e) {
-                          toast.error(
-                            (e as Error)?.message ??
-                              "No se pudo guardar la evidencia.",
-                          );
-                        } finally {
-                          setEvidenceModal((m) =>
-                            m ? { ...m, busy: false } : m,
-                          );
-                        }
-                      })()
-                    }
-                  >
-                    <Pencil size={16} aria-hidden />
-                    Guardar borrador
-                  </button>
-                  <button
-                    type="button"
-                    className="vt-btn vt-btn-primary inline-flex items-center gap-2"
-                    disabled={disabled}
-                    onClick={() =>
-                      void (async () => {
-                        if (noChanges) {
-                          toast.error("No hay cambios para enviar.");
-                          return;
-                        }
-                        const lastSent = evidenceModal.pay.evidence;
-                        const lastSentNorm = normalizeEvidenceForCompare(
-                          lastSent?.lastSubmittedText ?? "",
-                          lastSent?.lastSubmittedAttachments ?? [],
-                        );
-                        const nowNorm = normalizeEvidenceForCompare(
-                          evidenceModal.text,
-                          evidenceModal.attachments,
-                        );
-                        if (
-                          lastSentNorm.text === nowNorm.text &&
-                          lastSentNorm.attsKey === nowNorm.attsKey
-                        ) {
-                          toast.error(
-                            "No hay cambios desde la última evidencia enviada.",
-                          );
-                          return;
-                        }
-                        setEvidenceModal((m) => (m ? { ...m, busy: true } : m));
-                        try {
-                          await upsertServiceEvidence({
-                            threadId,
-                            agreementId: a.id,
-                            paymentId: evidenceModal.pay.id,
-                            text: evidenceModal.text,
-                            attachments: evidenceModal.attachments,
-                            submit: true,
-                          });
-                          toast.success("Evidencia enviada.");
-                          const list = await listAgreementServicePayments(
-                            threadId,
-                            a.id,
-                          );
-                          setServicePays(list);
-                          setEvidenceModal(null);
-                        } catch (e) {
-                          toast.error(
-                            (e as Error)?.message ??
-                              "No se pudo enviar la evidencia.",
-                          );
-                        } finally {
-                          setEvidenceModal((m) =>
-                            m ? { ...m, busy: false } : m,
-                          );
-                        }
-                      })()
-                    }
-                  >
-                    <BadgeCheck size={16} aria-hidden />
-                    Enviar evidencia
-                  </button>
+                        <button
+                          type="button"
+                          className="vt-btn vt-btn-ghost inline-flex items-center gap-2 border border-[var(--border)] px-5 py-2.5"
+                          disabled={disabled}
+                          onClick={() =>
+                            void (async () => {
+                              if (noChanges) {
+                                toast.error("No hay cambios para guardar.");
+                                return;
+                              }
+                              setEvidenceModal((m) =>
+                                m ? { ...m, busy: true } : m,
+                              );
+                              try {
+                                await upsertServiceEvidence({
+                                  threadId,
+                                  agreementId: a.id,
+                                  paymentId: evidenceModal.pay.id,
+                                  text: evidenceModal.text,
+                                  attachments: evidenceModal.attachments,
+                                  submit: false,
+                                });
+                                toast.success("Evidencia guardada.");
+                                const list = await listAgreementServicePayments(
+                                  threadId,
+                                  a.id,
+                                );
+                                setServicePays(list);
+                                setEvidenceModal(null);
+                              } catch (e) {
+                                toast.error(
+                                  (e as Error)?.message ??
+                                    "No se pudo guardar la evidencia.",
+                                );
+                              } finally {
+                                setEvidenceModal((m) =>
+                                  m ? { ...m, busy: false } : m,
+                                );
+                              }
+                            })()
+                          }
+                        >
+                          <Pencil size={16} aria-hidden />
+                          Guardar borrador
+                        </button>
+                        <button
+                          type="button"
+                          className="vt-btn vt-btn-primary inline-flex items-center gap-2"
+                          disabled={disabled}
+                          onClick={() =>
+                            void (async () => {
+                              if (noChanges) {
+                                toast.error("No hay cambios para enviar.");
+                                return;
+                              }
+                              const lastSent = evidenceModal.pay.evidence;
+                              const lastSentNorm = normalizeEvidenceForCompare(
+                                lastSent?.lastSubmittedText ?? "",
+                                lastSent?.lastSubmittedAttachments ?? [],
+                              );
+                              const nowNorm = normalizeEvidenceForCompare(
+                                evidenceModal.text,
+                                evidenceModal.attachments,
+                              );
+                              if (
+                                lastSentNorm.text === nowNorm.text &&
+                                lastSentNorm.attsKey === nowNorm.attsKey
+                              ) {
+                                toast.error(
+                                  "No hay cambios desde la última evidencia enviada.",
+                                );
+                                return;
+                              }
+                              setEvidenceModal((m) =>
+                                m ? { ...m, busy: true } : m,
+                              );
+                              try {
+                                await upsertServiceEvidence({
+                                  threadId,
+                                  agreementId: a.id,
+                                  paymentId: evidenceModal.pay.id,
+                                  text: evidenceModal.text,
+                                  attachments: evidenceModal.attachments,
+                                  submit: true,
+                                });
+                                toast.success("Evidencia enviada.");
+                                const list = await listAgreementServicePayments(
+                                  threadId,
+                                  a.id,
+                                );
+                                setServicePays(list);
+                                setEvidenceModal(null);
+                              } catch (e) {
+                                toast.error(
+                                  (e as Error)?.message ??
+                                    "No se pudo enviar la evidencia.",
+                                );
+                              } finally {
+                                setEvidenceModal((m) =>
+                                  m ? { ...m, busy: false } : m,
+                                );
+                              }
+                            })()
+                          }
+                        >
+                          <BadgeCheck size={16} aria-hidden />
+                          Enviar evidencia
+                        </button>
                       </>
                     );
                   })()}
                 </>
               ) : (evidenceModal.pay.evidence?.status ?? "")
-                    .trim()
-                    .toLowerCase() === "submitted" ? (
+                  .trim()
+                  .toLowerCase() === "submitted" ? (
                 <>
                   <button
                     type="button"
@@ -1241,6 +1354,194 @@ export function AgreementDetailView({
                   </button>
                 </>
               ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {sellerPayoutModal ? (
+        <div
+          className="fixed inset-0 z-[82] flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xl">
+            <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+              <div className="min-w-0">
+                <div className="text-[13px] font-black text-[var(--text)]">
+                  Depósito del pago liberado
+                </div>
+                <div className="vt-muted mt-0.5 text-[12px]">
+                  Mes {sellerPayoutModal.pay.entryMonth} día{" "}
+                  {sellerPayoutModal.pay.entryDay} ·{" "}
+                  {fmtMoneyMinor(
+                    sellerPayoutModal.pay.amountMinor,
+                    sellerPayoutModal.pay.currencyLower,
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="vt-btn vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-2"
+                onClick={() => setSellerPayoutModal(null)}
+                disabled={sellerPayoutModal.busy}
+              >
+                <XCircle size={16} aria-hidden /> Cerrar
+              </button>
+            </div>
+
+            <div className="px-4 py-3">
+              <p className="text-[13px] leading-relaxed text-[var(--text)]">
+                Confirmar ejecuta una{" "}
+                <span className="font-mono text-[11px]">Transfer</span> de
+                Stripe desde el balance de la plataforma hacia tu cuenta Connect
+                configurada (
+                <span className="font-mono text-[11px]">acct_…</span>
+                ). La tarjeta queda como referencia; el uso del saldo Connect lo
+                define Stripe.
+              </p>
+
+              <div
+                className="mt-3 rounded-lg border-l-4 border-l-amber-600 bg-[color-mix(in_oklab,#d97706_12%,var(--surface))] px-3 py-2.5 text-[12px] leading-snug text-[var(--text)] ring-1 ring-[color-mix(in_oklab,#d97706_28%,var(--border))]"
+                role="alert"
+              >
+                <div className="flex gap-2">
+                  <AlertTriangle
+                    className="mt-0.5 shrink-0 text-amber-700"
+                    size={16}
+                    aria-hidden
+                  />
+                  <div>
+                    <span className="font-bold text-amber-900 dark:text-amber-100">
+                      Aviso para el vendedor:
+                    </span>{" "}
+                    El importe se envía con un{" "}
+                    <span className="font-mono text-[11px]">Transfer</span> a tu
+                    cuenta Connect. Ese paso{" "}
+                    <strong className="font-semibold">
+                      no añade otra comisión de procesamiento de tarjeta
+                    </strong>{" "}
+                    solo por el Transfer; el cobro del comprador ya pudo incluir
+                    tarifas de Stripe. Pueden existir{" "}
+                    <strong className="font-semibold">otros cargos</strong>{" "}
+                    (cambio de divisa, retiros desde Connect, instant payout,
+                    etc.) según tu cuenta y país. Consulta{" "}
+                    <a
+                      href={STRIPE_PRICING_PAGE_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-[var(--primary)] underline"
+                    >
+                      precios y políticas de Stripe
+                    </a>
+                    .
+                  </div>
+                </div>
+              </div>
+
+              {sellerPayoutModal.loadingCards ? (
+                <div className="mt-4 flex items-center gap-2 text-[13px] text-[var(--muted)]">
+                  <Loader2 size={16} className="animate-spin" aria-hidden />
+                  Cargando tarjetas…
+                </div>
+              ) : sellerPayoutModal.cards.length === 0 ? (
+                <div className="mt-4 space-y-2">
+                  <p className="text-[13px] text-[var(--muted)]">
+                    No hay tarjetas guardadas. Configúralas desde tu perfil.
+                  </p>
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-sm inline-flex items-center gap-1.5"
+                    onClick={() => {
+                      setSellerPayoutModal(null);
+                      nav("/profile?stripeCards=1");
+                    }}
+                  >
+                    <CreditCard size={14} aria-hidden /> Ir a configurar
+                    tarjetas
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                    Tarjeta de depósito
+                  </div>
+                  <VtSelect
+                    listPortal
+                    ariaLabel="Tarjeta donde depositar"
+                    value={sellerPayoutModal.selectedCardId}
+                    onChange={(v) =>
+                      setSellerPayoutModal((m) =>
+                        m ? { ...m, selectedCardId: v } : m,
+                      )
+                    }
+                    options={sellerPayoutModal.cards.map((c) => ({
+                      value: c.id,
+                      label: `${c.brand} •••• ${c.last4}`,
+                    }))}
+                    placeholder="Seleccionar tarjeta…"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] px-4 py-3">
+              <button
+                type="button"
+                className="vt-btn vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-4 py-2"
+                disabled={
+                  sellerPayoutModal.busy || sellerPayoutModal.loadingCards
+                }
+                onClick={() => setSellerPayoutModal(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="vt-btn vt-btn-primary inline-flex items-center gap-2"
+                disabled={
+                  sellerPayoutModal.busy ||
+                  sellerPayoutModal.loadingCards ||
+                  sellerPayoutModal.cards.length === 0 ||
+                  !sellerPayoutModal.selectedCardId.trim()
+                }
+                onClick={() =>
+                  void (async () => {
+                    setSellerPayoutModal((m) => (m ? { ...m, busy: true } : m));
+                    try {
+                      await recordSellerServicePayout({
+                        threadId,
+                        agreementId: a.id,
+                        paymentId: sellerPayoutModal.pay.id,
+                        paymentMethodId: sellerPayoutModal.selectedCardId,
+                      });
+                      toast.success("Depósito registrado.");
+                      const list = await listAgreementServicePayments(
+                        threadId,
+                        a.id,
+                      );
+                      setServicePays(list);
+                      setSellerPayoutModal(null);
+                    } catch (e) {
+                      toast.error(
+                        (e as Error)?.message ??
+                          "No se pudo registrar el depósito.",
+                      );
+                    } finally {
+                      setSellerPayoutModal((m) =>
+                        m ? { ...m, busy: false } : m,
+                      );
+                    }
+                  })()
+                }
+              >
+                {sellerPayoutModal.busy ? (
+                  <Loader2 size={16} className="animate-spin" aria-hidden />
+                ) : (
+                  <BadgeCheck size={16} aria-hidden />
+                )}
+                Confirmar depósito
+              </button>
             </div>
           </div>
         </div>

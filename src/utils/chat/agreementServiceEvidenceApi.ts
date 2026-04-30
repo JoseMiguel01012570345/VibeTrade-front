@@ -32,6 +32,12 @@ export type AgreementServicePaymentApi = {
   createdAtUtc: string;
   releasedAtUtc: string | null;
   evidence: ServiceEvidenceApi | null;
+  /** Presente después de registrar el destino del depósito (vendedor). */
+  sellerPayoutRecordedAtUtc?: string | null;
+  sellerPayoutCardBrand?: string | null;
+  sellerPayoutCardLast4?: string | null;
+  /** Stripe Transfer (tr_) o skipped_* en modo demo. */
+  sellerPayoutStripeTransferId?: string | null;
 };
 
 export async function listAgreementServicePayments(
@@ -97,3 +103,34 @@ export async function decideServiceEvidence(args: {
   throw new Error(t || `HTTP ${res.status}`);
 }
 
+export async function recordSellerServicePayout(args: {
+  threadId: string;
+  agreementId: string;
+  paymentId: string;
+  paymentMethodId: string;
+}): Promise<boolean> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/agreements/${encodeURIComponent(args.agreementId)}/service-payments/${encodeURIComponent(args.paymentId)}/seller-payout`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentMethodId: args.paymentMethodId.trim() }),
+    },
+  );
+  if (res.ok) return true;
+  const raw = await res.text().catch(() => "");
+  let msg = "";
+  try {
+    const j = JSON.parse(raw) as {
+      message?: unknown;
+      detail?: unknown;
+      title?: unknown;
+    };
+    if (typeof j?.message === "string") msg = j.message.trim();
+    else if (typeof j?.detail === "string") msg = j.detail.trim();
+    else if (typeof j?.title === "string") msg = j.title.trim();
+  } catch {
+    msg = "";
+  }
+  throw new Error(msg || raw.trim() || `HTTP ${res.status}`);
+}
