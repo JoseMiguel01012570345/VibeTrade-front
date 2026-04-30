@@ -21,6 +21,15 @@ async function friendlyError(res: Response): Promise<Error> {
   if (code === "payment_method_not_owned") {
     return new Error("La tarjeta seleccionada no pertenece a tu cuenta.");
   }
+  if (code === "already_paid") {
+    return new Error("Ya existe un cobro exitoso para esa moneda.");
+  }
+  if (code === "not_found") {
+    return new Error("No se encontró el acuerdo o no tenés acceso.");
+  }
+  if (code === "checkout_invalid" || code === "invalid_target" || code === "invalid_kind") {
+    return new Error(msg || "No se pudo preparar el cobro.");
+  }
   if (msg) return new Error(msg);
   return new Error(raw || `HTTP ${res.status}`);
 }
@@ -28,6 +37,8 @@ async function friendlyError(res: Response): Promise<Error> {
 export type StripeConfig = {
   enabled: boolean;
   publishableKey?: string;
+  /** True si el servidor tiene VIBETRADE_SKIP_PAYMENT_INTENTS (o alias): no hay cobros reales en Stripe. */
+  skipPaymentIntents?: boolean;
 };
 
 export async function getStripeConfig(): Promise<StripeConfig> {
@@ -65,21 +76,30 @@ export async function createStripeSetupIntent(): Promise<CreateStripeSetupIntent
   return (await res.json()) as CreateStripeSetupIntentResult;
 }
 
+/** Valor de `kind` para cobrar un acuerdo: el servidor calcula el monto (subtotal checkout). */
+export const STRIPE_PAYMENT_INTENT_KIND_AGREEMENT_CHECKOUT = "agreement_checkout" as const;
+
 export type CreateStripePaymentIntentBody = {
-  /**
-   * Monto en la unidad mínima de la moneda (Stripe `amount`), p. ej. USD → centavos:
-   * `1000` = US$10,00.
-   */
-  amountMinor: number;
+  kind: typeof STRIPE_PAYMENT_INTENT_KIND_AGREEMENT_CHECKOUT;
+  threadId: string;
+  agreementId: string;
   currency: string;
-  description?: string;
   paymentMethodId: string;
+  /** Si el acuerdo es solo servicios, mismas entradas que en checkout / execute. */
+  selectedServicePayments?: Array<{
+    serviceItemId: string;
+    entryMonth: number;
+    entryDay: number;
+  }>;
 };
 
 export type CreateStripePaymentIntentResult = {
   clientSecret: string;
   /** Server chose not to create a Stripe PaymentIntent (e.g. VIBETRADE_SKIP_PAYMENT_INTENTS). */
   paymentSkipped?: boolean;
+  /** Monto en unidades mínimas que aplicó el servidor (subtotal del desglose). */
+  amountMinor?: number;
+  currency?: string;
 };
 
 export async function createStripePaymentIntent(
@@ -92,4 +112,3 @@ export async function createStripePaymentIntent(
   if (!res.ok) throw await friendlyError(res);
   return (await res.json()) as CreateStripePaymentIntentResult;
 }
-

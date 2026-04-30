@@ -1,6 +1,6 @@
 /**
- * Políticas de cargo: climate (0.05%) y tarifa Stripe estimada.
- * Los porcentajes fijos están centralizados; el fijo puede variar por moneda ISO.
+ * Referencias de coste: Climate (0.05%) y tarifa Stripe estimada.
+ * Son solo para avisos al usuario; el cobro por pasarela usa el subtotal del acuerdo sin sumar estas líneas.
  */
 
 const CLIMATE_RATE = 0.0005; // 0.05%
@@ -47,19 +47,26 @@ function stripeFixedMinor(currency: string): number {
 }
 
 /**
- * Cargo estimado de procesamiento: % sobre (subtotal + climate) más fijo mínimo.
- * Fórmula simple documentada para alinear cliente y servidor (no garantiza match exacto con liquidación Stripe).
+ * Tarifa de procesamiento estimada: % sobre el subtotal cobrado más fijo mínimo.
+ * Solo referencia (no se suma al importe del acuerdo).
  */
 export function stripeFeeMinorEstimate(
   subtotalMinor: number,
-  climateMinor: number,
   currency: string,
 ): number {
-  const base = subtotalMinor + climateMinor;
-  if (base <= 0) return 0;
-  const pctPart = Math.ceil(base * 0.029 - 1e-9); // 2.9%
+  if (subtotalMinor <= 0) return 0;
+  const pctPart = Math.ceil(subtotalMinor * 0.029 - 1e-9); // 2.9%
   const fix = stripeFixedMinor(currency);
   return pctPart + fix;
+}
+
+/** Climate (0.05%) + estimación Stripe; informativo, no cobrado al comprador como extra sobre el subtotal. */
+export function climatePlusStripeEstimateMinor(
+  subtotalMinor: number,
+  currency: string,
+): number {
+  const climate = climateMinorFromSubtotalMinor(subtotalMinor);
+  return climate + stripeFeeMinorEstimate(subtotalMinor, currency);
 }
 
 export const paymentFeeLabels = {

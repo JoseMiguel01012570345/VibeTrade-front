@@ -139,7 +139,7 @@ export async function downloadPaymentCheckoutInformePdf(
   doc.setFontSize(BODY_PT);
   doc.setTextColor(71, 85, 105);
   const head = [
-    `Vigencia aceptada por el comprador. Incluye recargo clima ${paymentFeeLabels.climateRateDisplay} sobre subtotal y estimación de tarjeta ${paymentFeeLabels.stripePctDisplay} + fijo según moneda (ver ${STRIPE_PRICING_PAGE_URL}).`,
+    `Vigencia aceptada por el comprador. El cargo con tarjeta es el subtotal de ítems. Climate (${paymentFeeLabels.climateRateDisplay}) y tarifa Stripe estimada (${paymentFeeLabels.stripePctDisplay} + fijo) son solo referencia y no se suman al cobro (ver ${STRIPE_PRICING_PAGE_URL}).`,
   ];
   for (const line of head) {
     const wrapped = doc.splitTextToSize(line, maxW) as string[];
@@ -186,12 +186,15 @@ export async function downloadPaymentCheckoutInformePdf(
 
     const totalRows: { label: string; value: string; strong?: boolean }[] = [
       { label: "Subtotal (ítems)", value: fmtMoney(bc.subtotalMinor, cur) },
-      { label: `Climate (${paymentFeeLabels.climateRateDisplay})`, value: fmtMoney(bc.climateMinor, cur) },
       {
-        label: `Tarifa Stripe estimada (${paymentFeeLabels.stripePctDisplay} + fijo)`,
+        label: `Climate ref. (${paymentFeeLabels.climateRateDisplay}, no cobrado)`,
+        value: fmtMoney(bc.climateMinor, cur),
+      },
+      {
+        label: `Tarifa Stripe estimada ref. (${paymentFeeLabels.stripePctDisplay} + fijo, no cobrada)`,
         value: fmtMoney(bc.stripeFeeMinor, cur),
       },
-      { label: "Total a cobrar", value: fmtMoney(bc.totalMinor, cur), strong: true },
+      { label: "Total a cobrar con tarjeta (subtotal)", value: fmtMoney(bc.totalMinor, cur), strong: true },
     ];
     const boxPad = 3;
     const rowH = 4.8;
@@ -288,7 +291,7 @@ export async function downloadPaymentFeeReceiptPdf(
   doc.setTextColor(71, 85, 105);
   const head = [
     `Id. de cobro: ${receipt.paymentId}`,
-    `Incluye clima ${paymentFeeLabels.climateRateDisplay} sobre subtotal y tarifa Stripe según liquidación (puede diferir de la estimación previa).`,
+    `El importe cobrado al comprador es el subtotal. Climate (${paymentFeeLabels.climateRateDisplay}) y cifras Stripe son referencia; la liquidación real puede diferir de la estimación previa.`,
     `Políticas Stripe: ${receipt.stripePricingUrl} (QR en anexo).`,
   ];
   for (const line of head) {
@@ -312,16 +315,19 @@ export async function downloadPaymentFeeReceiptPdf(
 
   const totalRows: { label: string; value: string; strong?: boolean }[] = [
     { label: "Subtotal (ítems)", value: fmtMoney(receipt.subtotalMinor, cur) },
-    { label: `Climate (${paymentFeeLabels.climateRateDisplay})`, value: fmtMoney(receipt.climateMinor, cur) },
     {
-      label: "Tarifa Stripe (liquidación)",
+      label: `Climate ref. (${paymentFeeLabels.climateRateDisplay}, no cobrado)`,
+      value: fmtMoney(receipt.climateMinor, cur),
+    },
+    {
+      label: "Tarifa Stripe liquidación (referencia)",
       value: fmtMoney(receipt.stripeFeeMinorActual, cur),
     },
     {
-      label: "Tarifa Stripe estimada (antes del pago)",
+      label: "Tarifa Stripe estimada antes del pago (referencia)",
       value: fmtMoney(receipt.stripeFeeMinorEstimated, cur),
     },
-    { label: "Total cobrado al comprador", value: fmtMoney(receipt.totalChargedMinor, cur), strong: true },
+    { label: "Total cobrado al comprador (subtotal)", value: fmtMoney(receipt.totalChargedMinor, cur), strong: true },
   ];
   const boxPad = 3;
   const rowH = 4.8;

@@ -433,9 +433,9 @@ export function ChatPaymentModal({
                 <CreditCard size={18} aria-hidden /> Pago del acuerdo
               </div>
               <p className="vt-muted mt-1 text-[12px] leading-snug">
-                Clima {paymentFeeLabels.climateRateDisplay} sobre subtotal más estimación Stripe (
-                {paymentFeeLabels.stripePctDisplay}). Un cobro por moneda agrupando mercadería,
-                servicios y tramos incluidos.
+                Se cobra solo el subtotal del acuerdo (mercadería, servicios y tramos incluidos). La
+                referencia Climate ({paymentFeeLabels.climateRateDisplay}) y la tarifa Stripe estimada (
+                {paymentFeeLabels.stripePctDisplay} + fijo) son avisos informativos y no se suman al cargo.
               </p>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5 text-right">
@@ -605,11 +605,20 @@ export function ChatPaymentModal({
                       {breakdown.byCurrency.map((bc) => {
                         const c = bc.currencyLower;
                         const paid = currencyPaid(statuses, c);
+                        const refCombo = bc.climateMinor + bc.stripeFeeMinor;
                         return (
                           <div
                             key={c}
-                            className="rounded-xl border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] px-3 py-2"
+                            className="space-y-2 rounded-xl border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] px-3 py-2"
                           >
+                            <div
+                              className="rounded-lg border border-[color-mix(in_oklab,#f59e0b_45%,var(--border))] bg-[color-mix(in_oklab,#f59e0b_10%,var(--surface))] px-2.5 py-1.5 text-[11px] leading-snug text-[var(--text)]"
+                              role="note"
+                            >
+                              <span className="font-black">Aviso:</span> Climate + Stripe estimado (~
+                              {fmt(refCombo, c)}) es solo referencia; no se suma al cobro con tarjeta (
+                              {fmt(bc.totalMinor, c)}).
+                            </div>
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="text-[13px] font-black">
                                 Moneda {c.toUpperCase()}{paid ?
@@ -618,14 +627,20 @@ export function ChatPaymentModal({
                                   </span>
                                 : null}
                               </div>
-                              <div className="font-mono text-[13px] font-bold">
-                                {fmt(bc.totalMinor, c)}
+                              <div className="text-right">
+                                <div className="font-mono text-[13px] font-bold">
+                                  {fmt(bc.totalMinor, c)}
+                                </div>
+                                <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
+                                  A cobrar (subtotal)
+                                </div>
                               </div>
                             </div>
                             <div className="vt-muted mt-1 grid gap-0.5 text-[12px]">
-                              <div>Subtotal: {fmt(bc.subtotalMinor, c)} · Climate{" "}
-                                {fmt(bc.climateMinor, c)}{" "}
-                                · Tarifa est. Stripe {fmt(bc.stripeFeeMinor, c)}
+                              <div>
+                                Referencia Climate ({paymentFeeLabels.climateRateDisplay}):{" "}
+                                {fmt(bc.climateMinor, c)} · Tarifa Stripe est. ({paymentFeeLabels.stripePctDisplay}
+                                ): {fmt(bc.stripeFeeMinor, c)} · Combinado ref.: {fmt(refCombo, c)}
                               </div>
                             </div>
                             <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-[12px] text-[var(--text)] opacity-92">
@@ -687,8 +702,9 @@ export function ChatPaymentModal({
                       onChange={(e) => setAcceptedInforme(e.target.checked)}
                     />
                     <span>
-                      Confirmé el desglose de montos, conceptos incluidos y adjuntos declarados por el
-                      vendedor antes de cargar cobros Stripe.
+                      Confirmé el desglose: el cobro es el subtotal del acuerdo; las líneas Climate y Stripe
+                      son referencias informativas. Revisé conceptos incluidos y adjuntos del vendedor antes de
+                      pagar con Stripe.
                     </span>
                   </label>
 

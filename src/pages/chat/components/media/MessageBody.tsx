@@ -51,25 +51,27 @@ function PaymentFeeReceiptBubble({ receipt }: { receipt: PaymentFeeReceiptPayloa
           <span className="font-semibold tabular-nums">{fmtReceiptMinor(receipt.subtotalMinor, cur)}</span>
         </div>
         <div className="flex justify-between gap-2">
-          <span className="text-[var(--muted)]">Climate ({paymentFeeLabels.climateRateDisplay})</span>
+          <span className="text-[var(--muted)]">
+            Climate ref. ({paymentFeeLabels.climateRateDisplay}, no cobrado)
+          </span>
           <span className="font-semibold tabular-nums">{fmtReceiptMinor(receipt.climateMinor, cur)}</span>
         </div>
         <div className="flex justify-between gap-2">
-          <span className="text-[var(--muted)]">Tarifa Stripe (liquidación)</span>
+          <span className="text-[var(--muted)]">Tarifa Stripe liquidación (referencia)</span>
           <span className="font-semibold tabular-nums">
             {fmtReceiptMinor(receipt.stripeFeeMinorActual, cur)}
           </span>
         </div>
         <div className="border-t border-[color-mix(in_oklab,var(--border)_85%,transparent)] pt-1.5 flex justify-between gap-2">
-          <span className="font-black">Total cobrado</span>
+          <span className="font-black">Total cobrado (subtotal)</span>
           <span className="font-black tabular-nums">
             {fmtReceiptMinor(receipt.totalChargedMinor, cur)}
           </span>
         </div>
       </div>
       <p className="text-[11px] leading-snug text-[var(--muted)]">
-        Tarifa estimada antes del pago: {fmtReceiptMinor(receipt.stripeFeeMinorEstimated, cur)}. Políticas
-        Stripe:{" "}
+        Tarifa Stripe estimada antes del pago (referencia):{" "}
+        {fmtReceiptMinor(receipt.stripeFeeMinorEstimated, cur)}. Políticas Stripe:{" "}
         <a
           href={receipt.stripePricingUrl}
           target="_blank"
