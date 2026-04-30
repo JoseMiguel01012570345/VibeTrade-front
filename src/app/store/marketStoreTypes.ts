@@ -17,6 +17,7 @@ import type {
   ChatThreadDto,
   RouteTramoSubscriptionItemApi,
 } from "../../utils/chat/chatApi";
+import type { PaymentFeeReceiptPayload } from "../../pages/chat/domain/paymentFeeReceiptTypes";
 import type {
   OfferQaAuthorSnapshot,
   OfferQaCommentEnriched,
@@ -305,6 +306,14 @@ export type Message =
       replyQuotes?: ReplyQuote[];
       /** Entrega/lectura en el propio anuncio de acuerdo (GET / messages + SignalR). */
       chatStatus?: ChatDeliveryStatus;
+    }
+  | {
+      id: string;
+      from: "system";
+      type: "payment_fee_receipt";
+      receipt: PaymentFeeReceiptPayload;
+      at: number;
+      read?: boolean;
     };
 
 /**

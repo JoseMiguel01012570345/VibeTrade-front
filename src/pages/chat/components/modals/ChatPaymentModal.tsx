@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
+import QRCode from "qrcode";
 import { CreditCard, FileDown, Loader2 } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { cn } from "../../../../lib/cn";
 import { useNavigate } from "react-router-dom";
-import { postChatTextMessage } from "../../../../utils/chat/chatApi";
 import {
   executeAgreementCurrencyPayment,
   fetchAgreementCheckoutBreakdown,
@@ -27,6 +27,7 @@ import {
 } from "../../domain/paymentFeePolicy";
 import { downloadPaymentCheckoutInformePdf } from "../../utils/paymentCheckoutPdfDownload";
 import { collectAgreementInformePreviewEntries } from "../../utils/tradeAgreementPdfText";
+import { STRIPE_PRICING_PAGE_URL } from "../../domain/stripePricingLinks";
 import { ProtectedMediaImg } from "../../../../components/media/ProtectedMediaImg";
 import {
   VtSelect,
@@ -94,6 +95,7 @@ export function ChatPaymentModal({
   }));
 
   const [acceptedInforme, setAcceptedInforme] = useState(false);
+  const [feePolicyQrDataUrl, setFeePolicyQrDataUrl] = useState<string | null>(null);
   const settledNotifiedAgreementIdRef = useRef<string | null>(null);
 
   const selectedAgreement = useMemo(
@@ -177,6 +179,20 @@ export function ChatPaymentModal({
       settledNotifiedAgreementIdRef.current = null;
       return;
     }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setFeePolicyQrDataUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void QRCode.toDataURL(STRIPE_PRICING_PAGE_URL, { width: 112, margin: 1 }).then((url) => {
+      if (!cancelled) setFeePolicyQrDataUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [open]);
 
   useEffect(() => {
@@ -301,14 +317,6 @@ export function ChatPaymentModal({
 
       toast.success(`Pago en ${curLower.toUpperCase()} registrado.`);
       await reloadCheckout();
-      try {
-        await postChatTextMessage(
-          threadId,
-          `Pago registrado (${curLower.toUpperCase()}).`,
-        );
-      } catch {
-        /* noop */
-      }
     } catch (e) {
       toast.error((e as Error)?.message ?? "No se pudo completar el pago.");
     } finally {
@@ -327,9 +335,9 @@ export function ChatPaymentModal({
   }
 
   return createPortal(
-    <button
-      type="button"
+    <div
       className="vt-modal-backdrop"
+      role="presentation"
       onMouseDown={onClose}
     >
       <div
@@ -342,18 +350,37 @@ export function ChatPaymentModal({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="border-b border-[var(--border)] px-4 py-3">
-          <div className="min-w-0">
-            <div
-              id="chat-pay-title"
-              className="vt-modal-title flex items-center gap-2"
-            >
-              <CreditCard size={18} aria-hidden /> Pago del acuerdo
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div
+                id="chat-pay-title"
+                className="vt-modal-title flex items-center gap-2"
+              >
+                <CreditCard size={18} aria-hidden /> Pago del acuerdo
+              </div>
+              <p className="vt-muted mt-1 text-[12px] leading-snug">
+                Clima {paymentFeeLabels.climateRateDisplay} sobre subtotal más estimación Stripe (
+                {paymentFeeLabels.stripePctDisplay}). Un cobro por moneda agrupando mercadería,
+                servicios y tramos incluidos.
+              </p>
             </div>
-            <p className="vt-muted mt-1 text-[12px] leading-snug">
-              Clima {paymentFeeLabels.climateRateDisplay} sobre subtotal más estimación Stripe (
-              {paymentFeeLabels.stripePctDisplay}). Un cobro por moneda agrupando mercadería,
-              servicios y tramos incluidos.
-            </p>
+            <div className="flex shrink-0 flex-col items-end gap-1.5 text-right">
+              <a
+                href={STRIPE_PRICING_PAGE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-black text-[var(--primary)] underline decoration-1 underline-offset-2"
+              >
+                Precios / políticas Stripe
+              </a>
+              {feePolicyQrDataUrl ?
+                <img
+                  src={feePolicyQrDataUrl}
+                  alt="Código QR a precios Stripe"
+                  className="size-14 rounded-md border border-[var(--border)] bg-white p-0.5"
+                />
+              : null}
+            </div>
           </div>
         </div>
 
@@ -626,7 +653,7 @@ export function ChatPaymentModal({
           </button>
         </div>
       </div>
-    </button>,
+    </div>,
     document.body,
   );
 }

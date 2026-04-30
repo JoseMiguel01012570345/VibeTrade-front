@@ -67,6 +67,8 @@ export type AgreementExecutePaymentResultApi = {
   stripeErrorMessage?: string | null;
   accepted: boolean;
   errorCode?: string | null;
+  /** Presente cuando el cobro se persistió en esta llamada (no en replay idempotente). */
+  agreementCurrencyPaymentId?: string | null;
 };
 
 export async function executeAgreementCurrencyPayment(args: {
