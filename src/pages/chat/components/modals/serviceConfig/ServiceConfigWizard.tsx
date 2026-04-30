@@ -76,6 +76,8 @@ type Props = {
   sellerCatalog?: StoreCatalog | null
   /** `Thread.offerId` — prioriza ese servicio en el desplegable y en la apertura si aún no hay ancla. */
   contextOfferId?: string | null
+  /** Fichas de servicio ya usadas por otros ítems del mismo acuerdo (no elegibles para este ítem). */
+  excludeLinkedServiceIds?: string[]
 }
 
 function applyMonedasAndSchedule(copy: ServiceItem): ServiceItem {
@@ -114,6 +116,7 @@ export function ServiceConfigWizard({
   categoryListId,
   sellerCatalog = null,
   contextOfferId = null,
+  excludeLinkedServiceIds = [],
 }: Props) {
   const [sv, setSv] = useState<ServiceItem>(emptyServiceItem())
   const [step, setStep] = useState(0)
@@ -134,16 +137,22 @@ export function ServiceConfigWizard({
   )
   const canSelectServiceFromCatalog = catalogServicesOrdered.length > 0
 
-  const serviceSelectOptions = useMemo(
-    () =>
-      catalogServicesOrdered.map((s) => ({
-        value: s.id,
-        label: `${s.category} · ${s.tipoServicio}${
-          s.published === false ? ' (borrador)' : ''
-        }${contextOfferId && s.id === contextOfferId ? ' — anuncio de este chat' : ''}`,
-      })),
-    [catalogServicesOrdered, contextOfferId],
-  )
+  const serviceSelectOptions = useMemo(() => {
+    const blocked = new Set(excludeLinkedServiceIds.filter(Boolean))
+    return catalogServicesOrdered.map((s) => ({
+      value: s.id,
+      label: `${s.category} · ${s.tipoServicio}${
+        s.published === false ? ' (borrador)' : ''
+      }${contextOfferId && s.id === contextOfferId ? ' — anuncio de este chat' : ''}`,
+      disabled:
+        blocked.has(s.id) && s.id !== (sv.linkedStoreServiceId ?? '').trim(),
+    }))
+  }, [
+    catalogServicesOrdered,
+    contextOfferId,
+    excludeLinkedServiceIds,
+    sv.linkedStoreServiceId,
+  ])
 
   useEffect(() => {
     if (!open) {

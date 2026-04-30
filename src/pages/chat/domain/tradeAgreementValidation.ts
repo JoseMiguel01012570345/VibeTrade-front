@@ -1,12 +1,15 @@
 import type {
   MerchandiseLine,
   ServiceItem,
+  TradeAgreement,
   TradeAgreementDraft,
 } from "./tradeAgreementTypes";
 import {
+  agreementDeclaresMerchandise,
   coerceServiceSchedule,
   monedasFromRecurrenciaPagos,
   normalizeExtraScope,
+  normalizeMerchandiseLine,
 } from "./tradeAgreementTypes";
 import { validateVigenciaRange } from "./serviceVigenciaDates";
 import type { StoreCatalog } from "./storeCatalogTypes";
@@ -241,6 +244,25 @@ export function validateTradeAgreementDraft(
     if (Object.keys(le).length) lineErrors[i] = le;
   });
 
+  if (d.includeMerchandise) {
+    const merchSeen = new Map<string, number>();
+    d.merchandise.forEach((line, i) => {
+      if (isSkippableEmptyMerchLine(line)) return;
+      const pid = line.linkedStoreProductId?.trim();
+      if (!pid) return;
+      const firstIdx = merchSeen.get(pid);
+      if (firstIdx !== undefined) {
+        lineErrors[i] = {
+          ...(lineErrors[i] ?? {}),
+          tipo:
+            "Este producto ya está en otra línea de mercancía; elegí otro producto o quitá la línea duplicada.",
+        };
+      } else {
+        merchSeen.set(pid, i);
+      }
+    });
+  }
+
   if (Object.keys(lineErrors).length) errors.merchandiseLines = lineErrors;
 
   if (d.includeService) {
@@ -255,6 +277,19 @@ export function validateTradeAgreementDraft(
       services.forEach((sv, idx) => {
         const msgs = validateServiceItem(sv);
         if (msgs.length) serviceErrors[idx] = msgs;
+      });
+      const svcSeen = new Map<string, number>();
+      services.forEach((sv, idx) => {
+        const sid = sv.linkedStoreServiceId?.trim();
+        if (!sid) return;
+        const firstIdx = svcSeen.get(sid);
+        if (firstIdx !== undefined) {
+          const msg =
+            "Este servicio de catálogo ya está en otro ítem del mismo acuerdo; elegí otro servicio por ítem.";
+          serviceErrors[idx] = [...(serviceErrors[idx] ?? []), msg];
+        } else {
+          svcSeen.set(sid, idx);
+        }
       });
       if (Object.keys(serviceErrors).length)
         errors.serviceErrors = serviceErrors;
@@ -607,4 +642,23 @@ export function validationErrorCount(e: TradeAgreementFormErrors): number {
 
 export function hasValidationErrors(e: TradeAgreementFormErrors): boolean {
   return validationErrorCount(e) > 0;
+}
+
+function iso4217Like(raw: string | undefined): boolean {
+  const t = (raw ?? "").trim().toUpperCase();
+  return t.length >= 3 && t.length <= 8;
+}
+
+/** Mercancía mínima para permitir vínculo acuerdo ↔ hoja de ruta (coincide con servidor). */
+export function agreementHasMerchandiseForRouteLink(a: TradeAgreement): boolean {
+  if (!agreementDeclaresMerchandise(a)) return false;
+  const metaMon = a.merchandiseMeta?.moneda;
+  for (const raw of a.merchandise ?? []) {
+    const line = normalizeMerchandiseLine(raw);
+    const q = parseDecimal(line.cantidad);
+    const vu = parseDecimal(line.valorUnitario);
+    const mon = (line.moneda || metaMon || "").trim();
+    if ((q ?? 0) > 0 && (vu ?? 0) > 0 && iso4217Like(mon)) return true;
+  }
+  return false;
 }

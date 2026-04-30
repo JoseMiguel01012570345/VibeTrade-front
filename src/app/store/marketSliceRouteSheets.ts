@@ -9,11 +9,13 @@ import {
   routeSheetEditAcksRecordFromSheets,
   summarizeRouteSheetMonedaPago,
 } from '../../pages/chat/domain/routeSheetTypes'
+import { agreementHasMerchandiseForRouteLink } from '../../pages/chat/domain/tradeAgreementValidation'
 import type { Message, MarketState } from './marketStoreTypes'
 import { threadHasAcceptedAgreement } from './marketStoreTypes'
 import {
   stripLegacyRouteSheetHead,
   routeSheetIdsLinkedToContracts,
+  routeSheetIdsLockedByPaidAgreements,
   threadIsActionLocked,
   uid,
 } from './marketStoreHelpers'
@@ -133,6 +135,11 @@ createRouteSheet: (threadId, payload) => {
 updateRouteSheet: (threadId, routeSheetId, payload) => {
   const thGuard = get().threads[threadId]
   if (threadIsActionLocked(thGuard)) return false
+  if (
+    thGuard &&
+    routeSheetIdsLockedByPaidAgreements(thGuard).has(routeSheetId)
+  )
+    return false
   if (thGuard && routeSheetHasPendingCarrierAck(thGuard, routeSheetId)) return false
   if (hasRouteSheetFormErrors(getRouteSheetFormErrors(payload))) return false
   const paradasNorm = normalizeRouteSheetParadas(payload.paradas)
@@ -276,6 +283,12 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
 },
 
 setRouteSheetStatus: (threadId, routeSheetId, estado) => {
+  const thG = get().threads[threadId]
+  if (
+    thG &&
+    routeSheetIdsLockedByPaidAgreements(thG).has(routeSheetId)
+  )
+    return
   set((s) => {
     const th = s.threads[threadId]
     if (!th?.routeSheets || threadIsActionLocked(th)) return s
@@ -299,6 +312,12 @@ setRouteSheetStatus: (threadId, routeSheetId, estado) => {
 },
 
 toggleRouteStop: (threadId, routeSheetId, stopId) => {
+  const thG = get().threads[threadId]
+  if (
+    thG &&
+    routeSheetIdsLockedByPaidAgreements(thG).has(routeSheetId)
+  )
+    return
   set((s) => {
     const th = s.threads[threadId]
     if (!th?.routeSheets || threadIsActionLocked(th)) return s
@@ -334,7 +353,10 @@ publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
     const sheets = th?.routeSheets
     if (!th || threadIsActionLocked(th) || !sheets?.length) return s
     const linked = routeSheetIdsLinkedToContracts(th)
-    const allowedArr = [...idSet].filter((id) => linked.has(id))
+    const paidLocked = routeSheetIdsLockedByPaidAgreements(th)
+    const allowedArr = [...idSet].filter(
+      (id) => linked.has(id) && !paidLocked.has(id),
+    )
     if (allowedArr.length === 0) return s
     const ro = s.routeOfferPublic[th.offerId]
     const now = Date.now()
@@ -383,6 +405,12 @@ publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
 },
 
 unpublishRouteSheetFromPlatform: (threadId, routeSheetId) => {
+  const thG = get().threads[threadId]
+  if (
+    thG &&
+    routeSheetIdsLockedByPaidAgreements(thG).has(routeSheetId)
+  )
+    return
   let toSync: RouteSheet | null = null
   set((s) => {
     const th = s.threads[threadId]
@@ -437,6 +465,11 @@ linkAgreementToRouteSheet: async (threadId, agreementId, routeSheetId) => {
   if (!sheet0) return false
   const prev0 = contracts0.find((c) => c.id === agreementId)
   if (!prev0 || prev0.status === 'deleted') return false
+  if (!agreementHasMerchandiseForRouteLink(prev0)) {
+    throw new Error(
+      'Solo podés vincular una hoja de ruta si el acuerdo incluye mercancía con al menos una línea con cantidad, precio unitario y moneda válidos.',
+    )
+  }
   if (prev0.routeSheetId === routeSheetId) return true
 
   const applyLocal = () => {
@@ -515,7 +548,8 @@ linkAgreementToRouteSheet: async (threadId, agreementId, routeSheetId) => {
       }
     })
     return true
-  } catch {
+  } catch (e) {
+    if (e instanceof Error) throw e
     return false
   }
 },
@@ -615,6 +649,12 @@ unlinkAgreementFromRouteSheet: async (threadId, agreementId) => {
 },
 
 deleteRouteSheet: (threadId, routeSheetId) => {
+  const thG = get().threads[threadId]
+  if (
+    thG &&
+    routeSheetIdsLockedByPaidAgreements(thG).has(routeSheetId)
+  )
+    return false
   let ok = false
   const persistChat = threadId.startsWith('cth_') && getSessionToken()
   set((s) => {

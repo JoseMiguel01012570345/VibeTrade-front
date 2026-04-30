@@ -68,6 +68,8 @@ export type TradeAgreementApiDto = {
   extraFields?: TradeAgreementExtraFieldApiDto[]
   routeSheetId?: string | null
   routeSheetUrl?: string | null
+  /** Hay al menos un cobro exitoso (Stripe); bloquea edición, borrado y cambios del vínculo de ruta. */
+  hasSucceededPayments?: boolean | null
 }
 
 export type ChatMessagePayloadDto = Record<string, unknown> & {
@@ -512,7 +514,19 @@ export async function patchThreadTradeAgreementRouteLink(
       body: JSON.stringify({ routeSheetId }),
     },
   )
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const text = await res.text()
+    let message = text
+    try {
+      const j = JSON.parse(text) as { message?: string }
+      if (typeof j.message === 'string' && j.message.trim()) message = j.message.trim()
+    } catch {
+      /* raw body */
+    }
+    const err = new Error(message) as Error & { status?: number }
+    err.status = res.status
+    throw err
+  }
   return (await res.json()) as TradeAgreementApiDto
 }
 

@@ -28,6 +28,7 @@ import {
 } from "../../domain/storeCatalogTypes";
 import { ServiceItemPreview } from "./serviceConfig/ServiceItemPreview";
 import type { RouteSheet } from "../../domain/routeSheetTypes";
+import { agreementHasMerchandiseForRouteLink } from "../../domain/tradeAgreementValidation";
 import { downloadTradeAgreementPdf } from "../../utils/tradeAgreementPdfDownload";
 import {
   agrDetailBlock,
@@ -306,12 +307,17 @@ export function AgreementDetailView({
     !!a.routeSheetId &&
     !linkedSheet?.publicadaPlataforma &&
     !!onUnlinkRouteSheet;
-  const selectRouteSheetDisabled = linkPublishedLocked || linkActionsDisabled;
+  const merchOkForRouteLink = agreementHasMerchandiseForRouteLink(a);
+  const selectRouteSheetDisabled =
+    linkPublishedLocked ||
+    linkActionsDisabled ||
+    (!!onLinkRouteSheet && !merchOkForRouteLink);
   const vincularDisabled =
     linkActionsDisabled ||
     linkPublishedLocked ||
     !pickId ||
-    pickId === (a.routeSheetId ?? "");
+    pickId === (a.routeSheetId ?? "") ||
+    !merchOkForRouteLink;
 
   const routeSheetSelectOptions: VtSelectOption[] = useMemo(
     () => [
@@ -360,6 +366,13 @@ export function AgreementDetailView({
                 Elige una sola hoja de ruta del chat para este acuerdo. Podés
                 cambiarla mientras la hoja no esté publicada a transportistas.
               </p>
+              {!merchOkForRouteLink ? (
+                <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
+                  Solo podés vincular una hoja de ruta si el acuerdo incluye
+                  mercancía con al menos una línea con cantidad, precio unitario y
+                  moneda válidos.
+                </p>
+              ) : null}
               {routeSheets.length === 0 ? (
                 <p className={cn("vt-muted", agrDetailHint)}>
                   No hay hojas de ruta en este chat. Crea una en la pestaña Rutas y

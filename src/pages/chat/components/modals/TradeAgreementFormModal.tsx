@@ -448,6 +448,9 @@ export function TradeAgreementFormModal({
                   canRemove={draft.merchandise.length > 1}
                   sellerCatalog={sellerCatalog}
                   contextOfferId={contextOfferId}
+                  linkedProductIdsUsedElsewhere={draft.merchandise
+                    .map((l, j) => (j !== i ? l.linkedStoreProductId : undefined))
+                    .filter((id): id is string => !!(id && id.trim()))}
                 />
               ))
             ) : (
@@ -628,6 +631,14 @@ export function TradeAgreementFormModal({
           categoryListId="agr-cat-hints"
           sellerCatalog={sellerCatalog}
           contextOfferId={contextOfferId}
+          excludeLinkedServiceIds={
+            configItem
+              ? draft.services
+                  .filter((s) => s.id !== configItem.id)
+                  .map((s) => s.linkedStoreServiceId)
+                  .filter((id): id is string => !!(id && id.trim()))
+              : []
+          }
           onClose={() => {
             setConfigOpen(false);
             setConfigId(null);

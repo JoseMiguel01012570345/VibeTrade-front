@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
-import { CreditCard, FileDown, X } from "lucide-react";
+import { CreditCard, FileDown, Loader2 } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { cn } from "../../../../lib/cn";
 import { useNavigate } from "react-router-dom";
@@ -140,29 +140,37 @@ export function ChatPaymentModal({
     breakdown.byCurrency.length > 0 &&
     pendingCurrencies.length === 0;
 
-  const reloadCheckout = useCallback(async () => {
-    const ag = selectedAgreement ?? agreements[0];
-    if (!ag) {
+  const reloadCheckout = useCallback(
+    async (opts?: { skipBusyToggle?: boolean }) => {
+      const ag = selectedAgreement ?? agreements[0];
+      if (!ag) {
+        setBreakdown(null);
+        setStatuses([]);
+        return;
+      }
+      const skipBusy = opts?.skipBusyToggle === true;
+      if (!skipBusy) setBusyInit(true);
       setBreakdown(null);
       setStatuses([]);
-      return;
-    }
-    setBusyInit(true);
-    try {
-      const [bd, ps] = await Promise.all([
-        fetchAgreementCheckoutBreakdown(threadId, ag.id),
-        fetchAgreementPaymentStatuses(threadId, ag.id),
-      ]);
-      setBreakdown(bd);
-      setStatuses(ps);
-    } catch (e) {
-      setBreakdown(null);
-      setStatuses([]);
-      toast.error((e as Error)?.message ?? "No se pudo cargar el informe de pago.");
-    } finally {
-      setBusyInit(false);
-    }
-  }, [threadId, selectedAgreement, agreements]);
+      try {
+        const [bd, ps] = await Promise.all([
+          fetchAgreementCheckoutBreakdown(threadId, ag.id),
+          fetchAgreementPaymentStatuses(threadId, ag.id),
+        ]);
+        setBreakdown(bd);
+        setStatuses(ps);
+      } catch (e) {
+        setBreakdown(null);
+        setStatuses([]);
+        toast.error(
+          (e as Error)?.message ?? "No se pudo cargar el informe de pago.",
+        );
+      } finally {
+        if (!skipBusy) setBusyInit(false);
+      }
+    },
+    [threadId, selectedAgreement, agreements],
+  );
 
   useEffect(() => {
     if (!open) {
@@ -196,6 +204,7 @@ export function ChatPaymentModal({
   useEffect(() => {
     if (!open) return;
     setAcceptedInforme(false);
+    setBusyInit(true);
     void (async () => {
       try {
         await getStripeConfig();
@@ -206,8 +215,8 @@ export function ChatPaymentModal({
       } catch {
         setCards([]);
       }
-      await reloadCheckout();
-    })();
+      await reloadCheckout({ skipBusyToggle: true });
+    })().finally(() => setBusyInit(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, agreementId]);
 
@@ -223,7 +232,6 @@ export function ChatPaymentModal({
   if (!open) return null;
 
   const hasAgreement = agreements.length > 0;
-  const primaryCurrency = pendingCurrencies[0] ?? "";
   const informeReady =
     breakdown !== null &&
     breakdown.ok === true &&
@@ -333,7 +341,7 @@ export function ChatPaymentModal({
         aria-labelledby="chat-pay-title"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+        <div className="border-b border-[var(--border)] px-4 py-3">
           <div className="min-w-0">
             <div
               id="chat-pay-title"
@@ -347,14 +355,6 @@ export function ChatPaymentModal({
               servicios y tramos incluidos.
             </p>
           </div>
-          <button
-            type="button"
-            className="vt-btn vt-btn-ghost vt-btn-sm shrink-0 p-2"
-            aria-label="Cerrar"
-            onClick={onClose}
-          >
-            <X size={18} />
-          </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 space-y-3">
@@ -382,7 +382,20 @@ export function ChatPaymentModal({
               </label>
 
               {busyInit ?
-                <p className="vt-muted py-6 text-center text-[13px]">Calculando montos…</p>
+                <div
+                  className="flex flex-col items-center justify-center gap-3 py-10"
+                  role="status"
+                  aria-live="polite"
+                  aria-busy="true"
+                >
+                  <Loader2
+                    className="h-9 w-9 animate-spin text-[var(--primary)]"
+                    aria-hidden
+                  />
+                  <p className="vt-muted text-center text-[13px] leading-snug">
+                    Cargando tarjetas, acuerdos y desglose de pago…
+                  </p>
+                </div>
               : breakdown && !breakdown.ok ?
                 <div className="rounded-2xl border border-[color-mix(in_oklab,var(--bad)_42%,var(--border))] bg-[color-mix(in_oklab,var(--bad)_10%,var(--surface))] p-3 text-[13px] leading-snug">
                   {breakdown.errors.map((e) => (
@@ -524,24 +537,17 @@ export function ChatPaymentModal({
           }
         </div>
 
-        <div className="vt-modal-actions flex flex-col gap-3 border-t border-[var(--border)] px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <button
-            type="button"
-            className="vt-btn vt-btn-ghost shrink-0"
-            onClick={onClose}
-            disabled={busyPay}
-          >
-            Cerrar
-          </button>
+        <div className="vt-modal-actions flex flex-col gap-3 border-t border-[var(--border)] px-4 py-3">
           {allPaid ?
-            <div className="rounded-xl px-3 py-2 text-[13px] font-bold text-emerald-600 sm:ml-auto">
+            <div className="rounded-xl px-3 py-2 text-[13px] font-bold text-emerald-600">
               Cobros listos en todas las monedas necesarias del acuerdo.
             </div>
           : null}
+
           {!allPaid && hasAgreement && !cards.length ?
             <button
               type="button"
-              className="vt-btn vt-btn-primary sm:ml-auto"
+              className="vt-btn vt-btn-primary w-full sm:ml-auto sm:w-auto"
               onClick={() =>
                 nav(
                   `/profile/${encodeURIComponent(me.id)}/account?stripeCards=1`,
@@ -551,48 +557,73 @@ export function ChatPaymentModal({
               Ir al perfil a guardar tarjeta
             </button>
           : null}
-          {!allPaid && hasAgreement && cards.length > 0 ?
-            <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:items-center sm:justify-end">
-              <VtSelect
-                className="w-full sm:w-[min(300px,92vw)] md:max-w-[260px]"
-                value={selectedCardId}
-                onChange={setSelectedCardId}
-                options={cardOptions}
-                listPortal
-                ariaLabel="Seleccionar tarjeta"
-                buttonClassName="min-h-10 border-[color-mix(in_oklab,var(--border)_90%,transparent)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] shadow-[inset_0_1px_0_rgba(2,6,23,0.55)]"
-              />
-              <div className="flex flex-wrap gap-2 sm:justify-end">
-                <button
-                  type="button"
-                  className="vt-btn"
-                  disabled={busyPay || !primaryCurrency}
-                  title={
-                    pendingCurrencies[1] ?
-                      "Luego quedará la siguiente moneda."
-                    : undefined
-                  }
-                  onClick={() => void handlePayCurrency(primaryCurrency)}
-                >
-                  {busyPay ?
-                    "Procesando…"
-                  : `Pagar ${primaryCurrency.toUpperCase()}`}
-                </button>
-                <button
-                  type="button"
-                  className="vt-btn vt-btn-ghost border border-[var(--border)] px-4 py-2 shadow-none"
-                  disabled={
-                    busyPay ||
-                    primaryCurrency.trim().length < 3 ||
-                    !acceptedInforme
-                  }
-                  onClick={() => void handlePayCurrency(primaryCurrency)}
-                >
-                  Reintentar
-                </button>
-              </div>
+
+          {!allPaid &&
+          hasAgreement &&
+          cards.length > 0 &&
+          pendingCurrencies.length > 0 ?
+            <div className="flex flex-col gap-3">
+              {pendingCurrencies.map((cur) => {
+                const curOk = cur.trim().length >= 3;
+                const payDisabled =
+                  busyPay ||
+                  !acceptedInforme ||
+                  !selectedCardId.trim() ||
+                  !curOk;
+                const retryDisabled = busyPay || !curOk || !acceptedInforme;
+                return (
+                  <div
+                    key={cur}
+                    className="flex flex-col gap-2 rounded-xl border border-[color-mix(in_oklab,var(--border)_88%,transparent)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] p-2.5 sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-2"
+                  >
+                    <VtSelect
+                      className="min-w-0 w-full sm:flex-1 sm:min-w-[200px]"
+                      value={selectedCardId}
+                      onChange={setSelectedCardId}
+                      options={cardOptions}
+                      listPortal
+                      ariaLabel={`Tarjeta para cobro en ${cur.toUpperCase()}`}
+                      buttonClassName="min-h-10 border-[color-mix(in_oklab,var(--border)_90%,transparent)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] shadow-[inset_0_1px_0_rgba(2,6,23,0.55)]"
+                    />
+                    <div className="flex flex-wrap gap-2 sm:ml-auto sm:items-center sm:justify-end">
+                      <button
+                        type="button"
+                        className="vt-btn shrink-0"
+                        disabled={payDisabled}
+                        title={
+                          pendingCurrencies.length > 1 ?
+                            "Un cobro por moneda; podés completar las demás después."
+                          : undefined
+                        }
+                        onClick={() => void handlePayCurrency(cur)}
+                      >
+                        {busyPay ?
+                          "Procesando…"
+                        : `Pagar ${cur.toUpperCase()}`}
+                      </button>
+                      <button
+                        type="button"
+                        className="vt-btn vt-btn-ghost shrink-0 border border-[var(--border)] px-4 py-2 shadow-none"
+                        disabled={retryDisabled}
+                        onClick={() => void handlePayCurrency(cur)}
+                      >
+                        Reintentar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           : null}
+
+          <button
+            type="button"
+            className="vt-btn vt-btn-ghost order-last min-h-10 w-full justify-center px-5 py-2.5 no-underline border border-[color-mix(in_oklab,var(--border)_80%,transparent)] sm:w-auto sm:self-end"
+            onClick={onClose}
+            disabled={busyPay}
+          >
+            Cerrar
+          </button>
         </div>
       </div>
     </button>,

@@ -94,9 +94,16 @@ export function ChatRightRailContractsPanel({
               <strong className="text-[var(--text)]">permanece en el chat</strong>).
             </p>
           ) : null}
+          {agreementForDetail.hasSucceededPayments ? (
+            <p className="mb-2.5 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_92%,transparent)] px-2.5 py-2 text-[12px] leading-snug text-[var(--muted)]">
+              Hay <strong className="text-[var(--text)]">cobros registrados</strong> para este acuerdo. No se puede
+              editar ni eliminar ni cambiar el vínculo con la hoja de ruta.
+            </p>
+          ) : null}
           {isActingSeller &&
           !actionsLocked &&
           agreementForDetail.status !== 'deleted' &&
+          !agreementForDetail.hasSucceededPayments &&
           agreementForDetail.issuedByStoreId === threadStoreId &&
           onRequestEditAgreement ? (
             <div className="mb-2.5 flex flex-col gap-2">
@@ -114,7 +121,9 @@ export function ChatRightRailContractsPanel({
                 >
                   Editar acuerdo
                 </button>
-                {agreementForDetail.status !== 'accepted' && onDeleteAgreement ? (
+                {agreementForDetail.status !== 'accepted' &&
+                  !agreementForDetail.hasSucceededPayments &&
+                  onDeleteAgreement ? (
                   <button
                     type="button"
                     className="vt-btn vt-btn-sm inline-flex items-center gap-1 border-[color-mix(in_oklab,#dc2626_28%,var(--border))] bg-[color-mix(in_oklab,#dc2626_6%,var(--surface))] text-[color-mix(in_oklab,#dc2626_88%,var(--text))]"
@@ -142,17 +151,33 @@ export function ChatRightRailContractsPanel({
           <AgreementDetailView
             a={agreementForDetail}
             routeSheets={routeSheets}
-            linkActionsDisabled={actionsLocked || agreementForDetail.status === 'deleted'}
+            linkActionsDisabled={
+              actionsLocked ||
+              agreementForDetail.status === 'deleted' ||
+              agreementForDetail.hasSucceededPayments === true
+            }
             onLinkRouteSheet={
               isActingSeller
                 ? async (agreementId, routeSheetId) => {
-                    const ok = await linkAgreementToRouteSheet(
-                      threadId,
-                      agreementId,
-                      routeSheetId,
-                    )
-                    if (ok) toast.success('Vinculación registrada; se notificó en el chat')
-                    else toast.error('No se pudo vincular (elige otra hoja).')
+                    try {
+                      const ok = await linkAgreementToRouteSheet(
+                        threadId,
+                        agreementId,
+                        routeSheetId,
+                      )
+                      if (ok) {
+                        toast.success(
+                          'Vinculación registrada; se notificó en el chat',
+                        )
+                      } else {
+                        toast.error('No se pudo vincular (elige otra hoja).')
+                      }
+                    } catch (e) {
+                      toast.error(
+                        (e as Error)?.message?.trim() ||
+                          'No se pudo vincular la hoja de ruta.',
+                      )
+                    }
                   }
                 : undefined
             }

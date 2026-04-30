@@ -205,6 +205,11 @@ export function buildPaymentCheckoutBreakdown(
     });
   }
 
+  const subtotalMerchOrServiceMinor = [...bucket.values()].reduce(
+    (s, b) => s + b.subtotalMinor,
+    0,
+  );
+
   const linkId = agreement.routeSheetId?.trim() ?? "";
   const rsMatch =
     linkId && routeSheet?.id?.trim() === linkId ? routeSheet : null;
@@ -231,12 +236,22 @@ export function buildPaymentCheckoutBreakdown(
         tramoOrdinal: idx + 1,
       });
     });
-  } else if (linkId.length > 0 && !routeSheet)
+  } else if (
+    linkId.length > 0 &&
+    !routeSheet &&
+    subtotalMerchOrServiceMinor <= 0
+  ) {
     errors.push("Hoja de ruta vinculada no cargada en el cliente.");
-  else if (linkId.length > 0 && routeSheet?.id?.trim() !== linkId)
+  } else if (
+    linkId.length > 0 &&
+    routeSheet &&
+    routeSheet.id?.trim() !== linkId &&
+    subtotalMerchOrServiceMinor <= 0
+  ) {
     errors.push(
       "El id de la hoja de ruta no coincide con el acuerdo; recarga el chat.",
     );
+  }
 
   const basisLines = [...bucket.values()].flatMap((b) => b.lines);
   const byCurrency: CheckoutCurrencyTotals[] = [];
@@ -257,6 +272,10 @@ export function buildPaymentCheckoutBreakdown(
   });
 
   byCurrency.sort((a, b) => a.currency.localeCompare(b.currency));
+
+  if (byCurrency.length === 0 && errors.length === 0) {
+    errors.push("No hay importes para cobrar en este acuerdo.");
+  }
 
   return { basisLines, byCurrency, errors };
 }
