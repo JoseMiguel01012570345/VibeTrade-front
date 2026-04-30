@@ -1700,7 +1700,6 @@ export function ChatPage() {
               markThreadPaymentCompleted={markThreadPaymentCompleted}
               pushNotification={pushNotification}
               setTrustScore={setTrustScore}
-              composerMobileActions={null}
             />
 
             {mobileChatActionsOpen ? (

@@ -1,4 +1,12 @@
-import { type ChangeEvent, lazy, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Link,
   Navigate,
