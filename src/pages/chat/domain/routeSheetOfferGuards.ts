@@ -16,6 +16,10 @@ import type {
 export const ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES =
   "No puedes suscribirte como transportista: en esta operación eres el comprador con un acuerdo aceptado.";
 
+/** Hoja vinculada a acuerdo con cobros registrados (bloqueo local + API). */
+export const ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES =
+  "Esta hoja está vinculada a un acuerdo con cobros registrados; no se puede editar, eliminar ni publicar.";
+
 /** Prioridad: teléfono en la parada de la hoja → asignación en la oferta → campo público del tramo. */
 export function effectiveTramoContactPhone(
   stop: RouteStop,

@@ -4,6 +4,7 @@ import type {
   ReplyQuote,
 } from "../../app/store/marketStoreTypes";
 import type { ChatMessageDto, ChatMessageStatusApi } from "./chatApi";
+import { parsePaymentFeeReceiptPayload } from "../../pages/chat/domain/paymentFeeReceiptTypes";
 
 function mapApiStatus(s: ChatMessageStatusApi): ChatDeliveryStatus {
   return s;
@@ -58,7 +59,19 @@ export function mergeMessageByIdPreferMonotonicDelivery(
     return incoming;
   }
   if (prev.from !== incoming.from) return incoming;
-  if (!supportsChatDeliveryMerge(incoming)) return incoming;
+  if (!supportsChatDeliveryMerge(incoming)) {
+    if (
+      incoming.type === "payment_fee_receipt" &&
+      prev.type === "payment_fee_receipt"
+    ) {
+      const prevR = "receipt" in prev ? prev.receipt : undefined;
+      const nextR = incoming.receipt ?? prevR;
+      if (nextR) {
+        return { ...incoming, receipt: nextR } as Message;
+      }
+    }
+    return incoming;
+  }
 
   const merged =
     preferHigherDeliveryStatus(
@@ -248,6 +261,18 @@ export function mapChatMessageDtoToMessage(
     };
   }
 
+  if (type === "payment_fee_receipt") {
+    const receipt = parsePaymentFeeReceiptPayload(p as Record<string, unknown>);
+    if (receipt) {
+      return {
+        ...common,
+        from: "system",
+        type: "payment_fee_receipt",
+        receipt,
+      };
+    }
+  }
+
   return {
     id: dto.id,
     from,
@@ -264,6 +289,7 @@ export function isLocalRichMessage(m: Message): boolean {
   if (m.type === "agreement") return true;
   if (m.type === "certificate") return true;
   if (m.type === "text" && m.from === "system") return true;
+  if (m.type === "payment_fee_receipt" && m.from === "system") return true;
   return false;
 }
 

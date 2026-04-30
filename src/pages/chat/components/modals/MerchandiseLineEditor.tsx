@@ -1,6 +1,10 @@
 import { useMemo } from 'react'
 import { cn } from '../../../../lib/cn'
 import {
+  VtSelect,
+  type VtSelectOption,
+} from '../../../../components/VtSelect'
+import {
   agrDetailCard,
   agrDetailLabel,
   agrDetailLink,
@@ -75,6 +79,7 @@ export function MerchandiseLineEditor({
   errors,
   sellerCatalog,
   contextOfferId = null,
+  linkedProductIdsUsedElsewhere = [],
 }: {
   line: MerchandiseLine
   onChange: (next: MerchandiseLine) => void
@@ -84,6 +89,8 @@ export function MerchandiseLineEditor({
   errors?: Partial<Record<keyof MerchandiseLine, string>>
   sellerCatalog?: StoreCatalog | null
   contextOfferId?: string | null
+  /** Productos de ficha ya elegidos en otras líneas (no se pueden repetir en el mismo acuerdo). */
+  linkedProductIdsUsedElsewhere?: string[]
 }) {
   const p = (k: keyof MerchandiseLine) => `agr-m-${lineIndex}-${k}`
   const anchorProducts = useMemo(
@@ -91,12 +98,31 @@ export function MerchandiseLineEditor({
     [sellerCatalog, contextOfferId],
   )
   const canPickProduct = !!sellerCatalog && anchorProducts.length > 0
-  let productSelectPlaceholder = 'Elige un producto (obligatorio)'
-  if (!sellerCatalog) {
-    productSelectPlaceholder = 'Catálogo no disponible'
-  } else if (anchorProducts.length === 0) {
-    productSelectPlaceholder = 'No hay productos en tu ficha de tienda'
-  }
+
+  const productSelectOptions = useMemo((): VtSelectOption[] => {
+    let placeholder = 'Elige un producto (obligatorio)'
+    if (!sellerCatalog) placeholder = 'Catálogo no disponible'
+    else if (anchorProducts.length === 0)
+      placeholder = 'No hay productos en tu ficha de tienda'
+    const blocked = new Set(linkedProductIdsUsedElsewhere.filter(Boolean))
+    const rows: VtSelectOption[] = [{ value: '', label: placeholder }]
+    for (const pr of anchorProducts) {
+      const takenElsewhere =
+        blocked.has(pr.id) && line.linkedStoreProductId !== pr.id
+      rows.push({
+        value: pr.id,
+        label: `${pr.category} · ${pr.name}${pr.published ? '' : ' (borrador)'}${contextOfferId && pr.id === contextOfferId ? ' — anuncio de este chat' : ''}`,
+        disabled: takenElsewhere,
+      })
+    }
+    return rows
+  }, [
+    sellerCatalog,
+    anchorProducts,
+    linkedProductIdsUsedElsewhere,
+    line.linkedStoreProductId,
+    contextOfferId,
+  ])
   const lineForPreview = normalizeMerchandiseLine(line)
   const linkedForPreview = findStoreProduct(sellerCatalog ?? undefined, line.linkedStoreProductId)
   return (
@@ -111,13 +137,9 @@ export function MerchandiseLineEditor({
       </div>
       <label className={fieldRootWithInvalid(!!errors?.tipo)}>
         <span className={fieldLabel}>Producto (ficha de la tienda)</span>
-        <select
-          id={`agr-m-${lineIndex}-anchor-prod`}
-          className="vt-input"
-          disabled={!canPickProduct}
+        <VtSelect
           value={canPickProduct ? (line.linkedStoreProductId ?? '') : ''}
-          onChange={(e) => {
-            const id = e.target.value
+          onChange={(id) => {
             if (!id) {
               onChange({
                 ...emptyMerchandiseLine(),
@@ -133,16 +155,15 @@ export function MerchandiseLineEditor({
             const prod = sellerCatalog.products.find((x) => x.id === id)
             if (prod) onChange(mergeMerchandiseLineWithStoreProduct(line, prod))
           }}
-        >
-          <option value="">{productSelectPlaceholder}</option>
-          {anchorProducts.map((pr) => (
-            <option key={pr.id} value={pr.id}>
-              {pr.category} · {pr.name}
-              {pr.published ? '' : ' (borrador)'}
-              {contextOfferId && pr.id === contextOfferId ? ' — anuncio de este chat' : ''}
-            </option>
-          ))}
-        </select>
+          options={productSelectOptions}
+          placeholder={productSelectOptions[0]?.label ?? 'Elige un producto (obligatorio)'}
+          disabled={!canPickProduct}
+          listPortal
+          listPortalZIndexClass="z-[220]"
+          ariaLabel="Producto de la ficha de la tienda"
+          className="w-full"
+          buttonClassName="min-h-[42px] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] border-[color-mix(in_oklab,var(--border)_90%,transparent)] shadow-[inset_0_1px_0_rgba(2,6,23,0.55)]"
+        />
         <span className="vt-muted mt-1 block text-[11px] leading-snug">
           Al elegir un producto, versión/modelo, descripción breve, beneficio principal, características
           técnicas, contenido incluido, condiciones de uso, precio, moneda, estado, impuestos, garantías de la

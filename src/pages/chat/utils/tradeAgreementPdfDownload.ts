@@ -25,7 +25,7 @@ function safePdfFilename(title: string, issuedAtMs: number): string {
 const QR_BOX_MM = 40;
 const LINE_GAP_MM = 5;
 
-async function appendQrAnnex(
+export async function appendQrAnnexToPdf(
   doc: InstanceType<typeof jsPDF>,
   entries: readonly { label: string; url: string }[],
   marginMm: number,
@@ -170,7 +170,7 @@ export async function downloadTradeAgreementPdf(
     }
   }
 
-  await appendQrAnnex(doc, qrEntries, margin, pageW, pageH);
+  await appendQrAnnexToPdf(doc, qrEntries, margin, pageW, pageH);
 
   doc.save(safePdfFilename(agreement.title, agreement.issuedAt));
 }

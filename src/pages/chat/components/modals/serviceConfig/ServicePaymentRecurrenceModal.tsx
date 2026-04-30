@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { VtSelect, type VtSelectOption } from "../../../../../components/VtSelect";
+import {
+  VtSelect,
+  type VtSelectOption,
+} from "../../../../../components/VtSelect";
 import { cn } from "../../../../../lib/cn";
 import { parseDecimal } from "../../../domain/tradeAgreementValidation";
 import { onBackdropPointerClose } from "../../../lib/modalClose";
@@ -36,21 +39,22 @@ const MES = [
 ] as const;
 
 /** Mismo aviso vía toast que al guardar con mes/día repetidos (id evita toasts dobles al re-render). */
-const TOAST_PAGO_DUPLICADO = "No puedes repetir el mismo mes y día del mes en dos filas." as const;
+const TOAST_PAGO_DUPLICADO =
+  "No puedes repetir el mismo mes y día del mes en dos filas." as const;
 const TOAST_ID_PAGO_DUPLICADO = "service-payment-duplicate-mes-dia" as const;
 
 type Props = {
-  open: boolean
-  value: ServicePaymentRecurrence
+  open: boolean;
+  value: ServicePaymentRecurrence;
   /** Grilla de horarios (mismas reglas de mes y día del mes que el paso 3 de horarios). */
-  horarios: ServiceScheduleState
-  vigenciaStart?: string
-  vigenciaEnd?: string
+  horarios: ServiceScheduleState;
+  vigenciaStart?: string;
+  vigenciaEnd?: string;
   /** Monedas ofrecidas por fila (ficha de catálogo o lista base del asistente). */
-  monedaOptions: string[]
-  onSave: (v: ServicePaymentRecurrence) => void
-  onClose: () => void
-}
+  monedaOptions: string[];
+  onSave: (v: ServicePaymentRecurrence) => void;
+  onClose: () => void;
+};
 
 function clampServicePaymentRecurrence(
   v: ServicePaymentRecurrence,
@@ -143,10 +147,8 @@ export function ServicePaymentRecurrenceModal({
   onSave,
   onClose,
 }: Props) {
-  const monedaOptions =
-    monedaOptionsProp.length > 0
-      ? monedaOptionsProp
-      : [DEFAULT_RECURRENCE_MONEDA];
+  const monedaOptions = monedaOptionsProp;
+
   const h = useMemo(() => coerceServiceSchedule(horarios), [horarios]);
   const vigOn = Boolean(vigenciaStart.trim());
   const allowedVigMonths = useMemo(
@@ -218,19 +220,19 @@ export function ServicePaymentRecurrenceModal({
   function updateEntry(
     i: number,
     patch: Partial<{
-      month: number
-      day: number
-      amount: string
-      moneda: string
+      month: number;
+      day: number;
+      amount: string;
+      moneda: string;
     }>,
   ) {
     setSt((prev) => {
       const entries = [...prev.entries];
       const cur: {
-        month: number
-        day: number
-        amount: string
-        moneda: string
+        month: number;
+        day: number;
+        amount: string;
+        moneda: string;
       } = {
         ...entries[i]!,
         ...patch,
@@ -249,7 +251,9 @@ export function ServicePaymentRecurrenceModal({
       }
       if (patch.moneda != null) {
         const t = String(patch.moneda).trim();
-        cur.moneda = monedaOptions.includes(t) ? t : (monedaOptions[0] ?? DEFAULT_RECURRENCE_MONEDA);
+        cur.moneda = monedaOptions.includes(t)
+          ? t
+          : (monedaOptions[0] ?? DEFAULT_RECURRENCE_MONEDA);
       }
       if (patch.month != null || patch.day != null) {
         const conflict = prev.entries.some(
@@ -290,16 +294,14 @@ export function ServicePaymentRecurrenceModal({
       if (!slot) {
         return prev;
       }
-      const pickMon = prev.entries[0]?.moneda?.trim() &&
+      const pickMon =
+        prev.entries[0]?.moneda?.trim() &&
         monedaOptions.includes(prev.entries[0].moneda.trim())
-        ? prev.entries[0].moneda.trim()
-        : (monedaOptions[0] ?? DEFAULT_RECURRENCE_MONEDA);
+          ? prev.entries[0].moneda.trim()
+          : (monedaOptions[0] ?? DEFAULT_RECURRENCE_MONEDA);
       return {
         ...prev,
-        entries: [
-          ...prev.entries,
-          { ...slot, amount: "1", moneda: pickMon },
-        ],
+        entries: [...prev.entries, { ...slot, amount: "1", moneda: pickMon }],
       };
     });
   }
@@ -389,19 +391,22 @@ export function ServicePaymentRecurrenceModal({
       <div className={modalShellWide}>
         <div className="vt-modal-title">Recurrencia de pagos</div>
         <p className="vt-muted mb-3 text-[13px]">
-          Los meses y días coinciden con la grilla de horarios (y la vigencia del contrato). En cada fila
-          indica mes, día, moneda y monto; las monedas posibles dependen de la ficha (si anclaste el servicio) o
-          de la lista general del asistente.
+          Los meses y días coinciden con la grilla de horarios (y la vigencia
+          del contrato). En cada fila indica mes, día, moneda y monto; las
+          monedas posibles dependen de la ficha (si anclaste el servicio) o de
+          la lista general del asistente.
         </p>
 
         {!pickerMonths.length ? (
           <p className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-sm text-[var(--muted)]">
-            No hay meses de servicio definidos. Completa el paso de horarios (meses) antes de
-            recurrentes.
+            No hay meses de servicio definidos. Completa el paso de horarios
+            (meses) antes de recurrentes.
           </p>
         ) : null}
 
-        <div className="mb-4 text-xs font-extrabold text-[var(--muted)]">Meses incluidos</div>
+        <div className="mb-4 text-xs font-extrabold text-[var(--muted)]">
+          Meses incluidos
+        </div>
         <div className="mb-6 flex flex-wrap gap-2">
           {pickerMonths.map((n) => {
             const l = MES.find((x) => x.n === n)?.l ?? String(n);
@@ -462,9 +467,7 @@ export function ServicePaymentRecurrenceModal({
                     <td className="py-2 pr-2 align-middle">
                       <VtSelect
                         value={String(en.month)}
-                        onChange={(v) =>
-                          updateEntry(i, { month: Number(v) })
-                        }
+                        onChange={(v) => updateEntry(i, { month: Number(v) })}
                         options={monthOptions}
                         className="min-w-[6rem]"
                         listPortal
@@ -475,9 +478,7 @@ export function ServicePaymentRecurrenceModal({
                     <td className="py-2 pr-2 align-middle">
                       <VtSelect
                         value={String(en.day)}
-                        onChange={(v) =>
-                          updateEntry(i, { day: Number(v) })
-                        }
+                        onChange={(v) => updateEntry(i, { day: Number(v) })}
                         options={dayOptions}
                         className="min-w-[4.5rem]"
                         listPortal
@@ -502,7 +503,9 @@ export function ServicePaymentRecurrenceModal({
                         value={en.amount}
                         placeholder="0"
                         inputMode="decimal"
-                        onChange={(e) => updateEntry(i, { amount: e.target.value })}
+                        onChange={(e) =>
+                          updateEntry(i, { amount: e.target.value })
+                        }
                       />
                     </td>
                     <td className="py-2 align-middle">

@@ -29,9 +29,11 @@ import {
 import {
   effectiveTramoContactPhone,
   resolveRouteOfferPublicForThread,
+  ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
   sheetPreviewContactLine,
 } from "../../domain/routeSheetOfferGuards";
 import { confirmedCarrierIdsOnOffer } from "../../../../app/store/marketSliceHelpers";
+import { routeSheetIdsLockedByPaidAgreements } from "../../../../app/store/marketStoreHelpers";
 import { SELLER_TRUST_PENALTY_ON_EDIT } from "../modals/TrustRiskEditConfirmModal";
 import { railItemClass } from "./chatRailStyles";
 import { statusPillOk, statusPillPending } from "../../styles/formModalStyles";
@@ -45,6 +47,7 @@ type Props = {
   hasAcceptedContract: boolean;
   /** Cantidad de acuerdos en el hilo: no puede haber más hojas que acuerdos. */
   agreementCount: number;
+  routeSheetsLoading?: boolean;
   routeSheets: RouteSheet[];
   linkedRouteSheetIds: ReadonlySet<string>;
   selRoute: RouteSheet | undefined;
@@ -77,6 +80,7 @@ export function ChatRightRailRoutesPanel({
   isActingSeller,
   hasAcceptedContract,
   agreementCount,
+  routeSheetsLoading = false,
   routeSheets,
   linkedRouteSheetIds,
   selRoute,
@@ -122,6 +126,15 @@ export function ChatRightRailRoutesPanel({
       (v) => v === "pending",
     );
 
+  const paidLockedSheetIds = useMarketStore(
+    useShallow((s) => {
+      const th = s.threads[threadId];
+      return th ? routeSheetIdsLockedByPaidAgreements(th) : new Set<string>();
+    }),
+  );
+  const sheetLockedByPaid =
+    !!selRoute && paidLockedSheetIds.has(selRoute.id);
+
   /**
    * Panel de suscriptores: al menos una hoja en el hilo (visible para comprador y vendedor).
    * Prioridad: hoja de la oferta pública si existe en la lista → hoja seleccionada → primera hoja.
@@ -137,6 +150,11 @@ export function ChatRightRailRoutesPanel({
 
   return (
     <div className={bodyClassName}>
+      {routeSheetsLoading ? (
+        <div className="vt-muted mb-2 px-1 text-[13px] font-semibold">
+          Cargando hojas de ruta...
+        </div>
+      ) : null}
       <div className="mb-3 flex flex-wrap gap-2">
         {isActingSeller ? (
           <button
@@ -189,20 +207,33 @@ export function ChatRightRailRoutesPanel({
               <button
                 type="button"
                 className="vt-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
-                disabled={actionsLocked || sheetEditBlockedByCarrierAck}
+                disabled={
+                  actionsLocked ||
+                  sheetEditBlockedByCarrierAck ||
+                  sheetLockedByPaid
+                }
                 title={
                   actionsLocked
                     ? "No disponible hasta registrar el pago"
-                    : sheetEditBlockedByCarrierAck
-                      ? "Esperá a que todos los transportistas en el hilo acepten o rechacen la última edición"
-                      : selRoute.publicadaPlataforma
-                        ? "Editar: se notifica en el chat y los transportistas pueden aceptar o rechazar (demo)"
-                        : "Editar hoja de ruta"
+                    : sheetLockedByPaid
+                      ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
+                      : sheetEditBlockedByCarrierAck
+                        ? "Esperá a que todos los transportistas en el hilo acepten o rechacen la última edición"
+                        : selRoute.publicadaPlataforma
+                          ? "Editar: se notifica en el chat y los transportistas pueden aceptar o rechazar (demo)"
+                          : "Editar hoja de ruta"
                 }
                 onClick={() => onEditRouteSheet(selRoute)}
               >
                 <Pencil size={14} aria-hidden /> Editar
               </button>
+            ) : null}
+            {sheetLockedByPaid ? (
+              <p className="vt-muted w-full text-[11px] leading-snug">
+                Hay <strong className="text-[var(--text)]">cobros registrados</strong>{" "}
+                en un acuerdo vinculado a esta hoja: no podés editarla, eliminarla
+                ni cambiar su publicación en la plataforma.
+              </p>
             ) : null}
             {sheetEditBlockedByCarrierAck ? (
               <p className="vt-muted w-full text-[11px] leading-snug">
@@ -216,11 +247,13 @@ export function ChatRightRailRoutesPanel({
               <button
                 type="button"
                 className="vt-btn inline-flex items-center gap-1.5 border-[color-mix(in_oklab,#dc2626_28%,var(--border))] bg-[color-mix(in_oklab,#dc2626_6%,var(--surface))] px-2.5 py-1.5 text-xs text-[color-mix(in_oklab,#dc2626_88%,var(--text))] hover:bg-[color-mix(in_oklab,#dc2626_10%,var(--surface))]"
-                disabled={actionsLocked}
+                disabled={actionsLocked || sheetLockedByPaid}
                 title={
                   actionsLocked
                     ? "No disponible hasta registrar el pago"
-                    : "Eliminar la hoja: los transportistas con tramo en la oferta salen del chat; penalización a la tienda por cada confirmado (demo)"
+                    : sheetLockedByPaid
+                      ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
+                      : "Eliminar la hoja: los transportistas con tramo en la oferta salen del chat; penalización a la tienda por cada confirmado (demo)"
                 }
                 onClick={() => {
                   const offerForSheet =
@@ -244,6 +277,10 @@ export function ChatRightRailRoutesPanel({
                     msg += ` Se descontarán ${totalPen} puntos de confianza de la tienda (${nConf} transportista${nConf === 1 ? "" : "s"} confirmado${nConf === 1 ? "" : "s"}; demo).`;
                   }
                   if (!globalThis.confirm(msg)) return;
+                  if (sheetLockedByPaid) {
+                    toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);
+                    return;
+                  }
                   const ok = deleteRouteSheet(threadId, selRoute.id);
                   if (ok) {
                     toast.success("Hoja de ruta eliminada");
@@ -267,19 +304,26 @@ export function ChatRightRailRoutesPanel({
                 )}
                 disabled={
                   actionsLocked ||
+                  sheetLockedByPaid ||
                   (!selRoute.publicadaPlataforma &&
                     !linkedRouteSheetIds.has(selRoute.id))
                 }
                 title={
                   actionsLocked
                     ? "No disponible hasta registrar el pago"
-                    : !linkedRouteSheetIds.has(selRoute.id)
-                      ? "Vinculá esta hoja a un acuerdo en Contratos antes de publicar"
-                      : selRoute.publicadaPlataforma
-                        ? "Dejar de mostrar la hoja en el mercado y búsqueda"
-                        : "Publicar la hoja en el mercado (demo)"
+                    : sheetLockedByPaid
+                      ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
+                      : !linkedRouteSheetIds.has(selRoute.id)
+                        ? "Vinculá esta hoja a un acuerdo en Contratos antes de publicar"
+                        : selRoute.publicadaPlataforma
+                          ? "Dejar de mostrar la hoja en el mercado y búsqueda"
+                          : "Publicar la hoja en el mercado (demo)"
                 }
                 onClick={() => {
+                  if (sheetLockedByPaid) {
+                    toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);
+                    return;
+                  }
                   if (selRoute.publicadaPlataforma) {
                     if (
                       !globalThis.confirm(
@@ -463,11 +507,13 @@ export function ChatRightRailRoutesPanel({
                         p.completada &&
                           "text-[color-mix(in_oklab,var(--good)_92%,var(--muted))]",
                       )}
-                      disabled={actionsLocked}
+                      disabled={actionsLocked || sheetLockedByPaid}
                       title={
                         actionsLocked
                           ? "No disponible hasta registrar el pago"
-                          : "Marcar tramo"
+                          : sheetLockedByPaid
+                            ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
+                            : "Marcar tramo"
                       }
                       onClick={() =>
                         toggleRouteStop(threadId, selRoute.id, p.id)

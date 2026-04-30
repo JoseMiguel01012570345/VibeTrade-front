@@ -92,6 +92,7 @@ import {
   effectiveRouteOfferForSheetForm,
   normRoutePhoneKey,
   preselInvitesForTramoPhoneEdits,
+  ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
 } from "../../domain/routeSheetOfferGuards";
 
 /** Por encima del modal y de los `VtSelect` con listPortal z-[400]. */
@@ -109,6 +110,8 @@ type Props = {
   /** Hilo del chat (p. ej. <code>cth_…</code>); hace falta para avisar a transportistas tras guardar. */
   threadId: string;
   initialRouteSheet?: RouteSheet | null;
+  /** Acuerdo vinculado con cobros: solo lectura (sincronizado con API). */
+  lockedByPaidAgreement?: boolean;
   /** Oferta pública resuelta por hoja (preferida para bloqueo / teléfono). */
   routeOfferForSheet?: RouteOfferPublicState | undefined;
   /** Oferta pública del hilo (`resolveRouteOfferPublicForThread`); usada como respaldo si la de arriba es undefined. */
@@ -203,6 +206,7 @@ export function RouteSheetFormModal({
   onClose,
   threadId,
   initialRouteSheet,
+  lockedByPaidAgreement = false,
   routeOfferForSheet,
   routeOfferForThread,
   onSubmit,
@@ -500,6 +504,10 @@ export function RouteSheetFormModal({
   }
 
   function trySubmit() {
+    if (lockedByPaidAgreement) {
+      toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);
+      return;
+    }
     const t = titulo.trim();
     const m = merc.trim();
     const limpios = expandChainedTramoOrigins(tramosToLimpios(tramos));
@@ -730,6 +738,14 @@ export function RouteSheetFormModal({
           <div className="vt-modal-title">
             {initialRouteSheet ? "Editar hoja de rutas" : "Nueva hoja de rutas"}
           </div>
+          {lockedByPaidAgreement ? (
+            <p
+              className="mb-2 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_92%,transparent)] px-2.5 py-2 text-[12px] leading-snug text-[var(--muted)]"
+              role="status"
+            >
+              {ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES}
+            </p>
+          ) : null}
           <div className={modalSub}>
             Todos los campos son obligatorios. Indicá{" "}
             <strong>fecha y hora</strong> estimadas de recogida y de entrega con
@@ -741,7 +757,12 @@ export function RouteSheetFormModal({
             tramo propone origen = fin del anterior y destino = inicio del que
             seguía; ambos son editables.
           </div>
-          <div className={modalFormBody}>
+          <div
+            className={cn(
+              modalFormBody,
+              lockedByPaidAgreement && "pointer-events-none opacity-60",
+            )}
+          >
             <Field
               label="Título"
               value={titulo}
@@ -1217,6 +1238,12 @@ export function RouteSheetFormModal({
             <button
               type="button"
               className="vt-btn vt-btn-primary"
+              disabled={lockedByPaidAgreement}
+              title={
+                lockedByPaidAgreement
+                  ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
+                  : undefined
+              }
               onClick={trySubmit}
             >
               {initialRouteSheet ? "Guardar cambios" : "Guardar hoja de ruta"}

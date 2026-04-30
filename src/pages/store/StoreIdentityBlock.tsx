@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  AlertTriangle,
   Calendar,
-  CheckCircle2,
+  BadgeCheck,
   ChevronRight,
   ExternalLink,
   ScrollText,
-  Truck,
 } from "lucide-react";
-import { cn } from "../../lib/cn";
 import type { StoreBadge } from "../../app/store/marketStoreTypes";
 import type { StoreCatalog } from "../chat/domain/storeCatalogTypes";
 import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
@@ -91,8 +88,17 @@ export function StoreIdentityBlock({
             </div>
           ) : null}
           <div className="min-w-0 flex-1">
-            <div className="break-words text-[clamp(17px,4.8vw,22px)] font-black tracking-[-0.03em]">
-              {store.name}
+            <div className="flex flex-wrap items-center gap-2 break-words text-[clamp(17px,4.8vw,22px)] font-black tracking-[-0.03em]">
+              <span>{store.name}</span>
+              {store.verified ? (
+                <span
+                  className="inline-flex items-center text-[var(--primary)]"
+                  title="Verificado"
+                  aria-label="Verificado"
+                >
+                  <BadgeCheck size={20} aria-hidden />
+                </span>
+              ) : null}
             </div>
             <div className="vt-muted mt-1 break-words text-[13px] leading-snug">
               {store.categories.join(" · ")}
@@ -129,42 +135,7 @@ export function StoreIdentityBlock({
             ) : null}
           </div>
         </div>
-        <div className="shrink-0 self-start min-[480px]:ml-auto">
-          {store.verified ? (
-            <span
-              className={cn(
-                "inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--border)] px-2.5 py-2 text-xs font-black",
-                "bg-[color-mix(in_oklab,var(--good)_12%,transparent)] text-[color-mix(in_oklab,var(--good)_85%,var(--text))] dark:text-emerald-300",
-              )}
-            >
-              <CheckCircle2 size={16} /> Verificado
-            </span>
-          ) : (
-            <span className="vt-badge-verify-warn inline-flex max-w-full">
-              <AlertTriangle size={16} /> No verificado
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-        <span
-          className={cn(
-            "inline-flex items-center gap-2 rounded-full border px-2.5 py-2 text-xs font-black",
-            store.transportIncluded
-              ? "border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))]"
-              : "border-[color-mix(in_oklab,#d97706_40%,var(--border))] bg-[color-mix(in_oklab,#d97706_14%,var(--surface))] text-[var(--text)]",
-          )}
-        >
-          <Truck size={16} /> Transporte{" "}
-          {store.transportIncluded ? "incluido" : "NO incluido"}
-        </span>
-        {!store.transportIncluded ? (
-          <span className="vt-muted text-[13px]">
-            Etiqueta explícita para evitar dudas en el chat: el transporte no
-            forma parte de la oferta salvo que se negocie en el acuerdo.
-          </span>
-        ) : null}
+        <div className="shrink-0 self-start min-[480px]:ml-auto" />
       </div>
 
       <div className="mt-3 flex max-w-sm flex-col gap-2">

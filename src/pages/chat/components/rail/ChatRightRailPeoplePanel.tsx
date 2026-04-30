@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ChevronRight, ShieldCheck } from 'lucide-react'
+import { BadgeCheck, ChevronRight } from 'lucide-react'
 import { ProtectedMediaImg } from '../../../../components/media/ProtectedMediaImg'
 import type { ChatParticipant } from '../../lib/chatParticipants'
 
@@ -38,17 +38,19 @@ export function ChatRightRailPeoplePanel({ bodyClassName, participants }: Props)
                 )}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-extrabold leading-tight">{p.name}</div>
+                <div className="flex flex-wrap items-center gap-2 text-sm font-extrabold leading-tight">
+                  <span>{p.name}</span>
+                  {p.verified ? (
+                    <span className="inline-flex text-[var(--primary)]" title="Verificado">
+                      <BadgeCheck size={14} aria-hidden />
+                    </span>
+                  ) : null}
+                </div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[11px] text-[var(--muted)]">
                   <span className="font-bold">{p.roleLabel}</span>
                   {p.phone ? (
                     <span className="max-w-[140px] truncate font-mono text-[10px]" title={p.phone}>
                       {p.phone}
-                    </span>
-                  ) : null}
-                  {p.verified ? (
-                    <span className="inline-flex text-[var(--primary)]" title="Verificado">
-                      <ShieldCheck size={12} aria-hidden />
                     </span>
                   ) : null}
                   <span

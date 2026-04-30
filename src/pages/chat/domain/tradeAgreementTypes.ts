@@ -253,6 +253,8 @@ export type TradeAgreement = {
   routeSheetId?: string;
   /** Solo lectura: datos antiguos; ya no se emite desde el formulario. */
   routeSheetUrl?: string;
+  /** Al menos un cobro Stripe exitoso para este acuerdo. */
+  hasSucceededPayments?: boolean;
   /** Cláusulas adicionales (título + texto o adjunto) por bloque o legado combinado. */
   extraFields?: TradeAgreementExtraFieldDraft[];
 };
@@ -270,6 +272,7 @@ type TradeAgreementDraftBase = Omit<
   | "routeSheetId"
   | "merchandiseMeta"
   | "service"
+  | "hasSucceededPayments"
 >;
 
 /** Borrador del formulario: siempre incluye lista de servicios (puede estar vacía). */
@@ -693,7 +696,7 @@ export function defaultAgreementDraft(): TradeAgreementDraft {
   return {
     title: "",
     includeMerchandise: true,
-    includeService: true,
+    includeService: false,
     merchandise: [emptyMerchandiseLine()],
     services: [],
     extraFields: [],

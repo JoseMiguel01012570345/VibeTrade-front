@@ -68,6 +68,8 @@ export type TradeAgreementApiDto = {
   extraFields?: TradeAgreementExtraFieldApiDto[]
   routeSheetId?: string | null
   routeSheetUrl?: string | null
+  /** Hay al menos un cobro exitoso (Stripe); bloquea edición, borrado y cambios del vínculo de ruta. */
+  hasSucceededPayments?: boolean | null
 }
 
 export type ChatMessagePayloadDto = Record<string, unknown> & {
@@ -512,8 +514,23 @@ export async function patchThreadTradeAgreementRouteLink(
       body: JSON.stringify({ routeSheetId }),
     },
   )
-  if (!res.ok) throw new Error(await res.text())
+  await throwIfTradeAgreementResponseNotOk(res)
   return (await res.json()) as TradeAgreementApiDto
+}
+
+async function throwIfTradeAgreementResponseNotOk(res: Response): Promise<void> {
+  if (res.ok) return
+  const text = await res.text().catch(() => '')
+  let message = text
+  try {
+    const j = JSON.parse(text) as { message?: string }
+    if (typeof j.message === 'string' && j.message.trim()) message = j.message.trim()
+  } catch {
+    /* raw body */
+  }
+  const err = new Error(message || `HTTP ${res.status}`) as Error & { status?: number }
+  err.status = res.status
+  throw err
 }
 
 export async function postThreadTradeAgreement(
@@ -524,7 +541,7 @@ export async function postThreadTradeAgreement(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements`,
     { method: 'POST', body: JSON.stringify(body) },
   )
-  if (!res.ok) throw new Error(await res.text())
+  await throwIfTradeAgreementResponseNotOk(res)
   return (await res.json()) as TradeAgreementApiDto
 }
 
@@ -537,7 +554,7 @@ export async function patchThreadTradeAgreement(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}`,
     { method: 'PATCH', body: JSON.stringify(body) },
   )
-  if (!res.ok) throw new Error(await res.text())
+  await throwIfTradeAgreementResponseNotOk(res)
   return (await res.json()) as TradeAgreementApiDto
 }
 
@@ -627,7 +644,7 @@ export async function patchChatMessageStatus(
   threadId: string,
   messageId: string,
   status: 'delivered' | 'read',
-): Promise<ChatMessageDto> {
+): Promise<ChatMessageDto | null> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/status`,
     {
@@ -635,6 +652,8 @@ export async function patchChatMessageStatus(
       body: JSON.stringify({ status }),
     },
   )
+  // Mensaje ya no existe / no visible para este hilo: no reintentar en loop.
+  if (res.status === 404) return null
   if (!res.ok) throw new Error(await res.text())
   return (await res.json()) as ChatMessageDto
 }

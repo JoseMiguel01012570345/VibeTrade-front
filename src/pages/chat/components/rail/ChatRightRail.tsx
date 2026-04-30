@@ -26,6 +26,8 @@ type Props = {
   threadStoreId: string;
   contracts: TradeAgreement[];
   routeSheets: RouteSheet[];
+  contractsLoading?: boolean;
+  routeSheetsLoading?: boolean;
   actionsLocked?: boolean;
   storeName: string;
   buyerName: string;
@@ -54,6 +56,8 @@ export function ChatRightRail({
   threadStoreId,
   contracts,
   routeSheets,
+  contractsLoading = false,
+  routeSheetsLoading = false,
   actionsLocked = false,
   storeName,
   buyerName,
@@ -188,6 +192,7 @@ export function ChatRightRail({
           setSelContract={setSelContract}
           agreementForDetail={agreementForDetail}
           displayContracts={displayContracts}
+          contractsLoading={contractsLoading}
           routeSheets={routeSheets}
           actionsLocked={actionsLocked}
           threadId={threadId}
@@ -208,6 +213,7 @@ export function ChatRightRail({
           isActingSeller={isActingSeller}
           hasAcceptedContract={contracts.some((c) => c.status === "accepted")}
           agreementCount={contracts.length}
+          routeSheetsLoading={routeSheetsLoading}
           routeSheets={routeSheets}
           linkedRouteSheetIds={linkedRouteSheetIds}
           selRoute={selRoute}

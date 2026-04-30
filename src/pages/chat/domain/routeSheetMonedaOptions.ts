@@ -1,29 +1,15 @@
-import type { VtSelectOption } from '../../../components/VtSelect'
+import type { VtSelectOption } from "../../../components/VtSelect";
 
 const LABELS: Record<string, string> = {
-  ARS: 'Peso argentino',
-  BOB: 'Boliviano',
-  BRL: 'Real brasileño',
-  CLP: 'Peso chileno',
-  COP: 'Peso colombiano',
-  CUP: 'Peso cubano',
-  DOP: 'Peso dominicano',
-  EUR: 'Euro',
-  GTQ: 'Quetzal',
-  HNL: 'Lempira',
-  MXN: 'Peso mexicano',
-  NIO: 'Córdoba',
-  PAB: 'Balboa',
-  PEN: 'Sol',
-  PYG: 'Guaraní',
-  USD: 'Dólar estadounidense',
-  UYU: 'Peso uruguayo',
-  VES: 'Bolívar',
-}
+  CUP: "Peso cubano",
+  CAD: "Dólar canadiense",
+  EUR: "Euro",
+  GBP: "Libra esterlina",
+};
 
 function labelForCode(code: string): string {
-  const name = LABELS[code] ?? code
-  return `${code} — ${name}`
+  const name = LABELS[code] ?? code;
+  return `${code} — ${name}`;
 }
 
 /**
@@ -34,16 +20,16 @@ export function paymentCurrencyVtOptions(
   currentValue: string | undefined,
   allowedCodes: readonly string[],
 ): VtSelectOption[] {
-  const t = (currentValue ?? '').trim()
+  const t = (currentValue ?? "").trim();
   const base: VtSelectOption[] = [
-    { value: '', label: '— Elegir moneda' },
+    { value: "", label: "— Elegir moneda" },
     ...allowedCodes.map((code) => {
-      const c = (code ?? '').trim()
-      return { value: c, label: labelForCode(c) }
+      const c = (code ?? "").trim();
+      return { value: c, label: labelForCode(c) };
     }),
-  ]
+  ];
   if (t && !base.some((o) => o.value === t)) {
-    return [{ value: t, label: `${t} (valor actual)` }, ...base]
+    return [{ value: t, label: `${t} (valor actual)` }, ...base];
   }
-  return base
+  return base;
 }

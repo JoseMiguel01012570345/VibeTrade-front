@@ -1,13 +1,11 @@
+import { type ChangeEvent, lazy, useEffect, useMemo, useRef, useState } from "react";
 import {
-  lazy,
-  type ChangeEvent,
-  Suspense,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+  Link,
+  Navigate,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import {
   ArrowLeft,
   Camera,
@@ -204,6 +202,7 @@ function UserAvatarBadge({
 
 export function ProfilePage() {
   const { userId, section: sectionParam } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
   const stores = useMarketStore((s) => s.stores);
@@ -304,6 +303,15 @@ export function ProfilePage() {
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [contactsModalOpen, setContactsModalOpen] = useState(false);
   const [paymentConfigOpen, setPaymentConfigOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isMe) return;
+    if (searchParams.get("stripeCards") !== "1") return;
+    setPaymentConfigOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("stripeCards");
+    setSearchParams(next, { replace: true });
+  }, [isMe, searchParams, setSearchParams]);
 
   const tab: ProfileSection =
     sectionParam && isProfileSection(sectionParam) ? sectionParam : "account";

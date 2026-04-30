@@ -88,12 +88,18 @@ export function resolveAgreementAttachmentUrlForQr(raw: unknown): string | null 
 
 
 
+export type CollectAgreementQrLinksOpts = {
+  /** Si hay hoja enlazada, añade un QR que abre el chat con esa hoja (solo útil cuando el PDF lleva URL absoluta). */
+  threadId?: string;
+};
+
 /**
  * Enlaces de archivos (fotos/documentos) declarados en campos extra del acuerdo
  * y la URL externa de hoja de ruta, útiles para anexar códigos QR al PDF.
  */
 export function collectAgreementQrLinkEntries(
   a: TradeAgreement,
+  opts?: CollectAgreementQrLinksOpts,
 ): { readonly label: string; readonly url: string }[] {
   const out: { label: string; url: string }[] = [];
   const seen = new Set<string>();
@@ -108,6 +114,21 @@ export function collectAgreementQrLinkEntries(
   const route = norm(a.routeSheetUrl ?? "");
   if (route) {
     pushOne("Hoja de ruta (enlace externo)", route);
+  }
+
+  const sid = norm(a.routeSheetId ?? "");
+  const tid = norm(opts?.threadId ?? "");
+  if (sid && tid && typeof globalThis.window !== "undefined") {
+    try {
+      const origin = globalThis.window.location.origin;
+      const rel = `/chat/${encodeURIComponent(tid)}?presel=1&sheet=${encodeURIComponent(sid)}`;
+      pushOne(
+        "Abrir esta hoja de ruta en el chat",
+        `${origin}${rel}`,
+      );
+    } catch {
+      /* noop */
+    }
   }
 
   const fields = a.extraFields ?? [];
@@ -141,6 +162,77 @@ export function collectAgreementQrLinkEntries(
           `Servicio ${svcIndex + 1} — cláusula extra (${kind}): ${title}`,
           mu,
         );
+      }
+    });
+  }
+
+  return out;
+}
+
+export type AgreementInformePreviewItem = {
+  label: string;
+  url: string;
+  kind: "image" | "document";
+};
+
+/**
+ * Adjuntos foto/documento y enlace de hoja (si existe) para previsualización en modal.
+ * Sin anexo QR dentro del modal.
+ */
+export function collectAgreementInformePreviewEntries(
+  a: TradeAgreement,
+): AgreementInformePreviewItem[] {
+  const out: AgreementInformePreviewItem[] = [];
+  const seen = new Set<string>();
+
+  const push = (kind: "image" | "document", label: string, raw: string) => {
+    const url = resolveAgreementAttachmentUrlForQr(raw);
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    out.push({
+      label: label.slice(0, 240),
+      url,
+      kind,
+    });
+  };
+
+  const route = norm(a.routeSheetUrl ?? "");
+  if (route)
+    push("document", "Hoja de ruta (enlace externo)", route);
+
+  let iImg = 0;
+  let iDoc = 0;
+  const fields = a.extraFields ?? [];
+  for (const f of fields) {
+    if (f.valueKind !== "image" && f.valueKind !== "document") continue;
+    const title = norm(f.title) || "(sin título)";
+    const mu = norm(f.mediaUrl);
+    if (f.valueKind === "image")
+      push("image", `Campo foto (${++iImg}): ${title}`, mu);
+    else push("document", `Campo doc (${++iDoc}): ${title}`, mu);
+  }
+
+  if (agreementDeclaresService(a)) {
+    const services = normalizeAgreementServices(a);
+    let svcImg = 0;
+    let svcDoc = 0;
+    services.forEach((sv, svcIndex) => {
+      for (const f of sv.condicionesExtras ?? []) {
+        if (f.valueKind !== "image" && f.valueKind !== "document") continue;
+        const title = norm(f.title) || "(sin título)";
+        const mu = norm(f.mediaUrl);
+        if (f.valueKind === "image")
+          push(
+            "image",
+            `Servicio ${svcIndex + 1}: foto (${++svcImg}) ${title}`,
+            mu,
+          );
+        else
+          push(
+            "document",
+            `Servicio ${svcIndex + 1}: doc (${++svcDoc}) ${title}`,
+            mu,
+          );
       }
     });
   }

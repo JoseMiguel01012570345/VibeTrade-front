@@ -222,6 +222,37 @@ export function ProductEditorModal({
             <div className="grid gap-3 min-[560px]:grid-cols-2">
               <label
                 className={fieldRootWithInvalid(
+                  showVal && form.transportIncluded === undefined,
+                )}
+              >
+                <span className={fieldLabel}>
+                  Transporte incluido <span className="vt-muted font-black">(obligatorio)</span>
+                </span>
+                <VtSelect
+                  value={
+                    form.transportIncluded === undefined
+                      ? ""
+                      : form.transportIncluded
+                        ? "yes"
+                        : "no"
+                  }
+                  onChange={(v) => {
+                    if (v === "yes") setForm({ ...form, transportIncluded: true });
+                    else if (v === "no")
+                      setForm({ ...form, transportIncluded: false });
+                    else setForm({ ...form, transportIncluded: undefined });
+                  }}
+                  ariaLabel="Transporte incluido en este producto"
+                  placeholder="Seleccionar"
+                  options={[
+                    { value: "", label: "Seleccionar" },
+                    { value: "yes", label: "Sí, transporte incluido" },
+                    { value: "no", label: "No, transporte no incluido" },
+                  ]}
+                />
+              </label>
+              <label
+                className={fieldRootWithInvalid(
                   showVal && form.category.trim().length < PROFILE_TITLE_MIN,
                 )}
               >

@@ -34,6 +34,11 @@ export type StoreProduct = {
   technicalSpecs: string;
   condition: MerchandiseCondition;
   price: string;
+  /**
+   * Si el transporte está incluido en la compra de este producto (según ficha).
+   * Campo nuevo: puede faltar en productos antiguos hasta que se editen.
+   */
+  transportIncluded?: boolean;
   /** Moneda en la que está expresado el precio (una sola); opcional. */
   monedaPrecio?: string;
   /** Códigos de moneda aceptados (p. ej. USD, CUP); opcional. */
@@ -313,6 +318,8 @@ export function mergeServiceItemWithStoreService(
   item: ServiceItem,
   s: StoreService,
 ): ServiceItem {
+  const anchorChanged =
+    (item.linkedStoreServiceId ?? "").trim() !== (s.id ?? "").trim();
   const catMonedas = catalogMonedasList(s);
   const fromItem =
     item.monedasAceptadas && item.monedasAceptadas.length > 0
@@ -329,7 +336,8 @@ export function mergeServiceItemWithStoreService(
   const next: ServiceItem = {
     ...item,
     linkedStoreServiceId: s.id,
-    tipoServicio: pickLine(item.tipoServicio, s.tipoServicio),
+    // Si el usuario cambió la ficha ancla, el tipo debe reflejar la nueva ficha (evita previews “pegados” al anterior).
+    tipoServicio: anchorChanged ? (s.tipoServicio ?? "") : pickLine(item.tipoServicio, s.tipoServicio),
     descripcion: pickLine(item.descripcion, s.descripcion),
     incluye: pickLine(item.incluye, s.incluye),
     noIncluye: pickLine(item.noIncluye, s.noIncluye),

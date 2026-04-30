@@ -17,6 +17,7 @@ import type {
   ChatThreadDto,
   RouteTramoSubscriptionItemApi,
 } from "../../utils/chat/chatApi";
+import type { PaymentFeeReceiptPayload } from "../../pages/chat/domain/paymentFeeReceiptTypes";
 import type {
   OfferQaAuthorSnapshot,
   OfferQaCommentEnriched,
@@ -305,6 +306,14 @@ export type Message =
       replyQuotes?: ReplyQuote[];
       /** Entrega/lectura en el propio anuncio de acuerdo (GET / messages + SignalR). */
       chatStatus?: ChatDeliveryStatus;
+    }
+  | {
+      id: string;
+      from: "system";
+      type: "payment_fee_receipt";
+      receipt: PaymentFeeReceiptPayload;
+      at: number;
+      read?: boolean;
     };
 
 /**
@@ -523,16 +532,17 @@ export type MarketState = {
     },
     options?: { replyToIds?: string[]; caption?: string },
   ) => void;
+  /** `message` incluye el texto del API cuando falla la persistencia (p. ej. 409 nombre duplicado). */
   emitTradeAgreement: (
     threadId: string,
     draft: TradeAgreementDraft,
-  ) => Promise<string | null>;
+  ) => Promise<{ ok: true; agreementId: string } | { ok: false; message?: string }>;
   /** Si `pending_buyer` o `rejected` (en ese caso pasa otra vez a pendiente). Emisor = tienda del hilo. */
   updatePendingTradeAgreement: (
     threadId: string,
     agreementId: string,
     draft: TradeAgreementDraft,
-  ) => Promise<boolean>;
+  ) => Promise<{ ok: true } | { ok: false; message?: string }>;
   /** Sólo si el acuerdo no está aceptado y, tras el borrado, hojas ≤ acuerdos. */
   deleteTradeAgreement: (threadId: string, agreementId: string) => Promise<boolean>;
   respondTradeAgreement: (
