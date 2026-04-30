@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { HelpCircle, LogOut, MessageCircle } from "lucide-react";
+import { HelpCircle, LogOut, MessageCircle, Search } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAppStore } from "../../app/store/useAppStore";
 import type { Message, Thread } from "../../app/store/useMarketStore";
@@ -86,6 +86,7 @@ export function ChatListPage() {
   const [leaveModalThreadId, setLeaveModalThreadId] = useState<string | null>(
     null,
   );
+  const [nameFilterQuery, setNameFilterQuery] = useState("");
 
   useEffect(() => {
     if (me.id === "guest") return;
@@ -288,17 +289,38 @@ export function ChatListPage() {
   const rows = useMemo(() => {
     const list = Object.values(threads);
     list.sort((a, b) => threadLastActivity(b) - threadLastActivity(a));
-    return list.map((th) => {
-      const offer = offers[th.offerId];
-      const last = lastMessage(th);
-      return {
-        th,
-        offerTitle: offer?.title ?? "Oferta",
-        preview: last ? messagePreviewLine(last) : "Sin mensajes",
-        at: threadLastActivity(th),
-      };
-    });
-  }, [threads, offers]);
+    const q = nameFilterQuery.trim().toLowerCase();
+    const normalize = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{M}/gu, "");
+    const needle = normalize(q);
+    return list
+      .map((th) => {
+        const offer = offers[th.offerId];
+        const last = lastMessage(th);
+        const listTitle = chatThreadHeaderTitle(
+          th,
+          me,
+          profileDisplayNames,
+        );
+        return {
+          th,
+          offerTitle: offer?.title ?? "Oferta",
+          preview: last ? messagePreviewLine(last) : "Sin mensajes",
+          at: threadLastActivity(th),
+          listTitle,
+        };
+      })
+      .filter((row) => {
+        if (!needle) return true;
+        const hay = normalize(
+          `${row.listTitle} ${row.offerTitle} ${(row.th.store.name ?? "").trim()}`,
+        );
+        return hay.includes(needle);
+      });
+  }, [threads, offers, nameFilterQuery, me, profileDisplayNames]);
 
   return (
     <div className="container vt-page">
@@ -313,14 +335,38 @@ export function ChatListPage() {
         }}
       />
       {/*
-        Margen inferior amplio: la campana es fixed y su parte baja llegaba a solapar el borde / primera fila del listado.
+        La campana fija (AppShell) ~44px + padding + insignia: reservamos hueco a la derecha.
+        min-w-0 en el campo evita que flex-1 desborde y se dibuje debajo del botón fijo.
       */}
-      <div className="mb-8 pr-[3.25rem] sm:mb-10">
-        <h1 className="vt-h1">Chats</h1>
+      <div
+        className="mb-6 grid grid-cols-1 gap-3 pr-[max(5.25rem,calc(env(safe-area-inset-right,0px)+4.75rem))] sm:mb-8 sm:[grid-template-columns:auto_minmax(0,1fr)] sm:items-center"
+      >
+        <h1 className="vt-h1 shrink-0 max-sm:w-full">Chats</h1>
+        <div className="relative min-h-[42px] min-w-0 w-full md:max-w-md">
+          <Search
+            className="pointer-events-none absolute start-3 top-1/2 z-[1] -translate-y-1/2 text-[var(--muted)]"
+            size={17}
+            strokeWidth={2.25}
+            aria-hidden
+          />
+          <label htmlFor="chat-list-name-filter" className="sr-only">
+            Filtrar chats por nombre
+          </label>
+          <input
+            id="chat-list-name-filter"
+            type="search"
+            value={nameFilterQuery}
+            onChange={(e) => setNameFilterQuery(e.target.value)}
+            placeholder="Nombre, tienda…"
+            autoComplete="off"
+            spellCheck={false}
+            className="h-[42px] w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] py-2 pe-3 ps-9 text-[14px] text-[var(--text)] placeholder:text-[var(--muted)] shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition focus-visible:border-[color-mix(in_oklab,var(--primary)_38%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--primary)_42%,transparent)]"
+          />
+        </div>
       </div>
 
       <div className="vt-card vt-card-pad">
-        {rows.length === 0 ? (
+        {Object.keys(threads).length === 0 ? (
           <div className="px-4 py-7 text-center">
             <MessageCircle
               size={40}
@@ -335,15 +381,29 @@ export function ChatListPage() {
               Ver ofertas
             </Link>
           </div>
+        ) : rows.length === 0 ? (
+          <div className="px-4 py-7 text-center">
+            <Search
+              size={40}
+              strokeWidth={1.25}
+              className="mb-3 mx-auto opacity-[0.35]"
+              aria-hidden
+            />
+            <div className="vt-muted">
+              No hay chats que coincidan con «{nameFilterQuery.trim()}».
+            </div>
+            <button
+              type="button"
+              className="vt-btn vt-btn-ghost mt-4"
+              onClick={() => setNameFilterQuery("")}
+            >
+              Quitar filtro
+            </button>
+          </div>
         ) : (
           <div className="flex flex-col">
-            {rows.map(({ th, offerTitle, preview, at }) => {
+            {rows.map(({ th, offerTitle, preview, at, listTitle }) => {
               const inv = Boolean(th.prematureExitUnderInvestigation);
-              const listTitle = chatThreadHeaderTitle(
-                th,
-                me,
-                profileDisplayNames,
-              );
               const sellerUid = resolveSellerUserId(th);
               const imSeller = sellerUid != null && me.id === sellerUid;
               const avatarLetter = imSeller
