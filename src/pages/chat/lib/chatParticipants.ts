@@ -53,8 +53,11 @@ export function buildChatParticipants(
         role: 'carrier',
         roleLabel: 'Transportista',
         trustScore: c.trustScore,
+        avatarUrl: c.avatarUrl,
         phone: c.phone,
-        detail: `${c.tramoLabel} · ${c.vehicleLabel}`,
+        detail: [c.tramoLabel.trim(), c.vehicleLabel?.trim()]
+          .filter(Boolean)
+          .join(' · '),
         href: `/profile/${c.id}`,
       })
     }

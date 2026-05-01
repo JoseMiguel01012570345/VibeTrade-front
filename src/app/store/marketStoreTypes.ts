@@ -166,6 +166,8 @@ export type ThreadChatCarrier = {
   trustScore: number;
   vehicleLabel: string;
   tramoLabel: string;
+  /** Foto de perfil del usuario (API suscripciones / cuenta). */
+  avatarUrl?: string;
 };
 
 /** Transportista asignado o pendiente de validación en un tramo de una oferta de ruta publicada. */

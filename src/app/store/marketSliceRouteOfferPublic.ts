@@ -119,7 +119,7 @@ validateRouteOfferTramo: (offerId, stopId, accept) => {
         routeSheets[rsI] = newRs
         let chatCarriers = [...(th0.chatCarriers ?? [])]
         const hadCarrier = chatCarriers.some((c) => c.id === asg.userId)
-        const tramoDesc = `Tramo ${tr.orden} (${tr.origenLine} → ${tr.destinoLine})`
+        const segmentLabel = `Tramo ${tr.orden}`
         if (!hadCarrier) {
           chatCarriers.push({
             id: asg.userId,
@@ -127,14 +127,24 @@ validateRouteOfferTramo: (offerId, stopId, accept) => {
             phone: asg.phone,
             trustScore: asg.trustScore,
             vehicleLabel: asg.vehicleLabel?.trim() || 'No indicada en la suscripción',
-            tramoLabel: tramoDesc,
+            tramoLabel: segmentLabel,
           })
         } else {
-          chatCarriers = chatCarriers.map((c) =>
-            c.id !== asg.userId ? c
-            : c.tramoLabel.includes(`Tramo ${tr.orden} (`) ? c
-            : { ...c, tramoLabel: `${c.tramoLabel} · ${tramoDesc}` },
-          )
+          chatCarriers = chatCarriers.map((c) => {
+            if (c.id !== asg.userId) return c
+            const parts = c.tramoLabel
+              .split(',')
+              .map((x) => x.trim())
+              .filter(Boolean)
+            if (parts.includes(segmentLabel)) return c
+            const merged = [...parts, segmentLabel]
+            const ordenFromLabel = (s: string) => {
+              const m = /^Tramo\s+(\d+)\s*$/i.exec(s)
+              return m ? Number(m[1]) : 1e9
+            }
+            merged.sort((a, b) => ordenFromLabel(a) - ordenFromLabel(b))
+            return { ...c, tramoLabel: merged.join(', ') }
+          })
         }
         let routeSheetEditAcksOut = th0.routeSheetEditAcks
         const sheetId = ro.routeSheetId

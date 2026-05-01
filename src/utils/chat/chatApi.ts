@@ -276,6 +276,7 @@ export type RouteTramoSubscriptionItemApi = {
   destinoLine: string
   createdAtUnixMs: number
   carrierServiceStoreId?: string | null
+  carrierAvatarUrl?: string | null
 }
 
 /** Suscripciones a tramos persistidas en servidor (hojas publicadas del hilo). */

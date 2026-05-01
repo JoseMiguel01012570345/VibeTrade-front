@@ -115,13 +115,40 @@ function rebuildRouteOfferAssignmentsFromThreadItems(
   return changed ? { ...ro, tramos: nextTramos } : ro;
 }
 
-function tramoDescFromItem(
+/** Orden del tramo para listados (integrantes): sin texto de ubicación. */
+function tramOrdenFromSubscriptionItem(
   it: RouteTramoSubscriptionItemApi,
   ro: RouteOfferPublicState | undefined,
-): string {
+): number {
   const t = ro?.tramos.find((x) => x.stopId === it.stopId);
-  if (t) return `Tramo ${t.orden} (${t.origenLine} → ${t.destinoLine})`;
-  return `Tramo ${it.orden}: ${it.origenLine} → ${it.destinoLine}`;
+  if (t && t.orden > 0) return t.orden;
+  return it.orden > 0 ? it.orden : 0;
+}
+
+/** P. ej. «Tramo 1, Tramo 2» para la lista de integrantes del chat. */
+function tramoListLabelFromSubscriptionItems(
+  items: RouteTramoSubscriptionItemApi[],
+  ro: RouteOfferPublicState | undefined,
+): string {
+  const ordens = new Set<number>();
+  for (const it of items) {
+    const n = tramOrdenFromSubscriptionItem(it, ro);
+    if (n > 0) ordens.add(n);
+  }
+  return [...ordens]
+    .sort((a, b) => a - b)
+    .map((n) => `Tramo ${n}`)
+    .join(", ");
+}
+
+function carrierAvatarUrlFromItems(
+  items: RouteTramoSubscriptionItemApi[],
+): string | undefined {
+  for (const it of items) {
+    const u = it.carrierAvatarUrl?.trim();
+    if (u) return u;
+  }
+  return undefined;
 }
 
 function mergeChatCarriersForConfirmedItems(
@@ -132,18 +159,13 @@ function mergeChatCarriersForConfirmedItems(
   if (!items.length) return thread.chatCarriers ?? [];
   const uid = items[0]!.carrierUserId!.trim();
   let chatCarriers = [...(thread.chatCarriers ?? [])];
-  const tramoDescs = items.map((it) => tramoDescFromItem(it, ro));
-  let tramoLabel = tramoDescs[0]!;
-  for (let i = 1; i < tramoDescs.length; i++) {
-    const d = tramoDescs[i]!;
-    if (!tramoLabel.includes(`Tramo ${items[i]!.orden}`))
-      tramoLabel = `${tramoLabel} · ${d}`;
-  }
+  const tramoLabel = tramoListLabelFromSubscriptionItems(items, ro);
   const it0 = items[0]!;
   const display = it0.displayName?.trim() || "Transportista";
   const phone = it0.phone?.trim() ?? "";
   const label =
     it0.transportServiceLabel?.trim() || "No indicada en la suscripción";
+  const avatarUrl = carrierAvatarUrlFromItems(items);
   const had = chatCarriers.some((c) => c.id === uid);
   if (!had) {
     chatCarriers.push({
@@ -153,6 +175,7 @@ function mergeChatCarriersForConfirmedItems(
       trustScore: it0.trustScore ?? 0,
       vehicleLabel: label,
       tramoLabel,
+      ...(avatarUrl ? { avatarUrl } : {}),
     });
   } else {
     chatCarriers = chatCarriers.map((c) =>
@@ -163,6 +186,7 @@ function mergeChatCarriersForConfirmedItems(
             tramoLabel,
             phone: phone || c.phone,
             vehicleLabel: label || c.vehicleLabel,
+            ...(avatarUrl ? { avatarUrl } : {}),
           },
     );
   }
