@@ -87,6 +87,39 @@ function handleIncomingPersistedChatMessage(dto: ChatMessageDto): void {
   );
 }
 
+/**
+ * El servidor persiste el cobro y emite `messageCreated` en la misma petición; el WebSocket puede
+ * entregar el recibo antes de que el cliente reciba la respuesta HTTP del POST /payments/execute.
+ * Mientras dura ese cobro, aplazamos mensajes `payment_fee_receipt` y los aplicamos en `end`.
+ */
+const paymentExecuteInFlightByThread = new Set<string>();
+const deferredPaymentFeeReceiptsByThread = new Map<string, ChatMessageDto[]>();
+
+function isPaymentFeeReceiptDto(dto: ChatMessageDto): boolean {
+  return (dto.payload?.type ?? "") === "payment_fee_receipt";
+}
+
+/** Llamar justo antes del primer await del flujo de cobro (mismo `threadId`). */
+export function beginChatPaymentExecute(threadId: string): void {
+  const tid = threadId.trim();
+  if (tid.length < 4) return;
+  paymentExecuteInFlightByThread.add(tid);
+}
+
+/** Llamar en `finally` tras el cobro (éxito o error): libera recibos encolados. */
+export function endChatPaymentExecute(threadId: string): void {
+  const tid = threadId.trim();
+  if (tid.length < 4) return;
+  paymentExecuteInFlightByThread.delete(tid);
+  const queued = deferredPaymentFeeReceiptsByThread.get(tid);
+  deferredPaymentFeeReceiptsByThread.delete(tid);
+  if (!queued?.length) return;
+  for (const dto of queued) {
+    useMarketStore.getState().onChatMessageFromServer(dto.threadId, dto);
+    handleIncomingPersistedChatMessage(dto);
+  }
+}
+
 let conn: signalR.HubConnection | null = null;
 const joinedThreads = new Set<string>();
 const joinedOffers = new Set<string>();
@@ -154,6 +187,15 @@ export function startChatRealtime(): void {
   conn.on("messageCreated", (payload: { message: ChatMessageDto }) => {
     const dto = payload?.message;
     if (!dto?.threadId) return;
+    if (
+      isPaymentFeeReceiptDto(dto) &&
+      paymentExecuteInFlightByThread.has(dto.threadId)
+    ) {
+      const q = deferredPaymentFeeReceiptsByThread.get(dto.threadId) ?? [];
+      q.push(dto);
+      deferredPaymentFeeReceiptsByThread.set(dto.threadId, q);
+      return;
+    }
     useMarketStore.getState().onChatMessageFromServer(dto.threadId, dto);
     handleIncomingPersistedChatMessage(dto);
   });

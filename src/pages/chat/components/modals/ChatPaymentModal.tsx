@@ -22,6 +22,10 @@ import {
   listStripeCards,
   type StripeSavedCard,
 } from "../../../../utils/payments/stripeApi";
+import {
+  beginChatPaymentExecute,
+  endChatPaymentExecute,
+} from "../../../../utils/chat/chatRealtime";
 import { useAppStore } from "../../../../app/store/useAppStore";
 import type { TradeAgreement } from "../../domain/tradeAgreementTypes";
 import {
@@ -533,6 +537,7 @@ export function ChatPaymentModal({
 
     setBusyPay(true);
     if (serviceOnlyAgreement) setAllRecurrencesPaidVerified(false);
+    beginChatPaymentExecute(threadId);
 
     try {
       const cfg = await getStripeConfig();
@@ -613,6 +618,7 @@ export function ChatPaymentModal({
     } catch (e) {
       toast.error((e as Error)?.message ?? "No se pudo completar el pago.");
     } finally {
+      endChatPaymentExecute(threadId);
       setBusyPay(false);
     }
   }

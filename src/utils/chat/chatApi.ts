@@ -201,11 +201,16 @@ export async function deleteChatThread(threadId: string): Promise<void> {
   }
 }
 
+/** Respuesta de salida con acuerdo: el servidor puede aplicar ya la penalización (p. ej. reembolso + abandono solo servicios). */
+export type PartySoftLeaveChatResult = {
+  skipClientTrustPenalty: boolean
+}
+
 /** Comprador/vendedor con acuerdo aceptado: expulsa a quien sale del hilo; el resto sigue pudiendo usar el chat. */
 export async function postPartySoftLeaveChatThread(
   threadId: string,
   reason: string,
-): Promise<void> {
+): Promise<PartySoftLeaveChatResult> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/party-soft-leave`,
     {
@@ -217,6 +222,12 @@ export async function postPartySoftLeaveChatThread(
     const t = await res.text().catch(() => '')
     throw new Error(chatApiErrorMessage(t, res.status))
   }
+  const ct = res.headers.get('content-type') ?? ''
+  if (ct.includes('application/json')) {
+    const j = (await res.json()) as { skipClientTrustPenalty?: boolean }
+    return { skipClientTrustPenalty: Boolean(j?.skipClientTrustPenalty) }
+  }
+  return { skipClientTrustPenalty: false }
 }
 
 export async function fetchChatThread(threadId: string): Promise<ChatThreadDto> {

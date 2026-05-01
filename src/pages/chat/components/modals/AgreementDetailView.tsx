@@ -457,9 +457,14 @@ export function AgreementDetailView({
     if (!lastMsg) return;
     if (lastEvidenceRefreshMsgIdRef.current === lastMsg.id) return;
     if (lastMsg.from !== "system") return;
-    if (lastMsg.type !== "text") return;
-    const t = (lastMsg.text ?? "").toLowerCase();
-    if (!t.includes("evidencia") && !t.includes("depósito")) return;
+    if (lastMsg.type === "payment_fee_receipt") {
+      if (lastMsg.receipt.agreementId.trim() !== a.id.trim()) return;
+    } else if (lastMsg.type === "text") {
+      const t = (lastMsg.text ?? "").toLowerCase();
+      if (!t.includes("evidencia") && !t.includes("depósito")) return;
+    } else {
+      return;
+    }
     lastEvidenceRefreshMsgIdRef.current = lastMsg.id;
     void (async () => {
       try {

@@ -41,6 +41,17 @@ function PaymentFeeReceiptBubble({ receipt }: { receipt: PaymentFeeReceiptPayloa
     <div className="flex min-w-0 max-w-full flex-col gap-2.5 text-[13px] leading-snug text-[var(--text)]">
       <div className="font-black text-[var(--text)]">Recibo de pago</div>
       <p className="text-[12px] text-[var(--muted)]">
+        Emisor:{" "}
+        <span className="text-[var(--text)]">{receipt.invoiceIssuerPlatform || "VibeTrade"}</span>
+        {receipt.invoiceStoreName?.trim() ?
+          <>
+            {" "}
+            · Tienda:{" "}
+            <span className="text-[var(--text)]">{receipt.invoiceStoreName.trim()}</span>
+          </>
+        : null}
+      </p>
+      <p className="text-[12px] text-[var(--muted)]">
         Acuerdo: <span className="text-[var(--text)]">{receipt.agreementTitle || "(sin título)"}</span>
         {" · "}
         {cur.toUpperCase()}

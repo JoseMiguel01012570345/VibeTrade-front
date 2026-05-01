@@ -15,6 +15,10 @@ export type PaymentFeeReceiptPayload = {
   totalChargedMinor: number;
   stripePricingUrl: string;
   lines: PaymentFeeReceiptLine[];
+  /** Plataforma emisora del documento (p. ej. factura / informe). */
+  invoiceIssuerPlatform: string;
+  /** Tienda del chat (vendedor). */
+  invoiceStoreName: string;
 };
 
 function pickStr(obj: Record<string, unknown>, ...keys: string[]): string {
@@ -80,6 +84,10 @@ export function parsePaymentFeeReceiptPayload(
     }
   }
 
+  const invoiceIssuerPlatform =
+    pickStr(src, "invoiceIssuerPlatform", "InvoiceIssuerPlatform") || "VibeTrade";
+  const invoiceStoreName = pickStr(src, "invoiceStoreName", "InvoiceStoreName");
+
   return {
     agreementId,
     agreementTitle,
@@ -96,5 +104,7 @@ export function parsePaymentFeeReceiptPayload(
     totalChargedMinor: pickNum(src, "totalChargedMinor", "TotalChargedMinor"),
     stripePricingUrl: stripePricingUrl || "https://stripe.com/pricing",
     lines,
+    invoiceIssuerPlatform,
+    invoiceStoreName,
   };
 }

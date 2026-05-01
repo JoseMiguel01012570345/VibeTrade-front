@@ -282,6 +282,17 @@ export async function downloadPaymentFeeReceiptPdf(
   doc.setTextColor(15, 23, 42);
   y = 28;
 
+  const issuerPlat = (receipt.invoiceIssuerPlatform ?? "").trim() || "VibeTrade";
+  const storeNm = (receipt.invoiceStoreName ?? "").trim();
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(BODY_PT);
+  doc.text(`Emisor: ${issuerPlat}`, margin, y);
+  y += 5.5;
+  if (storeNm.length > 0) {
+    doc.text(`Tienda (chat): ${storeNm}`, margin, y);
+    y += 5.5;
+  }
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(BODY_PT);
   doc.text(`Acuerdo: ${receipt.agreementTitle.trim() || "(sin título)"}`, margin, y);

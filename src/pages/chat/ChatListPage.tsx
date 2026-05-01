@@ -24,6 +24,7 @@ import {
 } from "../../utils/chat/chatApi";
 import { counterpartyAlreadyRecordedPartyExit } from "../../utils/chat/threadPeerPartyExit";
 import { getSessionToken } from "../../utils/http/sessionToken";
+import { errorToUserMessage } from "../../utils/http/apiErrorMessage";
 import {
   postMeTrustAdjust,
   postStoreTrustAdjust,
@@ -163,8 +164,7 @@ export function ChatListPage() {
         } catch {
           /* sin red */
         }
-        const thForPenalty =
-          useMarketStore.getState().threads[threadId] ?? th;
+        const thForPenalty = useMarketStore.getState().threads[threadId] ?? th;
         const skipPartyExitTrustPenalty = counterpartyAlreadyRecordedPartyExit(
           partyExitedFromServer,
           me.id,
@@ -181,14 +181,24 @@ export function ChatListPage() {
             ? 0
             : CHAT_PARTY_EXIT_TRUST_PER_MEMBER * groupMemberCount;
         const exitReasonDetail = `Salida con acuerdo aceptado: ${reasonTrim}`;
+        let skipClientTrustPenalty = false;
         try {
-          await postPartySoftLeaveChatThread(threadId, reasonTrim);
-        } catch {
-          toast.error("No se pudo registrar la salida en el servidor.");
+          const leaveRes = await postPartySoftLeaveChatThread(
+            threadId,
+            reasonTrim,
+          );
+          skipClientTrustPenalty = leaveRes.skipClientTrustPenalty;
+        } catch (e) {
+          toast.error(
+            errorToUserMessage(
+              e,
+              "No se pudo registrar la salida en el servidor.",
+            ),
+          );
           return;
         }
         const token = getSessionToken();
-        if (token && appliedPenalty > 0) {
+        if (token && appliedPenalty > 0 && !skipClientTrustPenalty) {
           try {
             if (imSeller && th.storeId?.trim()) {
               const sid = th.storeId.trim();
@@ -307,20 +317,13 @@ export function ChatListPage() {
     list.sort((a, b) => threadLastActivity(b) - threadLastActivity(a));
     const q = nameFilterQuery.trim().toLowerCase();
     const normalize = (s: string) =>
-      s
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/\p{M}/gu, "");
+      s.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
     const needle = normalize(q);
     return list
       .map((th) => {
         const offer = offers[th.offerId];
         const last = lastMessage(th);
-        const listTitle = chatThreadHeaderTitle(
-          th,
-          me,
-          profileDisplayNames,
-        );
+        const listTitle = chatThreadHeaderTitle(th, me, profileDisplayNames);
         return {
           th,
           offerTitle: offer?.title ?? "Oferta",
@@ -354,9 +357,7 @@ export function ChatListPage() {
         La campana fija (AppShell) ~44px + padding + insignia: reservamos hueco a la derecha.
         min-w-0 en el campo evita que flex-1 desborde y se dibuje debajo del botón fijo.
       */}
-      <div
-        className="mb-6 grid grid-cols-1 gap-3 pr-[max(5.25rem,calc(env(safe-area-inset-right,0px)+4.75rem))] sm:mb-8 sm:[grid-template-columns:auto_minmax(0,1fr)] sm:items-center"
-      >
+      <div className="mb-6 grid grid-cols-1 gap-3 pr-[max(5.25rem,calc(env(safe-area-inset-right,0px)+4.75rem))] sm:mb-8 sm:[grid-template-columns:auto_minmax(0,1fr)] sm:items-center">
         <h1 className="vt-h1 shrink-0 max-sm:w-full">Chats</h1>
         <div className="relative min-h-[42px] min-w-0 w-full md:max-w-md">
           <Search
