@@ -74,6 +74,17 @@ export function EmergentRouteFeedMap({ legs, className, mapKey, interactive = fa
   const routeSegments = useMemo(() => emergentMapRouteSegments(legs), [legs]);
   const segmentColors = useMemo(() => emergentMapRouteSegmentColors(legs), [legs]);
   const useRoadSnapping = useMemo(() => legs.every((leg) => !leg.synthetic), [legs]);
+  /** Todos los tramos reales tienen polilínea OSRM guardada → no hace falta OSRM en el navegador. */
+  const mapUsesPersistedOsrmGeometry = useMemo(
+    () =>
+      legs.length > 0 &&
+      legs.every(
+        (leg) =>
+          !leg.synthetic &&
+          Boolean(leg.osrmRouteLatLngs && leg.osrmRouteLatLngs.length >= 2),
+      ),
+    [legs],
+  );
 
   if (legs.length === 0) {
     return (
@@ -111,7 +122,7 @@ export function EmergentRouteFeedMap({ legs, className, mapKey, interactive = fa
       >
         <VibeMapTileLayer
           attribution={
-            useRoadSnapping
+            useRoadSnapping || mapUsesPersistedOsrmGeometry
               ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Routing <a href="https://project-osrm.org/">OSRM</a>'
               : undefined
           }
@@ -120,7 +131,8 @@ export function EmergentRouteFeedMap({ legs, className, mapKey, interactive = fa
           <LeafletRoadSnappedRoute
             segments={routeSegments}
             segmentColors={segmentColors}
-            useRoads={useRoadSnapping}
+            useRoads={mapUsesPersistedOsrmGeometry ? false : useRoadSnapping}
+            roadLikePolylines={mapUsesPersistedOsrmGeometry}
           />
         ) : null}
         {islandMarkers.map((m, idx) => (

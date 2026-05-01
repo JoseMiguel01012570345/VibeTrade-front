@@ -1,44 +1,7 @@
-import { apiFetch } from "../http/apiClient";
-
-const legDistancesInflight = new Map<string, Promise<number[] | null>>();
-
-function positionsCacheKey(positions: [number, number][]): string {
-  return positions.map((p) => `${p[0]},${p[1]}`).join(";");
-}
-
 /**
- * Km por tramo siguiendo la red: solo backend (`POST /api/v1/routing/leg-distances`).
- * El mapa usa OSRM en el cliente vía leaflet-routing-machine.
+ * Métricas de ruta en UI. Los km por tramo en carretera vienen de `osrmRoadKm` en la hoja
+ * persistida; el mapa puede seguir usando OSRM en el cliente vía leaflet-routing-machine.
  */
-export async function fetchLegDistancesKmFromApi(
-  positions: [number, number][],
-): Promise<number[] | null> {
-  if (positions.length < 2) return null;
-  const key = positionsCacheKey(positions);
-  const existing = legDistancesInflight.get(key);
-  if (existing) return existing;
-
-  const promise = (async (): Promise<number[] | null> => {
-    try {
-      const res = await apiFetch("/api/v1/routing/leg-distances", {
-        method: "POST",
-        body: JSON.stringify({ positions }),
-      });
-      if (!res.ok) return null;
-      const data = (await res.json()) as { legsKm?: number[] };
-      const legsKm = data.legsKm;
-      if (!Array.isArray(legsKm) || legsKm.length === 0) return null;
-      return legsKm;
-    } catch {
-      return null;
-    } finally {
-      legDistancesInflight.delete(key);
-    }
-  })();
-
-  legDistancesInflight.set(key, promise);
-  return promise;
-}
 
 export function formatKmEs(km: number): string {
   if (!(km > 0)) return "— km";

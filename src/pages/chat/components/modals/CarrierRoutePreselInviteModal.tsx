@@ -148,6 +148,14 @@ export function CarrierRoutePreselInviteModal({
     () => emergentMapRouteSegmentColors(mapEmergentLegs),
     [mapEmergentLegs],
   );
+  const mapUsesPersistedOsrmGeometry = useMemo(
+    () =>
+      mapEmergentLegs.length > 0 &&
+      mapEmergentLegs.every(
+        (leg) => leg.osrmRouteLatLngs && leg.osrmRouteLatLngs.length >= 2,
+      ),
+    [mapEmergentLegs],
+  );
   const lineColorByTramoOrden = useMemo(() => {
     const m = new Map<number, string>();
     mapEmergentLegs.forEach((leg, i) => {
@@ -295,7 +303,8 @@ export function CarrierRoutePreselInviteModal({
                       <LeafletRoadSnappedRoute
                         segments={mapRouteSegments}
                         segmentColors={mapSegmentColors}
-                        useRoads
+                        useRoads={!mapUsesPersistedOsrmGeometry}
+                        roadLikePolylines={mapUsesPersistedOsrmGeometry}
                       />
                       {sheet.paradas.flatMap((p) => {
                         if (!isHighlighted(p.id)) return [];

@@ -2,6 +2,7 @@ import type {
   EmergentRouteParadaSnapshot,
   StoreBadge,
 } from "../../app/store/marketStoreTypes";
+import { parseOsrmRouteLatLngs } from "../map/emergentRouteMapLegs";
 import { apiFetch } from "../http/apiClient";
 import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage } from "../http/apiErrorMessage";
 
@@ -272,6 +273,9 @@ function parseEmergentRouteParadas(
     if (mon) row.monedaPago = mon;
     const precio = stringField(r, "precioTransportista", "PrecioTransportista");
     if (precio) row.precioTransportista = precio;
+    const polyRaw = r.osrmRouteLatLngs ?? r.OsrmRouteLatLngs;
+    const poly = parseOsrmRouteLatLngs(polyRaw);
+    if (poly) row.osrmRouteLatLngs = poly;
     out.push(row);
   }
   return out.length ? out : undefined;

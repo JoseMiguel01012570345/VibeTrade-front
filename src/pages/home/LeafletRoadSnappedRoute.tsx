@@ -73,8 +73,13 @@ type Props = Readonly<{
   segments?: [number, number][][];
   /** Un color hex por entrada de `segments` (misma longitud o se cicla el último / default). */
   segmentColors?: string[];
-  /** OSRM vía leaflet-routing-machine en el cliente; si false, segmentos rectos */
+  /** OSRM vía leaflet-routing-machine en el cliente; si false, segmentos rectos o polilínea ya resuelta. */
   useRoads: boolean;
+  /**
+   * Con `useRoads: false`, dibuja trazo «tipo carretera» (doble línea) en lugar de segmento fino recto.
+   * Usar cuando los puntos vienen de OSRM persistido en servidor.
+   */
+  roadLikePolylines?: boolean;
   /**
    * Si true (defecto), ajusta la vista al trazo. Desactivar cuando otro control (p. ej. modal) ya fija el encuadre.
    */
@@ -83,19 +88,25 @@ type Props = Readonly<{
 
 function colorAt(segmentColors: string[] | undefined, i: number): string {
   if (!segmentColors?.length) return DEFAULT_LINE_COLOR;
-  return segmentColors[i] ?? segmentColors[segmentColors.length - 1] ?? DEFAULT_LINE_COLOR;
+  return (
+    segmentColors[i] ??
+    segmentColors[segmentColors.length - 1] ??
+    DEFAULT_LINE_COLOR
+  );
 }
 
 /**
  * Trazado alineado a calles (leaflet-routing-machine → OSRM en el navegador) o polilínea recta.
  * Varias piernas (`segments`) se dibujan por separado (rutas no conexas).
- * Las distancias por tramo para UI/precio van por el backend (`/api/v1/routing/leg-distances`).
+ * Las distancias por tramo para UI/precio vienen de `osrmRoadKm` en la hoja persistida.
+ * Si hay polilínea persistida, pasá `useRoads={false}` y `roadLikePolylines` para no llamar OSRM en el navegador.
  */
 export function LeafletRoadSnappedRoute({
   positions,
   segments,
   segmentColors,
   useRoads,
+  roadLikePolylines = false,
   fitMapToRoute = true,
 }: Props) {
   const map = useMap();
@@ -128,7 +139,31 @@ export function LeafletRoadSnappedRoute({
       if (cancelled) return;
       const fg = L.featureGroup();
       latlngLegs.forEach((latlngs, idx) => {
-        L.polyline(latlngs, straightStyle(colorAt(segmentColors, idx))).addTo(fg);
+        L.polyline(latlngs, straightStyle(colorAt(segmentColors, idx))).addTo(
+          fg,
+        );
+      });
+      fg.addTo(map);
+      routeLayerRef.current = fg;
+      fitToLayer(fg);
+    };
+
+    const addRoadStyledLegs = (latlngLegs: L.LatLngExpression[][]) => {
+      clear();
+      if (cancelled) return;
+      const fg = L.featureGroup();
+      latlngLegs.forEach((latlngs, idx) => {
+        const main = colorAt(segmentColors, idx);
+        L.polyline(latlngs, {
+          color: main,
+          opacity: 0.22,
+          weight: 10,
+        }).addTo(fg);
+        L.polyline(latlngs, {
+          color: main,
+          opacity: 0.9,
+          weight: 5,
+        }).addTo(fg);
       });
       fg.addTo(map);
       routeLayerRef.current = fg;
@@ -139,7 +174,9 @@ export function LeafletRoadSnappedRoute({
       coords.map((leg) => leg.map(([lat, lng]) => L.latLng(lat, lng)));
 
     if (!useRoads) {
-      addStraightLegs(latLngLegsFromCoords(legs));
+      const latlngLegs = latLngLegsFromCoords(legs);
+      if (roadLikePolylines) addRoadStyledLegs(latlngLegs);
+      else addStraightLegs(latlngLegs);
       return () => {
         cancelled = true;
         clear();
@@ -192,7 +229,7 @@ export function LeafletRoadSnappedRoute({
       cancelled = true;
       clear();
     };
-  }, [map, positions, segments, segmentColors, useRoads, fitMapToRoute]);
+  }, [map, positions, segments, segmentColors, useRoads, roadLikePolylines, fitMapToRoute]);
 
   return null;
 }

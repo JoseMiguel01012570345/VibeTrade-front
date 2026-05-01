@@ -7,7 +7,13 @@ import {
   useState,
 } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, BadgeCheck, Heart, ShoppingCart, Truck } from "lucide-react";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  Heart,
+  ShoppingCart,
+  Truck,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "../../lib/cn";
 import {
@@ -179,11 +185,7 @@ export function OfferPage() {
         return;
       }
       try {
-        await sendPurchaseInterestIntro(
-          threadId,
-          resolvedOffer,
-          storeCatalogs,
-        );
+        await sendPurchaseInterestIntro(threadId, resolvedOffer, storeCatalogs);
       } catch (e) {
         console.error(e);
         toast.error(
@@ -191,10 +193,9 @@ export function OfferPage() {
         );
       }
       setComprarChatConfirmOpen(false);
-      void trackRecommendationInteraction(
-        resolvedOffer.id,
-        "chat_start",
-      ).catch(() => undefined);
+      void trackRecommendationInteraction(resolvedOffer.id, "chat_start").catch(
+        () => undefined,
+      );
       nav(`/chat/${threadId}`);
     } finally {
       setComprarChatBusy(false);
@@ -587,7 +588,7 @@ export function OfferPage() {
     return buildEmergentMapLegs(resolvedOffer, routeOffer);
   }, [resolvedOffer, routeOffer]);
 
-  const fichaLegKm = useLegKmForEmergentLegs(fichaMapLegs);
+  const fichaLegKm = useLegKmForEmergentLegs(fichaMapLegs, routeOffer?.tramos);
 
   useEffect(() => {
     if (!offerId || !resolvedOffer) return;
@@ -758,6 +759,17 @@ export function OfferPage() {
     ],
   );
 
+  const productFicha = useMemo(() => {
+    if (!resolvedOffer) return null;
+    const cat = storeCatalogs[resolvedOffer.storeId];
+    if (!cat) return null;
+    const oid = (
+      resolvedOffer.emergentBaseOfferId?.trim() || resolvedOffer.id
+    ).trim();
+    if (!oid) return null;
+    return cat.products.find((p) => p.id === oid) ?? null;
+  }, [resolvedOffer, storeCatalogs]);
+
   if (!offerId || !publicCardLoadDone) {
     return (
       <div className="container vt-page">
@@ -787,13 +799,6 @@ export function OfferPage() {
 
   const heroIsToolPlaceholder = isToolPlaceholderUrl(heroImageSrc);
   const isEmergentRouteFicha = !!resolvedOffer.isEmergentRoutePublication;
-  const productFicha = useMemo(() => {
-    const cat = storeCatalogs[resolvedOffer.storeId];
-    if (!cat) return null;
-    const oid = (resolvedOffer.emergentBaseOfferId?.trim() || resolvedOffer.id).trim();
-    if (!oid) return null;
-    return cat.products.find((p) => p.id === oid) ?? null;
-  }, [resolvedOffer, storeCatalogs]);
   const showRouteMapHero = isEmergentRouteFicha && fichaMapLegs.length > 0;
   const fichaDescriptionText = emergentRoutePublicationUserDescription(
     resolvedOffer,
@@ -1063,16 +1068,16 @@ export function OfferPage() {
                         {carrierPendingOnRoute ? (
                           <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_8%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
                             Tienes al menos una solicitud pendiente de
-                            validación. Mientras tanto puedes pedir otro tramo si
-                            sigue libre; cuando te acepten en cualquiera de
+                            validación. Mientras tanto puedes pedir otro tramo
+                            si sigue libre; cuando te acepten en cualquiera de
                             ellos puedes habilitar el chat (según reglas de la
                             demo).
                           </p>
                         ) : null}
                         {carrierConfirmedOnRoute ? (
                           <p className="mt-2 rounded-lg border border-[color-mix(in_oklab,var(--good)_30%,var(--border))] bg-[color-mix(in_oklab,var(--good)_7%,var(--surface))] px-2.5 py-2 text-[13px] font-semibold leading-snug text-[var(--text)]">
-                            Suscripción confirmada: ya puedes abrir el chat de la
-                            operación.
+                            Suscripción confirmada: ya puedes abrir el chat de
+                            la operación.
                           </p>
                         ) : null}
                         {openTramos.length === 0 ? (

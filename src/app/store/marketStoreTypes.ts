@@ -150,6 +150,8 @@ export type EmergentRouteParadaSnapshot = {
   monedaPago?: string;
   /** Tarifa / precio del transportista en este tramo (`precioTransportista` en API). */
   precioTransportista?: string;
+  /** Polilínea OSRM persistida en hoja (`osrmRouteLatLngs` en API). */
+  osrmRouteLatLngs?: [number, number][];
 };
 
 export type ReplyQuote = {
@@ -205,6 +207,10 @@ export type RouteOfferTramoPublic = {
   telefonoTransportista?: string;
   /** Moneda del precio de este tramo en la hoja. */
   monedaPago?: string;
+  /** Km por red (OSRM) persistidos en la hoja al guardar. */
+  osrmRoadKm?: number;
+  /** Polilínea [lat,lng] por carretera persistida al guardar la hoja. */
+  osrmRouteLatLngs?: [number, number][];
   assignment?: RouteOfferTramoAssignment;
 };
 

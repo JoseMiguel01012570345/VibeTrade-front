@@ -6,6 +6,21 @@ import type {
 import type { RouteStop } from "../../pages/chat/domain/routeSheetTypes";
 import { parseTransportistaPriceTramo } from "./routeLegMetrics";
 
+/** Normaliza `[[lat,lng],…]` desde API (hoja / snapshot emergente). */
+export function parseOsrmRouteLatLngs(raw: unknown): [number, number][] | undefined {
+  if (!Array.isArray(raw) || raw.length < 2) return undefined;
+  const out: [number, number][] = [];
+  for (const el of raw) {
+    if (!Array.isArray(el) || el.length < 2) return undefined;
+    const lat = Number(el[0]);
+    const lng = Number(el[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return undefined;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return undefined;
+    out.push([lat, lng]);
+  }
+  return out.length >= 2 ? out : undefined;
+}
+
 export type EmergentMapLeg = {
   orden: number;
   label: string;
@@ -17,6 +32,8 @@ export type EmergentMapLeg = {
   dLng: number;
   /** Puntos aproximados (sin coords reales) solo para mostrar estructura. */
   synthetic: boolean;
+  /** Polilínea por carretera persistida en servidor (OSRM al guardar la hoja). */
+  osrmRouteLatLngs?: [number, number][];
   monedaPago?: string;
   precioTramo?: number | null;
 };
@@ -55,6 +72,7 @@ function legFromRouteTramo(
     destinoLng?: string;
     precioTransportista?: string;
     monedaPago?: string;
+    osrmRouteLatLngs?: unknown;
   },
   index: number,
 ): EmergentMapLeg {
@@ -65,6 +83,7 @@ function legFromRouteTramo(
   const full = oLa !== null && oLn !== null && dLa !== null && dLn !== null;
   const s = syntheticOD(index);
   const moneda = t.monedaPago?.trim();
+  const poly = parseOsrmRouteLatLngs(t.osrmRouteLatLngs);
   return {
     orden: t.orden,
     label: tramoLabel(index),
@@ -75,6 +94,7 @@ function legFromRouteTramo(
     dLat: full ? dLa! : s.d[0],
     dLng: full ? dLn! : s.d[1],
     synthetic: !full,
+    ...(poly ? { osrmRouteLatLngs: poly } : {}),
     monedaPago: moneda || undefined,
     precioTramo: parseTransportistaPriceTramo(t.precioTransportista),
   };
@@ -102,6 +122,7 @@ export function buildEmergentMapLegs(
       const full = oLa !== null && oLn !== null && dLa !== null && dLn !== null;
       const s = syntheticOD(i);
       const moneda = leg.monedaPago?.trim();
+      const poly = parseOsrmRouteLatLngs(leg.osrmRouteLatLngs);
       return {
         orden: i + 1,
         label: tramoLabel(i),
@@ -112,6 +133,7 @@ export function buildEmergentMapLegs(
         dLat: full ? dLa! : s.d[0],
         dLng: full ? dLn! : s.d[1],
         synthetic: !full,
+        ...(poly ? { osrmRouteLatLngs: poly } : {}),
         monedaPago: moneda || undefined,
         precioTramo: parseTransportistaPriceTramo(leg.precioTransportista),
       };
@@ -240,6 +262,7 @@ export function emergentMapLegsFromRouteStops(paradas: RouteStop[]): EmergentMap
     const dLa = parseCoord(p.destinoLat);
     const dLn = parseCoord(p.destinoLng);
     if (oLa === null || oLn === null || dLa === null || dLn === null) continue;
+    const poly = parseOsrmRouteLatLngs(p.osrmRouteLatLngs);
     out.push({
       orden: p.orden,
       label: String(out.length + 1),
@@ -250,6 +273,7 @@ export function emergentMapLegsFromRouteStops(paradas: RouteStop[]): EmergentMap
       dLat: dLa,
       dLng: dLn,
       synthetic: false,
+      ...(poly ? { osrmRouteLatLngs: poly } : {}),
       monedaPago: p.monedaPago?.trim() || undefined,
       precioTramo: parseTransportistaPriceTramo(p.precioTransportista),
     });
@@ -328,10 +352,14 @@ export function emergentMapWaypoints(legs: EmergentMapLeg[]): EmergentMapWaypoin
  * Un par origen→destino por tramo para el mapa (sin enrutar entre el fin de un tramo y el inicio del siguiente).
  */
 export function emergentMapRouteSegments(legs: EmergentMapLeg[]): [number, number][][] {
-  return legs.map((leg) => [
-    [leg.oLat, leg.oLng],
-    [leg.dLat, leg.dLng],
-  ]);
+  return legs.map((leg) => {
+    const poly = leg.osrmRouteLatLngs;
+    if (poly && poly.length >= 2) return poly;
+    return [
+      [leg.oLat, leg.oLng],
+      [leg.dLat, leg.dLng],
+    ];
+  });
 }
 
 /**

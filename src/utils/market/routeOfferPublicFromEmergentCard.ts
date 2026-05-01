@@ -1,4 +1,5 @@
 import type { RouteSheet } from "../../pages/chat/domain/routeSheetTypes";
+import { parseOsrmRouteLatLngs } from "../map/emergentRouteMapLegs";
 import type {
   Offer,
   RouteOfferPublicState,
@@ -24,6 +25,7 @@ export function routeOfferPublicFromEmergentCardOffer(
     if (!stopId) return [];
     const orden =
       typeof leg.orden === "number" && leg.orden > 0 ? leg.orden : i + 1;
+    const polyCard = parseOsrmRouteLatLngs(leg.osrmRouteLatLngs);
     return [
       {
         stopId,
@@ -36,6 +38,7 @@ export function routeOfferPublicFromEmergentCardOffer(
         destinoLng: leg.destinoLng,
         precioTransportista: leg.precioTransportista,
         monedaPago: leg.monedaPago ?? offer.emergentMonedaPago,
+        ...(polyCard ? { osrmRouteLatLngs: polyCard } : {}),
       },
     ];
   });
@@ -81,27 +84,35 @@ export function routeOfferPublicFromThreadRouteSheet(
   threadId: string,
   sheet: RouteSheet,
 ): RouteOfferPublicState {
-  const tramos: RouteOfferTramoPublic[] = sheet.paradas.map((p) => ({
-    stopId: p.id,
-    orden: p.orden,
-    origenLine: p.origen,
-    destinoLine: p.destino,
-    origenLat: p.origenLat?.trim() || undefined,
-    origenLng: p.origenLng?.trim() || undefined,
-    destinoLat: p.destinoLat?.trim() || undefined,
-    destinoLng: p.destinoLng?.trim() || undefined,
-    cargaEnTramo: p.cargaEnTramo?.trim() || undefined,
-    tipoMercanciaCarga: p.tipoMercanciaCarga?.trim() || undefined,
-    tipoMercanciaDescarga: p.tipoMercanciaDescarga?.trim() || undefined,
-    tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || undefined,
-    tiempoRecogidaEstimado: p.tiempoRecogidaEstimado?.trim() || undefined,
-    tiempoEntregaEstimado: p.tiempoEntregaEstimado?.trim() || undefined,
-    precioTransportista: p.precioTransportista?.trim() || undefined,
-    notas: p.notas?.trim() || undefined,
-    requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
-    telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
-    monedaPago: p.monedaPago?.trim() || undefined,
-  }));
+  const tramos: RouteOfferTramoPublic[] = sheet.paradas.map((p) => {
+    const polySheet = parseOsrmRouteLatLngs(p.osrmRouteLatLngs);
+    return {
+      stopId: p.id,
+      orden: p.orden,
+      origenLine: p.origen,
+      destinoLine: p.destino,
+      origenLat: p.origenLat?.trim() || undefined,
+      origenLng: p.origenLng?.trim() || undefined,
+      destinoLat: p.destinoLat?.trim() || undefined,
+      destinoLng: p.destinoLng?.trim() || undefined,
+      cargaEnTramo: p.cargaEnTramo?.trim() || undefined,
+      tipoMercanciaCarga: p.tipoMercanciaCarga?.trim() || undefined,
+      tipoMercanciaDescarga: p.tipoMercanciaDescarga?.trim() || undefined,
+      tipoVehiculoRequerido: p.tipoVehiculoRequerido?.trim() || undefined,
+      tiempoRecogidaEstimado: p.tiempoRecogidaEstimado?.trim() || undefined,
+      tiempoEntregaEstimado: p.tiempoEntregaEstimado?.trim() || undefined,
+      precioTransportista: p.precioTransportista?.trim() || undefined,
+      notas: p.notas?.trim() || undefined,
+      requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
+      telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+      monedaPago: p.monedaPago?.trim() || undefined,
+      osrmRoadKm:
+        typeof p.osrmRoadKm === "number" && Number.isFinite(p.osrmRoadKm)
+          ? p.osrmRoadKm
+          : undefined,
+      ...(polySheet ? { osrmRouteLatLngs: polySheet } : {}),
+    };
+  });
   return {
     threadId,
     routeSheetId: sheet.id,

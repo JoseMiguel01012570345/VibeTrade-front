@@ -44,6 +44,10 @@ export type RouteStop = {
   transportInvitedServiceSummary?: string
   /** Moneda del precio / tarifa de este tramo (ej. USD, CUP). */
   monedaPago?: string
+  /** Km por red vial (OSRM) en este tramo O→D; lo rellena el API al guardar la hoja. */
+  osrmRoadKm?: number
+  /** Polilínea [lat,lng] por carretera (OSRM); la rellena el API al guardar la hoja. */
+  osrmRouteLatLngs?: [number, number][]
   completada?: boolean
   /**
    * Legado: datos antiguos con una sola «parada» / lugar.

@@ -1,52 +1,29 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { EmergentMapLeg } from "../utils/map/emergentRouteMapLegs";
-import { fetchLegDistancesKmFromApi } from "../utils/map/routeLegMetrics";
 
-function zerosKmPerLegs(count: number): number[] {
-  return Array.from({ length: count }, () => 0);
-}
+export type TramoRoadKmHint = {
+  orden: number;
+  osrmRoadKm?: number;
+};
 
-/** Distancias por tramo (km) desde el backend; cada tramo se consulta O→D por separado (rutas no conexas). */
-export function useLegKmForEmergentLegs(legs: EmergentMapLeg[]): number[] {
-  const useRoadSnapping = useMemo(
-    () => legs.every((l) => !l.synthetic),
-    [legs],
-  );
-  const legsGeoKey = useMemo(
-    () =>
-      legs
-        .map((l) => `${l.orden}:${l.oLat},${l.oLng}-${l.dLat},${l.dLng}`)
-        .join("|"),
-    [legs],
-  );
-
-  const [legKm, setLegKm] = useState<number[]>(() => zerosKmPerLegs(legs.length));
-
-  useEffect(() => {
-    setLegKm(zerosKmPerLegs(legs.length));
-    if (!useRoadSnapping || legs.length === 0) {
-      return undefined;
+/**
+ * Km por tramo desde la hoja persistida (`osrmRoadKm`). Sin valor guardado → 0 (la UI muestra "— km").
+ */
+export function useLegKmForEmergentLegs(
+  legs: EmergentMapLeg[],
+  tramosWithRoadKm?: TramoRoadKmHint[],
+): number[] {
+  return useMemo(() => {
+    if (legs.length === 0) return [];
+    const byOrden = new Map<number, number>();
+    for (const t of tramosWithRoadKm ?? []) {
+      const km = t.osrmRoadKm;
+      if (typeof km === "number" && Number.isFinite(km) && km >= 0)
+        byOrden.set(t.orden, km);
     }
-    let cancelled = false;
-    void (async () => {
-      const results = await Promise.all(
-        legs.map((leg) =>
-          fetchLegDistancesKmFromApi([
-            [leg.oLat, leg.oLng],
-            [leg.dLat, leg.dLng],
-          ]),
-        ),
-      );
-      if (cancelled) return;
-      const next = results.map((km) =>
-        km && km.length === 1 ? (km[0] ?? 0) : 0,
-      );
-      if (next.length === legs.length) setLegKm(next);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [useRoadSnapping, legs.length, legsGeoKey, legs]);
-
-  return legKm;
+    return legs.map((leg) => {
+      if (leg.synthetic) return 0;
+      return byOrden.get(leg.orden) ?? 0;
+    });
+  }, [legs, tramosWithRoadKm]);
 }
