@@ -273,6 +273,9 @@ function parseEmergentRouteParadas(
     if (mon) row.monedaPago = mon;
     const precio = stringField(r, "precioTransportista", "PrecioTransportista");
     if (precio) row.precioTransportista = precio;
+    const kmRaw = r.osrmRoadKm ?? r.OsrmRoadKm;
+    if (typeof kmRaw === "number" && Number.isFinite(kmRaw) && kmRaw >= 0)
+      row.osrmRoadKm = kmRaw;
     const polyRaw = r.osrmRouteLatLngs ?? r.OsrmRouteLatLngs;
     const poly = parseOsrmRouteLatLngs(polyRaw);
     if (poly) row.osrmRouteLatLngs = poly;

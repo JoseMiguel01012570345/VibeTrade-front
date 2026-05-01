@@ -6,6 +6,7 @@ import {
 import {
   type RouteSheet,
   type RouteStop,
+  type RouteTramoFormInput,
   routeSheetEditAcksRecordFromSheets,
   summarizeRouteSheetMonedaPago,
 } from '../../pages/chat/domain/routeSheetTypes'
@@ -40,6 +41,20 @@ import {
 } from '../../utils/chat/chatApi'
 import { getSessionToken } from '../../utils/http/sessionToken'
 import { mapTradeAgreementApiToTradeAgreement } from '../../utils/chat/tradeAgreementApiMapper'
+
+/** Si las coordenadas O/D del formulario coinciden con la parada ya guardada, se mantienen km/polilínea del servidor. */
+function routeStopCoordsMatchNormalizedForm(
+  form: RouteTramoFormInput,
+  stop: RouteStop,
+): boolean {
+  const a = (x?: string) => (x ?? '').trim()
+  return (
+    a(form.origenLat) === a(stop.origenLat) &&
+    a(form.origenLng) === a(stop.origenLng) &&
+    a(form.destinoLat) === a(stop.destinoLat) &&
+    a(form.destinoLng) === a(stop.destinoLng)
+  )
+}
 
 export function createRouteSheetsSlice(set: MarketSliceSet, get: MarketSliceGet): Pick<MarketState,
   | 'createRouteSheet'
@@ -160,6 +175,9 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
           ? existing.paradas.find((st) => (st.id ?? '').trim() === paradaId)
           : undefined
       const id = existingStop?.id ?? uid('stop')
+      const preserveRoadKm =
+        existingStop &&
+        routeStopCoordsMatchNormalizedForm(p, existingStop)
       return {
         id,
         orden: i + 1,
@@ -184,6 +202,12 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
         transportInvitedServiceSummary: p.transportInvitedServiceSummary?.trim() || undefined,
         monedaPago: p.monedaPago?.trim() || undefined,
         completada: existingStop?.completada ?? false,
+        ...(preserveRoadKm && existingStop
+          ? {
+              osrmRoadKm: existingStop.osrmRoadKm,
+              osrmRouteLatLngs: existingStop.osrmRouteLatLngs,
+            }
+          : {}),
       }
     })
     const now = Date.now()

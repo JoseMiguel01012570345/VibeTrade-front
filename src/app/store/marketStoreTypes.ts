@@ -150,6 +150,8 @@ export type EmergentRouteParadaSnapshot = {
   monedaPago?: string;
   /** Tarifa / precio del transportista en este tramo (`precioTransportista` en API). */
   precioTransportista?: string;
+  /** Km por carretera persistidos en la hoja (`osrmRoadKm` en API). */
+  osrmRoadKm?: number;
   /** Polilínea OSRM persistida en hoja (`osrmRouteLatLngs` en API). */
   osrmRouteLatLngs?: [number, number][];
 };

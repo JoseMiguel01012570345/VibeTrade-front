@@ -26,6 +26,10 @@ export function routeOfferPublicFromEmergentCardOffer(
     const orden =
       typeof leg.orden === "number" && leg.orden > 0 ? leg.orden : i + 1;
     const polyCard = parseOsrmRouteLatLngs(leg.osrmRouteLatLngs);
+    const kmOk =
+      typeof leg.osrmRoadKm === "number" &&
+      Number.isFinite(leg.osrmRoadKm) &&
+      leg.osrmRoadKm >= 0;
     return [
       {
         stopId,
@@ -38,6 +42,7 @@ export function routeOfferPublicFromEmergentCardOffer(
         destinoLng: leg.destinoLng,
         precioTransportista: leg.precioTransportista,
         monedaPago: leg.monedaPago ?? offer.emergentMonedaPago,
+        ...(kmOk ? { osrmRoadKm: leg.osrmRoadKm } : {}),
         ...(polyCard ? { osrmRouteLatLngs: polyCard } : {}),
       },
     ];

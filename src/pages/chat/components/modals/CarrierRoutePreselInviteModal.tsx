@@ -10,6 +10,7 @@ import {
 } from "../../../../utils/chat/chatApi";
 import type { RouteSheet, RouteStop } from "../../domain/routeSheetTypes";
 import { formatRouteEstimadoDisplay } from "../../domain/routeSheetDateTime";
+import { formatKmEs } from "../../../../utils/map/routeLegMetrics";
 import { VibeMapTileLayer } from "../../../home/EmergentRouteFeedMap";
 import { LeafletRoadSnappedRoute } from "../../../home/LeafletRoadSnappedRoute";
 import {
@@ -406,6 +407,14 @@ export function CarrierRoutePreselInviteModal({
                           Destino
                         </div>
                         <div>{p.destino}</div>
+                      </div>
+                      <div className="min-[561px]:col-span-2">
+                        <div className="text-[11px] font-bold text-[var(--muted)]">
+                          Distancia por carretera
+                        </div>
+                        <div className="font-semibold">
+                          {formatKmEs(p.osrmRoadKm ?? 0)}
+                        </div>
                       </div>
                       {tramoTarifaHint(p) ? (
                         <div className="min-[561px]:col-span-2">

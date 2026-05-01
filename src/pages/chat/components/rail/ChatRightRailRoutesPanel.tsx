@@ -38,6 +38,7 @@ import { SELLER_TRUST_PENALTY_ON_EDIT } from "../modals/TrustRiskEditConfirmModa
 import { railItemClass } from "./chatRailStyles";
 import { statusPillOk, statusPillPending } from "../../styles/formModalStyles";
 import { TramoSubscribedServiceFicha } from "./TramoSubscribedServiceFicha";
+import { formatKmEs } from "../../../../utils/map/routeLegMetrics";
 
 type Props = {
   bodyClassName: string;
@@ -548,6 +549,9 @@ export function ChatRightRailRoutesPanel({
                     Coord. destino: {p.destinoLat ?? "—"}, {p.destinoLng ?? "—"}
                   </div>
                 )}
+                <div className="vt-muted">
+                  Distancia por carretera: {formatKmEs(p.osrmRoadKm ?? 0)}
+                </div>
                 {p.tiempoRecogidaEstimado ? (
                   <div className="vt-muted">
                     Recogida: {formatRouteEstimadoDisplay(p.tiempoRecogidaEstimado)}
