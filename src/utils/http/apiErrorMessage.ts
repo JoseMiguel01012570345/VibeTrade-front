@@ -53,18 +53,24 @@ export function apiErrorTextToUserMessage(
     const msg =
       (typeof p.message === 'string' && p.message.trim()) ||
       (typeof p.detail === 'string' && p.detail.trim()) ||
+      (typeof p.title === 'string' && p.title.trim()) ||
       ''
     return msg || fallback
   }
 
-  // If it's JSON but not ProblemDetails, try common message field.
-  if (parsed && typeof parsed === 'object') {
+  // JSON objeto sin ProblemDetails: solo campos legibles; si no hay texto útil, fallback (no devolver JSON ni `error` máquina).
+  if (
+    parsed &&
+    typeof parsed === 'object' &&
+    !Array.isArray(parsed)
+  ) {
     const o = parsed as Record<string, unknown>
     const msg =
       (typeof o.message === 'string' && o.message.trim()) ||
-      (typeof o.error === 'string' && o.error.trim()) ||
-      ''
-    if (msg) return msg
+      (typeof o.detail === 'string' && o.detail.trim()) ||
+      (typeof o.title === 'string' && o.title.trim())
+    if (typeof msg === 'string' && msg.length > 0) return msg
+    return fallback
   }
 
   return t || fallback

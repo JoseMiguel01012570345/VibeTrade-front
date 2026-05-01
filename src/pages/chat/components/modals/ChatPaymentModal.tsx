@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import toast from "react-hot-toast";
 import QRCode from "qrcode";
 import { CreditCard, FileDown, Loader2 } from "lucide-react";
@@ -13,6 +13,10 @@ import {
   type AgreementCheckoutBreakdownApi,
   type AgreementPaymentStatusApi,
 } from "../../../../utils/chat/agreementCheckoutApi";
+import {
+  listAgreementServicePayments,
+  type AgreementServicePaymentApi,
+} from "../../../../utils/chat/agreementServiceEvidenceApi";
 import {
   getStripeConfig,
   listStripeCards,
@@ -74,6 +78,25 @@ function currencyPaid(
   );
 }
 
+function recurrenceSlotKey(serviceItemId: string, month: number, day: number): string {
+  return `${serviceItemId}:${month}-${day}`;
+}
+
+/** Todas las entradas de recurrencia del acuerdo tienen un pago registrado. */
+function computeAllSlotsPaid(
+  agreement: TradeAgreement,
+  paidKeys: ReadonlySet<string>,
+): boolean {
+  const items = normalizeAgreementServices(agreement);
+  if (items.length === 0) return false;
+  for (const sv of items) {
+    for (const e of sv.recurrenciaPagos?.entries ?? []) {
+      if (!paidKeys.has(recurrenceSlotKey(sv.id, e.month, e.day))) return false;
+    }
+  }
+  return true;
+}
+
 export function ChatPaymentModal({
   open,
   threadId,
@@ -86,12 +109,19 @@ export function ChatPaymentModal({
 
   const [busyInit, setBusyInit] = useState(false);
   const [busyPay, setBusyPay] = useState(false);
+  const busyPayRef = useRef(false);
+  busyPayRef.current = busyPay;
 
   const [agreementId, setAgreementId] = useState<string>("");
   const [breakdown, setBreakdown] = useState<AgreementCheckoutBreakdownApi | null>(
     null,
   );
   const [statuses, setStatuses] = useState<AgreementPaymentStatusApi[]>([]);
+  const [servicePaymentsPaid, setServicePaymentsPaid] = useState<
+    AgreementServicePaymentApi[]
+  >([]);
+  /** Solo true tras un refresh OK desde el servidor (lista service-payments); no usar antes de esa respuesta. */
+  const [allRecurrencesPaidVerified, setAllRecurrencesPaidVerified] = useState(false);
   const [cards, setCards] = useState<StripeSavedCard[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string>("");
 
@@ -140,9 +170,18 @@ export function ChatPaymentModal({
     return out;
   }, [selectedServiceEntriesByServiceId, serviceItems]);
 
+  const paidSlotKeys = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of servicePaymentsPaid) {
+      s.add(recurrenceSlotKey(p.serviceItemId, p.entryMonth, p.entryDay));
+    }
+    return s;
+  }, [servicePaymentsPaid]);
+
   const selectedServicePaymentsReady = useMemo(() => {
     if (!serviceOnlyAgreement) return true;
     if (serviceItems.length === 0) return false;
+    if (allRecurrencesPaidVerified && !busyPay) return true;
     const ids = new Set(serviceItems.map((s) => s.id));
     if (selectedServicePayments.length === 0) return false;
     for (const sel of selectedServicePayments) {
@@ -150,7 +189,18 @@ export function ChatPaymentModal({
       if (sel.entryKey.month <= 0 || sel.entryKey.day <= 0) return false;
     }
     return true;
-  }, [serviceOnlyAgreement, serviceItems, selectedServicePayments]);
+  }, [
+    serviceOnlyAgreement,
+    serviceItems,
+    selectedServicePayments,
+    allRecurrencesPaidVerified,
+    busyPay,
+  ]);
+
+  const selectedServicePaymentsRef = useRef(selectedServicePayments);
+  const selectedServicePaymentsReadyRef = useRef(selectedServicePaymentsReady);
+  selectedServicePaymentsRef.current = selectedServicePayments;
+  selectedServicePaymentsReadyRef.current = selectedServicePaymentsReady;
 
   const previews = useMemo(
     () => (selectedAgreement ? collectAgreementInformePreviewEntries(selectedAgreement) : []),
@@ -176,68 +226,154 @@ export function ChatPaymentModal({
   );
 
   const pendingCurrencies = useMemo(() => {
-    const bc = breakdown?.byCurrency ?? [];
-    const out: string[] = [];
-    for (const b of bc) {
-      const c = b.currencyLower.trim().toLowerCase();
-      if (!currencyPaid(statuses, c)) out.push(c);
+    if (!serviceOnlyAgreement) {
+      const bc = breakdown?.byCurrency ?? [];
+      const out: string[] = [];
+      for (const b of bc) {
+        const c = b.currencyLower.trim().toLowerCase();
+        if (!currencyPaid(statuses, c)) out.push(c);
+      }
+      return out;
     }
-    return out;
-  }, [breakdown?.byCurrency, statuses]);
+    const curSet = new Set<string>();
+    for (const sv of serviceItems) {
+      for (const e of sv.recurrenciaPagos?.entries ?? []) {
+        const mon = (e.moneda ?? "").trim().toLowerCase();
+        if (mon.length < 3) continue;
+        if (!paidSlotKeys.has(recurrenceSlotKey(sv.id, e.month, e.day))) curSet.add(mon);
+      }
+    }
+    return [...curSet];
+  }, [serviceOnlyAgreement, breakdown?.byCurrency, statuses, serviceItems, paidSlotKeys]);
 
-  const allPaid =
-    breakdown !== null &&
-    breakdown.ok &&
-    breakdown.byCurrency.length > 0 &&
-    pendingCurrencies.length === 0;
+  const allPaid = serviceOnlyAgreement
+    ? allRecurrencesPaidVerified && !busyPay
+    : breakdown !== null &&
+      breakdown.ok &&
+      breakdown.byCurrency.length > 0 &&
+      pendingCurrencies.length === 0;
+
+  const paidRecurrenceSummaryLines = useMemo(() => {
+    const lines: string[] = [];
+    const byService = new Map<string, AgreementServicePaymentApi[]>();
+    for (const p of servicePaymentsPaid) {
+      const arr = byService.get(p.serviceItemId) ?? [];
+      arr.push(p);
+      byService.set(p.serviceItemId, arr);
+    }
+    for (const sv of serviceItems) {
+      const pays = byService.get(sv.id);
+      if (!pays?.length) continue;
+      const title = (sv.tipoServicio ?? "").trim() || "Servicio";
+      for (const p of pays) {
+        lines.push(
+          `${title}: Mes ${p.entryMonth} · Día ${p.entryDay} · ${fmt(p.amountMinor, p.currencyLower)}`,
+        );
+      }
+    }
+    return lines;
+  }, [servicePaymentsPaid, serviceItems]);
+
+  function informeCurrencyPaidDisplay(curLower: string): boolean {
+    const c = curLower.trim().toLowerCase();
+    if (!serviceOnlyAgreement) return currencyPaid(statuses, c);
+    for (const sv of serviceItems) {
+      for (const e of sv.recurrenciaPagos?.entries ?? []) {
+        if ((e.moneda ?? "").trim().toLowerCase() !== c) continue;
+        if (!paidSlotKeys.has(recurrenceSlotKey(sv.id, e.month, e.day))) return false;
+      }
+    }
+    return true;
+  }
 
   const reloadCheckout = useCallback(
-    async (opts?: { skipBusyToggle?: boolean }) => {
+    async (opts?: {
+      skipBusyToggle?: boolean;
+      /** Permite marcar todas las recurrencias cobradas mientras busyPay (post-cobro tras refresh). */
+      allowVerifiedDuringBusyPay?: boolean;
+    }) => {
       const ag = selectedAgreement ?? agreements[0];
       if (!ag) {
         setBreakdown(null);
         setStatuses([]);
-        return;
-      }
-      if (serviceOnlyAgreement && !selectedServicePaymentsReady) {
-        setBreakdown(null);
-        setStatuses([]);
+        setServicePaymentsPaid([]);
+        setAllRecurrencesPaidVerified(false);
         return;
       }
       const skipBusy = opts?.skipBusyToggle === true;
       if (!skipBusy) setBusyInit(true);
       setBreakdown(null);
-      setStatuses([]);
       try {
-        const [bd, ps] = await Promise.all([
-          fetchAgreementCheckoutBreakdown(threadId, ag.id, {
-            selectedServicePayments: serviceOnlyAgreement
-              ? selectedServicePayments
-              : undefined,
-          }),
+        const [ps, sp] = await Promise.all([
           fetchAgreementPaymentStatuses(threadId, ag.id),
+          listAgreementServicePayments(threadId, ag.id).catch(
+            () => [] as AgreementServicePaymentApi[],
+          ),
         ]);
-        setBreakdown(bd);
         setStatuses(ps);
+        setServicePaymentsPaid(sp);
+
+        const pk = new Set(
+          sp.map((p) => recurrenceSlotKey(p.serviceItemId, p.entryMonth, p.entryDay)),
+        );
+        const fullyPaid =
+          serviceOnlyAgreement && computeAllSlotsPaid(ag, pk);
+        const mayCommitVerified =
+          !busyPayRef.current || opts?.allowVerifiedDuringBusyPay === true;
+        setAllRecurrencesPaidVerified(mayCommitVerified && fullyPaid);
+        if (fullyPaid) {
+          setBreakdown(null);
+          return;
+        }
+
+        if (serviceOnlyAgreement && !selectedServicePaymentsReadyRef.current) {
+          setBreakdown(null);
+          return;
+        }
+
+        const bd = await fetchAgreementCheckoutBreakdown(threadId, ag.id, {
+          selectedServicePayments: serviceOnlyAgreement
+            ? selectedServicePaymentsRef.current
+            : undefined,
+        });
+        setBreakdown(bd);
       } catch (e) {
         const msg =
           (e as Error)?.message?.trim() || "No se pudo cargar el informe de pago.";
         setBreakdown({ ok: false, errors: [msg], byCurrency: [] });
         setStatuses([]);
+        setServicePaymentsPaid([]);
+        setAllRecurrencesPaidVerified(false);
         toast.error(msg);
       } finally {
         if (!skipBusy) setBusyInit(false);
       }
     },
-    [
-      threadId,
-      selectedAgreement,
-      agreements,
-      serviceOnlyAgreement,
-      selectedServicePaymentsReady,
-      selectedServicePayments,
-    ],
+    [threadId, selectedAgreement, agreements, serviceOnlyAgreement],
   );
+
+  useEffect(() => {
+    if (!serviceOnlyAgreement) return;
+    setSelectedServiceEntriesByServiceId((prev) => {
+      let changed = false;
+      const next: Record<string, string[]> = { ...prev };
+      for (const sv of serviceItems) {
+        const keys = next[sv.id];
+        if (!keys?.length) continue;
+        const filtered = keys.filter((k) => {
+          const [mm, dd] = String(k).split("-").map(Number);
+          if (!Number.isFinite(mm) || !Number.isFinite(dd)) return false;
+          return !paidSlotKeys.has(recurrenceSlotKey(sv.id, mm, dd));
+        });
+        if (filtered.length !== keys.length) {
+          changed = true;
+          if (filtered.length === 0) delete next[sv.id];
+          else next[sv.id] = filtered;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [serviceOnlyAgreement, serviceItems, paidSlotKeys]);
 
   useEffect(() => {
     if (!open) {
@@ -261,19 +397,33 @@ export function ChatPaymentModal({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !breakdown?.ok) return;
-    if (!breakdown.byCurrency.length) return;
-    const settled = breakdown.byCurrency.every((bc) =>
-      currencyPaid(statuses, bc.currencyLower),
-    );
-    if (!settled) return;
+    if (!open) return;
+    if (serviceOnlyAgreement) {
+      if (!allRecurrencesPaidVerified || busyPay) return;
+    } else {
+      if (!breakdown?.ok || !breakdown.byCurrency.length) return;
+      const settled = breakdown.byCurrency.every((bc) =>
+        currencyPaid(statuses, bc.currencyLower),
+      );
+      if (!settled) return;
+    }
 
     const aid = (selectedAgreement?.id ?? agreementId ?? "").trim();
     if (!aid) return;
     if (settledNotifiedAgreementIdRef.current === aid) return;
     settledNotifiedAgreementIdRef.current = aid;
     onPaymentFullySettled?.();
-  }, [open, breakdown, statuses, onPaymentFullySettled, selectedAgreement?.id, agreementId]);
+  }, [
+    open,
+    breakdown,
+    statuses,
+    onPaymentFullySettled,
+    selectedAgreement?.id,
+    agreementId,
+    serviceOnlyAgreement,
+    allRecurrencesPaidVerified,
+    busyPay,
+  ]);
 
   useEffect(() => {
     if (!open || !agreements.length) return;
@@ -290,6 +440,13 @@ export function ChatPaymentModal({
 
   useEffect(() => {
     if (!open) return;
+    setStatuses([]);
+    setServicePaymentsPaid([]);
+    setAllRecurrencesPaidVerified(false);
+  }, [open, threadId, agreementId]);
+
+  useEffect(() => {
+    if (!open) return;
     setAcceptedInforme(false);
     setBusyInit(true);
     void (async () => {
@@ -302,10 +459,26 @@ export function ChatPaymentModal({
       } catch {
         setCards([]);
       }
-      await reloadCheckout({ skipBusyToggle: true });
+      /* Acuerdos solo servicios: el desglose depende de las recurrencias elegidas; lo carga el efecto siguiente. */
+      if (!serviceOnlyAgreement) {
+        await reloadCheckout({ skipBusyToggle: true });
+      }
     })().finally(() => setBusyInit(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, agreementId]);
+  }, [open, agreementId, serviceOnlyAgreement]);
+
+  /** Cada cambio de servicios / recurrencias a pagar debe refrescar informe en pantalla y base del PDF. */
+  useEffect(() => {
+    if (!open || !serviceOnlyAgreement || busyPay) return;
+    void reloadCheckout();
+  }, [
+    open,
+    agreementId,
+    serviceOnlyAgreement,
+    reloadCheckout,
+    selectedServicePayments,
+    busyPay,
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -319,10 +492,6 @@ export function ChatPaymentModal({
   if (!open) return null;
 
   const hasAgreement = agreements.length > 0;
-  const informeReady =
-    breakdown !== null &&
-    breakdown.ok === true &&
-    breakdown.byCurrency.length > 0;
 
   async function handlePayCurrency(curLower: string) {
     const ag = selectedAgreement ?? agreements[0];
@@ -335,12 +504,36 @@ export function ChatPaymentModal({
       toast.error("Confirmá que leíste el informe de montos antes de pagar.");
       return;
     }
+    if (serviceOnlyAgreement) {
+      for (const sel of selectedServicePayments) {
+        const slot = recurrenceSlotKey(
+          sel.serviceItemId,
+          sel.entryKey.month,
+          sel.entryKey.day,
+        );
+        if (paidSlotKeys.has(slot)) {
+          toast.error("Esa recurrencia ya está cobrada. Actualizamos el listado.");
+          void reloadCheckout();
+          return;
+        }
+      }
+    }
+
+    const servicePicksForThisCharge = serviceOnlyAgreement
+      ? selectedServicePayments.map((p) => ({
+          serviceItemId: p.serviceItemId,
+          entryKey: { ...p.entryKey },
+        }))
+      : [];
+
     let ik = idemByCurrency.refs[curLower]?.trim();
     if (!ik || ik.length < 8)
       ik = crypto.randomUUID();
     idemByCurrency.refs[curLower] = ik;
 
     setBusyPay(true);
+    if (serviceOnlyAgreement) setAllRecurrencesPaidVerified(false);
+
     try {
       const cfg = await getStripeConfig();
       const r = await executeAgreementCurrencyPayment({
@@ -363,6 +556,14 @@ export function ChatPaymentModal({
       if (!r.accepted && (r.errorCode === "checkout_invalid")) {
         toast.error(
           r.stripeErrorMessage ?? "Los montos ya no aplican.",
+        );
+        await reloadCheckout();
+        return;
+      }
+      if (!r.accepted && r.errorCode === "recurrence_already_paid") {
+        toast.error(
+          r.stripeErrorMessage ??
+            "Esa recurrencia ya fue cobrada. Actualizamos el listado.",
         );
         await reloadCheckout();
         return;
@@ -390,7 +591,25 @@ export function ChatPaymentModal({
       }
 
       toast.success(`Pago en ${curLower.toUpperCase()} registrado.`);
-      await reloadCheckout();
+      if (servicePicksForThisCharge.length > 0) {
+        flushSync(() => {
+          setSelectedServiceEntriesByServiceId((prev) => {
+            const next: Record<string, string[]> = { ...prev };
+            for (const sel of servicePicksForThisCharge) {
+              const slotKey = `${sel.entryKey.month}-${sel.entryKey.day}`;
+              const arr = next[sel.serviceItemId];
+              if (!arr?.length) continue;
+              const filtered = arr.filter((k) => k !== slotKey);
+              if (filtered.length === 0) delete next[sel.serviceItemId];
+              else next[sel.serviceItemId] = filtered;
+            }
+            return next;
+          });
+        });
+      }
+      delete idemByCurrency.refs[curLower];
+      setAcceptedInforme(false);
+      await reloadCheckout({ allowVerifiedDuringBusyPay: true });
     } catch (e) {
       toast.error((e as Error)?.message ?? "No se pudo completar el pago.");
     } finally {
@@ -482,6 +701,21 @@ export function ChatPaymentModal({
                 />
               </label>
 
+              {serviceOnlyAgreement &&
+              paidRecurrenceSummaryLines.length > 0 &&
+              !allRecurrencesPaidVerified ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
+                  <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                    Recurrencias ya cobradas
+                  </div>
+                  <ul className="mt-2 list-disc space-y-0.5 pl-5 text-[12px] leading-snug text-[var(--text)]">
+                    {paidRecurrenceSummaryLines.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
               {serviceOnlyAgreement ? (
                 <section className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
                   <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
@@ -489,7 +723,7 @@ export function ChatPaymentModal({
                   </div>
                   <p className="vt-muted mt-1 text-[12px] leading-snug">
                     Este acuerdo contiene solo servicios. Selecciona uno o varios servicios y, para cada uno,
-                    elige la recurrencia (entrada) que deseas pagar.
+                    elige la recurrencia (entrada) que deseas pagar. Las que ya fueron cobradas no aparecen.
                   </p>
                   {serviceItems.length === 0 ? (
                     <p className="vt-muted mt-2 text-[13px]">
@@ -498,15 +732,38 @@ export function ChatPaymentModal({
                   ) : (
                     <div className="mt-2 space-y-2">
                       {serviceItems.map((sv) => {
-                        const checked =
-                          (selectedServiceEntriesByServiceId[sv.id]?.length ?? 0) > 0;
-                        const entryOptions =
+                        const allEntries =
                           sv.recurrenciaPagos?.entries?.map((e) => ({
                             value: `${e.month}-${e.day}`,
                             label: `Mes ${e.month} · Día ${e.day} · ${e.amount} ${e.moneda}`,
                             raw: e,
                           })) ?? [];
+                        const unpaidEntryOptions = allEntries.filter(
+                          (o) =>
+                            !paidSlotKeys.has(
+                              recurrenceSlotKey(sv.id, o.raw.month, o.raw.day),
+                            ),
+                        );
+                        const hasUnpaid = unpaidEntryOptions.length > 0;
+                        const checked =
+                          hasUnpaid &&
+                          (selectedServiceEntriesByServiceId[sv.id]?.length ?? 0) > 0;
                         const pickedKeys = selectedServiceEntriesByServiceId[sv.id] ?? [];
+                        if (!hasUnpaid) {
+                          return (
+                            <div
+                              key={sv.id}
+                              className="rounded-xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] p-2.5"
+                            >
+                              <div className="text-[13px] font-bold text-[var(--text)]">
+                                {sv.tipoServicio || "Servicio"}
+                              </div>
+                              <p className="vt-muted mt-1 mb-0 text-[12px] leading-snug">
+                                Todas las recurrencias de este servicio ya fueron cobradas.
+                              </p>
+                            </div>
+                          );
+                        }
                         return (
                           <div
                             key={sv.id}
@@ -521,7 +778,7 @@ export function ChatPaymentModal({
                                   const nextOn = e.target.checked;
                                   setSelectedServiceEntriesByServiceId((prev) => {
                                     if (nextOn) {
-                                      const first = entryOptions[0]?.raw;
+                                      const first = unpaidEntryOptions[0]?.raw;
                                       const def =
                                         first ? [`${first.month}-${first.day}`] : [];
                                       return { ...prev, [sv.id]: prev[sv.id]?.length ? prev[sv.id] : def };
@@ -551,7 +808,7 @@ export function ChatPaymentModal({
                                     });
                                     setAcceptedInforme(false);
                                   }}
-                                  options={entryOptions.map((o) => ({
+                                  options={unpaidEntryOptions.map((o) => ({
                                     value: o.value,
                                     label: o.label,
                                   }))}
@@ -568,11 +825,27 @@ export function ChatPaymentModal({
                 </section>
               ) : null}
 
-              {!selectedServicePaymentsReady ? (
+              {!selectedServicePaymentsReady &&
+              !(serviceOnlyAgreement && allRecurrencesPaidVerified && !busyPay) ? (
                 <div className="rounded-2xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3 text-[13px] leading-snug text-[var(--text)]">
                   Selecciona al menos un servicio y una recurrencia para ver el desglose de pago.
                 </div>
-              ) : busyInit ?
+              ) : serviceOnlyAgreement &&
+                allRecurrencesPaidVerified &&
+                !busyPay ? (
+                <div className="rounded-2xl border border-emerald-500/30 bg-[color-mix(in_oklab,emerald_10%,var(--surface))] p-3 text-[13px] leading-snug text-emerald-900 dark:text-emerald-100">
+                  <p className="m-0 font-bold">
+                    Cobros listos en todas las monedas necesarias del acuerdo.
+                  </p>
+                  {paidRecurrenceSummaryLines.length > 0 ? (
+                    <ul className="mt-2 mb-0 list-disc space-y-0.5 pl-5 text-[12px] opacity-95">
+                      {paidRecurrenceSummaryLines.map((line, i) => (
+                        <li key={i}>{line}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : busyInit ? (
                 <div
                   className="flex flex-col items-center justify-center gap-3 py-10"
                   role="status"
@@ -587,15 +860,15 @@ export function ChatPaymentModal({
                     Cargando tarjetas, acuerdos y desglose de pago…
                   </p>
                 </div>
-              : breakdown && !breakdown.ok ?
+              ) : breakdown && !breakdown.ok ? (
                 <div className="rounded-2xl border border-[color-mix(in_oklab,var(--bad)_42%,var(--border))] bg-[color-mix(in_oklab,var(--bad)_10%,var(--surface))] p-3 text-[13px] leading-snug">
                   {breakdown.errors.map((e) => (
                     <div key={e}>• {e}</div>
                   ))}
                 </div>
-              : breakdown && breakdown.ok && breakdown.byCurrency.length === 0 ?
+              ) : breakdown && breakdown.ok && breakdown.byCurrency.length === 0 ? (
                 <div className="vt-muted text-[13px]">Sin montos a cobrar en este momento.</div>
-              : informeReady ?
+              ) : breakdown && breakdown.ok && breakdown.byCurrency.length > 0 ? (
                 <>
                   <section className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
                     <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
@@ -604,7 +877,7 @@ export function ChatPaymentModal({
                     <div className="mt-2 space-y-3">
                       {breakdown.byCurrency.map((bc) => {
                         const c = bc.currencyLower;
-                        const paid = currencyPaid(statuses, c);
+                        const paid = informeCurrencyPaidDisplay(c);
                         const refCombo = bc.climateMinor + bc.stripeFeeMinor;
                         return (
                           <div
@@ -720,12 +993,12 @@ export function ChatPaymentModal({
                     </button>
                   </div>
                 </>
-              : !busyInit && !breakdown ?
+              ) : !busyInit && !breakdown ? (
                 <p className="vt-muted text-[13px] leading-snug">
                   No pudimos obtener el informe desde el servidor. Revisa la conexión o volvé a intentar más
                   tarde.
                 </p>
-              : null}
+              ) : null}
 
               {!allPaid && breakdown?.ok ?
                 <button
@@ -745,7 +1018,8 @@ export function ChatPaymentModal({
         </div>
 
         <div className="vt-modal-actions flex flex-col gap-3 border-t border-[var(--border)] px-4 py-3">
-          {allPaid ?
+          {allPaid &&
+          !(serviceOnlyAgreement && allRecurrencesPaidVerified && !busyPay) ?
             <div className="rounded-xl px-3 py-2 text-[13px] font-bold text-emerald-600">
               Cobros listos en todas las monedas necesarias del acuerdo.
             </div>
@@ -778,7 +1052,6 @@ export function ChatPaymentModal({
                   !selectedCardId.trim() ||
                   !curOk ||
                   !selectedServicePaymentsReady;
-                const retryDisabled = busyPay || !curOk || !acceptedInforme;
                 return (
                   <div
                     key={cur}
@@ -808,14 +1081,6 @@ export function ChatPaymentModal({
                         {busyPay ?
                           "Procesando…"
                         : `Pagar ${cur.toUpperCase()}`}
-                      </button>
-                      <button
-                        type="button"
-                        className="vt-btn vt-btn-ghost shrink-0 border border-[var(--border)] px-4 py-2 shadow-none"
-                        disabled={retryDisabled}
-                        onClick={() => void handlePayCurrency(cur)}
-                      >
-                        Reintentar
                       </button>
                     </div>
                   </div>

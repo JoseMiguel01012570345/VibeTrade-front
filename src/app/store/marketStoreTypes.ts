@@ -379,6 +379,13 @@ export function threadHasAcceptedAgreement(th: Thread): boolean {
   return (th.contracts ?? []).some((c) => c.status === "accepted");
 }
 
+/** Todos los acuerdos en estado aceptado tienen cobro registrado en servidor (`hasSucceededPayments`). */
+export function threadAcceptedAgreementsAllLiquidated(th: Thread): boolean {
+  const accepted = (th.contracts ?? []).filter((c) => c.status === "accepted");
+  if (accepted.length === 0) return false;
+  return accepted.every((c) => c.hasSucceededPayments === true);
+}
+
 export function threadHasAcceptedAgreementUnpaid(th: Thread): boolean {
   return threadHasAcceptedAgreement(th) && !th.paymentCompleted;
 }

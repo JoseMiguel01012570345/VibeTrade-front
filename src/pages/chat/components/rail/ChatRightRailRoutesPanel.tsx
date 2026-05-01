@@ -138,14 +138,14 @@ export function ChatRightRailRoutesPanel({
 
   /**
    * Panel de suscriptores: al menos una hoja en el hilo (visible para comprador y vendedor).
-   * Prioridad: hoja de la oferta pública si existe en la lista → hoja seleccionada → primera hoja.
+   * Prioridad: hoja seleccionada en el rail (p. ej. «Ver hoja…» desde un acuerdo) → oferta pública → primera hoja.
    */
   const subscribersTargetSheetId = useMemo(() => {
     if (routeSheets.length === 0) return null;
-    const offerSid = routeOfferResolved?.routeSheetId?.trim();
-    if (offerSid && routeSheets.some((r) => r.id === offerSid)) return offerSid;
     if (selRoute && routeSheets.some((r) => r.id === selRoute.id))
       return selRoute.id;
+    const offerSid = routeOfferResolved?.routeSheetId?.trim();
+    if (offerSid && routeSheets.some((r) => r.id === offerSid)) return offerSid;
     return routeSheets[0].id;
   }, [routeSheets, selRoute, routeOfferResolved?.routeSheetId]);
 

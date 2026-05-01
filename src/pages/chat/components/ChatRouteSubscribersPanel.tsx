@@ -16,6 +16,7 @@ import {
   postSellerExpelCarrier,
   type RouteTramoSubscriptionItemApi,
 } from "../../../utils/chat/chatApi";
+import { errorToUserMessage } from "../../../utils/http/apiErrorMessage";
 import { subscribeRouteTramoSubscriptionsChanged } from "../../../utils/chat/chatRealtime";
 import {
   buildRouteSheetsMetaForGrouping,
@@ -267,8 +268,11 @@ export function ChatRouteSubscribersPanel({
       // Una sola hoja: se puede ir directo a tramos; no hay “lista de hojas” útil.
       setFocusRouteSheetId(sheetSections[0].routeSheetId);
     } else {
-      // Varias hojas: al abrir siempre el listado de hojas, no entrar a la que abrió el botón del rail.
-      setFocusRouteSheetId(null);
+      const ctx = contextRouteSheetId?.trim();
+      const matched =
+        ctx && sheetSections.some((s) => s.routeSheetId === ctx) ? ctx : null;
+      // Varias hojas: si hay contexto (rail, notificación, etc.), entrar a esa hoja; si no, listado.
+      setFocusRouteSheetId(matched);
     }
   }, [contextRouteSheetId, sheetSections, subsLoadState]);
 
@@ -385,6 +389,14 @@ export function ChatRouteSubscribersPanel({
     return selectedCarrier.tramos.some((t) => t.status === "confirmed");
   }, [selectedCarrier]);
 
+  /** Incluye pendientes: el vendedor puede retirar al transportista de la operación sin tramos confirmados. */
+  const selectedCarrierHasExpellableTramo = useMemo(() => {
+    if (!selectedCarrier) return false;
+    return selectedCarrier.tramos.some(
+      (t) => t.status === "confirmed" || t.status === "pending",
+    );
+  }, [selectedCarrier]);
+
   const selectedHasPending = tramoRowForSelection?.status === "pending";
   const selectedHasAcceptablePending =
     !!selectedHasPending && !anotherConfirmedOnThisStop;
@@ -455,15 +467,16 @@ export function ChatRouteSubscribersPanel({
       return;
     }
     const scope = expelScope;
-    if (scope === "all" && !selectedCarrierHasConfirmedTramo) {
+    if (scope === "all" && !selectedCarrierHasExpellableTramo) {
       toast.error(
-        "Solo puedes expulsar a un transportista que tenga al menos un tramo confirmado.",
+        "No hay tramos activos de este transportista en este hilo para retirar.",
       );
       return;
     }
     if (scope === "stop") {
-      if (tramoRowForSelection?.status !== "confirmed") {
-        toast.error("Solo puedes expulsar de un tramo que esté confirmado.");
+      const st = tramoRowForSelection?.status;
+      if (st !== "confirmed" && st !== "pending") {
+        toast.error("Solo puedes retirar en un tramo pendiente o confirmado.");
         return;
       }
     }
@@ -519,9 +532,9 @@ export function ChatRouteSubscribersPanel({
       reloadSubscriptions();
       await onSubscriptionsChanged?.();
     } catch (e) {
-      const msg =
-        e instanceof Error ? e.message : "No se pudo retirar al transportista.";
-      toast.error(msg);
+      toast.error(
+        errorToUserMessage(e, "No se pudo retirar al transportista."),
+      );
     } finally {
       setExpelBusy(false);
     }
@@ -735,17 +748,20 @@ export function ChatRouteSubscribersPanel({
               ) : null}
               {canSellerManageRouteSubscriptions && selectedCarrier ? (
                 <>
-                  {tramoRowForSelection?.status === "confirmed" ? (
+                  {tramoRowForSelection &&
+                  (tramoRowForSelection.status === "confirmed" ||
+                    tramoRowForSelection.status === "pending") ? (
                     <div className="mt-4 border-t border-[var(--border)] pt-3">
                       <p className="mb-2 mt-0 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
                         Este tramo
                       </p>
                       <p className="vt-muted mb-2 text-[11px] leading-snug">
                         Retirá a este transportista solo de este tramo
-                        confirmado. Por cada tramo confirmado que retires, en la
-                        demo puede aplicarse un ajuste a la confianza de la
-                        tienda. Si era su último tramo en el hilo, pierde el
-                        acceso a este chat.
+                        {tramoRowForSelection.status === "confirmed"
+                          ? " confirmado. Por cada tramo confirmado que retires, en la demo puede aplicarse un ajuste a la confianza de la tienda."
+                          : " pendiente (sin ajuste por tramo pendiente)."}
+                        Si era su último tramo en el hilo, pierde el acceso a
+                        este chat.
                       </p>
                       <button
                         type="button"
@@ -764,13 +780,14 @@ export function ChatRouteSubscribersPanel({
                     <p className="mb-2 mt-0 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
                       Toda la operación
                     </p>
-                    {selectedCarrierHasConfirmedTramo ? (
+                    {selectedCarrierHasExpellableTramo ? (
                       <>
                         <p className="vt-muted mb-2 text-[11px] leading-snug">
                           Retirá a este transportista de todos los tramos
-                          activos en este hilo. Por cada tramo confirmado
-                          retirado, en la demo puede aplicarse un ajuste a la
-                          confianza de la tienda (uno por tramo).
+                          activos en este hilo.
+                          {selectedCarrierHasConfirmedTramo
+                            ? " Por cada tramo confirmado retirado, en la demo puede aplicarse un ajuste a la confianza de la tienda (uno por tramo)."
+                            : ""}
                         </p>
                         <button
                           type="button"
@@ -786,10 +803,8 @@ export function ChatRouteSubscribersPanel({
                       </>
                     ) : (
                       <p className="mb-0 text-[11px] font-semibold leading-snug text-[var(--muted)]">
-                        No puedes expulsar de la operación mientras el
-                        transportista no tenga al menos un tramo confirmado.
-                        Rechaza la solicitud en cada tramo pendiente o confirmá
-                        y luego retirá si corresponde.
+                        No hay tramos activos de este transportista para retirar
+                        de la operación.
                       </p>
                     )}
                   </div>

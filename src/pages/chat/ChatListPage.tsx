@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { useAppStore } from "../../app/store/useAppStore";
 import type { Message, Thread } from "../../app/store/useMarketStore";
 import {
+  threadAcceptedAgreementsAllLiquidated,
   threadHasAcceptedAgreement,
   useMarketStore,
 } from "../../app/store/useMarketStore";
@@ -80,6 +81,9 @@ export function ChatListPage() {
   const threads = useMarketStore((s) => s.threads);
   const offers = useMarketStore((s) => s.offers);
   const removeThreadFromList = useMarketStore((s) => s.removeThreadFromList);
+  const refreshThreadTradeAgreements = useMarketStore(
+    (s) => s.refreshThreadTradeAgreements,
+  );
   const unpublishRouteSheetFromPlatform = useMarketStore(
     (s) => s.unpublishRouteSheetFromPlatform,
   );
@@ -120,7 +124,7 @@ export function ChatListPage() {
                   );
             setTrustScore(nextTrust);
             toast(
-              `Tu barra de confianza se ajustó en −${CARRIER_ROUTE_EXIT_TRUST_PENALTY} por abandonar la ruta antes de entregarla (demo).`,
+              `Tu barra de confianza se ajustó en −${CARRIER_ROUTE_EXIT_TRUST_PENALTY} por salir del chat como transportista con tramos confirmados (demo).`,
               { icon: "⚠️" },
             );
           } else {
@@ -154,18 +158,28 @@ export function ChatListPage() {
         } catch {
           /* estado local o sin red */
         }
+        try {
+          await refreshThreadTradeAgreements(threadId);
+        } catch {
+          /* sin red */
+        }
+        const thForPenalty =
+          useMarketStore.getState().threads[threadId] ?? th;
         const skipPartyExitTrustPenalty = counterpartyAlreadyRecordedPartyExit(
           partyExitedFromServer,
           me.id,
         );
+        const allAgreementsLiquidated =
+          threadAcceptedAgreementsAllLiquidated(thForPenalty);
         let groupMemberCount = 0;
         if (buyerId && buyerId.trim().length >= 2) groupMemberCount++;
         if (sellerId && sellerId.trim().length >= 2) groupMemberCount++;
         groupMemberCount += th.chatCarriers?.length ?? 0;
         groupMemberCount = Math.max(1, groupMemberCount);
-        const appliedPenalty = skipPartyExitTrustPenalty
-          ? 0
-          : CHAT_PARTY_EXIT_TRUST_PER_MEMBER * groupMemberCount;
+        const appliedPenalty =
+          skipPartyExitTrustPenalty || allAgreementsLiquidated
+            ? 0
+            : CHAT_PARTY_EXIT_TRUST_PER_MEMBER * groupMemberCount;
         const exitReasonDetail = `Salida con acuerdo aceptado: ${reasonTrim}`;
         try {
           await postPartySoftLeaveChatThread(threadId, reasonTrim);
@@ -255,9 +269,11 @@ export function ChatListPage() {
             `${scope} se ajustó en −${appliedPenalty} por salir con acuerdo aceptado (${groupMemberCount} integrantes × ${CHAT_PARTY_EXIT_TRUST_PER_MEMBER}). Las hojas publicadas se retiraron del mercado. Saliendo, dejaste de formar parte de este hilo: no lo verás en la lista y no podrás reabrirlo.`,
             { icon: "⚠️" },
           );
-        } else if (skipPartyExitTrustPenalty) {
+        } else if (skipPartyExitTrustPenalty || allAgreementsLiquidated) {
           toast.success(
-            "La otra parte ya había salido del chat con acuerdo: no aplica un ajuste extra a tu confianza. Las hojas publicadas se retiraron. Saliendo, dejaste de formar parte de este hilo: no lo verás en la lista y no podrás reabrirlo.",
+            skipPartyExitTrustPenalty
+              ? "La otra parte ya había salido del chat con acuerdo: no aplica un ajuste extra a tu confianza. Las hojas publicadas se retiraron. Saliendo, dejaste de formar parte de este hilo: no lo verás en la lista y no podrás reabrirlo."
+              : "Todos los acuerdos aceptados figuran con cobros liquidados: no aplica ajuste a tu confianza. Las hojas publicadas se retiraron. Saliendo, dejaste de formar parte de este hilo: no lo verás en la lista y no podrás reabrirlo.",
           );
         } else {
           toast(

@@ -38,6 +38,7 @@ import {
 import { getSessionToken } from '../../utils/http/sessionToken'
 import type { MarketState, Offer, Message, QAItem, Thread } from './marketStoreTypes'
 import {
+  threadAcceptedAgreementsAllLiquidated,
   threadHasAcceptedAgreement,
   threadHasAcceptedAgreementUnpaid,
 } from './marketStoreTypes'
@@ -1070,9 +1071,11 @@ recordChatExitFromList: (threadId, leaverUserId, opts?: { skipTrustAdjust?: bool
         th0,
         lid,
       )
-      appliedPenalty = skipForSecondParty
-        ? 0
-        : CHAT_PARTY_EXIT_TRUST_PER_MEMBER * groupMemberCount
+      const allAgreementsLiquidated = threadAcceptedAgreementsAllLiquidated(th0)
+      appliedPenalty =
+        skipForSecondParty || allAgreementsLiquidated
+          ? 0
+          : CHAT_PARTY_EXIT_TRUST_PER_MEMBER * groupMemberCount
       if (!opts?.skipTrustAdjust) {
         if (leaverIsSeller) {
           const storeId = th0.storeId?.trim()

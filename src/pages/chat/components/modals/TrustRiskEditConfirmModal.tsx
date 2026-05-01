@@ -66,5 +66,5 @@ export const SELLER_TRUST_PENALTY_ON_EDIT = 3;
 /** Por cada integrante del chat (comprador, vendedor, transportistas) al salir con acuerdo aceptado. */
 export const CHAT_PARTY_EXIT_TRUST_PER_MEMBER = 1;
 
-/** salida del transportista con tramos confirmados antes de entregar la ruta. */
+/** Solo si hay tramos confirmados y alguna hoja implicada no está «entregada» (coherente con API). */
 export const CARRIER_ROUTE_EXIT_TRUST_PENALTY = 3;

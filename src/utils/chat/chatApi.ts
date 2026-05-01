@@ -6,6 +6,14 @@ import {
 } from '../http/apiErrorMessage'
 import { getSessionToken } from '../http/sessionToken'
 
+/** Mensaje para toasts; no exponer JSON crudo ni `{ error, message }` completo. */
+function chatApiErrorMessage(body: string, httpStatus: number): string {
+  return (
+    apiErrorTextToUserMessage(body, defaultUnexpectedErrorMessage()) ||
+    `HTTP ${httpStatus}`
+  )
+}
+
 export type ChatThreadDto = {
   id: string
   offerId: string
@@ -166,7 +174,7 @@ export async function createOrGetChatThread(
         if (e instanceof Error && e.message === CHAT_CANNOT_MESSAGE_SELF) throw e
       }
     }
-    throw new Error(t || `HTTP ${res.status}`)
+    throw new Error(chatApiErrorMessage(t, res.status))
   }
   return (await res.json()) as ChatThreadDto
 }
@@ -179,7 +187,7 @@ export async function postNotifyParticipantLeft(threadId: string): Promise<void>
   );
   if (!res.ok && res.status !== 404) {
     const t = await res.text().catch(() => '');
-    throw new Error(t || `HTTP ${res.status}`);
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
 }
 
@@ -189,7 +197,7 @@ export async function deleteChatThread(threadId: string): Promise<void> {
   })
   if (!res.ok && res.status !== 404) {
     const t = await res.text().catch(() => '')
-    throw new Error(t || `HTTP ${res.status}`)
+    throw new Error(chatApiErrorMessage(t, res.status))
   }
 }
 
@@ -207,7 +215,7 @@ export async function postPartySoftLeaveChatThread(
   )
   if (!res.ok) {
     const t = await res.text().catch(() => '')
-    throw new Error(t || `HTTP ${res.status}`)
+    throw new Error(chatApiErrorMessage(t, res.status))
   }
 }
 
@@ -215,7 +223,10 @@ export async function fetchChatThread(threadId: string): Promise<ChatThreadDto> 
   const res = await apiFetch(`/api/v1/chat/threads/${encodeURIComponent(threadId)}`, {
     method: 'GET',
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as ChatThreadDto
 }
 
@@ -225,7 +236,10 @@ export async function fetchChatThreadByOffer(offerId: string): Promise<ChatThrea
     { method: 'GET' },
   )
   if (res.status === 404) return null
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as ChatThreadDto
 }
 
@@ -234,7 +248,10 @@ export async function fetchChatMessages(threadId: string): Promise<ChatMessageDt
     method: 'GET',
     cache: 'no-store',
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as ChatMessageDto[]
 }
 
@@ -243,7 +260,10 @@ export async function fetchThreadRouteSheets(threadId: string): Promise<RouteShe
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets`,
     { method: 'GET', cache: 'no-store' },
   )
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as RouteSheetPayload[]
 }
 
@@ -256,7 +276,10 @@ export async function fetchRouteSheetPreselPreview(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}/presel-preview`,
     { method: 'GET', cache: 'no-store' },
   )
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as RouteSheetPayload
 }
 
@@ -287,7 +310,10 @@ export async function fetchThreadRouteTramoSubscriptions(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions`,
     { method: 'GET', cache: 'no-store' },
   )
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as RouteTramoSubscriptionItemApi[]
 }
 
@@ -331,7 +357,7 @@ export async function postSellerExpelCarrier(
   )
   if (!res.ok) {
     const t = await res.text().catch(() => '')
-    throw new Error(t || `HTTP ${res.status}`)
+    throw new Error(chatApiErrorMessage(t, res.status))
   }
   return (await res.json()) as CarrierExpelledBySellerApiResult
 }
@@ -351,7 +377,10 @@ export async function postCarrierWithdrawFromThread(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/carrier-withdraw`,
     { method: 'POST' },
   )
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as CarrierWithdrawFromThreadApiResult
 }
 
@@ -374,9 +403,7 @@ export async function postAcceptRouteTramoSubscriptions(
   )
   if (!res.ok) {
     const t = await res.text().catch(() => '')
-    throw new Error(
-      apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()) || `HTTP ${res.status}`,
-    )
+    throw new Error(chatApiErrorMessage(t, res.status))
   }
   return (await res.json()) as { acceptedCount: number }
 }
@@ -398,7 +425,10 @@ export async function postCarrierRespondPreselInvite(
       }),
     },
   )
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as { ok: boolean; accepted: boolean }
 }
 
@@ -421,7 +451,7 @@ export async function postRejectRouteTramoSubscriptions(
   )
   if (!res.ok) {
     const t = await res.text()
-    throw new Error(t || `HTTP ${res.status}`)
+    throw new Error(chatApiErrorMessage(t, res.status))
   }
   return (await res.json()) as { rejectedCount: number }
 }
@@ -435,7 +465,10 @@ export async function putThreadRouteSheet(threadId: string, sheet: RouteSheetPay
       body: JSON.stringify(sheet),
     },
   )
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
 }
 
 export type RouteSheetPreselectedInviteApi = { stopId: string; phone: string };
@@ -456,7 +489,7 @@ export async function postRouteSheetNotifyPreselected(
   )
   if (!res.ok) {
     const t = await res.text().catch(() => '')
-    throw new Error(t || `HTTP ${res.status}`)
+    throw new Error(chatApiErrorMessage(t, res.status))
   }
   const j = (await res.json()) as { notifiedCount?: number }
   return { notifiedCount: j.notifiedCount ?? 0 }
@@ -467,7 +500,10 @@ export async function deleteThreadRouteSheet(threadId: string, routeSheetId: str
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}`,
     { method: 'DELETE' },
   )
-  if (!res.ok && res.status !== 404) throw new Error(await res.text())
+  if (!res.ok && res.status !== 404) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
 }
 
 /** Transportista: acuse de edición de hoja (aceptar / rechazar). */
@@ -486,7 +522,7 @@ export async function postRouteSheetEditCarrierResponse(
   )
   if (!res.ok) {
     const t = await res.text().catch(() => '')
-    throw new Error(t || `HTTP ${res.status}`)
+    throw new Error(chatApiErrorMessage(t, res.status))
   }
 }
 
@@ -497,7 +533,10 @@ export async function fetchThreadTradeAgreements(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements`,
     { method: 'GET', cache: 'no-store' },
   )
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as TradeAgreementApiDto[]
 }
 
@@ -568,7 +607,10 @@ export async function postThreadTradeAgreementRespond(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}/respond`,
     { method: 'POST', body: JSON.stringify({ accept }) },
   )
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as TradeAgreementApiDto
 }
 
@@ -580,7 +622,10 @@ export async function deleteThreadTradeAgreement(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}`,
     { method: 'DELETE' },
   )
-  if (!res.ok && res.status !== 404) throw new Error(await res.text())
+  if (!res.ok && res.status !== 404) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
 }
 
 export async function postChatMessage(
@@ -591,7 +636,10 @@ export async function postChatMessage(
     method: 'POST',
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as ChatMessageDto
 }
 
@@ -607,7 +655,10 @@ export async function postChatTextMessage(
 
 export async function fetchChatThreads(): Promise<ChatThreadSummaryDto[]> {
   const res = await apiFetch('/api/v1/chat/threads', { method: 'GET' })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as ChatThreadSummaryDto[]
 }
 
@@ -624,7 +675,10 @@ export async function fetchChatNotifications(options?: {
   const url =
     qs.length > 0 ? `/api/v1/me/notifications?${qs}` : '/api/v1/me/notifications'
   const res = await apiFetch(url, { method: 'GET' })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as ChatNotificationDto[]
 }
 
@@ -636,7 +690,10 @@ export async function postAckPendingDeliveryOnLogin(): Promise<number> {
   const res = await apiFetch('/api/v1/chat/ack-pending-delivery-on-login', {
     method: 'POST',
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   const j = (await res.json()) as { applied: number }
   return typeof j.applied === 'number' ? j.applied : 0
 }
@@ -655,7 +712,10 @@ export async function patchChatMessageStatus(
   )
   // Mensaje ya no existe / no visible para este hilo: no reintentar en loop.
   if (res.status === 404) return null
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
   return (await res.json()) as ChatMessageDto
 }
 
@@ -664,7 +724,10 @@ export async function markChatNotificationsRead(ids?: string[]): Promise<void> {
     method: 'POST',
     body: JSON.stringify({ ids: ids ?? null }),
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
 }
 
 export function hasChatSession(): boolean {
