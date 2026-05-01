@@ -1,5 +1,9 @@
 import { useAppStore } from '../../app/store/useAppStore'
-import type { ChatMessageDto, ChatThreadDto } from './chatApi'
+import type {
+  ChatMessageDto,
+  ChatThreadDto,
+  ChatThreadMemberDto,
+} from './chatApi'
 
 /** DisplayName y avatar del comprador desde `GET …/threads/:id` o bootstrap. */
 export function mergeBuyerLabelFromThreadDto(
@@ -37,4 +41,24 @@ export function mergeChatSenderLabelsIntoProfileStore(
   useAppStore.setState((s) => ({
     profileDisplayNames: { ...s.profileDisplayNames, ...patch },
   }))
+}
+
+/** Nombres y avatares desde GET miembros del chat social (y fallback para burbujas). */
+export function mergeSocialThreadMembersIntoProfileStore(
+  members: readonly ChatThreadMemberDto[],
+): void {
+  if (!members.length) return
+  useAppStore.setState((s) => {
+    const profileDisplayNames = { ...s.profileDisplayNames }
+    const profileAvatarUrls = { ...s.profileAvatarUrls }
+    for (const m of members) {
+      const id = m.userId?.trim()
+      if (!id || id.length < 2) continue
+      const dn = m.displayName?.trim()
+      const av = m.avatarUrl?.trim()
+      if (dn) profileDisplayNames[id] = dn
+      if (av) profileAvatarUrls[id] = av
+    }
+    return { profileDisplayNames, profileAvatarUrls }
+  })
 }

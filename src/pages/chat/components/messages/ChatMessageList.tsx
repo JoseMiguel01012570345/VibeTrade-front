@@ -19,6 +19,7 @@ import {
   inferMessageFromSeller,
   resolveBuyerUserId,
   resolveSellerUserId,
+  threadIsSocialLike,
 } from "../../../../utils/chat/chatParticipantLabels";
 import { normalizeThreadMessages } from "../../../../utils/chat/chatMerge";
 import { ProtectedMediaImg } from "../../../../components/media/ProtectedMediaImg";
@@ -36,9 +37,34 @@ function messageBubbleAvatarColumn(
   m: Message,
   profileDisplayNames: Record<string, string>,
   profileAvatarUrls: Record<string, string>,
+  profileTrustScores: Record<string, number>,
 ): { href: string; avatarUrl?: string; avatarLetter: string; trust: number } {
   if (m.from === "system") {
     return { href: `/chat/${thread.id}`, avatarLetter: "?", trust: 0 };
+  }
+  if (threadIsSocialLike(thread)) {
+    if (m.from === "me") {
+      return {
+        href: `/profile/${me.id}`,
+        avatarUrl: me.avatarUrl,
+        avatarLetter: (me.name.slice(0, 1) || "?").toUpperCase(),
+        trust: me.trustScore,
+      };
+    }
+    const uid = m.chatSenderUserId?.trim();
+    const display =
+      m.chatSenderDisplayLabel?.trim() ||
+      (uid ? profileDisplayNames[uid]?.trim() : undefined);
+    const letterSource = display || uid || "?";
+    const pic =
+      (uid ? profileAvatarUrls[uid]?.trim() : undefined) || undefined;
+    const trust = uid != null ? (profileTrustScores[uid] ?? 0) : 0;
+    return {
+      href: uid ? `/profile/${uid}` : `/chat/${thread.id}`,
+      avatarUrl: pic,
+      avatarLetter: letterSource.slice(0, 1).toUpperCase(),
+      trust,
+    };
   }
   if (m.from === "me") {
     const sellerUid = resolveSellerUserId(thread);
@@ -231,6 +257,7 @@ export function ChatMessageList({
   const store = thread.store;
   const profileDisplayNames = useAppStore((s) => s.profileDisplayNames);
   const profileAvatarUrls = useAppStore((s) => s.profileAvatarUrls);
+  const profileTrustScores = useAppStore((s) => s.profileTrustScores);
 
   const orderedMessages = useMemo(
     () => normalizeThreadMessages(thread.messages),
@@ -282,6 +309,7 @@ export function ChatMessageList({
           m,
           profileDisplayNames,
           profileAvatarUrls,
+          profileTrustScores,
         );
         const waVoiceSent = mine && m.type === "audio";
         const isAudio = m.type === "audio";
@@ -369,6 +397,7 @@ export function ChatMessageList({
                       thread,
                       me,
                       profileDisplayNames,
+                      m,
                     )}
                   </span>
                   <span

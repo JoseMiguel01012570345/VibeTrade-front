@@ -3,7 +3,6 @@ import {
   type MouseEvent,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -15,17 +14,6 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { cn } from "../../lib/cn";
-import {
-  ArrowLeft,
-  BadgeCheck,
-  ChevronDown,
-  FileText,
-  Loader2,
-  MoreVertical,
-  PanelRight,
-  Wallet,
-  X,
-} from "lucide-react";
 import toast from "react-hot-toast";
 import { useShallow } from "zustand/react/shallow";
 import { useAppStore } from "../../app/store/useAppStore";
@@ -41,14 +29,9 @@ import {
 } from "./components/composer/ChatComposerSection";
 import { ChatMessageList } from "./components/messages/ChatMessageList";
 import { formatFileSize, inferDocKind } from "./lib/chatAttachments";
-import { createChatVoiceRecorderSession } from "./lib/chatWavesurferRecorder";
-import { ensureMicPermission } from "./lib/voiceRecording";
 import { ChatRightRail } from "./components/rail/ChatRightRail";
 import { ChatRouteSubscribersPanel } from "./components/ChatRouteSubscribersPanel";
-import {
-  type RouteSheet,
-  routeSheetEditAcksRecordFromSheets,
-} from "./domain/routeSheetTypes";
+import { type RouteSheet } from "./domain/routeSheetTypes";
 import { RouteSheetFormModal } from "./components/modals/RouteSheetFormModal";
 import { TradeAgreementFormModal } from "./components/modals/TradeAgreementFormModal";
 import { TrustRiskEditConfirmModal } from "./components/modals/TrustRiskEditConfirmModal";
@@ -64,87 +47,48 @@ import {
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
   tramoNotifyLineFromOffer,
 } from "./domain/routeSheetOfferGuards";
-import { applyViewerRouteTramoSubscriptions } from "./domain/routeOfferSubscriptionMerge";
 import { tradeAgreementToDraft } from "./domain/tradeAgreementTypes";
-import {
-  mergedRouteOfferPublicAfterChatThreadHydration,
-  routeOfferPublicFromEmergentCardOffer,
-} from "../../utils/market/routeOfferPublicFromEmergentCard";
+import { routeOfferPublicFromEmergentCardOffer } from "../../utils/market/routeOfferPublicFromEmergentCard";
 import { userHasTransportService } from "../../utils/user/transportEligibility";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
-import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
 import { mergeStoreCatalogWithLocalExtras } from "./domain/storeCatalogTypes";
 import {
-  fetchChatMessages,
-  fetchChatThread,
-  fetchThreadRouteSheets,
-  fetchThreadRouteTramoSubscriptions,
-  fetchThreadTradeAgreements,
+  fetchSocialThreadMembers,
   patchChatMessageStatus,
+  patchSocialGroupTitle,
+  type ChatThreadMemberDto,
 } from "../../utils/chat/chatApi";
-import { mapTradeAgreementApiToTradeAgreement } from "../../utils/chat/tradeAgreementApiMapper";
 import {
   disconnectFromChatThread,
   joinChatThread,
 } from "../../utils/chat/chatRealtime";
+import { normalizeThreadMessages } from "../../utils/chat/chatMerge";
 import {
-  mapChatMessageDtoToMessage,
-  mergePersistedChatMessages,
-  normalizeThreadMessages,
-} from "../../utils/chat/chatMerge";
-import { fetchPublicProfile } from "../../utils/auth/fetchPublicProfile";
-import { minimalOfferStoreFromChatThreadDto } from "../../utils/chat/chatThreadDtoFallbacks";
+  fetchPublicProfile,
+  mergePublicProfileIntoAppStore,
+  wasPublicProfileHydrated,
+} from "../../utils/auth/fetchPublicProfile";
+import { VT_SOCIAL_PLACEHOLDER_OFFER_ID } from "../../utils/chat/chatThreadDtoFallbacks";
 import {
   mergeBuyerLabelFromThreadDto,
-  mergeChatSenderLabelsIntoProfileStore,
+  mergeSocialThreadMembersIntoProfileStore,
 } from "../../utils/chat/chatSenderLabels";
-import {
-  chatThreadHeaderTitle,
-  resolveBuyerUserId,
-} from "../../utils/chat/chatParticipantLabels";
+import { resolveBuyerUserId } from "../../utils/chat/chatParticipantLabels";
 import { getThreadPeerPartyExit } from "../../utils/chat/threadPeerPartyExit";
-import {
-  buildPurchaseThreadMessages,
-  buildPurchaseThreadSystemOnly,
-  syncOwnQaIntoMessages,
-} from "../../app/store/marketStoreHelpers";
-import type { Message } from "../../app/store/marketStoreTypes";
+import { useMinWidth961 } from "./hooks/useMinWidth961";
+import { useBuyerForRail } from "./hooks/useBuyerForRail";
+import { useChatPeerProfileHydration } from "./hooks/useChatPeerProfileHydration";
+import { useHydratePersistedChatThread } from "./hooks/useHydratePersistedChatThread";
+import { useChatRouteRefresh } from "./hooks/useChatRouteRefresh";
+import { useChatScrollUnread } from "./hooks/useChatScrollUnread";
+import { useChatVoiceRecorder } from "./hooks/useChatVoiceRecorder";
+import { incomingMessageSupportsDeliveryAck } from "./utils/chatDeliveryAck";
+import { CarrierBlockedChatView } from "./components/layout/CarrierBlockedChatView";
+import { ChatJumpToBottomFab } from "./components/layout/ChatJumpToBottomFab";
+import { ChatPageHeader } from "./components/layout/ChatPageHeader";
+import { ChatTradeMobileActionsSheet } from "./components/layout/ChatTradeMobileActionsSheet";
+import { ChatSocialOverlays } from "./components/social/ChatSocialOverlays";
 import "./chat.css";
-
-const CHAT_SCROLL_BOTTOM_PX = 80;
-
-function useMinWidth961() {
-  const [wide, setWide] = useState(() => {
-    if (typeof globalThis === "undefined" || !("matchMedia" in globalThis)) {
-      return true;
-    }
-    return globalThis.matchMedia("(min-width: 961px)").matches;
-  });
-  useEffect(() => {
-    const mq = globalThis.matchMedia("(min-width: 961px)");
-    const sync = () => setWide(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-  return wide;
-}
-
-/** Misma familia de tipos que el ping de entregado vía <c>messageCreated</c> (chatRealtime). */
-function incomingMessageSupportsDeliveryAck(m: Message): boolean {
-  if (m.from !== "other" || !m.id || m.id.startsWith("pend_")) return false;
-  // Q&A públicas espejadas en chat (offerQaId) no son filas de chat persistidas; evitar 404 en /status.
-  if (m.type === "text" && "offerQaId" in m && !!m.offerQaId) return false;
-  if (m.chatStatus === "delivered" || m.chatStatus === "read") return false;
-  return (
-    m.type === "text" ||
-    m.type === "image" ||
-    m.type === "audio" ||
-    m.type === "doc" ||
-    m.type === "docs" ||
-    m.type === "agreement"
-  );
-}
 
 export function ChatPage() {
   const { threadId } = useParams();
@@ -213,6 +157,19 @@ export function ChatPage() {
     [thread, me.id],
   );
 
+  const isSocialThread =
+    !!thread &&
+    (thread.isSocialGroup === true ||
+      thread.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID);
+
+  const isSocialGroupCreator = useMemo(
+    () =>
+      isSocialThread &&
+      !!thread?.buyerUserId?.trim() &&
+      thread.buyerUserId.trim() === me.id.trim(),
+    [isSocialThread, thread?.buyerUserId, me.id],
+  );
+
   const acceptedAgreementsForPayment = useMemo(
     () =>
       thread
@@ -222,116 +179,14 @@ export function ChatPage() {
   );
 
   /** Panel "gente": el comprador no es `me` cuando el vendedor abre el chat (antes se mostraba la ficha del vendedor). */
-  const buyerForRail = useMemo(() => {
-    if (!thread) {
-      return {
-        id: me.id,
-        name: me.name,
-        trustScore: me.trustScore,
-        avatarUrl: me.avatarUrl,
-      };
-    }
-    if (thread.demoBuyer) return thread.demoBuyer;
-    const buyerId = resolveBuyerUserId(thread, me.id);
-    if (buyerId && buyerId === me.id) {
-      return {
-        id: me.id,
-        name: me.name,
-        trustScore: me.trustScore,
-        avatarUrl: me.avatarUrl,
-      };
-    }
-    if (buyerId) {
-      const name =
-        thread.buyerDisplayName?.trim() ||
-        profileDisplayNames[buyerId]?.trim() ||
-        "Comprador";
-      const avatarUrl =
-        thread.buyerAvatarUrl?.trim() ||
-        profileAvatarUrls[buyerId]?.trim() ||
-        undefined;
-      return {
-        id: buyerId,
-        name,
-        trustScore: profileTrustScores[buyerId] ?? 0,
-        avatarUrl,
-      };
-    }
-    const sellerUid = thread.sellerUserId ?? thread.store.ownerUserId;
-    const viewerIsSeller = !!sellerUid && me.id === sellerUid;
-    if (!viewerIsSeller) {
-      return {
-        id: me.id,
-        name: me.name,
-        trustScore: me.trustScore,
-        avatarUrl: me.avatarUrl,
-      };
-    }
-    const buid = thread.buyerUserId;
-    return {
-      id: buid ?? "unknown",
-      name:
-        thread.buyerDisplayName?.trim() ||
-        (buid ? profileDisplayNames[buid]?.trim() : undefined) ||
-        "Comprador",
-      trustScore: buid ? (profileTrustScores[buid] ?? 0) : 0,
-      avatarUrl:
-        thread.buyerAvatarUrl?.trim() ||
-        (buid ? profileAvatarUrls[buid]?.trim() : undefined) ||
-        undefined,
-    };
-  }, [
+  const buyerForRail = useBuyerForRail(
     thread,
-    me.id,
-    me.name,
-    me.trustScore,
-    me.avatarUrl,
+    me,
     profileDisplayNames,
     profileAvatarUrls,
     profileTrustScores,
-  ]);
-
-  useEffect(() => {
-    if (!thread) return;
-    const toFetch: string[] = [];
-    const scores = useAppStore.getState().profileTrustScores;
-    const bid = resolveBuyerUserId(thread, me.id);
-    if (bid && bid !== me.id && scores[bid] === undefined) {
-      toFetch.push(bid);
-    }
-    const oid = thread.store.ownerUserId;
-    if (oid && scores[oid] === undefined) {
-      toFetch.push(oid);
-    }
-    const unique = [...new Set(toFetch)];
-    if (unique.length === 0) return;
-    let cancelled = false;
-    void Promise.all(
-      unique.map((id) =>
-        fetchPublicProfile(id).then((p) => {
-          if (cancelled || !p) return;
-          useAppStore.setState((s) => ({
-            profileTrustScores: {
-              ...s.profileTrustScores,
-              [p.id]: p.trustScore,
-            },
-            profileDisplayNames: { ...s.profileDisplayNames, [p.id]: p.name },
-            ...(p.avatarUrl?.trim()
-              ? {
-                  profileAvatarUrls: {
-                    ...s.profileAvatarUrls,
-                    [p.id]: p.avatarUrl.trim(),
-                  },
-                }
-              : {}),
-          }));
-        }),
-      ),
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [thread, me.id]);
+  );
+  useChatPeerProfileHydration(thread, me.id, isSocialThread);
 
   useEffect(() => {
     setPeerPartyExitedInfo(null);
@@ -436,6 +291,9 @@ export function ChatPage() {
     );
   }, [thread?.contracts, routeSheetBeingEdited?.id]);
   const [railOpen, setRailOpen] = useState(false);
+  useEffect(() => {
+    if (thread?.isSocialGroup) setRailOpen(false);
+  }, [thread?.isSocialGroup]);
   /** Panel izquierdo: suscriptores a la oferta de hoja de ruta (solo comprador). */
   const [routeSubscribersSheetId, setRouteSubscribersSheetId] = useState<
     string | null
@@ -455,9 +313,82 @@ export function ChatPage() {
   const [chatPayPreparing, setChatPayPreparing] = useState(false);
   const [contractsLoading, setContractsLoading] = useState(false);
   const [routeSheetsLoading, setRouteSheetsLoading] = useState(false);
+  const { refreshChatRouteData, syncThreadRouteSheetsFromSubscribersPanel } =
+    useChatRouteRefresh({
+      threadId,
+      applyThreadRouteTramoSubscriptions,
+      setRouteSheetsLoading,
+    });
   const chatPayOpenInFlightRef = useRef(false);
   /** Móvil: acciones Panel / Pagar / Emitir desde FAB + hoja inferior (más alto útil para mensajes). */
   const [mobileChatActionsOpen, setMobileChatActionsOpen] = useState(false);
+  const [socialMembersOpen, setSocialMembersOpen] = useState(false);
+  const [socialRenameOpen, setSocialRenameOpen] = useState(false);
+  const [socialMembersLoading, setSocialMembersLoading] = useState(false);
+  const [socialMembersList, setSocialMembersList] = useState<
+    ChatThreadMemberDto[]
+  >([]);
+  const [socialRenameDraft, setSocialRenameDraft] = useState("");
+
+  const openSocialMembersModal = useCallback(() => {
+    const tid = thread?.id?.trim();
+    if (!tid) return;
+    const meId = me.id.trim();
+    setSocialMembersLoading(true);
+    setSocialMembersOpen(true);
+    void (async () => {
+      try {
+        const list = await fetchSocialThreadMembers(tid);
+        setSocialMembersList(list);
+        mergeSocialThreadMembersIntoProfileStore(list);
+        await Promise.all(
+          list.map(async (m) => {
+            const uid = m.userId?.trim();
+            if (!uid || uid.length < 2 || uid === meId) return;
+            if (m.avatarUrl?.trim()) return;
+            if (wasPublicProfileHydrated(uid)) return;
+            const p = await fetchPublicProfile(uid);
+            if (!p) return;
+            mergePublicProfileIntoAppStore(p);
+          }),
+        );
+      } catch {
+        toast.error("No se pudieron cargar los miembros.");
+        setSocialMembersList([]);
+      } finally {
+        setSocialMembersLoading(false);
+      }
+    })();
+  }, [thread?.id, me.id]);
+
+  const submitSocialRename = useCallback(async () => {
+    const tid = thread?.id?.trim();
+    if (!tid) return;
+    try {
+      const dto = await patchSocialGroupTitle(tid, socialRenameDraft.trim() || null);
+      mergeBuyerLabelFromThreadDto(dto);
+      useMarketStore.setState((s) => ({
+        ...s,
+        threads: {
+          ...s.threads,
+          [tid]: {
+            ...s.threads[tid]!,
+            ...(dto.socialGroupTitle !== undefined
+              ? {
+                  socialGroupTitle: dto.socialGroupTitle?.trim()
+                    ? dto.socialGroupTitle.trim()
+                    : null,
+                }
+              : {}),
+          },
+        },
+      }));
+      setSocialRenameOpen(false);
+      toast.success("Nombre actualizado");
+    } catch {
+      toast.error("No se pudo cambiar el nombre.");
+    }
+  }, [thread?.id, socialRenameDraft]);
 
   const openBuyerPaymentModal = useCallback(async () => {
     if (chatPayOpenInFlightRef.current) return;
@@ -485,24 +416,24 @@ export function ChatPage() {
     reason: string;
   } | null>(null);
   const peerExitModalPrimedRef = useRef<string | null>(null);
-  const listRef = useRef<HTMLDivElement | null>(null);
-  const listEndRef = useRef<HTMLDivElement | null>(null);
-  /** Sigue true si el usuario estaba al final del hilo (para decidir autoscroll al llegar mensajes). */
-  const userWasAtBottomRef = useRef(true);
-  const prevMessageCountInThreadRef = useRef(0);
-  const chatListInitThreadIdRef = useRef<string | null>(null);
-  const [unreadBelowCount, setUnreadBelowCount] = useState(0);
-  /** True si el usuario scrolleó hacia arriba y el fondo del hilo no está a la vista. */
-  const [scrolledUpFromBottom, setScrolledUpFromBottom] = useState(false);
+  const {
+    listRef,
+    listEndRef,
+    onChatListScroll,
+    jumpChatToBottom,
+    scrolledUpFromBottom,
+    unreadBelowCount,
+  } = useChatScrollUnread(thread, threadId);
   const draftInputRef = useRef<HTMLInputElement | null>(null);
-  const voiceRecorderContainerRef = useRef<HTMLDivElement | null>(null);
-  const voiceSessionRef = useRef<ReturnType<
-    typeof createChatVoiceRecorderSession
-  > | null>(null);
-
-  const [recording, setRecording] = useState(false);
-  const [recordSecs, setRecordSecs] = useState(0);
   const [persistThreadError, setPersistThreadError] = useState(false);
+  useHydratePersistedChatThread({
+    threadId,
+    searchParams,
+    refreshOfferQaFromServer,
+    setPersistThreadError,
+    setContractsLoading,
+    setRouteSheetsLoading,
+  });
 
   const [pendingImages, setPendingImages] = useState<PendingImg[]>([]);
   const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([]);
@@ -652,287 +583,6 @@ export function ChatPage() {
   }, [thread?.storeId, me.id]);
 
   useEffect(() => {
-    const tid = threadId?.trim() ?? "";
-    if (!tid.startsWith("cth_")) return;
-    if (searchParams.get("presel") === "1" && searchParams.get("sheet")?.trim())
-      return;
-    const existingTh = useMarketStore.getState().threads[tid];
-    setPersistThreadError(false);
-    let cancelled = false;
-    void (async () => {
-      try {
-        const dto = await fetchChatThread(tid);
-        mergeBuyerLabelFromThreadDto(dto);
-        let offer = useMarketStore.getState().offers[dto.offerId];
-        let store = useMarketStore.getState().stores[dto.storeId];
-        if (!offer || !store) {
-          const card = await fetchPublicOfferCard(dto.offerId).catch(
-            () => null,
-          );
-          if (card?.offer?.id) {
-            const storeKey = card.store.id?.trim() || card.offer.storeId;
-            useMarketStore.setState((s) => {
-              const nextStores = { ...s.stores };
-              if (storeKey) {
-                nextStores[storeKey] = {
-                  ...s.stores[storeKey],
-                  ...card.store,
-                  id: storeKey,
-                };
-              }
-              return {
-                ...s,
-                offers: { ...s.offers, [card.offer.id]: card.offer },
-                stores: nextStores,
-              };
-            });
-            offer = useMarketStore.getState().offers[dto.offerId];
-            store = useMarketStore.getState().stores[dto.storeId];
-          }
-        }
-        if (!offer || !store) {
-          const { offer: fo, store: st } =
-            minimalOfferStoreFromChatThreadDto(dto);
-          useMarketStore.setState((s) => ({
-            ...s,
-            offers: { ...s.offers, [fo.id]: fo },
-            stores: { ...s.stores, [st.id]: st },
-          }));
-          offer = useMarketStore.getState().offers[dto.offerId];
-          store = useMarketStore.getState().stores[dto.storeId];
-        }
-        if (!offer || !store) {
-          if (!cancelled) setPersistThreadError(true);
-          return;
-        }
-        if (!cancelled) {
-          setContractsLoading(true);
-          setRouteSheetsLoading(true);
-        }
-        const [msgs, agResult, routeSheetsRs, subsRs] = await Promise.all([
-          fetchChatMessages(tid),
-          fetchThreadTradeAgreements(tid)
-            .then((a) => ({ ok: true as const, agreements: a }))
-            .catch(() => ({ ok: false as const })),
-          fetchThreadRouteSheets(tid).catch(() => null),
-          fetchThreadRouteTramoSubscriptions(tid).catch(() => null),
-        ]);
-        const contracts = agResult.ok
-          ? agResult.agreements.map(mapTradeAgreementApiToTradeAgreement)
-          : (existingTh?.contracts ?? []);
-        const validAgreementIds: Set<string> | undefined = agResult.ok
-          ? new Set(agResult.agreements.map((a) => a.id))
-          : existingTh?.contracts?.length
-            ? new Set(existingTh.contracts.map((c) => c.id))
-            : undefined;
-        mergeChatSenderLabelsIntoProfileStore(msgs);
-        const meId = useAppStore.getState().me.id;
-        const mapped = msgs.map((d) => mapChatMessageDtoToMessage(d, meId));
-        const prevMsgs = existingTh?.messages;
-        const sellerUserId = dto.sellerUserId ?? store.ownerUserId;
-        const localBasis =
-          prevMsgs && prevMsgs.length > 0
-            ? prevMsgs
-            : msgs.length > 0
-              ? dto.purchaseMode
-                ? buildPurchaseThreadSystemOnly(offer)
-                : []
-              : dto.purchaseMode
-                ? buildPurchaseThreadMessages(
-                    offer,
-                    dto.buyerUserId,
-                    sellerUserId,
-                    meId,
-                  )
-                : [];
-        const merged = mergePersistedChatMessages(
-          mapped,
-          localBasis,
-          validAgreementIds
-            ? { validTradeAgreementIds: validAgreementIds }
-            : undefined,
-        );
-        const qaSynced = syncOwnQaIntoMessages(
-          merged,
-          offer,
-          dto.buyerUserId,
-          sellerUserId,
-          meId,
-        );
-        if (cancelled) return;
-        const sheetsForThread =
-          routeSheetsRs !== null
-            ? (routeSheetsRs as RouteSheet[])
-            : (existingTh?.routeSheets ?? []);
-        const acksFromSheets =
-          routeSheetEditAcksRecordFromSheets(sheetsForThread);
-        useMarketStore.setState((s) => {
-          const nextThread = {
-            ...(s.threads[tid] ?? {}),
-            id: tid,
-            chatActionsLocked: false,
-            offerId: dto.offerId,
-            storeId: dto.storeId,
-            store,
-            buyerUserId: dto.buyerUserId,
-            sellerUserId: dto.sellerUserId,
-            ...(dto.buyerDisplayName?.trim()
-              ? { buyerDisplayName: dto.buyerDisplayName.trim() }
-              : {}),
-            ...(dto.buyerAvatarUrl?.trim()
-              ? { buyerAvatarUrl: dto.buyerAvatarUrl.trim() }
-              : {}),
-            purchaseMode: dto.purchaseMode,
-            messages: qaSynced,
-            contracts,
-            routeSheets: sheetsForThread,
-            ...(Object.keys(acksFromSheets).length > 0
-              ? {
-                  routeSheetEditAcks: {
-                    ...(s.threads[tid]?.routeSheetEditAcks ?? {}),
-                    ...acksFromSheets,
-                  },
-                }
-              : {}),
-          };
-          const roNext = mergedRouteOfferPublicAfterChatThreadHydration(
-            s.routeOfferPublic,
-            nextThread,
-            offer,
-          );
-          let next: typeof s = {
-            ...s,
-            threads: { ...s.threads, [tid]: nextThread },
-            ...(roNext ? { routeOfferPublic: roNext } : {}),
-          };
-          if (subsRs && Array.isArray(subsRs)) {
-            const mergedSubs = applyViewerRouteTramoSubscriptions(
-              next,
-              tid,
-              subsRs,
-              meId,
-            );
-            if (mergedSubs) next = mergedSubs;
-          }
-          return next;
-        });
-        if (dto.purchaseMode && dto.offerId?.trim()) {
-          void refreshOfferQaFromServer(dto.offerId.trim());
-        }
-      } catch {
-        if (!cancelled) setPersistThreadError(true);
-      } finally {
-        if (!cancelled) {
-          setContractsLoading(false);
-          setRouteSheetsLoading(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [threadId, refreshOfferQaFromServer, searchParams]);
-
-  const refreshChatRouteData = useCallback(async () => {
-    const tid = threadId?.trim();
-    if (!tid?.startsWith("cth_")) return;
-    const uid = useAppStore.getState().me.id;
-    setRouteSheetsLoading(true);
-    try {
-      const [sheets, subs, serverMsgs] = await Promise.all([
-        fetchThreadRouteSheets(tid).catch(() => null),
-        fetchThreadRouteTramoSubscriptions(tid).catch(() => null),
-        fetchChatMessages(tid).catch(() => null),
-      ]);
-      if (serverMsgs !== null) {
-        mergeChatSenderLabelsIntoProfileStore(serverMsgs);
-        const mapped = serverMsgs.map((d) => mapChatMessageDtoToMessage(d, uid));
-        useMarketStore.setState((s) => {
-          const t = s.threads[tid];
-          if (!t) return s;
-          const validIds = new Set((t.contracts ?? []).map((c) => c.id));
-          const merged = mergePersistedChatMessages(mapped, t.messages, {
-            validTradeAgreementIds: validIds,
-          });
-          return {
-            ...s,
-            threads: {
-              ...s.threads,
-              [tid]: { ...t, messages: merged },
-            },
-          };
-        });
-      }
-      if (sheets) {
-        const sh = sheets as RouteSheet[];
-        const acks = routeSheetEditAcksRecordFromSheets(sh);
-        useMarketStore.setState((s) => {
-          const t = s.threads[tid];
-          if (!t) return s;
-          const nextT = {
-            ...t,
-            routeSheets: sh,
-            routeSheetEditAcks: { ...(t.routeSheetEditAcks ?? {}), ...acks },
-          };
-          const roNext = mergedRouteOfferPublicAfterChatThreadHydration(
-            s.routeOfferPublic,
-            nextT,
-            s.offers[nextT.offerId],
-          );
-          let next: typeof s = {
-            ...s,
-            threads: { ...s.threads, [tid]: nextT },
-            ...(roNext ? { routeOfferPublic: roNext } : {}),
-          };
-          if (subs && Array.isArray(subs)) {
-            const mergedSubs = applyViewerRouteTramoSubscriptions(
-              next,
-              tid,
-              subs,
-              uid,
-            );
-            if (mergedSubs) next = mergedSubs;
-          }
-          return next;
-        });
-      } else if (subs && Array.isArray(subs)) {
-        applyThreadRouteTramoSubscriptions(tid, subs, uid);
-      }
-    } finally {
-      setRouteSheetsLoading(false);
-    }
-  }, [threadId, applyThreadRouteTramoSubscriptions]);
-
-  /** El visor de suscriptores hace GET /route-sheets; aplica al hilo en memoria. */
-  const syncThreadRouteSheetsFromSubscribersPanel = useCallback(
-    (sheets: RouteSheet[]) => {
-      const tid = threadId?.trim();
-      if (!tid?.startsWith("cth_")) return;
-      const acks = routeSheetEditAcksRecordFromSheets(sheets);
-      useMarketStore.setState((s) => {
-        const t = s.threads[tid];
-        if (!t) return s;
-        const nextT = {
-          ...t,
-          routeSheets: sheets,
-          routeSheetEditAcks: { ...(t.routeSheetEditAcks ?? {}), ...acks },
-        };
-        const roNext = mergedRouteOfferPublicAfterChatThreadHydration(
-          s.routeOfferPublic,
-          nextT,
-          s.offers[nextT.offerId],
-        );
-        return {
-          ...s,
-          threads: { ...s.threads, [tid]: nextT },
-          ...(roNext ? { routeOfferPublic: roNext } : {}),
-        };
-      });
-    },
-    [threadId],
-  );
-
-  useEffect(() => {
     if (!threadId?.startsWith("cth_")) return;
     if (searchParams.get("presel") === "1" && searchParams.get("sheet")?.trim())
       return;
@@ -1076,98 +726,6 @@ export function ChatPage() {
     }
   }, [isActingSeller]);
 
-  const onChatListScroll = useCallback(() => {
-    const el = listRef.current;
-    if (!el) return;
-    const atBottom =
-      el.scrollTop + el.clientHeight >= el.scrollHeight - CHAT_SCROLL_BOTTOM_PX;
-    userWasAtBottomRef.current = atBottom;
-    setScrolledUpFromBottom(!atBottom);
-    if (atBottom) {
-      setUnreadBelowCount(0);
-    }
-  }, []);
-
-  const jumpChatToBottom = useCallback(() => {
-    const el = listRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    setUnreadBelowCount(0);
-    setScrolledUpFromBottom(false);
-    userWasAtBottomRef.current = true;
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!thread) {
-      if (!threadId) {
-        chatListInitThreadIdRef.current = null;
-        prevMessageCountInThreadRef.current = 0;
-        setUnreadBelowCount(0);
-        setScrolledUpFromBottom(false);
-      }
-      return;
-    }
-    const el = listRef.current;
-    const n = thread.messages.length;
-    const tid = thread.id;
-    if (!el) {
-      return;
-    }
-    if (chatListInitThreadIdRef.current !== tid) {
-      chatListInitThreadIdRef.current = tid;
-      el.scrollTo({ top: el.scrollHeight });
-      prevMessageCountInThreadRef.current = n;
-      setUnreadBelowCount(0);
-      userWasAtBottomRef.current = true;
-      queueMicrotask(() => {
-        onChatListScroll();
-      });
-      return;
-    }
-    if (n < prevMessageCountInThreadRef.current) {
-      prevMessageCountInThreadRef.current = n;
-      return;
-    }
-    if (n > prevMessageCountInThreadRef.current) {
-      const added = n - prevMessageCountInThreadRef.current;
-      const ordered = normalizeThreadMessages(thread.messages);
-      const newSlice = ordered.slice(-added);
-      /** No sumar al badge los envíos propios mientras se está scrolleado arriba (sólo avisar de lo del otro/sistema). */
-      const unreadFromNonMe = newSlice.filter((m) => m.from !== "me").length;
-      if (userWasAtBottomRef.current) {
-        el.scrollTo({ top: el.scrollHeight });
-        setUnreadBelowCount(0);
-        queueMicrotask(() => {
-          onChatListScroll();
-        });
-      } else if (unreadFromNonMe > 0) {
-        setUnreadBelowCount((c) => c + unreadFromNonMe);
-      }
-    }
-    prevMessageCountInThreadRef.current = n;
-  }, [thread, threadId, onChatListScroll]);
-
-  useEffect(() => {
-    if (!thread) return;
-    const root = listRef.current;
-    const target = listEndRef.current;
-    if (!root || !target) return;
-    const o = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            setUnreadBelowCount(0);
-            setScrolledUpFromBottom(false);
-            userWasAtBottomRef.current = true;
-          }
-        }
-      },
-      { root, rootMargin: "0px", threshold: 0.01 },
-    );
-    o.observe(target);
-    return () => o.disconnect();
-  }, [thread?.id, thread?.messages.length]);
-
   const selectedIds = useMemo(
     () => Object.keys(selected).filter((id) => selected[id]),
     [selected],
@@ -1175,6 +733,24 @@ export function ChatPage() {
 
   const selectedIdsRef = useRef(selectedIds);
   selectedIdsRef.current = selectedIds;
+
+  const {
+    recording,
+    recordSecs,
+    voiceRecorderContainerRef,
+    toggleVoiceRecording,
+  } = useChatVoiceRecorder({
+    threadId,
+    chatActionsLocked: thread?.chatActionsLocked === true,
+    sendAudio,
+    setSelected,
+    selectedIdsRef,
+    pendingDocsRef,
+    pendingImagesRef,
+    draftRef,
+    pendingAudioRef,
+    setPendingAudio,
+  });
 
   const selectedOrdered = useMemo(() => {
     if (!thread) return [];
@@ -1204,108 +780,10 @@ export function ChatPage() {
     if (blockTextWithVoiceAndFiles) setDraft("");
   }, [blockTextWithVoiceAndFiles]);
 
-  function stopVoiceRecording() {
-    voiceSessionRef.current?.stop();
-  }
-
-  async function startVoiceRecording() {
-    if (thread?.chatActionsLocked === true) return;
-    const ok = await ensureMicPermission();
-    if (!ok) {
-      toast.error(
-        "No se pudo acceder al micrófono. Permite el permiso y usa HTTPS o localhost.",
-      );
-      return;
-    }
-    setRecordSecs(0);
-    setRecording(true);
-  }
-
-  useLayoutEffect(() => {
-    if (!recording) {
-      voiceSessionRef.current = null;
-      return;
-    }
-    const el = voiceRecorderContainerRef.current;
-    if (!el || !threadId) {
-      setRecording(false);
-      return;
-    }
-
-    let cancelled = false;
-    setRecordSecs(0);
-
-    const session = createChatVoiceRecorderSession(el, {
-      onProgressSec: (s) => {
-        if (!cancelled) setRecordSecs(s);
-      },
-      onStartFailed: () => {
-        if (!cancelled) {
-          toast.error("No se pudo acceder al micrófono");
-          setRecording(false);
-          setRecordSecs(0);
-        }
-      },
-      onEnd: (blob, seconds) => {
-        if (cancelled) return;
-        if (blob.size < 32) {
-          toast.error(
-            "No se grabó audio útil. Mantené pulsado un poco más el micrófono.",
-          );
-          setRecording(false);
-          setRecordSecs(0);
-          return;
-        }
-        const url = URL.createObjectURL(blob);
-        const hasOtherStuff =
-          pendingDocsRef.current.length > 0 ||
-          pendingImagesRef.current.length > 0 ||
-          draftRef.current.trim().length > 0 ||
-          pendingAudioRef.current !== null;
-        if (!hasOtherStuff) {
-          const replyToIds = selectedIdsRef.current;
-          sendAudio(
-            threadId,
-            { url, seconds },
-            replyToIds.length ? { replyToIds } : undefined,
-          );
-          setSelected({});
-          toast.success("Nota de voz enviada");
-        } else {
-          setPendingAudio((prev) => {
-            if (prev) revokeBlob(prev.url);
-            return { url, seconds };
-          });
-          toast.success("Nota de voz añadida al envío");
-        }
-        setRecording(false);
-        setRecordSecs(0);
-      },
-    });
-
-    voiceSessionRef.current = session;
-    void session.start();
-
-    return () => {
-      cancelled = true;
-      voiceSessionRef.current = null;
-      session.destroy();
-    };
-  }, [recording, threadId, sendAudio]);
-
   const closeSubscriberRouteSheet = useCallback(() => {
     setRouteSubscribersSheetId(null);
     setHighlightSubscriberUserId(null);
   }, []);
-
-  function toggleVoiceRecording() {
-    if (!recording && thread?.chatActionsLocked === true) return;
-    if (recording) {
-      stopVoiceRecording();
-    } else {
-      void startVoiceRecording();
-    }
-  }
 
   if (!threadId) return null;
   const legacyPreselSheet = searchParams.get("sheet")?.trim();
@@ -1367,6 +845,7 @@ export function ChatPage() {
     routeOfferForThisThread.threadId === thread.id &&
     carrierHasChatAccessTramoOnOffer(routeOfferForThisThread, me.id);
   const carrierBlockedFromRouteChat =
+    !isSocialThread &&
     hasTransportService &&
     !viewerIsThreadBuyer &&
     !viewerIsThreadSeller &&
@@ -1376,31 +855,7 @@ export function ChatPage() {
 
   if (carrierBlockedFromRouteChat) {
     return (
-      <div className="container vt-page">
-        <div className="vt-card vt-card-pad max-w-lg">
-          <div className="text-lg font-black tracking-tight">
-            Chat no disponible aún
-          </div>
-          <p className="vt-muted mt-2 text-[13px] leading-snug">
-            Como transportista, necesitás una suscripción a un tramo de la hoja
-            de ruta publicada (incluida una invitación aceptada). Si aún no te
-            postulaste o no figura tu teléfono en la hoja, no puedes entrar a
-            este chat.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" className="vt-btn" onClick={() => nav(-1)}>
-              Volver
-            </button>
-            <button
-              type="button"
-              className="vt-btn vt-btn-primary"
-              onClick={() => nav(`/offer/${thread.offerId}`)}
-            >
-              Ir a la oferta de ruta
-            </button>
-          </div>
-        </div>
-      </div>
+      <CarrierBlockedChatView nav={nav} offerId={thread.offerId} />
     );
   }
 
@@ -1481,7 +936,6 @@ export function ChatPage() {
     setPendingAudio(null);
     setDraft("");
     setSelected({});
-    toast.success("Enviado");
   }
 
   const hasComposeToSend =
@@ -1498,117 +952,32 @@ export function ChatPage() {
         className={cn(
           "grid min-h-0 flex-1 grid-cols-1 items-stretch gap-5",
           "max-[960px]:grid-rows-[minmax(0,1fr)_auto] max-[960px]:gap-x-4 max-[960px]:row-gap-0",
-          /* Escritorio: chat flexible (mín. 520px); rail hasta ~420px o 28vw sin comerse el hilo */
-          "min-[961px]:[grid-template-columns:minmax(520px,_1fr)_minmax(260px,_min(420px,_28vw))]",
+          !isSocialThread &&
+            "min-[961px]:[grid-template-columns:minmax(520px,_1fr)_minmax(260px,_min(420px,_28vw))]",
         )}
       >
         <div className="flex h-full min-h-0 min-w-0 flex-col px-0 min-[961px]:px-1">
           <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 max-[960px]:gap-2">
-            <div className="vt-card shrink-0 px-3 py-2 sm:px-[22px] sm:py-[18px]">
-              {/* Móvil: columna para evitar botones tapados por título/tags; escritorio: fila */}
-              <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:gap-x-3 md:gap-y-3">
-                <div className="flex min-w-0 w-full items-center gap-2.5 md:min-h-0 md:min-w-0 md:flex-1">
-                  <button
-                    className="vt-btn shrink-0"
-                    onClick={() => nav("/chat")}
-                    aria-label="Volver a la lista de chats"
-                  >
-                    <ArrowLeft size={16} />
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2 font-black tracking-[-0.03em] break-words text-[clamp(14px,3.9vw,18px)] leading-snug">
-                      <span>
-                        {thread
-                          ? chatThreadHeaderTitle(thread, me, profileDisplayNames)
-                          : store.name}
-                      </span>
-                      {store.verified ? (
-                        <span
-                          className="inline-flex items-center text-[var(--primary)]"
-                          title="Verificado"
-                          aria-label="Verificado"
-                        >
-                          <BadgeCheck size={16} aria-hidden />
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-2" />
-                  </div>
-                  <button
-                    type="button"
-                    className={cn(
-                      "min-[961px]:hidden",
-                      "grid size-11 shrink-0 place-items-center rounded-full border border-[var(--border)]",
-                      "bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[var(--muted)] shadow-sm transition",
-                      "hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] hover:text-[var(--text)]",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]",
-                      railOpen && "pointer-events-none opacity-0",
-                    )}
-                    aria-hidden={railOpen || undefined}
-                    aria-expanded={mobileChatActionsOpen}
-                    aria-haspopup="dialog"
-                    aria-label="Abrir acciones del chat"
-                    title="Acciones del chat"
-                    onClick={() => setMobileChatActionsOpen((open) => !open)}
-                  >
-                    <MoreVertical size={22} strokeWidth={2.25} aria-hidden />
-                  </button>
-                </div>
-
-                <div className="hidden w-full min-w-0 shrink-0 flex-wrap items-center gap-y-2 min-[961px]:ml-auto min-[961px]:flex min-[961px]:w-auto min-[961px]:max-w-[52%] min-[961px]:justify-end lg:max-w-none">
-                  <button
-                    type="button"
-                    className="vt-btn vt-chat-rail-toggle min-h-10 shrink-0"
-                    onClick={() => setRailOpen((o) => !o)}
-                    title="Contratos y hojas de ruta"
-                  >
-                    <PanelRight size={16} /> Panel
-                  </button>
-                  {!isActingSeller ? (
-                    <button
-                      type="button"
-                      className="vt-btn min-h-10 shrink-0 inline-flex items-center justify-center gap-2"
-                      disabled={chatPayPreparing}
-                      aria-busy={chatPayPreparing}
-                      onClick={() => void openBuyerPaymentModal()}
-                      title="Pagar"
-                    >
-                      {chatPayPreparing ? (
-                        <>
-                          <Loader2
-                            size={16}
-                            className="shrink-0 animate-spin"
-                            aria-hidden
-                          />
-                          Cargando…
-                        </>
-                      ) : (
-                        "Pagar"
-                      )}
-                    </button>
-                  ) : null}
-                  {isActingSeller ? (
-                    <button
-                      type="button"
-                      className="vt-btn min-h-10 min-w-0 shrink"
-                      disabled={chatActionsLocked}
-                      title={
-                        chatActionsLocked
-                          ? "No disponible hasta registrar el pago"
-                          : "Emitir acuerdo como negocio"
-                      }
-                      onClick={() => {
-                        setAgreementBeingEditedId(null);
-                        setShowAgreementForm(true);
-                      }}
-                    >
-                      <FileText size={16} className="shrink-0" />{" "}
-                      <span className="truncate">Emitir acuerdo</span>
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
+            <ChatPageHeader
+              nav={nav}
+              thread={thread}
+              store={store}
+              me={me}
+              profileDisplayNames={profileDisplayNames}
+              isSocialThread={isSocialThread}
+              railOpen={railOpen}
+              mobileChatActionsOpen={mobileChatActionsOpen}
+              setMobileChatActionsOpen={setMobileChatActionsOpen}
+              setRailOpen={setRailOpen}
+              isActingSeller={isActingSeller}
+              chatPayPreparing={chatPayPreparing}
+              onOpenBuyerPayment={() => void openBuyerPaymentModal()}
+              chatActionsLocked={chatActionsLocked}
+              onEmitAgreement={() => {
+                setAgreementBeingEditedId(null);
+                setShowAgreementForm(true);
+              }}
+            />
 
             {chatActionsLocked ? (
               <div
@@ -1641,32 +1010,11 @@ export function ChatPage() {
                 setFocusRouteId={setFocusRouteId}
                 setRailOpen={setRailOpen}
               />
-              {scrolledUpFromBottom ? (
-                <div className="pointer-events-none absolute bottom-2 right-3 z-20 sm:bottom-3 sm:right-4">
-                  <button
-                    type="button"
-                    onClick={jumpChatToBottom}
-                    className="pointer-events-auto relative flex min-h-11 min-w-11 items-center justify-center gap-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-[0_6px_24px_rgba(15,23,42,0.18)] transition hover:border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] hover:bg-[color-mix(in_oklab,var(--primary)_6%,var(--surface))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
-                    aria-label={
-                      unreadBelowCount > 0
-                        ? `${unreadBelowCount > 99 ? "99+" : unreadBelowCount} mensajes nuevos, ir al final del chat`
-                        : "Ir al final del chat"
-                    }
-                    title="Ir al final del chat"
-                  >
-                    {unreadBelowCount > 0 ? (
-                      <span className="absolute -right-1.5 -top-2 flex min-h-5 min-w-5 select-none items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-[10px] font-black leading-none text-white shadow-sm">
-                        {unreadBelowCount > 99 ? "99+" : unreadBelowCount}
-                      </span>
-                    ) : null}
-                    <ChevronDown
-                      className="size-6 shrink-0"
-                      strokeWidth={2.25}
-                      aria-hidden
-                    />
-                  </button>
-                </div>
-              ) : null}
+              <ChatJumpToBottomFab
+                visible={scrolledUpFromBottom}
+                unreadBelowCount={unreadBelowCount}
+                onJump={jumpChatToBottom}
+              />
             </div>
 
             <ChatComposerSection
@@ -1702,122 +1050,44 @@ export function ChatPage() {
               setTrustScore={setTrustScore}
             />
 
-            {mobileChatActionsOpen ? (
-              <div
-                className="fixed inset-0 z-[109] hidden max-[960px]:block"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="vt-chat-actions-sheet-title"
-              >
-                <button
-                  type="button"
-                  className="absolute inset-0 bg-[rgba(2,6,23,0.52)] backdrop-blur-[3px]"
-                  aria-label="Cerrar menú de acciones"
-                  onClick={() => setMobileChatActionsOpen(false)}
-                />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex max-h-[min(70dvh,420px)] w-full flex-col justify-end pb-[env(safe-area-inset-bottom,0px)] pt-10">
-                  <div className="pointer-events-auto flex max-h-[min(70dvh,420px)] flex-col rounded-t-[1.125rem] border border-b-0 border-[var(--border)] bg-[var(--surface)] pt-4 shadow-[0_-12px_40px_rgba(2,6,23,0.28)]">
-                    <div className="flex items-center justify-between gap-3 border-b border-[color-mix(in_oklab,var(--border)_80%,transparent)] px-4 pb-3 pt-1">
-                      <span
-                        id="vt-chat-actions-sheet-title"
-                        className="text-[15px] font-extrabold text-[var(--text)]"
-                      >
-                        Acciones del chat
-                      </span>
-                      <button
-                        type="button"
-                        className="grid size-11 shrink-0 place-items-center rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[var(--muted)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-                        aria-label="Cerrar"
-                        onClick={() => setMobileChatActionsOpen(false)}
-                      >
-                        <X size={20} strokeWidth={2.25} aria-hidden />
-                      </button>
-                    </div>
-                    <div className="overflow-y-auto px-3 pb-4 pt-3">
-                      <div className="flex flex-col gap-2">
-                        <button
-                          type="button"
-                          className="flex min-h-12 w-full shrink-0 items-center justify-start gap-2.5 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] px-4 py-3 text-left text-[13px] font-bold text-[var(--text)] transition hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))]"
-                          onClick={() => {
-                            setRailOpen(true);
-                            setMobileChatActionsOpen(false);
-                          }}
-                        >
-                          <PanelRight
-                            size={18}
-                            className="shrink-0 text-[var(--primary)]"
-                            aria-hidden
-                          />
-                          Panel (contratos y rutas)
-                        </button>
-                        {!isActingSeller ? (
-                          <button
-                            type="button"
-                            className="flex min-h-12 w-full shrink-0 items-center justify-start gap-2.5 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] px-4 py-3 text-left text-[13px] font-bold text-[var(--text)] transition hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] disabled:cursor-not-allowed disabled:opacity-70"
-                            disabled={chatPayPreparing}
-                            aria-busy={chatPayPreparing}
-                            onClick={() => {
-                              void (async () => {
-                                await openBuyerPaymentModal();
-                                setMobileChatActionsOpen(false);
-                              })();
-                            }}
-                          >
-                            {chatPayPreparing ? (
-                              <Loader2
-                                size={18}
-                                className="shrink-0 animate-spin text-[var(--primary)]"
-                                aria-hidden
-                              />
-                            ) : (
-                              <Wallet
-                                size={18}
-                                className="shrink-0 text-[var(--primary)]"
-                                aria-hidden
-                              />
-                            )}
-                            {chatPayPreparing ? "Cargando…" : "Pagar"}
-                          </button>
-                        ) : null}
-                        {isActingSeller ? (
-                          <button
-                            type="button"
-                            className={cn(
-                              "flex min-h-12 w-full shrink-0 items-center justify-start gap-2.5 rounded-xl border px-4 py-3 text-left text-[13px] font-bold transition",
-                              chatActionsLocked
-                                ? "cursor-not-allowed border-[color-mix(in_oklab,var(--muted)_40%,var(--border))] opacity-65"
-                                : "border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))]",
-                            )}
-                            disabled={chatActionsLocked}
-                            title={
-                              chatActionsLocked
-                                ? "No disponible hasta registrar el pago"
-                                : undefined
-                            }
-                            onClick={() => {
-                              if (chatActionsLocked) return;
-                              setAgreementBeingEditedId(null);
-                              setShowAgreementForm(true);
-                              setMobileChatActionsOpen(false);
-                            }}
-                          >
-                            <FileText
-                              size={18}
-                              className="shrink-0 text-[var(--primary)]"
-                              aria-hidden
-                            />
-                            Emitir acuerdo
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
+            <ChatTradeMobileActionsSheet
+              open={mobileChatActionsOpen && !isSocialThread}
+              onClose={() => setMobileChatActionsOpen(false)}
+              setRailOpen={(open) => setRailOpen(open)}
+              isActingSeller={isActingSeller}
+              chatPayPreparing={chatPayPreparing}
+              onOpenBuyerPayment={openBuyerPaymentModal}
+              chatActionsLocked={chatActionsLocked}
+              onEmitAgreement={() => {
+                setAgreementBeingEditedId(null);
+                setShowAgreementForm(true);
+              }}
+            />
+
+            <ChatSocialOverlays
+              me={me}
+              profileDisplayNames={profileDisplayNames}
+              profileAvatarUrls={profileAvatarUrls}
+              mobileSheetOpen={mobileChatActionsOpen && isSocialThread}
+              onCloseMobileSheet={() => setMobileChatActionsOpen(false)}
+              isSocialGroupCreator={isSocialGroupCreator}
+              threadSocialTitle={thread.socialGroupTitle}
+              onOpenMembers={openSocialMembersModal}
+              onOpenRename={() => setSocialRenameOpen(true)}
+              socialMembersOpen={socialMembersOpen}
+              onCloseMembers={() => setSocialMembersOpen(false)}
+              socialMembersLoading={socialMembersLoading}
+              socialMembersList={socialMembersList}
+              socialRenameOpen={socialRenameOpen}
+              onCloseRename={() => setSocialRenameOpen(false)}
+              socialRenameDraft={socialRenameDraft}
+              onSocialRenameDraftChange={setSocialRenameDraft}
+              onSubmitRename={submitSocialRename}
+            />
           </div>
         </div>
 
+        {!isSocialThread ? (
         <div
           className={cn(
             /* En móvil el drawer es fixed: hace falta z por encima del header (z-50) y del nav (z-60). */
@@ -1985,6 +1255,7 @@ export function ChatPage() {
             </div>
           ) : null}
         </div>
+        ) : null}
       </div>
 
       {routeSubscribersSheetId && !subsSheetWideLayout ? (

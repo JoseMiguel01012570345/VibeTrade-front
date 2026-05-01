@@ -120,12 +120,24 @@ export function mapChatMessageDtoToMessage(
   const read = dto.status === "read";
   const replyQuotes = mapReplyQuotes(p);
 
+  const trimmedSenderId = dto.senderUserId?.trim();
+  const senderMeta =
+    trimmedSenderId && trimmedSenderId.length >= 2
+      ? {
+          chatSenderUserId: trimmedSenderId,
+          ...(dto.senderDisplayLabel?.trim()
+            ? { chatSenderDisplayLabel: dto.senderDisplayLabel.trim() }
+            : {}),
+        }
+      : {};
+
   const common = {
     id: dto.id,
     at,
     read,
     chatStatus,
     ...(replyQuotes?.length ? { replyQuotes } : {}),
+    ...senderMeta,
   };
 
   const type = p.type;

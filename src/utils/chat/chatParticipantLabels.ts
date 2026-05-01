@@ -1,5 +1,30 @@
 import type { ChatMessageDto } from "./chatApi";
 import type { Message, Thread } from "../../app/store/marketStoreTypes";
+import { VT_SOCIAL_PLACEHOLDER_OFFER_ID } from "./chatThreadDtoFallbacks";
+
+export function threadIsSocialLike(th: Thread): boolean {
+  return (
+    th.isSocialGroup === true ||
+    th.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID
+  );
+}
+
+function socialPeerAuthorLabel(
+  msg: Message,
+  profileDisplayNames: Record<string, string>,
+): string {
+  const lab =
+    "chatSenderDisplayLabel" in msg
+      ? msg.chatSenderDisplayLabel?.trim()
+      : undefined;
+  const uid =
+    "chatSenderUserId" in msg ? msg.chatSenderUserId?.trim() : undefined;
+  return (
+    lab ||
+    (uid ? profileDisplayNames[uid]?.trim() : undefined) ||
+    "Participante"
+  );
+}
 
 /** Vendedor del hilo (API o dueño de tienda en demo). */
 export function resolveSellerUserId(th: Thread): string | undefined {
@@ -95,6 +120,35 @@ export function chatThreadHeaderTitle(
   me: { id: string; name: string },
   profileDisplayNames: Record<string, string>,
 ): string {
+  if (threadIsSocialLike(th)) {
+    const custom = th.socialGroupTitle?.trim();
+    if (custom) return custom;
+    const meId = me.id.trim();
+    const buyerId = th.buyerUserId?.trim() ?? "";
+    const sellerId = resolveSellerUserId(th)?.trim() ?? "";
+    const otherIds = [buyerId, sellerId].filter(
+      (id) => id.length >= 2 && id !== meId,
+    );
+    const uniq = [...new Set(otherIds)];
+    if (uniq.length === 1) {
+      const oid = uniq[0]!;
+      const label =
+        profileDisplayNames[oid]?.trim() ||
+        (oid === buyerId ? th.buyerDisplayName?.trim() : undefined) ||
+        (oid === sellerId ? profileDisplayNames[sellerId]?.trim() : undefined);
+      if (label) return label;
+    }
+    if (uniq.length > 1) {
+      const oid0 = uniq[0]!;
+      const first =
+        profileDisplayNames[oid0]?.trim() ||
+        (oid0 === buyerId ? th.buyerDisplayName?.trim() : undefined) ||
+        (oid0 === sellerId ? profileDisplayNames[sellerId]?.trim() : undefined) ||
+        "Contactos";
+      return `Grupo · ${first} +${uniq.length - 1}`;
+    }
+    return "Chat";
+  }
   const storeName = (th.store.name || "Negocio").trim();
   const sellerUid = resolveSellerUserId(th);
   const imSeller = sellerUid != null && me.id === sellerUid;
@@ -114,7 +168,13 @@ export function chatBubbleHeaderLabel(
   th: Thread,
   me: { id: string; name: string },
   profileDisplayNames: Record<string, string>,
+  msg: Message,
 ): string {
+  if (threadIsSocialLike(th)) {
+    if (mine) return me.name.trim() || "Tú";
+    if (msg.from === "system") return "Sistema";
+    return socialPeerAuthorLabel(msg, profileDisplayNames);
+  }
   const sellerUid = resolveSellerUserId(th);
   const imSeller = sellerUid != null && me.id === sellerUid;
   const messageFromSeller = mine ? imSeller : !imSeller;
@@ -139,6 +199,7 @@ export function replySelectionAuthorLabel(
 ): string {
   if (msg.from === "me") return "Tú";
   if (msg.from === "system") return "Sistema";
+  if (threadIsSocialLike(th)) return socialPeerAuthorLabel(msg, profileDisplayNames);
   const fromSeller = inferMessageFromSeller(msg, th, me.id);
   return formatChatParticipantDisplayName({
     messageFromSeller: fromSeller,
@@ -183,6 +244,12 @@ export function incomingDtoSenderDisplayLabel(
   viewerName: string,
   profileDisplayNames: Record<string, string>,
 ): string {
+  if (threadIsSocialLike(th)) {
+    const fromServer = dto.senderDisplayLabel?.trim();
+    if (fromServer) return fromServer;
+    if (dto.senderUserId === viewerId) return viewerName.trim() || "Tú";
+    return profileDisplayNames[dto.senderUserId]?.trim() || "Participante";
+  }
   const sellerUid = resolveSellerUserId(th);
   const messageFromSeller = sellerUid != null && dto.senderUserId === sellerUid;
   if (messageFromSeller) {

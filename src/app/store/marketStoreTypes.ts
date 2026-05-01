@@ -241,6 +241,9 @@ export type Message =
       replyQuotes?: ReplyQuote[];
       /** Solo mensajes de texto persistidos / realtime. */
       chatStatus?: ChatDeliveryStatus;
+      /** Emisor (API); hilos sociales: avatar y cabecera por usuario. */
+      chatSenderUserId?: string;
+      chatSenderDisplayLabel?: string;
     }
   | {
       id: string;
@@ -254,6 +257,8 @@ export type Message =
       replyQuotes?: ReplyQuote[];
       /** Entrega/lectura en mensajes propios persistidos (API / SignalR). */
       chatStatus?: ChatDeliveryStatus;
+      chatSenderUserId?: string;
+      chatSenderDisplayLabel?: string;
     }
   | {
       id: string;
@@ -265,6 +270,8 @@ export type Message =
       read?: boolean;
       replyQuotes?: ReplyQuote[];
       chatStatus?: ChatDeliveryStatus;
+      chatSenderUserId?: string;
+      chatSenderDisplayLabel?: string;
     }
   | {
       id: string;
@@ -279,6 +286,8 @@ export type Message =
       caption?: string;
       replyQuotes?: ReplyQuote[];
       chatStatus?: ChatDeliveryStatus;
+      chatSenderUserId?: string;
+      chatSenderDisplayLabel?: string;
     }
   | {
       id: string;
@@ -296,6 +305,8 @@ export type Message =
       read?: boolean;
       replyQuotes?: ReplyQuote[];
       chatStatus?: ChatDeliveryStatus;
+      chatSenderUserId?: string;
+      chatSenderDisplayLabel?: string;
     }
   | {
       id: string;
@@ -316,6 +327,8 @@ export type Message =
       replyQuotes?: ReplyQuote[];
       /** Entrega/lectura en el propio anuncio de acuerdo (GET / messages + SignalR). */
       chatStatus?: ChatDeliveryStatus;
+      chatSenderUserId?: string;
+      chatSenderDisplayLabel?: string;
     }
   | {
       id: string;
@@ -373,6 +386,10 @@ export type Thread = {
   chatCarriers?: ThreadChatCarrier[];
   /** Acuses por hoja (se reinicia al guardar ediciones con transportistas en el hilo). */
   routeSheetEditAcks?: Record<string, RouteSheetEditAckState>;
+  /** Hilo de mensajería sin oferta (grupo / directo): sin acuerdos, pagos ni panel de rutas. */
+  isSocialGroup?: boolean;
+  /** Título personalizado del grupo social (API; solo el creador puede cambiarlo). */
+  socialGroupTitle?: string | null;
 };
 
 export function threadHasAcceptedAgreement(th: Thread): boolean {

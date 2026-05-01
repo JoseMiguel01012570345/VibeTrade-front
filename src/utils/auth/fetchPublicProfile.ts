@@ -1,3 +1,4 @@
+import { useAppStore } from "../../app/store/useAppStore";
 import { apiFetch } from "../http/apiClient";
 import {
   apiErrorTextToUserMessage,
@@ -17,6 +18,36 @@ const publicProfileInFlight = new Map<
   Promise<PublicUserProfile | null>
 >();
 
+/** Respuesta HTTP recibida (200/404): evita reintentos en bucle si falta avatar en caché. */
+const publicProfileHydratedIds = new Set<string>();
+
+export function wasPublicProfileHydrated(userId: string): boolean {
+  return publicProfileHydratedIds.has(userId.trim());
+}
+
+function markPublicProfileHydrated(userId: string): void {
+  const id = userId.trim();
+  if (id.length >= 2) publicProfileHydratedIds.add(id);
+}
+
+export function mergePublicProfileIntoAppStore(p: PublicUserProfile): void {
+  useAppStore.setState((s) => ({
+    profileTrustScores: {
+      ...s.profileTrustScores,
+      [p.id]: p.trustScore,
+    },
+    profileDisplayNames: { ...s.profileDisplayNames, [p.id]: p.name },
+    ...(p.avatarUrl?.trim()
+      ? {
+          profileAvatarUrls: {
+            ...s.profileAvatarUrls,
+            [p.id]: p.avatarUrl.trim(),
+          },
+        }
+      : {}),
+  }));
+}
+
 /**
  * Una petición por `userId` en vuelo; el chat reutiliza el mismo `fetch` si pide el mismo perfil a la vez.
  */
@@ -34,14 +65,19 @@ export async function fetchPublicProfile(
       const res = await apiFetch(
         `/api/v1/auth/public-profile/${encodeURIComponent(id)}`,
       );
-      if (res.status === 404) return null;
+      if (res.status === 404) {
+        markPublicProfileHydrated(id);
+        return null;
+      }
       if (!res.ok) {
         const t = await res.text().catch(() => "");
         throw new Error(
           apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
         );
       }
-      return (await res.json()) as PublicUserProfile;
+      const body = (await res.json()) as PublicUserProfile;
+      markPublicProfileHydrated(id);
+      return body;
     } finally {
       publicProfileInFlight.delete(id);
     }

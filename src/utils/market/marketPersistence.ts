@@ -85,6 +85,10 @@ export type PublicOfferCardResponse = { offer: Offer; store: StoreBadge };
 export async function fetchPublicOfferCard(
   offerId: string,
 ): Promise<PublicOfferCardResponse | null> {
+  const oid = offerId.trim()
+  // Hilos sociales: sin catálogo; el cliente usa fallback desde ChatThreadDto.
+  if (oid === '__vt_social__') return null
+
   const res = await apiFetch(
     `/api/v1/market/offers/${encodeURIComponent(offerId)}/card`,
     { method: "GET" },

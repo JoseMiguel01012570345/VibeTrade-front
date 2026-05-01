@@ -26,7 +26,10 @@ import { getSessionToken } from "../http/sessionToken";
 import { fetchPublicOfferCard } from "../market/marketPersistence";
 import { mergedRouteOfferPublicAfterChatThreadHydration } from "../market/routeOfferPublicFromEmergentCard";
 import { peerPartyExitFromDto } from "./threadPeerPartyExit";
-import { minimalOfferStoreFromChatThreadDto } from "./chatThreadDtoFallbacks";
+import {
+  minimalOfferStoreFromChatThreadDto,
+  VT_SOCIAL_PLACEHOLDER_OFFER_ID,
+} from "./chatThreadDtoFallbacks";
 
 function resolveOffer(
   offerById: Record<string, Offer | undefined>,
@@ -72,7 +75,11 @@ export async function rehydrateCthThreadInStoreForIncomingMessage(
   let s = useMarketStore.getState();
   let offer = resolveOffer(s.offers, dto.offerId);
   let store = s.stores[dto.storeId];
-  if (!offer || !store) {
+  if (
+    (!offer || !store) &&
+    dto.offerId?.trim() !== VT_SOCIAL_PLACEHOLDER_OFFER_ID &&
+    dto.isSocialGroup !== true
+  ) {
     const card = await fetchPublicOfferCard(dto.offerId).catch(() => null);
     if (card?.offer?.id) {
       const storeKey = card.store.id?.trim() || card.offer.storeId;
@@ -171,6 +178,17 @@ export async function rehydrateCthThreadInStoreForIncomingMessage(
         ? { buyerAvatarUrl: dto.buyerAvatarUrl.trim() }
         : {}),
       purchaseMode: dto.purchaseMode,
+      ...(dto.isSocialGroup ||
+      dto.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID
+        ? { isSocialGroup: true as const }
+        : {}),
+      ...(dto.socialGroupTitle !== undefined
+        ? {
+            socialGroupTitle: dto.socialGroupTitle?.trim()
+              ? dto.socialGroupTitle.trim()
+              : null,
+          }
+        : {}),
       ...(peerExit
         ? {
             peerPartyExit: peerExit,

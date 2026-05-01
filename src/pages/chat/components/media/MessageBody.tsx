@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FileDown, Loader2, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "../../../../lib/cn";
-import type { Message } from "../../../../app/store/useMarketStore";
+import type { Message, ReplyQuote } from "../../../../app/store/useMarketStore";
 import type { TradeAgreement } from "../../domain/tradeAgreementTypes";
 import { AgreementBubble } from "./AgreementBubble";
 import { AudioMicro } from "./AudioMicro";
@@ -18,6 +18,117 @@ import {
   paymentFeeLabels,
   stripeMinorDecimals,
 } from "../../domain/paymentFeePolicy";
+import {
+  fetchLinkPreview,
+  type LinkPreviewResult,
+} from "../../../../utils/chat/chatApi";
+
+function firstHttpUrl(text: string): string | null {
+  const m = text.match(/https?:\/\/[^\s<>'")\]]+/i);
+  if (!m) return null;
+  return m[0].replace(/[),.;]+$/g, "");
+}
+
+function TextMessageBody({
+  text,
+  hasThread,
+  replyQuotes,
+  onReplyQuoteNavigate,
+}: {
+  text: string;
+  hasThread: boolean;
+  replyQuotes?: ReplyQuote[];
+  onReplyQuoteNavigate?: (quotedMessageId: string) => void;
+}) {
+  const previewUrl = useMemo(() => firstHttpUrl(text), [text]);
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-2", hasThread && ytThread)}>
+      {hasThread && replyQuotes && replyQuotes.length > 0 ? (
+        <ChatReplyQuotes
+          quotes={replyQuotes}
+          inThread
+          onQuoteActivate={onReplyQuoteNavigate}
+        />
+      ) : null}
+      <div className={cn(hasThread && "pt-0.5")}>
+        <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+          {text}
+        </div>
+        {previewUrl ? <LinkPreviewCard url={previewUrl} /> : null}
+      </div>
+    </div>
+  );
+}
+
+function LinkPreviewCard({ url }: { url: string }) {
+  const [data, setData] = useState<LinkPreviewResult | null | undefined>(
+    undefined,
+  );
+  useEffect(() => {
+    let cancel = false;
+    setData(undefined);
+    void fetchLinkPreview(url).then((r) => {
+      if (cancel) return;
+      setData(r);
+    });
+    return () => {
+      cancel = true;
+    };
+  }, [url]);
+  if (data === undefined) {
+    return (
+      <div className="mt-2 max-w-[min(100%,360px)] rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_50%,var(--surface))] px-3 py-2 text-[11px] font-semibold text-[var(--muted)]">
+        Vista previa…
+      </div>
+    );
+  }
+  if (
+    !data ||
+    (!data.title?.trim() && !data.description?.trim() && !data.imageUrl?.trim())
+  ) {
+    return null;
+  }
+  let host = "";
+  try {
+    host = new URL(data.url).host;
+  } catch {
+    host = "";
+  }
+  return (
+    <a
+      href={data.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-2 flex max-w-[min(100%,380px)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] text-left no-underline shadow-[0_2px_12px_rgba(15,23,42,0.08)] transition hover:border-[color-mix(in_oklab,var(--primary)_28%,var(--border))]"
+    >
+      {data.imageUrl?.trim() ? (
+        <div className="max-h-44 w-full overflow-hidden bg-[var(--border)]/25">
+          <img
+            src={data.imageUrl.trim()}
+            alt=""
+            className="max-h-44 w-full object-cover"
+            loading="lazy"
+          />
+        </div>
+      ) : null}
+      <div className="p-2.5">
+        <div className="line-clamp-2 text-[13px] font-black leading-snug text-[var(--text)]">
+          {data.title?.trim() || host || data.url}
+        </div>
+        {data.description?.trim() ? (
+          <div className="mt-1 line-clamp-3 text-[11px] font-semibold leading-snug text-[var(--muted)]">
+            {data.description.trim()}
+          </div>
+        ) : null}
+        {host ? (
+          <div className="mt-1 truncate text-[10px] font-bold uppercase tracking-wide text-[var(--muted)] opacity-75">
+            {host}
+          </div>
+        ) : null}
+      </div>
+    </a>
+  );
+}
 
 function fmtReceiptMinor(amountMinor: number, curLower: string): string {
   const maj = minorToMajor(amountMinor, curLower);
@@ -146,16 +257,12 @@ export function MessageBody({
   if (m.type === "text") {
     const hasThread = m.replyQuotes && m.replyQuotes.length > 0;
     return (
-      <div className={cn("flex min-w-0 flex-col gap-2", hasThread && ytThread)}>
-        {hasThread && (
-          <ChatReplyQuotes
-            quotes={m.replyQuotes!}
-            inThread
-            onQuoteActivate={onReplyQuoteNavigate}
-          />
-        )}
-        <div className={cn(hasThread && "pt-0.5")}>{m.text}</div>
-      </div>
+      <TextMessageBody
+        text={m.text}
+        hasThread={!!hasThread}
+        replyQuotes={m.replyQuotes}
+        onReplyQuoteNavigate={onReplyQuoteNavigate}
+      />
     );
   }
   if (m.type === "image") {

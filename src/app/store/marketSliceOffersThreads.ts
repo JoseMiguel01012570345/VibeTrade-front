@@ -62,6 +62,10 @@ import {
 } from '../../utils/chat/threadPeerPartyExit'
 import { isOfferPublishedForBuyerChat } from '../../utils/market/offerPublishedForBuyerChat'
 import { useAppStore } from "./useAppStore";
+import {
+  minimalOfferStoreFromChatThreadDto,
+  VT_SOCIAL_PLACEHOLDER_OFFER_ID,
+} from "../../utils/chat/chatThreadDtoFallbacks";
 
 function extraFieldsPayloadForApi(
   draft: TradeAgreementDraft,
@@ -212,7 +216,15 @@ onThreadCreatedFromServer: (dto: ChatThreadDto) => {
   const peer = peerPartyExitFromDto(dto)
   set((s) => {
     if (s.threads[dto.id]) return s
-    const store = s.stores[dto.storeId]
+    let store = s.stores[dto.storeId]
+    let offers = s.offers
+    let stores = s.stores
+    if (!store) {
+      const { offer: fo, store: st } = minimalOfferStoreFromChatThreadDto(dto)
+      offers = { ...s.offers, [fo.id]: fo }
+      stores = { ...s.stores, [st.id]: st }
+      store = stores[dto.storeId]
+    }
     if (!store) return s
     const nextThreads: typeof s.threads = { ...s.threads }
     nextThreads[dto.id] = {
@@ -226,6 +238,17 @@ onThreadCreatedFromServer: (dto: ChatThreadDto) => {
       messages: [],
       contracts: [],
       routeSheets: [],
+      ...(dto.isSocialGroup ||
+      dto.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID
+        ? { isSocialGroup: true as const }
+        : {}),
+      ...(dto.socialGroupTitle !== undefined
+        ? {
+            socialGroupTitle: dto.socialGroupTitle?.trim()
+              ? dto.socialGroupTitle.trim()
+              : null,
+          }
+        : {}),
       ...(peer
         ? {
             peerPartyExit: peer,
@@ -235,7 +258,7 @@ onThreadCreatedFromServer: (dto: ChatThreadDto) => {
           }
         : {}),
     }
-    return { ...s, threads: nextThreads }
+    return { ...s, threads: nextThreads, offers, stores }
   })
 },
 
@@ -353,6 +376,7 @@ ensureThreadForOffer: async (offerId, opts) => {
     purchaseModeOverride?: boolean,
     participantDto?: Pick<
       ChatThreadDto,
+      | 'offerId'
       | 'buyerUserId'
       | 'sellerUserId'
       | 'buyerDisplayName'
@@ -360,6 +384,8 @@ ensureThreadForOffer: async (offerId, opts) => {
       | 'partyExitedUserId'
       | 'partyExitedReason'
       | 'partyExitedAtUtc'
+      | 'isSocialGroup'
+      | 'socialGroupTitle'
     >,
     contractsOverride?: TradeAgreement[],
     routeSheetsFromServer?: RouteSheetPayload[],
@@ -425,6 +451,17 @@ ensureThreadForOffer: async (offerId, opts) => {
               partyExitedReason: peerExit.reason,
               partyExitedAtUtc: peerExit.atUtc,
               prematureExitUnderInvestigation: premature,
+            }
+          : {}),
+        ...(participantDto?.isSocialGroup ||
+        participantDto?.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID
+          ? { isSocialGroup: true as const }
+          : {}),
+        ...(participantDto && participantDto.socialGroupTitle !== undefined
+          ? {
+              socialGroupTitle: participantDto.socialGroupTitle?.trim()
+                ? participantDto.socialGroupTitle.trim()
+                : null,
             }
           : {}),
         messages: qaSynced,

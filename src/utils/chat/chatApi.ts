@@ -32,6 +32,10 @@ export type ChatThreadDto = {
   partyExitedUserId?: string | null
   partyExitedReason?: string | null
   partyExitedAtUtc?: string | null
+  /** Chat directo/grupal sin oferta comercial (sin acuerdos ni rutas). */
+  isSocialGroup?: boolean
+  /** Nombre del grupo (solo lo edita el creador en API). */
+  socialGroupTitle?: string | null
 }
 
 /** Aligned with backend <see cref="VibeTrade.Backend.Data.ChatMessageStatus" /> (camelCase JSON). */
@@ -129,6 +133,14 @@ export type ChatThreadSummaryDto = {
   sellerUserId: string
   buyerDisplayName?: string | null
   buyerAvatarUrl?: string | null
+  isSocialGroup?: boolean
+  socialGroupTitle?: string | null
+}
+
+export type ChatThreadMemberDto = {
+  userId: string
+  displayName?: string | null
+  avatarUrl?: string | null
 }
 
 export type ChatNotificationDto = {
@@ -152,6 +164,20 @@ export type ChatNotificationDto = {
 
 /** `Error.message` cuando el servidor rechaza abrir chat como comprador en tu propia oferta. */
 export const CHAT_CANNOT_MESSAGE_SELF = 'CHAT_CANNOT_MESSAGE_SELF'
+
+export async function createSocialGroupChatThread(
+  memberUserIds: string[],
+): Promise<ChatThreadDto> {
+  const res = await apiFetch('/api/v1/chat/threads/social-group', {
+    method: 'POST',
+    body: JSON.stringify({ memberUserIds }),
+  })
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
+  return (await res.json()) as ChatThreadDto
+}
 
 export async function createOrGetChatThread(
   offerId: string,
@@ -247,6 +273,38 @@ export async function fetchChatThreadByOffer(offerId: string): Promise<ChatThrea
     { method: 'GET' },
   )
   if (res.status === 404) return null
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
+  return (await res.json()) as ChatThreadDto
+}
+
+export async function fetchSocialThreadMembers(
+  threadId: string,
+): Promise<ChatThreadMemberDto[]> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/members`,
+    { method: 'GET', cache: 'no-store' },
+  )
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(chatApiErrorMessage(t, res.status))
+  }
+  return (await res.json()) as ChatThreadMemberDto[]
+}
+
+export async function patchSocialGroupTitle(
+  threadId: string,
+  title: string | null,
+): Promise<ChatThreadDto> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/social-title`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ title: title ?? '' }),
+    },
+  )
   if (!res.ok) {
     const t = await res.text().catch(() => '')
     throw new Error(chatApiErrorMessage(t, res.status))
@@ -739,6 +797,21 @@ export async function markChatNotificationsRead(ids?: string[]): Promise<void> {
     const t = await res.text().catch(() => '')
     throw new Error(chatApiErrorMessage(t, res.status))
   }
+}
+
+export type LinkPreviewResult = {
+  url: string
+  title: string | null
+  description: string | null
+  imageUrl: string | null
+}
+
+export async function fetchLinkPreview(url: string): Promise<LinkPreviewResult | null> {
+  const q = new URLSearchParams()
+  q.set('url', url)
+  const res = await apiFetch(`/api/v1/link-preview?${q.toString()}`, { method: 'GET' })
+  if (!res.ok) return null
+  return (await res.json()) as LinkPreviewResult
 }
 
 export function hasChatSession(): boolean {
