@@ -31,6 +31,13 @@ export function useCarrierLiveTelemetry(args: Args): void {
     if (tid.length < 4 || aid.length < 8 || rsid.length < 2 || sid.length < 2) return;
     if (!globalThis.navigator?.geolocation?.watchPosition) return;
 
+    // Una lectura inicial ayuda a que el navegador muestre el diálogo de permisos de ubicación.
+    globalThis.navigator.geolocation.getCurrentPosition(
+      () => {},
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 25_000 },
+    );
+
     watchIdRef.current = globalThis.navigator.geolocation.watchPosition(
       (pos) => {
         const now = Date.now();

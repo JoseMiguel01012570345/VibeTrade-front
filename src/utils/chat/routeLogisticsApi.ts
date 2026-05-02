@@ -98,6 +98,27 @@ export type CarrierDeliveryEvidenceApi = {
   deadlineAtUtc?: string | null;
 };
 
+export async function fetchCarrierDeliveryEvidence(args: {
+  threadId: string;
+  agreementId: string;
+  routeSheetId: string;
+  routeStopId: string;
+}): Promise<CarrierDeliveryEvidenceApi | null> {
+  const qs = new URLSearchParams({
+    routeSheetId: args.routeSheetId,
+    routeStopId: args.routeStopId,
+  });
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/agreements/${encodeURIComponent(args.agreementId)}/logistics/evidence?${qs.toString()}`,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(t || `HTTP ${res.status}`);
+  }
+  return (await res.json()) as CarrierDeliveryEvidenceApi;
+}
+
 export async function upsertCarrierDeliveryEvidence(args: {
   threadId: string;
   agreementId: string;

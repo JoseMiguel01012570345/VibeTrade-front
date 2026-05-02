@@ -256,6 +256,24 @@ export function resolveRouteOfferPublicForThread(
   return undefined;
 }
 
+/** Transportista con tramo confirmado en la oferta pública del hilo o listado en integrantes del chat. */
+export function viewerIsConfirmedRouteCarrierOnThread(
+  state: Pick<MarketState, "threads" | "routeOfferPublic" | "offers">,
+  thread: Thread,
+  viewerUserId: string,
+): boolean {
+  const uid = viewerUserId.trim();
+  if (uid.length < 2) return false;
+  if (thread.chatCarriers?.some((c) => (c.id ?? "").trim() === uid)) return true;
+  const ro = resolveRouteOfferPublicForThread(state, thread);
+  if (!ro?.tramos?.length) return false;
+  return ro.tramos.some(
+    (t) =>
+      (t.assignment?.status ?? "").trim().toLowerCase() === "confirmed" &&
+      (t.assignment?.userId ?? "").trim() === uid,
+  );
+}
+
 /**
  * Oferta pública de **esta** hoja (mismo hilo puede tener varias hojas / varias ofertas en `routeOfferPublic`).
  * El modal de edición debe usar esto, no `resolveRouteOfferPublicForThread`, para bloquear teléfono y validar

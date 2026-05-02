@@ -17,17 +17,25 @@ const TITLE_PT = 15;
 const SECTION_PT = 11;
 
 /** Helvetica + jsPDF se rompen con espacios raros; evita “S E 1 1 …” y muros ilegibles. */
-function sanitizePdfLabel(raw: string): string {
+export function sanitizePaymentInformeLabel(raw: string): string {
   let s = raw
     .normalize("NFC")
     .replace(/[\u00a0\u2000-\u200f\u202f\u205f\u3000\ufeff]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+  // "T r a n s p o r t e" u otras letras sueltas separadas por espacio (Unicode / fuente / datos raros)
+  s = s.replace(/(?:[\p{L}\p{N}]\s){4,}[\p{L}\p{N}]/gu, (chunk) =>
+    chunk.replace(/\s/g, ""),
+  );
   const parts = s.split(/\s+/).filter(Boolean);
   if (parts.length >= 6 && parts.every((p) => p.length === 1)) {
     s = parts.join("");
   }
   return s;
+}
+
+function sanitizePdfLabel(raw: string): string {
+  return sanitizePaymentInformeLabel(raw);
 }
 
 function ensureY(
@@ -42,6 +50,62 @@ function ensureY(
   return margin;
 }
 
+/**
+ * Parte el texto en líneas usando el mismo motor de medida que `doc.text`.
+ * `splitTextToSize` de jsPDF a veces devuelve líneas más anchas de lo que luego ocupa el render, y el texto invade el margen o el importe.
+ */
+function wrapLineItemBodyToMeasuredLines(
+  doc: InstanceType<typeof jsPDF>,
+  body: string,
+  bulletFirst: string,
+  bulletCont: string,
+  labelSlotWmm: number,
+): string[] {
+  const slot = Math.max(12, labelSlotWmm - 0.8);
+  const lines: string[] = [];
+  let rest = body.replace(/^\s+/, "").replace(/\s+$/, "");
+  let prefix = bulletFirst;
+
+  while (rest.length > 0) {
+    let lo = 1;
+    let hi = rest.length;
+    let best = 0;
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      const slice = rest.slice(0, mid);
+      if (doc.getTextWidth(prefix + slice) <= slot) {
+        best = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+
+    let take = best > 0 ? best : 1;
+    if (take < rest.length) {
+      const cand = rest.slice(0, take);
+      const sp = cand.lastIndexOf(" ");
+      if (sp > 0) take = sp;
+    }
+
+    let chunk = rest.slice(0, take).replace(/\s+$/u, "");
+    rest = rest.slice(take).replace(/^\s+/u, "");
+
+    if (!chunk.length) {
+      const cp = rest.codePointAt(0);
+      if (cp === undefined) break;
+      const ulen = cp > 0xffff ? 2 : 1;
+      chunk = rest.slice(0, ulen);
+      rest = rest.slice(ulen).replace(/^\s+/u, "");
+    }
+
+    lines.push(chunk);
+    prefix = bulletCont;
+  }
+
+  return lines;
+}
+
 /** Dibuja líneas de ítem: etiqueta a la izquierda (varias líneas) e importe alineado a la derecha en la última línea. */
 function drawWrappedLineItem(
   doc: InstanceType<typeof jsPDF>,
@@ -49,7 +113,6 @@ function drawWrappedLineItem(
   margin: number,
   pageW: number,
   pageH: number,
-  maxContentW: number,
   label: string,
   amountStr: string,
 ): number {
@@ -58,12 +121,24 @@ function drawWrappedLineItem(
   doc.setFontSize(ITEM_PT);
   const body = sanitizePdfLabel(label);
   const amountW = doc.getTextWidth(amountStr);
-  const labelMaxW = Math.max(40, maxContentW - amountW - 5);
-  const labelLines = doc.splitTextToSize(body, labelMaxW) as string[];
+  const gapBeforeAmount = 4;
+  const labelColumnRight = pageW - margin - amountW - gapBeforeAmount;
+  const labelSlotWmm = Math.max(28, labelColumnRight - margin);
+
+  const bulletFirst = "• ";
+  const bulletCont = "  ";
+
+  const labelLines = wrapLineItemBodyToMeasuredLines(
+    doc,
+    body,
+    bulletFirst,
+    bulletCont,
+    labelSlotWmm,
+  );
   const lineH = 3.9;
   for (let i = 0; i < labelLines.length; i++) {
     yy = ensureY(doc, yy, pageH, margin, lineH);
-    const prefix = i === 0 ? "• " : "  ";
+    const prefix = i === 0 ? bulletFirst : bulletCont;
     doc.text(prefix + labelLines[i], margin, yy);
     if (i === labelLines.length - 1) {
       doc.text(amountStr, pageW - margin - amountW, yy);
@@ -225,7 +300,7 @@ export async function downloadPaymentCheckoutInformePdf(
 
     for (const ln of bc.lines) {
       const amt = fmtMoney(ln.amountMinor, cur);
-      y = drawWrappedLineItem(doc, y, margin, pageW, pageH, maxW, ln.label, amt);
+      y = drawWrappedLineItem(doc, y, margin, pageW, pageH, ln.label, amt);
     }
     y += 4;
   }
@@ -368,7 +443,7 @@ export async function downloadPaymentFeeReceiptPdf(
   doc.setFontSize(ITEM_PT);
   for (const ln of receipt.lines) {
     const amt = fmtMoney(ln.amountMinor, cur);
-    y = drawWrappedLineItem(doc, y, margin, pageW, pageH, maxW, ln.label, amt);
+    y = drawWrappedLineItem(doc, y, margin, pageW, pageH, ln.label, amt);
   }
 
   const qrEntries = [

@@ -7,6 +7,8 @@ export type AgreementCheckoutBasisLineApi = {
   amountMinor: number;
   routeSheetId?: string | null;
   routeStopId?: string | null;
+  /** Presente en líneas de mercadería (desglose servidor). */
+  merchandiseLineId?: string | null;
 };
 
 export type AgreementCheckoutCurrencyTotalsApi = {
@@ -47,9 +49,8 @@ export async function fetchAgreementCheckoutBreakdown(
   const merchExplicit = opts?.selectedMerchandiseLineIds !== undefined;
   const usePost = hasServicePicks || routeExplicit || merchExplicit;
 
-  const res =
-    usePost ?
-      await apiFetch(
+  const res = usePost
+    ? await apiFetch(
         `/api/v1/chat/threads/${encodeURIComponent(threadId)}/agreements/${encodeURIComponent(agreementId)}/checkout-breakdown`,
         {
           method: "POST",
@@ -62,8 +63,12 @@ export async function fetchAgreementCheckoutBreakdown(
                   entryDay: p.entryKey.day,
                 }))
               : null,
-            selectedRouteStopIds: routeExplicit ? opts?.selectedRouteStopIds ?? null : null,
-            selectedMerchandiseLineIds: merchExplicit ? opts?.selectedMerchandiseLineIds ?? null : null,
+            selectedRouteStopIds: routeExplicit
+              ? (opts?.selectedRouteStopIds ?? null)
+              : null,
+            selectedMerchandiseLineIds: merchExplicit
+              ? (opts?.selectedMerchandiseLineIds ?? null)
+              : null,
           }),
         },
       )
@@ -126,8 +131,7 @@ export async function executeAgreementCurrencyPayment(args: {
 }): Promise<AgreementExecutePaymentResultApi> {
   const headers: HeadersInit = { "Content-Type": "application/json" };
   const ik = args.idempotencyKey?.trim();
-  if (ik && ik.length >= 8)
-    headers["Idempotency-Key"] = ik;
+  if (ik && ik.length >= 8) headers["Idempotency-Key"] = ik;
 
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/agreements/${encodeURIComponent(args.agreementId)}/payments/execute`,
@@ -138,15 +142,21 @@ export async function executeAgreementCurrencyPayment(args: {
         currency: args.currency.trim().toLowerCase(),
         paymentMethodId: args.paymentMethodId.trim(),
         idempotencyKey: ik ?? null,
-        selectedServicePayments: (args.selectedServicePayments ?? []).map((p) => ({
-          serviceItemId: p.serviceItemId,
-          entryMonth: p.entryKey.month,
-          entryDay: p.entryKey.day,
-        })),
+        selectedServicePayments: (args.selectedServicePayments ?? []).map(
+          (p) => ({
+            serviceItemId: p.serviceItemId,
+            entryMonth: p.entryKey.month,
+            entryDay: p.entryKey.day,
+          }),
+        ),
         selectedRouteStopIds:
-          args.selectedRouteStopIds === undefined ? null : args.selectedRouteStopIds,
+          args.selectedRouteStopIds === undefined
+            ? null
+            : args.selectedRouteStopIds,
         selectedMerchandiseLineIds:
-          args.selectedMerchandiseLineIds === undefined ? null : args.selectedMerchandiseLineIds,
+          args.selectedMerchandiseLineIds === undefined
+            ? null
+            : args.selectedMerchandiseLineIds,
       }),
     },
   );
@@ -157,8 +167,8 @@ export async function executeAgreementCurrencyPayment(args: {
   if (typeof parsed?.accepted === "boolean") return parsed;
   const fallback =
     typeof (parsed as unknown as { stripeErrorMessage?: unknown })
-        ?.stripeErrorMessage === "string" ?
-      ((parsed as unknown as { stripeErrorMessage: string }).stripeErrorMessage)
-    : "";
+      ?.stripeErrorMessage === "string"
+      ? (parsed as unknown as { stripeErrorMessage: string }).stripeErrorMessage
+      : "";
   throw new Error(fallback || `HTTP ${res.status}`);
 }

@@ -18,6 +18,8 @@ type Props = {
   setMobileChatActionsOpen: (open: boolean | ((o: boolean) => boolean)) => void;
   setRailOpen: (open: boolean | ((o: boolean) => boolean)) => void;
   isActingSeller: boolean;
+  /** Solo el comprador del hilo puede abrir el cobro (transportistas / terceros no). */
+  showBuyerPayment: boolean;
   chatPayPreparing: boolean;
   onOpenBuyerPayment: () => void;
   chatActionsLocked: boolean;
@@ -36,6 +38,7 @@ export function ChatPageHeader({
   setMobileChatActionsOpen,
   setRailOpen,
   isActingSeller,
+  showBuyerPayment,
   chatPayPreparing,
   onOpenBuyerPayment,
   chatActionsLocked,
@@ -107,7 +110,7 @@ export function ChatPageHeader({
           >
             <PanelRight size={16} /> Panel
           </button>
-          {!isActingSeller ? (
+          {showBuyerPayment ? (
             <button
               type="button"
               className="vt-btn min-h-10 shrink-0 inline-flex items-center justify-center gap-2"

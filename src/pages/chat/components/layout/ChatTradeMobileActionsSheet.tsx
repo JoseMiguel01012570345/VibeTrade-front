@@ -6,6 +6,7 @@ type Props = {
   onClose: () => void;
   setRailOpen: (open: boolean) => void;
   isActingSeller: boolean;
+  showBuyerPayment: boolean;
   chatPayPreparing: boolean;
   onOpenBuyerPayment: () => Promise<void>;
   chatActionsLocked: boolean;
@@ -17,6 +18,7 @@ export function ChatTradeMobileActionsSheet({
   onClose,
   setRailOpen,
   isActingSeller,
+  showBuyerPayment,
   chatPayPreparing,
   onOpenBuyerPayment,
   chatActionsLocked,
@@ -71,7 +73,7 @@ export function ChatTradeMobileActionsSheet({
                 />
                 Panel (contratos y rutas)
               </button>
-              {!isActingSeller ? (
+              {showBuyerPayment ? (
                 <button
                   type="button"
                   className="flex min-h-12 w-full shrink-0 items-center justify-start gap-2.5 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] px-4 py-3 text-left text-[13px] font-bold text-[var(--text)] transition hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] disabled:cursor-not-allowed disabled:opacity-70"

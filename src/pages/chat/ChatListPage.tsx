@@ -15,6 +15,7 @@ import {
   resolveBuyerUserId,
   resolveSellerUserId,
 } from "../../utils/chat/chatParticipantLabels";
+import { viewerIsConfirmedRouteCarrierOnThread } from "./domain/routeSheetOfferGuards";
 import { cn } from "../../lib/cn";
 import { notifyChatParticipantsUserLeft } from "../../utils/chat/chatRealtime";
 import {
@@ -114,10 +115,19 @@ export function ChatListPage() {
   async function runExitChatAfterConfirm(threadId: string) {
     const th = threads[threadId];
     if (!th) return;
-    const buyerId = resolveBuyerUserId(th, me.id);
     const sellerId = resolveSellerUserId(th);
+    const inferredBuyer = resolveBuyerUserId(th, me.id);
+    const actsAsRouteCarrier = viewerIsConfirmedRouteCarrierOnThread(
+      useMarketStore.getState(),
+      th,
+      me.id,
+    );
+    /** Sin inferir «comprador» = viewer cuando ya actúa como transportista confirmado (evita party-soft-leave inválido). */
     const isBuyerOrSeller =
-      me.id === buyerId || (sellerId != null && me.id === sellerId);
+      (sellerId != null && me.id === sellerId) ||
+      (inferredBuyer != null &&
+        me.id === inferredBuyer &&
+        !actsAsRouteCarrier);
 
     let withdrewAsCarrier = false;
     let notifiedParticipantsBeforeCarrierWithdraw = false;
@@ -185,7 +195,13 @@ export function ChatListPage() {
         const allAgreementsLiquidated =
           threadAcceptedAgreementsAllLiquidated(thForPenalty);
         let groupMemberCount = 0;
-        if (buyerId && buyerId.trim().length >= 2) groupMemberCount++;
+        const buyerUidForCount = (
+          th.buyerUserId ??
+          th.demoBuyer?.id ??
+          inferredBuyer ??
+          ""
+        ).trim();
+        if (buyerUidForCount.length >= 2) groupMemberCount++;
         if (sellerId && sellerId.trim().length >= 2) groupMemberCount++;
         groupMemberCount += th.chatCarriers?.length ?? 0;
         groupMemberCount = Math.max(1, groupMemberCount);
@@ -205,6 +221,43 @@ export function ChatListPage() {
           setLeaveBlockingMessage(null);
           setLeaveRefundSuggestion(null);
         } catch (e) {
+          if (e instanceof VtHttpError && e.code === "not_eligible_party") {
+            if (threadId.startsWith("cth_") && getSessionToken()) {
+              try {
+                await notifyChatParticipantsUserLeft(threadId);
+                const r = await postCarrierWithdrawFromThread(threadId);
+                if (r.withdrawnRowCount > 0) {
+                  if (r.applyTrustPenalty) {
+                    const nextTrust =
+                      typeof r.trustScoreAfterPenalty === "number"
+                        ? r.trustScoreAfterPenalty
+                        : Math.max(
+                            -10_000,
+                            me.trustScore - CARRIER_ROUTE_EXIT_TRUST_PENALTY,
+                          );
+                    setTrustScore(nextTrust);
+                    toast(
+                      `Tu barra de confianza se ajustó en −${CARRIER_ROUTE_EXIT_TRUST_PENALTY} por salir del chat como transportista con tramos confirmados (demo).`,
+                      { icon: "⚠️" },
+                    );
+                  } else {
+                    toast.success(
+                      "Salida registrada como transportista (des-suscripción de tramos).",
+                    );
+                  }
+                  setLeaveBlockingCode(null);
+                  setLeaveBlockingMessage(null);
+                  setLeaveRefundSuggestion(null);
+                  await removeThreadFromList(threadId, { skipServerDelete: true });
+                  return;
+                }
+              } catch {
+                /* seguir con mensaje del servidor */
+              }
+            }
+            toast.error(e.message);
+            return;
+          }
           if (e instanceof VtHttpError && e.code) {
             setLeaveBlockingCode(e.code);
             setLeaveBlockingMessage(e.message);

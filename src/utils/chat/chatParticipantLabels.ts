@@ -48,8 +48,17 @@ export function resolveBuyerUserId(
     sellerUid &&
     viewerUserId !== sellerUid &&
     viewerUserId !== "guest"
-  )
+  ) {
+    const vid = viewerUserId.trim();
+    const carrierIds = new Set(
+      (th.chatCarriers ?? [])
+        .map((c) => (c.id ?? "").trim())
+        .filter((x) => x.length > 0),
+    );
+    // No inferir “comprador” al transportista que ya figura en el hilo (evita duplicar integrantes).
+    if (carrierIds.has(vid)) return undefined;
     return viewerUserId;
+  }
   return undefined;
 }
 

@@ -42,6 +42,7 @@ import {
   agreementDeleteBlockedByRouteSheetInvariant,
   carrierHasChatAccessTramoOnOffer,
   confirmedStopIdsForCarrier,
+  viewerIsConfirmedRouteCarrierOnThread,
   resolveRouteOfferPublicForSheet,
   resolveRouteOfferPublicForThread,
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
@@ -178,6 +179,20 @@ export function ChatPage() {
     [thread],
   );
 
+  /** Cobro en chat: solo comprador (el backend también lo exige). Oculta «Pagar» para transportistas y terceros. */
+  const showBuyerPaymentInChat = useMemo(() => {
+    if (!thread) return false;
+    if (isSocialThread) return false;
+    if (isActingSeller) return false;
+    return resolveBuyerUserId(thread, me.id) === me.id;
+  }, [thread, me.id, isSocialThread, isActingSeller]);
+
+  const viewerIsConfirmedCarrier = useMarketStore(
+    useShallow((s) =>
+      thread ? viewerIsConfirmedRouteCarrierOnThread(s, thread, me.id) : false,
+    ),
+  );
+
   /** Panel "gente": el comprador no es `me` cuando el vendedor abre el chat (antes se mostraba la ficha del vendedor). */
   const buyerForRail = useBuyerForRail(
     thread,
@@ -185,6 +200,7 @@ export function ChatPage() {
     profileDisplayNames,
     profileAvatarUrls,
     profileTrustScores,
+    viewerIsConfirmedCarrier,
   );
   useChatPeerProfileHydration(thread, me.id, isSocialThread);
 
@@ -311,6 +327,11 @@ export function ChatPage() {
   const [chatPayOpen, setChatPayOpen] = useState(false);
   /** Comprador: refresco de acuerdos/hojas antes de abrir el modal de pago. */
   const [chatPayPreparing, setChatPayPreparing] = useState(false);
+
+  useEffect(() => {
+    if (!chatPayOpen || showBuyerPaymentInChat) return;
+    setChatPayOpen(false);
+  }, [chatPayOpen, showBuyerPaymentInChat]);
   const [contractsLoading, setContractsLoading] = useState(false);
   const [routeSheetsLoading, setRouteSheetsLoading] = useState(false);
   const { refreshChatRouteData, syncThreadRouteSheetsFromSubscribersPanel } =
@@ -393,7 +414,7 @@ export function ChatPage() {
   const openBuyerPaymentModal = useCallback(async () => {
     if (chatPayOpenInFlightRef.current) return;
     const tid = thread?.id?.trim();
-    if (!tid) return;
+    if (!tid || !showBuyerPaymentInChat) return;
     chatPayOpenInFlightRef.current = true;
     setChatPayPreparing(true);
     setContractsLoading(true);
@@ -409,7 +430,7 @@ export function ChatPage() {
       setContractsLoading(false);
       setChatPayOpen(true);
     }
-  }, [thread?.id, refreshThreadTradeAgreements]);
+  }, [thread?.id, showBuyerPaymentInChat, refreshThreadTradeAgreements]);
 
   const [peerPartyExitedInfo, setPeerPartyExitedInfo] = useState<{
     roleLabel: string;
@@ -970,6 +991,7 @@ export function ChatPage() {
               setMobileChatActionsOpen={setMobileChatActionsOpen}
               setRailOpen={setRailOpen}
               isActingSeller={isActingSeller}
+              showBuyerPayment={showBuyerPaymentInChat}
               chatPayPreparing={chatPayPreparing}
               onOpenBuyerPayment={() => void openBuyerPaymentModal()}
               chatActionsLocked={chatActionsLocked}
@@ -1055,6 +1077,7 @@ export function ChatPage() {
               onClose={() => setMobileChatActionsOpen(false)}
               setRailOpen={(open) => setRailOpen(open)}
               isActingSeller={isActingSeller}
+              showBuyerPayment={showBuyerPaymentInChat}
               chatPayPreparing={chatPayPreparing}
               onOpenBuyerPayment={openBuyerPaymentModal}
               chatActionsLocked={chatActionsLocked}
@@ -1313,7 +1336,7 @@ export function ChatPage() {
       />
 
       <ChatPaymentModal
-        open={chatPayOpen}
+        open={chatPayOpen && showBuyerPaymentInChat}
         threadId={thread.id}
         agreements={acceptedAgreementsForPayment}
         routeSheets={thread.routeSheets ?? []}

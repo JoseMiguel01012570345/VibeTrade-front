@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useShallow } from "zustand/react/shallow";
 import toast from "react-hot-toast";
 import {
+  BadgeCheck,
   Check,
   ChevronRight,
   EyeOff,
+  Loader2,
   MapPinned,
   MapPin,
   Megaphone,
@@ -14,6 +16,8 @@ import {
   ThumbsUp,
   Truck,
   Trash2,
+  Upload,
+  XCircle,
 } from "lucide-react";
 import { useAppStore } from "../../../../app/store/useAppStore";
 import { useMarketStore } from "../../../../app/store/useMarketStore";
@@ -30,6 +34,7 @@ import {
 } from "../../domain/routeSheetTypes";
 import {
   effectiveTramoContactPhone,
+  resolveRouteOfferPublicForSheet,
   resolveRouteOfferPublicForThread,
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
   sheetPreviewContactLine,
@@ -41,13 +46,21 @@ import { railItemClass } from "./chatRailStyles";
 import { statusPillOk, statusPillPending } from "../../styles/formModalStyles";
 import { TramoSubscribedServiceFicha } from "./TramoSubscribedServiceFicha";
 import { formatKmEs } from "../../../../utils/map/routeLegMetrics";
+import type { ServiceEvidenceAttachmentApi } from "../../../../utils/chat/agreementServiceEvidenceApi";
+import {
+  carrierDeliveryEvidenceStatusLabelEs,
+  routeStopDeliveryStateLabelEs,
+} from "../../../../utils/chat/routeLogisticsLabels";
 import {
   decideCarrierDeliveryEvidence,
   fetchAgreementRouteDeliveries,
+  fetchCarrierDeliveryEvidence,
   postCedeCarrierOwnership,
   upsertCarrierDeliveryEvidence,
+  type CarrierDeliveryEvidenceApi,
   type RouteStopDeliveryStatusApi,
 } from "../../../../utils/chat/routeLogisticsApi";
+import { uploadMedia, mediaApiUrl } from "../../../../utils/media/mediaClient";
 import { useCarrierLiveTelemetry } from "../../hooks/useCarrierLiveTelemetry";
 import { RouteSheetLiveTrackingModal } from "../modals/RouteSheetLiveTrackingModal";
 
@@ -63,6 +76,67 @@ function CarrierTelemetryBridge(
 ): null {
   useCarrierLiveTelemetry(args);
   return null;
+}
+
+function normalizeCarrierEvidenceForCompare(
+  text: string,
+  atts: ServiceEvidenceAttachmentApi[],
+): { text: string; attsKey: string } {
+  const t = (text ?? "").trim();
+  const key = (atts ?? [])
+    .map((a) => ({
+      url: (a.url ?? "").trim(),
+      fileName: (a.fileName ?? "").trim(),
+      kind: (a.kind ?? "").trim(),
+    }))
+    .sort((a, b) =>
+      `${a.url}|${a.fileName}|${a.kind}`.localeCompare(
+        `${b.url}|${b.fileName}|${b.kind}`,
+        "es",
+      ),
+    )
+    .map((a) => `${a.url}|${a.fileName}|${a.kind}`)
+    .join(";;");
+  return { text: t, attsKey: key };
+}
+
+function RouteLegEvidenceAttachmentsList({
+  atts,
+  onRemove,
+}: {
+  atts: ServiceEvidenceAttachmentApi[];
+  onRemove?: (id: string) => void;
+}) {
+  if (atts.length === 0) return null;
+  return (
+    <div className="mt-2 space-y-2">
+      {atts.map((a) => (
+        <div
+          key={a.id}
+          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_52%,var(--surface))] px-2.5 py-2 text-[13px]"
+        >
+          <a
+            href={a.url}
+            target="_blank"
+            rel="noreferrer"
+            className="min-w-0 break-words font-semibold text-[var(--primary)] underline"
+          >
+            {a.fileName || "Abrir adjunto"}
+          </a>
+          {onRemove ? (
+            <button
+              type="button"
+              className="vt-btn vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-1.5 text-[12px]"
+              onClick={() => onRemove(a.id)}
+            >
+              <XCircle size={14} aria-hidden />
+              Quitar
+            </button>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 type Props = {
@@ -105,7 +179,7 @@ type Props = {
 
 export function ChatRightRailRoutesPanel({
   bodyClassName,
-  buyerUserId,
+  buyerUserId: _buyerUserId,
   sellerUserId,
   agreements,
   actionsLocked,
@@ -129,13 +203,23 @@ export function ChatRightRailRoutesPanel({
   onPersistedRouteDataRefresh,
 }: Props) {
   const me = useAppStore((s) => s.me);
-  const routeOfferFromStore = useMarketStore(
+  /** Oferta alineada con la hoja seleccionada (varias hojas en el hilo → una entrada por `routeSheetId`). */
+  const routeOfferForSelectedSheet = useMarketStore(
+    useShallow((s) => {
+      const th = s.threads[threadId];
+      const sid = selRoute?.id?.trim();
+      if (!sid) return undefined;
+      return resolveRouteOfferPublicForSheet(s, th, sid);
+    }),
+  );
+  const routeOfferFromThread = useMarketStore(
     useShallow((s) => {
       const th = s.threads[threadId];
       return resolveRouteOfferPublicForThread(s, th);
     }),
   );
-  const routeOfferResolved = routeOffer ?? routeOfferFromStore;
+  const routeOfferResolved =
+    routeOfferForSelectedSheet ?? routeOffer ?? routeOfferFromThread;
   const routeSheetEditAcks = useMarketStore(
     (s) => s.threads[threadId]?.routeSheetEditAcks,
   );
@@ -150,8 +234,19 @@ export function ChatRightRailRoutesPanel({
     Record<string, RouteStopDeliveryStatusApi[]>
   >({});
   const [logisticsBusyKey, setLogisticsBusyKey] = useState<string | null>(null);
+  const [carrierEvEditModal, setCarrierEvEditModal] = useState<null | {
+    routeStopId: string;
+    busy: boolean;
+    uploading: boolean;
+    text: string;
+    attachments: ServiceEvidenceAttachmentApi[];
+    loaded: CarrierDeliveryEvidenceApi | null;
+  }>(null);
+  const [carrierEvReadModal, setCarrierEvReadModal] = useState<null | {
+    routeStopId: string;
+    evidence: CarrierDeliveryEvidenceApi;
+  }>(null);
 
-  const buyerUid = (buyerUserId ?? "").trim();
   const sellerUid = (sellerUserId ?? "").trim();
 
   const acceptedAgreements = useMemo(
@@ -579,6 +674,42 @@ export function ChatRightRailRoutesPanel({
               </p>
             </div>
           ) : null}
+          {(() => {
+            const sheetAgreement = agreementForSheet(selRoute.id);
+            const sheetAid = (sheetAgreement?.id ?? "").trim();
+            const sheetDeliv =
+              sheetAid ? deliveriesByAgreement[sheetAid] ?? [] : [];
+            const sheetAnyLiveTracking =
+              !!sheetAgreement &&
+              sheetAid.length >= 8 &&
+              !!(me.id ?? "").trim() &&
+              selRoute.paradas.some((stop) => {
+                const dr = sheetDeliv.find(
+                  (d) =>
+                    (d.routeSheetId ?? "").trim() === selRoute.id.trim() &&
+                    (d.routeStopId ?? "").trim() === (stop.id ?? "").trim(),
+                );
+                const st = (dr?.state ?? "unpaid").trim().toLowerCase();
+                return (
+                  !!dr && st !== "unpaid" && !st.startsWith("refunded")
+                );
+              });
+            return sheetAnyLiveTracking ? (
+              <div className="mb-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="vt-btn vt-btn-primary inline-flex items-center gap-1.5 px-3 py-2 text-[13px]"
+                  onClick={() => {
+                    setLiveFocusStopId(null);
+                    setLiveMapOpen(true);
+                  }}
+                >
+                  <MapPinned size={16} aria-hidden /> Mapa en vivo · todos los
+                  tramos
+                </button>
+              </div>
+            ) : null;
+          })()}
           <ul className="mb-0 mt-3 list-none space-y-0 p-0">
             {selRoute.paradas.map((p) => {
               const agreement = agreementForSheet(selRoute.id);
@@ -597,19 +728,14 @@ export function ChatRightRailRoutesPanel({
                   : undefined;
               const confirmedCarrier =
                 ot?.assignment?.status === "confirmed" ? (ot.assignment.userId ?? "").trim() : "";
-              const viewerIsBuyer = !!me.id && buyerUid.length > 1 && me.id === buyerUid;
+              const ownerFromDelivery = (row?.currentOwnerUserId ?? "").trim();
+              const effectiveCarrierUid =
+                ownerFromDelivery.length >= 2 ? ownerFromDelivery : confirmedCarrier;
               const viewerIsSeller = !!me.id && sellerUid.length > 1 && me.id === sellerUid;
-              const viewerIsParty = viewerIsBuyer || viewerIsSeller;
               const viewerIsOwnerCarrier =
-                !!me.id && confirmedCarrier.length > 1 && me.id === confirmedCarrier;
-
-              const canTrack =
-                !!agreement &&
-                agreementId.length >= 8 &&
-                !!row &&
-                state !== "unpaid" &&
-                !state.startsWith("refunded") &&
-                (viewerIsParty || viewerIsOwnerCarrier || isActingSeller);
+                !!me.id &&
+                effectiveCarrierUid.length > 1 &&
+                me.id === effectiveCarrierUid;
 
               const telemetryEnabled =
                 viewerIsOwnerCarrier &&
@@ -618,7 +744,8 @@ export function ChatRightRailRoutesPanel({
                 !!row &&
                 (state === "paid" ||
                   state === "in_transit" ||
-                  state === "awaiting_carrier_for_handoff");
+                  state === "awaiting_carrier_for_handoff" ||
+                  state === "delivered_pending_evidence");
 
               const busyKeyBase = `${agreementId}:${selRoute.id}:${p.id}`;
 
@@ -772,7 +899,11 @@ export function ChatRightRailRoutesPanel({
                       </div>
                       <div className="text-[11px] font-bold text-[var(--text)]">
                         Estado:{" "}
-                        <span className="font-mono">{row ? state : "sin registro"}</span>
+                        <span className="font-semibold normal-case tracking-normal">
+                          {row ?
+                            routeStopDeliveryStateLabelEs(state)
+                          : "Sin registro"}
+                        </span>
                       </div>
                     </div>
 
@@ -787,25 +918,6 @@ export function ChatRightRailRoutesPanel({
                     : null}
 
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
-                        disabled={!canTrack}
-                        title={
-                          !agreement ?
-                            "No hay un acuerdo aceptado con mercancías vinculado a esta hoja."
-                          : !row || state === "unpaid" ?
-                            "Este tramo aún no tiene cobro/logística activa registrada."
-                          : undefined
-                        }
-                        onClick={() => {
-                          setLiveFocusStopId(p.id);
-                          setLiveMapOpen(true);
-                        }}
-                      >
-                        <MapPinned size={14} aria-hidden /> Mapa en vivo
-                      </button>
-
                       {activeLike && viewerIsOwnerCarrier ?
                         <button
                           type="button"
@@ -844,37 +956,71 @@ export function ChatRightRailRoutesPanel({
                         <button
                           type="button"
                           className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
-                          disabled={!getSessionToken() || logisticsBusyKey === `${busyKeyBase}:evid`}
+                          disabled={!getSessionToken()}
                           onClick={() => {
-                            const txt =
-                              globalThis.prompt("Nota breve para la evidencia de entrega", "") ?? "";
                             void (async () => {
+                              let loaded: CarrierDeliveryEvidenceApi | null = null;
                               try {
-                                setLogisticsBusyKey(`${busyKeyBase}:evid`);
-                                await upsertCarrierDeliveryEvidence({
+                                loaded = await fetchCarrierDeliveryEvidence({
                                   threadId,
                                   agreementId,
                                   routeSheetId: selRoute.id,
                                   routeStopId: p.id,
-                                  text: txt.trim(),
-                                  attachments: [],
-                                  submit: true,
                                 });
-                                toast.success("Evidencia enviada.");
-                                await refreshDeliveriesForAgreement(agreementId);
-                              } catch (e) {
-                                toast.error((e as Error)?.message ?? "No se pudo enviar evidencia.");
-                              } finally {
-                                setLogisticsBusyKey(null);
+                              } catch {
+                                /* sin fila previa */
+                              }
+                              setCarrierEvEditModal({
+                                routeStopId: p.id,
+                                busy: false,
+                                uploading: false,
+                                text: loaded?.text ?? "",
+                                attachments: loaded?.attachments ?? [],
+                                loaded,
+                              });
+                            })();
+                          }}
+                        >
+                          Evidencia de entrega
+                        </button>
+                      : null}
+
+                      {viewerIsSeller &&
+                      (state === "evidence_submitted" ||
+                        state === "evidence_rejected" ||
+                        state === "delivered_pending_evidence") ?
+                        <button
+                          type="button"
+                          className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
+                          disabled={!getSessionToken()}
+                          onClick={() => {
+                            void (async () => {
+                              try {
+                                const ev = await fetchCarrierDeliveryEvidence({
+                                  threadId,
+                                  agreementId,
+                                  routeSheetId: selRoute.id,
+                                  routeStopId: p.id,
+                                });
+                                if (!ev) {
+                                  toast.error("Aún no hay evidencia registrada.");
+                                  return;
+                                }
+                                setCarrierEvReadModal({
+                                  routeStopId: p.id,
+                                  evidence: ev,
+                                });
+                              } catch {
+                                toast.error("No se pudo cargar la evidencia.");
                               }
                             })();
                           }}
                         >
-                          Enviar evidencia
+                          Ver evidencia
                         </button>
                       : null}
 
-                      {state === "evidence_submitted" && viewerIsParty ?
+                      {state === "evidence_submitted" && viewerIsSeller ?
                         <>
                           <button
                             type="button"
@@ -995,6 +1141,307 @@ export function ChatRightRailRoutesPanel({
           ))}
         </ul>
       )}
+
+      {carrierEvEditModal && selRoute ?
+        <div
+          className="fixed inset-0 z-[85] flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xl">
+            <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+              <div className="min-w-0 text-[13px] font-black text-[var(--text)]">
+                Evidencia de entrega · tramo
+              </div>
+              <button
+                type="button"
+                className="vt-btn vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-2"
+                onClick={() => setCarrierEvEditModal(null)}
+                disabled={carrierEvEditModal.busy}
+              >
+                <XCircle size={16} aria-hidden /> Cerrar
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-y-auto px-4 py-3">
+              <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                Texto
+              </div>
+              <textarea
+                className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3 text-[13px] text-[var(--text)] outline-none"
+                rows={6}
+                value={carrierEvEditModal.text}
+                onChange={(e) =>
+                  setCarrierEvEditModal((m) =>
+                    m ? { ...m, text: e.target.value } : m,
+                  )
+                }
+                placeholder="Describe la entrega, número de guía, observaciones…"
+                disabled={carrierEvEditModal.busy}
+              />
+              <div className="mt-3 text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                Adjuntos
+              </div>
+              <p className="vt-muted mt-1 text-[12px]">
+                Podés subir imágenes o documentos (igual que en pagos de
+                servicios).
+              </p>
+              <RouteLegEvidenceAttachmentsList
+                atts={carrierEvEditModal.attachments}
+                onRemove={(id) =>
+                  setCarrierEvEditModal((m) =>
+                    m ?
+                      {
+                        ...m,
+                        attachments: m.attachments.filter((a) => a.id !== id),
+                      }
+                    : m,
+                  )
+                }
+              />
+              <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_52%,var(--surface))] px-3 py-2 text-[13px] font-semibold text-[var(--text)]">
+                <Upload size={16} aria-hidden />
+                Subir archivos
+                {carrierEvEditModal.uploading ?
+                  <Loader2 className="animate-spin" size={16} aria-hidden />
+                : null}
+                <input
+                  type="file"
+                  className="hidden"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    e.target.value = "";
+                    if (!files.length) return;
+                    const aid = (
+                      agreementForSheet(selRoute.id)?.id ?? ""
+                    ).trim();
+                    if (aid.length < 8) return;
+                    void (async () => {
+                      setCarrierEvEditModal((m) =>
+                        m ? { ...m, busy: true, uploading: true } : m,
+                      );
+                      try {
+                        const uploaded: ServiceEvidenceAttachmentApi[] = [];
+                        for (const f of files) {
+                          const r = await uploadMedia(f);
+                          const kind =
+                            r.mimeType?.startsWith("image/") ? "image" : (
+                              "document"
+                            );
+                          uploaded.push({
+                            id: crypto.randomUUID(),
+                            url: mediaApiUrl(r.id),
+                            fileName: r.fileName,
+                            kind,
+                          });
+                        }
+                        setCarrierEvEditModal((m) =>
+                          m ?
+                            {
+                              ...m,
+                              attachments: [...m.attachments, ...uploaded],
+                            }
+                          : m,
+                        );
+                      } catch (err) {
+                        toast.error(
+                          (err as Error)?.message ??
+                            "No se pudo subir el adjunto.",
+                        );
+                      } finally {
+                        setCarrierEvEditModal((m) =>
+                          m ? { ...m, busy: false, uploading: false } : m,
+                        );
+                      }
+                    })();
+                  }}
+                  disabled={carrierEvEditModal.busy}
+                />
+              </label>
+            </div>
+            <div className="flex flex-wrap gap-2 border-t border-[var(--border)] px-4 py-3">
+              {(() => {
+                const m = carrierEvEditModal;
+                const original = m.loaded;
+                const a0 = normalizeCarrierEvidenceForCompare(
+                  original?.text ?? "",
+                  original?.attachments ?? [],
+                );
+                const a1 = normalizeCarrierEvidenceForCompare(
+                  m.text,
+                  m.attachments,
+                );
+                const dirty = a0.text !== a1.text || a0.attsKey !== a1.attsKey;
+                const aid = (
+                  agreementForSheet(selRoute.id)?.id ?? ""
+                ).trim();
+                return (
+                  <>
+                    <button
+                      type="button"
+                      className="vt-btn vt-btn-ghost inline-flex items-center gap-2 border border-[var(--border)] px-5 py-2.5"
+                      disabled={m.busy || !dirty}
+                      onClick={() =>
+                        void (async () => {
+                          if (!dirty) {
+                            toast.error("No hay cambios para guardar.");
+                            return;
+                          }
+                          if (aid.length < 8) return;
+                          setCarrierEvEditModal((x) =>
+                            x ? { ...x, busy: true } : x,
+                          );
+                          try {
+                            await upsertCarrierDeliveryEvidence({
+                              threadId,
+                              agreementId: aid,
+                              routeSheetId: selRoute.id,
+                              routeStopId: m.routeStopId,
+                              text: m.text,
+                              attachments: m.attachments,
+                              submit: false,
+                            });
+                            toast.success("Evidencia guardada (borrador).");
+                            await refreshDeliveriesForAgreement(aid);
+                            setCarrierEvEditModal(null);
+                          } catch (e) {
+                            toast.error(
+                              (e as Error)?.message ??
+                                "No se pudo guardar la evidencia.",
+                            );
+                          } finally {
+                            setCarrierEvEditModal((x) =>
+                              x ? { ...x, busy: false } : x,
+                            );
+                          }
+                        })()
+                      }
+                    >
+                      <Pencil size={16} aria-hidden />
+                      Guardar borrador
+                    </button>
+                    <button
+                      type="button"
+                      className="vt-btn vt-btn-primary inline-flex items-center gap-2"
+                      disabled={m.busy || !dirty}
+                      onClick={() =>
+                        void (async () => {
+                          if (!dirty) {
+                            toast.error("No hay cambios para enviar.");
+                            return;
+                          }
+                          if (aid.length < 8) return;
+                          const lastSent = m.loaded;
+                          const lastSentNorm = normalizeCarrierEvidenceForCompare(
+                            lastSent?.lastSubmittedText ?? "",
+                            lastSent?.lastSubmittedAttachments ?? [],
+                          );
+                          const nowNorm = normalizeCarrierEvidenceForCompare(
+                            m.text,
+                            m.attachments,
+                          );
+                          if (
+                            lastSentNorm.text === nowNorm.text &&
+                            lastSentNorm.attsKey === nowNorm.attsKey
+                          ) {
+                            toast.error(
+                              "No hay cambios desde la última evidencia enviada.",
+                            );
+                            return;
+                          }
+                          setCarrierEvEditModal((x) =>
+                            x ? { ...x, busy: true } : x,
+                          );
+                          try {
+                            await upsertCarrierDeliveryEvidence({
+                              threadId,
+                              agreementId: aid,
+                              routeSheetId: selRoute.id,
+                              routeStopId: m.routeStopId,
+                              text: m.text,
+                              attachments: m.attachments,
+                              submit: true,
+                            });
+                            toast.success("Evidencia enviada.");
+                            await refreshDeliveriesForAgreement(aid);
+                            setCarrierEvEditModal(null);
+                          } catch (e) {
+                            toast.error(
+                              (e as Error)?.message ??
+                                "No se pudo enviar la evidencia.",
+                            );
+                          } finally {
+                            setCarrierEvEditModal((x) =>
+                              x ? { ...x, busy: false } : x,
+                            );
+                          }
+                        })()
+                      }
+                    >
+                      <BadgeCheck size={16} aria-hidden />
+                      Enviar evidencia
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      : null}
+
+      {carrierEvReadModal && selRoute ?
+        <div
+          className="fixed inset-0 z-[85] flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xl">
+            <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+              <div className="min-w-0">
+                <div className="text-[13px] font-black text-[var(--text)]">
+                  Evidencia de entrega (solo lectura)
+                </div>
+                <div className="vt-muted mt-0.5 text-[12px]">
+                  Estado:{" "}
+                  <span className="font-semibold text-[var(--text)]">
+                    {carrierDeliveryEvidenceStatusLabelEs(
+                      carrierEvReadModal.evidence.status,
+                    )}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="vt-btn vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-2"
+                onClick={() => setCarrierEvReadModal(null)}
+              >
+                <XCircle size={16} aria-hidden /> Cerrar
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-y-auto px-4 py-3">
+              <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                Último envío
+              </div>
+              <div className="mt-1 whitespace-pre-wrap rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3 text-[13px] text-[var(--text)]">
+                {carrierEvReadModal.evidence.lastSubmittedText?.trim() ||
+                  carrierEvReadModal.evidence.text?.trim() ||
+                  "—"}
+              </div>
+              <div className="mt-3 text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                Adjuntos enviados
+              </div>
+              <RouteLegEvidenceAttachmentsList
+                atts={
+                  carrierEvReadModal.evidence.lastSubmittedAttachments
+                    ?.length ?
+                    carrierEvReadModal.evidence.lastSubmittedAttachments
+                  : carrierEvReadModal.evidence.attachments ?? []
+                }
+              />
+            </div>
+          </div>
+        </div>
+      : null}
 
       {liveMapOpen && selRoute ?
         <RouteSheetLiveTrackingModal

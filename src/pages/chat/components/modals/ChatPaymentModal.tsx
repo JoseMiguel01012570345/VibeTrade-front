@@ -44,14 +44,14 @@ import {
   paymentFeeLabels,
   stripeMinorDecimals,
 } from "../../domain/paymentFeePolicy";
-import { downloadPaymentCheckoutInformePdf } from "../../utils/paymentCheckoutPdfDownload";
+import {
+  downloadPaymentCheckoutInformePdf,
+  sanitizePaymentInformeLabel,
+} from "../../utils/paymentCheckoutPdfDownload";
 import { collectAgreementInformePreviewEntries } from "../../utils/tradeAgreementPdfText";
 import { STRIPE_PRICING_PAGE_URL } from "../../domain/stripePricingLinks";
 import { ProtectedMediaImg } from "../../../../components/media/ProtectedMediaImg";
-import {
-  VtSelect,
-  type VtSelectOption,
-} from "../../../../components/VtSelect";
+import { VtSelect, type VtSelectOption } from "../../../../components/VtSelect";
 import { VtMultiSelect } from "../../../../components/VtMultiSelect";
 
 type Props = {
@@ -90,12 +90,19 @@ function currencyPaid(
   );
 }
 
-function recurrenceSlotKey(serviceItemId: string, month: number, day: number): string {
+function recurrenceSlotKey(
+  serviceItemId: string,
+  month: number,
+  day: number,
+): string {
   return `${serviceItemId}:${month}-${day}`;
 }
 
 function parseMajorAmount(raw: string | undefined): number {
-  const t = (raw ?? "").trim().replace(",", ".").replace(/\u00a0/g, " ");
+  const t = (raw ?? "")
+    .trim()
+    .replace(",", ".")
+    .replace(/\u00a0/g, " ");
   if (!t) return 0;
   const n = Number(t);
   return Number.isFinite(n) ? n : 0;
@@ -151,17 +158,19 @@ export function ChatPaymentModal({
   const [busyPay, setBusyPay] = useState(false);
   const busyPayRef = useRef(false);
   busyPayRef.current = busyPay;
+  /** Evita doble envío antes de que React aplique `busyPay`. */
+  const payFlightRef = useRef(false);
 
   const [agreementId, setAgreementId] = useState<string>("");
-  const [breakdown, setBreakdown] = useState<AgreementCheckoutBreakdownApi | null>(
-    null,
-  );
+  const [breakdown, setBreakdown] =
+    useState<AgreementCheckoutBreakdownApi | null>(null);
   const [statuses, setStatuses] = useState<AgreementPaymentStatusApi[]>([]);
   const [servicePaymentsPaid, setServicePaymentsPaid] = useState<
     AgreementServicePaymentApi[]
   >([]);
   /** Solo true tras un refresh OK desde el servidor (lista service-payments); no usar antes de esa respuesta. */
-  const [allRecurrencesPaidVerified, setAllRecurrencesPaidVerified] = useState(false);
+  const [allRecurrencesPaidVerified, setAllRecurrencesPaidVerified] =
+    useState(false);
   const [cards, setCards] = useState<StripeSavedCard[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string>("");
 
@@ -171,7 +180,9 @@ export function ChatPaymentModal({
   }));
 
   const [acceptedInforme, setAcceptedInforme] = useState(false);
-  const [feePolicyQrDataUrl, setFeePolicyQrDataUrl] = useState<string | null>(null);
+  const [feePolicyQrDataUrl, setFeePolicyQrDataUrl] = useState<string | null>(
+    null,
+  );
   const settledNotifiedAgreementIdRef = useRef<string | null>(null);
 
   const agreementsRef = useRef(agreements);
@@ -195,10 +206,16 @@ export function ChatPaymentModal({
     return agreementRouteSheet.paradas.filter((p) => routeStopIsPayable(p));
   }, [agreementRouteSheet]);
 
-  const [routeDeliveries, setRouteDeliveries] = useState<RouteStopDeliveryStatusApi[]>([]);
+  const [routeDeliveries, setRouteDeliveries] = useState<
+    RouteStopDeliveryStatusApi[]
+  >([]);
   /** Hojas de ruta incluidas en el cobro (normalmente la vinculada al acuerdo); se expande a tramos pendientes en API. */
-  const [selectedRouteSheetIds, setSelectedRouteSheetIds] = useState<string[]>([]);
-  const [selectedMerchandiseLineIds, setSelectedMerchandiseLineIds] = useState<string[]>([]);
+  const [selectedRouteSheetIds, setSelectedRouteSheetIds] = useState<string[]>(
+    [],
+  );
+  const [selectedMerchandiseLineIds, setSelectedMerchandiseLineIds] = useState<
+    string[]
+  >([]);
   const [checkoutHydrated, setCheckoutHydrated] = useState(false);
 
   const serviceOnlyAgreement = useMemo(() => {
@@ -242,7 +259,10 @@ export function ChatPaymentModal({
   }, [routeDeliveriesPaidKey]);
 
   const unpaidPayableRouteStops = useMemo(
-    () => payableRouteStops.filter((p) => !paidRouteStopIds.has((p.id ?? "").trim())),
+    () =>
+      payableRouteStops.filter(
+        (p) => !paidRouteStopIds.has((p.id ?? "").trim()),
+      ),
     [payableRouteStops, paidRouteStopIds],
   );
 
@@ -256,7 +276,8 @@ export function ChatPaymentModal({
     [unpaidPayableRouteStops],
   );
 
-  const routeLegSelectionRequired = routePickAgreement && unpaidPayableRouteStops.length > 0;
+  const routeLegSelectionRequired =
+    routePickAgreement && unpaidPayableRouteStops.length > 0;
 
   const expandedRouteStopIdsForCheckout = useMemo(() => {
     const rsid = (selectedAgreement?.routeSheetId ?? "").trim();
@@ -284,10 +305,15 @@ export function ChatPaymentModal({
         label: `${t} · ${n} tramo(s) pendiente(s)`,
       },
     ];
-  }, [agreementRouteSheet, unpaidPayableRouteStops.length, unpaidPayableStopIdsKey]);
+  }, [
+    agreementRouteSheet,
+    unpaidPayableRouteStops.length,
+    unpaidPayableStopIdsKey,
+  ]);
 
   const payableMerchLines = useMemo(() => {
-    if (!selectedAgreement || !agreementDeclaresMerchandise(selectedAgreement)) return [];
+    if (!selectedAgreement || !agreementDeclaresMerchandise(selectedAgreement))
+      return [];
     const out: { id: string; title: string; subtitle: string }[] = [];
     selectedAgreement.merchandise.forEach((raw, i) => {
       const line = normalizeMerchandiseLine(raw);
@@ -307,29 +333,43 @@ export function ChatPaymentModal({
     return out;
   }, [selectedAgreement]);
 
-  const merchCheckboxSectionVisible = !serviceOnlyAgreement && payableMerchLines.length > 0;
+  const merchCheckboxSectionVisible =
+    !serviceOnlyAgreement && payableMerchLines.length > 0;
 
   const payableMerchIdsKey = useMemo(
-    () => payableMerchLines.map((m) => m.id).sort().join("|"),
+    () =>
+      payableMerchLines
+        .map((m) => m.id)
+        .sort()
+        .join("|"),
     [payableMerchLines],
   );
 
-  const [selectedServiceEntriesByServiceId, setSelectedServiceEntriesByServiceId] =
-    useState<Record<string, string[]>>({});
+  const [
+    selectedServiceEntriesByServiceId,
+    setSelectedServiceEntriesByServiceId,
+  ] = useState<Record<string, string[]>>({});
 
   const serviceItems = useMemo(
-    () => (selectedAgreement ? normalizeAgreementServices(selectedAgreement) : []),
+    () =>
+      selectedAgreement ? normalizeAgreementServices(selectedAgreement) : [],
     [selectedAgreement],
   );
 
   const selectedServicePayments = useMemo(() => {
     const ids = new Set(serviceItems.map((s) => s.id));
-    const out: Array<{ serviceItemId: string; entryKey: { month: number; day: number } }> =
-      [];
-    for (const [sid, keys] of Object.entries(selectedServiceEntriesByServiceId)) {
+    const out: Array<{
+      serviceItemId: string;
+      entryKey: { month: number; day: number };
+    }> = [];
+    for (const [sid, keys] of Object.entries(
+      selectedServiceEntriesByServiceId,
+    )) {
       if (!ids.has(sid)) continue;
       for (const k of keys) {
-        const [mm, dd] = String(k).split("-").map((x) => Number(x));
+        const [mm, dd] = String(k)
+          .split("-")
+          .map((x) => Number(x));
         if (!Number.isFinite(mm) || !Number.isFinite(dd)) continue;
         out.push({ serviceItemId: sid, entryKey: { month: mm, day: dd } });
       }
@@ -389,7 +429,9 @@ export function ChatPaymentModal({
   const selectedMerchandiseLineIdsRef = useRef(selectedMerchandiseLineIds);
   const routeDeliveriesRef = useRef(routeDeliveries);
   const servicePaymentsPaidRef = useRef(servicePaymentsPaid);
-  const fetchCheckoutBreakdownOnlyRef = useRef<() => Promise<void>>(async () => {});
+  const fetchCheckoutBreakdownOnlyRef = useRef<() => Promise<void>>(
+    async () => {},
+  );
   const routeSheetSelectionTouchedRef = useRef(false);
   selectedServicePaymentsRef.current = selectedServicePayments;
   servicePaymentsPaidRef.current = servicePaymentsPaid;
@@ -432,13 +474,15 @@ export function ChatPaymentModal({
   ]);
 
   /** Cobertura de selección previa al desglose / cobro (servicios y/o tramos). */
-  const checkoutSelectionsReady =
-    serviceOnlyAgreement ?
-      selectedServicePaymentsReady
+  const checkoutSelectionsReady = serviceOnlyAgreement
+    ? selectedServicePaymentsReady
     : nonServiceBreakdownSelectionsReady;
 
   const previews = useMemo(
-    () => (selectedAgreement ? collectAgreementInformePreviewEntries(selectedAgreement) : []),
+    () =>
+      selectedAgreement
+        ? collectAgreementInformePreviewEntries(selectedAgreement)
+        : [],
     [selectedAgreement],
   );
 
@@ -509,7 +553,8 @@ export function ChatPaymentModal({
       for (const e of sv.recurrenciaPagos?.entries ?? []) {
         const mon = (e.moneda ?? "").trim().toLowerCase();
         if (mon.length < 3) continue;
-        if (!paidSlotKeys.has(recurrenceSlotKey(sv.id, e.month, e.day))) curSet.add(mon);
+        if (!paidSlotKeys.has(recurrenceSlotKey(sv.id, e.month, e.day)))
+          curSet.add(mon);
       }
     }
     return [...curSet];
@@ -562,7 +607,8 @@ export function ChatPaymentModal({
     for (const sv of serviceItems) {
       for (const e of sv.recurrenciaPagos?.entries ?? []) {
         if ((e.moneda ?? "").trim().toLowerCase() !== c) continue;
-        if (!paidSlotKeys.has(recurrenceSlotKey(sv.id, e.month, e.day))) return false;
+        if (!paidSlotKeys.has(recurrenceSlotKey(sv.id, e.month, e.day)))
+          return false;
       }
     }
     return true;
@@ -602,7 +648,9 @@ export function ChatPaymentModal({
         servicePaymentsPaidRef.current = sp;
 
         const pk = new Set(
-          sp.map((p) => recurrenceSlotKey(p.serviceItemId, p.entryMonth, p.entryDay)),
+          sp.map((p) =>
+            recurrenceSlotKey(p.serviceItemId, p.entryMonth, p.entryDay),
+          ),
         );
         const svcOnly =
           agreementDeclaresService(ag) && !agreementDeclaresMerchandise(ag);
@@ -612,8 +660,12 @@ export function ChatPaymentModal({
         setAllRecurrencesPaidVerified(mayCommitVerified && fullyPaid);
 
         const rsid = (ag.routeSheetId ?? "").trim();
-        const sheet = rsid ? routeSheetsRef.current.find((r) => r.id === rsid) : undefined;
-        const payable = (sheet?.paradas ?? []).filter((p) => routeStopIsPayable(p));
+        const sheet = rsid
+          ? routeSheetsRef.current.find((r) => r.id === rsid)
+          : undefined;
+        const payable = (sheet?.paradas ?? []).filter((p) =>
+          routeStopIsPayable(p),
+        );
         const pickRouteLegs =
           !svcOnly &&
           agreementDeclaresMerchandise(ag) &&
@@ -633,7 +685,8 @@ export function ChatPaymentModal({
         setCheckoutHydrated(true);
       } catch (e) {
         const msg =
-          (e as Error)?.message?.trim() || "No se pudo cargar el estado de pagos.";
+          (e as Error)?.message?.trim() ||
+          "No se pudo cargar el estado de pagos.";
         setStatuses([]);
         setServicePaymentsPaid([]);
         servicePaymentsPaidRef.current = [];
@@ -652,8 +705,7 @@ export function ChatPaymentModal({
   const fetchCheckoutBreakdownOnly = useCallback(async () => {
     const list = agreementsRef.current;
     const aid = (agreementId ?? "").trim();
-    const ag =
-      (aid ? list.find((a) => a.id === aid) : null) ?? list[0] ?? null;
+    const ag = (aid ? list.find((a) => a.id === aid) : null) ?? list[0] ?? null;
     if (!ag) {
       setBreakdown(null);
       return;
@@ -679,8 +731,12 @@ export function ChatPaymentModal({
 
     try {
       const rsid = (ag.routeSheetId ?? "").trim();
-      const sheet = rsid ? routeSheetsRef.current.find((r) => r.id === rsid) : undefined;
-      const payable = (sheet?.paradas ?? []).filter((p) => routeStopIsPayable(p));
+      const sheet = rsid
+        ? routeSheetsRef.current.find((r) => r.id === rsid)
+        : undefined;
+      const payable = (sheet?.paradas ?? []).filter((p) =>
+        routeStopIsPayable(p),
+      );
       const pickRouteLegs =
         !svcOnly &&
         agreementDeclaresMerchandise(ag) &&
@@ -714,15 +770,14 @@ export function ChatPaymentModal({
       const includeMerch = payableMerchIds.size > 0;
 
       const stopsPick =
-        pickRouteLegs && unpaidStops.length > 0 ?
-          expandedRouteStopIdsRef.current.filter((id) =>
-            unpaidStops.some((p) => (p.id ?? "").trim() === id.trim()),
-          )
-        : [];
+        pickRouteLegs && unpaidStops.length > 0
+          ? expandedRouteStopIdsRef.current.filter((id) =>
+              unpaidStops.some((p) => (p.id ?? "").trim() === id.trim()),
+            )
+          : [];
 
-      const merchPick =
-        includeMerch ?
-          selectedMerchandiseLineIdsRef.current.filter((id) =>
+      const merchPick = includeMerch
+        ? selectedMerchandiseLineIdsRef.current.filter((id) =>
             payableMerchIds.has(id.trim()),
           )
         : [];
@@ -737,18 +792,19 @@ export function ChatPaymentModal({
       }
 
       const bd = await fetchAgreementCheckoutBreakdown(threadId, ag.id, {
-        selectedServicePayments:
-          svcOnly ? selectedServicePaymentsRef.current
-          : selectedServicePaymentsRef.current.length > 0 ?
-            selectedServicePaymentsRef.current
-          : undefined,
+        selectedServicePayments: svcOnly
+          ? selectedServicePaymentsRef.current
+          : selectedServicePaymentsRef.current.length > 0
+            ? selectedServicePaymentsRef.current
+            : undefined,
         selectedRouteStopIds: routeArg,
         selectedMerchandiseLineIds: merchArg,
       });
       setBreakdown(bd);
     } catch (e) {
       const msg =
-        (e as Error)?.message?.trim() || "No se pudo cargar el informe de pago.";
+        (e as Error)?.message?.trim() ||
+        "No se pudo cargar el informe de pago.";
       setBreakdown({ ok: false, errors: [msg], byCurrency: [] });
       toast.error(msg);
     }
@@ -804,7 +860,10 @@ export function ChatPaymentModal({
       return;
     }
     let cancelled = false;
-    void QRCode.toDataURL(STRIPE_PRICING_PAGE_URL, { width: 112, margin: 1 }).then((url) => {
+    void QRCode.toDataURL(STRIPE_PRICING_PAGE_URL, {
+      width: 112,
+      margin: 1,
+    }).then((url) => {
       if (!cancelled) setFeePolicyQrDataUrl(url);
     });
     return () => {
@@ -901,12 +960,17 @@ export function ChatPaymentModal({
       const allowed = new Set(payableMerchLines.map((p) => p.id));
       const filteredPrev = prev.filter((id) => allowed.has(id.trim()));
       const next =
-        filteredPrev.length > 0 ?
-          filteredPrev
-        : payableMerchLines.map((p) => p.id);
+        filteredPrev.length > 0
+          ? filteredPrev
+          : payableMerchLines.map((p) => p.id);
       return sameStringArray(prev, next) ? prev : next;
     });
-  }, [open, serviceOnlyAgreement, merchCheckboxSectionVisible, payableMerchIdsKey]);
+  }, [
+    open,
+    serviceOnlyAgreement,
+    merchCheckboxSectionVisible,
+    payableMerchIdsKey,
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -982,7 +1046,9 @@ export function ChatPaymentModal({
           sel.entryKey.day,
         );
         if (paidSlotKeys.has(slot)) {
-          toast.error("Esa recurrencia ya está cobrada. Actualizamos el listado.");
+          toast.error(
+            "Esa recurrencia ya está cobrada. Actualizamos el listado.",
+          );
           void reloadCheckout();
           return;
         }
@@ -993,15 +1059,21 @@ export function ChatPaymentModal({
       agreementDeclaresService(ag) && !agreementDeclaresMerchandise(ag);
 
     const rsidExec = (ag.routeSheetId ?? "").trim();
-    const sheetExec = rsidExec ? routeSheets.find((r) => r.id === rsidExec) : undefined;
-    const payableExec = (sheetExec?.paradas ?? []).filter((p) => routeStopIsPayable(p));
+    const sheetExec = rsidExec
+      ? routeSheets.find((r) => r.id === rsidExec)
+      : undefined;
+    const payableExec = (sheetExec?.paradas ?? []).filter((p) =>
+      routeStopIsPayable(p),
+    );
     const paidStopExec = new Set<string>();
     for (const d of routeDeliveries) {
       if (!deliveryMarksStopPaid(d)) continue;
       const sid = (d.routeStopId ?? "").trim();
       if (sid) paidStopExec.add(sid);
     }
-    const unpaidStopsExec = payableExec.filter((p) => !paidStopExec.has((p.id ?? "").trim()));
+    const unpaidStopsExec = payableExec.filter(
+      (p) => !paidStopExec.has((p.id ?? "").trim()),
+    );
     const routeLegReqExec =
       agreementDeclaresMerchandise(ag) &&
       rsidExec.length > 1 &&
@@ -1019,24 +1091,28 @@ export function ChatPaymentModal({
       payableMerchIdsExec.add(mid);
     }
 
-    const stopsPickExec =
-      routeLegReqExec ?
-        expandedRouteStopIdsForCheckout
+    const stopsPickExec = routeLegReqExec
+      ? expandedRouteStopIdsForCheckout
           .map((x) => x.trim())
-          .filter((id) => unpaidStopsExec.some((p) => (p.id ?? "").trim() === id))
+          .filter((id) =>
+            unpaidStopsExec.some((p) => (p.id ?? "").trim() === id),
+          )
       : [];
 
     const merchPickExec =
-      payableMerchIdsExec.size > 0 ?
-        selectedMerchandiseLineIds.filter((id) => payableMerchIdsExec.has(id.trim()))
-      : [];
+      payableMerchIdsExec.size > 0
+        ? selectedMerchandiseLineIds.filter((id) =>
+            payableMerchIdsExec.has(id.trim()),
+          )
+        : [];
 
     let routeExecuteArg: string[] | null | undefined = undefined;
     let merchExecuteArg: string[] | null | undefined = undefined;
     if (!svcOnlyExec) {
       if (payableMerchIdsExec.size > 0) merchExecuteArg = merchPickExec;
       if (routeLegReqExec) routeExecuteArg = stopsPickExec;
-      else if (payableMerchIdsExec.size > 0 && payableExec.length > 0) routeExecuteArg = [];
+      else if (payableMerchIdsExec.size > 0 && payableExec.length > 0)
+        routeExecuteArg = [];
     }
 
     const servicePicksForThisCharge = svcOnlyExec
@@ -1044,17 +1120,19 @@ export function ChatPaymentModal({
           serviceItemId: p.serviceItemId,
           entryKey: { ...p.entryKey },
         }))
-      : selectedServicePayments.length > 0 ?
-        selectedServicePayments.map((p) => ({
-          serviceItemId: p.serviceItemId,
-          entryKey: { ...p.entryKey },
-        }))
-      : [];
+      : selectedServicePayments.length > 0
+        ? selectedServicePayments.map((p) => ({
+            serviceItemId: p.serviceItemId,
+            entryKey: { ...p.entryKey },
+          }))
+        : [];
 
     let ik = idemByCurrency.refs[curLower]?.trim();
-    if (!ik || ik.length < 8)
-      ik = crypto.randomUUID();
+    if (!ik || ik.length < 8) ik = crypto.randomUUID();
     idemByCurrency.refs[curLower] = ik;
+
+    if (payFlightRef.current) return;
+    payFlightRef.current = true;
 
     setBusyPay(true);
     if (svcOnlyExec) setAllRecurrencesPaidVerified(false);
@@ -1068,24 +1146,24 @@ export function ChatPaymentModal({
         currency: curLower,
         paymentMethodId: pmId,
         idempotencyKey: ik,
-        selectedServicePayments:
-          svcOnlyExec ? selectedServicePayments
-          : servicePicksForThisCharge.length > 0 ? servicePicksForThisCharge
-          : undefined,
+        selectedServicePayments: svcOnlyExec
+          ? selectedServicePayments
+          : servicePicksForThisCharge.length > 0
+            ? servicePicksForThisCharge
+            : undefined,
         selectedRouteStopIds: routeExecuteArg,
         selectedMerchandiseLineIds: merchExecuteArg,
       });
 
-      if (!r.accepted && (r.errorCode === "stripe_no_customer")) {
+      if (!r.accepted && r.errorCode === "stripe_no_customer") {
         toast.error(
-          r.stripeErrorMessage ?? "Debés tener un cliente Stripe (tarjetas en perfil).",
+          r.stripeErrorMessage ??
+            "Debés tener un cliente Stripe (tarjetas en perfil).",
         );
         return;
       }
-      if (!r.accepted && (r.errorCode === "checkout_invalid")) {
-        toast.error(
-          r.stripeErrorMessage ?? "Los montos ya no aplican.",
-        );
+      if (!r.accepted && r.errorCode === "checkout_invalid") {
+        toast.error(r.stripeErrorMessage ?? "Los montos ya no aplican.");
         await reloadCheckout();
         return;
       }
@@ -1101,6 +1179,14 @@ export function ChatPaymentModal({
         toast.error(
           r.stripeErrorMessage ??
             "Ese tramo ya fue cobrado en esa moneda. Actualizamos el listado.",
+        );
+        await reloadCheckout();
+        return;
+      }
+      if (!r.accepted && r.errorCode === "merchandise_line_already_paid") {
+        toast.error(
+          r.stripeErrorMessage ??
+            "Esa mercadería ya fue cobrada en esa moneda. Actualizamos el listado.",
         );
         await reloadCheckout();
         return;
@@ -1158,6 +1244,7 @@ export function ChatPaymentModal({
     } catch (e) {
       toast.error((e as Error)?.message ?? "No se pudo completar el pago.");
     } finally {
+      payFlightRef.current = false;
       endChatPaymentExecute(threadId);
       setBusyPay(false);
     }
@@ -1198,11 +1285,14 @@ export function ChatPaymentModal({
                 <CreditCard size={18} aria-hidden /> Pago del acuerdo
               </div>
               <p className="vt-muted mt-1 text-[12px] leading-snug">
-                Elegí acuerdo con el selector. En acuerdos con mercancía y/o hoja de ruta marcá qué líneas de
-                mercadería incluís y si sumás la hoja de ruta (todos los tramos pendientes); el desglose se
-                actualiza al cambiar la selección. En acuerdos solo servicios, elegí las cuotas a pagar. La
-                referencia Climate ({paymentFeeLabels.climateRateDisplay}) y la tarifa Stripe estimada (
-                {paymentFeeLabels.stripePctDisplay} + fijo) son informativas y no se suman al cargo.
+                Elegí acuerdo con el selector. En acuerdos con mercancía y/o
+                hoja de ruta marcá qué líneas de mercadería incluís y si sumás
+                la hoja de ruta (todos los tramos pendientes); el desglose se
+                actualiza al cambiar la selección. En acuerdos solo servicios,
+                elegí las cuotas a pagar. La referencia Climate (
+                {paymentFeeLabels.climateRateDisplay}) y la tarifa Stripe
+                estimada ({paymentFeeLabels.stripePctDisplay} + fijo) son
+                informativas y no se suman al cargo.
               </p>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5 text-right">
@@ -1214,24 +1304,25 @@ export function ChatPaymentModal({
               >
                 Precios / políticas Stripe
               </a>
-              {feePolicyQrDataUrl ?
+              {feePolicyQrDataUrl ? (
                 <img
                   src={feePolicyQrDataUrl}
                   alt="Código QR a precios Stripe"
                   className="size-14 rounded-md border border-[var(--border)] bg-white p-0.5"
                 />
-              : null}
+              ) : null}
             </div>
           </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 space-y-3">
-          {!hasAgreement ?
+          {!hasAgreement ? (
             <p className="text-[13px] text-[var(--text)] leading-snug">
-              No hay un acuerdo aceptado en este chat. El vendedor debe emitir uno y vos aceptarlo
-              antes de pagar aquí.
+              No hay un acuerdo aceptado en este chat. El vendedor debe emitir
+              uno y vos aceptarlo antes de pagar aquí.
             </p>
-          : <>
+          ) : (
+            <>
               <label className="flex flex-col gap-1">
                 <span className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
                   Acuerdo
@@ -1255,15 +1346,17 @@ export function ChatPaymentModal({
                     Mercancía a incluir en este cobro
                   </div>
                   <p className="vt-muted mt-1 text-[12px] leading-snug">
-                    Marcá cada ítem de mercadería que quieras sumar al informe y al cobro. Desmarcar actualiza el
-                    desglose al instante.
+                    Marcá cada ítem de mercadería que quieras sumar al informe y
+                    al cobro. Desmarcar actualiza el desglose al instante.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       type="button"
                       className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
                       onClick={() =>
-                        setSelectedMerchandiseLineIds(payableMerchLines.map((m) => m.id))
+                        setSelectedMerchandiseLineIds(
+                          payableMerchLines.map((m) => m.id),
+                        )
                       }
                     >
                       Seleccionar todo
@@ -1301,7 +1394,9 @@ export function ChatPaymentModal({
                           />
                           <span className="min-w-0">
                             <span className="font-bold">{m.title}</span>
-                            <span className="vt-muted mt-0.5 block text-[12px]">{m.subtitle}</span>
+                            <span className="vt-muted mt-0.5 block text-[12px]">
+                              {m.subtitle}
+                            </span>
                           </span>
                         </label>
                       );
@@ -1313,8 +1408,10 @@ export function ChatPaymentModal({
                 agreementDeclaresMerchandise(selectedAgreement) &&
                 selectedAgreement.merchandise.length > 0 ? (
                 <div className="rounded-2xl border border-amber-500/35 bg-[color-mix(in_oklab,amber_8%,var(--surface))] p-3 text-[12px] leading-snug text-[var(--text)]">
-                  Hay mercancía en el acuerdo pero las líneas no tienen identificador persistido; no se puede
-                  desglosar por ítem hasta que el vendedor vuelva a emitir o actualice el acuerdo en el sistema.
+                  Hay mercancía en el acuerdo pero las líneas no tienen
+                  identificador persistido; no se puede desglosar por ítem hasta
+                  que el vendedor vuelva a emitir o actualice el acuerdo en el
+                  sistema.
                 </div>
               ) : null}
 
@@ -1324,17 +1421,20 @@ export function ChatPaymentModal({
                     Transporte (hoja de ruta)
                   </div>
                   <p className="vt-muted mt-1 text-[12px] leading-snug">
-                    Incluí la hoja de ruta en este cobro para sumar todos los tramos pendientes de transporte.
-                    Podés combinarlo con la mercancía seleccionada arriba; cada cambio actualiza el desglose.
+                    Incluí la hoja de ruta en este cobro para sumar todos los
+                    tramos pendientes de transporte. Podés combinarlo con la
+                    mercancía seleccionada arriba; cada cambio actualiza el
+                    desglose.
                   </p>
                   {!agreementRouteSheet ? (
                     <p className="vt-muted mt-2 text-[13px]">
-                      No encontramos la hoja de ruta en este chat todavía. Abrí el chat para sincronizar rutas y
-                      volvé a intentar.
+                      No encontramos la hoja de ruta en este chat todavía. Abrí
+                      el chat para sincronizar rutas y volvé a intentar.
                     </p>
                   ) : unpaidPayableRouteStops.length === 0 ? (
                     <p className="vt-muted mt-2 text-[13px]">
-                      No hay tramos de transporte pendientes de cobro (o ya están registrados como pagados).
+                      No hay tramos de transporte pendientes de cobro (o ya
+                      están registrados como pagados).
                     </p>
                   ) : (
                     <>
@@ -1363,20 +1463,20 @@ export function ChatPaymentModal({
                             `${p.orden}. ${(p.origen ?? "").trim()} → ${(p.destino ?? "").trim()}`.trim();
                           const price =
                             (p.precioTransportista ?? "").trim() &&
-                            (p.monedaPago ?? "").trim() ?
-                              `${p.precioTransportista} ${p.monedaPago}`
-                            : (p.precioTransportista ?? "").trim();
+                            (p.monedaPago ?? "").trim()
+                              ? `${p.precioTransportista} ${p.monedaPago}`
+                              : (p.precioTransportista ?? "").trim();
                           return (
                             <li
                               key={id}
                               className="rounded-lg border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] px-2.5 py-2"
                             >
                               <span className="font-bold">{label}</span>
-                              {price ?
+                              {price ? (
                                 <span className="vt-muted mt-0.5 block text-[11px]">
                                   Transporte: {price}
                                 </span>
-                              : null}
+                              ) : null}
                             </li>
                           );
                         })}
@@ -1407,9 +1507,9 @@ export function ChatPaymentModal({
                     Servicios a pagar
                   </div>
                   <p className="vt-muted mt-1 text-[12px] leading-snug">
-                    {serviceOnlyAgreement ?
-                      "Este acuerdo contiene solo servicios. Selecciona uno o varios servicios y, para cada uno, la recurrencia a pagar. Las ya cobradas no aparecen."
-                    : "Este acuerdo incluye servicios: marcá servicios y recurrencias si querés sumarlos a este cobro (podés combinarlos con mercancía y la hoja de ruta). Cada cambio actualiza el desglose."}
+                    {serviceOnlyAgreement
+                      ? "Este acuerdo contiene solo servicios. Selecciona uno o varios servicios y, para cada uno, la recurrencia a pagar. Las ya cobradas no aparecen."
+                      : "Este acuerdo incluye servicios: marcá servicios y recurrencias si querés sumarlos a este cobro (podés combinarlos con mercancía y la hoja de ruta). Cada cambio actualiza el desglose."}
                   </p>
                   {serviceItems.length === 0 ? (
                     <p className="vt-muted mt-2 text-[13px]">
@@ -1433,8 +1533,10 @@ export function ChatPaymentModal({
                         const hasUnpaid = unpaidEntryOptions.length > 0;
                         const checked =
                           hasUnpaid &&
-                          (selectedServiceEntriesByServiceId[sv.id]?.length ?? 0) > 0;
-                        const pickedKeys = selectedServiceEntriesByServiceId[sv.id] ?? [];
+                          (selectedServiceEntriesByServiceId[sv.id]?.length ??
+                            0) > 0;
+                        const pickedKeys =
+                          selectedServiceEntriesByServiceId[sv.id] ?? [];
                         if (!hasUnpaid) {
                           return (
                             <div
@@ -1445,7 +1547,8 @@ export function ChatPaymentModal({
                                 {sv.tipoServicio || "Servicio"}
                               </div>
                               <p className="vt-muted mt-1 mb-0 text-[12px] leading-snug">
-                                Todas las recurrencias de este servicio ya fueron cobradas.
+                                Todas las recurrencias de este servicio ya
+                                fueron cobradas.
                               </p>
                             </div>
                           );
@@ -1462,20 +1565,31 @@ export function ChatPaymentModal({
                                 checked={checked}
                                 onChange={(e) => {
                                   const nextOn = e.target.checked;
-                                  setSelectedServiceEntriesByServiceId((prev) => {
-                                    if (nextOn) {
-                                      const first = unpaidEntryOptions[0]?.raw;
-                                      const def =
-                                        first ? [`${first.month}-${first.day}`] : [];
-                                      return { ...prev, [sv.id]: prev[sv.id]?.length ? prev[sv.id] : def };
-                                    }
-                                    const { [sv.id]: _drop, ...rest } = prev;
-                                    return rest;
-                                  });
+                                  setSelectedServiceEntriesByServiceId(
+                                    (prev) => {
+                                      if (nextOn) {
+                                        const first =
+                                          unpaidEntryOptions[0]?.raw;
+                                        const def = first
+                                          ? [`${first.month}-${first.day}`]
+                                          : [];
+                                        return {
+                                          ...prev,
+                                          [sv.id]: prev[sv.id]?.length
+                                            ? prev[sv.id]
+                                            : def,
+                                        };
+                                      }
+                                      const { [sv.id]: _drop, ...rest } = prev;
+                                      return rest;
+                                    },
+                                  );
                                   setAcceptedInforme(false);
                                 }}
                               />
-                              <span className="min-w-0 break-words">{sv.tipoServicio || "Servicio"}</span>
+                              <span className="min-w-0 break-words">
+                                {sv.tipoServicio || "Servicio"}
+                              </span>
                             </label>
                             {checked ? (
                               <div className="mt-2">
@@ -1485,13 +1599,16 @@ export function ChatPaymentModal({
                                 <VtMultiSelect
                                   value={pickedKeys}
                                   onChange={(next) => {
-                                    setSelectedServiceEntriesByServiceId((prev) => {
-                                      if (next.length === 0) {
-                                        const { [sv.id]: _drop, ...rest } = prev;
-                                        return rest;
-                                      }
-                                      return { ...prev, [sv.id]: next };
-                                    });
+                                    setSelectedServiceEntriesByServiceId(
+                                      (prev) => {
+                                        if (next.length === 0) {
+                                          const { [sv.id]: _drop, ...rest } =
+                                            prev;
+                                          return rest;
+                                        }
+                                        return { ...prev, [sv.id]: next };
+                                      },
+                                    );
                                     setAcceptedInforme(false);
                                   }}
                                   options={unpaidEntryOptions.map((o) => ({
@@ -1512,11 +1629,15 @@ export function ChatPaymentModal({
               ) : null}
 
               {!checkoutSelectionsReady &&
-              !(serviceOnlyAgreement && allRecurrencesPaidVerified && !busyPay) ? (
+              !(
+                serviceOnlyAgreement &&
+                allRecurrencesPaidVerified &&
+                !busyPay
+              ) ? (
                 <div className="rounded-2xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3 text-[13px] leading-snug text-[var(--text)]">
-                  {serviceOnlyAgreement ?
-                    "Selecciona al menos un servicio y una recurrencia para ver el desglose de pago."
-                  : "Marcá al menos una opción: mercancía, tramo de ruta o cuota de servicio (según corresponda al acuerdo)."}
+                  {serviceOnlyAgreement
+                    ? "Selecciona al menos un servicio y una recurrencia para ver el desglose de pago."
+                    : "Marcá al menos una opción: mercancía, tramo de ruta o cuota de servicio (según corresponda al acuerdo)."}
                 </div>
               ) : serviceOnlyAgreement &&
                 allRecurrencesPaidVerified &&
@@ -1554,9 +1675,15 @@ export function ChatPaymentModal({
                     <div key={e}>• {e}</div>
                   ))}
                 </div>
-              ) : breakdown && breakdown.ok && breakdown.byCurrency.length === 0 ? (
-                <div className="vt-muted text-[13px]">Sin montos a cobrar en este momento.</div>
-              ) : breakdown && breakdown.ok && breakdown.byCurrency.length > 0 ? (
+              ) : breakdown &&
+                breakdown.ok &&
+                breakdown.byCurrency.length === 0 ? (
+                <div className="vt-muted text-[13px]">
+                  Sin montos a cobrar en este momento.
+                </div>
+              ) : breakdown &&
+                breakdown.ok &&
+                breakdown.byCurrency.length > 0 ? (
                 <>
                   <section className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
                     <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
@@ -1576,17 +1703,19 @@ export function ChatPaymentModal({
                               className="rounded-lg border border-[color-mix(in_oklab,#f59e0b_45%,var(--border))] bg-[color-mix(in_oklab,#f59e0b_10%,var(--surface))] px-2.5 py-1.5 text-[11px] leading-snug text-[var(--text)]"
                               role="note"
                             >
-                              <span className="font-black">Aviso:</span> Climate + Stripe estimado (~
-                              {fmt(refCombo, c)}) es solo referencia; no se suma al cobro con tarjeta (
-                              {fmt(bc.totalMinor, c)}).
+                              <span className="font-black">Aviso:</span> Climate
+                              + Stripe estimado (~
+                              {fmt(refCombo, c)}) es solo referencia; no se suma
+                              al cobro con tarjeta ({fmt(bc.totalMinor, c)}).
                             </div>
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="text-[13px] font-black">
-                                Moneda {c.toUpperCase()}{paid ?
+                                Moneda {c.toUpperCase()}
+                                {paid ? (
                                   <span className="vt-muted ml-2 text-[11px] font-bold">
                                     — cobro OK
                                   </span>
-                                : null}
+                                ) : null}
                               </div>
                               <div className="text-right">
                                 <div className="font-mono text-[13px] font-bold">
@@ -1599,15 +1728,29 @@ export function ChatPaymentModal({
                             </div>
                             <div className="vt-muted mt-1 grid gap-0.5 text-[12px]">
                               <div>
-                                Referencia Climate ({paymentFeeLabels.climateRateDisplay}):{" "}
-                                {fmt(bc.climateMinor, c)} · Tarifa Stripe est. ({paymentFeeLabels.stripePctDisplay}
-                                ): {fmt(bc.stripeFeeMinor, c)} · Combinado ref.: {fmt(refCombo, c)}
+                                Referencia Climate (
+                                {paymentFeeLabels.climateRateDisplay}):{" "}
+                                {fmt(bc.climateMinor, c)} · Tarifa Stripe est. (
+                                {paymentFeeLabels.stripePctDisplay}
+                                ): {fmt(bc.stripeFeeMinor, c)} · Combinado ref.:{" "}
+                                {fmt(refCombo, c)}
                               </div>
                             </div>
-                            <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-[12px] text-[var(--text)] opacity-92">
+                            <ul className="mt-1.5 list-none space-y-2 text-[12px] text-[var(--text)] opacity-92">
                               {bc.lines.map((ln, ix) => (
-                                <li key={`${ln.label}-${ix}`}>
-                                  {ln.label} — <span className="font-mono">{fmt(ln.amountMinor, c)}</span>
+                                <li
+                                  key={`${ln.label}-${ix}`}
+                                  className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-[color-mix(in_oklab,var(--border)_55%,transparent)] pb-2 last:border-b-0 last:pb-0"
+                                >
+                                  <span className="min-w-0 max-w-full flex-[1_1_10rem] break-words [overflow-wrap:anywhere] leading-snug">
+                                    <span className="font-bold text-[var(--muted)]">
+                                      •{" "}
+                                    </span>
+                                    {sanitizePaymentInformeLabel(ln.label)}
+                                  </span>
+                                  <span className="ml-auto shrink-0 font-mono font-semibold tabular-nums">
+                                    {fmt(ln.amountMinor, c)}
+                                  </span>
                                 </li>
                               ))}
                             </ul>
@@ -1617,14 +1760,14 @@ export function ChatPaymentModal({
                     </div>
                   </section>
 
-                  {previews.length > 0 ?
+                  {previews.length > 0 ? (
                     <section>
                       <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
                         Previsualización de adjuntos
                       </div>
                       <div className="mt-2 grid gap-3 sm:grid-cols-2">
                         {previews.map((p) =>
-                          p.kind === "image" ?
+                          p.kind === "image" ? (
                             <div
                               key={p.url}
                               className="overflow-hidden rounded-xl border border-[var(--border)]"
@@ -1639,7 +1782,7 @@ export function ChatPaymentModal({
                                 className="max-h-[180px] w-full object-contain"
                               />
                             </div>
-                          : (
+                          ) : (
                             <a
                               key={p.url}
                               href={p.url}
@@ -1653,7 +1796,7 @@ export function ChatPaymentModal({
                         )}
                       </div>
                     </section>
-                  : null}
+                  ) : null}
 
                   <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_52%,var(--surface))] p-3 text-[13px] leading-snug">
                     <input
@@ -1663,9 +1806,10 @@ export function ChatPaymentModal({
                       onChange={(e) => setAcceptedInforme(e.target.checked)}
                     />
                     <span>
-                      Confirmé el desglose: el cobro es el subtotal del acuerdo; las líneas Climate y Stripe
-                      son referencias informativas. Revisé conceptos incluidos y adjuntos del vendedor antes de
-                      pagar con Stripe.
+                      Confirmé el desglose: el cobro es el subtotal del acuerdo;
+                      las líneas Climate y Stripe son referencias informativas.
+                      Revisé conceptos incluidos y adjuntos del vendedor antes
+                      de pagar con Stripe.
                     </span>
                   </label>
 
@@ -1683,12 +1827,12 @@ export function ChatPaymentModal({
                 </>
               ) : !busyInit && !breakdown ? (
                 <p className="vt-muted text-[13px] leading-snug">
-                  No pudimos obtener el informe desde el servidor. Revisa la conexión o volvé a intentar más
-                  tarde.
+                  No pudimos obtener el informe desde el servidor. Revisa la
+                  conexión o volvé a intentar más tarde.
                 </p>
               ) : null}
 
-              {!allPaid && breakdown?.ok ?
+              {!allPaid && breakdown?.ok ? (
                 <button
                   type="button"
                   className="vt-btn vt-btn-ghost w-full justify-center text-[13px]"
@@ -1700,20 +1844,20 @@ export function ChatPaymentModal({
                 >
                   Abrir configuración de tarjetas en el perfil
                 </button>
-              : null}
+              ) : null}
             </>
-          }
+          )}
         </div>
 
         <div className="vt-modal-actions flex flex-col gap-3 border-t border-[var(--border)] px-4 py-3">
           {allPaid &&
-          !(serviceOnlyAgreement && allRecurrencesPaidVerified && !busyPay) ?
+          !(serviceOnlyAgreement && allRecurrencesPaidVerified && !busyPay) ? (
             <div className="rounded-xl px-3 py-2 text-[13px] font-bold text-emerald-600">
               Cobros listos en todas las monedas necesarias del acuerdo.
             </div>
-          : null}
+          ) : null}
 
-          {!allPaid && hasAgreement && !cards.length ?
+          {!allPaid && hasAgreement && !cards.length ? (
             <button
               type="button"
               className="vt-btn vt-btn-primary w-full sm:ml-auto sm:w-auto"
@@ -1725,12 +1869,12 @@ export function ChatPaymentModal({
             >
               Ir al perfil a guardar tarjeta
             </button>
-          : null}
+          ) : null}
 
           {!allPaid &&
           hasAgreement &&
           cards.length > 0 &&
-          pendingCurrencies.length > 0 ?
+          pendingCurrencies.length > 0 ? (
             <div className="flex flex-col gap-3">
               {pendingCurrencies.map((cur) => {
                 const curOk = cur.trim().length >= 3;
@@ -1760,22 +1904,20 @@ export function ChatPaymentModal({
                         className="vt-btn shrink-0"
                         disabled={payDisabled}
                         title={
-                          pendingCurrencies.length > 1 ?
-                            "Un cobro por moneda; podés completar las demás después."
-                          : undefined
+                          pendingCurrencies.length > 1
+                            ? "Un cobro por moneda; podés completar las demás después."
+                            : undefined
                         }
                         onClick={() => void handlePayCurrency(cur)}
                       >
-                        {busyPay ?
-                          "Procesando…"
-                        : `Pagar ${cur.toUpperCase()}`}
+                        {busyPay ? "Procesando…" : `Pagar ${cur.toUpperCase()}`}
                       </button>
                     </div>
                   </div>
                 );
               })}
             </div>
-          : null}
+          ) : null}
 
           <button
             type="button"

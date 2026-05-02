@@ -24,17 +24,26 @@ export function buildChatParticipants(
   seller: StoreBadge,
   carriers?: ThreadChatCarrier[],
 ): ChatParticipant[] {
-  const out: ChatParticipant[] = [
-    {
-      id: buyer.id,
-      name: buyer.name,
-      role: 'buyer',
-      roleLabel: 'Comprador',
-      trustScore: buyer.trustScore,
-      avatarUrl: buyer.avatarUrl,
-      href: `/profile/${buyer.id}`,
-    },
-    {
+  const buyerId = buyer.id.trim()
+  const sellerId = (seller.ownerUserId ?? seller.id).trim()
+  const seen = new Set<string>()
+  const out: ChatParticipant[] = []
+
+  const buyerHref =
+    buyerId.startsWith('vt-thread-buyer:') ? '#' : `/profile/${buyer.id}`
+  out.push({
+    id: buyer.id,
+    name: buyer.name,
+    role: 'buyer',
+    roleLabel: 'Comprador',
+    trustScore: buyer.trustScore,
+    avatarUrl: buyer.avatarUrl,
+    href: buyerHref,
+  })
+  seen.add(buyerId)
+
+  if (!seen.has(sellerId)) {
+    out.push({
       id: seller.ownerUserId ?? seller.id,
       name: seller.name,
       role: 'seller',
@@ -43,10 +52,16 @@ export function buildChatParticipants(
       verified: seller.verified,
       avatarUrl: seller.avatarUrl,
       href: `/store/${seller.id}/vitrina`,
-    },
-  ]
+    })
+    seen.add(sellerId)
+  }
+
   if (carriers?.length) {
     for (const c of carriers) {
+      const cid = (c.id ?? '').trim()
+      if (!cid || seen.has(cid)) continue
+      if (cid === buyerId || cid === sellerId) continue
+      seen.add(cid)
       out.push({
         id: c.id,
         name: c.name,
