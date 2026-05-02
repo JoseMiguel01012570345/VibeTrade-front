@@ -32,6 +32,7 @@ import {
   expandedTramoDestinoCoords,
   expandedTramoOrigenCoords,
   parseRouteLatLngInputPair,
+  tiempoRecogidaChainedFromPrevEntrega,
   tramosToLimpios,
 } from "../../lib/routeSheetTramoFormUtils";
 import {
@@ -68,6 +69,7 @@ import {
   getRouteSheetFormErrors,
   hasRouteSheetFormErrors,
   normalizeRouteSheetParadas,
+  persistedRouteSheetInviteFieldsDirty,
   routeSheetFormErrorCount,
   validateRouteCoordPair,
 } from "../../domain/routeSheetValidation";
@@ -551,7 +553,16 @@ export function RouteSheetFormModal({
       paradas: paradasFinal,
     };
     if (initialRouteSheet && editBaselineJsonRef.current !== null) {
-      if (JSON.stringify(payload) === editBaselineJsonRef.current) {
+      const unchangedVsBaseline =
+        JSON.stringify(payload) === editBaselineJsonRef.current;
+      const inviteDirty =
+        persistedRouteSheetInviteFieldsDirty(
+          initialRouteSheet,
+          paradasFinal,
+        ) ||
+        preselInvitesForTramoPhoneEdits(initialRouteSheet, paradasFinal)
+          .length > 0;
+      if (unchangedVsBaseline && !inviteDirty) {
         toast.error("No hay cambios para guardar.");
         return;
       }
@@ -696,7 +707,12 @@ export function RouteSheetFormModal({
 
     let newRow: RouteTramoFormInput;
     if (ins === n) {
-      newRow = emptyTramo();
+      const last = n > 0 ? tramos[n - 1] : null;
+      const chained = tiempoRecogidaChainedFromPrevEntrega(last ?? null);
+      newRow =
+        chained.length > 0
+          ? { ...emptyTramo(), tiempoRecogidaEstimado: chained }
+          : emptyTramo();
     } else if (ins === 0) {
       const head = tramos[0];
       newRow = head ? emptyTramoInsertedBeforeFirst(head) : emptyTramo();

@@ -1,4 +1,5 @@
 import type { RouteTramoFormInput } from "../domain/routeSheetTypes";
+import { ROUTE_ESTIMADO_ISO_LOCAL_RE } from "../domain/routeSheetDateTime";
 import {
   emergentMapRouteSegmentColors,
   type EmergentMapLeg,
@@ -103,9 +104,27 @@ function tramoFormWithEndpointsOnly(endpoints: {
   };
 }
 
+export function tiempoRecogidaChainedFromPrevEntrega(
+  prev: RouteTramoFormInput | null,
+): string {
+  if (!prev) return "";
+  const ent = prev.tiempoEntregaEstimado?.trim() ?? "";
+  if (ent && ROUTE_ESTIMADO_ISO_LOCAL_RE.test(ent)) return ent;
+  return "";
+}
+
+/** Entrega estimada del tramo nuevo = recogida estimada del siguiente (ISO local completo). */
+export function tiempoEntregaChainedFromNextRecogida(
+  next: RouteTramoFormInput,
+): string {
+  const rec = next.tiempoRecogidaEstimado?.trim() ?? "";
+  if (rec && ROUTE_ESTIMADO_ISO_LOCAL_RE.test(rec)) return rec;
+  return "";
+}
+
 /**
- * Tramo nuevo entre `prev` y `next`: solo se rellenan origen y destino (lugar + coords);
- * tiempos, precio, carga, moneda, transportista, etc. quedan vacíos.
+ * Tramo nuevo entre `prev` y `next`: origen/destino encadenados;
+ * recogida estimada = entrega del anterior; entrega estimada = recogida del siguiente (si son ISO completos).
  */
 export function emptyTramoInsertedBetween(
   prev: RouteTramoFormInput,
@@ -113,14 +132,20 @@ export function emptyTramoInsertedBetween(
 ): RouteTramoFormInput {
   const oEnd = effectiveDestino(prev);
   const oStart = effectiveOrigen(next, prev);
-  return tramoFormWithEndpointsOnly({
-    origen: oEnd.text,
-    origenLat: oEnd.lat,
-    origenLng: oEnd.lng,
-    destino: oStart.text,
-    destinoLat: oStart.lat,
-    destinoLng: oStart.lng,
-  });
+  const chainedRecogida = tiempoRecogidaChainedFromPrevEntrega(prev);
+  const chainedEntrega = tiempoEntregaChainedFromNextRecogida(next);
+  return {
+    ...tramoFormWithEndpointsOnly({
+      origen: oEnd.text,
+      origenLat: oEnd.lat,
+      origenLng: oEnd.lng,
+      destino: oStart.text,
+      destinoLat: oStart.lat,
+      destinoLng: oStart.lng,
+    }),
+    tiempoRecogidaEstimado: chainedRecogida,
+    tiempoEntregaEstimado: chainedEntrega,
+  };
 }
 
 /**

@@ -10,6 +10,14 @@ function mapOfferNotificationKind(k: string | null | undefined): OfferNotifKind 
   return 'offer_comment'
 }
 
+/** Si el JSON viene truncado o con claves raras, intentamos sacar `routeSheetId` del texto. */
+function extractQuotedJsonStringField(raw: string, field: string): string | undefined {
+  const re = new RegExp(`"${field}"\\s*:\\s*"([^"]*)"`, 'i')
+  const m = raw.match(re)
+  const v = m?.[1]?.trim()
+  return v && v.length > 0 ? v : undefined
+}
+
 function parseRouteTramoMeta(metaJson: string | null | undefined): Pick<
   NotificationItem,
   | 'routeSheetId'
@@ -18,9 +26,10 @@ function parseRouteTramoMeta(metaJson: string | null | undefined): Pick<
   | 'preselStopIds'
   | 'storeServiceId'
 > {
-  if (!metaJson?.trim()) return {}
+  const raw = metaJson?.trim()
+  if (!raw) return {}
   try {
-    const j = JSON.parse(metaJson) as Record<string, unknown>
+    const j = JSON.parse(raw) as Record<string, unknown>
     const routeSheetIdRaw =
       typeof j.routeSheetId === 'string' ?
         j.routeSheetId
@@ -72,15 +81,24 @@ function parseRouteTramoMeta(metaJson: string | null | undefined): Pick<
       : ''
     if (!storeServiceId && storeServiceIdRoot) storeServiceId = storeServiceIdRoot
 
+    let sheetId = routeSheetId
+    if (!sheetId)
+      sheetId =
+        extractQuotedJsonStringField(raw, 'routeSheetId') ??
+        extractQuotedJsonStringField(raw, 'RouteSheetId')
+
     return {
-      ...(routeSheetId ? { routeSheetId } : {}),
+      ...(sheetId ? { routeSheetId: sheetId } : {}),
       ...(stopId ? { stopId } : {}),
       ...(carrierUserId ? { highlightCarrierUserId: carrierUserId } : {}),
       ...(preselStopIds ? { preselStopIds } : {}),
       ...(storeServiceId ? { storeServiceId } : {}),
     }
   } catch {
-    return {}
+    const sheetId =
+      extractQuotedJsonStringField(raw, 'routeSheetId') ??
+      extractQuotedJsonStringField(raw, 'RouteSheetId')
+    return sheetId ? { routeSheetId: sheetId } : {}
   }
 }
 

@@ -110,6 +110,8 @@ export function routeOfferPublicFromThreadRouteSheet(
       notas: p.notas?.trim() || undefined,
       requisitosEspeciales: p.requisitosEspeciales?.trim() || undefined,
       telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+      transportInvitedStoreServiceId: p.transportInvitedStoreServiceId?.trim() || undefined,
+      transportInvitedServiceSummary: p.transportInvitedServiceSummary?.trim() || undefined,
       monedaPago: p.monedaPago?.trim() || undefined,
       osrmRoadKm:
         typeof p.osrmRoadKm === "number" && Number.isFinite(p.osrmRoadKm)

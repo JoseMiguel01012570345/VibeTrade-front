@@ -4,6 +4,7 @@ import {
   apiErrorTextToUserMessage,
   defaultUnexpectedErrorMessage,
 } from '../http/apiErrorMessage'
+import { VtHttpError } from '../http/VtHttpError'
 import { getSessionToken } from '../http/sessionToken'
 
 /** Mensaje para toasts; no exponer JSON crudo ni `{ error, message }` completo. */
@@ -12,6 +13,18 @@ function chatApiErrorMessage(body: string, httpStatus: number): string {
     apiErrorTextToUserMessage(body, defaultUnexpectedErrorMessage()) ||
     `HTTP ${httpStatus}`
   )
+}
+
+function throwVtHttpFromChatResponse(res: Response, bodyText: string): never {
+  const msg = chatApiErrorMessage(bodyText, res.status)
+  let code: string | undefined;
+  try {
+    const j = JSON.parse(bodyText) as { error?: unknown; message?: unknown }
+    if (typeof j?.error === 'string' && j.error.trim()) code = j.error.trim()
+  } catch {
+    code = undefined
+  }
+  throw new VtHttpError(msg, { status: res.status, code, bodyText })
 }
 
 export type ChatThreadDto = {
@@ -246,7 +259,7 @@ export async function postPartySoftLeaveChatThread(
   )
   if (!res.ok) {
     const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    throwVtHttpFromChatResponse(res, t)
   }
   const ct = res.headers.get('content-type') ?? ''
   if (ct.includes('application/json')) {

@@ -70,26 +70,33 @@ export function normRoutePhoneKey(phone: string | undefined): string {
 export type RouteSheetPreselectedInvite = { stopId: string; phone: string };
 
 /**
- * Invitaciones presel solo donde el teléfono del tramo cambió respecto a la hoja previa
- * (misma parada por `paradaId`; sin id de parada persistida no se presel-notifica — p. ej. tramo recién insertado).
+ * Tramos a enviar en `notify-preselected` tras guardar: cambió el teléfono respecto a la hoja previa
+ * o se añadió/cambió una invitación por ficha de servicio (sin retirar la ficha). Así un mismo número en otro
+ * tramo dispara aviso aunque el teléfono ya figuraba igual en el formulario.
+ * Usa `resolveRouteStopIdForFormRow` como el resto del flujo de oferta/hoja.
  */
 export function preselInvitesForTramoPhoneEdits(
   initial: RouteSheet | null | undefined,
   paradasFinal: RouteSheetCreatePayload["paradas"],
 ): RouteSheetPreselectedInvite[] {
   const invites: RouteSheetPreselectedInvite[] = [];
+  const initialStops = initial?.paradas ?? [];
   for (let i = 0; i < paradasFinal.length; i++) {
     const p = paradasFinal[i]!;
-    const stopId = p.paradaId?.trim() || "";
     const nu = p.telefonoTransportista?.trim() ?? "";
-    if (!stopId || !nu) continue;
-    const oldStop = initial?.paradas.find(
-      (x) => (x.id ?? "").trim() === stopId,
-    );
+    if (!nu) continue;
+    const stopId =
+      resolveRouteStopIdForFormRow(p.paradaId, initialStops[i])?.trim() ?? "";
+    if (!stopId) continue;
+    const oldStop = initialStops.find((x) => (x.id ?? "").trim() === stopId);
     const ou = oldStop?.telefonoTransportista?.trim() ?? "";
-    if (normRoutePhoneKey(ou) !== normRoutePhoneKey(nu)) {
-      invites.push({ stopId, phone: nu });
-    }
+    const phoneChanged = normRoutePhoneKey(ou) !== normRoutePhoneKey(nu);
+    const oldSvc = (oldStop?.transportInvitedStoreServiceId ?? "").trim();
+    const newSvc = (p.transportInvitedStoreServiceId ?? "").trim();
+    const inviteSvcAddedOrChanged =
+      newSvc.length > 0 && oldSvc !== newSvc;
+    if (!phoneChanged && !inviteSvcAddedOrChanged) continue;
+    invites.push({ stopId, phone: nu });
   }
   return invites;
 }
@@ -116,7 +123,7 @@ export function confirmedAssignmentOnStop(
  */
 export function resolveRouteStopIdForFormRow(
   formParadaId: string | undefined,
-  sheetParadaAtIndex: { id: string } | undefined,
+  sheetParadaAtIndex: { id?: string } | undefined,
 ): string | undefined {
   const a = formParadaId?.trim();
   if (a) return a;

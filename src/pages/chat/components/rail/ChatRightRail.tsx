@@ -24,6 +24,9 @@ export type { ContractFilter } from "./chatRailStyles";
 type Props = {
   threadId: string;
   threadStoreId: string;
+  /** IDs de comprador/vendedor del hilo (API); mejoran permisos UX en logística. */
+  buyerUserId?: string;
+  sellerUserId?: string;
   contracts: TradeAgreement[];
   routeSheets: RouteSheet[];
   contractsLoading?: boolean;
@@ -54,6 +57,8 @@ type Props = {
 export function ChatRightRail({
   threadId,
   threadStoreId,
+  buyerUserId,
+  sellerUserId,
   contracts,
   routeSheets,
   contractsLoading = false,
@@ -209,6 +214,9 @@ export function ChatRightRail({
       {tab === "routes" && (
         <ChatRightRailRoutesPanel
           bodyClassName={RAIL_BODY}
+          buyerUserId={buyerUserId}
+          sellerUserId={sellerUserId}
+          agreements={contracts}
           actionsLocked={actionsLocked}
           isActingSeller={isActingSeller}
           hasAcceptedContract={contracts.some((c) => c.status === "accepted")}

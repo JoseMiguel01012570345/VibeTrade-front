@@ -207,6 +207,9 @@ export type RouteOfferTramoPublic = {
   requisitosEspeciales?: string;
   /** Teléfono por tramo en la hoja (vendedor o post-validación de suscripción). */
   telefonoTransportista?: string;
+  /** Invitación por ficha de servicio indicada en la hoja (vendedor). */
+  transportInvitedStoreServiceId?: string;
+  transportInvitedServiceSummary?: string;
   /** Moneda del precio de este tramo en la hoja. */
   monedaPago?: string;
   /** Km por red (OSRM) persistidos en la hoja al guardar. */

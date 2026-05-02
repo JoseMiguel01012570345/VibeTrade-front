@@ -91,6 +91,8 @@ export type CreateStripePaymentIntentBody = {
     entryMonth: number;
     entryDay: number;
   }>;
+  /** Cobro parcial por tramos (paradas) del acuerdo con hoja de ruta; null = servidor usa checkout completo. */
+  selectedRouteStopIds?: string[] | null;
 };
 
 export type CreateStripePaymentIntentResult = {

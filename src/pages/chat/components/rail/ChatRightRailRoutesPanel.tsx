@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useShallow } from "zustand/react/shallow";
 import toast from "react-hot-toast";
@@ -6,6 +6,7 @@ import {
   Check,
   ChevronRight,
   EyeOff,
+  MapPinned,
   MapPin,
   Megaphone,
   Pencil,
@@ -20,6 +21,7 @@ import { postRouteSheetEditCarrierResponse } from "../../../../utils/chat/chatAp
 import { getSessionToken } from "../../../../utils/http/sessionToken";
 import { cn } from "../../../../lib/cn";
 import type { RouteOfferPublicState } from "../../../../app/store/marketStoreTypes";
+import type { TradeAgreement } from "../../domain/tradeAgreementTypes";
 import type { RouteSheet } from "../../domain/routeSheetTypes";
 import { formatRouteEstimadoDisplay } from "../../domain/routeSheetDateTime";
 import {
@@ -39,9 +41,35 @@ import { railItemClass } from "./chatRailStyles";
 import { statusPillOk, statusPillPending } from "../../styles/formModalStyles";
 import { TramoSubscribedServiceFicha } from "./TramoSubscribedServiceFicha";
 import { formatKmEs } from "../../../../utils/map/routeLegMetrics";
+import {
+  decideCarrierDeliveryEvidence,
+  fetchAgreementRouteDeliveries,
+  postCedeCarrierOwnership,
+  upsertCarrierDeliveryEvidence,
+  type RouteStopDeliveryStatusApi,
+} from "../../../../utils/chat/routeLogisticsApi";
+import { useCarrierLiveTelemetry } from "../../hooks/useCarrierLiveTelemetry";
+import { RouteSheetLiveTrackingModal } from "../modals/RouteSheetLiveTrackingModal";
+
+function CarrierTelemetryBridge(
+  args: Readonly<{
+    enabled: boolean;
+    threadId: string;
+    agreementId: string;
+    routeSheetId: string;
+    routeStopId: string;
+    minIntervalMs?: number;
+  }>,
+): null {
+  useCarrierLiveTelemetry(args);
+  return null;
+}
 
 type Props = {
   bodyClassName: string;
+  buyerUserId?: string;
+  sellerUserId?: string;
+  agreements: TradeAgreement[];
   actionsLocked: boolean;
   /** Dueño de la tienda del hilo: puede publicar u ocultar hojas. */
   isActingSeller: boolean;
@@ -77,6 +105,9 @@ type Props = {
 
 export function ChatRightRailRoutesPanel({
   bodyClassName,
+  buyerUserId,
+  sellerUserId,
+  agreements,
   actionsLocked,
   isActingSeller,
   hasAcceptedContract,
@@ -112,6 +143,64 @@ export function ChatRightRailRoutesPanel({
   const respondRouteSheetEdit = useMarketStore((s) => s.respondRouteSheetEdit);
   const removeThreadFromList = useMarketStore((s) => s.removeThreadFromList);
   const navigate = useNavigate();
+
+  const [liveMapOpen, setLiveMapOpen] = useState(false);
+  const [liveFocusStopId, setLiveFocusStopId] = useState<string | null>(null);
+  const [deliveriesByAgreement, setDeliveriesByAgreement] = useState<
+    Record<string, RouteStopDeliveryStatusApi[]>
+  >({});
+  const [logisticsBusyKey, setLogisticsBusyKey] = useState<string | null>(null);
+
+  const buyerUid = (buyerUserId ?? "").trim();
+  const sellerUid = (sellerUserId ?? "").trim();
+
+  const acceptedAgreements = useMemo(
+    () => agreements.filter((a) => a.status === "accepted"),
+    [agreements],
+  );
+
+  function agreementForSheet(routeSheetId: string): TradeAgreement | null {
+    const rsid = routeSheetId.trim();
+    if (rsid.length < 2) return null;
+    return (
+      acceptedAgreements.find(
+        (a) => (a.routeSheetId ?? "").trim() === rsid && !!a.includeMerchandise,
+      ) ?? null
+    );
+  }
+
+  async function refreshDeliveriesForAgreement(agreementId: string) {
+    const aid = agreementId.trim();
+    if (aid.length < 8) return;
+    try {
+      const rows = await fetchAgreementRouteDeliveries(threadId, aid);
+      setDeliveriesByAgreement((prev) => ({ ...prev, [aid]: rows }));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  useEffect(() => {
+    void (async () => {
+      const ids = acceptedAgreements.map((a) => a.id.trim()).filter((x) => x.length >= 8);
+      if (ids.length === 0) return;
+      const entries = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const rows = await fetchAgreementRouteDeliveries(threadId, id);
+            return [id, rows] as const;
+          } catch {
+            return [id, [] as RouteStopDeliveryStatusApi[]] as const;
+          }
+        }),
+      );
+      setDeliveriesByAgreement((prev) => {
+        const next = { ...prev };
+        for (const [id, rows] of entries) next[id] = rows;
+        return next;
+      });
+    })();
+  }, [threadId, acceptedAgreements]);
 
   const routeSheetCapReached = routeSheets.length >= agreementCount;
 
@@ -491,7 +580,56 @@ export function ChatRightRailRoutesPanel({
             </div>
           ) : null}
           <ul className="mb-0 mt-3 list-none space-y-0 p-0">
-            {selRoute.paradas.map((p) => (
+            {selRoute.paradas.map((p) => {
+              const agreement = agreementForSheet(selRoute.id);
+              const agreementId = (agreement?.id ?? "").trim();
+              const deliveries = agreementId ? deliveriesByAgreement[agreementId] ?? [] : [];
+              const row = deliveries.find(
+                (d) =>
+                  (d.routeSheetId ?? "").trim() === selRoute.id.trim() &&
+                  (d.routeStopId ?? "").trim() === (p.id ?? "").trim(),
+              );
+              const state = (row?.state ?? "unpaid").trim().toLowerCase();
+
+              const ot =
+                routeOfferResolved?.routeSheetId === selRoute.id
+                  ? routeOfferResolved.tramos.find((t) => t.stopId === p.id)
+                  : undefined;
+              const confirmedCarrier =
+                ot?.assignment?.status === "confirmed" ? (ot.assignment.userId ?? "").trim() : "";
+              const viewerIsBuyer = !!me.id && buyerUid.length > 1 && me.id === buyerUid;
+              const viewerIsSeller = !!me.id && sellerUid.length > 1 && me.id === sellerUid;
+              const viewerIsParty = viewerIsBuyer || viewerIsSeller;
+              const viewerIsOwnerCarrier =
+                !!me.id && confirmedCarrier.length > 1 && me.id === confirmedCarrier;
+
+              const canTrack =
+                !!agreement &&
+                agreementId.length >= 8 &&
+                !!row &&
+                state !== "unpaid" &&
+                !state.startsWith("refunded") &&
+                (viewerIsParty || viewerIsOwnerCarrier || isActingSeller);
+
+              const telemetryEnabled =
+                viewerIsOwnerCarrier &&
+                !!agreement &&
+                agreementId.length >= 8 &&
+                !!row &&
+                (state === "paid" ||
+                  state === "in_transit" ||
+                  state === "awaiting_carrier_for_handoff");
+
+              const busyKeyBase = `${agreementId}:${selRoute.id}:${p.id}`;
+
+              const activeLike =
+                state === "paid" ||
+                state === "in_transit" ||
+                state === "delivered_pending_evidence" ||
+                state === "evidence_submitted" ||
+                state === "evidence_rejected";
+
+              return (
               <li
                 key={p.id}
                 className="mb-2.5 list-none border-b border-dashed border-[color-mix(in_oklab,var(--border)_80%,transparent)] pb-2.5"
@@ -606,10 +744,6 @@ export function ChatRightRailRoutesPanel({
                   </div>
                 ) : null}
                 {(() => {
-                  const ot =
-                    routeOfferResolved?.routeSheetId === selRoute.id
-                      ? routeOfferResolved.tramos.find((t) => t.stopId === p.id)
-                      : undefined;
                   const tel = effectiveTramoContactPhone(p, ot);
                   return (
                     <>
@@ -629,8 +763,181 @@ export function ChatRightRailRoutesPanel({
                     </>
                   );
                 })()}
+
+                {agreement && agreementId.length >= 8 ?
+                  <div className="mt-2 rounded-xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] p-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                        Logística
+                      </div>
+                      <div className="text-[11px] font-bold text-[var(--text)]">
+                        Estado:{" "}
+                        <span className="font-mono">{row ? state : "sin registro"}</span>
+                      </div>
+                    </div>
+
+                    {telemetryEnabled && agreementId.length >= 8 ?
+                      <CarrierTelemetryBridge
+                        enabled
+                        threadId={threadId}
+                        agreementId={agreementId}
+                        routeSheetId={selRoute.id}
+                        routeStopId={p.id}
+                      />
+                    : null}
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
+                        disabled={!canTrack}
+                        title={
+                          !agreement ?
+                            "No hay un acuerdo aceptado con mercancías vinculado a esta hoja."
+                          : !row || state === "unpaid" ?
+                            "Este tramo aún no tiene cobro/logística activa registrada."
+                          : undefined
+                        }
+                        onClick={() => {
+                          setLiveFocusStopId(p.id);
+                          setLiveMapOpen(true);
+                        }}
+                      >
+                        <MapPinned size={14} aria-hidden /> Mapa en vivo
+                      </button>
+
+                      {activeLike && viewerIsOwnerCarrier ?
+                        <button
+                          type="button"
+                          className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
+                          disabled={!getSessionToken() || logisticsBusyKey === `${busyKeyBase}:cede`}
+                          onClick={() => {
+                            const target = globalThis.prompt(
+                              "UserId del transportista destino (ceder ownership)",
+                            );
+                            if (!target || !target.trim()) return;
+                            void (async () => {
+                              try {
+                                setLogisticsBusyKey(`${busyKeyBase}:cede`);
+                                await postCedeCarrierOwnership({
+                                  threadId,
+                                  agreementId,
+                                  routeSheetId: selRoute.id,
+                                  routeStopId: p.id,
+                                  targetCarrierUserId: target.trim(),
+                                });
+                                toast.success("Ownership cedido.");
+                                await refreshDeliveriesForAgreement(agreementId);
+                              } catch (e) {
+                                toast.error((e as Error)?.message ?? "No se pudo ceder ownership.");
+                              } finally {
+                                setLogisticsBusyKey(null);
+                              }
+                            })();
+                          }}
+                        >
+                          Ceder ownership
+                        </button>
+                      : null}
+
+                      {activeLike && viewerIsOwnerCarrier ?
+                        <button
+                          type="button"
+                          className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
+                          disabled={!getSessionToken() || logisticsBusyKey === `${busyKeyBase}:evid`}
+                          onClick={() => {
+                            const txt =
+                              globalThis.prompt("Nota breve para la evidencia de entrega", "") ?? "";
+                            void (async () => {
+                              try {
+                                setLogisticsBusyKey(`${busyKeyBase}:evid`);
+                                await upsertCarrierDeliveryEvidence({
+                                  threadId,
+                                  agreementId,
+                                  routeSheetId: selRoute.id,
+                                  routeStopId: p.id,
+                                  text: txt.trim(),
+                                  attachments: [],
+                                  submit: true,
+                                });
+                                toast.success("Evidencia enviada.");
+                                await refreshDeliveriesForAgreement(agreementId);
+                              } catch (e) {
+                                toast.error((e as Error)?.message ?? "No se pudo enviar evidencia.");
+                              } finally {
+                                setLogisticsBusyKey(null);
+                              }
+                            })();
+                          }}
+                        >
+                          Enviar evidencia
+                        </button>
+                      : null}
+
+                      {state === "evidence_submitted" && viewerIsParty ?
+                        <>
+                          <button
+                            type="button"
+                            className="vt-btn vt-btn-primary px-3 py-1 text-[12px]"
+                            disabled={!getSessionToken() || logisticsBusyKey === `${busyKeyBase}:acc`}
+                            onClick={() => {
+                              void (async () => {
+                                try {
+                                  setLogisticsBusyKey(`${busyKeyBase}:acc`);
+                                  await decideCarrierDeliveryEvidence({
+                                    threadId,
+                                    agreementId,
+                                    routeSheetId: selRoute.id,
+                                    routeStopId: p.id,
+                                    decision: "accept",
+                                  });
+                                  toast.success("Evidencia aceptada.");
+                                  await refreshDeliveriesForAgreement(agreementId);
+                                } catch (e) {
+                                  toast.error((e as Error)?.message ?? "No se pudo aceptar.");
+                                } finally {
+                                  setLogisticsBusyKey(null);
+                                }
+                              })();
+                            }}
+                          >
+                            Aceptar evidencia
+                          </button>
+                          <button
+                            type="button"
+                            className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
+                            disabled={!getSessionToken() || logisticsBusyKey === `${busyKeyBase}:rej`}
+                            onClick={() => {
+                              void (async () => {
+                                try {
+                                  setLogisticsBusyKey(`${busyKeyBase}:rej`);
+                                  await decideCarrierDeliveryEvidence({
+                                    threadId,
+                                    agreementId,
+                                    routeSheetId: selRoute.id,
+                                    routeStopId: p.id,
+                                    decision: "reject",
+                                  });
+                                  toast.success("Evidencia rechazada.");
+                                  await refreshDeliveriesForAgreement(agreementId);
+                                } catch (e) {
+                                  toast.error((e as Error)?.message ?? "No se pudo rechazar.");
+                                } finally {
+                                  setLogisticsBusyKey(null);
+                                }
+                              })();
+                            }}
+                          >
+                            Rechazar evidencia
+                          </button>
+                        </>
+                      : null}
+                    </div>
+                  </div>
+                : null}
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
       ) : routeSheets.length === 0 ? (
@@ -688,6 +995,23 @@ export function ChatRightRailRoutesPanel({
           ))}
         </ul>
       )}
+
+      {liveMapOpen && selRoute ?
+        <RouteSheetLiveTrackingModal
+          open={liveMapOpen}
+          onClose={() => {
+            setLiveMapOpen(false);
+            setLiveFocusStopId(null);
+          }}
+          threadId={threadId}
+          agreementId={(agreementForSheet(selRoute.id)?.id ?? "").trim()}
+          routeSheet={selRoute}
+          offerTramos={
+            routeOfferResolved?.routeSheetId === selRoute.id ? routeOfferResolved.tramos : undefined
+          }
+          highlightStopId={liveFocusStopId}
+        />
+      : null}
     </div>
   );
 }

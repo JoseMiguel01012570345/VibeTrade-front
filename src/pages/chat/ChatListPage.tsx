@@ -25,6 +25,8 @@ import {
 import { counterpartyAlreadyRecordedPartyExit } from "../../utils/chat/threadPeerPartyExit";
 import { getSessionToken } from "../../utils/http/sessionToken";
 import { errorToUserMessage } from "../../utils/http/apiErrorMessage";
+import { VtHttpError } from "../../utils/http/VtHttpError";
+import { requestEligibleLegRefund } from "../../utils/chat/routeLogisticsApi";
 import {
   postMeTrustAdjust,
   postStoreTrustAdjust,
@@ -92,6 +94,15 @@ export function ChatListPage() {
   const [leaveModalThreadId, setLeaveModalThreadId] = useState<string | null>(
     null,
   );
+  const [leaveBlockingCode, setLeaveBlockingCode] = useState<string | null>(null);
+  const [leaveBlockingMessage, setLeaveBlockingMessage] = useState<string | null>(null);
+  const [leaveRefundSuggestion, setLeaveRefundSuggestion] = useState<{
+    threadId: string;
+    agreementId: string;
+    routeSheetId: string;
+    routeStopId: string;
+  } | null>(null);
+  const [leaveRefundBusy, setLeaveRefundBusy] = useState(false);
   const [nameFilterQuery, setNameFilterQuery] = useState("");
   const [newConversationOpen, setNewConversationOpen] = useState(false);
 
@@ -190,7 +201,39 @@ export function ChatListPage() {
             reasonTrim,
           );
           skipClientTrustPenalty = leaveRes.skipClientTrustPenalty;
+          setLeaveBlockingCode(null);
+          setLeaveBlockingMessage(null);
+          setLeaveRefundSuggestion(null);
         } catch (e) {
+          if (e instanceof VtHttpError && e.code) {
+            setLeaveBlockingCode(e.code);
+            setLeaveBlockingMessage(e.message);
+            if (
+              e.code === "route_delivery_active_buyer" ||
+              e.code === "route_delivery_active_seller"
+            ) {
+              const sheets = th.routeSheets ?? [];
+              const contracts = th.contracts ?? [];
+              const accepted = contracts.filter((c) => c.status === "accepted");
+              outer: for (const a of accepted) {
+                const rsid = (a.routeSheetId ?? "").trim();
+                if (rsid.length < 2) continue;
+                const sheet = sheets.find((s) => s.id === rsid);
+                const stopId = sheet?.paradas?.[0]?.id?.trim() ?? "";
+                if (stopId.length > 2) {
+                  setLeaveRefundSuggestion({
+                    threadId,
+                    agreementId: a.id,
+                    routeSheetId: rsid,
+                    routeStopId: stopId,
+                  });
+                  break outer;
+                }
+              }
+            }
+            toast.error(e.message);
+            return;
+          }
           toast.error(
             errorToUserMessage(
               e,
@@ -354,7 +397,34 @@ export function ChatListPage() {
       <ChatLeaveConfirmModal
         open={leaveModalThreadId !== null}
         variant="list"
-        onClose={() => setLeaveModalThreadId(null)}
+        onClose={() => {
+          setLeaveModalThreadId(null);
+          setLeaveBlockingCode(null);
+          setLeaveBlockingMessage(null);
+          setLeaveRefundSuggestion(null);
+          setLeaveRefundBusy(false);
+        }}
+        blockingCode={leaveBlockingCode}
+        blockingMessage={leaveBlockingMessage}
+        refundSuggestion={leaveRefundSuggestion}
+        refundBusy={leaveRefundBusy}
+        onRequestRefund={
+          leaveRefundSuggestion ?
+            async () => {
+              const r = leaveRefundSuggestion;
+              if (!r || !getSessionToken()) return;
+              try {
+                setLeaveRefundBusy(true);
+                await requestEligibleLegRefund(r);
+                toast.success("Reembolso solicitado (si el tramo era elegible).");
+              } catch (e) {
+                toast.error(errorToUserMessage(e, "No se pudo solicitar el reembolso."));
+              } finally {
+                setLeaveRefundBusy(false);
+              }
+            }
+          : undefined
+        }
         onConfirm={async () => {
           const id = leaveModalThreadId;
           if (!id) return;

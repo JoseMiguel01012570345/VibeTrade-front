@@ -39,11 +39,21 @@ export function joinRouteEstimadoStored(date: string, time: string): string {
 /** Instantáneo en ms para comparar recogida vs entrega (solo valores ISO válidos). */
 export function estimadoInstantMs(raw: string | undefined): number | null {
   const t = (raw ?? '').trim()
-  const m = t.match(ROUTE_ESTIMADO_ISO_LOCAL_RE)
+  if (!t) return null
+  // `YYYY-MM-DDTHH:mm` o `...THH:mm:ss` (p. ej. tras `${date}T${time}:00` en validación).
+  const m = t.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::(\d{2}))?$/)
   if (!m) return null
-  const dt = new Date(`${m[1]}T${m[2]}:00`)
-  const ms = dt.getTime()
+  const isoLocal =
+    m[3] !== undefined ? `${m[1]}T${m[2]}:${m[3]}` : `${m[1]}T${m[2]}:00`
+  const ms = new Date(isoLocal).getTime()
   return Number.isNaN(ms) ? null : ms
+}
+
+/** True si el instante local es estrictamente anterior a ahora (fecha + hora completas). */
+export function estimadoIsStrictlyBeforeNow(raw: string | undefined): boolean {
+  const ms = estimadoInstantMs(raw)
+  if (ms === null) return false
+  return ms < Date.now()
 }
 
 /** Fecha local `YYYY-MM-DD` del día en curso (para `min` en selectores). */

@@ -134,8 +134,25 @@ export type RouteTramoSubscriptionsChangedPayload = {
   emergentOfferId: string | null;
 };
 
+export type CarrierTelemetryUpdatedPayload = {
+  threadId: string;
+  routeSheetId: string;
+  agreementId: string;
+  routeStopId: string;
+  carrierUserId: string;
+  lat: number;
+  lng: number;
+  progressFraction?: number | null;
+  offRoute: boolean;
+  reportedAtUtc: string;
+};
+
 const routeTramoSubsListeners = new Set<
   (p: RouteTramoSubscriptionsChangedPayload) => void
+>();
+
+const carrierTelemetryListeners = new Set<
+  (p: CarrierTelemetryUpdatedPayload) => void
 >();
 
 /** Panel de suscriptores u otros: recibe la misma respuesta del GET ya aplicada al store. */
@@ -145,6 +162,15 @@ export function subscribeRouteTramoSubscriptionsChanged(
   routeTramoSubsListeners.add(cb);
   return () => {
     routeTramoSubsListeners.delete(cb);
+  };
+}
+
+export function subscribeCarrierTelemetryUpdated(
+  cb: (p: CarrierTelemetryUpdatedPayload) => void,
+): () => void {
+  carrierTelemetryListeners.add(cb);
+  return () => {
+    carrierTelemetryListeners.delete(cb);
   };
 }
 
@@ -422,6 +448,18 @@ export function startChatRealtime(): void {
       });
     },
   );
+
+  conn.on("carrierTelemetryUpdated", (payload: CarrierTelemetryUpdatedPayload) => {
+    const tid = payload?.threadId?.trim() ?? "";
+    if (tid.length < 4) return;
+    for (const cb of carrierTelemetryListeners) {
+      try {
+        cb(payload);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  });
 
   conn.onreconnected(() => {
     void (async () => {

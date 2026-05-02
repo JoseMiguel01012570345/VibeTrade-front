@@ -1107,6 +1107,8 @@ export function ChatPage() {
           <ChatRightRail
             threadId={thread.id}
             threadStoreId={thread.storeId}
+            buyerUserId={thread.buyerUserId ?? buyerForRail.id}
+            sellerUserId={thread.sellerUserId}
             contracts={thread.contracts ?? []}
             routeSheets={thread.routeSheets ?? []}
             contractsLoading={contractsLoading}
@@ -1314,6 +1316,7 @@ export function ChatPage() {
         open={chatPayOpen}
         threadId={thread.id}
         agreements={acceptedAgreementsForPayment}
+        routeSheets={thread.routeSheets ?? []}
         onClose={() => setChatPayOpen(false)}
         onPaymentFullySettled={() => markThreadPaymentCompleted(thread.id)}
       />

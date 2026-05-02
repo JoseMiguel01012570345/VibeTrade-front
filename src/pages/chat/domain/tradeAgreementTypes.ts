@@ -10,6 +10,8 @@ import {
 export type MerchandiseCondition = "nuevo" | "usado" | "reacondicionado";
 
 export type MerchandiseLine = {
+  /** Id persistente (servidor) para checkout parcial por línea. */
+  id?: string;
   /** Ancla a la ficha de producto configurada en la tienda del vendedor (flow-ui). */
   linkedStoreProductId?: string;
   tipo: string;

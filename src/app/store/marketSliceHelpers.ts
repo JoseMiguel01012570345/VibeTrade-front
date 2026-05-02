@@ -47,6 +47,8 @@ export function routeOfferPublicAfterSheetEdit(
       notas: p.notas,
       requisitosEspeciales: p.requisitosEspeciales,
       telefonoTransportista: p.telefonoTransportista?.trim() || undefined,
+      transportInvitedStoreServiceId: p.transportInvitedStoreServiceId?.trim() || undefined,
+      transportInvitedServiceSummary: p.transportInvitedServiceSummary?.trim() || undefined,
       monedaPago: p.monedaPago?.trim() || undefined,
       assignment: assignByStop.get(p.id),
     }))

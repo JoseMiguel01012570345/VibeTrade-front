@@ -32,22 +32,38 @@ export async function fetchAgreementCheckoutBreakdown(
       serviceItemId: string;
       entryKey: { month: number; day: number };
     }>;
+    /**
+     * `undefined` = no enviar (desglose GET legacy).
+     * `null` o array = explícito en POST (array vacío = ningún tramo).
+     */
+    selectedRouteStopIds?: string[] | null;
+    /** Igual que rutas: solo POST cuando se define (mercadería explícita). */
+    selectedMerchandiseLineIds?: string[] | null;
   },
 ): Promise<AgreementCheckoutBreakdownApi> {
   const picks = opts?.selectedServicePayments ?? [];
-  const hasPicks = picks.length > 0;
-  const res = hasPicks
-    ? await apiFetch(
+  const hasServicePicks = picks.length > 0;
+  const routeExplicit = opts?.selectedRouteStopIds !== undefined;
+  const merchExplicit = opts?.selectedMerchandiseLineIds !== undefined;
+  const usePost = hasServicePicks || routeExplicit || merchExplicit;
+
+  const res =
+    usePost ?
+      await apiFetch(
         `/api/v1/chat/threads/${encodeURIComponent(threadId)}/agreements/${encodeURIComponent(agreementId)}/checkout-breakdown`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            selectedServicePayments: picks.map((p) => ({
-              serviceItemId: p.serviceItemId,
-              entryMonth: p.entryKey.month,
-              entryDay: p.entryKey.day,
-            })),
+            selectedServicePayments: hasServicePicks
+              ? picks.map((p) => ({
+                  serviceItemId: p.serviceItemId,
+                  entryMonth: p.entryKey.month,
+                  entryDay: p.entryKey.day,
+                }))
+              : null,
+            selectedRouteStopIds: routeExplicit ? opts?.selectedRouteStopIds ?? null : null,
+            selectedMerchandiseLineIds: merchExplicit ? opts?.selectedMerchandiseLineIds ?? null : null,
           }),
         },
       )
@@ -105,6 +121,8 @@ export async function executeAgreementCurrencyPayment(args: {
     serviceItemId: string;
     entryKey: { month: number; day: number };
   }>;
+  selectedRouteStopIds?: string[] | null;
+  selectedMerchandiseLineIds?: string[] | null;
 }): Promise<AgreementExecutePaymentResultApi> {
   const headers: HeadersInit = { "Content-Type": "application/json" };
   const ik = args.idempotencyKey?.trim();
@@ -125,6 +143,10 @@ export async function executeAgreementCurrencyPayment(args: {
           entryMonth: p.entryKey.month,
           entryDay: p.entryKey.day,
         })),
+        selectedRouteStopIds:
+          args.selectedRouteStopIds === undefined ? null : args.selectedRouteStopIds,
+        selectedMerchandiseLineIds:
+          args.selectedMerchandiseLineIds === undefined ? null : args.selectedMerchandiseLineIds,
       }),
     },
   );

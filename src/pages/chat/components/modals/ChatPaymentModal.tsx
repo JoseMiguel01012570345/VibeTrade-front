@@ -14,6 +14,10 @@ import {
   type AgreementPaymentStatusApi,
 } from "../../../../utils/chat/agreementCheckoutApi";
 import {
+  fetchAgreementRouteDeliveries,
+  type RouteStopDeliveryStatusApi,
+} from "../../../../utils/chat/routeLogisticsApi";
+import {
   listAgreementServicePayments,
   type AgreementServicePaymentApi,
 } from "../../../../utils/chat/agreementServiceEvidenceApi";
@@ -32,7 +36,9 @@ import {
   agreementDeclaresMerchandise,
   agreementDeclaresService,
   normalizeAgreementServices,
+  normalizeMerchandiseLine,
 } from "../../domain/tradeAgreementTypes";
+import type { RouteSheet } from "../../domain/routeSheetTypes";
 import {
   minorToMajor,
   paymentFeeLabels,
@@ -52,6 +58,8 @@ type Props = {
   open: boolean;
   threadId: string;
   agreements: TradeAgreement[];
+  /** Hojas de ruta del hilo (transporte vinculado al acuerdo). */
+  routeSheets?: RouteSheet[];
   onClose: () => void;
   onPaymentFullySettled?: () => void;
 };
@@ -86,6 +94,33 @@ function recurrenceSlotKey(serviceItemId: string, month: number, day: number): s
   return `${serviceItemId}:${month}-${day}`;
 }
 
+function parseMajorAmount(raw: string | undefined): number {
+  const t = (raw ?? "").trim().replace(",", ".").replace(/\u00a0/g, " ");
+  if (!t) return 0;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function routeStopIsPayable(stop: { precioTransportista?: string }): boolean {
+  return parseMajorAmount(stop.precioTransportista) > 0;
+}
+
+function deliveryMarksStopPaid(d: RouteStopDeliveryStatusApi): boolean {
+  const st = (d.state ?? "").trim().toLowerCase();
+  if (!st) return false;
+  if (st === "unpaid") return false;
+  if (st.startsWith("refunded")) return false;
+  return true;
+}
+
+function sameStringArray(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 /** Todas las entradas de recurrencia del acuerdo tienen un pago registrado. */
 function computeAllSlotsPaid(
   agreement: TradeAgreement,
@@ -105,6 +140,7 @@ export function ChatPaymentModal({
   open,
   threadId,
   agreements,
+  routeSheets = [],
   onClose,
   onPaymentFullySettled,
 }: Props) {
@@ -138,10 +174,32 @@ export function ChatPaymentModal({
   const [feePolicyQrDataUrl, setFeePolicyQrDataUrl] = useState<string | null>(null);
   const settledNotifiedAgreementIdRef = useRef<string | null>(null);
 
+  const agreementsRef = useRef(agreements);
+  const routeSheetsRef = useRef(routeSheets);
+  agreementsRef.current = agreements;
+  routeSheetsRef.current = routeSheets;
+
   const selectedAgreement = useMemo(
     () => agreements.find((a) => a.id === agreementId) ?? agreements[0] ?? null,
     [agreementId, agreements],
   );
+
+  const agreementRouteSheet = useMemo(() => {
+    const rsid = (selectedAgreement?.routeSheetId ?? "").trim();
+    if (rsid.length < 2) return null;
+    return routeSheets.find((r) => r.id === rsid) ?? null;
+  }, [routeSheets, selectedAgreement?.routeSheetId]);
+
+  const payableRouteStops = useMemo(() => {
+    if (!agreementRouteSheet) return [];
+    return agreementRouteSheet.paradas.filter((p) => routeStopIsPayable(p));
+  }, [agreementRouteSheet]);
+
+  const [routeDeliveries, setRouteDeliveries] = useState<RouteStopDeliveryStatusApi[]>([]);
+  /** Hojas de ruta incluidas en el cobro (normalmente la vinculada al acuerdo); se expande a tramos pendientes en API. */
+  const [selectedRouteSheetIds, setSelectedRouteSheetIds] = useState<string[]>([]);
+  const [selectedMerchandiseLineIds, setSelectedMerchandiseLineIds] = useState<string[]>([]);
+  const [checkoutHydrated, setCheckoutHydrated] = useState(false);
 
   const serviceOnlyAgreement = useMemo(() => {
     if (!selectedAgreement) return false;
@@ -150,6 +208,111 @@ export function ChatPaymentModal({
       !agreementDeclaresMerchandise(selectedAgreement)
     );
   }, [selectedAgreement]);
+
+  const routePickAgreement = useMemo(() => {
+    if (!selectedAgreement) return false;
+    if (serviceOnlyAgreement) return false;
+    return (
+      agreementDeclaresMerchandise(selectedAgreement) &&
+      !!(selectedAgreement.routeSheetId ?? "").trim() &&
+      payableRouteStops.length > 0
+    );
+  }, [selectedAgreement, serviceOnlyAgreement, payableRouteStops.length]);
+
+  /** Evita recrear el Set en cada fetch si la respuesta es equivalente (rompe bucles efecto → setState → reload). */
+  const routeDeliveriesPaidKey = useMemo(
+    () =>
+      routeDeliveries
+        .map((d) => `${(d.routeStopId ?? "").trim()}:${(d.state ?? "").trim()}`)
+        .sort()
+        .join("|"),
+    [routeDeliveries],
+  );
+
+  const paidRouteStopIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const d of routeDeliveries) {
+      if (!deliveryMarksStopPaid(d)) continue;
+      const sid = (d.routeStopId ?? "").trim();
+      if (sid) s.add(sid);
+    }
+    return s;
+    // routeDeliveriesPaidKey resume el contenido relevante; routeDeliveries solo debe leerse cuando la huella cambia.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional fingerprint gate
+  }, [routeDeliveriesPaidKey]);
+
+  const unpaidPayableRouteStops = useMemo(
+    () => payableRouteStops.filter((p) => !paidRouteStopIds.has((p.id ?? "").trim())),
+    [payableRouteStops, paidRouteStopIds],
+  );
+
+  const unpaidPayableStopIdsKey = useMemo(
+    () =>
+      unpaidPayableRouteStops
+        .map((p) => (p.id ?? "").trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b))
+        .join("|"),
+    [unpaidPayableRouteStops],
+  );
+
+  const routeLegSelectionRequired = routePickAgreement && unpaidPayableRouteStops.length > 0;
+
+  const expandedRouteStopIdsForCheckout = useMemo(() => {
+    const rsid = (selectedAgreement?.routeSheetId ?? "").trim();
+    if (
+      !rsid ||
+      selectedRouteSheetIds.length === 0 ||
+      !selectedRouteSheetIds.includes(rsid)
+    ) {
+      return [];
+    }
+    return unpaidPayableStopIdsKey.split("|").filter(Boolean);
+  }, [
+    selectedAgreement?.routeSheetId,
+    selectedRouteSheetIds,
+    unpaidPayableStopIdsKey,
+  ]);
+
+  const routeSheetTransportOptions = useMemo<VtSelectOption[]>(() => {
+    if (!agreementRouteSheet || unpaidPayableRouteStops.length === 0) return [];
+    const t = (agreementRouteSheet.titulo ?? "").trim() || "Hoja de ruta";
+    const n = unpaidPayableRouteStops.length;
+    return [
+      {
+        value: agreementRouteSheet.id,
+        label: `${t} · ${n} tramo(s) pendiente(s)`,
+      },
+    ];
+  }, [agreementRouteSheet, unpaidPayableRouteStops.length, unpaidPayableStopIdsKey]);
+
+  const payableMerchLines = useMemo(() => {
+    if (!selectedAgreement || !agreementDeclaresMerchandise(selectedAgreement)) return [];
+    const out: { id: string; title: string; subtitle: string }[] = [];
+    selectedAgreement.merchandise.forEach((raw, i) => {
+      const line = normalizeMerchandiseLine(raw);
+      const id = (line.id ?? "").trim();
+      if (!id) return;
+      const q = parseMajorAmount(line.cantidad);
+      const vu = parseMajorAmount(line.valorUnitario);
+      if (q <= 0 || vu <= 0) return;
+      const title = (line.tipo ?? "").trim() || `Mercancía ${i + 1}`;
+      const mon = (line.moneda ?? "").trim();
+      out.push({
+        id,
+        title,
+        subtitle: `${line.cantidad} × ${line.valorUnitario}${mon ? ` ${mon}` : ""}`,
+      });
+    });
+    return out;
+  }, [selectedAgreement]);
+
+  const merchCheckboxSectionVisible = !serviceOnlyAgreement && payableMerchLines.length > 0;
+
+  const payableMerchIdsKey = useMemo(
+    () => payableMerchLines.map((m) => m.id).sort().join("|"),
+    [payableMerchLines],
+  );
 
   const [selectedServiceEntriesByServiceId, setSelectedServiceEntriesByServiceId] =
     useState<Record<string, string[]>>({});
@@ -173,6 +336,25 @@ export function ChatPaymentModal({
     }
     return out;
   }, [selectedServiceEntriesByServiceId, serviceItems]);
+
+  const servicePaymentsSelectionKey = useMemo(
+    () =>
+      selectedServicePayments
+        .map((p) => `${p.serviceItemId}:${p.entryKey.month}-${p.entryKey.day}`)
+        .sort()
+        .join("|"),
+    [selectedServicePayments],
+  );
+
+  const routeSheetSelectionKey = useMemo(
+    () => [...selectedRouteSheetIds].sort().join("|"),
+    [selectedRouteSheetIds],
+  );
+
+  const merchSelectionKey = useMemo(
+    () => [...selectedMerchandiseLineIds].sort().join("|"),
+    [selectedMerchandiseLineIds],
+  );
 
   const paidSlotKeys = useMemo(() => {
     const s = new Set<string>();
@@ -203,8 +385,57 @@ export function ChatPaymentModal({
 
   const selectedServicePaymentsRef = useRef(selectedServicePayments);
   const selectedServicePaymentsReadyRef = useRef(selectedServicePaymentsReady);
+  const expandedRouteStopIdsRef = useRef(expandedRouteStopIdsForCheckout);
+  const selectedMerchandiseLineIdsRef = useRef(selectedMerchandiseLineIds);
+  const routeDeliveriesRef = useRef(routeDeliveries);
+  const servicePaymentsPaidRef = useRef(servicePaymentsPaid);
+  const fetchCheckoutBreakdownOnlyRef = useRef<() => Promise<void>>(async () => {});
+  const routeSheetSelectionTouchedRef = useRef(false);
   selectedServicePaymentsRef.current = selectedServicePayments;
+  servicePaymentsPaidRef.current = servicePaymentsPaid;
   selectedServicePaymentsReadyRef.current = selectedServicePaymentsReady;
+  expandedRouteStopIdsRef.current = expandedRouteStopIdsForCheckout;
+  selectedMerchandiseLineIdsRef.current = selectedMerchandiseLineIds;
+  routeDeliveriesRef.current = routeDeliveries;
+
+  const hybridServiceBlocks =
+    !serviceOnlyAgreement &&
+    !!selectedAgreement &&
+    agreementDeclaresService(selectedAgreement) &&
+    serviceItems.length > 0;
+
+  const nonServiceBreakdownSelectionsReady = useMemo(() => {
+    if (serviceOnlyAgreement) return true;
+    let anyBucket = false;
+    let anySelected = false;
+    if (routeLegSelectionRequired) {
+      anyBucket = true;
+      if (selectedRouteSheetIds.length > 0) anySelected = true;
+    }
+    if (merchCheckboxSectionVisible) {
+      anyBucket = true;
+      if (selectedMerchandiseLineIds.length > 0) anySelected = true;
+    }
+    if (hybridServiceBlocks) {
+      anyBucket = true;
+      if (selectedServicePayments.length > 0) anySelected = true;
+    }
+    return !anyBucket || anySelected;
+  }, [
+    serviceOnlyAgreement,
+    routeLegSelectionRequired,
+    selectedRouteSheetIds,
+    merchCheckboxSectionVisible,
+    selectedMerchandiseLineIds,
+    hybridServiceBlocks,
+    selectedServicePayments.length,
+  ]);
+
+  /** Cobertura de selección previa al desglose / cobro (servicios y/o tramos). */
+  const checkoutSelectionsReady =
+    serviceOnlyAgreement ?
+      selectedServicePaymentsReady
+    : nonServiceBreakdownSelectionsReady;
 
   const previews = useMemo(
     () => (selectedAgreement ? collectAgreementInformePreviewEntries(selectedAgreement) : []),
@@ -229,13 +460,47 @@ export function ChatPaymentModal({
     [cards],
   );
 
+  function breakdownHasUnpaidMerchandiseForCurrency(curLower: string): boolean {
+    const c = curLower.trim().toLowerCase();
+    const bc = breakdown?.byCurrency ?? [];
+    const bucket = bc.find((x) => x.currencyLower.trim().toLowerCase() === c);
+    if (!bucket) return false;
+    return bucket.lines.some(
+      (ln) =>
+        String(ln.category ?? "").toLowerCase() === "merchandise" &&
+        ln.amountMinor > 0,
+    );
+  }
+
+  function breakdownHasUnpaidRouteLegsForCurrency(curLower: string): boolean {
+    const c = curLower.trim().toLowerCase();
+    const bc = breakdown?.byCurrency ?? [];
+    const bucket = bc.find((x) => x.currencyLower.trim().toLowerCase() === c);
+    if (!bucket) return false;
+    for (const ln of bucket.lines) {
+      if (String(ln.category ?? "").toLowerCase() !== "route_leg") continue;
+      if (ln.amountMinor <= 0) continue;
+      const sid = (ln.routeStopId ?? "").trim();
+      if (!sid) return true;
+      if (!paidRouteStopIds.has(sid)) return true;
+    }
+    return false;
+  }
+
   const pendingCurrencies = useMemo(() => {
     if (!serviceOnlyAgreement) {
       const bc = breakdown?.byCurrency ?? [];
       const out: string[] = [];
       for (const b of bc) {
         const c = b.currencyLower.trim().toLowerCase();
-        if (!currencyPaid(statuses, c)) out.push(c);
+        const paidAny = currencyPaid(statuses, c);
+        if (!paidAny) {
+          out.push(c);
+          continue;
+        }
+        // Pagos parciales por tramo pueden dejar mercadería u otros ítems pendientes en la misma moneda.
+        if (breakdownHasUnpaidMerchandiseForCurrency(c)) out.push(c);
+        else if (breakdownHasUnpaidRouteLegsForCurrency(c)) out.push(c);
       }
       return out;
     }
@@ -248,7 +513,15 @@ export function ChatPaymentModal({
       }
     }
     return [...curSet];
-  }, [serviceOnlyAgreement, breakdown?.byCurrency, statuses, serviceItems, paidSlotKeys]);
+  }, [
+    serviceOnlyAgreement,
+    breakdown?.byCurrency,
+    breakdown,
+    statuses,
+    serviceItems,
+    paidSlotKeys,
+    paidRouteStopIds,
+  ]);
 
   const allPaid = serviceOnlyAgreement
     ? allRecurrencesPaidVerified && !busyPay
@@ -280,7 +553,12 @@ export function ChatPaymentModal({
 
   function informeCurrencyPaidDisplay(curLower: string): boolean {
     const c = curLower.trim().toLowerCase();
-    if (!serviceOnlyAgreement) return currencyPaid(statuses, c);
+    if (!serviceOnlyAgreement) {
+      if (!currencyPaid(statuses, c)) return false;
+      if (breakdownHasUnpaidMerchandiseForCurrency(c)) return false;
+      if (breakdownHasUnpaidRouteLegsForCurrency(c)) return false;
+      return true;
+    }
     for (const sv of serviceItems) {
       for (const e of sv.recurrenciaPagos?.entries ?? []) {
         if ((e.moneda ?? "").trim().toLowerCase() !== c) continue;
@@ -290,23 +568,28 @@ export function ChatPaymentModal({
     return true;
   }
 
-  const reloadCheckout = useCallback(
+  const hydratePaymentContext = useCallback(
     async (opts?: {
       skipBusyToggle?: boolean;
-      /** Permite marcar todas las recurrencias cobradas mientras busyPay (post-cobro tras refresh). */
       allowVerifiedDuringBusyPay?: boolean;
     }) => {
-      const ag = selectedAgreement ?? agreements[0];
+      const list = agreementsRef.current;
+      const aid = (agreementId ?? "").trim();
+      const ag =
+        (aid ? list.find((a) => a.id === aid) : null) ?? list[0] ?? null;
       if (!ag) {
-        setBreakdown(null);
         setStatuses([]);
         setServicePaymentsPaid([]);
+        servicePaymentsPaidRef.current = [];
         setAllRecurrencesPaidVerified(false);
+        routeDeliveriesRef.current = [];
+        setRouteDeliveries([]);
+        setCheckoutHydrated(false);
         return;
       }
       const skipBusy = opts?.skipBusyToggle === true;
       if (!skipBusy) setBusyInit(true);
-      setBreakdown(null);
+      setCheckoutHydrated(false);
       try {
         const [ps, sp] = await Promise.all([
           fetchAgreementPaymentStatuses(threadId, ag.id),
@@ -316,44 +599,173 @@ export function ChatPaymentModal({
         ]);
         setStatuses(ps);
         setServicePaymentsPaid(sp);
+        servicePaymentsPaidRef.current = sp;
 
         const pk = new Set(
           sp.map((p) => recurrenceSlotKey(p.serviceItemId, p.entryMonth, p.entryDay)),
         );
-        const fullyPaid =
-          serviceOnlyAgreement && computeAllSlotsPaid(ag, pk);
+        const svcOnly =
+          agreementDeclaresService(ag) && !agreementDeclaresMerchandise(ag);
+        const fullyPaid = svcOnly && computeAllSlotsPaid(ag, pk);
         const mayCommitVerified =
           !busyPayRef.current || opts?.allowVerifiedDuringBusyPay === true;
         setAllRecurrencesPaidVerified(mayCommitVerified && fullyPaid);
-        if (fullyPaid) {
-          setBreakdown(null);
-          return;
-        }
 
-        if (serviceOnlyAgreement && !selectedServicePaymentsReadyRef.current) {
-          setBreakdown(null);
-          return;
-        }
+        const rsid = (ag.routeSheetId ?? "").trim();
+        const sheet = rsid ? routeSheetsRef.current.find((r) => r.id === rsid) : undefined;
+        const payable = (sheet?.paradas ?? []).filter((p) => routeStopIsPayable(p));
+        const pickRouteLegs =
+          !svcOnly &&
+          agreementDeclaresMerchandise(ag) &&
+          rsid.length > 1 &&
+          payable.length > 0;
 
-        const bd = await fetchAgreementCheckoutBreakdown(threadId, ag.id, {
-          selectedServicePayments: serviceOnlyAgreement
-            ? selectedServicePaymentsRef.current
-            : undefined,
-        });
-        setBreakdown(bd);
+        let deliveries: RouteStopDeliveryStatusApi[] = [];
+        if (pickRouteLegs) {
+          try {
+            deliveries = await fetchAgreementRouteDeliveries(threadId, ag.id);
+          } catch {
+            deliveries = [];
+          }
+        }
+        routeDeliveriesRef.current = deliveries;
+        setRouteDeliveries(deliveries);
+        setCheckoutHydrated(true);
       } catch (e) {
         const msg =
-          (e as Error)?.message?.trim() || "No se pudo cargar el informe de pago.";
-        setBreakdown({ ok: false, errors: [msg], byCurrency: [] });
+          (e as Error)?.message?.trim() || "No se pudo cargar el estado de pagos.";
         setStatuses([]);
         setServicePaymentsPaid([]);
+        servicePaymentsPaidRef.current = [];
         setAllRecurrencesPaidVerified(false);
+        routeDeliveriesRef.current = [];
+        setRouteDeliveries([]);
+        setCheckoutHydrated(false);
         toast.error(msg);
       } finally {
         if (!skipBusy) setBusyInit(false);
       }
     },
-    [threadId, selectedAgreement, agreements, serviceOnlyAgreement],
+    [threadId, agreementId],
+  );
+
+  const fetchCheckoutBreakdownOnly = useCallback(async () => {
+    const list = agreementsRef.current;
+    const aid = (agreementId ?? "").trim();
+    const ag =
+      (aid ? list.find((a) => a.id === aid) : null) ?? list[0] ?? null;
+    if (!ag) {
+      setBreakdown(null);
+      return;
+    }
+    const svcOnly =
+      agreementDeclaresService(ag) && !agreementDeclaresMerchandise(ag);
+    if (svcOnly) {
+      const pk = new Set(
+        servicePaymentsPaidRef.current.map((p) =>
+          recurrenceSlotKey(p.serviceItemId, p.entryMonth, p.entryDay),
+        ),
+      );
+      const fullyPaid = computeAllSlotsPaid(ag, pk);
+      if (fullyPaid && !busyPayRef.current) {
+        setBreakdown(null);
+        return;
+      }
+      if (!selectedServicePaymentsReadyRef.current) {
+        setBreakdown(null);
+        return;
+      }
+    }
+
+    try {
+      const rsid = (ag.routeSheetId ?? "").trim();
+      const sheet = rsid ? routeSheetsRef.current.find((r) => r.id === rsid) : undefined;
+      const payable = (sheet?.paradas ?? []).filter((p) => routeStopIsPayable(p));
+      const pickRouteLegs =
+        !svcOnly &&
+        agreementDeclaresMerchandise(ag) &&
+        rsid.length > 1 &&
+        payable.length > 0;
+
+      const deliveries = routeDeliveriesRef.current;
+      const paid = new Set<string>();
+      for (const d of deliveries) {
+        if (!deliveryMarksStopPaid(d)) continue;
+        const sid = (d.routeStopId ?? "").trim();
+        if (sid) paid.add(sid);
+      }
+      const unpaidStops = payable.filter((p) => !paid.has((p.id ?? "").trim()));
+      const routeLegReqLocal =
+        agreementDeclaresMerchandise(ag) &&
+        rsid.length > 1 &&
+        payable.length > 0 &&
+        unpaidStops.length > 0;
+
+      const payableMerchIds = new Set<string>();
+      for (const raw of ag.merchandise ?? []) {
+        const line = normalizeMerchandiseLine(raw);
+        const mid = (line.id ?? "").trim();
+        if (!mid) continue;
+        const q = parseMajorAmount(line.cantidad);
+        const vu = parseMajorAmount(line.valorUnitario);
+        if (q <= 0 || vu <= 0) continue;
+        payableMerchIds.add(mid);
+      }
+      const includeMerch = payableMerchIds.size > 0;
+
+      const stopsPick =
+        pickRouteLegs && unpaidStops.length > 0 ?
+          expandedRouteStopIdsRef.current.filter((id) =>
+            unpaidStops.some((p) => (p.id ?? "").trim() === id.trim()),
+          )
+        : [];
+
+      const merchPick =
+        includeMerch ?
+          selectedMerchandiseLineIdsRef.current.filter((id) =>
+            payableMerchIds.has(id.trim()),
+          )
+        : [];
+
+      let routeArg: string[] | null | undefined = undefined;
+      let merchArg: string[] | null | undefined = undefined;
+
+      if (!svcOnly) {
+        if (includeMerch) merchArg = merchPick;
+        if (routeLegReqLocal) routeArg = stopsPick;
+        else if (includeMerch && payable.length > 0) routeArg = [];
+      }
+
+      const bd = await fetchAgreementCheckoutBreakdown(threadId, ag.id, {
+        selectedServicePayments:
+          svcOnly ? selectedServicePaymentsRef.current
+          : selectedServicePaymentsRef.current.length > 0 ?
+            selectedServicePaymentsRef.current
+          : undefined,
+        selectedRouteStopIds: routeArg,
+        selectedMerchandiseLineIds: merchArg,
+      });
+      setBreakdown(bd);
+    } catch (e) {
+      const msg =
+        (e as Error)?.message?.trim() || "No se pudo cargar el informe de pago.";
+      setBreakdown({ ok: false, errors: [msg], byCurrency: [] });
+      toast.error(msg);
+    }
+  }, [threadId, agreementId]);
+
+  fetchCheckoutBreakdownOnlyRef.current = fetchCheckoutBreakdownOnly;
+
+  const reloadCheckout = useCallback(
+    async (opts?: {
+      skipBusyToggle?: boolean;
+      allowVerifiedDuringBusyPay?: boolean;
+    }) => {
+      setBreakdown(null);
+      await hydratePaymentContext(opts);
+      await fetchCheckoutBreakdownOnly();
+    },
+    [hydratePaymentContext, fetchCheckoutBreakdownOnly],
   );
 
   useEffect(() => {
@@ -406,10 +818,7 @@ export function ChatPaymentModal({
       if (!allRecurrencesPaidVerified || busyPay) return;
     } else {
       if (!breakdown?.ok || !breakdown.byCurrency.length) return;
-      const settled = breakdown.byCurrency.every((bc) =>
-        currencyPaid(statuses, bc.currencyLower),
-      );
-      if (!settled) return;
+      if (pendingCurrencies.length > 0) return;
     }
 
     const aid = (selectedAgreement?.id ?? agreementId ?? "").trim();
@@ -421,6 +830,7 @@ export function ChatPaymentModal({
     open,
     breakdown,
     statuses,
+    pendingCurrencies.length,
     onPaymentFullySettled,
     selectedAgreement?.id,
     agreementId,
@@ -447,7 +857,56 @@ export function ChatPaymentModal({
     setStatuses([]);
     setServicePaymentsPaid([]);
     setAllRecurrencesPaidVerified(false);
+    routeDeliveriesRef.current = [];
+    setRouteDeliveries([]);
+    routeSheetSelectionTouchedRef.current = false;
+    setSelectedRouteSheetIds([]);
+    setSelectedMerchandiseLineIds([]);
+    setCheckoutHydrated(false);
   }, [open, threadId, agreementId]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (serviceOnlyAgreement) return;
+    if (!routeLegSelectionRequired) {
+      setSelectedRouteSheetIds((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+    const rsid = (selectedAgreement?.routeSheetId ?? "").trim();
+    if (!rsid) return;
+    setSelectedRouteSheetIds((prev) => {
+      const allowed = new Set([rsid]);
+      const filtered = prev.filter((id) => allowed.has(id.trim()));
+      if (routeSheetSelectionTouchedRef.current) {
+        return sameStringArray(prev, filtered) ? prev : filtered;
+      }
+      const next = filtered.length > 0 ? filtered : [rsid];
+      return sameStringArray(prev, next) ? prev : next;
+    });
+  }, [
+    open,
+    serviceOnlyAgreement,
+    routeLegSelectionRequired,
+    unpaidPayableStopIdsKey,
+    selectedAgreement?.routeSheetId,
+  ]);
+
+  useEffect(() => {
+    if (!open || serviceOnlyAgreement) return;
+    if (!merchCheckboxSectionVisible) {
+      setSelectedMerchandiseLineIds((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+    setSelectedMerchandiseLineIds((prev) => {
+      const allowed = new Set(payableMerchLines.map((p) => p.id));
+      const filteredPrev = prev.filter((id) => allowed.has(id.trim()));
+      const next =
+        filteredPrev.length > 0 ?
+          filteredPrev
+        : payableMerchLines.map((p) => p.id);
+      return sameStringArray(prev, next) ? prev : next;
+    });
+  }, [open, serviceOnlyAgreement, merchCheckboxSectionVisible, payableMerchIdsKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -463,25 +922,32 @@ export function ChatPaymentModal({
       } catch {
         setCards([]);
       }
-      /* Acuerdos solo servicios: el desglose depende de las recurrencias elegidas; lo carga el efecto siguiente. */
-      if (!serviceOnlyAgreement) {
-        await reloadCheckout({ skipBusyToggle: true });
-      }
+      await hydratePaymentContext({ skipBusyToggle: true });
     })().finally(() => setBusyInit(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, agreementId, serviceOnlyAgreement]);
+  }, [open, agreementId, hydratePaymentContext]);
 
-  /** Cada cambio de servicios / recurrencias a pagar debe refrescar informe en pantalla y base del PDF. */
+  /** Desglose (solo POST checkout-breakdown): al cambiar selección de ítems / tramos / cuotas. */
   useEffect(() => {
-    if (!open || !serviceOnlyAgreement || busyPay) return;
-    void reloadCheckout();
+    if (!open || busyPay || !checkoutHydrated) return;
+    if (serviceOnlyAgreement && allRecurrencesPaidVerified && !busyPay) {
+      setBreakdown(null);
+      return;
+    }
+    if (!checkoutSelectionsReady) {
+      setBreakdown(null);
+      return;
+    }
+    void fetchCheckoutBreakdownOnlyRef.current();
   }, [
     open,
-    agreementId,
-    serviceOnlyAgreement,
-    reloadCheckout,
-    selectedServicePayments,
     busyPay,
+    checkoutHydrated,
+    checkoutSelectionsReady,
+    serviceOnlyAgreement,
+    allRecurrencesPaidVerified,
+    servicePaymentsSelectionKey,
+    routeSheetSelectionKey,
+    merchSelectionKey,
   ]);
 
   useEffect(() => {
@@ -523,8 +989,63 @@ export function ChatPaymentModal({
       }
     }
 
-    const servicePicksForThisCharge = serviceOnlyAgreement
+    const svcOnlyExec =
+      agreementDeclaresService(ag) && !agreementDeclaresMerchandise(ag);
+
+    const rsidExec = (ag.routeSheetId ?? "").trim();
+    const sheetExec = rsidExec ? routeSheets.find((r) => r.id === rsidExec) : undefined;
+    const payableExec = (sheetExec?.paradas ?? []).filter((p) => routeStopIsPayable(p));
+    const paidStopExec = new Set<string>();
+    for (const d of routeDeliveries) {
+      if (!deliveryMarksStopPaid(d)) continue;
+      const sid = (d.routeStopId ?? "").trim();
+      if (sid) paidStopExec.add(sid);
+    }
+    const unpaidStopsExec = payableExec.filter((p) => !paidStopExec.has((p.id ?? "").trim()));
+    const routeLegReqExec =
+      agreementDeclaresMerchandise(ag) &&
+      rsidExec.length > 1 &&
+      payableExec.length > 0 &&
+      unpaidStopsExec.length > 0;
+
+    const payableMerchIdsExec = new Set<string>();
+    for (const raw of ag.merchandise ?? []) {
+      const line = normalizeMerchandiseLine(raw);
+      const mid = (line.id ?? "").trim();
+      if (!mid) continue;
+      const q = parseMajorAmount(line.cantidad);
+      const vu = parseMajorAmount(line.valorUnitario);
+      if (q <= 0 || vu <= 0) continue;
+      payableMerchIdsExec.add(mid);
+    }
+
+    const stopsPickExec =
+      routeLegReqExec ?
+        expandedRouteStopIdsForCheckout
+          .map((x) => x.trim())
+          .filter((id) => unpaidStopsExec.some((p) => (p.id ?? "").trim() === id))
+      : [];
+
+    const merchPickExec =
+      payableMerchIdsExec.size > 0 ?
+        selectedMerchandiseLineIds.filter((id) => payableMerchIdsExec.has(id.trim()))
+      : [];
+
+    let routeExecuteArg: string[] | null | undefined = undefined;
+    let merchExecuteArg: string[] | null | undefined = undefined;
+    if (!svcOnlyExec) {
+      if (payableMerchIdsExec.size > 0) merchExecuteArg = merchPickExec;
+      if (routeLegReqExec) routeExecuteArg = stopsPickExec;
+      else if (payableMerchIdsExec.size > 0 && payableExec.length > 0) routeExecuteArg = [];
+    }
+
+    const servicePicksForThisCharge = svcOnlyExec
       ? selectedServicePayments.map((p) => ({
+          serviceItemId: p.serviceItemId,
+          entryKey: { ...p.entryKey },
+        }))
+      : selectedServicePayments.length > 0 ?
+        selectedServicePayments.map((p) => ({
           serviceItemId: p.serviceItemId,
           entryKey: { ...p.entryKey },
         }))
@@ -536,7 +1057,7 @@ export function ChatPaymentModal({
     idemByCurrency.refs[curLower] = ik;
 
     setBusyPay(true);
-    if (serviceOnlyAgreement) setAllRecurrencesPaidVerified(false);
+    if (svcOnlyExec) setAllRecurrencesPaidVerified(false);
     beginChatPaymentExecute(threadId);
 
     try {
@@ -547,9 +1068,12 @@ export function ChatPaymentModal({
         currency: curLower,
         paymentMethodId: pmId,
         idempotencyKey: ik,
-        selectedServicePayments: serviceOnlyAgreement
-          ? selectedServicePayments
+        selectedServicePayments:
+          svcOnlyExec ? selectedServicePayments
+          : servicePicksForThisCharge.length > 0 ? servicePicksForThisCharge
           : undefined,
+        selectedRouteStopIds: routeExecuteArg,
+        selectedMerchandiseLineIds: merchExecuteArg,
       });
 
       if (!r.accepted && (r.errorCode === "stripe_no_customer")) {
@@ -569,6 +1093,22 @@ export function ChatPaymentModal({
         toast.error(
           r.stripeErrorMessage ??
             "Esa recurrencia ya fue cobrada. Actualizamos el listado.",
+        );
+        await reloadCheckout();
+        return;
+      }
+      if (!r.accepted && r.errorCode === "route_stop_already_paid") {
+        toast.error(
+          r.stripeErrorMessage ??
+            "Ese tramo ya fue cobrado en esa moneda. Actualizamos el listado.",
+        );
+        await reloadCheckout();
+        return;
+      }
+      if (!r.accepted && r.errorCode === "already_paid") {
+        toast.error(
+          r.stripeErrorMessage ??
+            "Ya hay un cobro registrado para esa moneda en este acuerdo.",
         );
         await reloadCheckout();
         return;
@@ -658,9 +1198,11 @@ export function ChatPaymentModal({
                 <CreditCard size={18} aria-hidden /> Pago del acuerdo
               </div>
               <p className="vt-muted mt-1 text-[12px] leading-snug">
-                Se cobra solo el subtotal del acuerdo (mercadería, servicios y tramos incluidos). La
+                Elegí acuerdo con el selector. En acuerdos con mercancía y/o hoja de ruta marcá qué líneas de
+                mercadería incluís y si sumás la hoja de ruta (todos los tramos pendientes); el desglose se
+                actualiza al cambiar la selección. En acuerdos solo servicios, elegí las cuotas a pagar. La
                 referencia Climate ({paymentFeeLabels.climateRateDisplay}) y la tarifa Stripe estimada (
-                {paymentFeeLabels.stripePctDisplay} + fijo) son avisos informativos y no se suman al cargo.
+                {paymentFeeLabels.stripePctDisplay} + fijo) son informativas y no se suman al cargo.
               </p>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5 text-right">
@@ -707,6 +1249,143 @@ export function ChatPaymentModal({
                 />
               </label>
 
+              {merchCheckboxSectionVisible ? (
+                <section className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
+                  <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                    Mercancía a incluir en este cobro
+                  </div>
+                  <p className="vt-muted mt-1 text-[12px] leading-snug">
+                    Marcá cada ítem de mercadería que quieras sumar al informe y al cobro. Desmarcar actualiza el
+                    desglose al instante.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
+                      onClick={() =>
+                        setSelectedMerchandiseLineIds(payableMerchLines.map((m) => m.id))
+                      }
+                    >
+                      Seleccionar todo
+                    </button>
+                    <button
+                      type="button"
+                      className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
+                      onClick={() => setSelectedMerchandiseLineIds([])}
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {payableMerchLines.map((m) => {
+                      const checked = selectedMerchandiseLineIds.includes(m.id);
+                      return (
+                        <label
+                          key={m.id}
+                          className="flex cursor-pointer items-start gap-2 rounded-xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] p-2.5 text-[13px] text-[var(--text)]"
+                        >
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={checked}
+                            onChange={(e) => {
+                              const on = e.target.checked;
+                              setSelectedMerchandiseLineIds((prev) => {
+                                const set = new Set(prev);
+                                if (on) set.add(m.id);
+                                else set.delete(m.id);
+                                return [...set];
+                              });
+                              setAcceptedInforme(false);
+                            }}
+                          />
+                          <span className="min-w-0">
+                            <span className="font-bold">{m.title}</span>
+                            <span className="vt-muted mt-0.5 block text-[12px]">{m.subtitle}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </section>
+              ) : !serviceOnlyAgreement &&
+                selectedAgreement &&
+                agreementDeclaresMerchandise(selectedAgreement) &&
+                selectedAgreement.merchandise.length > 0 ? (
+                <div className="rounded-2xl border border-amber-500/35 bg-[color-mix(in_oklab,amber_8%,var(--surface))] p-3 text-[12px] leading-snug text-[var(--text)]">
+                  Hay mercancía en el acuerdo pero las líneas no tienen identificador persistido; no se puede
+                  desglosar por ítem hasta que el vendedor vuelva a emitir o actualice el acuerdo en el sistema.
+                </div>
+              ) : null}
+
+              {!serviceOnlyAgreement && routeLegSelectionRequired ? (
+                <section className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
+                  <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                    Transporte (hoja de ruta)
+                  </div>
+                  <p className="vt-muted mt-1 text-[12px] leading-snug">
+                    Incluí la hoja de ruta en este cobro para sumar todos los tramos pendientes de transporte.
+                    Podés combinarlo con la mercancía seleccionada arriba; cada cambio actualiza el desglose.
+                  </p>
+                  {!agreementRouteSheet ? (
+                    <p className="vt-muted mt-2 text-[13px]">
+                      No encontramos la hoja de ruta en este chat todavía. Abrí el chat para sincronizar rutas y
+                      volvé a intentar.
+                    </p>
+                  ) : unpaidPayableRouteStops.length === 0 ? (
+                    <p className="vt-muted mt-2 text-[13px]">
+                      No hay tramos de transporte pendientes de cobro (o ya están registrados como pagados).
+                    </p>
+                  ) : (
+                    <>
+                      <div className="mt-2">
+                        <VtMultiSelect
+                          ariaLabel="Hoja de ruta a cobrar"
+                          placeholder="Sin transporte en este cobro"
+                          options={routeSheetTransportOptions}
+                          value={selectedRouteSheetIds}
+                          onChange={(next) => {
+                            routeSheetSelectionTouchedRef.current = true;
+                            setSelectedRouteSheetIds(next);
+                            setAcceptedInforme(false);
+                          }}
+                          disabled={busyInit || busyPay}
+                        />
+                      </div>
+                      <div className="mt-3 text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                        Tramos incluidos si marcás la hoja (pendientes)
+                      </div>
+                      <ul className="mt-1.5 space-y-1.5 text-[12px] leading-snug text-[var(--text)]">
+                        {unpaidPayableRouteStops.map((p) => {
+                          const id = (p.id ?? "").trim();
+                          if (!id) return null;
+                          const label =
+                            `${p.orden}. ${(p.origen ?? "").trim()} → ${(p.destino ?? "").trim()}`.trim();
+                          const price =
+                            (p.precioTransportista ?? "").trim() &&
+                            (p.monedaPago ?? "").trim() ?
+                              `${p.precioTransportista} ${p.monedaPago}`
+                            : (p.precioTransportista ?? "").trim();
+                          return (
+                            <li
+                              key={id}
+                              className="rounded-lg border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] px-2.5 py-2"
+                            >
+                              <span className="font-bold">{label}</span>
+                              {price ?
+                                <span className="vt-muted mt-0.5 block text-[11px]">
+                                  Transporte: {price}
+                                </span>
+                              : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  )}
+                </section>
+              ) : null}
+
               {serviceOnlyAgreement &&
               paidRecurrenceSummaryLines.length > 0 &&
               !allRecurrencesPaidVerified ? (
@@ -722,14 +1401,15 @@ export function ChatPaymentModal({
                 </div>
               ) : null}
 
-              {serviceOnlyAgreement ? (
+              {serviceOnlyAgreement || hybridServiceBlocks ? (
                 <section className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
                   <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
                     Servicios a pagar
                   </div>
                   <p className="vt-muted mt-1 text-[12px] leading-snug">
-                    Este acuerdo contiene solo servicios. Selecciona uno o varios servicios y, para cada uno,
-                    elige la recurrencia (entrada) que deseas pagar. Las que ya fueron cobradas no aparecen.
+                    {serviceOnlyAgreement ?
+                      "Este acuerdo contiene solo servicios. Selecciona uno o varios servicios y, para cada uno, la recurrencia a pagar. Las ya cobradas no aparecen."
+                    : "Este acuerdo incluye servicios: marcá servicios y recurrencias si querés sumarlos a este cobro (podés combinarlos con mercancía y la hoja de ruta). Cada cambio actualiza el desglose."}
                   </p>
                   {serviceItems.length === 0 ? (
                     <p className="vt-muted mt-2 text-[13px]">
@@ -831,10 +1511,12 @@ export function ChatPaymentModal({
                 </section>
               ) : null}
 
-              {!selectedServicePaymentsReady &&
+              {!checkoutSelectionsReady &&
               !(serviceOnlyAgreement && allRecurrencesPaidVerified && !busyPay) ? (
                 <div className="rounded-2xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3 text-[13px] leading-snug text-[var(--text)]">
-                  Selecciona al menos un servicio y una recurrencia para ver el desglose de pago.
+                  {serviceOnlyAgreement ?
+                    "Selecciona al menos un servicio y una recurrencia para ver el desglose de pago."
+                  : "Marcá al menos una opción: mercancía, tramo de ruta o cuota de servicio (según corresponda al acuerdo)."}
                 </div>
               ) : serviceOnlyAgreement &&
                 allRecurrencesPaidVerified &&
@@ -1057,7 +1739,7 @@ export function ChatPaymentModal({
                   !acceptedInforme ||
                   !selectedCardId.trim() ||
                   !curOk ||
-                  !selectedServicePaymentsReady;
+                  !checkoutSelectionsReady;
                 return (
                   <div
                     key={cur}

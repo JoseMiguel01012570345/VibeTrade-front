@@ -1,5 +1,13 @@
-import type { RouteSheetCreatePayload, RouteTramoFormInput } from './routeSheetTypes'
-import { estimadoInstantMs, ROUTE_ESTIMADO_ISO_LOCAL_RE, todayIsoDateLocal } from './routeSheetDateTime'
+import type {
+  RouteSheet,
+  RouteSheetCreatePayload,
+  RouteTramoFormInput,
+} from './routeSheetTypes'
+import { estimadoInstantMs, ROUTE_ESTIMADO_ISO_LOCAL_RE } from './routeSheetDateTime'
+import {
+  normRoutePhoneKey,
+  resolveRouteStopIdForFormRow,
+} from './routeSheetOfferGuards'
 
 const TITLE_MIN = 3
 const TITLE_MAX = 200
@@ -73,8 +81,11 @@ function requiredEstimadoDateTime(
   const isoLocal = `${m[1]}T${m[2]}:00`
   const dt = new Date(isoLocal)
   if (Number.isNaN(dt.getTime())) return 'Fecha u hora inválida'
-  if (kind === 'recogida' && m[1] < todayIsoDateLocal()) {
-    return 'La fecha de recogida no puede ser anterior a hoy'
+  // Comparar con el Date ya resuelto (evita desajustes si el string lleva :ss).
+  if (dt.getTime() < Date.now()) {
+    return kind === 'recogida'
+      ? 'La fecha y hora de recogida no puede ser anterior a la hora actual'
+      : 'La fecha y hora de entrega no puede ser anterior a la hora actual'
   }
   return undefined
 }
@@ -414,6 +425,36 @@ export function normalizeRouteSheetParadas(paradas: RouteTramoFormInput[]): Rout
       monedaPago: norm(p.monedaPago) || undefined,
     }))
     .filter((p) => p.origen.length >= PLACE_MIN && p.destino.length >= PLACE_MIN)
+}
+
+/**
+ * Cambios respecto a la hoja persistida en temas de invitación al transportista.
+ * El baseline JSON del modal puede coincidir con el payload aunque el servidor aún no tenga
+ * teléfono/servicio guardados (p. ej. valor solo venía de la oferta pública).
+ */
+export function persistedRouteSheetInviteFieldsDirty(
+  initial: RouteSheet,
+  paradasFinal: RouteTramoFormInput[],
+): boolean {
+  const stops = initial.paradas ?? []
+  for (let i = 0; i < paradasFinal.length; i++) {
+    const p = paradasFinal[i]!
+    const sid =
+      resolveRouteStopIdForFormRow(p.paradaId, stops[i])?.trim() ?? ''
+    if (!sid) continue
+    const old = stops.find((x) => (x.id ?? '').trim() === sid)
+    if (!old) continue
+    if (
+      normRoutePhoneKey(old.telefonoTransportista) !==
+      normRoutePhoneKey(p.telefonoTransportista)
+    ) {
+      return true
+    }
+    const os = (old.transportInvitedStoreServiceId ?? '').trim()
+    const ns = (p.transportInvitedStoreServiceId ?? '').trim()
+    if (os !== ns) return true
+  }
+  return false
 }
 
 /** Compatibilidad: el store puede comprobar con lista vacía = ok */
