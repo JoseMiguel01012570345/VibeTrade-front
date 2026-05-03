@@ -23,6 +23,8 @@ export function parseOsrmRouteLatLngs(raw: unknown): [number, number][] | undefi
 
 export type EmergentMapLeg = {
   orden: number;
+  /** Id del tramo en hoja de ruta (`RouteStop.id`), si viene de `emergentMapLegsFromRouteStops`. */
+  stopId?: string;
   label: string;
   origen: string;
   destino: string;
@@ -265,6 +267,7 @@ export function emergentMapLegsFromRouteStops(paradas: RouteStop[]): EmergentMap
     const poly = parseOsrmRouteLatLngs(p.osrmRouteLatLngs);
     out.push({
       orden: p.orden,
+      stopId: (p.id ?? "").trim() || undefined,
       label: String(out.length + 1),
       origen: p.origen,
       destino: p.destino,

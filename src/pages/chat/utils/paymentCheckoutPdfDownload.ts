@@ -18,24 +18,34 @@ const SECTION_PT = 11;
 
 /** Helvetica + jsPDF se rompen con espacios raros; evita “S E 1 1 …” y muros ilegibles. */
 export function sanitizePaymentInformeLabel(raw: string): string {
-  let s = raw
-    .normalize("NFC")
-    .replace(/[\u00a0\u2000-\u200f\u202f\u205f\u3000\ufeff]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  // "T r a n s p o r t e" u otras letras sueltas separadas por espacio (Unicode / fuente / datos raros)
-  s = s.replace(/(?:[\p{L}\p{N}]\s){4,}[\p{L}\p{N}]/gu, (chunk) =>
-    chunk.replace(/\s/g, ""),
-  );
-  const parts = s.split(/\s+/).filter(Boolean);
-  if (parts.length >= 6 && parts.every((p) => p.length === 1)) {
-    s = parts.join("");
-  }
-  return s;
+  return raw.normalize("NFC").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Fuentes estándar de jsPDF (Helvetica): glifos y `getTextWidth` fallan con Unicode fuera de lo
+ * que el motor codifica bien (p. ej. U+2014, U+2192) y con acentos si el ancho no coincide.
+ * Normaliza a texto ASCII imprimible para que el wrap medido y el render no destrocen el layout.
+ */
+export function sanitizeTextForStandardPdfFont(raw: string): string {
+  let s = raw.normalize("NFC");
+  s = s.replace(/[\u200B-\u200D\uFEFF\u2060]/g, "");
+  s = s.replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-");
+  s = s.replace(/\u2192/g, "->");
+  s = s.replace(/\u2190/g, "<-");
+  s = s.replace(/\u2194/g, "<->");
+  s = s.replace(/[\u2794\u279C]/g, "->");
+  s = s.replace(/[\u2018\u2019\u201A\u201B]/g, "'");
+  s = s.replace(/[\u201C\u201D\u201E\u201F]/g, '"');
+  s = s.replace(/\u2026/g, "...");
+  s = s.replace(/[\u00A0\u202F\u2007]/g, " ");
+  s = s.normalize("NFD").replace(/\p{M}+/gu, "");
+  s = s.replace(/\u00df/gi, "ss");
+  s = s.replace(/[^\x20-\x7E]/g, "");
+  return s.replace(/\s+/g, " ").trim();
 }
 
 function sanitizePdfLabel(raw: string): string {
-  return sanitizePaymentInformeLabel(raw);
+  return sanitizeTextForStandardPdfFont(sanitizePaymentInformeLabel(raw));
 }
 
 function ensureY(
@@ -124,7 +134,6 @@ function drawWrappedLineItem(
   const gapBeforeAmount = 4;
   const labelColumnRight = pageW - margin - amountW - gapBeforeAmount;
   const labelSlotWmm = Math.max(28, labelColumnRight - margin);
-
   const bulletFirst = "• ";
   const bulletCont = "  ";
 
@@ -207,7 +216,11 @@ export async function downloadPaymentCheckoutInformePdf(
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(BODY_PT);
-  doc.text(`Acuerdo: ${(agreement.title ?? "").trim() || "(sin título)"}`, margin, y);
+  doc.text(
+    `Acuerdo: ${sanitizeTextForStandardPdfFont((agreement.title ?? "").trim()) || "(sin titulo)"}`,
+    margin,
+    y,
+  );
   y += 5.5;
 
   doc.setFont("helvetica", "normal");
@@ -238,7 +251,10 @@ export async function downloadPaymentCheckoutInformePdf(
     doc.setFontSize(BODY_PT);
     doc.setTextColor(71, 55, 15);
     for (const e of breakdown.errors) {
-      const wrapped = doc.splitTextToSize(`• ${sanitizePdfLabel(e)}`, maxW) as string[];
+      const wrapped = doc.splitTextToSize(
+        `• ${sanitizePdfLabel(e)}`,
+        maxW,
+      ) as string[];
       for (const w of wrapped) {
         y = ensureY(doc, y, pageH, margin, 5);
         doc.text(w, margin, y);
@@ -269,7 +285,11 @@ export async function downloadPaymentCheckoutInformePdf(
         label: `Tarifa Stripe estimada ref. (${paymentFeeLabels.stripePctDisplay} + fijo, no cobrada)`,
         value: fmtMoney(bc.stripeFeeMinor, cur),
       },
-      { label: "Total a cobrar con tarjeta (subtotal)", value: fmtMoney(bc.totalMinor, cur), strong: true },
+      {
+        label: "Total a cobrar con tarjeta (subtotal)",
+        value: fmtMoney(bc.totalMinor, cur),
+        strong: true,
+      },
     ];
     const boxPad = 3;
     const rowH = 4.8;
@@ -306,7 +326,10 @@ export async function downloadPaymentCheckoutInformePdf(
   }
 
   const qrEntries = [
-    { label: "Precios y políticas de procesamiento (Stripe)", url: STRIPE_PRICING_PAGE_URL },
+    {
+      label: "Precios y políticas de procesamiento (Stripe)",
+      url: STRIPE_PRICING_PAGE_URL,
+    },
     ...collectAgreementQrLinkEntries(agreement, { threadId }),
   ];
 
@@ -315,7 +338,10 @@ export async function downloadPaymentCheckoutInformePdf(
   doc.save(safeInformeFilename(agreement.title ?? ""));
 }
 
-function safeReceiptFilename(agreementTitle: string, paymentId: string): string {
+function safeReceiptFilename(
+  agreementTitle: string,
+  paymentId: string,
+): string {
   const slug = agreementTitle
     .trim()
     .slice(0, 32)
@@ -357,20 +383,29 @@ export async function downloadPaymentFeeReceiptPdf(
   doc.setTextColor(15, 23, 42);
   y = 28;
 
-  const issuerPlat = (receipt.invoiceIssuerPlatform ?? "").trim() || "VibeTrade";
+  const issuerPlat =
+    (receipt.invoiceIssuerPlatform ?? "").trim() || "VibeTrade";
   const storeNm = (receipt.invoiceStoreName ?? "").trim();
   doc.setFont("helvetica", "normal");
   doc.setFontSize(BODY_PT);
-  doc.text(`Emisor: ${issuerPlat}`, margin, y);
+  doc.text(`Emisor: ${sanitizeTextForStandardPdfFont(issuerPlat)}`, margin, y);
   y += 5.5;
   if (storeNm.length > 0) {
-    doc.text(`Tienda (chat): ${storeNm}`, margin, y);
+    doc.text(
+      `Tienda (chat): ${sanitizeTextForStandardPdfFont(storeNm)}`,
+      margin,
+      y,
+    );
     y += 5.5;
   }
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(BODY_PT);
-  doc.text(`Acuerdo: ${receipt.agreementTitle.trim() || "(sin título)"}`, margin, y);
+  doc.text(
+    `Acuerdo: ${sanitizeTextForStandardPdfFont(receipt.agreementTitle.trim()) || "(sin titulo)"}`,
+    margin,
+    y,
+  );
   y += 5.5;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(BODY_PT);
@@ -413,7 +448,11 @@ export async function downloadPaymentFeeReceiptPdf(
       label: "Tarifa Stripe estimada antes del pago (referencia)",
       value: fmtMoney(receipt.stripeFeeMinorEstimated, cur),
     },
-    { label: "Total cobrado al comprador (subtotal)", value: fmtMoney(receipt.totalChargedMinor, cur), strong: true },
+    {
+      label: "Total cobrado al comprador (subtotal)",
+      value: fmtMoney(receipt.totalChargedMinor, cur),
+      strong: true,
+    },
   ];
   const boxPad = 3;
   const rowH = 4.8;

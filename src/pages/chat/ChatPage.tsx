@@ -83,6 +83,8 @@ import { useHydratePersistedChatThread } from "./hooks/useHydratePersistedChatTh
 import { useChatRouteRefresh } from "./hooks/useChatRouteRefresh";
 import { useChatScrollUnread } from "./hooks/useChatScrollUnread";
 import { useChatVoiceRecorder } from "./hooks/useChatVoiceRecorder";
+import { useCarrierThreadGeolocationAndTelemetry } from "./hooks/useCarrierThreadGeolocationAndTelemetry";
+import { CarrierTelemetryBridge } from "./components/logistics/CarrierTelemetryBridge";
 import { incomingMessageSupportsDeliveryAck } from "./utils/chatDeliveryAck";
 import { CarrierBlockedChatView } from "./components/layout/CarrierBlockedChatView";
 import { ChatJumpToBottomFab } from "./components/layout/ChatJumpToBottomFab";
@@ -307,9 +309,19 @@ export function ChatPage() {
     );
   }, [thread?.contracts, routeSheetBeingEdited?.id]);
   const [railOpen, setRailOpen] = useState(false);
+  /** Tras cobro: refrescar entregas + volver a intentar permiso de ubicación para telemetría. */
+  const [carrierGeoNonce, setCarrierGeoNonce] = useState(0);
   useEffect(() => {
     if (thread?.isSocialGroup) setRailOpen(false);
   }, [thread?.isSocialGroup]);
+
+  const carrierTelemetryTargets = useCarrierThreadGeolocationAndTelemetry({
+    threadId,
+    viewerIsConfirmedCarrier,
+    isSocialThread,
+    meId: me.id,
+    refreshNonce: carrierGeoNonce,
+  });
   /** Panel izquierdo: suscriptores a la oferta de hoja de ruta (solo comprador). */
   const [routeSubscribersSheetId, setRouteSubscribersSheetId] = useState<
     string | null
@@ -571,6 +583,20 @@ export function ChatPage() {
     next.delete("subs");
     next.delete("sheet");
     next.delete("hi");
+    setSearchParams(next, { replace: true });
+  }, [thread?.id, searchParams, setSearchParams]);
+
+  /** Deep link: panel Rutas enfocado en una hoja (?rail=1&sheet=), p. ej. titularidad cedida */
+  useEffect(() => {
+    if (!thread?.id) return;
+    if (searchParams.get("rail") !== "1") return;
+    const sheet = searchParams.get("sheet")?.trim();
+    if (!sheet) return;
+    setFocusRouteId(sheet);
+    setRailOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("rail");
+    next.delete("sheet");
     setSearchParams(next, { replace: true });
   }, [thread?.id, searchParams, setSearchParams]);
 
@@ -1131,7 +1157,11 @@ export function ChatPage() {
             threadId={thread.id}
             threadStoreId={thread.storeId}
             buyerUserId={thread.buyerUserId ?? buyerForRail.id}
-            sellerUserId={thread.sellerUserId}
+            sellerUserId={
+              thread.sellerUserId?.trim() ||
+              thread.store?.ownerUserId?.trim() ||
+              undefined
+            }
             contracts={thread.contracts ?? []}
             routeSheets={thread.routeSheets ?? []}
             contractsLoading={contractsLoading}
@@ -1341,8 +1371,22 @@ export function ChatPage() {
         agreements={acceptedAgreementsForPayment}
         routeSheets={thread.routeSheets ?? []}
         onClose={() => setChatPayOpen(false)}
-        onPaymentFullySettled={() => markThreadPaymentCompleted(thread.id)}
+        onPaymentFullySettled={() => {
+          markThreadPaymentCompleted(thread.id);
+          setCarrierGeoNonce((n) => n + 1);
+        }}
       />
+
+      {carrierTelemetryTargets.map((t) => (
+        <CarrierTelemetryBridge
+          key={`${t.agreementId}:${t.routeStopId}`}
+          enabled
+          threadId={thread.id}
+          agreementId={t.agreementId}
+          routeSheetId={t.routeSheetId}
+          routeStopId={t.routeStopId}
+        />
+      ))}
 
       <TrustRiskEditConfirmModal
         open={pendingRouteSheetTrustConfirm !== null}

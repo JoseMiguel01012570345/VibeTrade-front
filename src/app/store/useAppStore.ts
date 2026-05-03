@@ -74,6 +74,7 @@ export type NotificationItem = {
     | 'route_tramo_seller_expelled'
     | 'route_sheet_presel'
     | 'route_sheet_presel_decl'
+    | 'route_ownership_granted'
     | 'store_trust_penalty'
     | 'peer_party_exited'
   title: string
@@ -408,7 +409,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         ? items.filter((x) => {
             if (
               (x.kind === 'route_tramo_subscribe' ||
-                x.kind === 'route_tramo_subscribe_accepted') &&
+                x.kind === 'route_tramo_subscribe_accepted' ||
+                x.kind === 'route_ownership_granted') &&
               x.threadId === openThread
             )
               return false
@@ -429,7 +431,8 @@ export const useAppStore = create<AppState>((set, get) => ({
           x.kind !== 'route_tramo_subscribe' &&
           x.kind !== 'route_tramo_subscribe_accepted' &&
           x.kind !== 'route_tramo_subscribe_rejected' &&
-          x.kind !== 'route_tramo_seller_expelled',
+          x.kind !== 'route_tramo_seller_expelled' &&
+          x.kind !== 'route_ownership_granted',
       )
       const fromServer = serverItems.filter((x) => !x.read)
       const merged = [...fromServer, ...local]

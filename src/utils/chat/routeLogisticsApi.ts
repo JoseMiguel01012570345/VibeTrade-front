@@ -24,6 +24,35 @@ export async function fetchAgreementRouteDeliveries(
   return (await res.json()) as RouteStopDeliveryStatusApi[];
 }
 
+export type CarrierTelemetryLatestPointApi = {
+  routeSheetId: string;
+  routeStopId: string;
+  carrierUserId: string;
+  lat: number;
+  lng: number;
+  progressFraction?: number | null;
+  offRoute: boolean;
+  reportedAtUtc: string;
+  speedKmh?: number | null;
+};
+
+/** Última telemetría persistida por tramo (titular actual), para inicializar el mapa. */
+export async function fetchLatestCarrierTelemetryForRouteSheet(args: {
+  threadId: string;
+  agreementId: string;
+  routeSheetId: string;
+}): Promise<CarrierTelemetryLatestPointApi[]> {
+  const qs = new URLSearchParams({ routeSheetId: args.routeSheetId });
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/agreements/${encodeURIComponent(args.agreementId)}/logistics/telemetry/latest?${qs.toString()}`,
+  );
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(t || `HTTP ${res.status}`);
+  }
+  return (await res.json()) as CarrierTelemetryLatestPointApi[];
+}
+
 export async function postCarrierTelemetry(args: {
   threadId: string;
   agreementId: string;
@@ -57,13 +86,31 @@ export async function postCarrierTelemetry(args: {
   }
 }
 
+export type CarrierOwnershipCedeResultApi = {
+  ok: boolean;
+  errorCode?: string | null;
+  message?: string | null;
+};
+
+function parseCedeOwnershipErrorBody(raw: string): string | undefined {
+  const t = raw.trim();
+  if (!t.startsWith("{")) return undefined;
+  try {
+    const j = JSON.parse(t) as CarrierOwnershipCedeResultApi;
+    const msg = typeof j.message === "string" ? j.message.trim() : "";
+    return msg.length > 0 ? msg : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function postCedeCarrierOwnership(args: {
   threadId: string;
   agreementId: string;
   routeSheetId: string;
   routeStopId: string;
   targetCarrierUserId: string;
-}): Promise<void> {
+}): Promise<CarrierOwnershipCedeResultApi> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/agreements/${encodeURIComponent(args.agreementId)}/logistics/ownership/cede`,
     {
@@ -76,9 +123,15 @@ export async function postCedeCarrierOwnership(args: {
       }),
     },
   );
+  const raw = await res.text().catch(() => "");
   if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    throw new Error(t || `HTTP ${res.status}`);
+    const fromJson = parseCedeOwnershipErrorBody(raw);
+    throw new Error(fromJson ?? (raw.trim() || `HTTP ${res.status}`));
+  }
+  try {
+    return JSON.parse(raw) as CarrierOwnershipCedeResultApi;
+  } catch {
+    return { ok: true, errorCode: null, message: null };
   }
 }
 

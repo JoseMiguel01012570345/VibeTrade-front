@@ -601,6 +601,10 @@ export function NotificationsBell() {
                     <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
                       Abrir chat de la operación →
                     </div>
+                  ) : n.kind === 'route_ownership_granted' && n.threadId ? (
+                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
+                      Abrir Rutas en el chat →
+                    </div>
                   ) : n.kind === 'store_trust_penalty' && n.threadId ? (
                     <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
                       Abrir chat de la operación →

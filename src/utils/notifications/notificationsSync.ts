@@ -40,7 +40,11 @@ function parseRouteTramoMeta(metaJson: string | null | undefined): Pick<
       typeof j.stopId === 'string' ? j.stopId
       : typeof j.StopId === 'string' ? j.StopId
       : undefined
-    let stopId = stopIdRaw?.trim() || undefined
+    const routeStopIdRaw =
+      typeof j.routeStopId === 'string' ? j.routeStopId
+      : typeof j.RouteStopId === 'string' ? j.RouteStopId
+      : undefined
+    let stopId = stopIdRaw?.trim() || routeStopIdRaw?.trim() || undefined
     const carrierUserIdRaw =
       typeof j.carrierUserId === 'string' ? j.carrierUserId
       : typeof j.CarrierUserId === 'string' ? j.CarrierUserId
@@ -205,6 +209,21 @@ export function mapServerNotification(n: ChatNotificationDto): NotificationItem 
       read: n.readAtUtc != null,
       threadId: n.threadId,
       ...(oid ? { offerId: oid } : {}),
+      trustScore: n.authorTrustScore,
+      ...meta,
+    }
+  }
+
+  if (n.kind === 'rl_ownership_granted' && n.threadId) {
+    const meta = parseRouteTramoMeta(n.metaJson)
+    return {
+      id: n.id,
+      kind: 'route_ownership_granted',
+      title: 'Titularidad del paquete',
+      body: n.messagePreview,
+      createdAt: Date.parse(n.createdAtUtc),
+      read: n.readAtUtc != null,
+      threadId: n.threadId,
       trustScore: n.authorTrustScore,
       ...meta,
     }

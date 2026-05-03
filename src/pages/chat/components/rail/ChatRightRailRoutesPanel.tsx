@@ -61,22 +61,7 @@ import {
   type RouteStopDeliveryStatusApi,
 } from "../../../../utils/chat/routeLogisticsApi";
 import { uploadMedia, mediaApiUrl } from "../../../../utils/media/mediaClient";
-import { useCarrierLiveTelemetry } from "../../hooks/useCarrierLiveTelemetry";
 import { RouteSheetLiveTrackingModal } from "../modals/RouteSheetLiveTrackingModal";
-
-function CarrierTelemetryBridge(
-  args: Readonly<{
-    enabled: boolean;
-    threadId: string;
-    agreementId: string;
-    routeSheetId: string;
-    routeStopId: string;
-    minIntervalMs?: number;
-  }>,
-): null {
-  useCarrierLiveTelemetry(args);
-  return null;
-}
 
 function normalizeCarrierEvidenceForCompare(
   text: string,
@@ -245,6 +230,16 @@ export function ChatRightRailRoutesPanel({
   const [carrierEvReadModal, setCarrierEvReadModal] = useState<null | {
     routeStopId: string;
     evidence: CarrierDeliveryEvidenceApi;
+  }>(null);
+  const [cedeOwnershipModal, setCedeOwnershipModal] = useState<null | {
+    agreementId: string;
+    routeSheetId: string;
+    routeStopId: string;
+    busy: boolean;
+    targetCarrierUserId: string;
+    targetDisplayLabel: string;
+    currentOrden: number;
+    nextOrden: number;
   }>(null);
 
   const sellerUid = (sellerUserId ?? "").trim();
@@ -679,7 +674,10 @@ export function ChatRightRailRoutesPanel({
             const sheetAid = (sheetAgreement?.id ?? "").trim();
             const sheetDeliv =
               sheetAid ? deliveriesByAgreement[sheetAid] ?? [] : [];
+            const sheetIsOperationalDraft =
+              (selRoute.estado ?? "").trim().toLowerCase() === "borrador";
             const sheetAnyLiveTracking =
+              !sheetIsOperationalDraft &&
               !!sheetAgreement &&
               sheetAid.length >= 8 &&
               !!(me.id ?? "").trim() &&
@@ -720,41 +718,97 @@ export function ChatRightRailRoutesPanel({
                   (d.routeSheetId ?? "").trim() === selRoute.id.trim() &&
                   (d.routeStopId ?? "").trim() === (p.id ?? "").trim(),
               );
-              const state = (row?.state ?? "unpaid").trim().toLowerCase();
+              const sheetIsOperationalDraft =
+                (selRoute.estado ?? "").trim().toLowerCase() === "borrador";
+              const apiState = (row?.state ?? "unpaid").trim().toLowerCase();
+              const logisticsState = sheetIsOperationalDraft
+                ? "route_sheet_draft"
+                : apiState;
 
               const ot =
                 routeOfferResolved?.routeSheetId === selRoute.id
                   ? routeOfferResolved.tramos.find((t) => t.stopId === p.id)
                   : undefined;
-              const confirmedCarrier =
-                ot?.assignment?.status === "confirmed" ? (ot.assignment.userId ?? "").trim() : "";
-              const ownerFromDelivery = (row?.currentOwnerUserId ?? "").trim();
-              const effectiveCarrierUid =
-                ownerFromDelivery.length >= 2 ? ownerFromDelivery : confirmedCarrier;
-              const viewerIsSeller = !!me.id && sellerUid.length > 1 && me.id === sellerUid;
-              const viewerIsOwnerCarrier =
+              const confirmedCarrierUidForStop = (stopId: string | undefined): string => {
+                if (!stopId?.trim() || routeOfferResolved?.routeSheetId !== selRoute.id)
+                  return "";
+                const tr = routeOfferResolved.tramos.find((x) => x.stopId === stopId);
+                return tr?.assignment?.status === "confirmed"
+                  ? (tr.assignment.userId ?? "").trim()
+                  : "";
+              };
+              const curCarrierUid = confirmedCarrierUidForStop(p.id);
+              const viewerIsConfirmedOnThisStop =
                 !!me.id &&
-                effectiveCarrierUid.length > 1 &&
-                me.id === effectiveCarrierUid;
+                curCarrierUid.length >= 2 &&
+                me.id === curCarrierUid;
 
-              const telemetryEnabled =
-                viewerIsOwnerCarrier &&
-                !!agreement &&
-                agreementId.length >= 8 &&
-                !!row &&
-                (state === "paid" ||
-                  state === "in_transit" ||
-                  state === "awaiting_carrier_for_handoff" ||
-                  state === "delivered_pending_evidence");
+              const ownerFromDelivery = (row?.currentOwnerUserId ?? "").trim();
+              const viewerIsSeller = !!me.id && sellerUid.length > 1 && me.id === sellerUid;
+              /* Titular real del paquete: solo API `currentOwnerUserId` (no inferir por suscripción). */
+              const viewerIsOwnerCarrierStrict =
+                !!me.id &&
+                ownerFromDelivery.length >= 2 &&
+                me.id === ownerFromDelivery;
+
+              const orderedParadas = [...selRoute.paradas].sort(
+                (a, b) => (a.orden ?? 0) - (b.orden ?? 0),
+              );
+              const stopIndex = orderedParadas.findIndex((x) => x.id === p.id);
+              const prevParada =
+                stopIndex > 0 ? orderedParadas[stopIndex - 1] : undefined;
+              const prevRow = prevParada
+                ? deliveries.find(
+                    (d) =>
+                      (d.routeSheetId ?? "").trim() === selRoute.id.trim() &&
+                      (d.routeStopId ?? "").trim() === (prevParada.id ?? "").trim(),
+                  )
+                : undefined;
+              const prevApiState = (prevRow?.state ?? "").trim().toLowerCase();
+              const prevLogisticsState = sheetIsOperationalDraft
+                ? "route_sheet_draft"
+                : prevApiState;
+              const prevEvidenceAccepted =
+                !prevParada ||
+                prevLogisticsState === "evidence_accepted";
+              const nextParada =
+                stopIndex >= 0 && stopIndex < orderedParadas.length - 1
+                  ? orderedParadas[stopIndex + 1]
+                  : undefined;
+              const nextCarrierUid = nextParada
+                ? confirmedCarrierUidForStop(nextParada.id)
+                : "";
+              const nextOt =
+                routeOfferResolved?.routeSheetId === selRoute.id && nextParada
+                  ? routeOfferResolved.tramos.find(
+                      (t) => t.stopId === nextParada.id,
+                    )
+                  : undefined;
+              /* Ceder solo en el “borde” donde el siguiente tramo tiene otro transportista (p. ej. tramo 2 → 3). */
+              const handoffLeg =
+                !!nextParada &&
+                curCarrierUid.length >= 2 &&
+                nextCarrierUid.length >= 2 &&
+                curCarrierUid !== nextCarrierUid;
 
               const busyKeyBase = `${agreementId}:${selRoute.id}:${p.id}`;
 
               const activeLike =
-                state === "paid" ||
-                state === "in_transit" ||
-                state === "delivered_pending_evidence" ||
-                state === "evidence_submitted" ||
-                state === "evidence_rejected";
+                logisticsState === "paid" ||
+                logisticsState === "in_transit" ||
+                logisticsState === "delivered_pending_evidence" ||
+                logisticsState === "evidence_submitted" ||
+                logisticsState === "evidence_rejected";
+
+              const showCedeOwnership =
+                activeLike &&
+                viewerIsOwnerCarrierStrict &&
+                viewerIsConfirmedOnThisStop &&
+                handoffLeg;
+
+              const evidenceBlockedHint = !prevEvidenceAccepted
+                ? "Esperá evidencia aceptada del tramo anterior (y la cadena de titularidad)."
+                : undefined;
 
               return (
               <li
@@ -900,63 +954,50 @@ export function ChatRightRailRoutesPanel({
                       <div className="text-[11px] font-bold text-[var(--text)]">
                         Estado:{" "}
                         <span className="font-semibold normal-case tracking-normal">
-                          {row ?
-                            routeStopDeliveryStateLabelEs(state)
+                          {sheetIsOperationalDraft || row ?
+                            routeStopDeliveryStateLabelEs(logisticsState)
                           : "Sin registro"}
                         </span>
                       </div>
                     </div>
 
-                    {telemetryEnabled && agreementId.length >= 8 ?
-                      <CarrierTelemetryBridge
-                        enabled
-                        threadId={threadId}
-                        agreementId={agreementId}
-                        routeSheetId={selRoute.id}
-                        routeStopId={p.id}
-                      />
-                    : null}
+                    {/* Telemetría GPS: montada en ChatPage para no duplicar watchPosition ni depender de abrir Rutas. */}
 
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {activeLike && viewerIsOwnerCarrier ?
+                      {showCedeOwnership ?
                         <button
                           type="button"
                           className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
                           disabled={!getSessionToken() || logisticsBusyKey === `${busyKeyBase}:cede`}
+                          title="Solo si sos el titular del paquete y el transportista confirmado en este tramo: cedé al confirmado en el siguiente."
                           onClick={() => {
-                            const target = globalThis.prompt(
-                              "UserId del transportista destino (ceder ownership)",
-                            );
-                            if (!target || !target.trim()) return;
-                            void (async () => {
-                              try {
-                                setLogisticsBusyKey(`${busyKeyBase}:cede`);
-                                await postCedeCarrierOwnership({
-                                  threadId,
-                                  agreementId,
-                                  routeSheetId: selRoute.id,
-                                  routeStopId: p.id,
-                                  targetCarrierUserId: target.trim(),
-                                });
-                                toast.success("Ownership cedido.");
-                                await refreshDeliveriesForAgreement(agreementId);
-                              } catch (e) {
-                                toast.error((e as Error)?.message ?? "No se pudo ceder ownership.");
-                              } finally {
-                                setLogisticsBusyKey(null);
-                              }
-                            })();
+                            setCedeOwnershipModal({
+                              agreementId,
+                              routeSheetId: selRoute.id,
+                              routeStopId: p.id,
+                              busy: false,
+                              targetCarrierUserId: nextCarrierUid,
+                              targetDisplayLabel:
+                                nextOt?.assignment?.displayName?.trim() ||
+                                "Transportista confirmado del siguiente tramo",
+                              currentOrden: p.orden ?? 0,
+                              nextOrden: nextParada?.orden ?? 0,
+                            });
                           }}
                         >
                           Ceder ownership
                         </button>
                       : null}
 
-                      {activeLike && viewerIsOwnerCarrier ?
+                      {activeLike && viewerIsOwnerCarrierStrict ?
                         <button
                           type="button"
                           className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
-                          disabled={!getSessionToken()}
+                          disabled={
+                            !getSessionToken() ||
+                            !prevEvidenceAccepted
+                          }
+                          title={evidenceBlockedHint}
                           onClick={() => {
                             void (async () => {
                               let loaded: CarrierDeliveryEvidenceApi | null = null;
@@ -986,9 +1027,9 @@ export function ChatRightRailRoutesPanel({
                       : null}
 
                       {viewerIsSeller &&
-                      (state === "evidence_submitted" ||
-                        state === "evidence_rejected" ||
-                        state === "delivered_pending_evidence") ?
+                      (logisticsState === "evidence_submitted" ||
+                        logisticsState === "evidence_rejected" ||
+                        logisticsState === "delivered_pending_evidence") ?
                         <button
                           type="button"
                           className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
@@ -1020,7 +1061,9 @@ export function ChatRightRailRoutesPanel({
                         </button>
                       : null}
 
-                      {state === "evidence_submitted" && viewerIsSeller ?
+                      {(logisticsState === "evidence_submitted" ||
+                        logisticsState === "evidence_rejected") &&
+                      viewerIsSeller ?
                         <>
                           <button
                             type="button"
@@ -1141,6 +1184,103 @@ export function ChatRightRailRoutesPanel({
           ))}
         </ul>
       )}
+
+      {cedeOwnershipModal ?
+        <div
+          className="fixed inset-0 z-[86] flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xl">
+            <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
+              <div className="min-w-0 text-[13px] font-black text-[var(--text)]">
+                Ceder titularidad del paquete
+              </div>
+              <button
+                type="button"
+                className="vt-btn vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-2"
+                onClick={() => !cedeOwnershipModal.busy && setCedeOwnershipModal(null)}
+                disabled={cedeOwnershipModal.busy}
+              >
+                <XCircle size={16} aria-hidden /> Cerrar
+              </button>
+            </div>
+            <div className="px-4 py-3 text-[13px] leading-relaxed text-[var(--text)]">
+              <p className="m-0">
+                ¿Seguro que querés ceder la titularidad del paquete en el tramo{" "}
+                <strong>{cedeOwnershipModal.currentOrden}</strong> al transportista
+                confirmado del tramo <strong>{cedeOwnershipModal.nextOrden}</strong>
+                {" "}(
+                <span className="font-semibold">
+                  {cedeOwnershipModal.targetDisplayLabel}
+                </span>
+                )?
+              </p>
+              <p className="vt-muted mt-2 mb-0 text-[12px]">
+                Solo podés ceder al transportista habilitado en el siguiente tramo. Si el
+                servidor rechaza la operación, verás el motivo aquí.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] px-4 py-3">
+              <button
+                type="button"
+                className="vt-btn vt-btn-ghost border border-[var(--border)] px-4 py-2 text-[13px]"
+                disabled={cedeOwnershipModal.busy}
+                onClick={() => setCedeOwnershipModal(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="vt-btn vt-btn-primary px-4 py-2 text-[13px]"
+                disabled={cedeOwnershipModal.busy || !getSessionToken()}
+                onClick={() => {
+                  const m = cedeOwnershipModal;
+                  void (async () => {
+                    setCedeOwnershipModal((x) => (x ? { ...x, busy: true } : x));
+                    const busyKey = `${m.agreementId}:${m.routeSheetId}:${m.routeStopId}:cede`;
+                    setLogisticsBusyKey(busyKey);
+                    try {
+                      const r = await postCedeCarrierOwnership({
+                        threadId,
+                        agreementId: m.agreementId,
+                        routeSheetId: m.routeSheetId,
+                        routeStopId: m.routeStopId,
+                        targetCarrierUserId: m.targetCarrierUserId,
+                      });
+                      if (!r.ok) {
+                        toast.error(
+                          (r.message ?? "").trim() ||
+                            "El servidor rechazó la cesión de titularidad.",
+                        );
+                        setCedeOwnershipModal((x) => (x ? { ...x, busy: false } : x));
+                        return;
+                      }
+                      toast.success("Titularidad cedida. El otro transportista fue notificado.");
+                      await refreshDeliveriesForAgreement(m.agreementId);
+                      setCedeOwnershipModal(null);
+                    } catch (e) {
+                      toast.error(
+                        (e as Error)?.message ?? "No se pudo ceder la titularidad.",
+                      );
+                      setCedeOwnershipModal((x) => (x ? { ...x, busy: false } : x));
+                    } finally {
+                      setLogisticsBusyKey(null);
+                    }
+                  })();
+                }}
+              >
+                {cedeOwnershipModal.busy ?
+                  <>
+                    <Loader2 className="mr-1.5 inline animate-spin" size={16} aria-hidden />
+                    Procesando…
+                  </>
+                : "Sí, ceder"}
+              </button>
+            </div>
+          </div>
+        </div>
+      : null}
 
       {carrierEvEditModal && selRoute ?
         <div
@@ -1399,7 +1539,7 @@ export function ChatRightRailRoutesPanel({
             <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
               <div className="min-w-0">
                 <div className="text-[13px] font-black text-[var(--text)]">
-                  Evidencia de entrega (solo lectura)
+                  Evidencia de entrega
                 </div>
                 <div className="vt-muted mt-0.5 text-[12px]">
                   Estado:{" "}
@@ -1439,6 +1579,110 @@ export function ChatRightRailRoutesPanel({
                 }
               />
             </div>
+            {(() => {
+              const aid = (agreementForSheet(selRoute.id)?.id ?? "").trim();
+              const viewerIsSeller =
+                !!me.id && sellerUid.length > 1 && me.id === sellerUid;
+              const evSt = (
+                carrierEvReadModal.evidence.status ?? ""
+              ).trim().toLowerCase();
+              const canDecide =
+                viewerIsSeller &&
+                aid.length >= 8 &&
+                (evSt === "submitted" || evSt === "rejected");
+              const readBusyBase = `${aid}:${carrierEvReadModal.routeStopId}:read`;
+              if (!canDecide) return null;
+              return (
+                <div className="flex flex-wrap gap-2 border-t border-[var(--border)] px-4 py-3">
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-primary inline-flex items-center gap-2 px-4 py-2 text-[13px]"
+                    disabled={
+                      !getSessionToken() || logisticsBusyKey === `${readBusyBase}:acc`
+                    }
+                    onClick={() => {
+                      void (async () => {
+                        try {
+                          setLogisticsBusyKey(`${readBusyBase}:acc`);
+                          await decideCarrierDeliveryEvidence({
+                            threadId,
+                            agreementId: aid,
+                            routeSheetId: selRoute.id,
+                            routeStopId: carrierEvReadModal.routeStopId,
+                            decision: "accept",
+                          });
+                          toast.success("Evidencia aceptada.");
+                          await refreshDeliveriesForAgreement(aid);
+                          const ev = await fetchCarrierDeliveryEvidence({
+                            threadId,
+                            agreementId: aid,
+                            routeSheetId: selRoute.id,
+                            routeStopId: carrierEvReadModal.routeStopId,
+                          });
+                          if (ev)
+                            setCarrierEvReadModal({
+                              routeStopId: carrierEvReadModal.routeStopId,
+                              evidence: ev,
+                            });
+                          else setCarrierEvReadModal(null);
+                        } catch (e) {
+                          toast.error(
+                            (e as Error)?.message ?? "No se pudo aceptar.",
+                          );
+                        } finally {
+                          setLogisticsBusyKey(null);
+                        }
+                      })();
+                    }}
+                  >
+                    <ThumbsUp size={16} aria-hidden /> Aceptar evidencia
+                  </button>
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-ghost inline-flex items-center gap-2 border border-[var(--border)] px-4 py-2 text-[13px]"
+                    disabled={
+                      !getSessionToken() || logisticsBusyKey === `${readBusyBase}:rej`
+                    }
+                    onClick={() => {
+                      void (async () => {
+                        try {
+                          setLogisticsBusyKey(`${readBusyBase}:rej`);
+                          await decideCarrierDeliveryEvidence({
+                            threadId,
+                            agreementId: aid,
+                            routeSheetId: selRoute.id,
+                            routeStopId: carrierEvReadModal.routeStopId,
+                            decision: "reject",
+                          });
+                          toast.success("Evidencia rechazada.");
+                          await refreshDeliveriesForAgreement(aid);
+                          const ev = await fetchCarrierDeliveryEvidence({
+                            threadId,
+                            agreementId: aid,
+                            routeSheetId: selRoute.id,
+                            routeStopId: carrierEvReadModal.routeStopId,
+                          });
+                          if (ev)
+                            setCarrierEvReadModal({
+                              routeStopId: carrierEvReadModal.routeStopId,
+                              evidence: ev,
+                            });
+                          else setCarrierEvReadModal(null);
+                        } catch (e) {
+                          toast.error(
+                            (e as Error)?.message ?? "No se pudo rechazar.",
+                          );
+                        } finally {
+                          setLogisticsBusyKey(null);
+                        }
+                      })();
+                    }}
+                  >
+                    <ThumbsDown size={16} aria-hidden /> Rechazar evidencia
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       : null}

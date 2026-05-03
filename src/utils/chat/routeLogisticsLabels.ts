@@ -8,6 +8,9 @@ export function routeStopDeliveryStateLabelEs(
 ): string {
   const s = (raw ?? "").trim().toLowerCase();
   switch (s) {
+    /** Pseudo-estado UI: la hoja sigue en borrador; no mostrar avance operativo de entregas. */
+    case "route_sheet_draft":
+      return "Ruta en borrador — sin operación activa en este tramo";
     case "unpaid":
       return "Sin cobro en este tramo";
     case "paid":

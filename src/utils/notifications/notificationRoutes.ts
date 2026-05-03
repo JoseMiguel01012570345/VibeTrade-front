@@ -50,6 +50,13 @@ export function notificationDeepLink(
   if (n.kind === 'route_sheet_presel_decl' && n.threadId) {
     return `/chat/${encodeURIComponent(n.threadId)}`
   }
+  if (n.kind === 'route_ownership_granted' && n.threadId && n.routeSheetId?.trim()) {
+    const q = new URLSearchParams({
+      rail: '1',
+      sheet: n.routeSheetId.trim(),
+    })
+    return `/chat/${encodeURIComponent(n.threadId)}?${q.toString()}`
+  }
   if (n.kind === 'store_trust_penalty' && n.threadId) {
     return `/chat/${encodeURIComponent(n.threadId)}`
   }

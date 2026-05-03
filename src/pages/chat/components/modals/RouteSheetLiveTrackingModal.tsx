@@ -11,7 +11,11 @@ import {
   emergentMapLegsFromRouteStops,
   emergentMapRouteSegmentColors,
   emergentMapRouteSegments,
+  ROUTE_ISLAND_LINE_COLORS,
 } from "../../../../utils/map/emergentRouteMapLegs";
+import { useAppStore } from "../../../../app/store/useAppStore";
+import { useMarketStore } from "../../../../app/store/useMarketStore";
+import { fetchThreadRouteTramoSubscriptions } from "../../../../utils/chat/chatApi";
 import {
   routeMapFinishWaypointIcon,
   routeMapNumberedWaypointIcon,
@@ -27,6 +31,89 @@ import {
   subscribeCarrierTelemetryUpdated,
   type CarrierTelemetryUpdatedPayload,
 } from "../../../../utils/chat/chatRealtime";
+import {
+  fetchAgreementRouteDeliveries,
+  fetchLatestCarrierTelemetryForRouteSheet,
+  type RouteStopDeliveryStatusApi,
+} from "../../../../utils/chat/routeLogisticsApi";
+
+/** Tramos donde el titular sigue involucrado en la cadena (no cerrados). */
+const TRACKING_OWNER_STATES = new Set([
+  "in_transit",
+  "paid",
+  "awaiting_carrier_for_handoff",
+]);
+
+function primaryOwnedStopIdForCarrier(args: {
+  carrierUserId: string;
+  deliveryRowsByStop: Record<string, RouteStopDeliveryStatusApi>;
+  stopIdToOrden: Record<string, number>;
+}): string | null {
+  const uid = args.carrierUserId.trim();
+  type Row = { stopId: string; orden: number; state: string };
+  const candidates: Row[] = [];
+  for (const [sid, row] of Object.entries(args.deliveryRowsByStop)) {
+    if ((row.currentOwnerUserId ?? "").trim() !== uid) continue;
+    const st = (row.state ?? "").trim().toLowerCase();
+    if (!TRACKING_OWNER_STATES.has(st)) continue;
+    const orden = args.stopIdToOrden[sid] ?? 9999;
+    candidates.push({ stopId: sid, orden, state: st });
+  }
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => a.orden - b.orden);
+  const transit = candidates.find((c) => c.state === "in_transit");
+  if (transit) return transit.stopId;
+  const paid = candidates.find((c) => c.state === "paid");
+  if (paid) return paid.stopId;
+  const awaiting = candidates.find((c) => c.state === "awaiting_carrier_for_handoff");
+  if (awaiting) return awaiting.stopId;
+  return candidates[0]!.stopId;
+}
+
+function bestTelemetryPayloadForCarrier(
+  uid: string,
+  byStop: Record<string, CarrierTelemetryUpdatedPayload>,
+): CarrierTelemetryUpdatedPayload | null {
+  let best: CarrierTelemetryUpdatedPayload | null = null;
+  let bestT = -1;
+  for (const p of Object.values(byStop)) {
+    if ((p.carrierUserId ?? "").trim() !== uid) continue;
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
+    const t = telemetryReportedAtMs(p);
+    if (t >= bestT) {
+      bestT = t;
+      best = p;
+    }
+  }
+  return best;
+}
+
+function legProgressFractionForStop(
+  stopId: string,
+  telemetryForStop: CarrierTelemetryUpdatedPayload | undefined,
+  deliveryProgressByStop: Record<string, number | null | undefined>,
+): number | null {
+  const fromTel =
+    telemetryForStop &&
+    typeof telemetryForStop.progressFraction === "number" &&
+    Number.isFinite(telemetryForStop.progressFraction) ?
+      clamp01(telemetryForStop.progressFraction)
+    : null;
+  const delRaw = deliveryProgressByStop[stopId];
+  const fromDel =
+    typeof delRaw === "number" && Number.isFinite(delRaw) ? clamp01(delRaw) : null;
+  if (
+    fromTel !== null &&
+    fromDel !== null &&
+    fromTel >= 0.995 &&
+    fromDel < fromTel - 0.02
+  ) {
+    return fromDel;
+  }
+  if (fromTel !== null) return fromTel;
+  if (fromDel !== null) return fromDel;
+  return null;
+}
 
 function coordPair(
   stop: RouteStop,
@@ -59,13 +146,56 @@ function FitRouteBounds({ positions }: { positions: [number, number][] }) {
   return null;
 }
 
-function vehicleIcon(label: string) {
-  const w = Math.max(34, 18 + label.length * 9);
+function escapeAttr(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+function telemetryReportedAtMs(p: CarrierTelemetryUpdatedPayload): number {
+  const t = Date.parse(p.reportedAtUtc);
+  return Number.isFinite(t) ? t : 0;
+}
+
+function clamp01(n: number): number {
+  return Math.min(1, Math.max(0, n));
+}
+
+function carrierAvatarPinIcon(args: {
+  avatarUrl?: string | null;
+  routeColor: string;
+  progressFraction?: number | null;
+  speedKmh?: number | null;
+}): L.DivIcon {
+  const bg = args.routeColor;
+  const url = (args.avatarUrl ?? "").trim();
+  const useImg =
+    url.length > 0 &&
+    (/^https?:\/\//i.test(url) || url.startsWith("/") || url.startsWith("data:"));
+  const inner =
+    useImg ?
+      `<img class="vt-carrier-loc-pin-avatar" src="${escapeAttr(url)}" alt="" referrerpolicy="no-referrer" loading="lazy" decoding="async" />`
+    : `<div class="vt-carrier-loc-pin-avatar-fallback" style="background:${bg}" aria-hidden="true">🚚</div>`;
+
+  const prog =
+    typeof args.progressFraction === "number" && Number.isFinite(args.progressFraction) ?
+      `<div class="vt-carrier-loc-pin-prog">${Math.round(args.progressFraction * 100)}%</div>`
+    : "";
+
+  const speedVal =
+    typeof args.speedKmh === "number" && Number.isFinite(args.speedKmh) && args.speedKmh >= 0 ?
+      args.speedKmh
+    : 0;
+  const speed = `<div class="vt-carrier-loc-pin-speed">${Math.round(speedVal)} km/h</div>`;
+
+  const html = `<div class="vt-carrier-loc-pin"><div class="vt-carrier-loc-pin-avatar-wrap" style="--vt-pin-route:${bg}">${inner}</div>${prog}${speed}<div class="vt-carrier-loc-pin-chevron" style="border-top:10px solid ${bg}" aria-hidden="true"></div><div class="vt-carrier-loc-pin-point" style="background:${bg}" aria-hidden="true"></div></div>`;
+
+  const w = 52;
+  const lines = (prog ? 1 : 0) + 1;
+  const h = 76 + lines * 13;
   return L.divIcon({
     className: "emergent-route-legend",
-    html: `<div class="er-mark" style="background:#2563eb">${label}</div>`,
-    iconSize: [w, 28],
-    iconAnchor: [w / 2, 14],
+    html,
+    iconSize: [w, h],
+    iconAnchor: [w / 2, h],
   });
 }
 
@@ -90,15 +220,104 @@ export function RouteSheetLiveTrackingModal({
   offerTramos,
   highlightStopId,
 }: Props) {
+  const profileAvatarUrls = useAppStore((s) => s.profileAvatarUrls);
+  const chatCarriers = useMarketStore((s) => s.threads[threadId]?.chatCarriers);
   const [telemetryByStop, setTelemetryByStop] = useState<
     Record<string, CarrierTelemetryUpdatedPayload>
   >({});
+  const [deliveryProgressByStop, setDeliveryProgressByStop] = useState<
+    Record<string, number | null>
+  >({});
+  const [deliveryRowsByStop, setDeliveryRowsByStop] = useState<
+    Record<string, RouteStopDeliveryStatusApi>
+  >({});
+  const [subscriptionAvatarByCarrier, setSubscriptionAvatarByCarrier] = useState<
+    Record<string, string>
+  >({});
+
+  const carrierAvatarUrlResolved = useMemo(() => {
+    const m: Record<string, string> = { ...subscriptionAvatarByCarrier };
+    for (const c of chatCarriers ?? []) {
+      const id = (c.id ?? "").trim();
+      const av = c.avatarUrl?.trim();
+      if (id.length > 1 && av && !m[id]) m[id] = av;
+    }
+    return m;
+  }, [chatCarriers, subscriptionAvatarByCarrier]);
 
   useEffect(() => {
     if (!open) {
       setTelemetryByStop({});
+      setDeliveryProgressByStop({});
+      setDeliveryRowsByStop({});
+      setSubscriptionAvatarByCarrier({});
       return;
     }
+    let cancelled = false;
+    const rsid = routeSheet.id.trim();
+    const tid = threadId.trim();
+    const aid = agreementId.trim();
+
+    void (async () => {
+      try {
+        const [telRows, deliveries, subs] = await Promise.all([
+          fetchLatestCarrierTelemetryForRouteSheet({
+            threadId,
+            agreementId,
+            routeSheetId: routeSheet.id,
+          }).catch(() => []),
+          fetchAgreementRouteDeliveries(threadId, agreementId).catch(() => []),
+          fetchThreadRouteTramoSubscriptions(threadId).catch(() => []),
+        ]);
+        if (cancelled) return;
+
+        const seeded: Record<string, CarrierTelemetryUpdatedPayload> = {};
+        for (const r of telRows) {
+          const sid = (r.routeStopId ?? "").trim();
+          if (sid.length < 2) continue;
+          seeded[sid] = {
+            threadId: tid,
+            routeSheetId: rsid,
+            agreementId: aid,
+            routeStopId: sid,
+            carrierUserId: (r.carrierUserId ?? "").trim(),
+            lat: r.lat,
+            lng: r.lng,
+            progressFraction: r.progressFraction ?? null,
+            offRoute: r.offRoute,
+            reportedAtUtc: r.reportedAtUtc,
+            speedKmh: r.speedKmh ?? null,
+          };
+        }
+        setTelemetryByStop((prev) => ({ ...seeded, ...prev }));
+
+        const prog: Record<string, number | null> = {};
+        const rowsMap: Record<string, RouteStopDeliveryStatusApi> = {};
+        for (const row of deliveries) {
+          if ((row.routeSheetId ?? "").trim() !== rsid) continue;
+          const sid = (row.routeStopId ?? "").trim();
+          if (!sid) continue;
+          rowsMap[sid] = row;
+          const v = row.lastTelemetryProgressFraction;
+          prog[sid] =
+            typeof v === "number" && Number.isFinite(v) ? clamp01(v) : null;
+        }
+        setDeliveryProgressByStop(prog);
+        setDeliveryRowsByStop(rowsMap);
+
+        const avMap: Record<string, string> = {};
+        for (const it of subs) {
+          if ((it.routeSheetId ?? "").trim() !== rsid) continue;
+          const uid = (it.carrierUserId ?? "").trim();
+          const url = it.carrierAvatarUrl?.trim();
+          if (uid.length > 1 && url && !avMap[uid]) avMap[uid] = url;
+        }
+        setSubscriptionAvatarByCarrier(avMap);
+      } catch {
+        /* map still useful for stops + realtime */
+      }
+    })();
+
     const unsub = subscribeCarrierTelemetryUpdated((p) => {
       if (p.threadId.trim() !== threadId.trim()) return;
       if (p.agreementId.trim() !== agreementId.trim()) return;
@@ -106,8 +325,18 @@ export function RouteSheetLiveTrackingModal({
       const sid = p.routeStopId.trim();
       if (sid.length < 2) return;
       setTelemetryByStop((prev) => ({ ...prev, [sid]: p }));
+      const pf = p.progressFraction;
+      if (typeof pf === "number" && Number.isFinite(pf)) {
+        setDeliveryProgressByStop((prev) => ({
+          ...prev,
+          [sid]: clamp01(pf),
+        }));
+      }
     });
-    return unsub;
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, [open, threadId, agreementId, routeSheet.id]);
 
   const stopsOrdered = useMemo(
@@ -132,12 +361,106 @@ export function RouteSheetLiveTrackingModal({
 
   const routeSegments = useMemo(() => emergentMapRouteSegments(legs), [legs]);
   const segmentColors = useMemo(() => emergentMapRouteSegmentColors(legs), [legs]);
+  const stopIdToSegmentColor = useMemo(() => {
+    const m: Record<string, string> = {};
+    const fallback = ROUTE_ISLAND_LINE_COLORS[0] ?? "#2563eb";
+    legs.forEach((leg, i) => {
+      const sid = (leg.stopId ?? "").trim();
+      if (sid.length > 0) m[sid] = segmentColors[i] ?? fallback;
+    });
+    return m;
+  }, [legs, segmentColors]);
   const mapUsesPersistedOsrmGeometry = useMemo(
     () => legs.length > 0 && legs.every((leg) => !leg.synthetic),
     [legs],
   );
 
   const highlight = (highlightStopId ?? "").trim();
+
+  const stopIdToOrden = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const st of stopsOrdered) {
+      const id = (st.id ?? "").trim();
+      if (id.length > 0) m[id] = st.orden;
+    }
+    return m;
+  }, [stopsOrdered]);
+
+  /**
+   * Un pin por transportista. El % y color corresponden al tramo activo del titular (estado + orden),
+   * no al tramo con la muestra GPS más reciente (evita 100 % de un tramo ya cerrado).
+   */
+  const carrierLivePins = useMemo(() => {
+    const fallback = ROUTE_ISLAND_LINE_COLORS[0] ?? "#2563eb";
+    const uids = new Set<string>();
+    for (const p of Object.values(telemetryByStop)) {
+      const u = (p.carrierUserId ?? "").trim();
+      if (u.length > 1) uids.add(u);
+    }
+    const out: Array<{
+      uid: string;
+      focusStopId: string;
+      position: CarrierTelemetryUpdatedPayload;
+      routeColor: string;
+      progressFraction: number | null;
+      speedKmh: number;
+    }> = [];
+
+    for (const uid of uids) {
+      const best = bestTelemetryPayloadForCarrier(uid, telemetryByStop);
+      if (!best) continue;
+
+      const ownedFocus = primaryOwnedStopIdForCarrier({
+        carrierUserId: uid,
+        deliveryRowsByStop,
+        stopIdToOrden,
+      });
+      const focusStopId =
+        ownedFocus ??
+        (best.routeStopId ?? "").trim();
+      if (focusStopId.length < 2) continue;
+
+      let position = telemetryByStop[focusStopId];
+      if (
+        !position ||
+        (position.carrierUserId ?? "").trim() !== uid ||
+        !Number.isFinite(position.lat) ||
+        !Number.isFinite(position.lng)
+      ) {
+        position = best;
+      }
+
+      const routeColor = stopIdToSegmentColor[focusStopId] ?? fallback;
+      const progressFraction = legProgressFractionForStop(
+        focusStopId,
+        telemetryByStop[focusStopId],
+        deliveryProgressByStop,
+      );
+
+      const speedRaw =
+        telemetryByStop[focusStopId]?.speedKmh ?? position.speedKmh ?? null;
+      const speedKmh =
+        typeof speedRaw === "number" && Number.isFinite(speedRaw) && speedRaw >= 0 ?
+          speedRaw
+        : 0;
+
+      out.push({
+        uid,
+        focusStopId,
+        position,
+        routeColor,
+        progressFraction,
+        speedKmh,
+      });
+    }
+    return out;
+  }, [
+    telemetryByStop,
+    deliveryRowsByStop,
+    stopIdToOrden,
+    stopIdToSegmentColor,
+    deliveryProgressByStop,
+  ]);
 
   const boundsPositions = useMemo(() => {
     const pts: [number, number][] = [];
@@ -147,12 +470,11 @@ export function RouteSheetLiveTrackingModal({
       if (o) pts.push(o);
       if (d) pts.push(d);
     }
-    for (const p of Object.values(telemetryByStop)) {
-      if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
-      pts.push([p.lat, p.lng]);
+    for (const row of carrierLivePins) {
+      pts.push([row.position.lat, row.position.lng]);
     }
     return pts;
-  }, [stopsOrdered, telemetryByStop]);
+  }, [stopsOrdered, carrierLivePins]);
 
   if (!open) return null;
 
@@ -221,15 +543,23 @@ export function RouteSheetLiveTrackingModal({
                 );
               })}
 
-              {Object.entries(telemetryByStop).map(([sid, p]) => (
-                <Marker
-                  key={`tel-${sid}`}
-                  position={[p.lat, p.lng]}
-                  icon={vehicleIcon(
-                    `${sid.slice(0, 6)}… ${typeof p.progressFraction === "number" ? `${Math.round(p.progressFraction * 100)}%` : ""}`.trim(),
-                  )}
-                />
-              ))}
+              {carrierLivePins.map(({ uid, position: p, routeColor, progressFraction, speedKmh }) => {
+                const avatarUrl =
+                  carrierAvatarUrlResolved[uid]?.trim() ||
+                  profileAvatarUrls[uid]?.trim();
+                return (
+                  <Marker
+                    key={`tel-carrier-${uid}`}
+                    position={[p.lat, p.lng]}
+                    icon={carrierAvatarPinIcon({
+                      avatarUrl,
+                      routeColor,
+                      progressFraction,
+                      speedKmh,
+                    })}
+                  />
+                );
+              })}
             </MapContainer>
           </div>
 
@@ -245,7 +575,7 @@ export function RouteSheetLiveTrackingModal({
                 <span className="font-bold">🏁:</span> destino del tramo (si hay coordenadas).
               </li>
               <li>
-                <span className="font-bold">Azul:</span> última telemetría del transportista por tramo (si está transmitiendo).
+                <span className="font-bold">Foto en pin:</span> un marcador por transportista; % del tramo donde es titular activo; velocidad en km/h (0 si el dispositivo no informa).
               </li>
               <li>
                 <span className="font-bold">Trazos:</span> ruta por carretera persistida en la hoja (OSRM), si existe.
