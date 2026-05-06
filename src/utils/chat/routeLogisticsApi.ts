@@ -108,7 +108,6 @@ export async function postCedeCarrierOwnership(args: {
   agreementId: string;
   routeSheetId: string;
   routeStopId: string;
-  targetCarrierUserId: string;
 }): Promise<CarrierOwnershipCedeResultApi> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/agreements/${encodeURIComponent(args.agreementId)}/logistics/ownership/cede`,
@@ -118,7 +117,6 @@ export async function postCedeCarrierOwnership(args: {
       body: JSON.stringify({
         routeSheetId: args.routeSheetId,
         routeStopId: args.routeStopId,
-        targetCarrierUserId: args.targetCarrierUserId,
       }),
     },
   );

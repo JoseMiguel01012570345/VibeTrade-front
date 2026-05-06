@@ -236,7 +236,6 @@ export function ChatRightRailRoutesPanel({
     routeSheetId: string;
     routeStopId: string;
     busy: boolean;
-    targetCarrierUserId: string;
     targetDisplayLabel: string;
     currentOrden: number;
     nextOrden: number;
@@ -976,7 +975,6 @@ export function ChatRightRailRoutesPanel({
                               routeSheetId: selRoute.id,
                               routeStopId: p.id,
                               busy: false,
-                              targetCarrierUserId: nextCarrierUid,
                               targetDisplayLabel:
                                 nextOt?.assignment?.displayName?.trim() ||
                                 "Transportista confirmado del siguiente tramo",
@@ -1246,7 +1244,6 @@ export function ChatRightRailRoutesPanel({
                         agreementId: m.agreementId,
                         routeSheetId: m.routeSheetId,
                         routeStopId: m.routeStopId,
-                        targetCarrierUserId: m.targetCarrierUserId,
                       });
                       if (!r.ok) {
                         toast.error(
