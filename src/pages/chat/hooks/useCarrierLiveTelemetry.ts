@@ -50,10 +50,6 @@ export function useCarrierLiveTelemetry(args: Args): void {
           routeStopId: sid,
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
-          speedKmh:
-            typeof pos.coords.speed === "number" && Number.isFinite(pos.coords.speed) ?
-              pos.coords.speed * 3.6
-            : null,
           reportedAtUtc: new Date(pos.timestamp).toISOString(),
           sourceClientId,
         }).catch(() => {});

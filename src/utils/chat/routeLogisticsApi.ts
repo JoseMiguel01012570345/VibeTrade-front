@@ -53,6 +53,7 @@ export async function fetchLatestCarrierTelemetryForRouteSheet(args: {
   return (await res.json()) as CarrierTelemetryLatestPointApi[];
 }
 
+/** Envío de muestra GPS; el backend calcula velocidad entre muestras (no se envía speed en el body). */
 export async function postCarrierTelemetry(args: {
   threadId: string;
   agreementId: string;
@@ -60,7 +61,6 @@ export async function postCarrierTelemetry(args: {
   routeStopId: string;
   lat: number;
   lng: number;
-  speedKmh?: number | null;
   reportedAtUtc: string;
   sourceClientId: string;
 }): Promise<void> {
@@ -74,7 +74,6 @@ export async function postCarrierTelemetry(args: {
         routeStopId: args.routeStopId,
         lat: args.lat,
         lng: args.lng,
-        speedKmh: args.speedKmh ?? null,
         reportedAtUtc: args.reportedAtUtc,
         sourceClientId: args.sourceClientId,
       }),
