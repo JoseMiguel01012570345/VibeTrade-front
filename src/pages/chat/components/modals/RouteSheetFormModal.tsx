@@ -526,10 +526,9 @@ export function RouteSheetFormModal({
       toast.error(`Revisa el formulario (${n} error${n === 1 ? "" : "es"})`);
       return;
     }
-    const limpForLock = expandChainedTramoOrigins(tramosToLimpios(tramos));
     const sheetIdLock = initialRouteSheet?.id?.trim();
     if (sheetIdLock && offerForTramo) {
-      for (let i = 0; i < limpForLock.length; i++) {
+      for (let i = 0; i < limpios.length; i++) {
         const asg = confirmedAssignmentOnFormTramo(
           offerForTramo,
           sheetIdLock,
@@ -538,7 +537,7 @@ export function RouteSheetFormModal({
         );
         if (!asg) continue;
         const expected = asg.phone?.trim() ?? "";
-        const actual = limpForLock[i]?.telefonoTransportista?.trim() ?? "";
+        const actual = limpios[i]?.telefonoTransportista?.trim() ?? "";
         if (normRoutePhoneKey(expected) !== normRoutePhoneKey(actual)) {
           toast.error(
             `No puedes quitar ni cambiar el contacto del transportista ya confirmado en el tramo ${i + 1} (${asg.displayName?.trim() || "asignado"}).`,
@@ -552,16 +551,17 @@ export function RouteSheetFormModal({
       ...draft,
       paradas: paradasFinal,
     };
+    const invites = preselInvitesForTramoPhoneEdits(
+      initialRouteSheet ?? null,
+      paradasFinal,
+    );
     if (initialRouteSheet && editBaselineJsonRef.current !== null) {
+      // ????
       const unchangedVsBaseline =
         JSON.stringify(payload) === editBaselineJsonRef.current;
       const inviteDirty =
-        persistedRouteSheetInviteFieldsDirty(
-          initialRouteSheet,
-          paradasFinal,
-        ) ||
-        preselInvitesForTramoPhoneEdits(initialRouteSheet, paradasFinal)
-          .length > 0;
+        persistedRouteSheetInviteFieldsDirty(initialRouteSheet, paradasFinal) ||
+        invites.length > 0;
       if (unchangedVsBaseline && !inviteDirty) {
         toast.error("No hay cambios para guardar.");
         return;
@@ -569,10 +569,7 @@ export function RouteSheetFormModal({
     }
     const persisted = onSubmit(payload);
     if (!persisted.ok) return;
-    const invites = preselInvitesForTramoPhoneEdits(
-      initialRouteSheet ?? null,
-      paradasFinal,
-    );
+
     if (
       invites.length > 0 &&
       threadId.startsWith("cth_") &&
@@ -930,8 +927,8 @@ export function RouteSheetFormModal({
                         </p>
                       ) : i > 0 ? (
                         <p className="vt-muted mb-2 text-[11px] leading-snug">
-                          Origen con coordenadas propias (puedes ajustar el texto
-                          o reabrir el mapa).
+                          Origen con coordenadas propias (puedes ajustar el
+                          texto o reabrir el mapa).
                         </p>
                       ) : null}
                       <div className={rutaCoordsRow}>

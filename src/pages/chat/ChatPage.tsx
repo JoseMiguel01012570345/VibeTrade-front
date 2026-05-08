@@ -304,8 +304,7 @@ export function ChatPage() {
     const rs = routeSheetBeingEdited;
     if (!rs?.id) return false;
     return (thread?.contracts ?? []).some(
-      (c) =>
-        c.routeSheetId === rs.id && c.hasSucceededPayments === true,
+      (c) => c.routeSheetId === rs.id && c.hasSucceededPayments === true,
     );
   }, [thread?.contracts, routeSheetBeingEdited?.id]);
   const [railOpen, setRailOpen] = useState(false);
@@ -398,7 +397,10 @@ export function ChatPage() {
     const tid = thread?.id?.trim();
     if (!tid) return;
     try {
-      const dto = await patchSocialGroupTitle(tid, socialRenameDraft.trim() || null);
+      const dto = await patchSocialGroupTitle(
+        tid,
+        socialRenameDraft.trim() || null,
+      );
       mergeBuyerLabelFromThreadDto(dto);
       useMarketStore.setState((s) => ({
         ...s,
@@ -901,9 +903,7 @@ export function ChatPage() {
     !carrierInThreadIntegrantes;
 
   if (carrierBlockedFromRouteChat) {
-    return (
-      <CarrierBlockedChatView nav={nav} offerId={thread.offerId} />
-    );
+    return <CarrierBlockedChatView nav={nav} offerId={thread.offerId} />;
   }
 
   const store = thread.store;
@@ -1137,179 +1137,180 @@ export function ChatPage() {
         </div>
 
         {!isSocialThread ? (
-        <div
-          className={cn(
-            /* En móvil el drawer es fixed: hace falta z por encima del header (z-50) y del nav (z-60). */
-            "relative flex min-h-0 flex-col min-[961px]:self-stretch min-[961px]:z-[2] max-[960px]:z-[100]",
-            "vt-chat-rail-wrap",
-            railOpen && "vt-chat-rail-wrap--open",
-          )}
-        >
-          {railOpen ? (
-            <button
-              type="button"
-              className="vt-chat-rail-backdrop"
-              aria-label="Cerrar panel"
-              onClick={() => setRailOpen(false)}
-            />
-          ) : null}
-          <ChatRightRail
-            threadId={thread.id}
-            threadStoreId={thread.storeId}
-            buyerUserId={thread.buyerUserId ?? buyerForRail.id}
-            sellerUserId={
-              thread.sellerUserId?.trim() ||
-              thread.store?.ownerUserId?.trim() ||
-              undefined
-            }
-            contracts={thread.contracts ?? []}
-            routeSheets={thread.routeSheets ?? []}
-            contractsLoading={contractsLoading}
-            routeSheetsLoading={routeSheetsLoading}
-            actionsLocked={chatActionsLocked}
-            storeName={store.name}
-            buyerName={buyerForRail.name}
-            buyer={buyerForRail}
-            seller={sellerForPeople ?? store}
-            chatCarriers={thread.chatCarriers}
-            focusRouteId={focusRouteId}
-            onConsumedRouteFocus={() => setFocusRouteId(null)}
-            onOpenNewRouteSheet={() => {
-              if (!isActingSeller) {
-                toast.error("Solo la tienda puede crear hojas de ruta.");
-                return;
-              }
-              if (!threadHasAcceptedAgreement(thread)) {
-                toast.error(
-                  "Necesitas al menos un contrato aceptado para crear una hoja de ruta.",
-                );
-                return;
-              }
-              const nAg = thread.contracts?.length ?? 0;
-              const nSh = thread.routeSheets?.length ?? 0;
-              if (nSh >= nAg) {
-                toast.error(
-                  "No puedes tener más hojas de ruta que acuerdos. Emite otro acuerdo o elimina una hoja existente.",
-                );
-                return;
-              }
-              setRouteSheetBeingEdited(null);
-              setShowRouteSheetForm(true);
-              setRailOpen(true);
-            }}
-            onEditRouteSheet={(sheet) => {
-              if (!isActingSeller) {
-                toast.error("Solo la tienda puede editar la hoja de ruta.");
-                return;
-              }
-              const lockedByPaid = (thread.contracts ?? []).some(
-                (c) =>
-                  c.routeSheetId === sheet.id &&
-                  c.hasSucceededPayments === true,
-              );
-              if (lockedByPaid) {
-                toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);
-                return;
-              }
-              const ack = thread.routeSheetEditAcks?.[sheet.id];
-              if (
-                ack &&
-                Object.values(ack.byCarrier).some((v) => v === "pending")
-              ) {
-                toast.error(
-                  "No puedes editar de nuevo hasta que los transportistas del hilo acepten o rechacen la última versión de la hoja.",
-                );
-                return;
-              }
-              setPendingRouteSheetTrustConfirm(sheet);
-            }}
-            toggleRouteStop={(tid, routeSheetId, stopId) => {
-              if (!isActingSeller) return;
-              toggleRouteStop(tid, routeSheetId, stopId);
-            }}
-            isActingSeller={isActingSeller}
-            onOpenRouteSubscribers={(routeSheetId) => {
-              setRouteSubscribersSheetId(routeSheetId);
-            }}
-            onPersistedRouteDataRefresh={refreshChatRouteData}
-            onRequestEditAgreement={(ag) => {
-              if (!isActingSeller) return;
-              if (ag.hasSucceededPayments) {
-                toast.error(
-                  "No podés editar este acuerdo: ya hay cobros registrados.",
-                );
-                return;
-              }
-              if (ag.sellerEditBlockedUntilBuyerResponse) {
-                toast.error(
-                  "Ya enviaste cambios en este acuerdo. Esperá la respuesta del comprador (aceptar o rechazar) antes de volver a editar.",
-                );
-                return;
-              }
-              setAgreementBeingEditedId(ag.id);
-              setShowAgreementForm(true);
-            }}
-            onDeleteAgreement={(ag) => {
-              if (ag.hasSucceededPayments) {
-                toast.error(
-                  "No podés eliminar este acuerdo: ya hay cobros registrados.",
-                );
-                return;
-              }
-              const contracts = thread.contracts ?? [];
-              const sheets = thread.routeSheets ?? [];
-              if (
-                agreementDeleteBlockedByRouteSheetInvariant(
-                  contracts.length,
-                  sheets.length,
-                )
-              ) {
-                setAgreementDeleteSheetsModal({
-                  agreementId: ag.id,
-                  title: ag.title,
-                });
-                return;
-              }
-              if (
-                !globalThis.confirm(
-                  `¿Eliminar el acuerdo «${ag.title}»? No puedes eliminar acuerdos ya aceptados.`,
-                )
-              )
-                return;
-              void (async () => {
-                const ok = await deleteTradeAgreement(thread.id, ag.id);
-                if (ok) toast.success("Acuerdo eliminado");
-                else {
-                  toast.error(
-                    "No se pudo eliminar el acuerdo (aceptado, bloqueo del hilo o más hojas que acuerdos permitidos).",
-                  );
-                }
-              })();
-            }}
-          />
-          {routeSubscribersSheetId && subsSheetWideLayout ? (
-            <div className="absolute inset-0 z-[38] flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]">
-              <ChatRouteSubscribersPanel
-                embedded
-                key={`${thread.id}-route-subscribers-desk`}
-                threadId={thread.id}
-                routeOffer={routeOfferForThisThread}
-                contextRouteSheetId={routeSubscribersSheetId}
-                routeSheets={(thread.routeSheets ?? []).map((r) => ({
-                  id: r.id,
-                  titulo: (r.titulo ?? "Hoja de ruta").trim() || "Hoja de ruta",
-                }))}
-                canSellerManageRouteSubscriptions={viewerIsThreadSeller}
-                onSubscriptionsChanged={refreshChatRouteData}
-                highlightUserId={highlightSubscriberUserId}
-                onThreadRouteSheetsSynced={
-                  syncThreadRouteSheetsFromSubscribersPanel
-                }
-                onClose={closeSubscriberRouteSheet}
+          <div
+            className={cn(
+              /* En móvil el drawer es fixed: hace falta z por encima del header (z-50) y del nav (z-60). */
+              "relative flex min-h-0 flex-col min-[961px]:self-stretch min-[961px]:z-[2] max-[960px]:z-[100]",
+              "vt-chat-rail-wrap",
+              railOpen && "vt-chat-rail-wrap--open",
+            )}
+          >
+            {railOpen ? (
+              <button
+                type="button"
+                className="vt-chat-rail-backdrop"
+                aria-label="Cerrar panel"
+                onClick={() => setRailOpen(false)}
               />
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+            <ChatRightRail
+              threadId={thread.id}
+              threadStoreId={thread.storeId}
+              buyerUserId={thread.buyerUserId ?? buyerForRail.id}
+              sellerUserId={
+                thread.sellerUserId?.trim() ||
+                thread.store?.ownerUserId?.trim() ||
+                undefined
+              }
+              contracts={thread.contracts ?? []}
+              routeSheets={thread.routeSheets ?? []}
+              contractsLoading={contractsLoading}
+              routeSheetsLoading={routeSheetsLoading}
+              actionsLocked={chatActionsLocked}
+              storeName={store.name}
+              buyerName={buyerForRail.name}
+              buyer={buyerForRail}
+              seller={sellerForPeople ?? store}
+              chatCarriers={thread.chatCarriers}
+              focusRouteId={focusRouteId}
+              onConsumedRouteFocus={() => setFocusRouteId(null)}
+              onOpenNewRouteSheet={() => {
+                if (!isActingSeller) {
+                  toast.error("Solo la tienda puede crear hojas de ruta.");
+                  return;
+                }
+                if (!threadHasAcceptedAgreement(thread)) {
+                  toast.error(
+                    "Necesitas al menos un contrato aceptado para crear una hoja de ruta.",
+                  );
+                  return;
+                }
+                const nAg = thread.contracts?.length ?? 0;
+                const nSh = thread.routeSheets?.length ?? 0;
+                if (nSh >= nAg) {
+                  toast.error(
+                    "No puedes tener más hojas de ruta que acuerdos. Emite otro acuerdo o elimina una hoja existente.",
+                  );
+                  return;
+                }
+                setRouteSheetBeingEdited(null);
+                setShowRouteSheetForm(true);
+                setRailOpen(true);
+              }}
+              onEditRouteSheet={(sheet) => {
+                if (!isActingSeller) {
+                  toast.error("Solo la tienda puede editar la hoja de ruta.");
+                  return;
+                }
+                const lockedByPaid = (thread.contracts ?? []).some(
+                  (c) =>
+                    c.routeSheetId === sheet.id &&
+                    c.hasSucceededPayments === true,
+                );
+                if (lockedByPaid) {
+                  toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);
+                  return;
+                }
+                const ack = thread.routeSheetEditAcks?.[sheet.id];
+                if (
+                  ack &&
+                  Object.values(ack.byCarrier).some((v) => v === "pending")
+                ) {
+                  toast.error(
+                    "No puedes editar de nuevo hasta que los transportistas del hilo acepten o rechacen la última versión de la hoja.",
+                  );
+                  return;
+                }
+                setPendingRouteSheetTrustConfirm(sheet);
+              }}
+              toggleRouteStop={(tid, routeSheetId, stopId) => {
+                if (!isActingSeller) return;
+                toggleRouteStop(tid, routeSheetId, stopId);
+              }}
+              isActingSeller={isActingSeller}
+              onOpenRouteSubscribers={(routeSheetId) => {
+                setRouteSubscribersSheetId(routeSheetId);
+              }}
+              onPersistedRouteDataRefresh={refreshChatRouteData}
+              onRequestEditAgreement={(ag) => {
+                if (!isActingSeller) return;
+                if (ag.hasSucceededPayments) {
+                  toast.error(
+                    "No podés editar este acuerdo: ya hay cobros registrados.",
+                  );
+                  return;
+                }
+                if (ag.sellerEditBlockedUntilBuyerResponse) {
+                  toast.error(
+                    "Ya enviaste cambios en este acuerdo. Esperá la respuesta del comprador (aceptar o rechazar) antes de volver a editar.",
+                  );
+                  return;
+                }
+                setAgreementBeingEditedId(ag.id);
+                setShowAgreementForm(true);
+              }}
+              onDeleteAgreement={(ag) => {
+                if (ag.hasSucceededPayments) {
+                  toast.error(
+                    "No podés eliminar este acuerdo: ya hay cobros registrados.",
+                  );
+                  return;
+                }
+                const contracts = thread.contracts ?? [];
+                const sheets = thread.routeSheets ?? [];
+                if (
+                  agreementDeleteBlockedByRouteSheetInvariant(
+                    contracts.length,
+                    sheets.length,
+                  )
+                ) {
+                  setAgreementDeleteSheetsModal({
+                    agreementId: ag.id,
+                    title: ag.title,
+                  });
+                  return;
+                }
+                if (
+                  !globalThis.confirm(
+                    `¿Eliminar el acuerdo «${ag.title}»? No puedes eliminar acuerdos ya aceptados.`,
+                  )
+                )
+                  return;
+                void (async () => {
+                  const ok = await deleteTradeAgreement(thread.id, ag.id);
+                  if (ok) toast.success("Acuerdo eliminado");
+                  else {
+                    toast.error(
+                      "No se pudo eliminar el acuerdo (aceptado, bloqueo del hilo o más hojas que acuerdos permitidos).",
+                    );
+                  }
+                })();
+              }}
+            />
+            {routeSubscribersSheetId && subsSheetWideLayout ? (
+              <div className="absolute inset-0 z-[38] flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]">
+                <ChatRouteSubscribersPanel
+                  embedded
+                  key={`${thread.id}-route-subscribers-desk`}
+                  threadId={thread.id}
+                  routeOffer={routeOfferForThisThread}
+                  contextRouteSheetId={routeSubscribersSheetId}
+                  routeSheets={(thread.routeSheets ?? []).map((r) => ({
+                    id: r.id,
+                    titulo:
+                      (r.titulo ?? "Hoja de ruta").trim() || "Hoja de ruta",
+                  }))}
+                  canSellerManageRouteSubscriptions={viewerIsThreadSeller}
+                  onSubscriptionsChanged={refreshChatRouteData}
+                  highlightUserId={highlightSubscriberUserId}
+                  onThreadRouteSheetsSynced={
+                    syncThreadRouteSheetsFromSubscribersPanel
+                  }
+                  onClose={closeSubscriberRouteSheet}
+                />
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
@@ -1423,19 +1424,13 @@ export function ChatPage() {
             if (r.ok) {
               toast.success("Acuerdo actualizado");
             } else {
-              toast.error(
-                r.message ?? "No se pudo guardar el acuerdo.",
-              );
+              toast.error(r.message ?? "No se pudo guardar el acuerdo.");
             }
             return r.ok;
           }
           const r = await emitTradeAgreement(thread.id, draft);
           if (r.ok) toast.success("Acuerdo emitido al chat");
-          else
-            toast.error(
-              r.message ??
-                "No se pudo emitir el acuerdo.",
-            );
+          else toast.error(r.message ?? "No se pudo emitir el acuerdo.");
           return r.ok;
         }}
       />

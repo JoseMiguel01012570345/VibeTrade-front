@@ -28,7 +28,8 @@ export function useCarrierLiveTelemetry(args: Args): void {
     const aid = args.agreementId.trim();
     const rsid = args.routeSheetId.trim();
     const sid = args.routeStopId.trim();
-    if (tid.length < 4 || aid.length < 8 || rsid.length < 2 || sid.length < 2) return;
+    if (tid.length < 4 || aid.length < 8 || rsid.length < 2 || sid.length < 2)
+      return;
     if (!globalThis.navigator?.geolocation?.watchPosition) return;
 
     // Una lectura inicial ayuda a que el navegador muestre el diálogo de permisos de ubicación.

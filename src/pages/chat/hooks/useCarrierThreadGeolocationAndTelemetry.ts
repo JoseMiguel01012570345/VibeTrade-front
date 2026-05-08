@@ -60,8 +60,13 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
   /** Incrementar tras un pago exitoso para forzar refresh + nuevo intento de permiso. */
   refreshNonce?: number;
 }): CarrierTelemetryTarget[] {
-  const { threadId, viewerIsConfirmedCarrier, isSocialThread, meId, refreshNonce } =
-    args;
+  const {
+    threadId,
+    viewerIsConfirmedCarrier,
+    isSocialThread,
+    meId,
+    refreshNonce,
+  } = args;
 
   const threadDigest = useMarketStore(
     useShallow((s) => {
@@ -104,12 +109,11 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
       void (async () => {
         const state = useMarketStore.getState();
         const th = state.threads[tid];
-        if (!th || myReq !== reqIdRef.current) return;
+        if (!th) return;
 
         const accepted = (th.contracts ?? []).filter(
           (c) =>
-            c.status === "accepted" &&
-            (c.routeSheetId ?? "").trim().length > 1,
+            c.status === "accepted" && (c.routeSheetId ?? "").trim().length > 1,
         );
 
         const nextTargets: CarrierTelemetryTarget[] = [];
@@ -117,12 +121,6 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
 
         for (const c of accepted) {
           const rsid = (c.routeSheetId ?? "").trim();
-          const sheet = (th.routeSheets ?? []).find(
-            (s) => (s.id ?? "").trim() === rsid,
-          );
-          if ((sheet?.estado ?? "").trim().toLowerCase() === "borrador")
-            continue;
-
           const ro = resolveRouteOfferPublicForSheet(state, th, rsid);
           const confirmedStops = confirmedStopIdsForCarrier(ro, uid);
           if (confirmedStops.size === 0) continue;
@@ -134,11 +132,8 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
             continue;
           }
 
-          if (myReq !== reqIdRef.current) return;
-
           for (const r of rows) {
             const sid = (r.routeStopId ?? "").trim();
-            if (!confirmedStops.has(sid)) continue;
             const st = (r.state ?? "").trim().toLowerCase();
             if (deliveryPaidLike(st)) anyConfirmedPaidStop = true;
             if (rowTelemetryTargetForOwner(r, uid)) {
@@ -150,8 +145,6 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
             }
           }
         }
-
-        if (myReq !== reqIdRef.current) return;
 
         const dedup = new Map<string, CarrierTelemetryTarget>();
         for (const t of nextTargets) {
@@ -173,18 +166,12 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
         }
       })();
     },
-    [
-      threadId,
-      meId,
-      isSocialThread,
-      viewerIsConfirmedCarrier,
-    ],
+    [threadId, meId, isSocialThread, viewerIsConfirmedCarrier],
   );
 
   useEffect(() => {
     const n = refreshNonce ?? 0;
-    const forcePaymentBump =
-      n > 0 && n !== lastHandledRefreshNonceRef.current;
+    const forcePaymentBump = n > 0 && n !== lastHandledRefreshNonceRef.current;
     if (forcePaymentBump) lastHandledRefreshNonceRef.current = n;
     runRefresh(forcePaymentBump);
   }, [runRefresh, threadDigest, refreshNonce]);

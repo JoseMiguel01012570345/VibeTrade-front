@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { FileText, Route, Users } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
-import type { StoreBadge, ThreadChatCarrier } from "../../../../app/store/useMarketStore";
+import type {
+  StoreBadge,
+  ThreadChatCarrier,
+} from "../../../../app/store/useMarketStore";
 import { useMarketStore } from "../../../../app/store/useMarketStore";
 import { cn } from "../../../../lib/cn";
 import type { TradeAgreement } from "../../domain/tradeAgreementTypes";
@@ -99,7 +102,9 @@ export function ChatRightRail({
       return resolveRouteOfferPublicForThread(s, th);
     }),
   );
-  const [tab, setTab] = useState<"contracts" | "routes" | "people">("contracts");
+  const [tab, setTab] = useState<"contracts" | "routes" | "people">(
+    "contracts",
+  );
   const [cFilter, setCFilter] = useState<ContractFilter>("all");
   const [selContract, setSelContract] = useState<TradeAgreement | null>(null);
   const [selRouteId, setSelRouteId] = useState<string | null>(null);
@@ -149,9 +154,11 @@ export function ChatRightRail({
     setSelRouteId(rid);
     setSelContract(null);
   }
-
   return (
-    <aside className={RAIL_ROOT} aria-label="Contratos, rutas e integrantes del chat">
+    <aside
+      className={RAIL_ROOT}
+      aria-label="Contratos, rutas e integrantes del chat"
+    >
       <div className="flex shrink-0 border-b border-[var(--border)]">
         <button
           type="button"

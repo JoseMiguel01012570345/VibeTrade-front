@@ -55,6 +55,7 @@ import {
   decideCarrierDeliveryEvidence,
   fetchAgreementRouteDeliveries,
   fetchCarrierDeliveryEvidence,
+  getCedeCarrierOwnership,
   postCedeCarrierOwnership,
   upsertCarrierDeliveryEvidence,
   type CarrierDeliveryEvidenceApi,
@@ -218,6 +219,8 @@ export function ChatRightRailRoutesPanel({
   const [deliveriesByAgreement, setDeliveriesByAgreement] = useState<
     Record<string, RouteStopDeliveryStatusApi[]>
   >({});
+  const [cedeOwnershipByAgreement, setCedeOwnershipByAgreement] =
+    useState<Record<string, Record<string, boolean>>>();
   const [logisticsBusyKey, setLogisticsBusyKey] = useState<string | null>(null);
   const [carrierEvEditModal, setCarrierEvEditModal] = useState<null | {
     routeStopId: string;
@@ -271,7 +274,9 @@ export function ChatRightRailRoutesPanel({
 
   useEffect(() => {
     void (async () => {
-      const ids = acceptedAgreements.map((a) => a.id.trim()).filter((x) => x.length >= 8);
+      const ids = acceptedAgreements
+        .map((a) => a.id.trim())
+        .filter((x) => x.length >= 8);
       if (ids.length === 0) return;
       const entries = await Promise.all(
         ids.map(async (id) => {
@@ -283,6 +288,23 @@ export function ChatRightRailRoutesPanel({
           }
         }),
       );
+
+      let cedeOwnershipEntries: Record<string, Record<string, boolean>> = {};
+      for (const rsheet of routeSheets) {
+        let stopEntries: Record<string, boolean> = {};
+        for (const rstop of rsheet.paradas) {
+          const isCedeOwneShip = await getCedeCarrierOwnership({
+            threadId,
+            agreementId: rsheet.id,
+            routeSheetId: rsheet.id,
+            routeStopId: rstop.id,
+          });
+          stopEntries[rstop.id] = isCedeOwneShip.ok;
+        }
+        cedeOwnershipEntries[rsheet.id] = stopEntries;
+      }
+      setCedeOwnershipByAgreement(cedeOwnershipEntries);
+
       setDeliveriesByAgreement((prev) => {
         const next = { ...prev };
         for (const [id, rows] of entries) next[id] = rows;
@@ -311,8 +333,7 @@ export function ChatRightRailRoutesPanel({
       return th ? routeSheetIdsLockedByPaidAgreements(th) : new Set<string>();
     }),
   );
-  const sheetLockedByPaid =
-    !!selRoute && paidLockedSheetIds.has(selRoute.id);
+  const sheetLockedByPaid = !!selRoute && paidLockedSheetIds.has(selRoute.id);
 
   /**
    * Panel de suscriptores: al menos una hoja en el hilo (visible para comprador y vendedor).
@@ -409,9 +430,12 @@ export function ChatRightRailRoutesPanel({
             ) : null}
             {sheetLockedByPaid ? (
               <p className="vt-muted w-full text-[11px] leading-snug">
-                Hay <strong className="text-[var(--text)]">cobros registrados</strong>{" "}
-                en un acuerdo vinculado a esta hoja: no podés editarla, eliminarla
-                ni cambiar su publicación en la plataforma.
+                Hay{" "}
+                <strong className="text-[var(--text)]">
+                  cobros registrados
+                </strong>{" "}
+                en un acuerdo vinculado a esta hoja: no podés editarla,
+                eliminarla ni cambiar su publicación en la plataforma.
               </p>
             ) : null}
             {sheetEditBlockedByCarrierAck ? (
@@ -671,12 +695,10 @@ export function ChatRightRailRoutesPanel({
           {(() => {
             const sheetAgreement = agreementForSheet(selRoute.id);
             const sheetAid = (sheetAgreement?.id ?? "").trim();
-            const sheetDeliv =
-              sheetAid ? deliveriesByAgreement[sheetAid] ?? [] : [];
-            const sheetIsOperationalDraft =
-              (selRoute.estado ?? "").trim().toLowerCase() === "borrador";
+            const sheetDeliv = sheetAid
+              ? (deliveriesByAgreement[sheetAid] ?? [])
+              : [];
             const sheetAnyLiveTracking =
-              !sheetIsOperationalDraft &&
               !!sheetAgreement &&
               sheetAid.length >= 8 &&
               !!(me.id ?? "").trim() &&
@@ -687,9 +709,7 @@ export function ChatRightRailRoutesPanel({
                     (d.routeStopId ?? "").trim() === (stop.id ?? "").trim(),
                 );
                 const st = (dr?.state ?? "unpaid").trim().toLowerCase();
-                return (
-                  !!dr && st !== "unpaid" && !st.startsWith("refunded")
-                );
+                return !!dr && st !== "unpaid" && !st.startsWith("refunded");
               });
             return sheetAnyLiveTracking ? (
               <div className="mb-3 flex flex-wrap gap-2">
@@ -711,39 +731,44 @@ export function ChatRightRailRoutesPanel({
             {selRoute.paradas.map((p) => {
               const agreement = agreementForSheet(selRoute.id);
               const agreementId = (agreement?.id ?? "").trim();
-              const deliveries = agreementId ? deliveriesByAgreement[agreementId] ?? [] : [];
+              const deliveries = agreementId
+                ? (deliveriesByAgreement[agreementId] ?? [])
+                : [];
               const row = deliveries.find(
                 (d) =>
                   (d.routeSheetId ?? "").trim() === selRoute.id.trim() &&
                   (d.routeStopId ?? "").trim() === (p.id ?? "").trim(),
               );
-              const sheetIsOperationalDraft =
-                (selRoute.estado ?? "").trim().toLowerCase() === "borrador";
-              const apiState = (row?.state ?? "unpaid").trim().toLowerCase();
-              const logisticsState = sheetIsOperationalDraft
-                ? "route_sheet_draft"
-                : apiState;
+              const logisticsState = (row?.state ?? "unpaid")
+                .trim()
+                .toLowerCase();
 
               const ot =
                 routeOfferResolved?.routeSheetId === selRoute.id
                   ? routeOfferResolved.tramos.find((t) => t.stopId === p.id)
                   : undefined;
-              const confirmedCarrierUidForStop = (stopId: string | undefined): string => {
-                if (!stopId?.trim() || routeOfferResolved?.routeSheetId !== selRoute.id)
+              const confirmedCarrierUidForStop = (
+                stopId: string | undefined,
+              ): string => {
+                if (
+                  !stopId?.trim() ||
+                  routeOfferResolved?.routeSheetId !== selRoute.id
+                )
                   return "";
-                const tr = routeOfferResolved.tramos.find((x) => x.stopId === stopId);
+                const tr = routeOfferResolved.tramos.find(
+                  (x) => x.stopId === stopId,
+                );
                 return tr?.assignment?.status === "confirmed"
                   ? (tr.assignment.userId ?? "").trim()
                   : "";
               };
               const curCarrierUid = confirmedCarrierUidForStop(p.id);
               const viewerIsConfirmedOnThisStop =
-                !!me.id &&
-                curCarrierUid.length >= 2 &&
-                me.id === curCarrierUid;
+                !!me.id && curCarrierUid.length >= 2 && me.id === curCarrierUid;
 
               const ownerFromDelivery = (row?.currentOwnerUserId ?? "").trim();
-              const viewerIsSeller = !!me.id && sellerUid.length > 1 && me.id === sellerUid;
+              const viewerIsSeller =
+                !!me.id && sellerUid.length > 1 && me.id === sellerUid;
               /* Titular real del paquete: solo API `currentOwnerUserId` (no inferir por suscripción). */
               const viewerIsOwnerCarrierStrict =
                 !!me.id &&
@@ -760,35 +785,20 @@ export function ChatRightRailRoutesPanel({
                 ? deliveries.find(
                     (d) =>
                       (d.routeSheetId ?? "").trim() === selRoute.id.trim() &&
-                      (d.routeStopId ?? "").trim() === (prevParada.id ?? "").trim(),
+                      (d.routeStopId ?? "").trim() ===
+                        (prevParada.id ?? "").trim(),
                   )
                 : undefined;
-              const prevApiState = (prevRow?.state ?? "").trim().toLowerCase();
-              const prevLogisticsState = sheetIsOperationalDraft
-                ? "route_sheet_draft"
-                : prevApiState;
-              const prevEvidenceAccepted =
-                !prevParada ||
-                prevLogisticsState === "evidence_accepted";
               const nextParada =
                 stopIndex >= 0 && stopIndex < orderedParadas.length - 1
                   ? orderedParadas[stopIndex + 1]
                   : undefined;
-              const nextCarrierUid = nextParada
-                ? confirmedCarrierUidForStop(nextParada.id)
-                : "";
               const nextOt =
                 routeOfferResolved?.routeSheetId === selRoute.id && nextParada
                   ? routeOfferResolved.tramos.find(
                       (t) => t.stopId === nextParada.id,
                     )
                   : undefined;
-              /* Ceder solo en el “borde” donde el siguiente tramo tiene otro transportista (p. ej. tramo 2 → 3). */
-              const handoffLeg =
-                !!nextParada &&
-                curCarrierUid.length >= 2 &&
-                nextCarrierUid.length >= 2 &&
-                curCarrierUid !== nextCarrierUid;
 
               const busyKeyBase = `${agreementId}:${selRoute.id}:${p.id}`;
 
@@ -799,330 +809,366 @@ export function ChatRightRailRoutesPanel({
                 logisticsState === "evidence_submitted" ||
                 logisticsState === "evidence_rejected";
 
+              let showEvidenceBtn = undefined;
+              if (cedeOwnershipByAgreement?.[selRoute.id]) {
+                const route = cedeOwnershipByAgreement[selRoute.id];
+                let isCedeOwnerShip = undefined;
+                if (route?.[p.id]) isCedeOwnerShip = route[p.id];
+                showEvidenceBtn = isCedeOwnerShip;
+              }
+
               const showCedeOwnership =
                 activeLike &&
                 viewerIsOwnerCarrierStrict &&
                 viewerIsConfirmedOnThisStop &&
-                handoffLeg;
+                !showEvidenceBtn;
 
-              const evidenceBlockedHint = !prevEvidenceAccepted
-                ? "Esperá evidencia aceptada del tramo anterior (y la cadena de titularidad)."
-                : undefined;
-
+              console.log({
+                id: p.id,
+                cedeOwnershipByAgreement,
+                showEvidenceBtn,
+                showCedeOwnership,
+                name: p.origen,
+              });
               return (
-              <li
-                key={p.id}
-                className="mb-2.5 list-none border-b border-dashed border-[color-mix(in_oklab,var(--border)_80%,transparent)] pb-2.5"
-              >
-                <div className="mb-1 flex items-center gap-2">
-                  <span className="text-[11px] font-black text-[var(--muted)]">
-                    {p.orden}
-                  </span>
-                  {isActingSeller ? (
-                    <button
-                      type="button"
-                      className={cn(
-                        "cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5",
-                        p.completada &&
-                          "text-[color-mix(in_oklab,var(--good)_92%,var(--muted))]",
-                      )}
-                      disabled={actionsLocked || sheetLockedByPaid}
-                      title={
-                        actionsLocked
-                          ? "No disponible hasta registrar el pago"
-                          : sheetLockedByPaid
-                            ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
-                            : "Marcar tramo"
-                      }
-                      onClick={() =>
-                        toggleRouteStop(threadId, selRoute.id, p.id)
-                      }
-                    >
-                      <Check size={16} strokeWidth={2.5} />
-                    </button>
-                  ) : (
-                    <span
-                      className={cn(
-                        "inline-flex rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-2 py-0.5",
-                        p.completada &&
-                          "text-[color-mix(in_oklab,var(--good)_92%,var(--muted))]",
-                      )}
-                      title={
-                        p.completada ? "Tramo completado" : "Tramo pendiente"
-                      }
-                      aria-hidden
-                    >
-                      <Check size={16} strokeWidth={2.5} />
+                <li
+                  key={p.id}
+                  className="mb-2.5 list-none border-b border-dashed border-[color-mix(in_oklab,var(--border)_80%,transparent)] pb-2.5"
+                >
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="text-[11px] font-black text-[var(--muted)]">
+                      {p.orden}
                     </span>
-                  )}
-                </div>
-                <div className="font-extrabold">{tramoResumenLinea(p)}</div>
-                {(p.origenLat || p.origenLng) && (
-                  <div className="vt-muted">
-                    Coord. origen: {p.origenLat ?? "—"}, {p.origenLng ?? "—"}
+                    {isActingSeller ? (
+                      <button
+                        type="button"
+                        className={cn(
+                          "cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5",
+                          p.completada &&
+                            "text-[color-mix(in_oklab,var(--good)_92%,var(--muted))]",
+                        )}
+                        disabled={actionsLocked || sheetLockedByPaid}
+                        title={
+                          actionsLocked
+                            ? "No disponible hasta registrar el pago"
+                            : sheetLockedByPaid
+                              ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
+                              : "Marcar tramo"
+                        }
+                        onClick={() =>
+                          toggleRouteStop(threadId, selRoute.id, p.id)
+                        }
+                      >
+                        <Check size={16} strokeWidth={2.5} />
+                      </button>
+                    ) : (
+                      <span
+                        className={cn(
+                          "inline-flex rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-2 py-0.5",
+                          p.completada &&
+                            "text-[color-mix(in_oklab,var(--good)_92%,var(--muted))]",
+                        )}
+                        title={
+                          p.completada ? "Tramo completado" : "Tramo pendiente"
+                        }
+                        aria-hidden
+                      >
+                        <Check size={16} strokeWidth={2.5} />
+                      </span>
+                    )}
                   </div>
-                )}
-                {(p.destinoLat || p.destinoLng) && (
-                  <div className="vt-muted">
-                    Coord. destino: {p.destinoLat ?? "—"}, {p.destinoLng ?? "—"}
-                  </div>
-                )}
-                <div className="vt-muted">
-                  Distancia por carretera: {formatKmEs(p.osrmRoadKm ?? 0)}
-                </div>
-                {p.tiempoRecogidaEstimado ? (
-                  <div className="vt-muted">
-                    Recogida: {formatRouteEstimadoDisplay(p.tiempoRecogidaEstimado)}
-                  </div>
-                ) : null}
-                {p.tiempoEntregaEstimado ? (
-                  <div className="vt-muted">
-                    Entrega: {formatRouteEstimadoDisplay(p.tiempoEntregaEstimado)}
-                  </div>
-                ) : null}
-                {p.ventanaHoraria ? (
-                  <div className="vt-muted">{p.ventanaHoraria}</div>
-                ) : null}
-                {p.precioTransportista ? (
-                  <div className="mt-1 text-xs text-[var(--muted)]">
-                    <strong>Precio transportista:</strong>{" "}
-                    {p.precioTransportista}
-                  </div>
-                ) : null}
-                {p.cargaEnTramo ? (
-                  <div className="mt-1 text-xs text-[var(--muted)]">
-                    <strong>Carga en tramo:</strong> {p.cargaEnTramo}
-                  </div>
-                ) : null}
-                {p.tipoMercanciaCarga || p.tipoMercanciaDescarga ? (
-                  <div className="vt-muted">
-                    Mercancía carga: {p.tipoMercanciaCarga ?? "—"} · descarga:{" "}
-                    {p.tipoMercanciaDescarga ?? "—"}
-                  </div>
-                ) : null}
-                {p.responsabilidadEmbalaje ? (
-                  <div className="mt-1 text-xs text-[var(--muted)]">
-                    <strong>Responsabilidad embalaje:</strong>{" "}
-                    {p.responsabilidadEmbalaje}
-                  </div>
-                ) : null}
-                {p.requisitosEspeciales ? (
-                  <div className="mt-1 text-xs text-[var(--muted)]">
-                    <strong>Requisitos especiales:</strong>{" "}
-                    {p.requisitosEspeciales}
-                  </div>
-                ) : null}
-                {p.tipoVehiculoRequerido ? (
-                  <div className="mt-1 text-xs text-[var(--muted)]">
-                    <strong>Vehículo requerido:</strong>{" "}
-                    {p.tipoVehiculoRequerido}
-                  </div>
-                ) : null}
-                {p.notas ? (
-                  <div className="mt-1 text-xs text-[var(--muted)]">
-                    {p.notas}
-                  </div>
-                ) : null}
-                {(() => {
-                  const tel = effectiveTramoContactPhone(p, ot);
-                  return (
-                    <>
-                      {tel ? (
-                        <div className="mt-1 text-xs font-semibold text-[var(--text)]">
-                          <span className="text-[var(--muted)]">
-                            Contacto tramo:{" "}
-                          </span>
-                          {tel}
-                        </div>
-                      ) : null}
-                      {ot?.assignment ? (
-                        <TramoSubscribedServiceFicha
-                          assignment={ot.assignment}
-                        />
-                      ) : null}
-                    </>
-                  );
-                })()}
-
-                {agreement && agreementId.length >= 8 ?
-                  <div className="mt-2 rounded-xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] p-2.5">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
-                        Logística
-                      </div>
-                      <div className="text-[11px] font-bold text-[var(--text)]">
-                        Estado:{" "}
-                        <span className="font-semibold normal-case tracking-normal">
-                          {sheetIsOperationalDraft || row ?
-                            routeStopDeliveryStateLabelEs(logisticsState)
-                          : "Sin registro"}
-                        </span>
-                      </div>
+                  <div className="font-extrabold">{tramoResumenLinea(p)}</div>
+                  {(p.origenLat || p.origenLng) && (
+                    <div className="vt-muted">
+                      Coord. origen: {p.origenLat ?? "—"}, {p.origenLng ?? "—"}
                     </div>
+                  )}
+                  {(p.destinoLat || p.destinoLng) && (
+                    <div className="vt-muted">
+                      Coord. destino: {p.destinoLat ?? "—"},{" "}
+                      {p.destinoLng ?? "—"}
+                    </div>
+                  )}
+                  <div className="vt-muted">
+                    Distancia por carretera: {formatKmEs(p.osrmRoadKm ?? 0)}
+                  </div>
+                  {p.tiempoRecogidaEstimado ? (
+                    <div className="vt-muted">
+                      Recogida:{" "}
+                      {formatRouteEstimadoDisplay(p.tiempoRecogidaEstimado)}
+                    </div>
+                  ) : null}
+                  {p.tiempoEntregaEstimado ? (
+                    <div className="vt-muted">
+                      Entrega:{" "}
+                      {formatRouteEstimadoDisplay(p.tiempoEntregaEstimado)}
+                    </div>
+                  ) : null}
+                  {p.ventanaHoraria ? (
+                    <div className="vt-muted">{p.ventanaHoraria}</div>
+                  ) : null}
+                  {p.precioTransportista ? (
+                    <div className="mt-1 text-xs text-[var(--muted)]">
+                      <strong>Precio transportista:</strong>{" "}
+                      {p.precioTransportista}
+                    </div>
+                  ) : null}
+                  {p.cargaEnTramo ? (
+                    <div className="mt-1 text-xs text-[var(--muted)]">
+                      <strong>Carga en tramo:</strong> {p.cargaEnTramo}
+                    </div>
+                  ) : null}
+                  {p.tipoMercanciaCarga || p.tipoMercanciaDescarga ? (
+                    <div className="vt-muted">
+                      Mercancía carga: {p.tipoMercanciaCarga ?? "—"} · descarga:{" "}
+                      {p.tipoMercanciaDescarga ?? "—"}
+                    </div>
+                  ) : null}
+                  {p.responsabilidadEmbalaje ? (
+                    <div className="mt-1 text-xs text-[var(--muted)]">
+                      <strong>Responsabilidad embalaje:</strong>{" "}
+                      {p.responsabilidadEmbalaje}
+                    </div>
+                  ) : null}
+                  {p.requisitosEspeciales ? (
+                    <div className="mt-1 text-xs text-[var(--muted)]">
+                      <strong>Requisitos especiales:</strong>{" "}
+                      {p.requisitosEspeciales}
+                    </div>
+                  ) : null}
+                  {p.tipoVehiculoRequerido ? (
+                    <div className="mt-1 text-xs text-[var(--muted)]">
+                      <strong>Vehículo requerido:</strong>{" "}
+                      {p.tipoVehiculoRequerido}
+                    </div>
+                  ) : null}
+                  {p.notas ? (
+                    <div className="mt-1 text-xs text-[var(--muted)]">
+                      {p.notas}
+                    </div>
+                  ) : null}
+                  {(() => {
+                    const tel = effectiveTramoContactPhone(p, ot);
+                    return (
+                      <>
+                        {tel ? (
+                          <div className="mt-1 text-xs font-semibold text-[var(--text)]">
+                            <span className="text-[var(--muted)]">
+                              Contacto tramo:{" "}
+                            </span>
+                            {tel}
+                          </div>
+                        ) : null}
+                        {ot?.assignment ? (
+                          <TramoSubscribedServiceFicha
+                            assignment={ot.assignment}
+                          />
+                        ) : null}
+                      </>
+                    );
+                  })()}
 
-                    {/* Telemetría GPS: montada en ChatPage para no duplicar watchPosition ni depender de abrir Rutas. */}
+                  {agreement && agreementId.length >= 8 ? (
+                    <div className="mt-2 rounded-xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] p-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
+                          Logística
+                        </div>
+                        <div className="text-[11px] font-bold text-[var(--text)]">
+                          Estado:{" "}
+                          <span className="font-semibold normal-case tracking-normal">
+                            {routeStopDeliveryStateLabelEs(logisticsState)}
+                          </span>
+                        </div>
+                      </div>
 
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {showCedeOwnership ?
-                        <button
-                          type="button"
-                          className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
-                          disabled={!getSessionToken() || logisticsBusyKey === `${busyKeyBase}:cede`}
-                          title="Solo si sos el titular del paquete y el transportista confirmado en este tramo: cedé al confirmado en el siguiente."
-                          onClick={() => {
-                            setCedeOwnershipModal({
-                              agreementId,
-                              routeSheetId: selRoute.id,
-                              routeStopId: p.id,
-                              busy: false,
-                              targetDisplayLabel:
-                                nextOt?.assignment?.displayName?.trim() ||
-                                "Transportista confirmado del siguiente tramo",
-                              currentOrden: p.orden ?? 0,
-                              nextOrden: nextParada?.orden ?? 0,
-                            });
-                          }}
-                        >
-                          Ceder ownership
-                        </button>
-                      : null}
+                      {/* Telemetría GPS: montada en ChatPage para no duplicar watchPosition ni depender de abrir Rutas. */}
 
-                      {activeLike && viewerIsOwnerCarrierStrict ?
-                        <button
-                          type="button"
-                          className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
-                          disabled={
-                            !getSessionToken() ||
-                            !prevEvidenceAccepted
-                          }
-                          title={evidenceBlockedHint}
-                          onClick={() => {
-                            void (async () => {
-                              let loaded: CarrierDeliveryEvidenceApi | null = null;
-                              try {
-                                loaded = await fetchCarrierDeliveryEvidence({
-                                  threadId,
-                                  agreementId,
-                                  routeSheetId: selRoute.id,
-                                  routeStopId: p.id,
-                                });
-                              } catch {
-                                /* sin fila previa */
-                              }
-                              setCarrierEvEditModal({
-                                routeStopId: p.id,
-                                busy: false,
-                                uploading: false,
-                                text: loaded?.text ?? "",
-                                attachments: loaded?.attachments ?? [],
-                                loaded,
-                              });
-                            })();
-                          }}
-                        >
-                          Evidencia de entrega
-                        </button>
-                      : null}
-
-                      {viewerIsSeller &&
-                      (logisticsState === "evidence_submitted" ||
-                        logisticsState === "evidence_rejected" ||
-                        logisticsState === "delivered_pending_evidence") ?
-                        <button
-                          type="button"
-                          className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
-                          disabled={!getSessionToken()}
-                          onClick={() => {
-                            void (async () => {
-                              try {
-                                const ev = await fetchCarrierDeliveryEvidence({
-                                  threadId,
-                                  agreementId,
-                                  routeSheetId: selRoute.id,
-                                  routeStopId: p.id,
-                                });
-                                if (!ev) {
-                                  toast.error("Aún no hay evidencia registrada.");
-                                  return;
-                                }
-                                setCarrierEvReadModal({
-                                  routeStopId: p.id,
-                                  evidence: ev,
-                                });
-                              } catch {
-                                toast.error("No se pudo cargar la evidencia.");
-                              }
-                            })();
-                          }}
-                        >
-                          Ver evidencia
-                        </button>
-                      : null}
-
-                      {(logisticsState === "evidence_submitted" ||
-                        logisticsState === "evidence_rejected") &&
-                      viewerIsSeller ?
-                        <>
-                          <button
-                            type="button"
-                            className="vt-btn vt-btn-primary px-3 py-1 text-[12px]"
-                            disabled={!getSessionToken() || logisticsBusyKey === `${busyKeyBase}:acc`}
-                            onClick={() => {
-                              void (async () => {
-                                try {
-                                  setLogisticsBusyKey(`${busyKeyBase}:acc`);
-                                  await decideCarrierDeliveryEvidence({
-                                    threadId,
-                                    agreementId,
-                                    routeSheetId: selRoute.id,
-                                    routeStopId: p.id,
-                                    decision: "accept",
-                                  });
-                                  toast.success("Evidencia aceptada.");
-                                  await refreshDeliveriesForAgreement(agreementId);
-                                } catch (e) {
-                                  toast.error((e as Error)?.message ?? "No se pudo aceptar.");
-                                } finally {
-                                  setLogisticsBusyKey(null);
-                                }
-                              })();
-                            }}
-                          >
-                            Aceptar evidencia
-                          </button>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {showCedeOwnership ? (
                           <button
                             type="button"
                             className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
-                            disabled={!getSessionToken() || logisticsBusyKey === `${busyKeyBase}:rej`}
+                            disabled={
+                              !getSessionToken() ||
+                              logisticsBusyKey === `${busyKeyBase}:cede`
+                            }
+                            title="Solo si sos el titular del paquete y el transportista confirmado en este tramo: cedé al confirmado en el siguiente."
+                            onClick={() => {
+                              setCedeOwnershipModal({
+                                agreementId,
+                                routeSheetId: selRoute.id,
+                                routeStopId: p.id,
+                                busy: false,
+                                targetDisplayLabel:
+                                  nextOt?.assignment?.displayName?.trim() ||
+                                  "Transportista confirmado del siguiente tramo",
+                                currentOrden: p.orden ?? 0,
+                                nextOrden: nextParada?.orden ?? 0,
+                              });
+                            }}
+                          >
+                            Ceder ownership
+                          </button>
+                        ) : null}
+
+                        {activeLike &&
+                        viewerIsOwnerCarrierStrict &&
+                        showEvidenceBtn ? ( // TODO: has given ownership
+                          <button
+                            type="button"
+                            className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
+                            disabled={!getSessionToken()}
                             onClick={() => {
                               void (async () => {
+                                let loaded: CarrierDeliveryEvidenceApi | null =
+                                  null;
                                 try {
-                                  setLogisticsBusyKey(`${busyKeyBase}:rej`);
-                                  await decideCarrierDeliveryEvidence({
+                                  loaded = await fetchCarrierDeliveryEvidence({
                                     threadId,
                                     agreementId,
                                     routeSheetId: selRoute.id,
                                     routeStopId: p.id,
-                                    decision: "reject",
                                   });
-                                  toast.success("Evidencia rechazada.");
-                                  await refreshDeliveriesForAgreement(agreementId);
-                                } catch (e) {
-                                  toast.error((e as Error)?.message ?? "No se pudo rechazar.");
-                                } finally {
-                                  setLogisticsBusyKey(null);
+                                } catch {
+                                  /* sin fila previa */
+                                }
+                                setCarrierEvEditModal({
+                                  routeStopId: p.id,
+                                  busy: false,
+                                  uploading: false,
+                                  text: loaded?.text ?? "",
+                                  attachments: loaded?.attachments ?? [],
+                                  loaded,
+                                });
+                              })();
+                            }}
+                          >
+                            Evidencia de entrega
+                          </button>
+                        ) : null}
+
+                        {viewerIsSeller &&
+                        (logisticsState === "evidence_submitted" ||
+                          logisticsState === "evidence_rejected" ||
+                          logisticsState === "delivered_pending_evidence") ? (
+                          <button
+                            type="button"
+                            className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
+                            disabled={!getSessionToken()}
+                            onClick={() => {
+                              void (async () => {
+                                try {
+                                  const ev = await fetchCarrierDeliveryEvidence(
+                                    {
+                                      threadId,
+                                      agreementId,
+                                      routeSheetId: selRoute.id,
+                                      routeStopId: p.id,
+                                    },
+                                  );
+                                  if (!ev) {
+                                    toast.error(
+                                      "Aún no hay evidencia registrada.",
+                                    );
+                                    return;
+                                  }
+                                  setCarrierEvReadModal({
+                                    routeStopId: p.id,
+                                    evidence: ev,
+                                  });
+                                } catch {
+                                  toast.error(
+                                    "No se pudo cargar la evidencia.",
+                                  );
                                 }
                               })();
                             }}
                           >
-                            Rechazar evidencia
+                            Ver evidencia
                           </button>
-                        </>
-                      : null}
+                        ) : null}
+
+                        {(logisticsState === "evidence_submitted" ||
+                          logisticsState === "evidence_rejected") &&
+                        viewerIsSeller ? (
+                          <>
+                            <button
+                              type="button"
+                              className="vt-btn vt-btn-primary px-3 py-1 text-[12px]"
+                              disabled={
+                                !getSessionToken() ||
+                                logisticsBusyKey === `${busyKeyBase}:acc`
+                              }
+                              onClick={() => {
+                                void (async () => {
+                                  try {
+                                    setLogisticsBusyKey(`${busyKeyBase}:acc`);
+                                    await decideCarrierDeliveryEvidence({
+                                      threadId,
+                                      agreementId,
+                                      routeSheetId: selRoute.id,
+                                      routeStopId: p.id,
+                                      decision: "accept",
+                                    });
+                                    toast.success("Evidencia aceptada.");
+                                    await refreshDeliveriesForAgreement(
+                                      agreementId,
+                                    );
+                                  } catch (e) {
+                                    toast.error(
+                                      (e as Error)?.message ??
+                                        "No se pudo aceptar.",
+                                    );
+                                  } finally {
+                                    setLogisticsBusyKey(null);
+                                  }
+                                })();
+                              }}
+                            >
+                              Aceptar evidencia
+                            </button>
+                            <button
+                              type="button"
+                              className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
+                              disabled={
+                                !getSessionToken() ||
+                                logisticsBusyKey === `${busyKeyBase}:rej`
+                              }
+                              onClick={() => {
+                                void (async () => {
+                                  try {
+                                    setLogisticsBusyKey(`${busyKeyBase}:rej`);
+                                    await decideCarrierDeliveryEvidence({
+                                      threadId,
+                                      agreementId,
+                                      routeSheetId: selRoute.id,
+                                      routeStopId: p.id,
+                                      decision: "reject",
+                                    });
+                                    toast.success("Evidencia rechazada.");
+                                    await refreshDeliveriesForAgreement(
+                                      agreementId,
+                                    );
+                                  } catch (e) {
+                                    toast.error(
+                                      (e as Error)?.message ??
+                                        "No se pudo rechazar.",
+                                    );
+                                  } finally {
+                                    setLogisticsBusyKey(null);
+                                  }
+                                })();
+                              }}
+                            >
+                              Rechazar evidencia
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                : null}
-              </li>
+                  ) : null}
+                </li>
               );
             })}
           </ul>
@@ -1183,7 +1229,7 @@ export function ChatRightRailRoutesPanel({
         </ul>
       )}
 
-      {cedeOwnershipModal ?
+      {cedeOwnershipModal ? (
         <div
           className="fixed inset-0 z-[86] flex items-center justify-center bg-black/60 p-4"
           role="dialog"
@@ -1197,7 +1243,9 @@ export function ChatRightRailRoutesPanel({
               <button
                 type="button"
                 className="vt-btn vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-2"
-                onClick={() => !cedeOwnershipModal.busy && setCedeOwnershipModal(null)}
+                onClick={() =>
+                  !cedeOwnershipModal.busy && setCedeOwnershipModal(null)
+                }
                 disabled={cedeOwnershipModal.busy}
               >
                 <XCircle size={16} aria-hidden /> Cerrar
@@ -1206,17 +1254,18 @@ export function ChatRightRailRoutesPanel({
             <div className="px-4 py-3 text-[13px] leading-relaxed text-[var(--text)]">
               <p className="m-0">
                 ¿Seguro que querés ceder la titularidad del paquete en el tramo{" "}
-                <strong>{cedeOwnershipModal.currentOrden}</strong> al transportista
-                confirmado del tramo <strong>{cedeOwnershipModal.nextOrden}</strong>
-                {" "}(
+                <strong>{cedeOwnershipModal.currentOrden}</strong> al
+                transportista confirmado del tramo{" "}
+                <strong>{cedeOwnershipModal.nextOrden}</strong> (
                 <span className="font-semibold">
                   {cedeOwnershipModal.targetDisplayLabel}
                 </span>
                 )?
               </p>
               <p className="vt-muted mt-2 mb-0 text-[12px]">
-                Solo podés ceder al transportista habilitado en el siguiente tramo. Si el
-                servidor rechaza la operación, verás el motivo aquí.
+                Solo podés ceder al transportista habilitado en el siguiente
+                tramo. Si el servidor rechaza la operación, verás el motivo
+                aquí.
               </p>
             </div>
             <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] px-4 py-3">
@@ -1235,7 +1284,9 @@ export function ChatRightRailRoutesPanel({
                 onClick={() => {
                   const m = cedeOwnershipModal;
                   void (async () => {
-                    setCedeOwnershipModal((x) => (x ? { ...x, busy: true } : x));
+                    setCedeOwnershipModal((x) =>
+                      x ? { ...x, busy: true } : x,
+                    );
                     const busyKey = `${m.agreementId}:${m.routeSheetId}:${m.routeStopId}:cede`;
                     setLogisticsBusyKey(busyKey);
                     try {
@@ -1250,36 +1301,49 @@ export function ChatRightRailRoutesPanel({
                           (r.message ?? "").trim() ||
                             "El servidor rechazó la cesión de titularidad.",
                         );
-                        setCedeOwnershipModal((x) => (x ? { ...x, busy: false } : x));
+                        setCedeOwnershipModal((x) =>
+                          x ? { ...x, busy: false } : x,
+                        );
                         return;
                       }
-                      toast.success("Titularidad cedida. El otro transportista fue notificado.");
+                      toast.success(
+                        "Titularidad cedida. El otro transportista fue notificado.",
+                      );
                       await refreshDeliveriesForAgreement(m.agreementId);
                       setCedeOwnershipModal(null);
                     } catch (e) {
                       toast.error(
-                        (e as Error)?.message ?? "No se pudo ceder la titularidad.",
+                        (e as Error)?.message ??
+                          "No se pudo ceder la titularidad.",
                       );
-                      setCedeOwnershipModal((x) => (x ? { ...x, busy: false } : x));
+                      setCedeOwnershipModal((x) =>
+                        x ? { ...x, busy: false } : x,
+                      );
                     } finally {
                       setLogisticsBusyKey(null);
                     }
                   })();
                 }}
               >
-                {cedeOwnershipModal.busy ?
+                {cedeOwnershipModal.busy ? (
                   <>
-                    <Loader2 className="mr-1.5 inline animate-spin" size={16} aria-hidden />
+                    <Loader2
+                      className="mr-1.5 inline animate-spin"
+                      size={16}
+                      aria-hidden
+                    />
                     Procesando…
                   </>
-                : "Sí, ceder"}
+                ) : (
+                  "Sí, ceder"
+                )}
               </button>
             </div>
           </div>
         </div>
-      : null}
+      ) : null}
 
-      {carrierEvEditModal && selRoute ?
+      {carrierEvEditModal && selRoute ? (
         <div
           className="fixed inset-0 z-[85] flex items-center justify-center bg-black/60 p-4"
           role="dialog"
@@ -1326,21 +1390,21 @@ export function ChatRightRailRoutesPanel({
                 atts={carrierEvEditModal.attachments}
                 onRemove={(id) =>
                   setCarrierEvEditModal((m) =>
-                    m ?
-                      {
-                        ...m,
-                        attachments: m.attachments.filter((a) => a.id !== id),
-                      }
-                    : m,
+                    m
+                      ? {
+                          ...m,
+                          attachments: m.attachments.filter((a) => a.id !== id),
+                        }
+                      : m,
                   )
                 }
               />
               <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_52%,var(--surface))] px-3 py-2 text-[13px] font-semibold text-[var(--text)]">
                 <Upload size={16} aria-hidden />
                 Subir archivos
-                {carrierEvEditModal.uploading ?
+                {carrierEvEditModal.uploading ? (
                   <Loader2 className="animate-spin" size={16} aria-hidden />
-                : null}
+                ) : null}
                 <input
                   type="file"
                   className="hidden"
@@ -1361,10 +1425,9 @@ export function ChatRightRailRoutesPanel({
                         const uploaded: ServiceEvidenceAttachmentApi[] = [];
                         for (const f of files) {
                           const r = await uploadMedia(f);
-                          const kind =
-                            r.mimeType?.startsWith("image/") ? "image" : (
-                              "document"
-                            );
+                          const kind = r.mimeType?.startsWith("image/")
+                            ? "image"
+                            : "document";
                           uploaded.push({
                             id: crypto.randomUUID(),
                             url: mediaApiUrl(r.id),
@@ -1373,12 +1436,12 @@ export function ChatRightRailRoutesPanel({
                           });
                         }
                         setCarrierEvEditModal((m) =>
-                          m ?
-                            {
-                              ...m,
-                              attachments: [...m.attachments, ...uploaded],
-                            }
-                          : m,
+                          m
+                            ? {
+                                ...m,
+                                attachments: [...m.attachments, ...uploaded],
+                              }
+                            : m,
                         );
                       } catch (err) {
                         toast.error(
@@ -1409,9 +1472,7 @@ export function ChatRightRailRoutesPanel({
                   m.attachments,
                 );
                 const dirty = a0.text !== a1.text || a0.attsKey !== a1.attsKey;
-                const aid = (
-                  agreementForSheet(selRoute.id)?.id ?? ""
-                ).trim();
+                const aid = (agreementForSheet(selRoute.id)?.id ?? "").trim();
                 return (
                   <>
                     <button
@@ -1442,8 +1503,11 @@ export function ChatRightRailRoutesPanel({
                             await refreshDeliveriesForAgreement(aid);
                             setCarrierEvEditModal(null);
                           } catch (e) {
+                            const errorMessage = JSON.parse(
+                              (e as Error).message,
+                            ).message;
                             toast.error(
-                              (e as Error)?.message ??
+                              errorMessage ??
                                 "No se pudo guardar la evidencia.",
                             );
                           } finally {
@@ -1469,10 +1533,11 @@ export function ChatRightRailRoutesPanel({
                           }
                           if (aid.length < 8) return;
                           const lastSent = m.loaded;
-                          const lastSentNorm = normalizeCarrierEvidenceForCompare(
-                            lastSent?.lastSubmittedText ?? "",
-                            lastSent?.lastSubmittedAttachments ?? [],
-                          );
+                          const lastSentNorm =
+                            normalizeCarrierEvidenceForCompare(
+                              lastSent?.lastSubmittedText ?? "",
+                              lastSent?.lastSubmittedAttachments ?? [],
+                            );
                           const nowNorm = normalizeCarrierEvidenceForCompare(
                             m.text,
                             m.attachments,
@@ -1503,9 +1568,12 @@ export function ChatRightRailRoutesPanel({
                             await refreshDeliveriesForAgreement(aid);
                             setCarrierEvEditModal(null);
                           } catch (e) {
+                            const errorMessage = JSON.parse(
+                              (e as Error).message,
+                            ).message;
+
                             toast.error(
-                              (e as Error)?.message ??
-                                "No se pudo enviar la evidencia.",
+                              errorMessage ?? "No se pudo enviar la evidencia.",
                             );
                           } finally {
                             setCarrierEvEditModal((x) =>
@@ -1524,9 +1592,9 @@ export function ChatRightRailRoutesPanel({
             </div>
           </div>
         </div>
-      : null}
+      ) : null}
 
-      {carrierEvReadModal && selRoute ?
+      {carrierEvReadModal && selRoute ? (
         <div
           className="fixed inset-0 z-[85] flex items-center justify-center bg-black/60 p-4"
           role="dialog"
@@ -1569,10 +1637,9 @@ export function ChatRightRailRoutesPanel({
               </div>
               <RouteLegEvidenceAttachmentsList
                 atts={
-                  carrierEvReadModal.evidence.lastSubmittedAttachments
-                    ?.length ?
-                    carrierEvReadModal.evidence.lastSubmittedAttachments
-                  : carrierEvReadModal.evidence.attachments ?? []
+                  carrierEvReadModal.evidence.lastSubmittedAttachments?.length
+                    ? carrierEvReadModal.evidence.lastSubmittedAttachments
+                    : (carrierEvReadModal.evidence.attachments ?? [])
                 }
               />
             </div>
@@ -1580,9 +1647,9 @@ export function ChatRightRailRoutesPanel({
               const aid = (agreementForSheet(selRoute.id)?.id ?? "").trim();
               const viewerIsSeller =
                 !!me.id && sellerUid.length > 1 && me.id === sellerUid;
-              const evSt = (
-                carrierEvReadModal.evidence.status ?? ""
-              ).trim().toLowerCase();
+              const evSt = (carrierEvReadModal.evidence.status ?? "")
+                .trim()
+                .toLowerCase();
               const canDecide =
                 viewerIsSeller &&
                 aid.length >= 8 &&
@@ -1595,7 +1662,8 @@ export function ChatRightRailRoutesPanel({
                     type="button"
                     className="vt-btn vt-btn-primary inline-flex items-center gap-2 px-4 py-2 text-[13px]"
                     disabled={
-                      !getSessionToken() || logisticsBusyKey === `${readBusyBase}:acc`
+                      !getSessionToken() ||
+                      logisticsBusyKey === `${readBusyBase}:acc`
                     }
                     onClick={() => {
                       void (async () => {
@@ -1638,7 +1706,8 @@ export function ChatRightRailRoutesPanel({
                     type="button"
                     className="vt-btn vt-btn-ghost inline-flex items-center gap-2 border border-[var(--border)] px-4 py-2 text-[13px]"
                     disabled={
-                      !getSessionToken() || logisticsBusyKey === `${readBusyBase}:rej`
+                      !getSessionToken() ||
+                      logisticsBusyKey === `${readBusyBase}:rej`
                     }
                     onClick={() => {
                       void (async () => {
@@ -1682,9 +1751,9 @@ export function ChatRightRailRoutesPanel({
             })()}
           </div>
         </div>
-      : null}
+      ) : null}
 
-      {liveMapOpen && selRoute ?
+      {liveMapOpen && selRoute ? (
         <RouteSheetLiveTrackingModal
           open={liveMapOpen}
           onClose={() => {
@@ -1695,11 +1764,13 @@ export function ChatRightRailRoutesPanel({
           agreementId={(agreementForSheet(selRoute.id)?.id ?? "").trim()}
           routeSheet={selRoute}
           offerTramos={
-            routeOfferResolved?.routeSheetId === selRoute.id ? routeOfferResolved.tramos : undefined
+            routeOfferResolved?.routeSheetId === selRoute.id
+              ? routeOfferResolved.tramos
+              : undefined
           }
           highlightStopId={liveFocusStopId}
         />
-      : null}
+      ) : null}
     </div>
   );
 }

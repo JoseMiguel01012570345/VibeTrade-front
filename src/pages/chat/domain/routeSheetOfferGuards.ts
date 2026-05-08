@@ -91,11 +91,7 @@ export function preselInvitesForTramoPhoneEdits(
     const oldStop = initialStops.find((x) => (x.id ?? "").trim() === stopId);
     const ou = oldStop?.telefonoTransportista?.trim() ?? "";
     const phoneChanged = normRoutePhoneKey(ou) !== normRoutePhoneKey(nu);
-    const oldSvc = (oldStop?.transportInvitedStoreServiceId ?? "").trim();
-    const newSvc = (p.transportInvitedStoreServiceId ?? "").trim();
-    const inviteSvcAddedOrChanged =
-      newSvc.length > 0 && oldSvc !== newSvc;
-    if (!phoneChanged && !inviteSvcAddedOrChanged) continue;
+    if (!phoneChanged) continue;
     invites.push({ stopId, phone: nu });
   }
   return invites;
@@ -264,7 +260,8 @@ export function viewerIsConfirmedRouteCarrierOnThread(
 ): boolean {
   const uid = viewerUserId.trim();
   if (uid.length < 2) return false;
-  if (thread.chatCarriers?.some((c) => (c.id ?? "").trim() === uid)) return true;
+  if (thread.chatCarriers?.some((c) => (c.id ?? "").trim() === uid))
+    return true;
   const ro = resolveRouteOfferPublicForThread(state, thread);
   if (!ro?.tramos?.length) return false;
   return ro.tramos.some(
