@@ -16,7 +16,10 @@ import type {
   RouteSheetEditAckState,
 } from "../../../../../app/store/marketStoreTypes";
 import { ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES } from "../../../domain/routeSheetOfferGuards";
-import { routeStatusLabel, type RouteSheet } from "../../../domain/routeSheetTypes";
+import {
+  routeStatusLabel,
+  type RouteSheet,
+} from "../../../domain/routeSheetTypes";
 import type { TradeAgreement } from "../../../domain/tradeAgreementTypes";
 import type { RouteStopDeliveryStatusApi } from "../../../../../utils/chat/routeLogisticsApi";
 import {
@@ -62,9 +65,7 @@ export function RoutesRailToolbarTop(props: {
       </Button>
       {RoutesRailToolbarSellerRow(props)}
       {props.sheetLockedByPaid ? RoutesRailPaidLockNote() : null}
-      {props.sheetEditBlockedByCarrierAck ? (
-        RoutesRailPendingAckNote()
-      ) : null}
+      {props.sheetEditBlockedByCarrierAck ? RoutesRailPendingAckNote() : null}
       {RoutesRailToolbarDeleteBtn(props)}
     </div>
   );
@@ -103,7 +104,10 @@ function RoutesRailToolbarSellerRow(props: {
         size="xs"
         onClick={props.onEdit}
       >
-        <Pencil className="h-3.5 w-3.5 shrink-0" aria-hidden /> Editar
+        <span className="flex items-center gap-1.5">
+          <Pencil className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Editar
+        </span>
       </Button>
       <Button
         className="[&>span]:gap-1.5 [&>span]:text-xs"
@@ -113,8 +117,10 @@ function RoutesRailToolbarSellerRow(props: {
         size="xs"
         onClick={props.onInvite}
       >
-        <UserPlus className="h-3.5 w-3.5 shrink-0" aria-hidden /> Invitar
-        transportista
+        <span className="flex items-center gap-1.5">
+          <UserPlus className="h-3.5 w-3.5 shrink-0" aria-hidden /> Invitar
+          transportista
+        </span>
       </Button>
     </>
   );
@@ -130,10 +136,9 @@ function RoutesRailPaidLockNote(): ReactElement {
   // Vista (HTML + CSS)
   return (
     <p className="vt-muted w-full text-[11px] leading-snug">
-      Hay{" "}
-      <strong className="text-[var(--text)]">cobros registrados</strong> en un
-      acuerdo vinculado a esta hoja: no podés editarla, eliminarla ni cambiar su
-      publicación en la plataforma.
+      Hay <strong className="text-[var(--text)]">cobros registrados</strong> en
+      un acuerdo vinculado a esta hoja: no podés editarla, eliminarla ni cambiar
+      su publicación en la plataforma.
     </p>
   );
 }
@@ -224,8 +229,8 @@ export function RoutesRailPublishStrip(props: {
           </>
         ) : (
           <>
-            <Megaphone className="h-4 w-4 shrink-0" aria-hidden /> Publicar en la
-            plataforma
+            <Megaphone className="h-4 w-4 shrink-0" aria-hidden /> Publicar en
+            la plataforma
           </>
         )}
       </Button>
@@ -405,10 +410,7 @@ export function runRoutesRailDeleteConfirmation(args: {
   selRoute: RouteSheet;
   routeOfferResolved: RouteOfferPublicState | undefined;
   sheetLockedByPaid: boolean;
-  deleteRouteSheet: (
-    threadId: string,
-    routeSheetId: string,
-  ) => boolean;
+  deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean;
   threadId: string;
   setSelRouteId: (id: string | null) => void;
 }): void {
@@ -432,14 +434,8 @@ export function runRoutesRailPublishToggle(args: {
   selRoute: RouteSheet;
   sheetLockedByPaid: boolean;
   threadId: string;
-  publishRouteSheetsToPlatform: (
-    threadId: string,
-    ids: string[],
-  ) => void;
-  unpublishRouteSheetFromPlatform: (
-    threadId: string,
-    id: string,
-  ) => void;
+  publishRouteSheetsToPlatform: (threadId: string, ids: string[]) => void;
+  unpublishRouteSheetFromPlatform: (threadId: string, id: string) => void;
 }): void {
   if (args.sheetLockedByPaid) {
     toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);
@@ -511,8 +507,6 @@ export function routesRailEvaluateLiveMapButton(args: {
     paradas: args.selRoute.paradas,
     deliveries: sheetDeliv,
     meHasId: !!(args.meId ?? "").trim(),
-    agreementReady:
-      !!sheetAgreement && sheetAid.length >= 8,
+    agreementReady: !!sheetAgreement && sheetAid.length >= 8,
   });
 }
-

@@ -1,32 +1,21 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { ExternalLink } from "lucide-react";
 import { Button, Spinner } from "flowbite-react";
 import type { RouteSheet } from "../../domain/routeSheetTypes";
-import type { ThreadChatCarrier } from "../../../../app/store/marketStoreTypes";
 import { postRouteSheetNotifyPreselected } from "../../../../utils/chat/chatApi";
 import { FlowbiteChatModal } from "../layout/FlowbiteChatModal";
 import {
   type SelectableColumnDef,
   SelectableDataTable,
 } from "../data/SelectableDataTable";
+import { fetchPublicProfile } from "../../../../utils/auth/fetchPublicProfile";
 
-type Props = {
+type Props = Readonly<{
   routeSheet: RouteSheet;
-  /** Integrantes conocidos por teléfono (nombre en tabla). */
-  chatCarriers?: ThreadChatCarrier[];
   onClose: () => void;
   onAccepted: () => void;
-};
-
-function normTelKey(phone: string): string {
-  return phone.replace(/[\s.]/g, "").replace(/-/g, "");
-}
+}>;
 
 function digitsOnly(phone: string): string {
   return phone.replace(/\D/g, "");
@@ -64,11 +53,8 @@ const inviteColumns: SelectableColumnDef<InviteRow>[] = [
         <Link
           to={`/offer/${encodeURIComponent(r.serviceOfferId)}`}
           className="inline-flex items-center gap-1 font-semibold text-primary-700 no-underline hover:underline dark:text-primary-400"
-          target="_blank"
-          rel="noopener noreferrer"
         >
           Ver servicio
-          <ExternalLink size={14} aria-hidden />
         </Link>
       ) : (
         <span className="text-gray-400 dark:text-gray-500">—</span>
@@ -76,58 +62,47 @@ const inviteColumns: SelectableColumnDef<InviteRow>[] = [
   },
 ];
 
-export function InviteModal({
-  routeSheet,
-  chatCarriers,
-  onClose,
-  onAccepted,
-}: Props) {
+export function InviteModal({ routeSheet, onClose, onAccepted }: Props) {
   const [selectedStopIds, setSelectedStopIds] = useState<Set<string>>(
     () => new Set(),
   );
   const [inviting, setInviting] = useState(false);
-
-  const rows: InviteRow[] = useMemo(() => {
-    const out: InviteRow[] = [];
-    const byTel = new Map<string, string>();
-    for (const c of chatCarriers ?? []) {
-      const p = (c.phone ?? "").trim();
-      if (!p) continue;
-      const k = normTelKey(p);
-      if (!byTel.has(k)) byTel.set(k, (c.name ?? "").trim() || "—");
-    }
-
-    for (const p of routeSheet.paradas ?? []) {
-      const phone = (p.telefonoTransportista ?? "").trim();
-      if (digitsOnly(phone).length < 6) continue;
-      const k = normTelKey(phone);
-      const named = byTel.get(k)?.trim();
-      const nameLabel = named && named !== "—" ? named : "—";
-
-      const sid = (p.transportInvitedStoreServiceId ?? "").trim();
-
-      out.push({
-        stopId: p.id,
-        phone,
-        nameLabel,
-        serviceOfferId: sid || undefined,
-      });
-    }
-    out.sort((a, b) => a.phone.localeCompare(b.phone, "es"));
-    return out;
-  }, [routeSheet.paradas, chatCarriers]);
+  const [rows, setRows] = useState<InviteRow[]>([]);
 
   useEffect(() => {
-    setSelectedStopIds(new Set(rows.map((r) => r.stopId)));
-  }, [routeSheet.id, rows]);
+    void (async () => {
+      if (!routeSheet.paradas) return;
+      const out: InviteRow[] = [];
+
+      for (const p of routeSheet.paradas ?? []) {
+        const phone = (p.telefonoTransportista ?? "").trim();
+        if (digitsOnly(phone).length < 6) continue;
+        let nameLabel = "—";
+        const profile = await fetchPublicProfile(phone);
+        if (profile) {
+          nameLabel = profile.name;
+        }
+        const sid = (p.transportInvitedStoreServiceId ?? "").trim();
+
+        out.push({
+          stopId: p.id,
+          phone,
+          nameLabel,
+          serviceOfferId: sid || undefined,
+        });
+      }
+      out.sort((a, b) => a.phone.localeCompare(b.phone, "es"));
+      setRows(out);
+      setSelectedStopIds(new Set(out.map((r) => r.stopId)));
+    })();
+  }, [routeSheet.paradas]);
 
   const selectedCount = useMemo(
     () => rows.filter((r) => selectedStopIds.has(r.stopId)).length,
     [rows, selectedStopIds],
   );
 
-  const selectAllChecked =
-    rows.length > 0 && selectedCount === rows.length;
+  const selectAllChecked = rows.length > 0 && selectedCount === rows.length;
   const selectAllIndeterminate =
     selectedCount > 0 && selectedCount < rows.length;
 
@@ -224,7 +199,9 @@ export function InviteModal({
           })
         }
         onToggleAll={(checked) =>
-          setSelectedStopIds(checked ? new Set(rows.map((r) => r.stopId)) : new Set())
+          setSelectedStopIds(
+            checked ? new Set(rows.map((r) => r.stopId)) : new Set(),
+          )
         }
       />
     </FlowbiteChatModal>

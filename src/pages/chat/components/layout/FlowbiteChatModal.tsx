@@ -1,11 +1,6 @@
 import type { ReactNode } from "react";
 import type { ModalProps } from "flowbite-react";
-import {
-  Modal,
-  ModalBody,
-  ModalFooter,
-  ModalHeader,
-} from "flowbite-react";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "flowbite-react";
 import { cn } from "../../../../lib/cn";
 
 /** Modal Flowbite montado en `document.body`; por defecto `z-[120]` para el rail del chat. */

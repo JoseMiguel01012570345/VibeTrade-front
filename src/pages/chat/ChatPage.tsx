@@ -993,6 +993,8 @@ export function ChatPage() {
 
   const canSend = !recording && hasComposeToSend && !chatActionsLocked;
 
+  console.log({ carrierTelemetryTargets });
+
   return (
     <div className="container vt-page vt-chat-page">
       <div

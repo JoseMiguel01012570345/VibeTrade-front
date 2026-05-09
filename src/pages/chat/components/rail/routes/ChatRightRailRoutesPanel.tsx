@@ -318,110 +318,109 @@ export function ChatRightRailRoutesPanel({
   return (
     <div className={bodyClassName}>
       <RailRoutesBusProvider subject={railRoutesCommand$}>
-      <RoutesRailEntryActions
-        actionsLocked={actionsLocked}
-        hasAcceptedContract={hasAcceptedContract}
-        isActingSeller={isActingSeller}
-        onOpenNewRouteSheet={onOpenNewRouteSheet}
-        onOpenRouteSubscribers={onOpenRouteSubscribers}
-        routeSheetCapReached={routeSheetCapReached}
-        routeSheetsLoading={routeSheetsLoading}
-        subscribersTargetSheetId={subscribersTargetSheetId}
-      />
-
-      {selRoute ? (
-        <RoutesRailSheetDetail
-          selRoute={selRoute}
-          setSelRouteId={setSelRouteId}
-          threadId={threadId}
-          isActingSeller={isActingSeller}
+        <RoutesRailEntryActions
           actionsLocked={actionsLocked}
-          sheetLockedByPaid={sheetLockedByPaid}
-          sheetEditBlockedByCarrierAck={sheetEditBlockedByCarrierAck}
-          linkedRouteSheetIds={linkedRouteSheetIds}
-          routeOfferResolved={routeOfferResolved}
-          routeSheetEditAcks={routeSheetEditAcks}
-          myCarrierAck={myCarrierAck}
-          meId={(me.id ?? "").trim()}
-          sellerUid={sellerUid}
-          respondRouteSheetEdit={respondRouteSheetEdit}
-          removeThreadFromList={removeThreadFromList}
-          onPersistedRouteDataRefresh={onPersistedRouteDataRefresh}
-          onEditRouteSheet={onEditRouteSheet}
-          onInviteTransportista={() => setInviteRouteSheet(selRoute)}
-          deleteRouteSheet={deleteRouteSheet}
-          publishRouteSheetsToPlatform={publishRouteSheetsToPlatform}
-          unpublishRouteSheetFromPlatform={unpublishRouteSheetFromPlatform}
-          getAgreementForSheet={agreementForSheet}
-          deliveriesByAgreement={deliveriesByAgreement}
-          cedeOwnershipByAgreement={cedeOwnershipByAgreement}
-          logisticsBusyKey={logisticsBusyKey}
-          onOpenLiveMapAllStops={openLiveMapAllStops}
-        />
-      ) : (
-        <RoutesRailSheetList
-          routeSheets={routeSheets}
           hasAcceptedContract={hasAcceptedContract}
           isActingSeller={isActingSeller}
-          routeOfferResolved={routeOfferResolved}
-          onSelectSheetId={(id) => setSelRouteId(id)}
+          onOpenNewRouteSheet={onOpenNewRouteSheet}
+          onOpenRouteSubscribers={onOpenRouteSubscribers}
+          routeSheetCapReached={routeSheetCapReached}
+          routeSheetsLoading={routeSheetsLoading}
+          subscribersTargetSheetId={subscribersTargetSheetId}
         />
-      )}
 
-      <CedeCarrierOwnershipModal
-        modal={cedeOwnershipModal}
-        refreshDeliveriesForAgreement={refreshDeliveriesForAgreement}
-        setCedeOwnershipModal={setCedeOwnershipModal}
-        setLogisticsBusyKey={setLogisticsBusyKey}
-        threadId={threadId}
-      />
+        {selRoute ? (
+          <RoutesRailSheetDetail
+            selRoute={selRoute}
+            setSelRouteId={setSelRouteId}
+            threadId={threadId}
+            isActingSeller={isActingSeller}
+            actionsLocked={actionsLocked}
+            sheetLockedByPaid={sheetLockedByPaid}
+            sheetEditBlockedByCarrierAck={sheetEditBlockedByCarrierAck}
+            linkedRouteSheetIds={linkedRouteSheetIds}
+            routeOfferResolved={routeOfferResolved}
+            routeSheetEditAcks={routeSheetEditAcks}
+            myCarrierAck={myCarrierAck}
+            meId={(me.id ?? "").trim()}
+            sellerUid={sellerUid}
+            respondRouteSheetEdit={respondRouteSheetEdit}
+            removeThreadFromList={removeThreadFromList}
+            onPersistedRouteDataRefresh={onPersistedRouteDataRefresh}
+            onEditRouteSheet={onEditRouteSheet}
+            onInviteTransportista={() => setInviteRouteSheet(selRoute)}
+            deleteRouteSheet={deleteRouteSheet}
+            publishRouteSheetsToPlatform={publishRouteSheetsToPlatform}
+            unpublishRouteSheetFromPlatform={unpublishRouteSheetFromPlatform}
+            getAgreementForSheet={agreementForSheet}
+            deliveriesByAgreement={deliveriesByAgreement}
+            cedeOwnershipByAgreement={cedeOwnershipByAgreement}
+            logisticsBusyKey={logisticsBusyKey}
+            onOpenLiveMapAllStops={openLiveMapAllStops}
+          />
+        ) : (
+          <RoutesRailSheetList
+            routeSheets={routeSheets}
+            hasAcceptedContract={hasAcceptedContract}
+            isActingSeller={isActingSeller}
+            routeOfferResolved={routeOfferResolved}
+            onSelectSheetId={(id) => setSelRouteId(id)}
+          />
+        )}
 
-      {carrierEvEditModal && selRoute ? (
-        <CarrierDeliveryEvidenceEditModal
-          agreementId={agreementIdForSelectedSheet()}
-          modal={carrierEvEditModal}
+        <CedeCarrierOwnershipModal
+          modal={cedeOwnershipModal}
           refreshDeliveriesForAgreement={refreshDeliveriesForAgreement}
-          selRoute={selRoute}
-          setCarrierEvEditModal={setCarrierEvEditModal}
-          threadId={threadId}
-        />
-      ) : null}
-
-      {carrierEvReadModal && selRoute ? (
-        <RailCarrierEvidenceReadModal
-          agreementId={agreementIdForSelectedSheet()}
-          logisticsBusyKey={logisticsBusyKey}
-          modal={carrierEvReadModal}
-          refreshDeliveriesForAgreement={refreshDeliveriesForAgreement}
-          routeSheetId={selRoute.id}
-          sellerUid={sellerUid}
-          setCarrierEvReadModal={setCarrierEvReadModal}
+          setCedeOwnershipModal={setCedeOwnershipModal}
           setLogisticsBusyKey={setLogisticsBusyKey}
           threadId={threadId}
-          viewerUserId={(me.id ?? "").trim()}
         />
-      ) : null}
 
-      {liveMapOpen && selRoute ? (
-        <RouteSheetLiveTrackingModal
-          agreementId={agreementIdForSelectedSheet()}
-          highlightStopId={liveFocusStopId}
-          offerTramos={liveTrackingOfferTramos()}
-          open={liveMapOpen}
-          routeSheet={selRoute}
-          threadId={threadId}
-          onClose={closeLiveMap}
-        />
-      ) : null}
+        {carrierEvEditModal && selRoute ? (
+          <CarrierDeliveryEvidenceEditModal
+            agreementId={agreementIdForSelectedSheet()}
+            modal={carrierEvEditModal}
+            refreshDeliveriesForAgreement={refreshDeliveriesForAgreement}
+            selRoute={selRoute}
+            setCarrierEvEditModal={setCarrierEvEditModal}
+            threadId={threadId}
+          />
+        ) : null}
 
-      {inviteRouteSheet ? (
-        <InviteModal
-          chatCarriers={chatCarriers}
-          routeSheet={inviteRouteSheet}
-          onAccepted={() => setInviteRouteSheet(null)}
-          onClose={() => setInviteRouteSheet(null)}
-        />
-      ) : null}
+        {carrierEvReadModal && selRoute ? (
+          <RailCarrierEvidenceReadModal
+            agreementId={agreementIdForSelectedSheet()}
+            logisticsBusyKey={logisticsBusyKey}
+            modal={carrierEvReadModal}
+            refreshDeliveriesForAgreement={refreshDeliveriesForAgreement}
+            routeSheetId={selRoute.id}
+            sellerUid={sellerUid}
+            setCarrierEvReadModal={setCarrierEvReadModal}
+            setLogisticsBusyKey={setLogisticsBusyKey}
+            threadId={threadId}
+            viewerUserId={(me.id ?? "").trim()}
+          />
+        ) : null}
+
+        {liveMapOpen && selRoute ? (
+          <RouteSheetLiveTrackingModal
+            agreementId={agreementIdForSelectedSheet()}
+            highlightStopId={liveFocusStopId}
+            offerTramos={liveTrackingOfferTramos()}
+            open={liveMapOpen}
+            routeSheet={selRoute}
+            threadId={threadId}
+            onClose={closeLiveMap}
+          />
+        ) : null}
+
+        {inviteRouteSheet ? (
+          <InviteModal
+            routeSheet={inviteRouteSheet}
+            onAccepted={() => setInviteRouteSheet(null)}
+            onClose={() => setInviteRouteSheet(null)}
+          />
+        ) : null}
       </RailRoutesBusProvider>
     </div>
   );
