@@ -31,7 +31,11 @@ export function SelectableDataTable<T>(props: {
   emptyMessage?: ReactNode;
 }) {
   if (props.rows.length === 0 && props.emptyMessage) {
-    return <div className="text-sm text-gray-600 dark:text-gray-400">{props.emptyMessage}</div>;
+    return (
+      <div className="text-sm text-gray-600 dark:text-gray-400">
+        {props.emptyMessage}
+      </div>
+    );
   }
 
   return (

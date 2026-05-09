@@ -10,11 +10,11 @@ import { Button, Spinner } from "flowbite-react";
 import type { RouteSheet } from "../../domain/routeSheetTypes";
 import type { ThreadChatCarrier } from "../../../../app/store/marketStoreTypes";
 import { postRouteSheetNotifyPreselected } from "../../../../utils/chat/chatApi";
-import { FlowbiteChatModal } from "../Components/layout/FlowbiteChatModal";
+import { FlowbiteChatModal } from "../layout/FlowbiteChatModal";
 import {
   type SelectableColumnDef,
   SelectableDataTable,
-} from "../Components/data/SelectableDataTable";
+} from "../data/SelectableDataTable";
 
 type Props = {
   routeSheet: RouteSheet;

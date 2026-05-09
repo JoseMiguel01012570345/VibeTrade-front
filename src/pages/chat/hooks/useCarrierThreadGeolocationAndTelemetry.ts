@@ -104,7 +104,7 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
         return;
       }
 
-      const myReq = ++reqIdRef.current;
+      void ++reqIdRef.current;
 
       void (async () => {
         const state = useMarketStore.getState();

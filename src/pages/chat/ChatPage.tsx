@@ -29,7 +29,7 @@ import {
 } from "./components/composer/ChatComposerSection";
 import { ChatMessageList } from "./components/messages/ChatMessageList";
 import { formatFileSize, inferDocKind } from "./lib/chatAttachments";
-import { ChatRightRail } from "./components/rail/ChatRightRail";
+import { ChatRightRail } from "./components/rail/layout/ChatRightRail";
 import { ChatRouteSubscribersPanel } from "./components/ChatRouteSubscribersPanel";
 import { type RouteSheet } from "./domain/routeSheetTypes";
 import { RouteSheetFormModal } from "./components/modals/RouteSheetFormModal";

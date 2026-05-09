@@ -6,9 +6,9 @@ import {
   ModalFooter,
   ModalHeader,
 } from "flowbite-react";
-import { cn } from "../../../../../lib/cn";
+import { cn } from "../../../../lib/cn";
 
-/** Modal Flowbite montado en `document.body` con z-index por encima del rail del chat (`z-[120]`). */
+/** Modal Flowbite montado en `document.body`; por defecto `z-[120]` para el rail del chat. */
 export function FlowbiteChatModal(props: {
   show: boolean;
   onDismiss: () => void;
@@ -16,8 +16,9 @@ export function FlowbiteChatModal(props: {
   description?: ReactNode;
   bodyClassName?: string;
   children: ReactNode;
-  footer: ReactNode;
+  footer?: ReactNode;
   size?: NonNullable<ModalProps["size"]>;
+  /** Sustituir clase de backdrop (ej. `!z-[85]` para modales menos urgentes). */
   modalRootClassName?: string;
 }) {
   const root = typeof document !== "undefined" ? document.body : undefined;
@@ -41,9 +42,11 @@ export function FlowbiteChatModal(props: {
         ) : null}
         {props.children}
       </ModalBody>
-      <ModalFooter className="justify-end gap-3 border-gray-200 dark:border-gray-600">
-        {props.footer}
-      </ModalFooter>
+      {props.footer !== undefined ? (
+        <ModalFooter className="justify-end gap-3 border-gray-200 dark:border-gray-600">
+          {props.footer}
+        </ModalFooter>
+      ) : null}
     </Modal>
   );
 }

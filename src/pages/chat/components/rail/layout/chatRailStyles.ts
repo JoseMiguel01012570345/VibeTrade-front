@@ -1,10 +1,10 @@
-import { cn } from "../../../../lib/cn";
-import type { TradeAgreement } from "../../domain/tradeAgreementTypes";
+import { cn } from "../../../../../lib/cn";
+import type { TradeAgreement } from "../../../domain/tradeAgreementTypes";
 import {
   statusPillNo,
   statusPillOk,
   statusPillPending,
-} from "../../styles/formModalStyles";
+} from "../../../styles/formModalStyles";
 
 export type ContractFilter = "all" | "store" | "buyer";
 

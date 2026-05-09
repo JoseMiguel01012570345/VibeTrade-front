@@ -202,7 +202,7 @@ function RouteMapCameraSync({
 export function RouteSheetFormModal({
   open,
   onClose,
-  threadId,
+  threadId: _threadId,
   initialRouteSheet,
   lockedByPaidAgreement = false,
   routeOfferForSheet,

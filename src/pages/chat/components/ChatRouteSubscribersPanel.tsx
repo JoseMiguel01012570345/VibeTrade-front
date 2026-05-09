@@ -29,8 +29,8 @@ import {
 } from "../domain/routeOfferSubscribers";
 import { onBackdropPointerClose } from "../lib/modalClose";
 import { modalShellWide, modalSub } from "../styles/formModalStyles";
-import { railItemClass } from "./rail/chatRailStyles";
-import { TramoSubscribedServiceFicha } from "./rail/TramoSubscribedServiceFicha";
+import { railItemClass } from "./rail/layout/chatRailStyles";
+import { TramoSubscribedServiceFicha } from "./rail/shared/TramoSubscribedServiceFicha";
 
 type Props = {
   threadId: string;

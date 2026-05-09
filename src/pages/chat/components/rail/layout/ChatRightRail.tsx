@@ -4,13 +4,13 @@ import { useShallow } from "zustand/react/shallow";
 import type {
   StoreBadge,
   ThreadChatCarrier,
-} from "../../../../app/store/useMarketStore";
-import { useMarketStore } from "../../../../app/store/useMarketStore";
-import { cn } from "../../../../lib/cn";
-import type { TradeAgreement } from "../../domain/tradeAgreementTypes";
-import type { RouteSheet } from "../../domain/routeSheetTypes";
-import { resolveRouteOfferPublicForThread } from "../../domain/routeSheetOfferGuards";
-import { buildChatParticipants } from "../../lib/chatParticipants";
+} from "../../../../../app/store/useMarketStore";
+import { useMarketStore } from "../../../../../app/store/useMarketStore";
+import { cn } from "../../../../../lib/cn";
+import type { TradeAgreement } from "../../../domain/tradeAgreementTypes";
+import type { RouteSheet } from "../../../domain/routeSheetTypes";
+import { resolveRouteOfferPublicForThread } from "../../../domain/routeSheetOfferGuards";
+import { buildChatParticipants } from "../../../lib/chatParticipants";
 import {
   RAIL_BODY,
   RAIL_ROOT,
@@ -20,7 +20,7 @@ import {
 } from "./chatRailStyles";
 import { ChatRightRailContractsPanel } from "./ChatRightRailContractsPanel";
 import { ChatRightRailPeoplePanel } from "./ChatRightRailPeoplePanel";
-import { ChatRightRailRoutesPanel } from "./ChatRightRailRoutesPanel";
+import { ChatRightRailRoutesPanel } from "../routes/ChatRightRailRoutesPanel";
 
 export type { ContractFilter } from "./chatRailStyles";
 
