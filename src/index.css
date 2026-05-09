@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Flowbite React: tokens y utilidades (sin resolver vía exports del paquete). */
+@import "../node_modules/flowbite-react/dist/plugin/tailwindcss/index.css";
+
+@source "../node_modules/flowbite-react/dist";
+
 /* Manual toggle: clase `dark` en `<html>` (ver `utils/theme/colorScheme.ts`). */
 @custom-variant dark (&:where(.dark, .dark *));
 
