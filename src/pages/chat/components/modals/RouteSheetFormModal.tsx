@@ -69,7 +69,6 @@ import {
   getRouteSheetFormErrors,
   hasRouteSheetFormErrors,
   normalizeRouteSheetParadas,
-  persistedRouteSheetInviteFieldsDirty,
   routeSheetFormErrorCount,
   validateRouteCoordPair,
 } from "../../domain/routeSheetValidation";
@@ -79,8 +78,6 @@ import { fetchCurrencies } from "../../../../utils/market/fetchCurrencies";
 import { VibeMapTileLayer } from "../../../home/EmergentRouteFeedMap";
 import { LeafletRoadSnappedRoute } from "../../../home/LeafletRoadSnappedRoute";
 import { VtSelect } from "../../../../components/VtSelect";
-import { postRouteSheetNotifyPreselected } from "../../../../utils/chat/chatApi";
-import { getSessionToken } from "../../../../utils/http/sessionToken";
 import { RouteSheetTransportistaPhoneField } from "./RouteSheetTransportistaPhoneField";
 import {
   joinRouteEstimadoStored,
@@ -93,7 +90,6 @@ import {
   confirmedAssignmentOnFormTramo,
   effectiveRouteOfferForSheetForm,
   normRoutePhoneKey,
-  preselInvitesForTramoPhoneEdits,
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
 } from "../../domain/routeSheetOfferGuards";
 
@@ -228,12 +224,6 @@ export function RouteSheetFormModal({
     undefined,
   );
   const [formErrors, setFormErrors] = useState<RouteSheetFormErrors>({});
-  /** Tras un guardado exitoso, si hay teléfonos en tramos, preguntamos si notificar. */
-  const [notifyAfterSave, setNotifyAfterSave] = useState<{
-    routeSheetId: string;
-    invites: { stopId: string; phone: string }[];
-  } | null>(null);
-  const [notifyBusy, setNotifyBusy] = useState(false);
   /** Códigos de moneda permitidos (GET /api/v1/market/currencies), mismo origen que el catálogo. */
   const [currencyCodes, setCurrencyCodes] = useState<string[]>([]);
   const offerForTramo = useMemo(
@@ -269,8 +259,6 @@ export function RouteSheetFormModal({
 
   useEffect(() => {
     if (!open) return;
-    setNotifyAfterSave(null);
-    setNotifyBusy(false);
     setFormErrors({});
     setMapPick(null);
     setMapPlaceLabel("");
@@ -551,78 +539,22 @@ export function RouteSheetFormModal({
       ...draft,
       paradas: paradasFinal,
     };
-    const invites = preselInvitesForTramoPhoneEdits(
-      initialRouteSheet ?? null,
-      paradasFinal,
-    );
+
     if (initialRouteSheet && editBaselineJsonRef.current !== null) {
-      // ????
       const unchangedVsBaseline =
         JSON.stringify(payload) === editBaselineJsonRef.current;
-      const inviteDirty =
-        persistedRouteSheetInviteFieldsDirty(initialRouteSheet, paradasFinal) ||
-        invites.length > 0;
-      if (unchangedVsBaseline && !inviteDirty) {
+      if (unchangedVsBaseline) {
         toast.error("No hay cambios para guardar.");
         return;
       }
     }
     const persisted = onSubmit(payload);
     if (!persisted.ok) return;
-
-    if (
-      invites.length > 0 &&
-      threadId.startsWith("cth_") &&
-      getSessionToken()
-    ) {
-      setNotifyAfterSave({
-        routeSheetId: persisted.routeSheetId,
-        invites,
-      });
-      return;
-    }
     setFormErrors({});
     onClose();
     toast.success(
       initialRouteSheet ? "Hoja de ruta actualizada" : "Hoja de ruta creada",
     );
-  }
-
-  async function completeSaveAfterNotifyChoice(shouldNotify: boolean) {
-    if (!notifyAfterSave) return;
-    const saved = { ...notifyAfterSave };
-    setNotifyAfterSave(null);
-    if (shouldNotify && threadId.startsWith("cth_")) {
-      setNotifyBusy(true);
-      try {
-        const { notifiedCount } = await postRouteSheetNotifyPreselected(
-          threadId,
-          saved.routeSheetId,
-          saved.invites,
-        );
-        if (notifiedCount > 0) {
-          toast.success(
-            `Hoja guardada. Se notificó a ${notifiedCount} usuario${
-              notifiedCount === 1 ? "" : "s"
-            }.`,
-          );
-        } else {
-          toast.success(
-            "Hoja guardada. Ningún número coincidió con un usuario al que avisar.",
-          );
-        }
-      } catch {
-        toast.error("La hoja se guardó, pero no se pudo enviar el aviso.");
-      } finally {
-        setNotifyBusy(false);
-      }
-    } else {
-      toast.success(
-        initialRouteSheet ? "Hoja de ruta actualizada" : "Hoja de ruta creada",
-      );
-    }
-    setFormErrors({});
-    onClose();
   }
 
   function updateTramo(i: number, patch: Partial<RouteTramoFormInput>) {
@@ -1264,50 +1196,6 @@ export function RouteSheetFormModal({
           </div>
         </div>
       </div>
-
-      {notifyAfterSave ? (
-        <div
-          className={mapBackdropLayerAboveChatRail}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="ruta-notify-transportista-title"
-        >
-          <div className={modalShellWide} onClick={(e) => e.stopPropagation()}>
-            <div
-              className="vt-modal-title"
-              id="ruta-notify-transportista-title"
-            >
-              ¿Notificar al transportista?
-            </div>
-            <div className={modalSub}>
-              La hoja ya se guardó. ¿Querés avisar por la app a quien tenga
-              cuenta con el número que indicaste
-              {notifyAfterSave.invites.length > 1
-                ? " en los tramos donde cambiaste el contacto"
-                : " en el tramo donde cambiaste el contacto"}{" "}
-              para que sepa que lo elegiste en esta hoja de ruta?
-            </div>
-            <div className="vt-modal-actions">
-              <button
-                type="button"
-                className="vt-btn"
-                disabled={notifyBusy}
-                onClick={() => void completeSaveAfterNotifyChoice(false)}
-              >
-                No notificar
-              </button>
-              <button
-                type="button"
-                className="vt-btn vt-btn-primary"
-                disabled={notifyBusy}
-                onClick={() => void completeSaveAfterNotifyChoice(true)}
-              >
-                {notifyBusy ? "Enviando…" : "Sí, notificar"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {mapPick ? (
         <div

@@ -140,7 +140,7 @@ export async function getCedeCarrierOwnership(args: {
 }): Promise<CarrierOwnershipCedeResultApi> {
   try {
     const res = await apiFetch(
-      `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/agreements/${encodeURIComponent(args.agreementId)}/logistics/ownership/cede?routeSheetId=${encodeURIComponent(args.routeSheetId)}&routeStopId=${encodeURIComponent(args.routeStopId)}`,
+      `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/logistics/ownership/cede?routeSheetId=${encodeURIComponent(args.routeSheetId)}&routeStopId=${encodeURIComponent(args.routeStopId)}`,
     );
     const raw = await res.text().catch(() => "");
     const result = JSON.parse(raw) as CarrierOwnershipCedeResultApi;

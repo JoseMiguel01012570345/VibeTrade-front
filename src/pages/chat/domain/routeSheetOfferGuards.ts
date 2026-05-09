@@ -86,8 +86,10 @@ export function preselInvitesForTramoPhoneEdits(
     const nu = p.telefonoTransportista?.trim() ?? "";
     if (!nu) continue;
     const stopId =
-      resolveRouteStopIdForFormRow(p.paradaId, initialStops[i])?.trim() ?? "";
-    if (!stopId) continue;
+      resolveRouteStopIdForFormRow(
+        p.paradaId,
+        initialStops.length > 0 ? initialStops[i] : undefined,
+      )?.trim() ?? "";
     const oldStop = initialStops.find((x) => (x.id ?? "").trim() === stopId);
     const ou = oldStop?.telefonoTransportista?.trim() ?? "";
     const phoneChanged = normRoutePhoneKey(ou) !== normRoutePhoneKey(nu);

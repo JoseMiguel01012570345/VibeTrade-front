@@ -18,6 +18,7 @@ import {
   Trash2,
   Upload,
   XCircle,
+  UserPlus,
 } from "lucide-react";
 import { useAppStore } from "../../../../app/store/useAppStore";
 import { useMarketStore } from "../../../../app/store/useMarketStore";
@@ -63,6 +64,7 @@ import {
 } from "../../../../utils/chat/routeLogisticsApi";
 import { uploadMedia, mediaApiUrl } from "../../../../utils/media/mediaClient";
 import { RouteSheetLiveTrackingModal } from "../modals/RouteSheetLiveTrackingModal";
+import { InviteModal } from "../modals/InviteModal";
 
 function normalizeCarrierEvidenceForCompare(
   text: string,
@@ -243,7 +245,9 @@ export function ChatRightRailRoutesPanel({
     currentOrden: number;
     nextOrden: number;
   }>(null);
-
+  const [inviteRouteSheet, setInviteRouteSheet] = useState<RouteSheet | null>(
+    null,
+  );
   const sellerUid = (sellerUserId ?? "").trim();
 
   const acceptedAgreements = useMemo(
@@ -272,6 +276,24 @@ export function ChatRightRailRoutesPanel({
     }
   }
 
+  async function refreshCedeOwnershipForAgreement() {
+    let cedeOwnershipEntries: Record<string, Record<string, boolean>> = {};
+    for (const rsheet of routeSheets) {
+      let stopEntries: Record<string, boolean> = {};
+      for (const rstop of rsheet.paradas) {
+        const isCedeOwneShip = await getCedeCarrierOwnership({
+          threadId,
+          agreementId: rsheet.id,
+          routeSheetId: rsheet.id,
+          routeStopId: rstop.id,
+        });
+        stopEntries[rstop.id] = isCedeOwneShip.ok;
+      }
+      cedeOwnershipEntries[rsheet.id] = stopEntries;
+    }
+    setCedeOwnershipByAgreement(cedeOwnershipEntries);
+  }
+
   useEffect(() => {
     void (async () => {
       const ids = acceptedAgreements
@@ -289,21 +311,7 @@ export function ChatRightRailRoutesPanel({
         }),
       );
 
-      let cedeOwnershipEntries: Record<string, Record<string, boolean>> = {};
-      for (const rsheet of routeSheets) {
-        let stopEntries: Record<string, boolean> = {};
-        for (const rstop of rsheet.paradas) {
-          const isCedeOwneShip = await getCedeCarrierOwnership({
-            threadId,
-            agreementId: rsheet.id,
-            routeSheetId: rsheet.id,
-            routeStopId: rstop.id,
-          });
-          stopEntries[rstop.id] = isCedeOwneShip.ok;
-        }
-        cedeOwnershipEntries[rsheet.id] = stopEntries;
-      }
-      setCedeOwnershipByAgreement(cedeOwnershipEntries);
+      await refreshCedeOwnershipForAgreement();
 
       setDeliveriesByAgreement((prev) => {
         const next = { ...prev };
@@ -378,6 +386,7 @@ export function ChatRightRailRoutesPanel({
             <span className="truncate">Nueva hoja de ruta</span>
           </button>
         ) : null}
+
         {subscribersTargetSheetId && onOpenRouteSubscribers ? (
           <button
             type="button"
@@ -404,29 +413,50 @@ export function ChatRightRailRoutesPanel({
               ← Lista
             </button>
             {isActingSeller ? (
-              <button
-                type="button"
-                className="vt-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
-                disabled={
-                  actionsLocked ||
-                  sheetEditBlockedByCarrierAck ||
-                  sheetLockedByPaid
-                }
-                title={
-                  actionsLocked
-                    ? "No disponible hasta registrar el pago"
-                    : sheetLockedByPaid
-                      ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
-                      : sheetEditBlockedByCarrierAck
-                        ? "Esperá a que todos los transportistas en el hilo acepten o rechacen la última edición"
-                        : selRoute.publicadaPlataforma
-                          ? "Editar: se notifica en el chat y los transportistas pueden aceptar o rechazar (demo)"
-                          : "Editar hoja de ruta"
-                }
-                onClick={() => onEditRouteSheet(selRoute)}
-              >
-                <Pencil size={14} aria-hidden /> Editar
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="vt-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+                  disabled={
+                    actionsLocked ||
+                    sheetEditBlockedByCarrierAck ||
+                    sheetLockedByPaid
+                  }
+                  title={
+                    actionsLocked
+                      ? "No disponible hasta registrar el pago"
+                      : sheetLockedByPaid
+                        ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
+                        : sheetEditBlockedByCarrierAck
+                          ? "Esperá a que todos los transportistas en el hilo acepten o rechacen la última edición"
+                          : selRoute.publicadaPlataforma
+                            ? "Editar: se notifica en el chat y los transportistas pueden aceptar o rechazar (demo)"
+                            : "Editar hoja de ruta"
+                  }
+                  onClick={() => onEditRouteSheet(selRoute)}
+                >
+                  <Pencil size={14} aria-hidden /> Editar
+                </button>
+                <button
+                  type="button"
+                  className="vt-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+                  disabled={
+                    actionsLocked ||
+                    sheetEditBlockedByCarrierAck ||
+                    sheetLockedByPaid
+                  }
+                  title={
+                    actionsLocked
+                      ? "No disponible hasta registrar el pago"
+                      : sheetLockedByPaid
+                        ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
+                        : "Invitar transportista a la hoja de ruta"
+                  }
+                  onClick={() => setInviteRouteSheet(selRoute)}
+                >
+                  <UserPlus size={14} aria-hidden /> Invitar transportista
+                </button>
+              </>
             ) : null}
             {sheetLockedByPaid ? (
               <p className="vt-muted w-full text-[11px] leading-snug">
@@ -779,16 +809,6 @@ export function ChatRightRailRoutesPanel({
                 (a, b) => (a.orden ?? 0) - (b.orden ?? 0),
               );
               const stopIndex = orderedParadas.findIndex((x) => x.id === p.id);
-              const prevParada =
-                stopIndex > 0 ? orderedParadas[stopIndex - 1] : undefined;
-              const prevRow = prevParada
-                ? deliveries.find(
-                    (d) =>
-                      (d.routeSheetId ?? "").trim() === selRoute.id.trim() &&
-                      (d.routeStopId ?? "").trim() ===
-                        (prevParada.id ?? "").trim(),
-                  )
-                : undefined;
               const nextParada =
                 stopIndex >= 0 && stopIndex < orderedParadas.length - 1
                   ? orderedParadas[stopIndex + 1]
@@ -823,13 +843,6 @@ export function ChatRightRailRoutesPanel({
                 viewerIsConfirmedOnThisStop &&
                 !showEvidenceBtn;
 
-              console.log({
-                id: p.id,
-                cedeOwnershipByAgreement,
-                showEvidenceBtn,
-                showCedeOwnership,
-                name: p.origen,
-              });
               return (
                 <li
                   key={p.id}
@@ -1049,9 +1062,7 @@ export function ChatRightRailRoutesPanel({
                         ) : null}
 
                         {viewerIsSeller &&
-                        (logisticsState === "evidence_submitted" ||
-                          logisticsState === "evidence_rejected" ||
-                          logisticsState === "delivered_pending_evidence") ? (
+                        logisticsState === "evidence_submitted" ? (
                           <button
                             type="button"
                             className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
@@ -1089,8 +1100,7 @@ export function ChatRightRailRoutesPanel({
                           </button>
                         ) : null}
 
-                        {(logisticsState === "evidence_submitted" ||
-                          logisticsState === "evidence_rejected") &&
+                        {logisticsState === "evidence_submitted" &&
                         viewerIsSeller ? (
                           <>
                             <button
@@ -1116,9 +1126,11 @@ export function ChatRightRailRoutesPanel({
                                       agreementId,
                                     );
                                   } catch (e) {
+                                    const errorMessage = JSON.parse(
+                                      (e as Error).message,
+                                    ).message;
                                     toast.error(
-                                      (e as Error)?.message ??
-                                        "No se pudo aceptar.",
+                                      errorMessage ?? "No se pudo aceptar.",
                                     );
                                   } finally {
                                     setLogisticsBusyKey(null);
@@ -1238,35 +1250,37 @@ export function ChatRightRailRoutesPanel({
           <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xl">
             <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
               <div className="min-w-0 text-[13px] font-black text-[var(--text)]">
-                Ceder titularidad del paquete
+                {cedeOwnershipModal.nextOrden != 0
+                  ? "Ceder titularidad del paquete"
+                  : "Final de la trayectoria"}
               </div>
-              <button
-                type="button"
-                className="vt-btn vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-2"
-                onClick={() =>
-                  !cedeOwnershipModal.busy && setCedeOwnershipModal(null)
-                }
-                disabled={cedeOwnershipModal.busy}
-              >
-                <XCircle size={16} aria-hidden /> Cerrar
-              </button>
             </div>
             <div className="px-4 py-3 text-[13px] leading-relaxed text-[var(--text)]">
-              <p className="m-0">
-                ¿Seguro que querés ceder la titularidad del paquete en el tramo{" "}
-                <strong>{cedeOwnershipModal.currentOrden}</strong> al
-                transportista confirmado del tramo{" "}
-                <strong>{cedeOwnershipModal.nextOrden}</strong> (
-                <span className="font-semibold">
-                  {cedeOwnershipModal.targetDisplayLabel}
-                </span>
-                )?
-              </p>
-              <p className="vt-muted mt-2 mb-0 text-[12px]">
-                Solo podés ceder al transportista habilitado en el siguiente
-                tramo. Si el servidor rechaza la operación, verás el motivo
-                aquí.
-              </p>
+              {cedeOwnershipModal.nextOrden != 0 ? (
+                <>
+                  <p className="m-0">
+                    ¿Seguro que querés ceder la titularidad del paquete en el
+                    tramo <strong>{cedeOwnershipModal.currentOrden}</strong> al
+                    transportista confirmado del tramo{" "}
+                    <strong>{cedeOwnershipModal.nextOrden}</strong> (
+                    <span className="font-semibold">
+                      {cedeOwnershipModal.targetDisplayLabel}
+                    </span>
+                    )?
+                  </p>
+                  <p className="vt-muted mt-2 mb-0 text-[12px]">
+                    Solo puedes ceder al transportista habilitado en el
+                    siguiente tramo. Si el servidor rechaza la operación, verás
+                    el motivo aquí.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="vt-muted mt-2 mb-0 text-[12px]">
+                    ¿Está seguro que decea finalizar el viaje?
+                  </p>
+                </>
+              )}
             </div>
             <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] px-4 py-3">
               <button
@@ -1306,6 +1320,12 @@ export function ChatRightRailRoutesPanel({
                         );
                         return;
                       }
+                      if (r.errorCode === "end_of_route") {
+                        toast.success("Trayectoria finalizada.");
+                        await refreshDeliveriesForAgreement(m.agreementId);
+                        setCedeOwnershipModal(null);
+                        return;
+                      }
                       toast.success(
                         "Titularidad cedida. El otro transportista fue notificado.",
                       );
@@ -1334,8 +1354,10 @@ export function ChatRightRailRoutesPanel({
                     />
                     Procesando…
                   </>
-                ) : (
+                ) : cedeOwnershipModal.nextOrden != 0 ? (
                   "Sí, ceder"
+                ) : (
+                  "Acepto"
                 )}
               </button>
             </div>
@@ -1769,6 +1791,15 @@ export function ChatRightRailRoutesPanel({
               : undefined
           }
           highlightStopId={liveFocusStopId}
+        />
+      ) : null}
+
+      {inviteRouteSheet ? (
+        <InviteModal
+          routeSheet={inviteRouteSheet}
+          chatCarriers={chatCarriers}
+          onClose={() => setInviteRouteSheet(null)}
+          onAccepted={() => setInviteRouteSheet(null)}
         />
       ) : null}
     </div>
