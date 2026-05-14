@@ -206,7 +206,6 @@ export function ChatRightRail({
           displayContracts={displayContracts}
           contractsLoading={contractsLoading}
           routeSheets={routeSheets}
-          actionsLocked={actionsLocked}
           threadId={threadId}
           threadStoreId={threadStoreId}
           linkAgreementToRouteSheet={linkAgreementToRouteSheet}
@@ -215,6 +214,7 @@ export function ChatRightRail({
           onRequestEditAgreement={onRequestEditAgreement}
           isActingSeller={isActingSeller}
           onDeleteAgreement={onDeleteAgreement}
+          actionsLocked={actionsLocked}
         />
       )}
 
@@ -224,10 +224,7 @@ export function ChatRightRail({
           buyerUserId={buyerUserId}
           sellerUserId={sellerUserId}
           agreements={contracts}
-          actionsLocked={actionsLocked}
           isActingSeller={isActingSeller}
-          hasAcceptedContract={contracts.some((c) => c.status === "accepted")}
-          agreementCount={contracts.length}
           routeSheetsLoading={routeSheetsLoading}
           routeSheets={routeSheets}
           linkedRouteSheetIds={linkedRouteSheetIds}

@@ -1,195 +1,195 @@
-import type { RouteSheetPayload } from '../../pages/chat/domain/routeSheetTypes'
-import { apiFetch } from '../http/apiClient'
+import type { RouteSheetPayload } from "../../pages/chat/domain/routeSheetTypes";
+import { apiFetch } from "../http/apiClient";
 import {
   apiErrorTextToUserMessage,
   defaultUnexpectedErrorMessage,
-} from '../http/apiErrorMessage'
-import { VtHttpError } from '../http/VtHttpError'
-import { getSessionToken } from '../http/sessionToken'
+} from "../http/apiErrorMessage";
+import { VtHttpError } from "../http/VtHttpError";
+import { getSessionToken } from "../http/sessionToken";
 
 /** Mensaje para toasts; no exponer JSON crudo ni `{ error, message }` completo. */
 function chatApiErrorMessage(body: string, httpStatus: number): string {
   return (
     apiErrorTextToUserMessage(body, defaultUnexpectedErrorMessage()) ||
     `HTTP ${httpStatus}`
-  )
+  );
 }
 
 function throwVtHttpFromChatResponse(res: Response, bodyText: string): never {
-  const msg = chatApiErrorMessage(bodyText, res.status)
+  const msg = chatApiErrorMessage(bodyText, res.status);
   let code: string | undefined;
   try {
-    const j = JSON.parse(bodyText) as { error?: unknown; message?: unknown }
-    if (typeof j?.error === 'string' && j.error.trim()) code = j.error.trim()
+    const j = JSON.parse(bodyText) as { error?: unknown; message?: unknown };
+    if (typeof j?.error === "string" && j.error.trim()) code = j.error.trim();
   } catch {
-    code = undefined
+    code = undefined;
   }
-  throw new VtHttpError(msg, { status: res.status, code, bodyText })
+  throw new VtHttpError(msg, { status: res.status, code, bodyText });
 }
 
 export type ChatThreadDto = {
-  id: string
-  offerId: string
-  storeId: string
-  buyerUserId: string
-  sellerUserId: string
-  initiatorUserId: string
-  firstMessageSentAtUtc: string | null
-  createdAtUtc: string
+  id: string;
+  offerId: string;
+  storeId: string;
+  buyerUserId: string;
+  sellerUserId: string;
+  initiatorUserId: string;
+  firstMessageSentAtUtc: string | null;
+  createdAtUtc: string;
   /** false = hilo originado solo por consultas desde la ficha; true = flujo Comprar (chat). */
-  purchaseMode: boolean
+  purchaseMode: boolean;
   /** DisplayName del comprador (p. ej. título del chat para el vendedor). */
-  buyerDisplayName?: string | null
+  buyerDisplayName?: string | null;
   /** Foto de perfil del comprador (`/api/v1/media/…`; usar componente protegido en UI). */
-  buyerAvatarUrl?: string | null
-  partyExitedUserId?: string | null
-  partyExitedReason?: string | null
-  partyExitedAtUtc?: string | null
+  buyerAvatarUrl?: string | null;
+  partyExitedUserId?: string | null;
+  partyExitedReason?: string | null;
+  partyExitedAtUtc?: string | null;
   /** Chat directo/grupal sin oferta comercial (sin acuerdos ni rutas). */
-  isSocialGroup?: boolean
+  isSocialGroup?: boolean;
   /** Nombre del grupo (solo lo edita el creador en API). */
-  socialGroupTitle?: string | null
-}
+  socialGroupTitle?: string | null;
+};
 
 /** Aligned with backend <see cref="VibeTrade.Backend.Data.ChatMessageStatus" /> (camelCase JSON). */
 export type ChatMessageStatusApi =
-  | 'pending'
-  | 'sent'
-  | 'delivered'
-  | 'read'
-  | 'error'
+  | "pending"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "error";
 
 export type TradeAgreementExtraFieldApiDto = {
-  id?: string
-  title: string
-  valueKind: 'text' | 'image' | 'document'
-  textValue?: string | null
-  mediaUrl?: string | null
-  fileName?: string | null
+  id?: string;
+  title: string;
+  valueKind: "text" | "image" | "document";
+  textValue?: string | null;
+  mediaUrl?: string | null;
+  fileName?: string | null;
   /** merchandise | service | legacy_combined */
-  scope?: 'merchandise' | 'service' | 'legacy_combined'
-}
+  scope?: "merchandise" | "service" | "legacy_combined";
+};
 
 /** Coincide con el JSON de payload del backend (camelCase). */
 /** Respuesta GET/POST/PATCH acuerdos (camelCase API). */
 export type TradeAgreementApiDto = {
-  id: string
-  threadId: string
-  title: string
-  issuedAt: number
-  issuedByStoreId: string
-  issuerLabel: string
-  status: 'pending_buyer' | 'accepted' | 'rejected' | 'deleted'
-  deletedAt?: number | null
-  respondedAt?: number | null
-  sellerEditBlockedUntilBuyerResponse?: boolean | null
-  hadBuyerAcceptance?: boolean | null
-  includeMerchandise: boolean
-  includeService: boolean
-  merchandise: Record<string, unknown>[]
-  merchandiseMeta?: Record<string, unknown> | null
-  services: Record<string, unknown>[]
+  id: string;
+  threadId: string;
+  title: string;
+  issuedAt: number;
+  issuedByStoreId: string;
+  issuerLabel: string;
+  status: "pending_buyer" | "accepted" | "rejected" | "deleted";
+  deletedAt?: number | null;
+  respondedAt?: number | null;
+  sellerEditBlockedUntilBuyerResponse?: boolean | null;
+  hadBuyerAcceptance?: boolean | null;
+  includeMerchandise: boolean;
+  includeService: boolean;
+  merchandise: Record<string, unknown>[];
+  merchandiseMeta?: Record<string, unknown> | null;
+  services: Record<string, unknown>[];
   /** Cláusulas extras cuando el acuerdo tiene mercancías y servicios. */
-  extraFields?: TradeAgreementExtraFieldApiDto[]
-  routeSheetId?: string | null
-  routeSheetUrl?: string | null
+  extraFields?: TradeAgreementExtraFieldApiDto[];
+  routeSheetId?: string | null;
+  routeSheetUrl?: string | null;
   /** Hay al menos un cobro exitoso (Stripe); bloquea edición, borrado y cambios del vínculo de ruta. */
-  hasSucceededPayments?: boolean | null
-}
+  hasSucceededPayments?: boolean | null;
+};
 
 export type ChatMessagePayloadDto = Record<string, unknown> & {
-  type?: string
-  text?: string
-  agreementId?: string
-  title?: string
-  status?: string
-  offerQaId?: string
+  type?: string;
+  text?: string;
+  agreementId?: string;
+  title?: string;
+  status?: string;
+  offerQaId?: string;
   replyQuotes?: Array<{
-    messageId: string
-    author: string
-    preview: string
-    atUtc: string
-  }>
-  replyToIds?: string[]
-  url?: string
-  seconds?: number
-  images?: { url: string }[]
-  caption?: string
-  embeddedAudio?: { url: string; seconds: number }
-  name?: string
-  size?: string
-  kind?: string
-  documents?: { name: string; size: string; kind: string; url?: string }[]
-}
+    messageId: string;
+    author: string;
+    preview: string;
+    atUtc: string;
+  }>;
+  replyToIds?: string[];
+  url?: string;
+  seconds?: number;
+  images?: { url: string }[];
+  caption?: string;
+  embeddedAudio?: { url: string; seconds: number };
+  name?: string;
+  size?: string;
+  kind?: string;
+  documents?: { name: string; size: string; kind: string; url?: string }[];
+};
 
 export type ChatMessageDto = {
-  id: string
-  threadId: string
-  senderUserId: string
-  payload: ChatMessagePayloadDto
-  status: ChatMessageStatusApi
-  createdAtUtc: string
-  updatedAtUtc: string | null
+  id: string;
+  threadId: string;
+  senderUserId: string;
+  payload: ChatMessagePayloadDto;
+  status: ChatMessageStatusApi;
+  createdAtUtc: string;
+  updatedAtUtc: string | null;
   /** Nombre mostrable del remitente (API: comprador = DisplayName, vendedor = tienda). */
-  senderDisplayLabel?: string | null
-}
+  senderDisplayLabel?: string | null;
+};
 
 export type ChatThreadSummaryDto = {
-  id: string
-  offerId: string
-  storeId: string
-  createdAtUtc: string
-  lastMessageAtUtc: string | null
-  lastPreview: string | null
-  purchaseMode: boolean
-  buyerUserId: string
-  sellerUserId: string
-  buyerDisplayName?: string | null
-  buyerAvatarUrl?: string | null
-  isSocialGroup?: boolean
-  socialGroupTitle?: string | null
-}
+  id: string;
+  offerId: string;
+  storeId: string;
+  createdAtUtc: string;
+  lastMessageAtUtc: string | null;
+  lastPreview: string | null;
+  purchaseMode: boolean;
+  buyerUserId: string;
+  sellerUserId: string;
+  buyerDisplayName?: string | null;
+  buyerAvatarUrl?: string | null;
+  isSocialGroup?: boolean;
+  socialGroupTitle?: string | null;
+};
 
 export type ChatThreadMemberDto = {
-  userId: string
-  displayName?: string | null
-  avatarUrl?: string | null
-}
+  userId: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+};
 
 export type ChatNotificationDto = {
-  id: string
-  threadId: string | null
-  messageId: string | null
+  id: string;
+  threadId: string | null;
+  messageId: string | null;
   /** Presente cuando el aviso es por comentario en ficha (enlace a `/offer/:id`). */
-  offerId: string | null
-  messagePreview: string
+  offerId: string | null;
+  messagePreview: string;
   /** Nombre tienda o nombre del comprador (según emisor). */
-  authorLabel: string
-  authorTrustScore: number
-  senderUserId: string
-  createdAtUtc: string
-  readAtUtc: string | null
+  authorLabel: string;
+  authorTrustScore: number;
+  senderUserId: string;
+  createdAtUtc: string;
+  readAtUtc: string | null;
   /** Backend: offer_comment, offer_like, qa_comment_like, route_tramo_subscribe, route_tramo_subscribe_accepted, route_tramo_subscribe_rejected, peer_party_exited; ausente en avisos de chat por hilo. */
-  kind?: string | null
+  kind?: string | null;
   /** JSON con routeSheetId, stopId, carrierUserId (camelCase). */
-  metaJson?: string | null
-}
+  metaJson?: string | null;
+};
 
 /** `Error.message` cuando el servidor rechaza abrir chat como comprador en tu propia oferta. */
-export const CHAT_CANNOT_MESSAGE_SELF = 'CHAT_CANNOT_MESSAGE_SELF'
+export const CHAT_CANNOT_MESSAGE_SELF = "CHAT_CANNOT_MESSAGE_SELF";
 
 export async function createSocialGroupChatThread(
   memberUserIds: string[],
 ): Promise<ChatThreadDto> {
-  const res = await apiFetch('/api/v1/chat/threads/social-group', {
-    method: 'POST',
+  const res = await apiFetch("/api/v1/chat/threads/social-group", {
+    method: "POST",
     body: JSON.stringify({ memberUserIds }),
-  })
+  });
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as ChatThreadDto
+  return (await res.json()) as ChatThreadDto;
 }
 
 export async function createOrGetChatThread(
@@ -197,53 +197,59 @@ export async function createOrGetChatThread(
   purchaseIntent: boolean = true,
   forceNew: boolean = false,
 ): Promise<ChatThreadDto> {
-  const res = await apiFetch('/api/v1/chat/threads', {
-    method: 'POST',
+  const res = await apiFetch("/api/v1/chat/threads", {
+    method: "POST",
     body: JSON.stringify({ offerId, purchaseIntent, forceNew }),
-  })
+  });
   if (!res.ok) {
-    const t = await res.text()
+    const t = await res.text();
     if (res.status === 400) {
       try {
-        const j = JSON.parse(t) as { error?: string }
-        if (j.error === 'cannot_message_self') {
-          throw new Error(CHAT_CANNOT_MESSAGE_SELF)
+        const j = JSON.parse(t) as { error?: string };
+        if (j.error === "cannot_message_self") {
+          throw new Error(CHAT_CANNOT_MESSAGE_SELF);
         }
       } catch (e) {
-        if (e instanceof Error && e.message === CHAT_CANNOT_MESSAGE_SELF) throw e
+        if (e instanceof Error && e.message === CHAT_CANNOT_MESSAGE_SELF)
+          throw e;
       }
     }
-    throw new Error(chatApiErrorMessage(t, res.status))
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as ChatThreadDto
+  return (await res.json()) as ChatThreadDto;
 }
 
 /** Avisa a la contraparte por SignalR (grupos user:*) de que quien llama salió del chat (lista / sin acuerdo). */
-export async function postNotifyParticipantLeft(threadId: string): Promise<void> {
+export async function postNotifyParticipantLeft(
+  threadId: string,
+): Promise<void> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/notify-participant-left`,
-    { method: 'POST' },
+    { method: "POST" },
   );
   if (!res.ok && res.status !== 404) {
-    const t = await res.text().catch(() => '');
+    const t = await res.text().catch(() => "");
     throw new Error(chatApiErrorMessage(t, res.status));
   }
 }
 
 export async function deleteChatThread(threadId: string): Promise<void> {
-  const res = await apiFetch(`/api/v1/chat/threads/${encodeURIComponent(threadId)}`, {
-    method: 'DELETE',
-  })
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}`,
+    {
+      method: "DELETE",
+    },
+  );
   if (!res.ok && res.status !== 404) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
 }
 
 /** Respuesta de salida con acuerdo: el servidor puede aplicar ya la penalización (p. ej. reembolso + abandono solo servicios). */
 export type PartySoftLeaveChatResult = {
-  skipClientTrustPenalty: boolean
-}
+  skipClientTrustPenalty: boolean;
+};
 
 /** Comprador/vendedor con acuerdo aceptado: expulsa a quien sale del hilo; el resto sigue pudiendo usar el chat. */
 export async function postPartySoftLeaveChatThread(
@@ -251,46 +257,53 @@ export async function postPartySoftLeaveChatThread(
   reason: string,
 ): Promise<PartySoftLeaveChatResult> {
   const res = await apiFetch(
-    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/party-soft-leave`,
+    `/api/v1/policies/chat/threads/${encodeURIComponent(threadId)}/party-soft-leave`,
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ reason: reason.trim() }),
     },
-  )
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throwVtHttpFromChatResponse(res, t)
+    const t = await res.text().catch(() => "");
+    throwVtHttpFromChatResponse(res, t);
   }
-  const ct = res.headers.get('content-type') ?? ''
-  if (ct.includes('application/json')) {
-    const j = (await res.json()) as { skipClientTrustPenalty?: boolean }
-    return { skipClientTrustPenalty: Boolean(j?.skipClientTrustPenalty) }
+  const ct = res.headers.get("content-type") ?? "";
+  if (ct.includes("application/json")) {
+    const j = (await res.json()) as { skipClientTrustPenalty?: boolean };
+    return { skipClientTrustPenalty: Boolean(j?.skipClientTrustPenalty) };
   }
-  return { skipClientTrustPenalty: false }
+  return { skipClientTrustPenalty: false };
 }
 
-export async function fetchChatThread(threadId: string): Promise<ChatThreadDto> {
-  const res = await apiFetch(`/api/v1/chat/threads/${encodeURIComponent(threadId)}`, {
-    method: 'GET',
-  })
+export async function fetchChatThread(
+  threadId: string,
+): Promise<ChatThreadDto> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}`,
+    {
+      method: "GET",
+    },
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as ChatThreadDto
+  return (await res.json()) as ChatThreadDto;
 }
 
-export async function fetchChatThreadByOffer(offerId: string): Promise<ChatThreadDto | null> {
+export async function fetchChatThreadByOffer(
+  offerId: string,
+): Promise<ChatThreadDto | null> {
   const res = await apiFetch(
     `/api/v1/chat/threads/by-offer/${encodeURIComponent(offerId)}`,
-    { method: 'GET' },
-  )
-  if (res.status === 404) return null
+    { method: "GET" },
+  );
+  if (res.status === 404) return null;
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as ChatThreadDto
+  return (await res.json()) as ChatThreadDto;
 }
 
 export async function fetchSocialThreadMembers(
@@ -298,13 +311,13 @@ export async function fetchSocialThreadMembers(
 ): Promise<ChatThreadMemberDto[]> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/members`,
-    { method: 'GET', cache: 'no-store' },
-  )
+    { method: "GET", cache: "no-store" },
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as ChatThreadMemberDto[]
+  return (await res.json()) as ChatThreadMemberDto[];
 }
 
 export async function patchSocialGroupTitle(
@@ -314,39 +327,69 @@ export async function patchSocialGroupTitle(
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/social-title`,
     {
-      method: 'PATCH',
-      body: JSON.stringify({ title: title ?? '' }),
+      method: "PATCH",
+      body: JSON.stringify({ title: title ?? "" }),
     },
-  )
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as ChatThreadDto
+  return (await res.json()) as ChatThreadDto;
 }
 
-export async function fetchChatMessages(threadId: string): Promise<ChatMessageDto[]> {
-  const res = await apiFetch(`/api/v1/chat/threads/${encodeURIComponent(threadId)}/messages`, {
-    method: 'GET',
-    cache: 'no-store',
-  })
+export async function fetchChatMessages(
+  threadId: string,
+): Promise<ChatMessageDto[]> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/messages`,
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as ChatMessageDto[]
+  return (await res.json()) as ChatMessageDto[];
 }
 
-export async function fetchThreadRouteSheets(threadId: string): Promise<RouteSheetPayload[]> {
+export async function fetchThreadRouteSheets(
+  threadId: string,
+): Promise<RouteSheetPayload[]> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets`,
-    { method: 'GET', cache: 'no-store' },
-  )
+    { method: "GET", cache: "no-store" },
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as RouteSheetPayload[]
+  return (await res.json()) as RouteSheetPayload[];
+}
+
+/** True si hay hojas de ruta vinculadas a acuerdos aceptados sin pagos exitosos. */
+export async function fetchThreadHasUnpaidRouteSheets(
+  threadId: string,
+): Promise<boolean> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/has-unpaid`,
+    { method: "GET", cache: "no-store" },
+  );
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
+  }
+  const ct = res.headers.get("content-type") ?? "";
+  if (ct.includes("application/json")) {
+    const j = (await res.json()) as unknown;
+    if (typeof j === "boolean") return j;
+    if (typeof (j as { hasUnpaid?: unknown } | null)?.hasUnpaid === "boolean")
+      return Boolean((j as { hasUnpaid?: unknown }).hasUnpaid);
+  }
+  const raw = await res.text().catch(() => "");
+  return raw.trim().toLowerCase() === "true";
 }
 
 /** Invitación presel: hoja sin acceso al hilo (teléfono del usuario en un tramo). */
@@ -356,33 +399,33 @@ export async function fetchRouteSheetPreselPreview(
 ): Promise<RouteSheetPayload> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}/presel-preview`,
-    { method: 'GET', cache: 'no-store' },
-  )
+    { method: "GET", cache: "no-store" },
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as RouteSheetPayload
+  return (await res.json()) as RouteSheetPayload;
 }
 
 /** Ítem de GET <c>threads/{id}/route-tramo-subscriptions</c> (camelCase). */
 export type RouteTramoSubscriptionItemApi = {
-  routeSheetId: string
-  stopId: string
-  orden: number
-  carrierUserId: string
-  displayName: string
-  phone: string
-  trustScore: number
-  storeServiceId?: string | null
-  transportServiceLabel: string
-  status: string
-  origenLine: string
-  destinoLine: string
-  createdAtUnixMs: number
-  carrierServiceStoreId?: string | null
-  carrierAvatarUrl?: string | null
-}
+  routeSheetId: string;
+  stopId: string;
+  orden: number;
+  carrierUserId: string;
+  displayName: string;
+  phone: string;
+  trustScore: number;
+  storeServiceId?: string | null;
+  transportServiceLabel: string;
+  status: string;
+  origenLine: string;
+  destinoLine: string;
+  createdAtUnixMs: number;
+  carrierServiceStoreId?: string | null;
+  carrierAvatarUrl?: string | null;
+};
 
 /** Suscripciones a tramos persistidas en servidor (hojas publicadas del hilo). */
 export async function fetchThreadRouteTramoSubscriptions(
@@ -390,104 +433,104 @@ export async function fetchThreadRouteTramoSubscriptions(
 ): Promise<RouteTramoSubscriptionItemApi[]> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions`,
-    { method: 'GET', cache: 'no-store' },
-  )
+    { method: "GET", cache: "no-store" },
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as RouteTramoSubscriptionItemApi[]
+  return (await res.json()) as RouteTramoSubscriptionItemApi[];
 }
 
 export type CarrierExpelledBySellerApiResult = {
-  withdrawnRowCount: number
+  withdrawnRowCount: number;
   /** En la demo: penalización a la confianza de la tienda al expulsar a un transportista confirmado. */
-  applyStoreTrustPenalty: boolean
-  storeTrustScoreAfter?: number | null
+  applyStoreTrustPenalty: boolean;
+  storeTrustScoreAfter?: number | null;
   /** Tramos confirmados incluidos en esta expulsión (unidad de penalización por tramo en la demo). */
-  confirmedStopsWithdrawnCount?: number
+  confirmedStopsWithdrawnCount?: number;
   /** Ya no queda ninguna suscripción activa del transportista en el hilo (pierde el chat de esta operación). */
-  carrierFullyRemovedFromThread?: boolean
-}
+  carrierFullyRemovedFromThread?: boolean;
+};
 
 export async function postSellerExpelCarrier(
   threadId: string,
   body: {
-    carrierUserId: string
-    reason: string
+    carrierUserId: string;
+    reason: string;
     /** Ambos o ninguno: un solo tramo vs toda la operación. */
-    routeSheetId?: string
-    stopId?: string
+    routeSheetId?: string;
+    stopId?: string;
   },
 ): Promise<CarrierExpelledBySellerApiResult> {
-  const rs = body.routeSheetId?.trim() ?? ''
-  const st = body.stopId?.trim() ?? ''
+  const rs = body.routeSheetId?.trim() ?? "";
+  const st = body.stopId?.trim() ?? "";
   const payload: Record<string, string> = {
     carrierUserId: body.carrierUserId,
     reason: body.reason,
-  }
+  };
   if (rs.length > 0 && st.length > 0) {
-    payload.routeSheetId = rs
-    payload.stopId = st
+    payload.routeSheetId = rs;
+    payload.stopId = st;
   }
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/seller-expel-carrier`,
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(payload),
     },
-  )
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as CarrierExpelledBySellerApiResult
+  return (await res.json()) as CarrierExpelledBySellerApiResult;
 }
 
 export type CarrierWithdrawFromThreadApiResult = {
-  withdrawnRowCount: number
-  applyTrustPenalty: boolean
+  withdrawnRowCount: number;
+  applyTrustPenalty: boolean;
   /** Trust persistido en servidor tras penalización (si aplica). */
-  trustScoreAfterPenalty?: number | null
-}
+  trustScoreAfterPenalty?: number | null;
+};
 
 /** Transportista: abandona el hilo y des-suscribe tramos (no borra el hilo para comprador/vendedor). */
 export async function postCarrierWithdrawFromThread(
   threadId: string,
 ): Promise<CarrierWithdrawFromThreadApiResult> {
   const res = await apiFetch(
-    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/carrier-withdraw`,
-    { method: 'POST' },
-  )
+    `/api/v1/policies/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/carrier-withdraw`,
+    { method: "POST" },
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as CarrierWithdrawFromThreadApiResult
+  return (await res.json()) as CarrierWithdrawFromThreadApiResult;
 }
 
 export async function postAcceptRouteTramoSubscriptions(
   threadId: string,
   body: { routeSheetId: string; carrierUserId: string; stopId?: string },
 ): Promise<{ acceptedCount: number }> {
-  const sid = body.stopId?.trim()
+  const sid = body.stopId?.trim();
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/accept`,
     {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         routeSheetId: body.routeSheetId,
         carrierUserId: body.carrierUserId,
         ...(sid ? { stopId: sid } : {}),
       }),
     },
-  )
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as { acceptedCount: number }
+  return (await res.json()) as { acceptedCount: number };
 }
 
 /** Transportista: responde a la invitación por contacto en hoja (<c>accepted</c> = suscripción al hilo; false = aviso al vendedor). */
@@ -498,58 +541,61 @@ export async function postCarrierRespondPreselInvite(
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheet-presel-invite`,
     {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         routeSheetId: body.routeSheetId,
         accepted: body.accepted,
         ...(body.stopId?.trim() ? { stopId: body.stopId.trim() } : {}),
       }),
     },
-  )
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as { ok: boolean; accepted: boolean }
+  return (await res.json()) as { ok: boolean; accepted: boolean };
 }
 
 export async function postRejectRouteTramoSubscriptions(
   threadId: string,
   body: { routeSheetId: string; carrierUserId: string; stopId?: string },
 ): Promise<{ rejectedCount: number }> {
-  const sid = body.stopId?.trim()
+  const sid = body.stopId?.trim();
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/reject`,
     {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         routeSheetId: body.routeSheetId,
         carrierUserId: body.carrierUserId,
         ...(sid ? { stopId: sid } : {}),
       }),
     },
-  )
+  );
   if (!res.ok) {
-    const t = await res.text()
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text();
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as { rejectedCount: number }
+  return (await res.json()) as { rejectedCount: number };
 }
 
-export async function putThreadRouteSheet(threadId: string, sheet: RouteSheetPayload): Promise<void> {
+export async function putThreadRouteSheet(
+  threadId: string,
+  sheet: RouteSheetPayload,
+): Promise<void> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(sheet.id)}`,
     {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(sheet),
     },
-  )
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
 }
 
@@ -564,27 +610,30 @@ export async function postRouteSheetNotifyPreselected(
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}/notify-preselected`,
     {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ invites }),
     },
-  )
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  const j = (await res.json()) as { notifiedCount?: number }
-  return { notifiedCount: j.notifiedCount ?? 0 }
+  const j = (await res.json()) as { notifiedCount?: number };
+  return { notifiedCount: j.notifiedCount ?? 0 };
 }
 
-export async function deleteThreadRouteSheet(threadId: string, routeSheetId: string): Promise<void> {
+export async function deleteThreadRouteSheet(
+  threadId: string,
+  routeSheetId: string,
+): Promise<void> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}`,
-    { method: 'DELETE' },
-  )
+    { method: "DELETE" },
+  );
   if (!res.ok && res.status !== 404) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
 }
 
@@ -597,14 +646,14 @@ export async function postRouteSheetEditCarrierResponse(
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}/edit-carrier-response`,
     {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ accept }),
     },
-  )
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
 }
 
@@ -613,13 +662,13 @@ export async function fetchThreadTradeAgreements(
 ): Promise<TradeAgreementApiDto[]> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements`,
-    { method: 'GET', cache: 'no-store' },
-  )
+    { method: "GET", cache: "no-store" },
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as TradeAgreementApiDto[]
+  return (await res.json()) as TradeAgreementApiDto[];
 }
 
 /** Persiste vínculo acuerdo ↔ hoja de ruta (seller). `routeSheetId` null = desvincular. */
@@ -631,28 +680,33 @@ export async function patchThreadTradeAgreementRouteLink(
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}/route-link`,
     {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ routeSheetId }),
     },
-  )
-  await throwIfTradeAgreementResponseNotOk(res)
-  return (await res.json()) as TradeAgreementApiDto
+  );
+  await throwIfTradeAgreementResponseNotOk(res);
+  return (await res.json()) as TradeAgreementApiDto;
 }
 
-async function throwIfTradeAgreementResponseNotOk(res: Response): Promise<void> {
-  if (res.ok) return
-  const text = await res.text().catch(() => '')
-  let message = text
+async function throwIfTradeAgreementResponseNotOk(
+  res: Response,
+): Promise<void> {
+  if (res.ok) return;
+  const text = await res.text().catch(() => "");
+  let message = text;
   try {
-    const j = JSON.parse(text) as { message?: string }
-    if (typeof j.message === 'string' && j.message.trim()) message = j.message.trim()
+    const j = JSON.parse(text) as { message?: string };
+    if (typeof j.message === "string" && j.message.trim())
+      message = j.message.trim();
   } catch {
     /* raw body */
   }
-  const err = new Error(message || `HTTP ${res.status}`) as Error & { status?: number }
-  err.status = res.status
-  throw err
+  const err = new Error(message || `HTTP ${res.status}`) as Error & {
+    status?: number;
+  };
+  err.status = res.status;
+  throw err;
 }
 
 export async function postThreadTradeAgreement(
@@ -661,10 +715,10 @@ export async function postThreadTradeAgreement(
 ): Promise<TradeAgreementApiDto> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements`,
-    { method: 'POST', body: JSON.stringify(body) },
-  )
-  await throwIfTradeAgreementResponseNotOk(res)
-  return (await res.json()) as TradeAgreementApiDto
+    { method: "POST", body: JSON.stringify(body) },
+  );
+  await throwIfTradeAgreementResponseNotOk(res);
+  return (await res.json()) as TradeAgreementApiDto;
 }
 
 export async function patchThreadTradeAgreement(
@@ -674,10 +728,10 @@ export async function patchThreadTradeAgreement(
 ): Promise<TradeAgreementApiDto> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}`,
-    { method: 'PATCH', body: JSON.stringify(body) },
-  )
-  await throwIfTradeAgreementResponseNotOk(res)
-  return (await res.json()) as TradeAgreementApiDto
+    { method: "PATCH", body: JSON.stringify(body) },
+  );
+  await throwIfTradeAgreementResponseNotOk(res);
+  return (await res.json()) as TradeAgreementApiDto;
 }
 
 export async function postThreadTradeAgreementRespond(
@@ -687,13 +741,13 @@ export async function postThreadTradeAgreementRespond(
 ): Promise<TradeAgreementApiDto> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}/respond`,
-    { method: 'POST', body: JSON.stringify({ accept }) },
-  )
+    { method: "POST", body: JSON.stringify({ accept }) },
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as TradeAgreementApiDto
+  return (await res.json()) as TradeAgreementApiDto;
 }
 
 export async function deleteThreadTradeAgreement(
@@ -702,11 +756,11 @@ export async function deleteThreadTradeAgreement(
 ): Promise<void> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}`,
-    { method: 'DELETE' },
-  )
+    { method: "DELETE" },
+  );
   if (!res.ok && res.status !== 404) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
 }
 
@@ -714,15 +768,18 @@ export async function postChatMessage(
   threadId: string,
   body: Record<string, unknown>,
 ): Promise<ChatMessageDto> {
-  const res = await apiFetch(`/api/v1/chat/threads/${encodeURIComponent(threadId)}/messages`, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  })
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/messages`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as ChatMessageDto
+  return (await res.json()) as ChatMessageDto;
 }
 
 export async function postChatTextMessage(
@@ -730,38 +787,40 @@ export async function postChatTextMessage(
   text: string,
   options?: { replyToIds?: string[] },
 ): Promise<ChatMessageDto> {
-  const payload: Record<string, unknown> = { type: 'text', text }
-  if (options?.replyToIds?.length) payload.replyToIds = options.replyToIds
-  return postChatMessage(threadId, payload)
+  const payload: Record<string, unknown> = { type: "text", text };
+  if (options?.replyToIds?.length) payload.replyToIds = options.replyToIds;
+  return postChatMessage(threadId, payload);
 }
 
 export async function fetchChatThreads(): Promise<ChatThreadSummaryDto[]> {
-  const res = await apiFetch('/api/v1/chat/threads', { method: 'GET' })
+  const res = await apiFetch("/api/v1/chat/threads", { method: "GET" });
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as ChatThreadSummaryDto[]
+  return (await res.json()) as ChatThreadSummaryDto[];
 }
 
 export async function fetchChatNotifications(options?: {
   /** ISO 8601; inicio del rango (inclusive). */
-  from?: string
+  from?: string;
   /** ISO 8601; fin del rango (inclusive). */
-  to?: string
+  to?: string;
 }): Promise<ChatNotificationDto[]> {
-  const q = new URLSearchParams()
-  if (options?.from?.trim()) q.set('from', options.from.trim())
-  if (options?.to?.trim()) q.set('to', options.to.trim())
-  const qs = q.toString()
+  const q = new URLSearchParams();
+  if (options?.from?.trim()) q.set("from", options.from.trim());
+  if (options?.to?.trim()) q.set("to", options.to.trim());
+  const qs = q.toString();
   const url =
-    qs.length > 0 ? `/api/v1/me/notifications?${qs}` : '/api/v1/me/notifications'
-  const res = await apiFetch(url, { method: 'GET' })
+    qs.length > 0
+      ? `/api/v1/me/notifications?${qs}`
+      : "/api/v1/me/notifications";
+  const res = await apiFetch(url, { method: "GET" });
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as ChatNotificationDto[]
+  return (await res.json()) as ChatNotificationDto[];
 }
 
 /**
@@ -769,64 +828,68 @@ export async function fetchChatNotifications(options?: {
  * (hasta 500 recientes por hilo) para notificar a emisores vía hub.
  */
 export async function postAckPendingDeliveryOnLogin(): Promise<number> {
-  const res = await apiFetch('/api/v1/chat/ack-pending-delivery-on-login', {
-    method: 'POST',
-  })
+  const res = await apiFetch("/api/v1/chat/ack-pending-delivery-on-login", {
+    method: "POST",
+  });
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  const j = (await res.json()) as { applied: number }
-  return typeof j.applied === 'number' ? j.applied : 0
+  const j = (await res.json()) as { applied: number };
+  return typeof j.applied === "number" ? j.applied : 0;
 }
 
 export async function patchChatMessageStatus(
   threadId: string,
   messageId: string,
-  status: 'delivered' | 'read',
+  status: "delivered" | "read",
 ): Promise<ChatMessageDto | null> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/status`,
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ status }),
     },
-  )
+  );
   // Mensaje ya no existe / no visible para este hilo: no reintentar en loop.
-  if (res.status === 404) return null
+  if (res.status === 404) return null;
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
-  return (await res.json()) as ChatMessageDto
+  return (await res.json()) as ChatMessageDto;
 }
 
 export async function markChatNotificationsRead(ids?: string[]): Promise<void> {
-  const res = await apiFetch('/api/v1/me/notifications/mark-read', {
-    method: 'POST',
+  const res = await apiFetch("/api/v1/me/notifications/mark-read", {
+    method: "POST",
     body: JSON.stringify({ ids: ids ?? null }),
-  })
+  });
   if (!res.ok) {
-    const t = await res.text().catch(() => '')
-    throw new Error(chatApiErrorMessage(t, res.status))
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
   }
 }
 
 export type LinkPreviewResult = {
-  url: string
-  title: string | null
-  description: string | null
-  imageUrl: string | null
-}
+  url: string;
+  title: string | null;
+  description: string | null;
+  imageUrl: string | null;
+};
 
-export async function fetchLinkPreview(url: string): Promise<LinkPreviewResult | null> {
-  const q = new URLSearchParams()
-  q.set('url', url)
-  const res = await apiFetch(`/api/v1/link-preview?${q.toString()}`, { method: 'GET' })
-  if (!res.ok) return null
-  return (await res.json()) as LinkPreviewResult
+export async function fetchLinkPreview(
+  url: string,
+): Promise<LinkPreviewResult | null> {
+  const q = new URLSearchParams();
+  q.set("url", url);
+  const res = await apiFetch(`/api/v1/link-preview?${q.toString()}`, {
+    method: "GET",
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as LinkPreviewResult;
 }
 
 export function hasChatSession(): boolean {
-  return !!getSessionToken()
+  return !!getSessionToken();
 }

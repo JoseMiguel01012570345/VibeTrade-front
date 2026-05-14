@@ -27,10 +27,8 @@ export function routeStopDeliveryStateLabelEs(
       return "Evidencia aceptada — tramo cerrado";
     case "evidence_rejected":
       return "Evidencia rechazada — puede reenviarse";
-    case "refunded_expired":
-      return "Reembolsado (plazo vencido)";
-    case "refunded_carrier_exit":
-      return "Reembolsado (salida del transportista)";
+    case "refunded":
+      return "Reembolsado";
     default:
       return s.length > 0 ? s.replace(/_/g, " ") : "Sin registro";
   }

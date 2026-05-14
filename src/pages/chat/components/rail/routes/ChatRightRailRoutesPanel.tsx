@@ -37,12 +37,8 @@ type Props = {
   buyerUserId?: string;
   sellerUserId?: string;
   agreements: TradeAgreement[];
-  actionsLocked: boolean;
   /** Dueño de la tienda del hilo: puede publicar u ocultar hojas. */
   isActingSeller: boolean;
-  hasAcceptedContract: boolean;
-  /** Cantidad de acuerdos en el hilo: no puede haber más hojas que acuerdos. */
-  agreementCount: number;
   routeSheetsLoading?: boolean;
   routeSheets: RouteSheet[];
   linkedRouteSheetIds: ReadonlySet<string>;
@@ -75,10 +71,7 @@ export function ChatRightRailRoutesPanel({
   buyerUserId: _buyerUserId,
   sellerUserId,
   agreements,
-  actionsLocked,
   isActingSeller,
-  hasAcceptedContract,
-  agreementCount,
   routeSheetsLoading = false,
   routeSheets,
   linkedRouteSheetIds,
@@ -209,8 +202,6 @@ export function ChatRightRailRoutesPanel({
     })();
   }, [threadId, acceptedAgreements]);
 
-  const routeSheetCapReached = routeSheets.length >= agreementCount;
-
   const myCarrierAck =
     selRoute && me.id && chatCarriers?.some((c) => c.id === me.id)
       ? routeSheetEditAcks?.[selRoute.id]?.byCarrier[me.id]
@@ -319,12 +310,9 @@ export function ChatRightRailRoutesPanel({
     <div className={bodyClassName}>
       <RailRoutesBusProvider subject={railRoutesCommand$}>
         <RoutesRailEntryActions
-          actionsLocked={actionsLocked}
-          hasAcceptedContract={hasAcceptedContract}
           isActingSeller={isActingSeller}
           onOpenNewRouteSheet={onOpenNewRouteSheet}
           onOpenRouteSubscribers={onOpenRouteSubscribers}
-          routeSheetCapReached={routeSheetCapReached}
           routeSheetsLoading={routeSheetsLoading}
           subscribersTargetSheetId={subscribersTargetSheetId}
         />
@@ -335,7 +323,6 @@ export function ChatRightRailRoutesPanel({
             setSelRouteId={setSelRouteId}
             threadId={threadId}
             isActingSeller={isActingSeller}
-            actionsLocked={actionsLocked}
             sheetLockedByPaid={sheetLockedByPaid}
             sheetEditBlockedByCarrierAck={sheetEditBlockedByCarrierAck}
             linkedRouteSheetIds={linkedRouteSheetIds}
@@ -361,7 +348,6 @@ export function ChatRightRailRoutesPanel({
         ) : (
           <RoutesRailSheetList
             routeSheets={routeSheets}
-            hasAcceptedContract={hasAcceptedContract}
             isActingSeller={isActingSeller}
             routeOfferResolved={routeOfferResolved}
             onSelectSheetId={(id) => setSelRouteId(id)}

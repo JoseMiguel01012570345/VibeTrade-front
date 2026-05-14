@@ -11,7 +11,6 @@ export type RoutesRailSheetDetailProps = {
   setSelRouteId: (id: string | null) => void;
   threadId: string;
   isActingSeller: boolean;
-  actionsLocked: boolean;
   sheetLockedByPaid: boolean;
   sheetEditBlockedByCarrierAck: boolean;
   linkedRouteSheetIds: ReadonlySet<string>;

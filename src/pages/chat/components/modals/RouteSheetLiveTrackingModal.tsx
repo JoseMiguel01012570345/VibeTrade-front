@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, useMap } from "react-leaflet";
 import { X } from "lucide-react";
@@ -65,7 +65,9 @@ function primaryOwnedStopIdForCarrier(args: {
   if (transit) return transit.stopId;
   const paid = candidates.find((c) => c.state === "paid");
   if (paid) return paid.stopId;
-  const awaiting = candidates.find((c) => c.state === "awaiting_carrier_for_handoff");
+  const awaiting = candidates.find(
+    (c) => c.state === "awaiting_carrier_for_handoff",
+  );
   if (awaiting) return awaiting.stopId;
   return candidates[0]!.stopId;
 }
@@ -96,12 +98,14 @@ function legProgressFractionForStop(
   const fromTel =
     telemetryForStop &&
     typeof telemetryForStop.progressFraction === "number" &&
-    Number.isFinite(telemetryForStop.progressFraction) ?
-      clamp01(telemetryForStop.progressFraction)
-    : null;
+    Number.isFinite(telemetryForStop.progressFraction)
+      ? clamp01(telemetryForStop.progressFraction)
+      : null;
   const delRaw = deliveryProgressByStop[stopId];
   const fromDel =
-    typeof delRaw === "number" && Number.isFinite(delRaw) ? clamp01(delRaw) : null;
+    typeof delRaw === "number" && Number.isFinite(delRaw)
+      ? clamp01(delRaw)
+      : null;
   if (
     fromTel !== null &&
     fromDel !== null &&
@@ -131,23 +135,76 @@ function coordPair(
   return null;
 }
 
-function FitRouteBounds({ positions }: { positions: [number, number][] }) {
+function FitRouteBounds({
+  positions,
+  enabled,
+  fitKey,
+}: {
+  positions: [number, number][];
+  enabled: boolean;
+  /** Cambiar este key para re-hacer fit (p. ej. al abrir otro modal/hoja). */
+  fitKey: string;
+}) {
   const map = useMap();
+  const hasFitRef = useRef(false);
+
   useEffect(() => {
+    hasFitRef.current = false;
+  }, [fitKey]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (hasFitRef.current) return;
     if (positions.length < 1) return;
     if (positions.length === 1) {
       const p = positions[0]!;
       map.setView(p, 11, { animate: false });
+      hasFitRef.current = true;
       return;
     }
     const b = L.latLngBounds(positions);
     map.fitBounds(b, { padding: [24, 24], maxZoom: 13, animate: false });
-  }, [map, positions]);
+    hasFitRef.current = true;
+  }, [map, positions, enabled]);
+  return null;
+}
+
+function MapUserInteractionTracker(props: {
+  enabled: boolean;
+  onInteracted: () => void;
+}) {
+  const map = useMap();
+  const firedRef = useRef(false);
+  const { enabled, onInteracted } = props;
+
+  useEffect(() => {
+    if (!enabled) return;
+    firedRef.current = false;
+
+    const fireOnce = () => {
+      if (firedRef.current) return;
+      firedRef.current = true;
+      onInteracted();
+    };
+
+    map.on("dragstart", fireOnce);
+    map.on("zoomstart", fireOnce);
+    map.on("movestart", fireOnce);
+    return () => {
+      map.off("dragstart", fireOnce);
+      map.off("zoomstart", fireOnce);
+      map.off("movestart", fireOnce);
+    };
+  }, [map, enabled, onInteracted]);
+
   return null;
 }
 
 function escapeAttr(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
 }
 
 function telemetryReportedAtMs(p: CarrierTelemetryUpdatedPayload): number {
@@ -169,21 +226,25 @@ function carrierAvatarPinIcon(args: {
   const url = (args.avatarUrl ?? "").trim();
   const useImg =
     url.length > 0 &&
-    (/^https?:\/\//i.test(url) || url.startsWith("/") || url.startsWith("data:"));
-  const inner =
-    useImg ?
-      `<img class="vt-carrier-loc-pin-avatar" src="${escapeAttr(url)}" alt="" referrerpolicy="no-referrer" loading="lazy" decoding="async" />`
+    (/^https?:\/\//i.test(url) ||
+      url.startsWith("/") ||
+      url.startsWith("data:"));
+  const inner = useImg
+    ? `<img class="vt-carrier-loc-pin-avatar" src="${escapeAttr(url)}" alt="" referrerpolicy="no-referrer" loading="lazy" decoding="async" />`
     : `<div class="vt-carrier-loc-pin-avatar-fallback" style="background:${bg}" aria-hidden="true">🚚</div>`;
 
   const prog =
-    typeof args.progressFraction === "number" && Number.isFinite(args.progressFraction) ?
-      `<div class="vt-carrier-loc-pin-prog">${Math.round(args.progressFraction * 100)}%</div>`
-    : "";
+    typeof args.progressFraction === "number" &&
+    Number.isFinite(args.progressFraction)
+      ? `<div class="vt-carrier-loc-pin-prog">${Math.round(args.progressFraction * 100)}%</div>`
+      : "";
 
   const speedVal =
-    typeof args.speedKmh === "number" && Number.isFinite(args.speedKmh) && args.speedKmh >= 0 ?
-      args.speedKmh
-    : 0;
+    typeof args.speedKmh === "number" &&
+    Number.isFinite(args.speedKmh) &&
+    args.speedKmh >= 0
+      ? args.speedKmh
+      : 0;
   const speed = `<div class="vt-carrier-loc-pin-speed">${Math.round(speedVal)} km/h</div>`;
 
   const html = `<div class="vt-carrier-loc-pin"><div class="vt-carrier-loc-pin-avatar-wrap" style="--vt-pin-route:${bg}">${inner}</div>${prog}${speed}<div class="vt-carrier-loc-pin-chevron" style="border-top:10px solid ${bg}" aria-hidden="true"></div><div class="vt-carrier-loc-pin-point" style="background:${bg}" aria-hidden="true"></div></div>`;
@@ -199,7 +260,7 @@ function carrierAvatarPinIcon(args: {
   });
 }
 
-type Props = {
+type Props = Readonly<{
   open: boolean;
   onClose: () => void;
   threadId: string;
@@ -209,7 +270,7 @@ type Props = {
   offerTramos?: RouteOfferTramoPublic[];
   /** Resaltar un tramo (p. ej. «En proceso»). */
   highlightStopId?: string | null;
-};
+}>;
 
 export function RouteSheetLiveTrackingModal({
   open,
@@ -231,9 +292,12 @@ export function RouteSheetLiveTrackingModal({
   const [deliveryRowsByStop, setDeliveryRowsByStop] = useState<
     Record<string, RouteStopDeliveryStatusApi>
   >({});
-  const [subscriptionAvatarByCarrier, setSubscriptionAvatarByCarrier] = useState<
-    Record<string, string>
-  >({});
+  const [subscriptionAvatarByCarrier, setSubscriptionAvatarByCarrier] =
+    useState<Record<string, string>>({});
+  const lastMaxReportedAtMsRef = useRef<number>(0);
+  const pollIntervalMsRef = useRef<number>(8_000);
+  const [mapAutoFitEnabled, setMapAutoFitEnabled] = useState(true);
+  const disableMapAutoFit = useCallback(() => setMapAutoFitEnabled(false), []);
 
   const carrierAvatarUrlResolved = useMemo(() => {
     const m: Record<string, string> = { ...subscriptionAvatarByCarrier };
@@ -251,8 +315,12 @@ export function RouteSheetLiveTrackingModal({
       setDeliveryProgressByStop({});
       setDeliveryRowsByStop({});
       setSubscriptionAvatarByCarrier({});
+      lastMaxReportedAtMsRef.current = 0;
+      pollIntervalMsRef.current = 8_000;
+      setMapAutoFitEnabled(true);
       return;
     }
+    setMapAutoFitEnabled(true);
     let cancelled = false;
     const rsid = routeSheet.id.trim();
     const tid = threadId.trim();
@@ -339,6 +407,109 @@ export function RouteSheetLiveTrackingModal({
     };
   }, [open, threadId, agreementId, routeSheet.id]);
 
+  // Mientras el modal está abierto, hacer fetch periódico de posiciones (fallback + sincronización)
+  // usando como intervalo el ritmo observado en `reportedAtUtc` (es decir, el cadence del post).
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+
+    async function pollOnce(): Promise<void> {
+      try {
+        const telRows = await fetchLatestCarrierTelemetryForRouteSheet({
+          threadId,
+          agreementId,
+          routeSheetId: routeSheet.id,
+        });
+        if (cancelled) return;
+
+        let maxReportedAtMs = 0;
+        const seeded: Record<string, CarrierTelemetryUpdatedPayload> = {};
+        for (const r of telRows) {
+          const sid = (r.routeStopId ?? "").trim();
+          if (sid.length < 2) continue;
+          const t = Date.parse(r.reportedAtUtc);
+          const tms = Number.isFinite(t) ? t : 0;
+          if (tms > maxReportedAtMs) maxReportedAtMs = tms;
+          seeded[sid] = {
+            threadId: threadId.trim(),
+            routeSheetId: routeSheet.id.trim(),
+            agreementId: agreementId.trim(),
+            routeStopId: sid,
+            carrierUserId: (r.carrierUserId ?? "").trim(),
+            lat: r.lat,
+            lng: r.lng,
+            progressFraction: r.progressFraction ?? null,
+            offRoute: r.offRoute,
+            reportedAtUtc: r.reportedAtUtc,
+            speedKmh: r.speedKmh ?? null,
+          };
+        }
+
+        // Merge sin pisar eventos realtime más recientes ya recibidos.
+        setTelemetryByStop((prev) => {
+          const merged = { ...prev };
+          for (const [sid, incoming] of Object.entries(seeded)) {
+            const existing = prev[sid];
+            if (!existing) {
+              merged[sid] = incoming;
+              continue;
+            }
+            const exT = telemetryReportedAtMs(existing);
+            const inT = telemetryReportedAtMs(incoming);
+            if (inT >= exT) merged[sid] = incoming;
+          }
+          return merged;
+        });
+
+        // Sincronizar progreso desde telemetry latest.
+        setDeliveryProgressByStop((prev) => {
+          const next = { ...prev };
+          for (const [sid, incoming] of Object.entries(seeded)) {
+            const pf = incoming.progressFraction;
+            if (typeof pf === "number" && Number.isFinite(pf))
+              next[sid] = clamp01(pf);
+          }
+          return next;
+        });
+
+        // Ajustar intervalo en base a la diferencia entre reportes (cadence del POST).
+        if (maxReportedAtMs > 0) {
+          const prevMax = lastMaxReportedAtMsRef.current;
+          if (prevMax > 0) {
+            const dt = maxReportedAtMs - prevMax;
+            // Limitar para evitar valores extremos o clocks raros.
+            if (dt >= 800 && dt <= 60_000) {
+              pollIntervalMsRef.current = Math.max(1_200, Math.min(15_000, dt));
+            }
+          }
+          lastMaxReportedAtMsRef.current = maxReportedAtMs;
+        }
+      } catch {
+        // Si falla, seguir intentando con backoff suave.
+        pollIntervalMsRef.current = Math.min(
+          20_000,
+          Math.max(4_000, pollIntervalMsRef.current),
+        );
+      }
+    }
+
+    let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
+    const loop = async () => {
+      if (cancelled) return;
+      await pollOnce();
+      if (cancelled) return;
+      const ms = pollIntervalMsRef.current;
+      timeoutId = globalThis.setTimeout(loop, ms);
+    };
+
+    // Primer fetch inmediato al abrir.
+    void loop();
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) globalThis.clearTimeout(timeoutId);
+    };
+  }, [open, threadId, agreementId, routeSheet.id]);
+
   const stopsOrdered = useMemo(
     () => [...routeSheet.paradas].sort((a, b) => a.orden - b.orden),
     [routeSheet.paradas],
@@ -360,7 +531,10 @@ export function RouteSheetLiveTrackingModal({
   }, [offerTramos, stopsOrdered]);
 
   const routeSegments = useMemo(() => emergentMapRouteSegments(legs), [legs]);
-  const segmentColors = useMemo(() => emergentMapRouteSegmentColors(legs), [legs]);
+  const segmentColors = useMemo(
+    () => emergentMapRouteSegmentColors(legs),
+    [legs],
+  );
   const stopIdToSegmentColor = useMemo(() => {
     const m: Record<string, string> = {};
     const fallback = ROUTE_ISLAND_LINE_COLORS[0] ?? "#2563eb";
@@ -415,9 +589,7 @@ export function RouteSheetLiveTrackingModal({
         deliveryRowsByStop,
         stopIdToOrden,
       });
-      const focusStopId =
-        ownedFocus ??
-        (best.routeStopId ?? "").trim();
+      const focusStopId = ownedFocus ?? (best.routeStopId ?? "").trim();
       if (focusStopId.length < 2) continue;
 
       let position = telemetryByStop[focusStopId];
@@ -440,9 +612,11 @@ export function RouteSheetLiveTrackingModal({
       const speedRaw =
         telemetryByStop[focusStopId]?.speedKmh ?? position.speedKmh ?? null;
       const speedKmh =
-        typeof speedRaw === "number" && Number.isFinite(speedRaw) && speedRaw >= 0 ?
-          speedRaw
-        : 0;
+        typeof speedRaw === "number" &&
+        Number.isFinite(speedRaw) &&
+        speedRaw >= 0
+          ? speedRaw
+          : 0;
 
       out.push({
         uid,
@@ -478,10 +652,18 @@ export function RouteSheetLiveTrackingModal({
 
   if (!open) return null;
 
+  const fitKey = `${threadId.trim()}-${agreementId.trim()}-${routeSheet.id.trim()}`;
+
   return (
-    <div className={cn("vt-modal-backdrop", mapBackdropLayerAboveChatRail)} role="presentation">
+    <div
+      className={cn("vt-modal-backdrop", mapBackdropLayerAboveChatRail)}
+      role="presentation"
+    >
       <div
-        className={cn(modalShellWide, "flex max-h-[min(92dvh,880px)] w-full max-w-[980px] flex-col overflow-hidden p-0")}
+        className={cn(
+          modalShellWide,
+          "flex max-h-[min(92dvh,880px)] w-full max-w-[980px] flex-col overflow-hidden p-0",
+        )}
         role="dialog"
         aria-modal="true"
         aria-labelledby="vt-live-route-title"
@@ -489,14 +671,20 @@ export function RouteSheetLiveTrackingModal({
         <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
           <div className="min-w-0">
             <div id="vt-live-route-title" className="vt-modal-title">
-              Seguimiento en vivo — {(routeSheet.titulo ?? "").trim() || "Hoja de ruta"}
+              Seguimiento en vivo —{" "}
+              {(routeSheet.titulo ?? "").trim() || "Hoja de ruta"}
             </div>
             <p className={cn(modalSub, "mt-1 mb-0")}>
-              Posiciones emitidas por el transportista con ownership activo. Acuerdo{" "}
-              <span className="font-mono">{agreementId}</span>.
+              Posiciones emitidas por el transportista con ownership activo.
+              Acuerdo <span className="font-mono">{agreementId}</span>.
             </p>
           </div>
-          <button type="button" className="vt-btn vt-btn-ghost shrink-0 px-2" onClick={onClose} aria-label="Cerrar">
+          <button
+            type="button"
+            className="vt-btn vt-btn-ghost shrink-0 px-2"
+            onClick={onClose}
+            aria-label="Cerrar"
+          >
             <X size={18} />
           </button>
         </div>
@@ -510,7 +698,17 @@ export function RouteSheetLiveTrackingModal({
               scrollWheelZoom
             >
               <VibeMapTileLayer />
-              {boundsPositions.length ? <FitRouteBounds positions={boundsPositions} /> : null}
+              <MapUserInteractionTracker
+                enabled={mapAutoFitEnabled}
+                onInteracted={disableMapAutoFit}
+              />
+              {boundsPositions.length ? (
+                <FitRouteBounds
+                  positions={boundsPositions}
+                  enabled={mapAutoFitEnabled}
+                  fitKey={fitKey}
+                />
+              ) : null}
 
               <LeafletRoadSnappedRoute
                 segments={routeSegments}
@@ -527,39 +725,50 @@ export function RouteSheetLiveTrackingModal({
                 const baseKey = oid || `${st.orden}`;
                 return (
                   <div key={baseKey}>
-                    {o ?
+                    {o ? (
                       <Marker
                         position={o}
-                        icon={routeMapNumberedWaypointIcon(String(st.orden), hi ? "#f59e0b" : "#64748b")}
+                        icon={routeMapNumberedWaypointIcon(
+                          String(st.orden),
+                          hi ? "#f59e0b" : "#64748b",
+                        )}
                       />
-                    : null}
-                    {d ?
+                    ) : null}
+                    {d ? (
                       <Marker
                         position={d}
                         icon={routeMapFinishWaypointIcon()}
                       />
-                    : null}
+                    ) : null}
                   </div>
                 );
               })}
 
-              {carrierLivePins.map(({ uid, position: p, routeColor, progressFraction, speedKmh }) => {
-                const avatarUrl =
-                  carrierAvatarUrlResolved[uid]?.trim() ||
-                  profileAvatarUrls[uid]?.trim();
-                return (
-                  <Marker
-                    key={`tel-carrier-${uid}`}
-                    position={[p.lat, p.lng]}
-                    icon={carrierAvatarPinIcon({
-                      avatarUrl,
-                      routeColor,
-                      progressFraction,
-                      speedKmh,
-                    })}
-                  />
-                );
-              })}
+              {carrierLivePins.map(
+                ({
+                  uid,
+                  position: p,
+                  routeColor,
+                  progressFraction,
+                  speedKmh,
+                }) => {
+                  const avatarUrl =
+                    carrierAvatarUrlResolved[uid]?.trim() ||
+                    profileAvatarUrls[uid]?.trim();
+                  return (
+                    <Marker
+                      key={`tel-carrier-${uid}`}
+                      position={[p.lat, p.lng]}
+                      icon={carrierAvatarPinIcon({
+                        avatarUrl,
+                        routeColor,
+                        progressFraction,
+                        speedKmh,
+                      })}
+                    />
+                  );
+                },
+              )}
             </MapContainer>
           </div>
 
@@ -569,16 +778,21 @@ export function RouteSheetLiveTrackingModal({
             </div>
             <ul className="mt-2 mb-0 list-disc space-y-1 pl-5 text-[var(--text)]">
               <li>
-                <span className="font-bold">Gris / ámbar:</span> marcas de origen por tramo (ámbar = foco).
+                <span className="font-bold">Gris / ámbar:</span> marcas de
+                origen por tramo (ámbar = foco).
               </li>
               <li>
-                <span className="font-bold">🏁:</span> destino del tramo (si hay coordenadas).
+                <span className="font-bold">🏁:</span> destino del tramo (si hay
+                coordenadas).
               </li>
               <li>
-                <span className="font-bold">Foto en pin:</span> un marcador por transportista; % del tramo donde es titular activo; velocidad en km/h (0 si el dispositivo no informa).
+                <span className="font-bold">Foto en pin:</span> un marcador por
+                transportista; % del tramo donde es titular activo; velocidad en
+                km/h (0 si el dispositivo no informa).
               </li>
               <li>
-                <span className="font-bold">Trazos:</span> ruta por carretera persistida en la hoja (OSRM), si existe.
+                <span className="font-bold">Trazos:</span> ruta por carretera
+                persistida en la hoja (OSRM), si existe.
               </li>
             </ul>
           </div>

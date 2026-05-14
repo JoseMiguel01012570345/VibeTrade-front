@@ -9,7 +9,6 @@ import { routesRailSheetListEmptyText } from "./routesRailSheetStrings";
 
 type Props = {
   routeSheets: RouteSheet[];
-  hasAcceptedContract: boolean;
   isActingSeller: boolean;
   routeOfferResolved: RouteOfferPublicState | undefined;
   onSelectSheetId: (id: string) => void;
@@ -18,7 +17,6 @@ type Props = {
 /** Listado compacto del rail (vacío o lista de tarjetas clicable). Solo cuando no hay detalle seleccionado. */
 export function RoutesRailSheetList({
   routeSheets,
-  hasAcceptedContract,
   isActingSeller,
   routeOfferResolved,
   onSelectSheetId,
@@ -26,18 +24,13 @@ export function RoutesRailSheetList({
   // Estados
 
   // Funciones
-  const captionVacio = routesRailSheetListEmptyText(
-    hasAcceptedContract,
-    isActingSeller,
-  );
+  const captionVacio = routesRailSheetListEmptyText(isActingSeller);
 
   // useEffects
 
   // Vista (HTML + CSS)
   if (routeSheets.length === 0) {
-    return (
-      <p className="vt-muted px-1 py-3 text-[13px]">{captionVacio}</p>
-    );
+    return <p className="vt-muted px-1 py-3 text-[13px]">{captionVacio}</p>;
   }
 
   return (

@@ -6,9 +6,6 @@ import { cn } from "../../../../../lib/cn";
 export function RoutesRailEntryActions(props: {
   routeSheetsLoading: boolean;
   isActingSeller: boolean;
-  hasAcceptedContract: boolean;
-  actionsLocked: boolean;
-  routeSheetCapReached: boolean;
   onOpenNewRouteSheet: () => void;
   subscribersTargetSheetId: string | null;
   onOpenRouteSubscribers?: (routeSheetId: string) => void;
@@ -16,23 +13,10 @@ export function RoutesRailEntryActions(props: {
   const {
     routeSheetsLoading,
     isActingSeller,
-    hasAcceptedContract,
-    actionsLocked,
-    routeSheetCapReached,
     onOpenNewRouteSheet,
     subscribersTargetSheetId,
     onOpenRouteSubscribers,
   } = props;
-
-  const blockedNewSheet =
-    actionsLocked || !hasAcceptedContract || routeSheetCapReached;
-  const titleNewSheet = actionsLocked
-    ? "No disponible hasta registrar el pago en el chat"
-    : !hasAcceptedContract
-      ? "Necesitas al menos un contrato aceptado para crear una hoja de ruta"
-      : routeSheetCapReached
-        ? "No puedes tener más hojas de ruta que acuerdos: emite otro acuerdo o elimina una hoja"
-        : undefined;
 
   return (
     <>
@@ -49,8 +33,6 @@ export function RoutesRailEntryActions(props: {
               "min-w-0 flex-1 shrink-0 justify-center [&>span]:inline-flex [&>span]:items-center [&>span]:gap-2",
             )}
             color="blue"
-            disabled={blockedNewSheet}
-            title={titleNewSheet ?? undefined}
             onClick={onOpenNewRouteSheet}
           >
             <MapPin className="h-4 w-4 shrink-0" aria-hidden />

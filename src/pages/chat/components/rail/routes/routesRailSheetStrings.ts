@@ -4,17 +4,9 @@ import type { RouteSheet } from "../../../domain/routeSheetTypes";
 import { ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES } from "../../../domain/routeSheetOfferGuards";
 import { SELLER_TRUST_PENALTY_ON_EDIT } from "../../modals/TrustRiskEditConfirmModal";
 
-export function routesRailSheetListEmptyText(
-  hasAcceptedContract: boolean,
-  isActingSeller: boolean,
-): string {
-  if (!hasAcceptedContract) {
-    return isActingSeller
-      ? "Primero tienes que tener al menos un contrato aceptado; después puedes crear la hoja de ruta y vincularla al acuerdo."
-      : "Cuando haya un acuerdo aceptado, la tienda podrá crear la hoja de ruta en esta operación.";
-  }
+export function routesRailSheetListEmptyText(isActingSeller: boolean): string {
   return isActingSeller
-    ? "Crea una hoja de ruta y vinculála al acuerdo desde Contratos (con mercancías) antes de publicar en la plataforma."
+    ? "Crea una hoja de ruta y vinculala al acuerdo desde Contratos (con mercancías) antes de publicar en la plataforma."
     : "La tienda creará y editará la hoja de ruta; aquí podrás ver el avance cuando exista.";
 }
 
@@ -60,7 +52,8 @@ export function railDetailPublishTitle(
 ): string {
   if (actionsLocked) return "No disponible hasta registrar el pago";
   if (sheetLockedByPaid) return ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES;
-  if (!linked) return "Vinculá esta hoja a un acuerdo en Contratos antes de publicar";
+  if (!linked)
+    return "Vinculá esta hoja a un acuerdo en Contratos antes de publicar";
   return publicadaPlataforma
     ? "Dejar de mostrar la hoja en el mercado y búsqueda"
     : "Publicar la hoja en el mercado (demo)";
@@ -87,8 +80,7 @@ export function railBuildDeleteSheetConfirmMessage(
     ? confirmedCarrierIdsOnOffer(offerForSheet, selRoute.id).size
     : 0;
   const hasAssigned =
-    !!offerForSheet &&
-    offerForSheet.tramos.some((t) => t.assignment?.userId);
+    !!offerForSheet && offerForSheet.tramos.some((t) => t.assignment?.userId);
 
   let msg = `¿Eliminar la hoja de ruta «${selRoute.titulo}»? Se quitará el vínculo en los acuerdos.`;
   if (hasAssigned) {

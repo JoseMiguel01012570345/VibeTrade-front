@@ -54,6 +54,7 @@ import { userHasTransportService } from "../../utils/user/transportEligibility";
 import { fetchStoreDetail } from "../../utils/market/fetchStoreDetail";
 import { mergeStoreCatalogWithLocalExtras } from "./domain/storeCatalogTypes";
 import {
+  fetchThreadHasUnpaidRouteSheets,
   fetchSocialThreadMembers,
   patchChatMessageStatus,
   patchSocialGroupTitle,
@@ -1177,27 +1178,30 @@ export function ChatPage() {
               focusRouteId={focusRouteId}
               onConsumedRouteFocus={() => setFocusRouteId(null)}
               onOpenNewRouteSheet={() => {
-                if (!isActingSeller) {
-                  toast.error("Solo la tienda puede crear hojas de ruta.");
-                  return;
-                }
-                if (!threadHasAcceptedAgreement(thread)) {
-                  toast.error(
-                    "Necesitas al menos un contrato aceptado para crear una hoja de ruta.",
-                  );
-                  return;
-                }
-                const nAg = thread.contracts?.length ?? 0;
-                const nSh = thread.routeSheets?.length ?? 0;
-                if (nSh >= nAg) {
-                  toast.error(
-                    "No puedes tener más hojas de ruta que acuerdos. Emite otro acuerdo o elimina una hoja existente.",
-                  );
-                  return;
-                }
-                setRouteSheetBeingEdited(null);
-                setShowRouteSheetForm(true);
-                setRailOpen(true);
+                void (async () => {
+                  try {
+                    const hasUnpaid = await fetchThreadHasUnpaidRouteSheets(
+                      thread.id,
+                    );
+                    if (!hasUnpaid) {
+                      toast.error(
+                        "Solo puedes crear hojas de rutas si existen acuerdos sin pagar",
+                      );
+                      return;
+                    }
+                  } catch (e: unknown) {
+                    const msg =
+                      e instanceof Error
+                        ? e.message
+                        : "No se pudo validar si hay hojas no pagadas.";
+                    toast.error(msg);
+                    return;
+                  }
+
+                  setRouteSheetBeingEdited(null);
+                  setShowRouteSheetForm(true);
+                  setRailOpen(true);
+                })();
               }}
               onEditRouteSheet={(sheet) => {
                 if (!isActingSeller) {

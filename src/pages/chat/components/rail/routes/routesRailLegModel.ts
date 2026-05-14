@@ -85,9 +85,7 @@ function railLegUiFlags(args: {
   meId: string;
   sellerUid: string;
   row: RouteStopDeliveryStatusApi | undefined;
-  cedeOwnershipByAgreement:
-    | Record<string, Record<string, boolean>>
-    | undefined;
+  cedeOwnershipByAgreement: Record<string, Record<string, boolean>> | undefined;
 }): Pick<
   RailLegModel,
   | "activeLike"
@@ -124,16 +122,14 @@ function railLegUiFlags(args: {
     !!meId && curCarrierUid.length >= 2 && meId === curCarrierUid;
 
   const ownerFromDelivery = (row?.currentOwnerUserId ?? "").trim();
-  const viewerIsSeller =
-    !!meId && sellerUid.length > 1 && meId === sellerUid;
+  const viewerIsSeller = !!meId && sellerUid.length > 1 && meId === sellerUid;
   const viewerIsOwnerCarrierStrict =
-    !!meId &&
-    ownerFromDelivery.length >= 2 &&
-    meId === ownerFromDelivery;
+    !!meId && ownerFromDelivery.length >= 2 && meId === ownerFromDelivery;
 
   let showEvidenceBtn: boolean | undefined;
   if (cedeOwnershipByAgreement?.[sheetId]) {
     const route = cedeOwnershipByAgreement[sheetId];
+    console.log({ route, stopId });
     if (route?.[stopId ?? ""]) showEvidenceBtn = route[stopId ?? ""];
   }
 
@@ -162,9 +158,7 @@ export function computeRailLegModel(input: {
   deliveriesByAgreement: Record<string, RouteStopDeliveryStatusApi[]>;
   meId: string;
   sellerUid: string;
-  cedeOwnershipByAgreement:
-    | Record<string, Record<string, boolean>>
-    | undefined;
+  cedeOwnershipByAgreement: Record<string, Record<string, boolean>> | undefined;
 }): RailLegModel {
   const {
     selRoute,

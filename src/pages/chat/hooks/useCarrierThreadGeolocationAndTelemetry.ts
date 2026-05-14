@@ -192,6 +192,6 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
       window.removeEventListener("focus", onResume);
     };
   }, [threadId, isSocialThread, viewerIsConfirmedCarrier, runRefresh]);
-
+  console.log({ viewerIsConfirmedCarrier });
   return targets;
 }
