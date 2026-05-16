@@ -49,4 +49,6 @@ export type RoutesRailSheetDetailProps = {
   /** Solo lectura para UI de logística (botones deshabilitados mientras hay operación). */
   logisticsBusyKey: string | null;
   onOpenLiveMapAllStops: () => void;
+  /** Bloquea acciones de edición de hoja hasta que exista pago registrado. */
+  actionsLocked: boolean;
 };

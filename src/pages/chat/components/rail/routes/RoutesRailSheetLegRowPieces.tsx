@@ -212,6 +212,52 @@ function LegLogisticsPanelHeader(props: { logisticsLabel: string }) {
   );
 }
 
+function LegBtnSellerPauseTramo(props: {
+  busyKeyBase: string;
+  logisticsBusyKey: string | null;
+  actionsLocked: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      color="warning"
+      disabled={
+        !getSessionToken() ||
+        props.actionsLocked ||
+        props.logisticsBusyKey === `${props.busyKeyBase}:seller-pause`
+      }
+      size="xs"
+      title="Pausar el tramo: custodia en tienda (excepción). El transportista podrá salir del hilo cuando no sea titular."
+      onClick={props.onClick}
+    >
+      Pausar tramo
+    </Button>
+  );
+}
+
+function LegBtnSellerResumeTramo(props: {
+  busyKeyBase: string;
+  logisticsBusyKey: string | null;
+  actionsLocked: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      color="gray"
+      disabled={
+        !getSessionToken() ||
+        props.actionsLocked ||
+        props.logisticsBusyKey === `${props.busyKeyBase}:seller-resume`
+      }
+      size="xs"
+      title="Reanudar: asignar de nuevo la titularidad a un transportista confirmado en este tramo."
+      onClick={props.onClick}
+    >
+      Reanudar tramo
+    </Button>
+  );
+}
+
 function LegBtnCedeOwnership(props: {
   busyKeyBase: string;
   logisticsBusyKey: string | null;
@@ -316,15 +362,19 @@ function LegEvidenceSellerDecisionPair(props: {
 
 export function LegLogisticsButtons(props: {
   m: RailLegModel;
+  isActingSeller: boolean;
+  actionsLocked: boolean;
   logisticsBusyKey: string | null;
   onCedeClick: () => void;
   onCarrierEvidenceUploadClick: () => void;
   onSellerEvidenceReadClick: () => void;
   onAcceptEvidence: () => void;
   onRejectEvidence: () => void;
+  onSellerPauseClick: () => void;
+  onSellerResumeClick: () => void;
 }) {
   // Estados
-  const { m, logisticsBusyKey } = props;
+  const { m, logisticsBusyKey, isActingSeller, actionsLocked } = props;
 
   // Funciones
   const evidSeller =
@@ -344,6 +394,24 @@ export function LegLogisticsButtons(props: {
             busyKeyBase={m.busyKeyBase}
             logisticsBusyKey={logisticsBusyKey}
             onClick={props.onCedeClick}
+          />
+        ) : null}
+
+        {isActingSeller && m.showSellerPauseTramo ? (
+          <LegBtnSellerPauseTramo
+            actionsLocked={actionsLocked}
+            busyKeyBase={m.busyKeyBase}
+            logisticsBusyKey={logisticsBusyKey}
+            onClick={props.onSellerPauseClick}
+          />
+        ) : null}
+
+        {isActingSeller && m.showSellerResumeTramo ? (
+          <LegBtnSellerResumeTramo
+            actionsLocked={actionsLocked}
+            busyKeyBase={m.busyKeyBase}
+            logisticsBusyKey={logisticsBusyKey}
+            onClick={props.onSellerResumeClick}
           />
         ) : null}
 

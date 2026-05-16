@@ -22,11 +22,15 @@ import type {
   CarrierEvEditModalState,
   CarrierEvReadModalState,
   CedeOwnershipModalState,
+  SellerPauseTramoModalState,
+  SellerResumeTramoModalState,
 } from "../shared/routesRailSheetModalTypes";
 import { RoutesRailSheetDetail } from "./RoutesRailSheetDetail";
 import { RoutesRailSheetList } from "./RoutesRailSheetList";
 import { RoutesRailEntryActions } from "./RoutesRailEntryActions";
 import { CedeCarrierOwnershipModal } from "../modals/CedeCarrierOwnershipModal";
+import { SellerPauseTramoModal } from "../modals/SellerPauseTramoModal";
+import { SellerResumeTramoModal } from "../modals/SellerResumeTramoModal";
 import { CarrierDeliveryEvidenceEditModal } from "../modals/CarrierDeliveryEvidenceEditModal";
 import { RailCarrierEvidenceReadModal } from "../modals/RailCarrierEvidenceReadModal";
 import type { RailRoutesCommand } from "../bus/railRoutesCommands";
@@ -64,6 +68,8 @@ type Props = {
   routeOffer: RouteOfferPublicState | undefined;
   onOpenRouteSubscribers?: (routeSheetId: string) => void;
   onPersistedRouteDataRefresh?: () => Promise<void>;
+  /** Bloquea acciones de edición de hoja hasta que exista pago registrado (mismo criterio que contratos). */
+  actionsLocked?: boolean;
 };
 
 export function ChatRightRailRoutesPanel({
@@ -87,6 +93,7 @@ export function ChatRightRailRoutesPanel({
   routeOffer,
   onOpenRouteSubscribers,
   onPersistedRouteDataRefresh,
+  actionsLocked = false,
 }: Props) {
   const me = useAppStore((s) => s.me);
   const routeOfferForSelectedSheet = useMarketStore(
@@ -126,6 +133,10 @@ export function ChatRightRailRoutesPanel({
     useState<CarrierEvReadModalState | null>(null);
   const [cedeOwnershipModal, setCedeOwnershipModal] =
     useState<CedeOwnershipModalState | null>(null);
+  const [sellerPauseTramoModal, setSellerPauseTramoModal] =
+    useState<SellerPauseTramoModalState | null>(null);
+  const [sellerResumeTramoModal, setSellerResumeTramoModal] =
+    useState<SellerResumeTramoModalState | null>(null);
   const [inviteRouteSheet, setInviteRouteSheet] = useState<RouteSheet | null>(
     null,
   );
@@ -241,6 +252,8 @@ export function ChatRightRailRoutesPanel({
     setCedeOwnershipModal,
     setCarrierEvEditModal,
     setCarrierEvReadModal,
+    setSellerPauseTramoModal,
+    setSellerResumeTramoModal,
     refreshDeliveriesForAgreement,
     toggleRouteStop,
   });
@@ -249,6 +262,8 @@ export function ChatRightRailRoutesPanel({
     setCedeOwnershipModal,
     setCarrierEvEditModal,
     setCarrierEvReadModal,
+    setSellerPauseTramoModal,
+    setSellerResumeTramoModal,
     refreshDeliveriesForAgreement,
     toggleRouteStop,
   };
@@ -268,6 +283,12 @@ export function ChatRightRailRoutesPanel({
           break;
         case "carrierEvReadModal":
           h.setCarrierEvReadModal(cmd.modal);
+          break;
+        case "sellerPauseTramoModal":
+          h.setSellerPauseTramoModal(cmd.modal);
+          break;
+        case "sellerResumeTramoModal":
+          h.setSellerResumeTramoModal(cmd.modal);
           break;
         case "refreshDeliveries":
           void h.refreshDeliveriesForAgreement(cmd.agreementId);
@@ -344,6 +365,7 @@ export function ChatRightRailRoutesPanel({
             cedeOwnershipByAgreement={cedeOwnershipByAgreement}
             logisticsBusyKey={logisticsBusyKey}
             onOpenLiveMapAllStops={openLiveMapAllStops}
+            actionsLocked={actionsLocked}
           />
         ) : (
           <RoutesRailSheetList
@@ -359,6 +381,22 @@ export function ChatRightRailRoutesPanel({
           refreshDeliveriesForAgreement={refreshDeliveriesForAgreement}
           setCedeOwnershipModal={setCedeOwnershipModal}
           setLogisticsBusyKey={setLogisticsBusyKey}
+          threadId={threadId}
+        />
+
+        <SellerPauseTramoModal
+          modal={sellerPauseTramoModal}
+          refreshDeliveriesForAgreement={refreshDeliveriesForAgreement}
+          setLogisticsBusyKey={setLogisticsBusyKey}
+          setSellerPauseTramoModal={setSellerPauseTramoModal}
+          threadId={threadId}
+        />
+
+        <SellerResumeTramoModal
+          modal={sellerResumeTramoModal}
+          refreshDeliveriesForAgreement={refreshDeliveriesForAgreement}
+          setLogisticsBusyKey={setLogisticsBusyKey}
+          setSellerResumeTramoModal={setSellerResumeTramoModal}
           threadId={threadId}
         />
 

@@ -4,6 +4,8 @@ import type { RailLegModel } from "./routesRailLegModel";
 import {
   railLegLoadCarrierEvidenceEditor,
   railLegOpenCedeOwnershipModal,
+  railLegOpenSellerPauseTramoModal,
+  railLegOpenSellerResumeTramoModal,
   railLegOpenSellerEvidenceRead,
   railLegSellerDecideEvidence,
 } from "./routesRailLegHandlers";
@@ -53,6 +55,14 @@ export function RoutesRailSheetLegRow(props: Props): ReactElement {
     railLegOpenCedeOwnershipModal(ctx);
   }
 
+  function onSellerPause(): void {
+    railLegOpenSellerPauseTramoModal(ctx);
+  }
+
+  function onSellerResume(): void {
+    railLegOpenSellerResumeTramoModal(ctx);
+  }
+
   function acceptEv(): void {
     void railLegSellerDecideEvidence(ctx, "accept");
   }
@@ -87,12 +97,16 @@ export function RoutesRailSheetLegRow(props: Props): ReactElement {
       {props.m.agreement && agreementIdReady ? (
         <LegLogisticsButtons
           m={props.m}
+          isActingSeller={props.isActingSeller}
+          actionsLocked={props.actionsLocked}
           logisticsBusyKey={props.logisticsBusyKey}
           onCedeClick={onCede}
           onCarrierEvidenceUploadClick={onEvidenceCarrierUpload}
           onSellerEvidenceReadClick={onEvidenceSellerPreview}
           onAcceptEvidence={acceptEv}
           onRejectEvidence={rejectEv}
+          onSellerPauseClick={onSellerPause}
+          onSellerResumeClick={onSellerResume}
         />
       ) : null}
     </li>

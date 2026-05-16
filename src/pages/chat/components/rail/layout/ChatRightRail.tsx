@@ -240,6 +240,7 @@ export function ChatRightRail({
           routeOffer={routeOfferForThread}
           onOpenRouteSubscribers={onOpenRouteSubscribers}
           onPersistedRouteDataRefresh={onPersistedRouteDataRefresh}
+          actionsLocked={actionsLocked}
         />
       )}
 

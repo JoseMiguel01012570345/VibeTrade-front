@@ -19,6 +19,8 @@ export function routeStopDeliveryStateLabelEs(
       return "En tránsito";
     case "awaiting_carrier_for_handoff":
       return "Esperando transportista / handoff";
+    case "idle_store_custody":
+      return "Pausado — custodia tienda";
     case "delivered_pending_evidence":
       return "Entregado — falta evidencia";
     case "evidence_submitted":

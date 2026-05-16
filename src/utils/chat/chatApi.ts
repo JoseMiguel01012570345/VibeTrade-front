@@ -66,7 +66,7 @@ export type TradeAgreementExtraFieldApiDto = {
   textValue?: string | null;
   mediaUrl?: string | null;
   fileName?: string | null;
-  /** merchandise | service | legacy_combined */
+  /** Opcional: respuestas antiguas; el servidor ya no persiste ni devuelve alcance por fila. */
   scope?: "merchandise" | "service" | "legacy_combined";
 };
 

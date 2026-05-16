@@ -244,6 +244,74 @@ export async function decideCarrierDeliveryEvidence(args: {
   }
 }
 
+function parseLogisticsActionErrorMessage(raw: string): string | undefined {
+  const t = raw.trim();
+  if (!t.startsWith("{")) return undefined;
+  try {
+    const j = JSON.parse(t) as { message?: string; error?: string };
+    const msg = typeof j.message === "string" ? j.message.trim() : "";
+    if (msg.length > 0) return msg;
+    const err = typeof j.error === "string" ? j.error.trim() : "";
+    return err.length > 0 ? err : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Pausa tienda: custodia en tienda (IDLE) en un solo tramo; libera titular. */
+export async function postSellerPauseTramoForStoreCustody(args: {
+  threadId: string;
+  agreementId: string;
+  routeSheetId: string;
+  routeStopId: string;
+  reason: string;
+}): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/agreements/${encodeURIComponent(args.agreementId)}/logistics/deliveries/seller-pause`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        routeSheetId: args.routeSheetId,
+        routeStopId: args.routeStopId,
+        reason: args.reason,
+      }),
+    },
+  );
+  const raw = await res.text().catch(() => "");
+  if (!res.ok) {
+    const fromJson = parseLogisticsActionErrorMessage(raw);
+    throw new Error(fromJson ?? (raw.trim() || `HTTP ${res.status}`));
+  }
+}
+
+/** Reanudar tramo en IDLE: titular = transportista confirmado en ese tramo. */
+export async function postSellerResumeTramoFromIdle(args: {
+  threadId: string;
+  agreementId: string;
+  routeSheetId: string;
+  routeStopId: string;
+  targetCarrierUserId: string;
+}): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/agreements/${encodeURIComponent(args.agreementId)}/logistics/deliveries/seller-resume-from-idle`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        routeSheetId: args.routeSheetId,
+        routeStopId: args.routeStopId,
+        targetCarrierUserId: args.targetCarrierUserId,
+      }),
+    },
+  );
+  const raw = await res.text().catch(() => "");
+  if (!res.ok) {
+    const fromJson = parseLogisticsActionErrorMessage(raw);
+    throw new Error(fromJson ?? (raw.trim() || `HTTP ${res.status}`));
+  }
+}
+
 export async function requestEligibleLegRefund(args: {
   threadId: string;
   agreementId: string;

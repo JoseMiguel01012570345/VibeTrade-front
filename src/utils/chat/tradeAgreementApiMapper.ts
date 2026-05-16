@@ -39,12 +39,6 @@ function mapExtraFieldDtoFromApi(
   };
 }
 
-function mapExtraFieldDto(
-  x: TradeAgreementExtraFieldApiDto,
-): TradeAgreementExtraFieldDraft {
-  return mapExtraFieldDtoFromApi(x);
-}
-
 function mapServiceDtoToServiceItem(raw: Record<string, unknown>): ServiceItem {
   const base = { ...(raw as object) } as ServiceItem;
   const ce = raw.condicionesExtras;
@@ -66,9 +60,14 @@ export function mapTradeAgreementApiToTradeAgreement(
   const services = (d.services ?? []).map((row) =>
     mapServiceDtoToServiceItem(row as Record<string, unknown>),
   );
+  const rootScopeFallback: TradeAgreementExtraFieldScope = d.includeMerchandise
+    ? "merchandise"
+    : "service";
   const extraFields: TradeAgreementExtraFieldDraft[] | undefined =
     d.extraFields && d.extraFields.length
-      ? d.extraFields.map(mapExtraFieldDto)
+      ? d.extraFields.map((row) =>
+          mapExtraFieldDtoFromApi(row, rootScopeFallback),
+        )
       : undefined;
   return {
     id: d.id,

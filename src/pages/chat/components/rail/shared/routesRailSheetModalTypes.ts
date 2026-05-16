@@ -24,3 +24,20 @@ export type CarrierEvReadModalState = {
   routeStopId: string;
   evidence: CarrierDeliveryEvidenceApi;
 };
+
+export type SellerPauseTramoModalState = {
+  agreementId: string;
+  routeSheetId: string;
+  routeStopId: string;
+  reason: string;
+  busy: boolean;
+};
+
+export type SellerResumeTramoModalState = {
+  agreementId: string;
+  routeSheetId: string;
+  routeStopId: string;
+  busy: boolean;
+  candidates: { userId: string; displayName: string }[];
+  selectedCarrierUserId: string;
+};

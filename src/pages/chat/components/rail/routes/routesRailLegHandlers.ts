@@ -111,6 +111,37 @@ export async function railLegSellerDecideEvidence(
   }
 }
 
+export function railLegOpenSellerPauseTramoModal(ctx: RailLegHandlerCtxBase): void {
+  const { selRoute, p, m, dispatch } = ctx;
+  dispatch({
+    type: "sellerPauseTramoModal",
+    modal: {
+      agreementId: m.agreementId,
+      routeSheetId: selRoute.id,
+      routeStopId: p.id,
+      reason: "",
+      busy: false,
+    },
+  });
+}
+
+export function railLegOpenSellerResumeTramoModal(ctx: RailLegHandlerCtxBase): void {
+  const { selRoute, p, m, dispatch } = ctx;
+  const candidates = m.resumeCandidateCarriers;
+  if (candidates.length === 0) return;
+  dispatch({
+    type: "sellerResumeTramoModal",
+    modal: {
+      agreementId: m.agreementId,
+      routeSheetId: selRoute.id,
+      routeStopId: p.id,
+      busy: false,
+      candidates,
+      selectedCarrierUserId: candidates[0]!.userId,
+    },
+  });
+}
+
 export function railLegOpenCedeOwnershipModal(ctx: RailLegHandlerCtxBase): void {
   const { selRoute, p, m, dispatch } = ctx;
   dispatch({
