@@ -36,16 +36,16 @@ export async function fetchAgreementCheckoutBreakdown(
     }>;
     /**
      * `undefined` = no enviar (desglose GET legacy).
-     * `null` o array = explícito en POST (array vacío = ningún tramo).
+     * `null` o array = explícito en POST (array vacío = sin transporte).
      */
-    selectedRouteStopIds?: string[] | null;
+    selectedRoutePathIds?: string[] | null;
     /** Igual que rutas: solo POST cuando se define (mercadería explícita). */
     selectedMerchandiseLineIds?: string[] | null;
   },
 ): Promise<AgreementCheckoutBreakdownApi> {
   const picks = opts?.selectedServicePayments ?? [];
   const hasServicePicks = picks.length > 0;
-  const routeExplicit = opts?.selectedRouteStopIds !== undefined;
+  const routeExplicit = opts?.selectedRoutePathIds !== undefined;
   const merchExplicit = opts?.selectedMerchandiseLineIds !== undefined;
   const usePost = hasServicePicks || routeExplicit || merchExplicit;
 
@@ -63,8 +63,8 @@ export async function fetchAgreementCheckoutBreakdown(
                   entryDay: p.entryKey.day,
                 }))
               : null,
-            selectedRouteStopIds: routeExplicit
-              ? (opts?.selectedRouteStopIds ?? null)
+            selectedRoutePathIds: routeExplicit
+              ? (opts?.selectedRoutePathIds ?? null)
               : null,
             selectedMerchandiseLineIds: merchExplicit
               ? (opts?.selectedMerchandiseLineIds ?? null)
@@ -126,7 +126,7 @@ export async function executeAgreementCurrencyPayment(args: {
     serviceItemId: string;
     entryKey: { month: number; day: number };
   }>;
-  selectedRouteStopIds?: string[] | null;
+  selectedRoutePathIds?: string[] | null;
   selectedMerchandiseLineIds?: string[] | null;
 }): Promise<AgreementExecutePaymentResultApi> {
   const headers: HeadersInit = { "Content-Type": "application/json" };
@@ -149,10 +149,10 @@ export async function executeAgreementCurrencyPayment(args: {
             entryDay: p.entryKey.day,
           }),
         ),
-        selectedRouteStopIds:
-          args.selectedRouteStopIds === undefined
+        selectedRoutePathIds:
+          args.selectedRoutePathIds === undefined
             ? null
-            : args.selectedRouteStopIds,
+            : args.selectedRoutePathIds,
         selectedMerchandiseLineIds:
           args.selectedMerchandiseLineIds === undefined
             ? null
@@ -171,4 +171,51 @@ export async function executeAgreementCurrencyPayment(args: {
       ? (parsed as unknown as { stripeErrorMessage: string }).stripeErrorMessage
       : "";
   throw new Error(fallback || `HTTP ${res.status}`);
+}
+
+export type AgreementRoutePathStopApi = {
+  routeStopId: string;
+  orden: number;
+  origen: string;
+  destino: string;
+  precioTransportista?: string | null;
+  monedaPago?: string | null;
+};
+
+export type AgreementRoutePathCurrencyTotalApi = {
+  currencyLower: string;
+  amountMinor: number;
+};
+
+export type AgreementRoutePathApi = {
+  routePathId: string;
+  orden: number;
+  label: string;
+  stopIds: string[];
+  stops: AgreementRoutePathStopApi[];
+  totalsByCurrency: AgreementRoutePathCurrencyTotalApi[];
+  payable: boolean;
+  paid: boolean;
+  partiallyPaid: boolean;
+};
+
+export type AgreementRoutePathsResponseApi = {
+  routeSheetId: string;
+  paths: AgreementRoutePathApi[];
+};
+
+export async function fetchAgreementRoutePaths(
+  threadId: string,
+  agreementId: string,
+  routeSheetId: string,
+): Promise<AgreementRoutePathsResponseApi> {
+  const qs = new URLSearchParams({ routeSheetId: routeSheetId.trim() });
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/agreements/${encodeURIComponent(agreementId)}/route-paths?${qs}`,
+  );
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(t || `HTTP ${res.status}`);
+  }
+  return (await res.json()) as AgreementRoutePathsResponseApi;
 }

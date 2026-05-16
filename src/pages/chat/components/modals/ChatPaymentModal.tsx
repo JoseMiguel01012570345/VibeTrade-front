@@ -10,8 +10,10 @@ import {
   executeAgreementCurrencyPayment,
   fetchAgreementCheckoutBreakdown,
   fetchAgreementPaymentStatuses,
+  fetchAgreementRoutePaths,
   type AgreementCheckoutBreakdownApi,
   type AgreementPaymentStatusApi,
+  type AgreementRoutePathApi,
 } from "../../../../utils/chat/agreementCheckoutApi";
 import {
   fetchAgreementRouteDeliveries,
@@ -201,16 +203,13 @@ export function ChatPaymentModal({
     return routeSheets.find((r) => r.id === rsid) ?? null;
   }, [routeSheets, selectedAgreement?.routeSheetId]);
 
-  const payableRouteStops = useMemo(() => {
-    if (!agreementRouteSheet) return [];
-    return agreementRouteSheet.paradas.filter((p) => routeStopIsPayable(p));
-  }, [agreementRouteSheet]);
-
   const [routeDeliveries, setRouteDeliveries] = useState<
     RouteStopDeliveryStatusApi[]
   >([]);
-  /** Hojas de ruta incluidas en el cobro (normalmente la vinculada al acuerdo); se expande a tramos pendientes en API. */
-  const [selectedRouteSheetIds, setSelectedRouteSheetIds] = useState<string[]>(
+  const [agreementRoutePaths, setAgreementRoutePaths] = useState<
+    AgreementRoutePathApi[]
+  >([]);
+  const [selectedRoutePathIds, setSelectedRoutePathIds] = useState<string[]>(
     [],
   );
   const [selectedMerchandiseLineIds, setSelectedMerchandiseLineIds] = useState<
@@ -226,15 +225,28 @@ export function ChatPaymentModal({
     );
   }, [selectedAgreement]);
 
+  const payableRoutePaths = useMemo(
+    () =>
+      agreementRoutePaths.filter(
+        (p) => p.payable && !p.paid && !p.partiallyPaid,
+      ),
+    [agreementRoutePaths],
+  );
+
   const routePickAgreement = useMemo(() => {
     if (!selectedAgreement) return false;
     if (serviceOnlyAgreement) return false;
     return (
       agreementDeclaresMerchandise(selectedAgreement) &&
       !!(selectedAgreement.routeSheetId ?? "").trim() &&
-      payableRouteStops.length > 0
+      (payableRoutePaths.length > 0 || agreementRoutePaths.length > 0)
     );
-  }, [selectedAgreement, serviceOnlyAgreement, payableRouteStops.length]);
+  }, [
+    selectedAgreement,
+    serviceOnlyAgreement,
+    payableRoutePaths.length,
+    agreementRoutePaths.length,
+  ]);
 
   /** Evita recrear el Set en cada fetch si la respuesta es equivalente (rompe bucles efecto → setState → reload). */
   const routeDeliveriesPaidKey = useMemo(
@@ -258,58 +270,18 @@ export function ChatPaymentModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional fingerprint gate
   }, [routeDeliveriesPaidKey]);
 
-  const unpaidPayableRouteStops = useMemo(
+  const payableRoutePathIdsKey = useMemo(
     () =>
-      payableRouteStops.filter(
-        (p) => !paidRouteStopIds.has((p.id ?? "").trim()),
-      ),
-    [payableRouteStops, paidRouteStopIds],
-  );
-
-  const unpaidPayableStopIdsKey = useMemo(
-    () =>
-      unpaidPayableRouteStops
-        .map((p) => (p.id ?? "").trim())
+      payableRoutePaths
+        .map((p) => p.routePathId.trim())
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b))
         .join("|"),
-    [unpaidPayableRouteStops],
+    [payableRoutePaths],
   );
 
   const routeLegSelectionRequired =
-    routePickAgreement && unpaidPayableRouteStops.length > 0;
-
-  const expandedRouteStopIdsForCheckout = useMemo(() => {
-    const rsid = (selectedAgreement?.routeSheetId ?? "").trim();
-    if (
-      !rsid ||
-      selectedRouteSheetIds.length === 0 ||
-      !selectedRouteSheetIds.includes(rsid)
-    ) {
-      return [];
-    }
-    return unpaidPayableStopIdsKey.split("|").filter(Boolean);
-  }, [
-    selectedAgreement?.routeSheetId,
-    selectedRouteSheetIds,
-    unpaidPayableStopIdsKey,
-  ]);
-
-  const routeSheetTransportOptions = useMemo<VtSelectOption[]>(() => {
-    if (!agreementRouteSheet || unpaidPayableRouteStops.length === 0) return [];
-    const t = (agreementRouteSheet.titulo ?? "").trim() || "Hoja de ruta";
-    const n = unpaidPayableRouteStops.length;
-    return [
-      {
-        value: agreementRouteSheet.id,
-        label: `${t} · ${n} tramo(s) pendiente(s)`,
-      },
-    ];
-  }, [
-    agreementRouteSheet,
-    unpaidPayableRouteStops.length,
-    unpaidPayableStopIdsKey,
-  ]);
+    routePickAgreement && payableRoutePaths.length > 0;
 
   const payableMerchLines = useMemo(() => {
     if (!selectedAgreement || !agreementDeclaresMerchandise(selectedAgreement))
@@ -386,9 +358,9 @@ export function ChatPaymentModal({
     [selectedServicePayments],
   );
 
-  const routeSheetSelectionKey = useMemo(
-    () => [...selectedRouteSheetIds].sort().join("|"),
-    [selectedRouteSheetIds],
+  const routePathSelectionKey = useMemo(
+    () => [...selectedRoutePathIds].sort().join("|"),
+    [selectedRoutePathIds],
   );
 
   const merchSelectionKey = useMemo(
@@ -425,18 +397,20 @@ export function ChatPaymentModal({
 
   const selectedServicePaymentsRef = useRef(selectedServicePayments);
   const selectedServicePaymentsReadyRef = useRef(selectedServicePaymentsReady);
-  const expandedRouteStopIdsRef = useRef(expandedRouteStopIdsForCheckout);
+  const selectedRoutePathIdsRef = useRef(selectedRoutePathIds);
+  const agreementRoutePathsRef = useRef(agreementRoutePaths);
   const selectedMerchandiseLineIdsRef = useRef(selectedMerchandiseLineIds);
   const routeDeliveriesRef = useRef(routeDeliveries);
   const servicePaymentsPaidRef = useRef(servicePaymentsPaid);
   const fetchCheckoutBreakdownOnlyRef = useRef<() => Promise<void>>(
     async () => {},
   );
-  const routeSheetSelectionTouchedRef = useRef(false);
+  const routePathSelectionTouchedRef = useRef(false);
   selectedServicePaymentsRef.current = selectedServicePayments;
   servicePaymentsPaidRef.current = servicePaymentsPaid;
   selectedServicePaymentsReadyRef.current = selectedServicePaymentsReady;
-  expandedRouteStopIdsRef.current = expandedRouteStopIdsForCheckout;
+  selectedRoutePathIdsRef.current = selectedRoutePathIds;
+  agreementRoutePathsRef.current = agreementRoutePaths;
   selectedMerchandiseLineIdsRef.current = selectedMerchandiseLineIds;
   routeDeliveriesRef.current = routeDeliveries;
 
@@ -452,7 +426,7 @@ export function ChatPaymentModal({
     let anySelected = false;
     if (routeLegSelectionRequired) {
       anyBucket = true;
-      if (selectedRouteSheetIds.length > 0) anySelected = true;
+      if (selectedRoutePathIds.length > 0) anySelected = true;
     }
     if (merchCheckboxSectionVisible) {
       anyBucket = true;
@@ -466,7 +440,7 @@ export function ChatPaymentModal({
   }, [
     serviceOnlyAgreement,
     routeLegSelectionRequired,
-    selectedRouteSheetIds,
+    selectedRoutePathIds,
     merchCheckboxSectionVisible,
     selectedMerchandiseLineIds,
     hybridServiceBlocks,
@@ -673,15 +647,23 @@ export function ChatPaymentModal({
           payable.length > 0;
 
         let deliveries: RouteStopDeliveryStatusApi[] = [];
+        let paths: AgreementRoutePathApi[] = [];
         if (pickRouteLegs) {
           try {
             deliveries = await fetchAgreementRouteDeliveries(threadId, ag.id);
           } catch {
             deliveries = [];
           }
+          try {
+            const rp = await fetchAgreementRoutePaths(threadId, ag.id, rsid);
+            paths = rp.paths ?? [];
+          } catch {
+            paths = [];
+          }
         }
         routeDeliveriesRef.current = deliveries;
         setRouteDeliveries(deliveries);
+        setAgreementRoutePaths(paths);
         setCheckoutHydrated(true);
       } catch (e) {
         const msg =
@@ -693,6 +675,7 @@ export function ChatPaymentModal({
         setAllRecurrencesPaidVerified(false);
         routeDeliveriesRef.current = [];
         setRouteDeliveries([]);
+        setAgreementRoutePaths([]);
         setCheckoutHydrated(false);
         toast.error(msg);
       } finally {
@@ -731,31 +714,15 @@ export function ChatPaymentModal({
 
     try {
       const rsid = (ag.routeSheetId ?? "").trim();
-      const sheet = rsid
-        ? routeSheetsRef.current.find((r) => r.id === rsid)
-        : undefined;
-      const payable = (sheet?.paradas ?? []).filter((p) =>
-        routeStopIsPayable(p),
+      const paths = agreementRoutePathsRef.current;
+      const payablePaths = paths.filter(
+        (p) => p.payable && !p.paid && !p.partiallyPaid,
       );
-      const pickRouteLegs =
+      const routeLegReqLocal =
         !svcOnly &&
         agreementDeclaresMerchandise(ag) &&
         rsid.length > 1 &&
-        payable.length > 0;
-
-      const deliveries = routeDeliveriesRef.current;
-      const paid = new Set<string>();
-      for (const d of deliveries) {
-        if (!deliveryMarksStopPaid(d)) continue;
-        const sid = (d.routeStopId ?? "").trim();
-        if (sid) paid.add(sid);
-      }
-      const unpaidStops = payable.filter((p) => !paid.has((p.id ?? "").trim()));
-      const routeLegReqLocal =
-        agreementDeclaresMerchandise(ag) &&
-        rsid.length > 1 &&
-        payable.length > 0 &&
-        unpaidStops.length > 0;
+        payablePaths.length > 0;
 
       const payableMerchIds = new Set<string>();
       for (const raw of ag.merchandise ?? []) {
@@ -769,12 +736,14 @@ export function ChatPaymentModal({
       }
       const includeMerch = payableMerchIds.size > 0;
 
-      const stopsPick =
-        pickRouteLegs && unpaidStops.length > 0
-          ? expandedRouteStopIdsRef.current.filter((id) =>
-              unpaidStops.some((p) => (p.id ?? "").trim() === id.trim()),
-            )
-          : [];
+      const allowedPathIds = new Set(
+        payablePaths.map((p) => p.routePathId.trim()).filter(Boolean),
+      );
+      const pathsPick = routeLegReqLocal
+        ? selectedRoutePathIdsRef.current.filter((id) =>
+            allowedPathIds.has(id.trim()),
+          )
+        : [];
 
       const merchPick = includeMerch
         ? selectedMerchandiseLineIdsRef.current.filter((id) =>
@@ -787,8 +756,8 @@ export function ChatPaymentModal({
 
       if (!svcOnly) {
         if (includeMerch) merchArg = merchPick;
-        if (routeLegReqLocal) routeArg = stopsPick;
-        else if (includeMerch && payable.length > 0) routeArg = [];
+        if (routeLegReqLocal) routeArg = pathsPick;
+        else if (includeMerch && paths.length > 0) routeArg = [];
       }
 
       const bd = await fetchAgreementCheckoutBreakdown(threadId, ag.id, {
@@ -797,7 +766,7 @@ export function ChatPaymentModal({
           : selectedServicePaymentsRef.current.length > 0
             ? selectedServicePaymentsRef.current
             : undefined,
-        selectedRouteStopIds: routeArg,
+        selectedRoutePathIds: routeArg,
         selectedMerchandiseLineIds: merchArg,
       });
       setBreakdown(bd);
@@ -918,8 +887,9 @@ export function ChatPaymentModal({
     setAllRecurrencesPaidVerified(false);
     routeDeliveriesRef.current = [];
     setRouteDeliveries([]);
-    routeSheetSelectionTouchedRef.current = false;
-    setSelectedRouteSheetIds([]);
+    routePathSelectionTouchedRef.current = false;
+    setSelectedRoutePathIds([]);
+    setAgreementRoutePaths([]);
     setSelectedMerchandiseLineIds([]);
     setCheckoutHydrated(false);
   }, [open, threadId, agreementId]);
@@ -928,26 +898,26 @@ export function ChatPaymentModal({
     if (!open) return;
     if (serviceOnlyAgreement) return;
     if (!routeLegSelectionRequired) {
-      setSelectedRouteSheetIds((prev) => (prev.length === 0 ? prev : []));
+      setSelectedRoutePathIds((prev) => (prev.length === 0 ? prev : []));
       return;
     }
-    const rsid = (selectedAgreement?.routeSheetId ?? "").trim();
-    if (!rsid) return;
-    setSelectedRouteSheetIds((prev) => {
-      const allowed = new Set([rsid]);
+    setSelectedRoutePathIds((prev) => {
+      const allowed = new Set(payableRoutePaths.map((p) => p.routePathId.trim()));
       const filtered = prev.filter((id) => allowed.has(id.trim()));
-      if (routeSheetSelectionTouchedRef.current) {
+      if (routePathSelectionTouchedRef.current) {
         return sameStringArray(prev, filtered) ? prev : filtered;
       }
-      const next = filtered.length > 0 ? filtered : [rsid];
+      const next =
+        filtered.length > 0
+          ? filtered
+          : payableRoutePaths.map((p) => p.routePathId.trim());
       return sameStringArray(prev, next) ? prev : next;
     });
   }, [
     open,
     serviceOnlyAgreement,
     routeLegSelectionRequired,
-    unpaidPayableStopIdsKey,
-    selectedAgreement?.routeSheetId,
+    payableRoutePathIdsKey,
   ]);
 
   useEffect(() => {
@@ -1010,7 +980,7 @@ export function ChatPaymentModal({
     serviceOnlyAgreement,
     allRecurrencesPaidVerified,
     servicePaymentsSelectionKey,
-    routeSheetSelectionKey,
+    routePathSelectionKey,
     merchSelectionKey,
   ]);
 
@@ -1059,26 +1029,13 @@ export function ChatPaymentModal({
       agreementDeclaresService(ag) && !agreementDeclaresMerchandise(ag);
 
     const rsidExec = (ag.routeSheetId ?? "").trim();
-    const sheetExec = rsidExec
-      ? routeSheets.find((r) => r.id === rsidExec)
-      : undefined;
-    const payableExec = (sheetExec?.paradas ?? []).filter((p) =>
-      routeStopIsPayable(p),
-    );
-    const paidStopExec = new Set<string>();
-    for (const d of routeDeliveries) {
-      if (!deliveryMarksStopPaid(d)) continue;
-      const sid = (d.routeStopId ?? "").trim();
-      if (sid) paidStopExec.add(sid);
-    }
-    const unpaidStopsExec = payableExec.filter(
-      (p) => !paidStopExec.has((p.id ?? "").trim()),
+    const payablePathsExec = agreementRoutePaths.filter(
+      (p) => p.payable && !p.paid && !p.partiallyPaid,
     );
     const routeLegReqExec =
       agreementDeclaresMerchandise(ag) &&
       rsidExec.length > 1 &&
-      payableExec.length > 0 &&
-      unpaidStopsExec.length > 0;
+      payablePathsExec.length > 0;
 
     const payableMerchIdsExec = new Set<string>();
     for (const raw of ag.merchandise ?? []) {
@@ -1091,12 +1048,13 @@ export function ChatPaymentModal({
       payableMerchIdsExec.add(mid);
     }
 
-    const stopsPickExec = routeLegReqExec
-      ? expandedRouteStopIdsForCheckout
+    const allowedPathIdsExec = new Set(
+      payablePathsExec.map((p) => p.routePathId.trim()).filter(Boolean),
+    );
+    const pathsPickExec = routeLegReqExec
+      ? selectedRoutePathIds
           .map((x) => x.trim())
-          .filter((id) =>
-            unpaidStopsExec.some((p) => (p.id ?? "").trim() === id),
-          )
+          .filter((id) => allowedPathIdsExec.has(id))
       : [];
 
     const merchPickExec =
@@ -1110,8 +1068,8 @@ export function ChatPaymentModal({
     let merchExecuteArg: string[] | null | undefined = undefined;
     if (!svcOnlyExec) {
       if (payableMerchIdsExec.size > 0) merchExecuteArg = merchPickExec;
-      if (routeLegReqExec) routeExecuteArg = stopsPickExec;
-      else if (payableMerchIdsExec.size > 0 && payableExec.length > 0)
+      if (routeLegReqExec) routeExecuteArg = pathsPickExec;
+      else if (payableMerchIdsExec.size > 0 && agreementRoutePaths.length > 0)
         routeExecuteArg = [];
     }
 
@@ -1151,7 +1109,7 @@ export function ChatPaymentModal({
           : servicePicksForThisCharge.length > 0
             ? servicePicksForThisCharge
             : undefined,
-        selectedRouteStopIds: routeExecuteArg,
+        selectedRoutePathIds: routeExecuteArg,
         selectedMerchandiseLineIds: merchExecuteArg,
       });
 
@@ -1175,10 +1133,10 @@ export function ChatPaymentModal({
         await reloadCheckout();
         return;
       }
-      if (!r.accepted && r.errorCode === "route_stop_already_paid") {
+      if (!r.accepted && r.errorCode === "route_path_already_paid") {
         toast.error(
           r.stripeErrorMessage ??
-            "Ese tramo ya fue cobrado en esa moneda. Actualizamos el listado.",
+            "Esa ruta ya fue cobrada en esa moneda. Actualizamos el listado.",
         );
         await reloadCheckout();
         return;
@@ -1418,69 +1376,110 @@ export function ChatPaymentModal({
               {!serviceOnlyAgreement && routeLegSelectionRequired ? (
                 <section className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
                   <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
-                    Transporte (hoja de ruta)
+                    Transporte (rutas enlazadas)
                   </div>
                   <p className="vt-muted mt-1 text-[12px] leading-snug">
-                    Incluí la hoja de ruta en este cobro para sumar todos los
-                    tramos pendientes de transporte. Podés combinarlo con la
-                    mercancía seleccionada arriba; cada cambio actualiza el
-                    desglose.
+                    Cada ruta es un tramo enlazado; solo se puede cobrar la ruta
+                    completa. Marcá las rutas pendientes que quieras incluir en
+                    este cobro (podés combinarlo con mercancía).
                   </p>
                   {!agreementRouteSheet ? (
                     <p className="vt-muted mt-2 text-[13px]">
                       No encontramos la hoja de ruta en este chat todavía. Abrí
                       el chat para sincronizar rutas y volvé a intentar.
                     </p>
-                  ) : unpaidPayableRouteStops.length === 0 ? (
+                  ) : payableRoutePaths.length === 0 ? (
                     <p className="vt-muted mt-2 text-[13px]">
-                      No hay tramos de transporte pendientes de cobro (o ya
-                      están registrados como pagados).
+                      No hay rutas pendientes de cobro (o ya están pagadas o
+                      parcialmente pagadas).
                     </p>
                   ) : (
                     <>
-                      <div className="mt-2">
-                        <VtMultiSelect
-                          ariaLabel="Hoja de ruta a cobrar"
-                          placeholder="Sin transporte en este cobro"
-                          options={routeSheetTransportOptions}
-                          value={selectedRouteSheetIds}
-                          onChange={(next) => {
-                            routeSheetSelectionTouchedRef.current = true;
-                            setSelectedRouteSheetIds(next);
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
+                          onClick={() => {
+                            routePathSelectionTouchedRef.current = true;
+                            setSelectedRoutePathIds(
+                              payableRoutePaths.map((p) => p.routePathId),
+                            );
                             setAcceptedInforme(false);
                           }}
-                          disabled={busyInit || busyPay}
-                        />
+                        >
+                          Seleccionar todas
+                        </button>
+                        <button
+                          type="button"
+                          className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
+                          onClick={() => {
+                            routePathSelectionTouchedRef.current = true;
+                            setSelectedRoutePathIds([]);
+                            setAcceptedInforme(false);
+                          }}
+                        >
+                          Limpiar
+                        </button>
                       </div>
-                      <div className="mt-3 text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
-                        Tramos incluidos si marcás la hoja (pendientes)
-                      </div>
-                      <ul className="mt-1.5 space-y-1.5 text-[12px] leading-snug text-[var(--text)]">
-                        {unpaidPayableRouteStops.map((p) => {
-                          const id = (p.id ?? "").trim();
-                          if (!id) return null;
-                          const label =
-                            `${p.orden}. ${(p.origen ?? "").trim()} → ${(p.destino ?? "").trim()}`.trim();
-                          const price =
-                            (p.precioTransportista ?? "").trim() &&
-                            (p.monedaPago ?? "").trim()
-                              ? `${p.precioTransportista} ${p.monedaPago}`
-                              : (p.precioTransportista ?? "").trim();
+                      <div className="mt-2 space-y-2">
+                        {payableRoutePaths.map((path) => {
+                          const pid = path.routePathId.trim();
+                          const checked = selectedRoutePathIds.includes(pid);
+                          const amountHint = path.totalsByCurrency
+                            .map((t) => {
+                              const maj = minorToMajor(
+                                t.amountMinor,
+                                t.currencyLower,
+                              );
+                              return `${maj} ${t.currencyLower.toUpperCase()}`;
+                            })
+                            .join(" · ");
                           return (
-                            <li
-                              key={id}
-                              className="rounded-lg border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] px-2.5 py-2"
+                            <label
+                              key={pid}
+                              className="flex cursor-pointer items-start gap-2 rounded-xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] p-2.5 text-[13px] text-[var(--text)]"
                             >
-                              <span className="font-bold">{label}</span>
-                              {price ? (
-                                <span className="vt-muted mt-0.5 block text-[11px]">
-                                  Transporte: {price}
+                              <input
+                                type="checkbox"
+                                className="mt-0.5"
+                                checked={checked}
+                                disabled={busyInit || busyPay}
+                                onChange={(e) => {
+                                  routePathSelectionTouchedRef.current = true;
+                                  const on = e.target.checked;
+                                  setSelectedRoutePathIds((prev) => {
+                                    const set = new Set(prev);
+                                    if (on) set.add(pid);
+                                    else set.delete(pid);
+                                    return [...set];
+                                  });
+                                  setAcceptedInforme(false);
+                                }}
+                              />
+                              <span className="min-w-0">
+                                <span className="font-bold">{path.label}</span>
+                                <span className="vt-muted mt-0.5 block text-[12px]">
+                                  {path.stopIds.length} parada(s)
+                                  {amountHint ? ` · ${amountHint}` : ""}
                                 </span>
-                              ) : null}
-                            </li>
+                                <ul className="vt-muted mt-1 list-disc pl-4 text-[11px]">
+                                  {path.stops.map((s) => (
+                                    <li key={s.routeStopId}>
+                                      {s.orden}. {s.origen} → {s.destino}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </span>
+                            </label>
                           );
                         })}
-                      </ul>
+                      </div>
+                      {agreementRoutePaths.some((p) => p.partiallyPaid) ? (
+                        <p className="mt-2 text-[12px] text-amber-600 dark:text-amber-400">
+                          Hay rutas parcialmente pagadas: no se pueden volver a
+                          cobrar hasta regularizar el pago.
+                        </p>
+                      ) : null}
                     </>
                   )}
                 </section>
