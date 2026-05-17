@@ -70,6 +70,12 @@ import { fetchPublicOfferCard } from "../../utils/market/marketPersistence";
 import { buildEmergentMapLegs } from "../../utils/map/emergentRouteMapLegs";
 import { EmergentRouteFeedMap } from "../home/EmergentRouteFeedMap";
 import { PaymentGatewayConfigModal } from "./PaymentGatewayConfigModal";
+import {
+  isValidEmail,
+  resolveIsMe,
+  resolveProfileUserId,
+  shouldOpenStripeCardsModal,
+} from "./profileAccountLogic";
 import { TrustBar } from "../../app/widgets/TrustBar";
 import { ThemeToggle } from "../../app/widgets/ThemeToggle";
 
@@ -78,12 +84,6 @@ const UserTrustHistoryButton = lazy(async () => {
   const m = await import("../../app/widgets/UserTrustHistoryButton");
   return { default: m.UserTrustHistoryButton };
 });
-
-function isValidEmail(value: string): boolean {
-  const t = value.trim();
-  if (t.length < 5) return false;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
-}
 
 function revokeBlobUrlLocal(url: string | null | undefined) {
   if (!url?.startsWith("blob:")) return;
@@ -223,8 +223,8 @@ export function ProfilePage() {
   const offers = useMarketStore((s) => s.offers);
   const routeOfferPublic = useMarketStore((s) => s.routeOfferPublic);
 
-  const isMe = userId === "me" || userId === me.id;
-  const resolvedProfileUserId = isMe ? me.id : (userId ?? me.id);
+  const isMe = resolveIsMe(userId, me.id);
+  const resolvedProfileUserId = resolveProfileUserId(userId, me.id, isMe);
 
   const safeName = me.name ?? "";
   const safeEmail = me.email ?? "";
@@ -313,8 +313,7 @@ export function ProfilePage() {
   const [paymentConfigOpen, setPaymentConfigOpen] = useState(false);
 
   useEffect(() => {
-    if (!isMe) return;
-    if (searchParams.get("stripeCards") !== "1") return;
+    if (!shouldOpenStripeCardsModal(searchParams, isMe)) return;
     setPaymentConfigOpen(true);
     const next = new URLSearchParams(searchParams);
     next.delete("stripeCards");

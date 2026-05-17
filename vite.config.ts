@@ -5,6 +5,20 @@ import { defineConfig } from "vite";
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/testResources/setup.ts"],
+    globals: true,
+    css: false,
+    pool: "threads",
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    exclude: ["e2e/**", "node_modules/**"],
+    server: {
+      deps: {
+        inline: [/@csstools\//, /@asamuzakjp\//],
+      },
+    },
+  },
   server: {
     proxy: {
       "/api": {
