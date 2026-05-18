@@ -6,12 +6,12 @@ export default mergeConfig(
   defineConfig({
     test: {
       environment: "jsdom",
-      setupFiles: ["./src/test/setup.ts"],
+      setupFiles: ["./test/setup.ts"],
       globals: true,
       css: false,
       pool: "threads",
-      include: ["src/**/*.{test,spec}.{ts,tsx}"],
-      exclude: ["e2e/**", "node_modules/**"],
+      include: ["test/**/*.{test,spec}.{ts,tsx}"],
+      exclude: ["test/e2e/**", "node_modules/**"],
       server: {
         deps: {
           inline: [/@csstools\//, /@asamuzakjp\//],
