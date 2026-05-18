@@ -1,6 +1,6 @@
-import type { StoreCatalog, StoreProduct, StoreService } from '../../pages/chat/domain/storeCatalogTypes'
+import type { StoreCatalog, StoreProduct, StoreService } from "@features/market/model/storeCatalogTypes"
 import type { StoreBadge } from './marketStoreTypes'
-import { normalizeOwnerWebsiteUrl } from '../../utils/websiteUrl'
+import { normalizeOwnerWebsiteUrl } from "@/utils/websiteUrl"
 import { uid } from './marketStoreHelpers'
 import { isOwnerOfStore, normStoreName } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'

@@ -2,15 +2,15 @@ import {
   getRouteSheetFormErrors,
   hasRouteSheetFormErrors,
   normalizeRouteSheetParadas,
-} from '../../pages/chat/domain/routeSheetValidation'
+} from "@features/market/model/routeSheetValidation"
 import {
   type RouteSheet,
   type RouteStop,
   type RouteTramoFormInput,
   routeSheetEditAcksRecordFromSheets,
   summarizeRouteSheetMonedaPago,
-} from '../../pages/chat/domain/routeSheetTypes'
-import { agreementHasMerchandiseForRouteLink } from '../../pages/chat/domain/tradeAgreementValidation'
+} from "@features/market/model/routeSheetTypes"
+import { agreementHasMerchandiseForRouteLink } from "@features/market/model/tradeAgreementValidation"
 import type { Message, MarketState } from './marketStoreTypes'
 import { threadHasAcceptedAgreement } from './marketStoreTypes'
 import {
@@ -30,7 +30,7 @@ import {
   buildRouteSheetEditSystemMessage,
 } from './marketSliceHelpers'
 import { useAppStore } from './useAppStore'
-import { SELLER_TRUST_PENALTY_ON_EDIT } from '../../pages/chat/components/modals/TrustRiskEditConfirmModal'
+import { SELLER_TRUST_PENALTY_ON_EDIT } from "@features/chat/components/modals/TrustRiskEditConfirmModal"
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
 import {
   deleteThreadRouteSheet,
@@ -38,9 +38,9 @@ import {
   fetchThreadRouteTramoSubscriptions,
   patchThreadTradeAgreementRouteLink,
   putThreadRouteSheet,
-} from '../../utils/chat/chatApi'
-import { getSessionToken } from '../../utils/http/sessionToken'
-import { mapTradeAgreementApiToTradeAgreement } from '../../utils/chat/tradeAgreementApiMapper'
+} from "@/utils/chat/chatApi"
+import { getSessionToken } from "@shared/services/http/sessionToken"
+import { mapTradeAgreementApiToTradeAgreement } from "@/utils/chat/tradeAgreementApiMapper"
 
 /** Si las coordenadas O/D del formulario coinciden con la parada ya guardada, se mantienen km/polilínea del servidor. */
 function routeStopCoordsMatchNormalizedForm(

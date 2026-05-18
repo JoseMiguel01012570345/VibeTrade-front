@@ -1,5 +1,5 @@
-import type { Offer } from "../../app/store/marketStoreTypes";
-import type { StoreCatalog } from "../../pages/chat/domain/storeCatalogTypes";
+import type { Offer } from "@app/store/marketStoreTypes";
+import type { StoreCatalog } from "@features/market/model/storeCatalogTypes";
 import { TOOL_PLACEHOLDER_SRC } from "./toolPlaceholder";
 
 /** Oferta de ficha cuando el ítem está en `storeCatalogs` pero aún no en `market.offers` (p. ej. enlace desde vitrina). */

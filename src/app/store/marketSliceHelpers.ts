@@ -1,4 +1,4 @@
-import type { RouteSheet, RouteStop } from '../../pages/chat/domain/routeSheetTypes'
+import type { RouteSheet, RouteStop } from "@features/market/model/routeSheetTypes"
 import type {
   RouteOfferPublicState,
   RouteOfferTramoPublic,

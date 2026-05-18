@@ -1,6 +1,6 @@
-import { useMarketStore } from "../../app/store/useMarketStore";
+import { useMarketStore } from "@app/store/useMarketStore";
 import { fetchChatThreads } from "./chatApi";
-import { getSessionToken } from "../http/sessionToken";
+import { getSessionToken } from "@shared/services/http/sessionToken";
 import { rehydrateCthThreadInStoreForIncomingMessage } from "./rehydrateCthThreadInStoreForIncomingMessage";
 
 /**

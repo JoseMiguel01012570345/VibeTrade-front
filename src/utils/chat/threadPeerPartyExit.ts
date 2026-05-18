@@ -1,4 +1,4 @@
-import type { Thread } from "../../app/store/marketStoreTypes";
+import type { Thread } from "@app/store/marketStoreTypes";
 import type { ChatThreadDto } from "./chatApi";
 
 export type PeerPartyExit = {

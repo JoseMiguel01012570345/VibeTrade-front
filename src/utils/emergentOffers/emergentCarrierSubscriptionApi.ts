@@ -1,5 +1,5 @@
-import { apiFetch } from "../http/apiClient";
-import type { RouteTramoSubscriptionItemApi } from "../chat/chatApi";
+import { apiFetch } from "@shared/services/http/apiClient";
+import type { RouteTramoSubscriptionItemApi } from "@/utils/chat/chatApi";
 
 export type EmergentCarrierSubscriptionResponse = {
   canSubscribe: boolean;

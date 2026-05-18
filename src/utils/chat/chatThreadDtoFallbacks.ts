@@ -1,4 +1,4 @@
-import type { Offer, StoreBadge } from "../../app/store/marketStoreTypes";
+import type { Offer, StoreBadge } from "@app/store/marketStoreTypes";
 import type { ChatThreadDto } from "./chatApi";
 
 /** Oferta ficticia en hilos sociales (alineado al backend). */

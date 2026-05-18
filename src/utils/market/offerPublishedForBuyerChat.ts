@@ -1,5 +1,5 @@
-import type { Offer } from "../../app/store/marketStoreTypes";
-import type { StoreCatalog } from "../../pages/chat/domain/storeCatalogTypes";
+import type { Offer } from "@app/store/marketStoreTypes";
+import type { StoreCatalog } from "@features/market/model/storeCatalogTypes";
 
 const NOT_PUBLISHED_TOAST_ES =
   "Esta oferta no está publicada. No puedes iniciar un chat.";

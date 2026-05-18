@@ -1,8 +1,8 @@
-import { apiFetch } from "../http/apiClient";
+import { apiFetch } from "@shared/services/http/apiClient";
 import {
   apiErrorTextToUserMessage,
   defaultUnexpectedErrorMessage,
-} from "../http/apiErrorMessage";
+} from "@shared/services/http/apiErrorMessage";
 
 export type ToggleLikeResult = { liked: boolean; likeCount: number };
 

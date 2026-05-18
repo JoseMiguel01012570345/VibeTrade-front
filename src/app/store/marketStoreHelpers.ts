@@ -1,7 +1,7 @@
-import type { RouteSheet } from '../../pages/chat/domain/routeSheetTypes'
-import { normalizeThreadMessages } from '../../utils/chat/chatMerge'
-import { quoteAuthorForMessage } from '../../utils/chat/chatParticipantLabels'
-import { normalizeOfferComments } from '../../pages/offer/offerComments'
+import type { RouteSheet } from "@features/market/model/routeSheetTypes"
+import { normalizeThreadMessages } from "@/utils/chat/chatMerge"
+import { quoteAuthorForMessage } from "@/utils/chat/chatParticipantLabels"
+import { normalizeOfferComments } from "@features/market/pages/offerComments"
 import type { Message, Offer, ReplyQuote, Thread } from './marketStoreTypes'
 import { useAppStore } from './useAppStore'
 

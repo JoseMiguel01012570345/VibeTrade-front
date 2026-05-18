@@ -1,4 +1,4 @@
-import type { ReelComment } from '../../pages/reels/ReelCommentsPanel'
+import type { ReelComment } from "@features/reels/ReelCommentsPanel"
 import type { CatalogReel } from './reelsTypes'
 
 export type ReelsBootstrapPayload = {

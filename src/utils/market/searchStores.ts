@@ -1,10 +1,10 @@
 import type {
   EmergentRouteParadaSnapshot,
   StoreBadge,
-} from "../../app/store/marketStoreTypes";
+} from "@app/store/marketStoreTypes";
 import { parseOsrmRouteLatLngs } from "../map/emergentRouteMapLegs";
-import { apiFetch } from "../http/apiClient";
-import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage } from "../http/apiErrorMessage";
+import { apiFetch } from "@shared/services/http/apiClient";
+import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage } from "@shared/services/http/apiErrorMessage";
 
 export type CatalogSearchKind = "store" | "product" | "service" | "emergent";
 

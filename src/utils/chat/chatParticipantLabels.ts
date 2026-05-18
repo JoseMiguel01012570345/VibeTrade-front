@@ -1,5 +1,5 @@
 import type { ChatMessageDto } from "./chatApi";
-import type { Message, Thread } from "../../app/store/marketStoreTypes";
+import type { Message, Thread } from "@app/store/marketStoreTypes";
 import { VT_SOCIAL_PLACEHOLDER_OFFER_ID } from "./chatThreadDtoFallbacks";
 
 export function threadIsSocialLike(th: Thread): boolean {

@@ -1,5 +1,5 @@
-import { apiFetch } from '../http/apiClient'
-import { apiErrorTextToUserMessage } from '../http/apiErrorMessage'
+import { apiFetch } from "@shared/services/http/apiClient"
+import { apiErrorTextToUserMessage } from "@shared/services/http/apiErrorMessage"
 
 async function readSavedOfferIdsResponse(res: Response): Promise<string[]> {
   const text = await res.text()

@@ -1,4 +1,4 @@
-import type { Offer, StoreBadge } from '../../app/store/marketStoreTypes'
+import type { Offer, StoreBadge } from "@app/store/marketStoreTypes"
 import type { PublishedTransportServiceDto } from './publishedTransportServicesApi'
 
 /** Convierte la respuesta de GET `/api/v1/market/offers/{id}/card` al DTO de ficha de servicio. */
@@ -41,7 +41,7 @@ export function offerAndStoreToPublishedTransportServiceDto(
     incluye: str('incluye') || undefined,
     noIncluye: str('noIncluye') || undefined,
     entregables: str('entregables') || undefined,
-    propIntelectual: str('propIntelectual') || undefined,
+    propIntelectual: str("propIntelectual") || undefined,
     photoUrls,
   }
 }

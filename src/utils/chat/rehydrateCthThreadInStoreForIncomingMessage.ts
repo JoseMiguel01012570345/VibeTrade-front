@@ -1,11 +1,11 @@
-import type { RouteSheetPayload } from "../../pages/chat/domain/routeSheetTypes";
-import type { Offer, Thread } from "../../app/store/marketStoreTypes";
-import { useAppStore } from "../../app/store/useAppStore";
-import { useMarketStore } from "../../app/store/useMarketStore";
+import type { RouteSheetPayload } from "@features/market/model/routeSheetTypes";
+import type { Offer, Thread } from "@app/store/marketStoreTypes";
+import { useAppStore } from "@app/store/useAppStore";
+import { useMarketStore } from "@app/store/useMarketStore";
 import {
   buildPurchaseThreadSystemOnly,
   syncOwnQaIntoMessages,
-} from "../../app/store/marketStoreHelpers";
+} from "@app/store/marketStoreHelpers";
 import { mapTradeAgreementApiToTradeAgreement } from "./tradeAgreementApiMapper";
 import {
   mapChatMessageDtoToMessage,
@@ -22,7 +22,7 @@ import {
   fetchThreadRouteTramoSubscriptions,
   fetchThreadTradeAgreements,
 } from "./chatApi";
-import { getSessionToken } from "../http/sessionToken";
+import { getSessionToken } from "@shared/services/http/sessionToken";
 import { fetchPublicOfferCard } from "../market/marketPersistence";
 import { mergedRouteOfferPublicAfterChatThreadHydration } from "../market/routeOfferPublicFromEmergentCard";
 import { peerPartyExitFromDto } from "./threadPeerPartyExit";

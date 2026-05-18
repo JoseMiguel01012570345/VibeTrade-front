@@ -1,5 +1,5 @@
-import { useAppStore } from '../../app/store/useAppStore'
-import { useMarketStore } from '../../app/store/useMarketStore'
+import { useAppStore } from "@app/store/useAppStore"
+import { useMarketStore } from "@app/store/useMarketStore"
 import type { ChatMessageDto } from './chatApi'
 import { incomingDtoSenderDisplayLabel } from './chatParticipantLabels'
 
@@ -46,7 +46,7 @@ export function previewLineFromChatMessageDto(dto: ChatMessageDto): string {
 /** Nombre mostrable del remitente (tienda o `Comprador . …`) según el hilo hidratado en el store. */
 export function incomingChatAuthorLabel(dto: ChatMessageDto): string {
   const thread = useMarketStore.getState().threads[dto.threadId]
-  if (!thread) return 'Chat'
+  if (!thread) return "Chat"
   const { me, profileDisplayNames } = useAppStore.getState()
   return incomingDtoSenderDisplayLabel(
     dto,

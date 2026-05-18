@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { ScrollText } from "lucide-react";
-import { useAppStore } from "../store/useAppStore";
-import { EMPTY_TRUST_LEDGER_ENTRIES } from "../store/trustLedgerTypes";
-import { TrustHistoryModal } from "../../components/TrustHistoryModal";
-import { cn } from "../../lib/cn";
-import { getSessionToken } from "../../utils/http/sessionToken";
-import { fetchMeTrustHistory } from "../../utils/trust/trustLedgerApi";
+import { useAppStore } from "@app/store/useAppStore";
+import { EMPTY_TRUST_LEDGER_ENTRIES } from "@app/store/trustLedgerTypes";
+import { TrustHistoryModal } from "@shared/components/ui/TrustHistoryModal";
+import { cn } from "@shared/lib/cn";
+import { getSessionToken } from "@shared/services/http/sessionToken";
+import { fetchMeTrustHistory } from "@/utils/trust/trustLedgerApi";
 
 export function UserTrustHistoryButton() {
   const me = useAppStore((s) => s.me);

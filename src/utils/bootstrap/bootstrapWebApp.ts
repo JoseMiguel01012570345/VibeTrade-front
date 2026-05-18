@@ -1,9 +1,9 @@
 import toast from "react-hot-toast";
-import { useAppStore } from "../../app/store/useAppStore";
-import { useMarketStore } from "../../app/store/useMarketStore";
-import type { ReelComment } from "../../pages/reels/ReelCommentsPanel";
-import { apiFetch } from "../http/apiClient";
-import { getSessionToken } from "../http/sessionToken";
+import { useAppStore } from "@app/store/useAppStore";
+import { useMarketStore } from "@app/store/useMarketStore";
+import type { ReelComment } from "@features/reels/ReelCommentsPanel";
+import { apiFetch } from "@shared/services/http/apiClient";
+import { getSessionToken } from "@shared/services/http/sessionToken";
 import { setMarketHydrating } from "../market/marketPersistence";
 import { setReelsBootstrap } from "../reels/reelsBootstrapState";
 import type { BootstrapResponse } from "./bootstrapTypes";
@@ -11,11 +11,11 @@ import {
   RECOMMENDATION_API_TAKE,
   RECOMMENDATION_BULK_OFFER_COUNT,
   splitRecommendationBatchIntoHomeBulks,
-} from "../../pages/home/homeFeedMerge";
-import { getOrCreateGuestId } from "../auth/guestId";
+} from "@features/home/homeFeedMerge";
+import { getOrCreateGuestId } from "@features/auth/api/guestId";
 import { syncChatNotificationsFromServer } from "../notifications/notificationsSync";
-import { startChatRealtime } from "../chat/chatRealtime";
-import { postAckPendingDeliveryOnLogin } from "../chat/chatApi";
+import { startChatRealtime } from "@/utils/chat/chatRealtime";
+import { postAckPendingDeliveryOnLogin } from "@/utils/chat/chatApi";
 
 function normalizeReelsCovers(items: BootstrapResponse["reels"]["items"]) {
   return items.map((r) => ({

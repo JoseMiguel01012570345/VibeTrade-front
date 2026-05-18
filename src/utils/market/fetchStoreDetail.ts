@@ -1,7 +1,7 @@
-import type { StoreBadge } from '../../app/store/marketStoreTypes'
-import type { StoreCatalog } from '../../pages/chat/domain/storeCatalogTypes'
-import { apiFetch } from '../http/apiClient'
-import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage } from '../http/apiErrorMessage'
+import type { StoreBadge } from "@app/store/marketStoreTypes"
+import type { StoreCatalog } from "@features/market/model/storeCatalogTypes"
+import { apiFetch } from "@shared/services/http/apiClient"
+import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage } from "@shared/services/http/apiErrorMessage"
 
 /** Dueño persistido (perfil público) incluido en detalle de tienda para la vitrina. */
 export type StoreDetailOwner = {

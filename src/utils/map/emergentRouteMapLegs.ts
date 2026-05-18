@@ -2,8 +2,8 @@ import type {
   EmergentRouteParadaSnapshot,
   Offer,
   RouteOfferPublicState,
-} from "../../app/store/marketStoreTypes";
-import type { RouteStop } from "../../pages/chat/domain/routeSheetTypes";
+} from "@app/store/marketStoreTypes";
+import type { RouteStop } from "@features/market/model/routeSheetTypes";
 import { parseTransportistaPriceTramo } from "./routeLegMetrics";
 
 /** Normaliza `[[lat,lng],…]` desde API (hoja / snapshot emergente). */

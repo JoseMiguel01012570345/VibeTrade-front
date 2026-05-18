@@ -1,14 +1,14 @@
 import type {
   TradeAgreement,
   TradeAgreementDraft,
-} from "../../pages/chat/domain/tradeAgreementTypes";
+} from "@features/market/model/tradeAgreementTypes";
 import {
   normalizeExtraScope,
   normalizeMerchandiseLine,
-} from '../../pages/chat/domain/tradeAgreementTypes'
-import { hasValidationErrors, validateTradeAgreementDraft } from '../../pages/chat/domain/tradeAgreementValidation'
-import { fetchOfferQaFromServer, postOfferInquiry } from '../../utils/market/marketPersistence'
-import type { RouteSheetPayload } from '../../pages/chat/domain/routeSheetTypes'
+} from "@features/market/model/tradeAgreementTypes"
+import { hasValidationErrors, validateTradeAgreementDraft } from "@features/market/model/tradeAgreementValidation"
+import { fetchOfferQaFromServer, postOfferInquiry } from "@/utils/market/marketPersistence"
+import type { RouteSheetPayload } from "@features/market/model/routeSheetTypes"
 import {
   CHAT_CANNOT_MESSAGE_SELF,
   createOrGetChatThread,
@@ -24,18 +24,18 @@ import {
   postThreadTradeAgreementRespond,
   type ChatMessageDto,
   type ChatThreadDto,
-} from '../../utils/chat/chatApi'
-import { mapTradeAgreementApiToTradeAgreement } from '../../utils/chat/tradeAgreementApiMapper'
-import { disconnectFromChatThread } from '../../utils/chat/chatRealtime'
+} from "@/utils/chat/chatApi"
+import { mapTradeAgreementApiToTradeAgreement } from "@/utils/chat/tradeAgreementApiMapper"
+import { disconnectFromChatThread } from "@/utils/chat/chatRealtime"
 import {
   mapChatMessageDtoToMessage,
   mergePersistedChatMessages,
-} from '../../utils/chat/chatMerge'
+} from "@/utils/chat/chatMerge"
 import {
   mergeBuyerLabelFromThreadDto,
   mergeChatSenderLabelsIntoProfileStore,
-} from '../../utils/chat/chatSenderLabels'
-import { getSessionToken } from '../../utils/http/sessionToken'
+} from "@/utils/chat/chatSenderLabels"
+import { getSessionToken } from "@shared/services/http/sessionToken"
 import type { MarketState, Offer, Message, QAItem, Thread } from './marketStoreTypes'
 import {
   threadAcceptedAgreementsAllLiquidated,
@@ -51,21 +51,21 @@ import {
 } from './marketStoreHelpers'
 import { routeSheetHasConfirmedCarriers } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
-import { resolveBuyerUserId, resolveSellerUserId } from '../../utils/chat/chatParticipantLabels'
+import { resolveBuyerUserId, resolveSellerUserId } from "@/utils/chat/chatParticipantLabels"
 import {
   CHAT_PARTY_EXIT_TRUST_PER_MEMBER,
   SELLER_TRUST_PENALTY_ON_EDIT,
-} from '../../pages/chat/components/modals/TrustRiskEditConfirmModal'
+} from "@features/chat/components/modals/TrustRiskEditConfirmModal"
 import {
   counterpartyAlreadyRecordedPartyExitFromThread,
   peerPartyExitFromDto,
-} from '../../utils/chat/threadPeerPartyExit'
-import { isOfferPublishedForBuyerChat } from '../../utils/market/offerPublishedForBuyerChat'
+} from "@/utils/chat/threadPeerPartyExit"
+import { isOfferPublishedForBuyerChat } from "@/utils/market/offerPublishedForBuyerChat"
 import { useAppStore } from "./useAppStore";
 import {
   minimalOfferStoreFromChatThreadDto,
   VT_SOCIAL_PLACEHOLDER_OFFER_ID,
-} from "../../utils/chat/chatThreadDtoFallbacks";
+} from "@/utils/chat/chatThreadDtoFallbacks";
 
 function extraFieldsPayloadForApi(
   draft: TradeAgreementDraft,

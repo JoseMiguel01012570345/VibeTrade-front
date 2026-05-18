@@ -1,5 +1,5 @@
-import type { StoreBadge } from '../../app/store/marketStoreTypes'
-import type { StoreCatalog, StoreService } from '../../pages/chat/domain/storeCatalogTypes'
+import type { StoreBadge } from "@app/store/marketStoreTypes"
+import type { StoreCatalog, StoreService } from "@features/market/model/storeCatalogTypes"
 
 /** Misma heurística que el feed de ofertas “de transporte”. */
 export const TRANSPORT_FEED_TAG = /hoja de ruta|transporte|flete|logístic|fulfillment|cadena|para transport/i

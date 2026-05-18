@@ -1,4 +1,4 @@
-import { useAppStore } from '../../app/store/useAppStore'
+import { useAppStore } from "@app/store/useAppStore"
 import type {
   ChatMessageDto,
   ChatThreadDto,
@@ -9,7 +9,7 @@ import type {
 export function mergeBuyerLabelFromThreadDto(
   dto: Pick<
     ChatThreadDto,
-    'buyerUserId' | 'buyerDisplayName' | 'buyerAvatarUrl'
+    'buyerUserId' | 'buyerDisplayName' | "buyerAvatarUrl"
   >,
 ): void {
   const raw = dto.buyerDisplayName?.trim()

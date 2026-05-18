@@ -1,11 +1,11 @@
-import type { RouteSheet } from "../../pages/chat/domain/routeSheetTypes";
+import type { RouteSheet } from "@features/market/model/routeSheetTypes";
 import { parseOsrmRouteLatLngs } from "../map/emergentRouteMapLegs";
 import type {
   Offer,
   RouteOfferPublicState,
   RouteOfferTramoPublic,
   Thread,
-} from "../../app/store/marketStoreTypes";
+} from "@app/store/marketStoreTypes";
 
 /**
  * Construye el estado público de hoja de ruta a partir de la ficha API (`/offers/{id}/card`

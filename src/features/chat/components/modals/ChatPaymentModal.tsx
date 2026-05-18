@@ -1,0 +1,1 @@
+export { ChatPaymentModal } from "../ChatPayment";

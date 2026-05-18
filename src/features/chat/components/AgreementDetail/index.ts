@@ -1,0 +1,1 @@
+export { AgreementDetailView } from "./AgreementDetailView";

@@ -1,11 +1,11 @@
-import type { RouteSheetPayload } from "../../pages/chat/domain/routeSheetTypes";
-import { apiFetch } from "../http/apiClient";
+import type { RouteSheetPayload } from "@features/market/model/routeSheetTypes";
+import { apiFetch } from "@shared/services/http/apiClient";
 import {
   apiErrorTextToUserMessage,
   defaultUnexpectedErrorMessage,
-} from "../http/apiErrorMessage";
-import { VtHttpError } from "../http/VtHttpError";
-import { getSessionToken } from "../http/sessionToken";
+} from "@shared/services/http/apiErrorMessage";
+import { VtHttpError } from "@shared/services/http/VtHttpError";
+import { getSessionToken } from "@shared/services/http/sessionToken";
 
 /** Mensaje para toasts; no exponer JSON crudo ni `{ error, message }` completo. */
 function chatApiErrorMessage(body: string, httpStatus: number): string {

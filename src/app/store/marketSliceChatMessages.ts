@@ -6,19 +6,19 @@ import {
 } from "./marketStoreHelpers";
 import type { MarketSliceGet, MarketSliceSet } from "./marketSliceTypes";
 import type { MarketState } from "./marketStoreTypes";
-import { getSessionToken } from "../../utils/http/sessionToken";
-import type { ChatMessageDto } from "../../utils/chat/chatApi";
-import { postChatMessage, postChatTextMessage } from "../../utils/chat/chatApi";
+import { getSessionToken } from "@shared/services/http/sessionToken";
+import type { ChatMessageDto } from "@/utils/chat/chatApi";
+import { postChatMessage, postChatTextMessage } from "@/utils/chat/chatApi";
 import {
   mapChatMessageDtoToMessage,
   normalizeThreadMessages,
   preferHigherDeliveryStatus,
   upsertMessageMergeDelivery,
-} from "../../utils/chat/chatMerge";
-import { mediaApiUrl, uploadMediaBlob } from "../../utils/media/mediaClient";
+} from "@/utils/chat/chatMerge";
+import { mediaApiUrl, uploadMediaBlob } from "@/utils/media/mediaClient";
 import { useAppStore } from "./useAppStore";
-import { mergeChatSenderLabelsIntoProfileStore } from "../../utils/chat/chatSenderLabels";
-import { rehydrateCthThreadInStoreForIncomingMessage } from "../../utils/chat/rehydrateCthThreadInStoreForIncomingMessage";
+import { mergeChatSenderLabelsIntoProfileStore } from "@/utils/chat/chatSenderLabels";
+import { rehydrateCthThreadInStoreForIncomingMessage } from "@/utils/chat/rehydrateCthThreadInStoreForIncomingMessage";
 
 async function blobUrlToMediaApiUrl(
   blobUrl: string,

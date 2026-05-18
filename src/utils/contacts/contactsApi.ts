@@ -1,5 +1,5 @@
-import { apiFetch } from "../http/apiClient";
-import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage } from "../http/apiErrorMessage";
+import { apiFetch } from "@shared/services/http/apiClient";
+import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage } from "@shared/services/http/apiErrorMessage";
 
 export type UserContact = {
   userId: string;

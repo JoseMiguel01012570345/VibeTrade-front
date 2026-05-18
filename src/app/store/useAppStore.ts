@@ -4,13 +4,13 @@ import {
   COLOR_SCHEME_STORAGE_KEY,
   readStoredColorScheme,
   type ColorScheme,
-} from '../../utils/theme/colorScheme'
-import { getOpenChatThreadIdFromLocation } from '../../utils/chat/getOpenChatThreadIdFromLocation'
-import { getSessionToken } from '../../utils/http/sessionToken'
+} from "@/utils/theme/colorScheme"
+import { getOpenChatThreadIdFromLocation } from "@/utils/chat/getOpenChatThreadIdFromLocation"
+import { getSessionToken } from "@shared/services/http/sessionToken"
 import {
   postMeTrustAdjust,
   trustHistoryItemFromApi,
-} from '../../utils/trust/trustLedgerApi'
+} from "@/utils/trust/trustLedgerApi"
 import type { TrustHistoryEntry } from './trustLedgerTypes'
 
 export type { TrustHistoryEntry } from './trustLedgerTypes'

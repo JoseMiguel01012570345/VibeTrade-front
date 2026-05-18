@@ -4,11 +4,11 @@ import type {
   TradeAgreementExtraFieldDraft,
   TradeAgreementExtraFieldScope,
   TradeAgreementExtraValueKind,
-} from "../../pages/chat/domain/tradeAgreementTypes";
+} from "@features/market/model/tradeAgreementTypes";
 import {
   normalizeExtraScope,
   normalizeMerchandiseLine,
-} from "../../pages/chat/domain/tradeAgreementTypes";
+} from "@features/market/model/tradeAgreementTypes";
 import type {
   TradeAgreementApiDto,
   TradeAgreementExtraFieldApiDto,

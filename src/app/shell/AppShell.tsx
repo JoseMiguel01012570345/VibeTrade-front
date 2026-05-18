@@ -8,13 +8,13 @@ import {
   Search,
   User,
 } from "lucide-react";
-import { cn } from "../../lib/cn";
-import { useAppStore } from "../store/useAppStore";
+import { cn } from "@shared/lib/cn";
+import { useAppStore } from "@app/store/useAppStore";
 import { NotificationsBell } from "../widgets/NotificationsBell";
-import { ProtectedMediaImg } from "../../components/media/ProtectedMediaImg";
-import { AuthEntryModal } from "../../pages/onboarding/AuthEntryModal";
+import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
+import { AuthEntryModal } from "@features/auth/pages/AuthEntryModal";
 import { ThemeToggle } from "../widgets/ThemeToggle";
-import { syncChatNotificationsFromServer } from "../../utils/notifications/notificationsSync";
+import { syncChatNotificationsFromServer } from "@/utils/notifications/notificationsSync";
 
 const tabs = [
   { to: "/home", label: "Home", icon: Home },

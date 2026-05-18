@@ -1,5 +1,5 @@
-import type { Offer } from "../../app/store/marketStoreTypes";
-import type { StoreCatalog } from "../../pages/chat/domain/storeCatalogTypes";
+import type { Offer } from "@app/store/marketStoreTypes";
+import type { StoreCatalog } from "@features/market/model/storeCatalogTypes";
 import { isToolPlaceholderUrl } from "../market/toolPlaceholder";
 import { mediaApiUrl, uploadMediaBlob } from "../media/mediaClient";
 import { postChatMessage, postChatTextMessage } from "./chatApi";

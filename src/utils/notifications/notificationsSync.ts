@@ -1,6 +1,6 @@
-import { useAppStore, type NotificationItem } from '../../app/store/useAppStore'
-import { fetchChatNotifications, type ChatNotificationDto } from '../chat/chatApi'
-import { getSessionToken } from '../http/sessionToken'
+import { useAppStore, type NotificationItem } from "@app/store/useAppStore"
+import { fetchChatNotifications, type ChatNotificationDto } from "@/utils/chat/chatApi"
+import { getSessionToken } from "@shared/services/http/sessionToken"
 
 type OfferNotifKind = 'offer_comment' | 'offer_like' | 'qa_comment_like'
 

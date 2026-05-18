@@ -1,4 +1,4 @@
-import type { NotificationItem } from '../../app/store/useAppStore'
+import type { NotificationItem } from "@app/store/useAppStore"
 
 /** Ruta interna de la SPA para abrir desde una notificación del sistema. */
 export function notificationDeepLink(
@@ -79,7 +79,7 @@ export function notificationDeepLink(
   if (
     (n.kind === 'offer_comment' ||
       n.kind === 'offer_like' ||
-      n.kind === 'qa_comment_like') &&
+      n.kind === "qa_comment_like") &&
     n.offerId
   ) {
     return `/offer/${encodeURIComponent(n.offerId)}#offer-comments`

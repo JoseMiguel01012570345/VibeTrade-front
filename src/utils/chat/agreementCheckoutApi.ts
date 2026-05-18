@@ -1,4 +1,4 @@
-import { apiFetch } from "../http/apiClient";
+import { apiFetch } from "@shared/services/http/apiClient";
 
 export type AgreementCheckoutBasisLineApi = {
   category: string;

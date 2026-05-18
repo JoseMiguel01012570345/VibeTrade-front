@@ -3,10 +3,10 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { Bell, ChevronLeft, ChevronRight, ExternalLink, History, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useAppStore } from '../store/useAppStore'
-import type { NotificationItem } from '../store/useAppStore'
-import { cn } from '../../lib/cn'
-import { fetchChatNotifications, markChatNotificationsRead } from '../../utils/chat/chatApi'
+import { useAppStore } from "@app/store/useAppStore"
+import type { NotificationItem } from "@app/store/useAppStore"
+import { cn } from "@shared/lib/cn"
+import { fetchChatNotifications, markChatNotificationsRead } from "@/utils/chat/chatApi"
 import {
   DESKTOP_NOTIFICATIONS_PREF_STORAGE_KEY,
   getDesktopNotificationPermission,
@@ -14,14 +14,14 @@ import {
   isDesktopNotificationSupported,
   requestDesktopNotificationPermission,
   setDesktopNotificationsEnabledPreference,
-} from '../../utils/notifications/desktopNotifications'
-import { notificationDeepLink } from '../../utils/notifications/notificationRoutes'
-import { VtDateField } from '../../components/VtDateField'
-import { VtTimeField } from '../../components/VtTimeField'
+} from "@/utils/notifications/desktopNotifications"
+import { notificationDeepLink } from "@/utils/notifications/notificationRoutes"
+import { VtDateField } from "@shared/components/ui/VtDateField"
+import { VtTimeField } from "@shared/components/ui/VtTimeField"
 import {
   mapServerNotification,
   syncChatNotificationsFromServer,
-} from '../../utils/notifications/notificationsSync'
+} from "@/utils/notifications/notificationsSync"
 
 /** Chat primero salvo avisos explícitos de comentario en ficha → oferta + ancla a comentarios. */
 function notificationHref(n: {

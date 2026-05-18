@@ -1,4 +1,4 @@
-import type { Offer, RouteOfferPublicState } from "../../app/store/marketStoreTypes";
+import type { Offer, RouteOfferPublicState } from "@app/store/marketStoreTypes";
 
 function routeLegSummaryParts(
   offer: Offer,

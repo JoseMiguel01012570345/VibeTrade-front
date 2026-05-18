@@ -1,4 +1,4 @@
-import type { MarketState, StoreBadge } from "../../app/store/marketStoreTypes";
+import type { MarketState, StoreBadge } from "@app/store/marketStoreTypes";
 
 /** Forma del mercado en bootstrap / GET workspace (snapshot completo). */
 export type MarketSerializableSlice = Pick<

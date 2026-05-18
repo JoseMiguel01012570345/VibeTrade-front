@@ -1,6 +1,6 @@
-import type { Offer, StoreBadge } from '../../app/store/marketStoreTypes'
+import type { Offer, StoreBadge } from "@app/store/marketStoreTypes"
 import type { MarketSerializableSlice } from '../market/marketSerializable'
-import type { ReelsBootstrapPayload } from '../reels/reelsBootstrapState'
+import type { ReelsBootstrapPayload } from "../reels/reelsBootstrapState"
 
 export type RecommendationBatch = {
   /** Orden del ranking; puede repetir ids (el mapa `offers` solo tiene una entrada por id). */

@@ -1,9 +1,9 @@
 import type { StateCreator } from "zustand";
-import { getSessionToken } from "../../utils/http/sessionToken";
+import { getSessionToken } from "@shared/services/http/sessionToken";
 import {
   postStoreTrustAdjust,
   trustHistoryItemFromApi,
-} from "../../utils/trust/trustLedgerApi";
+} from "@/utils/trust/trustLedgerApi";
 import type { MarketState } from "./marketStoreTypes";
 import { useAppStore } from "./useAppStore";
 import { createChatMessagesSlice } from "./marketSliceChatMessages";

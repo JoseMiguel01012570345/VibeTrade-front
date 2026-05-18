@@ -1,12 +1,12 @@
-import { apiFetch } from "../http/apiClient";
+import { apiFetch } from "@shared/services/http/apiClient";
 import {
   apiErrorTextToUserMessage,
   defaultUnexpectedErrorMessage,
-} from "../http/apiErrorMessage";
-import type { Offer, StoreBadge } from "../../app/store/marketStoreTypes";
-import type { RecommendationBatch } from "../bootstrap/bootstrapTypes";
-import { useAppStore } from "../../app/store/useAppStore";
-import { getOrCreateGuestId } from "../auth/guestId";
+} from "@shared/services/http/apiErrorMessage";
+import type { Offer, StoreBadge } from "@app/store/marketStoreTypes";
+import type { RecommendationBatch } from "@/utils/bootstrap/bootstrapTypes";
+import { useAppStore } from "@app/store/useAppStore";
+import { getOrCreateGuestId } from "@features/auth/api/guestId";
 
 function isPlainRecord(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null && !Array.isArray(x);

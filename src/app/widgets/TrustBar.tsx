@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useAppStore } from '../store/useAppStore'
-import { cn } from '../../lib/cn'
+import { useAppStore } from "@app/store/useAppStore"
+import { cn } from "@shared/lib/cn"
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))

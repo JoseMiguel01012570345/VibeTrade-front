@@ -1,15 +1,15 @@
-import type { RouteSheet } from '../../pages/chat/domain/routeSheetTypes'
+import type { RouteSheet } from "@features/market/model/routeSheetTypes"
 import {
   applyViewerRouteTramoSubscriptions,
   mergeTramoSubscriptionsIntoRouteOffer,
-} from '../../pages/chat/domain/routeOfferSubscriptionMerge'
-import { routeOfferPublicBlockedForBuyerWithAgreement } from '../../pages/chat/domain/routeSheetOfferGuards'
+} from "@features/market/model/routeOfferSubscriptionMerge"
+import { routeOfferPublicBlockedForBuyerWithAgreement } from "@features/market/model/routeSheetOfferGuards"
 import type { Message } from './marketStoreTypes'
 import { threadIsActionLocked, uid } from './marketStoreHelpers'
 import { routeOfferPublicAfterSheetEdit } from './marketSliceHelpers'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
 import type { MarketState } from './marketStoreTypes'
-import { SELLER_TRUST_PENALTY_ON_EDIT } from '../../pages/chat/components/modals/TrustRiskEditConfirmModal'
+import { SELLER_TRUST_PENALTY_ON_EDIT } from "@features/chat/components/modals/TrustRiskEditConfirmModal"
 
 export function createRouteOfferPublicSlice(set: MarketSliceSet, get: MarketSliceGet): Pick<MarketState,
   | 'subscribeRouteOfferTramo'

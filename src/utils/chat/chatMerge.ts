@@ -2,9 +2,9 @@ import type {
   ChatDeliveryStatus,
   Message,
   ReplyQuote,
-} from "../../app/store/marketStoreTypes";
+} from "@app/store/marketStoreTypes";
 import type { ChatMessageDto, ChatMessageStatusApi } from "./chatApi";
-import { parsePaymentFeeReceiptPayload } from "../../pages/chat/domain/paymentFeeReceiptTypes";
+import { parsePaymentFeeReceiptPayload } from "@features/market/model/paymentFeeReceiptTypes";
 
 function mapApiStatus(s: ChatMessageStatusApi): ChatDeliveryStatus {
   return s;

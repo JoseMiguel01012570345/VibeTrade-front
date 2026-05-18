@@ -2,43 +2,43 @@ import type {
   StoreCatalog,
   StoreProduct,
   StoreService,
-} from "../../pages/chat/domain/storeCatalogTypes";
+} from "@features/market/model/storeCatalogTypes";
 import type {
   TradeAgreement,
   TradeAgreementDraft,
-} from "../../pages/chat/domain/tradeAgreementTypes";
+} from "@features/market/model/tradeAgreementTypes";
 import type {
   RouteSheet,
   RouteSheetCreatePayload,
   RouteSheetStatus,
-} from "../../pages/chat/domain/routeSheetTypes";
+} from "@features/market/model/routeSheetTypes";
 import type {
   ChatMessageDto,
   ChatThreadDto,
   RouteTramoSubscriptionItemApi,
-} from "../../utils/chat/chatApi";
-import type { PaymentFeeReceiptPayload } from "../../pages/chat/domain/paymentFeeReceiptTypes";
+} from "@/utils/chat/chatApi";
+import type { PaymentFeeReceiptPayload } from "@features/market/model/paymentFeeReceiptTypes";
 import type {
   OfferQaAuthorSnapshot,
   OfferQaCommentEnriched,
-} from "../domain/offerQaTypes";
+} from "@app/domain/offerQaTypes";
 
 export type {
   OfferQaAuthorSnapshot,
   OfferQaComment,
   OfferQaCommentEnriched,
-} from "../domain/offerQaTypes";
+} from "@app/domain/offerQaTypes";
 
 export type {
   TradeAgreement,
   TradeAgreementDraft,
-} from "../../pages/chat/domain/tradeAgreementTypes";
+} from "@features/market/model/tradeAgreementTypes";
 export type {
   RouteSheet,
   RouteSheetCreatePayload,
   RouteSheetStatus,
   RouteStop,
-} from "../../pages/chat/domain/routeSheetTypes";
+} from "@features/market/model/routeSheetTypes";
 
 /** Pin WGS84 (misma forma en workspace JSON y API). */
 export type StoreLocationPoint = {

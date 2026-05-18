@@ -1,6 +1,6 @@
 import { Moon, Sun } from 'lucide-react'
-import { cn } from '../../lib/cn'
-import { useAppStore } from '../store/useAppStore'
+import { cn } from "@shared/lib/cn"
+import { useAppStore } from "@app/store/useAppStore"
 
 export function ThemeToggle() {
   const colorScheme = useAppStore((s) => s.colorScheme)

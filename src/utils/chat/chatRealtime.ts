@@ -1,12 +1,12 @@
 import { createElement as h } from "react";
 import * as signalR from "@microsoft/signalr";
 import toast from "react-hot-toast";
-import { useAppStore } from "../../app/store/useAppStore";
-import { useMarketStore } from "../../app/store/useMarketStore";
+import { useAppStore } from "@app/store/useAppStore";
+import { useMarketStore } from "@app/store/useMarketStore";
 import { notifyDesktopIfUnfocused } from "../notifications/desktopNotifications";
 import { notificationDeepLink } from "../notifications/notificationRoutes";
 import { syncChatNotificationsFromServer } from "../notifications/notificationsSync";
-import { getSessionToken } from "../http/sessionToken";
+import { getSessionToken } from "@shared/services/http/sessionToken";
 import { postNotifyParticipantLeft } from "./chatApi";
 import {
   getOpenChatThreadIdFromLocation,
@@ -25,7 +25,7 @@ import {
 import {
   type RouteSheet,
   routeSheetEditAcksRecordFromSheets,
-} from "../../pages/chat/domain/routeSheetTypes";
+} from "@features/market/model/routeSheetTypes";
 import { mergeMissingChatListThreadsFromServer } from "./mergeMissingChatListThreadsFromServer";
 
 function handleIncomingPersistedChatMessage(dto: ChatMessageDto): void {

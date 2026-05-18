@@ -1,5 +1,5 @@
-import type { TrustHistoryEntry } from "../../app/store/trustLedgerTypes";
-import { apiFetch } from "../http/apiClient";
+import type { TrustHistoryEntry } from "@app/store/trustLedgerTypes";
+import { apiFetch } from "@shared/services/http/apiClient";
 
 export type TrustHistoryItemApi = {
   id: string;
