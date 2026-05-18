@@ -2,13 +2,6 @@ import { test, expect } from "../../Resources/auth-fixture";
 import { e2eSkipReason, isE2EReady } from "../../Resources/env";
 import { profile } from "../../Resources/selectors";
 
-/**
- * E2E de perfil / cuenta. Requiere stack completo:
- * - `npm run dev` (o PLAYWRIGHT_SKIP_WEBSERVER=1 si ya corre)
- * - API en :5110 con usuario de prueba
- * - PLAYWRIGHT_E2E=1
- * - PLAYWRIGHT_E2E_TOKEN con JWT/session válido
- */
 test.describe("profile /account E2E", () => {
   test.skip(!isE2EReady(), e2eSkipReason);
 

@@ -1,13 +1,14 @@
 import { test as base } from "@playwright/test";
-import { e2eToken, isE2EReady } from "./env";
+import { getE2ESession } from "./env";
 
 export const test = base.extend({
   page: async ({ page }, use) => {
-    if (isE2EReady()) {
+    const session = getE2ESession();
+    if (session?.sessionToken) {
       await page.addInitScript((token: string) => {
         sessionStorage.setItem("vt_session_active", "1");
         sessionStorage.setItem("vt_session_token", token);
-      }, e2eToken);
+      }, session.sessionToken);
     }
     await use(page);
   },

@@ -1,12 +1,11 @@
 import { test, expect } from "../../Resources/auth-fixture";
+import { resolveOfferId, resolveStoreId } from "../../Resources/e2e-discovery";
+import {
+  homeFeedLikeButton,
+  waitForHomeFeedReady,
+} from "../../Resources/e2e-page-helpers";
 import { e2eSkipReason, isE2EReady } from "../../Resources/env";
 
-/**
- * E2E del feed home. Requiere:
- * - PLAYWRIGHT_E2E=1, PLAYWRIGHT_E2E_TOKEN
- * - PLAYWRIGHT_E2E_OFFER_ID (oferta ajena para comentar/like)
- * - PLAYWRIGHT_E2E_STORE_ID (opcional, tienda en carrusel)
- */
 test.describe("home feed E2E", () => {
   test.skip(!isE2EReady(), e2eSkipReason);
 
@@ -23,18 +22,22 @@ test.describe("home feed E2E", () => {
 
   test("likes offer from home card", async ({ page }) => {
     await page.goto("/home");
-    const likeBtn = page
-      .locator('[data-home-offers-scroll], .vt-home-page')
-      .getByRole("button", { name: /me gusta/i })
-      .first();
+    await waitForHomeFeedReady(page);
+    const likeBtn = homeFeedLikeButton(page);
+    await likeBtn.scrollIntoViewIfNeeded();
     await expect(likeBtn).toBeVisible({ timeout: 15_000 });
+    const titleBefore = await likeBtn.getAttribute("title");
     await likeBtn.click();
-    await expect(likeBtn).toBeVisible();
+    await expect(likeBtn).toHaveAttribute(
+      "title",
+      titleBefore === "Me gusta" ? "Quitar me gusta" : "Me gusta",
+      { timeout: 10_000 },
+    );
   });
 
   test("comments, replies and likes on offer page", async ({ page }) => {
-    const offerId = process.env.PLAYWRIGHT_E2E_OFFER_ID?.trim();
-    test.skip(!offerId, "Set PLAYWRIGHT_E2E_OFFER_ID for comment E2E");
+    const offerId = await resolveOfferId(page);
+    test.skip(!offerId, "No offer found on home feed; seed data or set PLAYWRIGHT_E2E_OFFER_ID");
     await page.goto(`/offer/${offerId}#offer-comments`);
     await expect(page.getByText(/comentarios públicos/i)).toBeVisible({
       timeout: 15_000,
@@ -60,14 +63,8 @@ test.describe("home feed E2E", () => {
   });
 
   test("navigates to store from recommended row", async ({ page }) => {
-    const storeId = process.env.PLAYWRIGHT_E2E_STORE_ID?.trim();
-    test.skip(!storeId, "Set PLAYWRIGHT_E2E_STORE_ID for store feed E2E");
-    await page.goto("/home");
-    await page
-      .locator(`[role="link"]`)
-      .filter({ hasText: /.+/ })
-      .first()
-      .click({ timeout: 15_000 });
+    const storeId = await resolveStoreId(page);
+    test.skip(!storeId, "No store found on home feed; seed data or set PLAYWRIGHT_E2E_STORE_ID");
     await expect(page).toHaveURL(new RegExp(`/store/${storeId}`));
   });
 });
