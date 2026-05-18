@@ -16,6 +16,12 @@ export const mockCreateStripeSetupIntent = vi.fn();
 export const mockNavigate = vi.fn();
 export const mockPostSavedOffer = vi.fn();
 export const mockDeleteSavedOffer = vi.fn();
+export const mockToggleOfferLike = vi.fn();
+export const mockToggleOfferQaCommentLike = vi.fn();
+export const mockFetchRecommendationPage = vi.fn();
+export const mockSearchCatalog = vi.fn();
+export const mockFetchCatalogAutocomplete = vi.fn();
+export const mockRefreshOfferQaFromServer = vi.fn();
 
 vi.mock("react-hot-toast", () => ({
   default: {
@@ -63,6 +69,27 @@ vi.mock("@features/payments/api/stripeApi", () => ({
 vi.mock("@/utils/savedOffers/savedOffersApi", () => ({
   postSavedOffer: (...args: unknown[]) => mockPostSavedOffer(...args),
   deleteSavedOffer: (...args: unknown[]) => mockDeleteSavedOffer(...args),
+}));
+
+vi.mock("@/utils/market/offerEngagementApi", () => ({
+  toggleOfferLike: (...args: unknown[]) => mockToggleOfferLike(...args),
+  toggleOfferQaCommentLike: (...args: unknown[]) =>
+    mockToggleOfferQaCommentLike(...args),
+}));
+
+vi.mock("@/utils/recommendations/recommendationsApi", () => ({
+  fetchRecommendationPage: (...args: unknown[]) =>
+    mockFetchRecommendationPage(...args),
+}));
+
+vi.mock("@/utils/market/searchStores", () => ({
+  searchCatalog: (...args: unknown[]) => mockSearchCatalog(...args),
+  fetchCatalogAutocomplete: (...args: unknown[]) =>
+    mockFetchCatalogAutocomplete(...args),
+}));
+
+vi.mock("@/utils/market/fetchCatalogCategories", () => ({
+  fetchCatalogCategories: vi.fn().mockResolvedValue(["Electrónica", "Hogar"]),
 }));
 
 vi.mock("@app/widgets/UserTrustHistoryButton", () => ({

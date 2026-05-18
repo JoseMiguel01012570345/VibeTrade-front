@@ -84,6 +84,22 @@ export function shouldMergePendingBag(
   return rel === bulksInCurrentBag - 1;
 }
 
+/**
+ * Dispara GET de la siguiente bolsa API (prefetch anticipado o última tarjeta del lote).
+ * Con un solo bloque en el lote no se pide: no hay “última tarjeta” distinta del inicio.
+ */
+export function shouldFetchRecommendationBag(
+  cardIdx: number,
+  bagStartBulkIdx: number,
+  bulksInCurrentBag: number,
+): boolean {
+  if (bulksInCurrentBag < 2) return false;
+  return (
+    shouldPrefetchNextBag(cardIdx, bagStartBulkIdx, bulksInCurrentBag) ||
+    shouldMergePendingBag(cardIdx, bagStartBulkIdx, bulksInCurrentBag)
+  );
+}
+
 const emptyPaging = {
   next: null as string | null,
   prev: null as string | null,
@@ -174,29 +190,23 @@ export function homeBulkFromOfferSlice(
   });
 }
 
-/** Reparte `ids` en exactamente `bucketCount` trozos con tamaños lo más iguales posible. */
-function splitIdsIntoEvenBuckets(
-  ids: string[],
-  bucketCount: number,
-): string[][] {
-  const n = ids.length;
-  if (n === 0 || bucketCount < 1) return [];
-  const base = Math.floor(n / bucketCount);
-  const rem = n % bucketCount;
+/**
+ * Parte ids del API en slides del carrusel: hasta 20 ofertas por slide, máximo 7 slides.
+ * El último slide puede tener menos de 20 (sobrantes). Con &lt;20 ofertas totales: un solo slide.
+ */
+export function splitIdsIntoHomeCarouselChunks(ids: string[]): string[][] {
   const out: string[][] = [];
-  let idx = 0;
-  for (let i = 0; i < bucketCount; i++) {
-    const size = base + (i < rem ? 1 : 0);
-    out.push(ids.slice(idx, idx + size));
-    idx += size;
+  let i = 0;
+  while (i < ids.length && out.length < RECOMMENDATION_BULKS_PER_BAG) {
+    const take = Math.min(RECOMMENDATION_BULK_OFFER_COUNT, ids.length - i);
+    out.push(ids.slice(i, i + take));
+    i += take;
   }
   return out;
 }
 
 /**
- * Parte una respuesta del API en bulks alineados a la bolsa de 7 tarjetas:
- * - Con ≥7 ofertas: exactamente 7 bulks repartiendo ofertas de forma equitativa (140 → 7×20).
- * - Con menos de 7 ofertas: un bulk por oferta (un slide por oferta).
+ * Parte una respuesta del API en bulks del carrusel home (máx. 7 slides, ~20 ofertas/slide).
  */
 export function splitRecommendationBatchIntoHomeBulks(
   batch: RecommendationBatch,
@@ -206,12 +216,7 @@ export function splitRecommendationBatchIntoHomeBulks(
     .filter((id) => id.length > 0);
   if (ids.length === 0) return [];
 
-  let slices: string[][];
-  if (ids.length >= RECOMMENDATION_BULKS_PER_BAG) {
-    slices = splitIdsIntoEvenBuckets(ids, RECOMMENDATION_BULKS_PER_BAG);
-  } else {
-    slices = ids.map((id) => [id]);
-  }
+  const slices = splitIdsIntoHomeCarouselChunks(ids);
 
   return slices.map((slice) =>
     homeBulkFromOfferSlice(slice, batch.offers, batch.threshold),

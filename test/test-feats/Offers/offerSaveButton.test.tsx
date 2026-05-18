@@ -8,29 +8,10 @@ import {
   mockPostSavedOffer,
 } from "@test/Resources/Core/api-mocks";
 import { seedAppStore, seedMarketStore } from "@test/Resources/Core/store-builders";
-import { makeSessionUser } from "@test/Resources/Profile/profile-factories";
+import { seedOfferSaveButtonContext } from "@test/Resources/Market/offer-test-helpers";
 import { makeOffer } from "@test/Resources/Market/offer-factories";
 import { makeStoreBadge } from "@test/Resources/Market/store-factories";
-
-function seedOfferContext() {
-  const offerId = "offer-other-1";
-  seedAppStore({
-    me: makeSessionUser({ id: "user-test-1" }),
-    isSessionActive: true,
-    savedOffers: {},
-  });
-  seedMarketStore({
-    offers: { [offerId]: makeOffer({ id: offerId }) },
-    offerIds: [offerId],
-    stores: {
-      "store-other": makeStoreBadge({
-        id: "store-other",
-        ownerUserId: "other-owner",
-      }),
-    },
-  });
-  return offerId;
-}
+import { makeSessionUser } from "@test/Resources/Profile/profile-factories";
 
 describe("OfferSaveButton", () => {
   it("shows login toast when guest clicks save", async () => {
@@ -64,7 +45,7 @@ describe("OfferSaveButton", () => {
   });
 
   it("saves offer and updates store", async () => {
-    const offerId = seedOfferContext();
+    const offerId = seedOfferSaveButtonContext();
     mockPostSavedOffer.mockResolvedValue([offerId]);
     const user = userEvent.setup();
     render(<OfferSaveButton offerId={offerId} />);
@@ -74,7 +55,7 @@ describe("OfferSaveButton", () => {
   });
 
   it("removes saved offer on second click", async () => {
-    const offerId = seedOfferContext();
+    const offerId = seedOfferSaveButtonContext();
     seedAppStore({
       me: makeSessionUser(),
       isSessionActive: true,

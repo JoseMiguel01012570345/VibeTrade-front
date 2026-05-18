@@ -1,28 +1,19 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import toast from "react-hot-toast";
-import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
-import { ContactsModal } from "@features/profile/ContactsModal";
-
-function renderContacts(open = true, onClose = vi.fn()) {
-  return render(
-    <MemoryRouter>
-      <ContactsModal open={open} onClose={onClose} />
-    </MemoryRouter>,
-  );
-}
+import { describe, expect, it } from "vitest";
 import {
   mockAddContactByPhone,
   mockFetchContacts,
   mockRemoveContact,
 } from "@test/Resources/Core/api-mocks";
+import { renderContactsModal } from "@test/Resources/Profile/render-contacts-modal";
 import { makeContact } from "@test/Resources/Profile/profile-factories";
 
 describe("ContactsModal", () => {
   it("loads contacts when opened", async () => {
     mockFetchContacts.mockResolvedValue([]);
-    renderContacts();
+    renderContactsModal();
 
     await waitFor(() => {
       expect(mockFetchContacts).toHaveBeenCalled();
@@ -31,7 +22,7 @@ describe("ContactsModal", () => {
 
   it("shows empty state", async () => {
     mockFetchContacts.mockResolvedValue([]);
-    renderContacts();
+    renderContactsModal();
 
     expect(
       await screen.findByText(/todavía no tienes contactos guardados/i),
@@ -44,7 +35,7 @@ describe("ContactsModal", () => {
     mockAddContactByPhone.mockResolvedValue(added);
 
     const user = userEvent.setup();
-    renderContacts();
+    renderContactsModal();
 
     await screen.findByText(/todavía no tienes contactos/i);
     await user.type(
@@ -63,7 +54,7 @@ describe("ContactsModal", () => {
     const c = makeContact();
     mockFetchContacts.mockResolvedValue([c]);
     const user = userEvent.setup();
-    renderContacts();
+    renderContactsModal();
 
     await screen.findByText(c.displayName);
     await user.click(
@@ -78,7 +69,7 @@ describe("ContactsModal", () => {
 
   it("shows error when load fails", async () => {
     mockFetchContacts.mockRejectedValue(new Error("sin red"));
-    renderContacts();
+    renderContactsModal();
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("sin red");
@@ -89,7 +80,7 @@ describe("ContactsModal", () => {
     mockFetchContacts.mockResolvedValue([]);
     mockAddContactByPhone.mockRejectedValue(new Error("no registrado"));
     const user = userEvent.setup();
-    renderContacts();
+    renderContactsModal();
 
     await screen.findByText(/todavía no tienes contactos/i);
     await user.type(

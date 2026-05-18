@@ -1,13 +1,10 @@
+import "@test/Resources/Market/mocks/setup-store-location-map-modal";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import toast from "react-hot-toast";
 import { describe, expect, it, vi } from "vitest";
 import { StoreFormModal } from "@features/profile/stores/StoreFormModal";
 import { makeOwnerStoreFormValues } from "@test/Resources/Market/store-factories";
-
-vi.mock("@features/profile/stores/StoreLocationMapModal", () => ({
-  StoreLocationMapModal: () => null,
-}));
 
 describe("StoreFormModal", () => {
   it("blocks save when name is empty", async () => {

@@ -16,9 +16,13 @@ export type RenderProfileOptions = {
   isSessionActive?: boolean;
   profileSocialLinks?: Record<string, string | undefined>;
   profileDisplayNames?: Record<string, string>;
+  savedOffers?: Record<string, boolean>;
   marketStores?: ReturnType<
     typeof import("@app/store/useMarketStore").useMarketStore.getState
   >["stores"];
+  marketOffers?: ReturnType<
+    typeof import("@app/store/useMarketStore").useMarketStore.getState
+  >["offers"];
 };
 
 function applyStoreSeed(opts: RenderProfileOptions) {
@@ -28,8 +32,12 @@ function applyStoreSeed(opts: RenderProfileOptions) {
     isSessionActive: opts.isSessionActive ?? true,
     profileSocialLinks: opts.profileSocialLinks,
     profileDisplayNames: opts.profileDisplayNames,
+    savedOffers: opts.savedOffers,
   });
-  seedMarketStore({ stores: opts.marketStores ?? {} });
+  seedMarketStore({
+    stores: opts.marketStores ?? {},
+    offers: opts.marketOffers ?? {},
+  });
 }
 
 function renderAtPath(path: string, opts: RenderProfileOptions = {}) {

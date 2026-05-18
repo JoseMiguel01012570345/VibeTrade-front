@@ -13,8 +13,8 @@ import { fetchRecommendationPage } from "@/utils/recommendations/recommendations
 import {
   RECOMMENDATION_API_TAKE,
   appendHomeBulksFromApiBag,
+  shouldFetchRecommendationBag,
   shouldMergePendingBag,
-  shouldPrefetchNextBag,
 } from "./homeFeedMerge";
 import { Store as StoreLucideIcon, X } from "lucide-react";
 import { FeedLoadingSpinner } from "./FeedLoadingSpinner";
@@ -254,18 +254,11 @@ export function HomePage() {
       return;
     }
 
-    /** 5.ª tarjeta (anticipado) o 7.ª si aún no hay bolsa (p. ej. saltó la 5.ª). */
-    const shouldStartRecommendationFetch =
-      shouldPrefetchNextBag(
-        cardIdx,
-        recommendationBagStartBulkIdx,
-        bulksInCurrentBag,
-      ) ||
-      shouldMergePendingBag(
-        cardIdx,
-        recommendationBagStartBulkIdx,
-        bulksInCurrentBag,
-      );
+    const shouldStartRecommendationFetch = shouldFetchRecommendationBag(
+      cardIdx,
+      recommendationBagStartBulkIdx,
+      bulksInCurrentBag,
+    );
 
     if (
       shouldStartRecommendationFetch &&

@@ -20,6 +20,11 @@ import {
   mockPostSavedOffer,
   mockRemoveContact,
   mockUploadMedia,
+  mockToggleOfferLike,
+  mockToggleOfferQaCommentLike,
+  mockFetchRecommendationPage,
+  mockSearchCatalog,
+  mockFetchCatalogAutocomplete,
 } from "./vitest-mocks";
 
 export function resetApiMocks() {
@@ -40,4 +45,16 @@ export function resetApiMocks() {
   });
   mockPostSavedOffer.mockResolvedValue([]);
   mockDeleteSavedOffer.mockResolvedValue([]);
+  mockToggleOfferLike.mockResolvedValue({ likeCount: 1, liked: true });
+  mockToggleOfferQaCommentLike.mockResolvedValue({
+    likeCount: 1,
+    liked: true,
+  });
+  mockFetchRecommendationPage.mockResolvedValue({
+    offerIds: [],
+    offers: {},
+    threshold: 0.35,
+  });
+  mockSearchCatalog.mockResolvedValue({ items: [], hasMore: false });
+  mockFetchCatalogAutocomplete.mockResolvedValue([]);
 }

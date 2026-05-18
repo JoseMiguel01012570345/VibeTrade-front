@@ -1,29 +1,13 @@
+import "@test/Resources/Market/mocks/setup-profile-stores-section";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ProfileStoresSection } from "@features/profile/ProfileStoresSection";
 import { seedAppStore, seedMarketStore } from "@test/Resources/Core/store-builders";
 import { makeSessionUser } from "@test/Resources/Profile/profile-factories";
 import { makeStoreBadge } from "@test/Resources/Market/store-factories";
 import { makeStoreCatalog } from "@test/Resources/Market/catalog-factories";
 import { renderWithRouter } from "@test/Resources/Profile/render-profile-section";
-
-vi.mock("@/utils/market/fetchStoreDetail", () => ({
-  fetchStoreDetail: vi.fn().mockResolvedValue(null),
-}));
-
-vi.mock("@/utils/market/marketPersistence", () => ({
-  saveMarketStoreProfiles: vi.fn().mockResolvedValue(undefined),
-  setMarketHydrating: vi.fn(),
-}));
-
-vi.mock("@/utils/market/fetchCatalogCategories", () => ({
-  fetchCatalogCategories: vi.fn().mockResolvedValue(["Electrónica"]),
-}));
-
-vi.mock("@features/profile/stores/StoreLocationMapModal", () => ({
-  StoreLocationMapModal: () => null,
-}));
 
 describe("ProfileStoresSection CRUD", () => {
   beforeEach(() => {

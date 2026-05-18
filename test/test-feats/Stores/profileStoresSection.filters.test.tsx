@@ -1,24 +1,12 @@
+import "@test/Resources/Market/mocks/setup-profile-stores-section";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ProfileStoresSection } from "@features/profile/ProfileStoresSection";
 import { renderWithRouter } from "@test/Resources/Profile/render-profile-section";
 import { seedAppStore, seedMarketStore } from "@test/Resources/Core/store-builders";
 import { makeSessionUser } from "@test/Resources/Profile/profile-factories";
 import { makeStoreBadge } from "@test/Resources/Market/store-factories";
-
-vi.mock("@/utils/market/fetchStoreDetail", () => ({
-  fetchStoreDetail: vi.fn().mockResolvedValue(null),
-}));
-
-vi.mock("@/utils/market/marketPersistence", () => ({
-  saveMarketStoreProfiles: vi.fn(),
-  setMarketHydrating: vi.fn(),
-}));
-
-vi.mock("@/utils/market/fetchCatalogCategories", () => ({
-  fetchCatalogCategories: vi.fn().mockResolvedValue([]),
-}));
 
 describe("ProfileStoresSection filters", () => {
   beforeEach(() => {

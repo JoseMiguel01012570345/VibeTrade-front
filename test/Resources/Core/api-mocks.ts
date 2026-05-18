@@ -14,4 +14,9 @@ export {
   mockNavigate,
   mockPostSavedOffer,
   mockDeleteSavedOffer,
+  mockToggleOfferLike,
+  mockToggleOfferQaCommentLike,
+  mockFetchRecommendationPage,
+  mockSearchCatalog,
+  mockFetchCatalogAutocomplete,
 } from "./vitest-mocks";
