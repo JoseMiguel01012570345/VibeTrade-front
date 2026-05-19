@@ -41,6 +41,7 @@ export function resetMarketStore() {
     stores: {},
     offers: {},
     offerIds: [],
+    threads: {},
     routeOfferPublic: {},
     storeCatalogs: {},
     recommendationHomeBulks: [],

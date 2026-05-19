@@ -1,4 +1,9 @@
 import type { RouteSheetPayload } from "@features/market/model/routeSheetTypes";
+import type {
+  ChatUnifiedMessagePayloadDto,
+  PostChatMessageBody,
+} from "@/utils/chat/chatMessagePayloadContract";
+import { buildPostTextBody } from "@/utils/chat/chatMessagePayloadContract";
 import { apiFetch } from "@shared/services/http/apiClient";
 import {
   apiErrorTextToUserMessage,
@@ -97,30 +102,8 @@ export type TradeAgreementApiDto = {
   hasSucceededPayments?: boolean | null;
 };
 
-export type ChatMessagePayloadDto = Record<string, unknown> & {
-  type?: string;
-  text?: string;
-  agreementId?: string;
-  title?: string;
-  status?: string;
-  offerQaId?: string;
-  replyQuotes?: Array<{
-    messageId: string;
-    author: string;
-    preview: string;
-    atUtc: string;
-  }>;
-  replyToIds?: string[];
-  url?: string;
-  seconds?: number;
-  images?: { url: string }[];
-  caption?: string;
-  embeddedAudio?: { url: string; seconds: number };
-  name?: string;
-  size?: string;
-  kind?: string;
-  documents?: { name: string; size: string; kind: string; url?: string }[];
-};
+/** Payload unificado del mensaje (respuesta API); alineado a ChatUnifiedMessagePayload del backend. */
+export type ChatMessagePayloadDto = ChatUnifiedMessagePayloadDto;
 
 export type ChatMessageDto = {
   id: string;
@@ -766,7 +749,7 @@ export async function deleteThreadTradeAgreement(
 
 export async function postChatMessage(
   threadId: string,
-  body: Record<string, unknown>,
+  body: PostChatMessageBody,
 ): Promise<ChatMessageDto> {
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(threadId)}/messages`,
@@ -787,9 +770,10 @@ export async function postChatTextMessage(
   text: string,
   options?: { replyToIds?: string[] },
 ): Promise<ChatMessageDto> {
-  const payload: Record<string, unknown> = { type: "text", text };
-  if (options?.replyToIds?.length) payload.replyToIds = options.replyToIds;
-  return postChatMessage(threadId, payload);
+  return postChatMessage(
+    threadId,
+    buildPostTextBody(text, { replyToIds: options?.replyToIds }),
+  );
 }
 
 export async function fetchChatThreads(): Promise<ChatThreadSummaryDto[]> {

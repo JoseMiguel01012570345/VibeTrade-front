@@ -9,7 +9,7 @@ test.describe("profile saved offers E2E", () => {
     const offerId = await resolveOfferId(page);
     test.skip(!offerId, "No offer found on home feed; seed data or set PLAYWRIGHT_E2E_OFFER_ID");
 
-    await page.goto(`/offer/${offerId}`);
+    await page.goto(`/offer/${offerId}`, { waitUntil: "domcontentloaded" });
     const saveBtn = page.getByRole("button", {
       name: /guardar oferta|quitar de guardados/i,
     });
@@ -22,7 +22,7 @@ test.describe("profile saved offers E2E", () => {
       });
     }
 
-    await page.goto("/profile/me/saved");
+    await page.goto("/profile/me/saved", { waitUntil: "domcontentloaded" });
     await expect(page.getByText(/ofertas guardadas/i)).toBeVisible({
       timeout: 15_000,
     });

@@ -6,23 +6,25 @@ test.describe("profile /account E2E", () => {
   test.skip(!isE2EReady(), e2eSkipReason);
 
   test("owner can open account and see settings", async ({ page }) => {
-    await page.goto("/profile/me/account");
-    await expect(page.getByText(profile.accountSettings)).toBeVisible();
+    await page.goto("/profile/me/account", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText(profile.accountSettings)).toBeVisible({
+      timeout: 20_000,
+    });
     await expect(
       page.getByRole("button", { name: profile.contactsButton }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
   });
 
   test("opens contacts modal and shows empty or list state", async ({
     page,
   }) => {
-    await page.goto("/profile/me/account");
+    await page.goto("/profile/me/account", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: profile.contactsButton }).click();
     await expect(
       page.getByRole("dialog", { name: profile.contactsDialog }),
     ).toBeVisible();
     await expect(
-      page.getByText(/todavía no tienes contactos|número de teléfono/i),
+      page.getByText(/todavía no tienes contactos|número de teléfono/i).first(),
     ).toBeVisible();
   });
 

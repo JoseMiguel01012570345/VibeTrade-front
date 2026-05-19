@@ -10,6 +10,12 @@ import { getSessionToken } from "@shared/services/http/sessionToken";
 import type { ChatMessageDto } from "@/utils/chat/chatApi";
 import { postChatMessage, postChatTextMessage } from "@/utils/chat/chatApi";
 import {
+  buildPostDocumentsBundleBody,
+  buildPostImageBody,
+  buildPostSingleDocumentBody,
+  buildPostVoiceBody,
+} from "@/utils/chat/chatMessagePayloadContract";
+import {
   mapChatMessageDtoToMessage,
   normalizeThreadMessages,
   preferHigherDeliveryStatus,
@@ -326,14 +332,14 @@ export function createChatMessagesSlice(
         void (async () => {
           try {
             const url = await blobUrlToUploadedVoice(payload.url);
-            const body: Record<string, unknown> = {
-              type: "audio",
-              url,
-              seconds: Math.max(1, Math.round(payload.seconds)),
-            };
-            if (options?.replyToIds?.length)
-              body.replyToIds = options.replyToIds;
-            const dto = await postChatMessage(threadId, body);
+            const dto = await postChatMessage(
+              threadId,
+              buildPostVoiceBody(
+                url,
+                payload.seconds,
+                options?.replyToIds,
+              ),
+            );
             mergeChatSenderLabelsIntoProfileStore([dto]);
             const meId = useAppStore.getState().me.id;
             const m = mapChatMessageDtoToMessage(dto, meId);
@@ -394,18 +400,21 @@ export function createChatMessagesSlice(
               payload.name,
               "application/octet-stream",
             );
-            const body: Record<string, unknown> = {
-              type: "doc",
-              name: payload.name,
-              size: payload.size,
-              kind: payload.kind,
-              url,
-            };
-            const cap = options?.caption?.trim();
-            if (cap) body.caption = cap;
-            if (options?.replyToIds?.length)
-              body.replyToIds = options.replyToIds;
-            const dto = await postChatMessage(threadId, body);
+            const dto = await postChatMessage(
+              threadId,
+              buildPostSingleDocumentBody(
+                {
+                  name: payload.name,
+                  size: payload.size,
+                  kind: payload.kind,
+                  url,
+                },
+                {
+                  caption: options?.caption,
+                  replyToIds: options?.replyToIds,
+                },
+              ),
+            );
             mergeChatSenderLabelsIntoProfileStore([dto]);
             const meId = useAppStore.getState().me.id;
             const m = mapChatMessageDtoToMessage(dto, meId);
@@ -475,15 +484,10 @@ export function createChatMessagesSlice(
               );
               uploaded.push({ url: u });
             }
-            const body: Record<string, unknown> = {
-              type: "image",
-              images: uploaded,
-            };
-            const cap = options?.caption?.trim();
-            if (cap) body.caption = cap;
+            let embeddedAudio: { url: string; seconds: number } | undefined;
             if (options?.embeddedAudio) {
               const au = await blobUrlToUploadedVoice(options.embeddedAudio.url);
-              body.embeddedAudio = {
+              embeddedAudio = {
                 url: au,
                 seconds: Math.max(
                   1,
@@ -491,9 +495,14 @@ export function createChatMessagesSlice(
                 ),
               };
             }
-            if (options?.replyToIds?.length)
-              body.replyToIds = options.replyToIds;
-            const dto = await postChatMessage(threadId, body);
+            const dto = await postChatMessage(
+              threadId,
+              buildPostImageBody(uploaded, {
+                caption: options?.caption,
+                embeddedAudio,
+                replyToIds: options?.replyToIds,
+              }),
+            );
             mergeChatSenderLabelsIntoProfileStore([dto]);
             const meId = useAppStore.getState().me.id;
             const m = mapChatMessageDtoToMessage(dto, meId);
@@ -579,22 +588,22 @@ export function createChatMessagesSlice(
                 url: u,
               });
             }
-            const body: Record<string, unknown> = {
-              type: "docs",
-              documents,
-            };
-            const cap = options?.caption?.trim();
-            if (cap) body.caption = cap;
+            let embeddedAudio: { url: string; seconds: number } | undefined;
             if (payload.embeddedAudio) {
               const au = await blobUrlToUploadedVoice(payload.embeddedAudio.url);
-              body.embeddedAudio = {
+              embeddedAudio = {
                 url: au,
                 seconds: Math.max(1, Math.round(payload.embeddedAudio.seconds)),
               };
             }
-            if (options?.replyToIds?.length)
-              body.replyToIds = options.replyToIds;
-            const dto = await postChatMessage(threadId, body);
+            const dto = await postChatMessage(
+              threadId,
+              buildPostDocumentsBundleBody(documents, {
+                caption: options?.caption,
+                embeddedAudio,
+                replyToIds: options?.replyToIds,
+              }),
+            );
             mergeChatSenderLabelsIntoProfileStore([dto]);
             const meId = useAppStore.getState().me.id;
             const m = mapChatMessageDtoToMessage(dto, meId);

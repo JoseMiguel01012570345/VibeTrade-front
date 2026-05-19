@@ -4,6 +4,7 @@ import type {
   ReplyQuote,
 } from "@app/store/marketStoreTypes";
 import type { ChatMessageDto, ChatMessageStatusApi } from "./chatApi";
+import type { ChatUnifiedMessagePayloadDto } from "./chatMessagePayloadContract";
 import { parsePaymentFeeReceiptPayload } from "@features/market/model/paymentFeeReceiptTypes";
 
 function mapApiStatus(s: ChatMessageStatusApi): ChatDeliveryStatus {
@@ -94,18 +95,26 @@ export function upsertMessageMergeDelivery(
 }
 
 function mapReplyQuotes(
-  p: ChatMessageDto["payload"],
+  p: ChatUnifiedMessagePayloadDto,
 ): ReplyQuote[] | undefined {
-  const rq = p.replyQuotes;
-  if (!rq?.length) return undefined;
-  const out = rq
-    .filter((x) => x.messageId && x.author && x.preview)
-    .map((x) => ({
-      id: x.messageId,
-      author: x.author,
-      preview: x.preview,
-    }));
-  return out.length ? out : undefined;
+  const rt = p.repliesTo;
+  if (rt?.length) {
+    const out = rt
+      .filter((x) => x.messageId && x.author && x.preview)
+      .map((x) => ({
+        id: x.messageId,
+        author: x.author,
+        preview: x.preview,
+      }));
+    if (out.length) return out;
+  }
+  return undefined;
+}
+
+function docKind(
+  k: string | undefined,
+): "pdf" | "doc" | "other" {
+  return k === "pdf" || k === "doc" || k === "other" ? k : "other";
 }
 
 export function mapChatMessageDtoToMessage(
@@ -140,39 +149,55 @@ export function mapChatMessageDtoToMessage(
     ...senderMeta,
   };
 
-  const type = p.type;
-
-  if (type === "text" && typeof p.text === "string") {
+  if (p.paymentFeeReceipt) {
+    const receipt = parsePaymentFeeReceiptPayload(
+      p.paymentFeeReceipt as Record<string, unknown>,
+    );
     return {
       ...common,
-      from,
+      from: "system",
+      type: "payment_fee_receipt",
+      receipt,
+    };
+  }
+
+  if (p.agreement?.agreementId) {
+    return {
+      ...common,
+      from: p.issuedByVibeTradePlatform ? ("other" as const) : (from as "me" | "other"),
+      type: "agreement",
+      agreementId: p.agreement.agreementId,
+      title: p.agreement.title ?? "",
+    };
+  }
+
+  if (p.certificate?.title) {
+    const body = (p.certificate.body ?? "").trim();
+    const txt = body ? `${p.certificate.title}: ${body}` : p.certificate.title;
+    return {
+      ...common,
+      from: "system",
       type: "text",
-      text: p.text,
-      ...(typeof p.offerQaId === "string" && p.offerQaId.length > 0
-        ? { offerQaId: p.offerQaId }
-        : {}),
+      text: txt,
     };
   }
 
-  if (type === "audio") {
+  if (p.systemText?.trim()) {
     return {
       ...common,
-      from: from as "me" | "other",
-      type: "audio",
-      url: typeof p.url === "string" ? p.url : "",
-      seconds:
-        typeof p.seconds === "number"
-          ? Math.max(1, Math.round(p.seconds))
-          : 1,
+      from: p.issuedByVibeTradePlatform ? "system" : from,
+      type: "text",
+      text: p.systemText.trim(),
     };
   }
 
-  if (type === "image") {
-    const images = Array.isArray(p.images)
-      ? p.images.map((x) => ({
-          url: typeof x?.url === "string" ? x.url : "",
-        }))
-      : [];
+  const images = Array.isArray(p.images)
+    ? p.images
+        .filter((x) => typeof x?.url === "string" && x.url.length > 0)
+        .map((x) => ({ url: x.url }))
+    : [];
+
+  if (images.length > 0) {
     return {
       ...common,
       from: from as "me" | "other",
@@ -194,42 +219,30 @@ export function mapChatMessageDtoToMessage(
     };
   }
 
-  if (type === "doc") {
-    const kind =
-      p.kind === "pdf" || p.kind === "doc" || p.kind === "other"
-        ? p.kind
-        : "other";
+  const rawDocs = Array.isArray(p.documents) ? p.documents : [];
+  if (rawDocs.length === 1) {
+    const d = rawDocs[0]!;
     return {
       ...common,
       from: from as "me" | "other",
       type: "doc",
-      name: typeof p.name === "string" ? p.name : "",
-      size: typeof p.size === "string" ? p.size : "",
-      kind,
-      ...(typeof p.url === "string" && p.url.length > 0 ? { url: p.url } : {}),
+      name: d.name ?? "",
+      size: d.size ?? "",
+      kind: docKind(d.kind),
+      ...(d.url ? { url: d.url } : {}),
       ...(typeof p.caption === "string" && p.caption.trim()
         ? { caption: p.caption.trim() }
         : {}),
     };
   }
 
-  if (type === "docs") {
-    const documents = Array.isArray(p.documents)
-      ? p.documents.map((d) => {
-          const kind: "pdf" | "doc" | "other" =
-            d?.kind === "pdf" || d?.kind === "doc" || d?.kind === "other"
-              ? d.kind
-              : "other";
-          return {
-            name: typeof d?.name === "string" ? d.name : "",
-            size: typeof d?.size === "string" ? d.size : "",
-            kind,
-            ...(typeof d?.url === "string" && d.url.length > 0
-              ? { url: d.url }
-              : {}),
-          };
-        })
-      : [];
+  if (rawDocs.length > 1) {
+    const documents = rawDocs.map((d) => ({
+      name: d.name ?? "",
+      size: d.size ?? "",
+      kind: docKind(d.kind),
+      ...(d.url ? { url: d.url } : {}),
+    }));
     return {
       ...common,
       from: from as "me" | "other",
@@ -251,45 +264,36 @@ export function mapChatMessageDtoToMessage(
     };
   }
 
-  if (type === "agreement") {
-    const agreementId =
-      typeof p.agreementId === "string" ? p.agreementId : "";
-    const title = typeof p.title === "string" ? p.title : "";
+  if (typeof p.voiceUrl === "string" && p.voiceUrl.trim()) {
     return {
       ...common,
       from: from as "me" | "other",
-      type: "agreement",
-      agreementId,
-      title,
+      type: "audio",
+      url: p.voiceUrl.trim(),
+      seconds:
+        typeof p.voiceSeconds === "number"
+          ? Math.max(1, Math.round(p.voiceSeconds))
+          : 1,
     };
   }
 
-  if (type === "system_text" && typeof p.text === "string") {
+  if (typeof p.text === "string" && p.text.length > 0) {
     return {
       ...common,
-      from: "system",
+      from,
       type: "text",
       text: p.text,
+      ...(typeof p.offerQaId === "string" && p.offerQaId.length > 0
+        ? { offerQaId: p.offerQaId }
+        : {}),
     };
-  }
-
-  if (type === "payment_fee_receipt") {
-    const receipt = parsePaymentFeeReceiptPayload(p as Record<string, unknown>);
-    if (receipt) {
-      return {
-        ...common,
-        from: "system",
-        type: "payment_fee_receipt",
-        receipt,
-      };
-    }
   }
 
   return {
     id: dto.id,
     from,
     type: "text",
-    text: typeof p.text === "string" ? p.text : "",
+    text: "",
     at,
     read,
     chatStatus,

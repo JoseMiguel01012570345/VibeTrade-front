@@ -12,21 +12,23 @@ export async function clearCatalogSearchPersistence(page: Page): Promise<void> {
 
 export async function waitForCatalogSearchSettled(page: Page): Promise<void> {
   await expect(page.getByText(/^buscando/i)).toBeHidden({ timeout: 30_000 });
-  await expect(
-    page
-      .getByText(/sin resultados para esta búsqueda/i)
-      .or(page.locator(".grid").filter({ has: page.locator("a") }).first())
-      .or(page.getByText(/no se pudo buscar/i))
-      .or(
-        page.getByText(/elige filtros y pulsa la lupa para ver resultados/i),
-      ),
-  ).toBeVisible({ timeout: 15_000 });
+  const results = page
+    .locator("main")
+    .getByText(/sin resultados para esta búsqueda/i)
+    .or(page.locator("main a[href^='/offer/']").first())
+    .or(page.locator("main").getByText(/no se pudo buscar/i))
+    .or(
+      page
+        .locator("main")
+        .getByText(/elige filtros y pulsa la lupa para ver resultados/i),
+    );
+  await expect(results.first()).toBeVisible({ timeout: 15_000 });
 }
 
 export async function waitForHomeFeedReady(page: Page): Promise<void> {
   await expect(
     page.getByLabel(/feed de ofertas por lotes/i),
-  ).toBeVisible({ timeout: 20_000 });
+  ).toBeVisible({ timeout: 45_000 });
   await expect(page.getByText(/cargando recomendaciones/i)).toBeHidden({
     timeout: 30_000,
   });

@@ -2,7 +2,8 @@ import type { Offer } from "@app/store/marketStoreTypes";
 import type { StoreCatalog } from "@features/market/model/storeCatalogTypes";
 import { isToolPlaceholderUrl } from "../market/toolPlaceholder";
 import { mediaApiUrl, uploadMediaBlob } from "../media/mediaClient";
-import { postChatMessage, postChatTextMessage } from "./chatApi";
+import { postChatMessage } from "./chatApi";
+import { buildPostImageBody, buildPostTextBody } from "./chatMessagePayloadContract";
 
 function catalogIdForOffer(offer: Offer): string {
   return (offer.emergentBaseOfferId?.trim() || offer.id).trim();
@@ -104,7 +105,7 @@ export async function sendPurchaseInterestIntro(
   const caption = buildIntroCaption(offer, kind, hasRealPhotos);
 
   if (publicUrls.length === 0) {
-    await postChatTextMessage(threadId, caption);
+    await postChatMessage(threadId, buildPostTextBody(caption));
     return;
   }
 
@@ -115,13 +116,9 @@ export async function sendPurchaseInterestIntro(
   }
 
   if (uploaded.length === 0) {
-    await postChatTextMessage(threadId, caption);
+    await postChatMessage(threadId, buildPostTextBody(caption));
     return;
   }
 
-  await postChatMessage(threadId, {
-    type: "image",
-    images: uploaded,
-    caption,
-  });
+  await postChatMessage(threadId, buildPostImageBody(uploaded, { caption }));
 }

@@ -1,6 +1,7 @@
 import { test as base } from "@playwright/test";
 import { getE2ESession } from "./env";
 
+/** Comprador: sesión en session.json (global-setup). */
 export const test = base.extend({
   page: async ({ page }, use) => {
     const session = getE2ESession();

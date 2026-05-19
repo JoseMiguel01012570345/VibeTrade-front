@@ -96,7 +96,7 @@ const paymentExecuteInFlightByThread = new Set<string>();
 const deferredPaymentFeeReceiptsByThread = new Map<string, ChatMessageDto[]>();
 
 function isPaymentFeeReceiptDto(dto: ChatMessageDto): boolean {
-  return (dto.payload?.type ?? "") === "payment_fee_receipt";
+  return !!dto.payload?.paymentFeeReceipt;
 }
 
 /** Llamar justo antes del primer await del flujo de cobro (mismo `threadId`). */
