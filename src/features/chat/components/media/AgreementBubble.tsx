@@ -45,7 +45,7 @@ export function AgreementBubble({
         isDeleted &&
           "opacity-85 [border-color:color-mix(in_oklab,var(--muted)_40%,var(--border))] bg-[color-mix(in_oklab,var(--muted)_10%,var(--surface))]",
       )}
-      data-chat-interactive
+      data-chat-agreement
     >
       <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
         <FileText size={18} aria-hidden />
@@ -106,6 +106,7 @@ export function AgreementBubble({
               type="button"
               className="vt-btn vt-btn-sm"
               onClick={onOpenRouteSheet}
+              data-chat-interactive
             >
               Ver hoja de ruta
             </button>
@@ -117,6 +118,7 @@ export function AgreementBubble({
               rel="noreferrer"
               className="vt-btn vt-btn-sm"
               onClick={(e) => e.stopPropagation()}
+              data-chat-interactive
             >
               Enlace externo
             </a>
@@ -133,6 +135,7 @@ export function AgreementBubble({
               type="button"
               className="vt-btn vt-btn-primary vt-btn-sm"
               onClick={onAccept}
+              data-chat-interactive
             >
               Comprar
             </button>
@@ -140,6 +143,7 @@ export function AgreementBubble({
               type="button"
               className="vt-btn vt-btn-sm"
               onClick={onReject}
+              data-chat-interactive
             >
               Rechazar
             </button>

@@ -290,7 +290,7 @@ export async function buyerRespondToAgreement(
   action: "accept" | "reject",
 ): Promise<void> {
   const bubble = page
-    .locator("[data-chat-interactive]")
+    .locator("[data-chat-agreement]")
     .filter({ hasText: title })
     .last();
   await expect(bubble).toBeVisible({ timeout: 20_000 });

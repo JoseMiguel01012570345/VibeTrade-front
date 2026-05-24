@@ -6,7 +6,7 @@ export async function waitForAgreementBubble(
   title: string,
 ): Promise<void> {
   await expect(
-    page.locator("[data-chat-interactive]").filter({ hasText: title }).last(),
+    page.locator("[data-chat-agreement]").filter({ hasText: title }).last(),
   ).toBeVisible({ timeout: 35_000 });
 }
 

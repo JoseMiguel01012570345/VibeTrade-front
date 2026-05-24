@@ -323,7 +323,7 @@ export function ChatMessageList({
               : "grid-cols-[36px_minmax(0,1fr)]",
         );
         const rowOnClick = (e: MouseEvent) => {
-          if (chatActionsLocked || system || m.type === "agreement") return;
+          if (chatActionsLocked || system) return;
           toggleSelectRow(e, m.id);
         };
         return (
