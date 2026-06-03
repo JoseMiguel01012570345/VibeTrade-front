@@ -15,7 +15,7 @@ import {
   openSellerPage,
   sellerEmitMerchandiseAgreement,
 } from "../../Resources/agreement-ui-helpers";
-import { reloadChatThread } from "../../Resources/chat-helpers";
+import { waitForAgreementBubble } from "../../Resources/chat-helpers";
 
 /** Paridad E2E con tradeAgreementPdfDownload.test.ts */
 test.describe("tradeAgreementPdfDownload E2E", () => {
@@ -42,10 +42,7 @@ test.describe("tradeAgreementPdfDownload E2E", () => {
       title,
       productNamePart: "Producto E2E",
     });
-    await reloadChatThread(buyerPage);
-    await expect(
-      buyerPage.locator("[data-chat-interactive]").filter({ hasText: title }),
-    ).toBeVisible({ timeout: 25_000 });
+    await waitForAgreementBubble(buyerPage, title);
     await buyerRespondToAgreement(buyerPage, title, "accept");
     await openAgreementDetailInRail(buyerPage, title);
     const downloadBtn = buyerPage.getByRole("button", {

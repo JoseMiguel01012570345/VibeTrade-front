@@ -12,9 +12,13 @@ import {
   openChatThread,
   openOfferAndComprar,
   sendChatMessageViaUI,
+  waitForAgreementBubble,
   waitForChatReady,
 } from "../../Resources/chat-helpers";
-import { sellerEmitMerchandiseAgreement } from "../../Resources/agreement-ui-helpers";
+import {
+  buyerRespondToAgreement,
+  sellerEmitMerchandiseAgreement,
+} from "../../Resources/agreement-ui-helpers";
 
 /** E2E tests for real-time notifications. */
 test.describe("notifications realtime E2E", () => {
@@ -111,29 +115,19 @@ test.describe("notifications realtime E2E", () => {
       });
       
       // Wait for agreement to appear in buyer's chat
-      await expect(buyerPage.locator("[data-chat-agreement]").filter({ hasText: agreementTitle }))
-        .toBeVisible({ timeout: 35_000 });
-      
-      // Buyer goes to home page to receive notifications
+      await waitForAgreementBubble(buyerPage, agreementTitle);
+
+      // Buyer leaves chat so acceptance can push a notification while elsewhere
       await buyerPage.goto("/", { waitUntil: "domcontentloaded", timeout: 45_000 });
-      
-      // Seller accepts the agreement (should be "Aceptar" not "Comprar")
-      const agreementBubble = sellerPage.locator("[data-chat-agreement]").filter({ hasText: agreementTitle });
-      await expect(agreementBubble).toBeVisible({ timeout: 20_000 });
-      
-      // Look for accept button (various possible labels)
-      const acceptButton = agreementBubble.getByRole("button").filter({ hasText: /aceptar|comprar|confirmar/i });
-      await expect(acceptButton).toBeVisible({ timeout: 10_000 });
-      await acceptButton.click();
-      
-      // Confirm acceptance if dialog appears
-      const confirmButton = sellerPage.getByRole("button", { name: /sí, aceptar|confirmar/i });
-      if (await confirmButton.isVisible().catch(() => false)) {
-        await confirmButton.click();
-      }
-      
-      // Wait for notification to arrive to buyer
-      await buyerPage.waitForTimeout(5000);
+
+      await buyerPage.goto(`/chat/${threadId}`, {
+        waitUntil: "domcontentloaded",
+        timeout: 45_000,
+      });
+      await waitForChatReady(buyerPage);
+      await buyerRespondToAgreement(buyerPage, agreementTitle, "accept");
+
+      await buyerPage.goto("/", { waitUntil: "domcontentloaded", timeout: 45_000 });
       
       // Open notifications panel
       const notificationBell = buyerPage.getByRole("button", { name: /abrir notificaciones/i });

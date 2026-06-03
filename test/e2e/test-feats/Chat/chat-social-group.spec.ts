@@ -9,6 +9,8 @@ import {
   hasDistinctSellerSession,
 } from "../../Resources/chat-env";
 import {
+  chatParticipantProfileLinks,
+  openChatPeoplePanel,
   openChatThread,
   openOfferAndComprar,
   sendChatMessageViaUI,
@@ -298,37 +300,9 @@ test.describe("chat social group E2E", () => {
       await waitForChatReady(sellerPage);
       await waitForChatReady(buyerPage);
 
-      // Open the participants/people panel (right rail panel)
-      const panelToggle = buyerPage.getByRole("button", {
-        name: /acciones del chat|panel|participantes/i,
-      }).first();
-      if (await panelToggle.isVisible().catch(() => false)) {
-        await panelToggle.click();
-        await buyerPage.waitForTimeout(1000);
-      }
-
-      // Look for the participants panel
-      const participantsPanel = buyerPage
-        .locator("[data-chat-participants], [data-right-rail], .chat-participants")
-        .first();
-
-      // If panel not immediately visible, try clicking on "Panel" button
-      if (!(await participantsPanel.isVisible().catch(() => false))) {
-        const panelButton = buyerPage
-          .getByRole("button")
-          .filter({ hasText: /panel/i })
-          .first();
-        if (await panelButton.isVisible().catch(() => false)) {
-          await panelButton.click();
-          await buyerPage.waitForTimeout(1000);
-        }
-      }
-
-      // Verify participant count (should be at least 2 - buyer and seller)
-      const participantLinks = buyerPage
-        .locator('a[href^="/profile"], a[href^="/user"]')
-        .filter({ has: buyerPage.locator("text=/confianza|trust/i") });
-
+      await openChatPeoplePanel(buyerPage);
+      const participantLinks = chatParticipantProfileLinks(buyerPage);
+      await expect(participantLinks.first()).toBeVisible({ timeout: 15_000 });
       const participantCount = await participantLinks.count();
       expect(participantCount).toBeGreaterThanOrEqual(2);
 
@@ -373,27 +347,11 @@ test.describe("chat social group E2E", () => {
       await waitForChatReady(sellerPage);
       await waitForChatReady(buyerPage);
 
-      // Try to open participants panel
-      const panelButton = buyerPage
-        .getByRole("button")
-        .filter({ hasText: /panel|participantes/i })
-        .first();
-      if (await panelButton.isVisible().catch(() => false)) {
-        await panelButton.click();
-        await buyerPage.waitForTimeout(1000);
-      }
-
-      // Look for participant cards with profile links
-      const participantCards = buyerPage
-        .locator("a")
-        .filter({ has: buyerPage.locator("text=/confianza/i") })
-        .filter({ has: buyerPage.locator("text=/comprador|vendedor|transportista/i") });
-
-      // Count participants
+      await openChatPeoplePanel(buyerPage);
+      const participantCards = chatParticipantProfileLinks(buyerPage);
       const count = await participantCards.count();
       expect(count).toBeGreaterThanOrEqual(1);
 
-      // Click on first participant to access their profile
       const firstParticipant = participantCards.first();
       await expect(firstParticipant).toBeVisible({ timeout: 10_000 });
 

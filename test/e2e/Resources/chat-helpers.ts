@@ -73,6 +73,18 @@ export async function openChatThread(page: Page, threadId: string): Promise<void
   });
 }
 
+export async function openChatPeoplePanel(page: Page): Promise<void> {
+  const peopleTab = page.getByRole("button", { name: /integrantes/i });
+  await expect(peopleTab).toBeVisible({ timeout: 15_000 });
+  await peopleTab.click();
+}
+
+export function chatParticipantProfileLinks(page: Page) {
+  return page.locator(
+    "a[href^='/profile/'], a[href*='/store/'][href*='vitrina']",
+  );
+}
+
 export async function sendChatMessageViaUI(page: Page, text: string): Promise<void> {
   const input = page.getByPlaceholder(/escribe un mensaje|escribe una respuesta/i);
   await expect(input).toBeVisible({ timeout: 15_000 });
