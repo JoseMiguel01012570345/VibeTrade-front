@@ -1,3 +1,4 @@
+import type { QAItem } from "@app/store/marketStoreTypes";
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
 import { OfferCommentsSection } from "@features/market/pages/OfferCommentsSection";
@@ -14,7 +15,7 @@ export function renderOfferCommentsSection(
   const parentComment = makeOfferComment(commentOverrides);
   const offer = makeOffer({
     id: "offer-cmt",
-    qa: [parentComment],
+    qa: [parentComment as unknown as QAItem],
   });
   const store = makeStoreBadge({ ownerUserId: "seller-1" });
   const me = makeSessionUser({ id: "buyer-1", name: "Comprador" });

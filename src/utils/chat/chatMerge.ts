@@ -153,12 +153,14 @@ export function mapChatMessageDtoToMessage(
     const receipt = parsePaymentFeeReceiptPayload(
       p.paymentFeeReceipt as Record<string, unknown>,
     );
-    return {
-      ...common,
-      from: "system",
-      type: "payment_fee_receipt",
-      receipt,
-    };
+    if (receipt) {
+      return {
+        ...common,
+        from: "system",
+        type: "payment_fee_receipt",
+        receipt,
+      };
+    }
   }
 
   if (p.agreement?.agreementId) {

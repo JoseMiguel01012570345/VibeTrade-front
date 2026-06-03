@@ -163,14 +163,15 @@ test.describe("chat link preview E2E", () => {
       timeout: 10_000,
     });
 
-    // Verify preview card appears (with or without image)
-    // After loading state disappears, check if a link card appears
-    const previewCard = buyerPage
-      .locator('a[target="_blank"]')
-      .filter({ hasText: /httpbin\.org/i })
-      .first();
-    // The preview may or may not appear depending on the API response
-    // So we'll just verify the loading state disappears
+    // Optional preview card (depends on external API response)
+    await expect(
+      buyerPage
+        .locator('a[target="_blank"]')
+        .filter({ hasText: /httpbin\.org/i })
+        .first(),
+    )
+      .toBeVisible({ timeout: 15_000 })
+      .catch(() => undefined);
     await expect(buyerPage.getByText(/vista previa/i)).not.toBeVisible({
       timeout: 15_000,
     });

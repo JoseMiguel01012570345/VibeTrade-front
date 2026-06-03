@@ -1,4 +1,4 @@
-import type { Browser, Locator, Page } from "@playwright/test";
+import type { Browser, BrowserContext, Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import {
   openChatThread,
@@ -9,8 +9,11 @@ import {
 
 export const SELLER_TRUST_PENALTY_PTS = 3;
 
-export async function injectE2ESession(page: Page, token: string): Promise<void> {
-  await page.addInitScript((t: string) => {
+export async function injectE2ESession(
+  target: Page | BrowserContext,
+  token: string,
+): Promise<void> {
+  await target.addInitScript((t: string) => {
     sessionStorage.setItem("vt_session_active", "1");
     sessionStorage.setItem("vt_session_token", t);
   }, token);

@@ -1,4 +1,4 @@
-import { test, expect } from "../../Resources/auth-fixture";
+import { test } from "../../Resources/auth-fixture";
 import {
   clearCatalogSearchPersistence,
   waitForCatalogSearchSettled,

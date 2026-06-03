@@ -75,6 +75,7 @@ export function makeTradeAgreement(
 ): TradeAgreement {
   return {
     id: "agr_1",
+    threadId: "cth_1",
     title: "Acuerdo demo",
     issuedAt: Date.now() - 60_000,
     issuedByStoreId: "store-1",
