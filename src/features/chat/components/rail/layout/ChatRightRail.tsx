@@ -16,13 +16,10 @@ import {
   RAIL_ROOT,
   TAB_BASE,
   TAB_ON,
-  type ContractFilter,
 } from "./chatRailStyles";
 import { ChatRightRailContractsPanel } from "./ChatRightRailContractsPanel";
 import { ChatRightRailPeoplePanel } from "./ChatRightRailPeoplePanel";
 import { ChatRightRailRoutesPanel } from "../routes/ChatRightRailRoutesPanel";
-
-export type { ContractFilter } from "./chatRailStyles";
 
 type Props = {
   threadId: string;
@@ -35,8 +32,6 @@ type Props = {
   contractsLoading?: boolean;
   routeSheetsLoading?: boolean;
   actionsLocked?: boolean;
-  storeName: string;
-  buyerName: string;
   buyer: { id: string; name: string; trustScore: number; avatarUrl?: string };
   seller: StoreBadge;
   focusRouteId?: string | null;
@@ -67,8 +62,6 @@ export function ChatRightRail({
   contractsLoading = false,
   routeSheetsLoading = false,
   actionsLocked = false,
-  storeName,
-  buyerName,
   focusRouteId,
   buyer,
   seller,
@@ -105,7 +98,6 @@ export function ChatRightRail({
   const [tab, setTab] = useState<"contracts" | "routes" | "people">(
     "contracts",
   );
-  const [cFilter, setCFilter] = useState<ContractFilter>("all");
   const [selContract, setSelContract] = useState<TradeAgreement | null>(null);
   const [selRouteId, setSelRouteId] = useState<string | null>(null);
 
@@ -129,18 +121,6 @@ export function ChatRightRail({
     }
     return s;
   }, [contracts]);
-
-  const displayContracts = useMemo(() => {
-    if (cFilter === "all") return contracts;
-    if (cFilter === "store")
-      return contracts.filter((c) => c.issuedByStoreId === threadStoreId);
-    return contracts.filter(
-      (c) =>
-        c.status === "pending_buyer" ||
-        c.respondedAt != null ||
-        c.status === "deleted",
-    );
-  }, [contracts, cFilter, threadStoreId]);
 
   const selRoute = selRouteId
     ? routeSheets.find((r) => r.id === selRouteId)
@@ -196,14 +176,10 @@ export function ChatRightRail({
       {tab === "contracts" && (
         <ChatRightRailContractsPanel
           bodyClassName={RAIL_BODY}
-          cFilter={cFilter}
-          setCFilter={setCFilter}
-          storeName={storeName}
-          buyerName={buyerName}
           selContract={selContract}
           setSelContract={setSelContract}
           agreementForDetail={agreementForDetail}
-          displayContracts={displayContracts}
+          displayContracts={contracts}
           contractsLoading={contractsLoading}
           routeSheets={routeSheets}
           threadId={threadId}

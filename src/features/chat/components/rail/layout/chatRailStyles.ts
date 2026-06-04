@@ -6,8 +6,6 @@ import {
   statusPillPending,
 } from "../../../styles/formModalStyles";
 
-export type ContractFilter = "all" | "store" | "buyer";
-
 export const RAIL_ROOT =
   "vt-chat-rail flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)] max-[960px]:rounded-b-none max-[960px]:border-b-0 max-[960px]:shadow-none";
 
@@ -53,11 +51,3 @@ export function contractStatusClass(s: TradeAgreement["status"]) {
   }
 }
 
-export function filterChipClass(on: boolean) {
-  return cn(
-    "cursor-pointer rounded-full border px-2 py-1 text-[11px]",
-    on
-      ? "border-[var(--primary)] bg-[color-mix(in_oklab,var(--primary)_12%,transparent)] font-extrabold"
-      : "border-[var(--border)] bg-[var(--surface)]",
-  );
-}

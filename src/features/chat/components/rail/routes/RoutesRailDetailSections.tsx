@@ -414,11 +414,6 @@ export function runRoutesRailDeleteConfirmation(args: {
   threadId: string;
   setSelRouteId: (id: string | null) => void;
 }): void {
-  const msg = railBuildDeleteSheetConfirmMessage(
-    args.selRoute,
-    args.routeOfferResolved,
-  );
-  if (!globalThis.confirm(msg)) return;
   if (args.sheetLockedByPaid) {
     toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);
     return;
@@ -442,18 +437,16 @@ export function runRoutesRailPublishToggle(args: {
     return;
   }
   if (args.selRoute.publicadaPlataforma) {
-    if (
-      !globalThis.confirm(
-        `¿Retirar «${args.selRoute.titulo}» de la plataforma? Los transportistas dejarán de verla en el mercado.`,
-      )
-    )
-      return;
     args.unpublishRouteSheetFromPlatform(args.threadId, args.selRoute.id);
     toast.success("Hoja retirada de la plataforma");
     return;
   }
   args.publishRouteSheetsToPlatform(args.threadId, [args.selRoute.id]);
   toast.success("Hoja publicada en la plataforma");
+}
+
+export function buildRoutesRailUnpublishConfirmMessage(selRoute: RouteSheet): string {
+  return `¿Retirar «${selRoute.titulo}» de la plataforma? Los transportistas dejarán de verla en el mercado.`;
 }
 
 export type RoutesRailTitlesBundle = {

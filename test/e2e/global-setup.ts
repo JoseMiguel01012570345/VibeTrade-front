@@ -67,6 +67,24 @@ export default async function globalSetup(): Promise<void> {
       page,
       baseURL,
     );
+
+    try {
+      const rsScenario = await provisionRouteSheetScenario(
+        baseURL,
+        seller.sessionToken,
+        buyer.sessionToken,
+        scenario.offerId,
+      );
+      scenario.routeSheetThreadId = rsScenario.threadId;
+      scenario.routeSheetAgreementId = rsScenario.agreementId;
+      scenario.routeSheetAgreementIds = rsScenario.agreementIds;
+      console.log(
+        `[e2e] Route sheet thread: ${rsScenario.threadId} — agreement: ${rsScenario.agreementId}`,
+      );
+    } catch (rsErr) {
+      console.warn("[e2e] Route sheet scenario provisioning failed (non-fatal):", rsErr);
+    }
+
     writeSession(e2eSellerSessionFile, seller);
     writeSession(e2eSessionFile, buyer);
     writeScenario(scenario);
@@ -81,6 +99,109 @@ export default async function globalSetup(): Promise<void> {
   } finally {
     await browser.close();
   }
+}
+
+async function provisionRouteSheetScenario(
+  baseURL: string,
+  sellerToken: string,
+  buyerToken: string,
+  offerId: string,
+): Promise<{ threadId: string; agreementId: string; agreementIds: string[] }> {
+  const apiBase = baseURL.replace(/\/$/, "");
+
+  const buyerHeaders = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${buyerToken}`,
+  };
+  const sellerHeaders = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${sellerToken}`,
+  };
+
+  const threadRes = await fetch(`${apiBase}/api/v1/chat/threads`, {
+    method: "POST",
+    headers: buyerHeaders,
+    body: JSON.stringify({ offerId, purchaseIntent: true, forceNew: false }),
+  });
+  if (!threadRes.ok) {
+    const body = await threadRes.text().catch(() => "");
+    throw new Error(`Thread creation failed: ${threadRes.status} — ${body}`);
+  }
+  const threadJson = (await threadRes.json()) as Record<string, unknown>;
+  const threadId = String(threadJson["id"] ?? threadJson["threadId"] ?? "").trim();
+  if (!threadId || !threadId.startsWith("cth_")) {
+    throw new Error(`Thread ID missing or invalid from response: ${JSON.stringify(threadJson)}`);
+  }
+  console.log(`[e2e] RS provisioning: thread=${threadId}`);
+
+  const msgRes = await fetch(
+    `${apiBase}/api/v1/chat/threads/${encodeURIComponent(threadId)}/messages`,
+    {
+      method: "POST",
+      headers: buyerHeaders,
+      body: JSON.stringify({ text: "Hola, me interesa tu oferta (E2E setup)" }),
+    },
+  );
+  if (!msgRes.ok) {
+    const body = await msgRes.text().catch(() => "");
+    throw new Error(`First message send failed: ${msgRes.status} — ${body}`);
+  }
+
+  const merchandiseLine = {
+    tipo: "Producto de transporte E2E",
+    cantidad: "1",
+    valorUnitario: "100",
+    estado: "nuevo",
+    descuento: "",
+    impuestos: "",
+    moneda: "USD",
+    tipoEmbalaje: "",
+    devolucionesDesc: "",
+    devolucionQuienPaga: "",
+    devolucionPlazos: "",
+    regulaciones: "",
+  };
+
+  async function createAndAcceptAgreement(index: number): Promise<string> {
+    const agTitle = `E2E-RS-AGR-${index}-${Date.now()}`;
+    const agPayload = {
+      title: agTitle,
+      includeMerchandise: true,
+      includeService: false,
+      merchandise: [merchandiseLine],
+      services: [],
+    };
+    const agRes = await fetch(
+      `${apiBase}/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements`,
+      { method: "POST", headers: sellerHeaders, body: JSON.stringify(agPayload) },
+    );
+    if (!agRes.ok) {
+      const body = await agRes.text().catch(() => "");
+      throw new Error(`Agreement creation failed [${index}]: ${agRes.status} — ${body}`);
+    }
+    const agJson = (await agRes.json()) as Record<string, unknown>;
+    const id = String(agJson["id"] ?? agJson["agreementId"] ?? "").trim();
+    if (!id) throw new Error(`Agreement ID missing [${index}]: ${JSON.stringify(agJson)}`);
+
+    const acceptRes = await fetch(
+      `${apiBase}/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(id)}/respond`,
+      { method: "POST", headers: buyerHeaders, body: JSON.stringify({ accept: true }) },
+    );
+    if (!acceptRes.ok) {
+      const body = await acceptRes.text().catch(() => "");
+      throw new Error(`Agreement accept failed [${index}]: ${acceptRes.status} — ${body}`);
+    }
+    console.log(`[e2e] RS provisioning: agreement[${index}]=${id}`);
+    return id;
+  }
+
+  const agreementIds: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    agreementIds.push(await createAndAcceptAgreement(i));
+  }
+  const agreementId = agreementIds[0]!;
+
+  return { threadId, agreementId, agreementIds };
 }
 
 async function setupSellerSessionManual(): Promise<void> {

@@ -17,6 +17,12 @@ export type E2EChatScenario = {
   sellerUserId: string;
   buyerUserId: string;
   createdAt: string;
+  /** Thread with one accepted service agreement ready for route sheet tests. */
+  routeSheetThreadId?: string;
+  /** ID of the first accepted agreement inside routeSheetThreadId (backward compat). */
+  routeSheetAgreementId?: string;
+  /** All accepted agreement IDs inside routeSheetThreadId (indices 0-5). */
+  routeSheetAgreementIds?: string[];
 };
 
 export type ProvisionedChatE2E = {

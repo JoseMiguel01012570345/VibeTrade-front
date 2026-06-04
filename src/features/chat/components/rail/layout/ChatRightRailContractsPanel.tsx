@@ -6,17 +6,11 @@ import { AgreementDetailView } from "../../AgreementDetail";
 import {
   contractStatusClass,
   contractStatusLabel,
-  filterChipClass,
   railItemClass,
 } from './chatRailStyles'
-import type { ContractFilter } from './chatRailStyles'
 
 type Props = {
   bodyClassName: string
-  cFilter: ContractFilter
-  setCFilter: (f: ContractFilter) => void
-  storeName: string
-  buyerName: string
   selContract: TradeAgreement | null
   setSelContract: (c: TradeAgreement | null) => void
   agreementForDetail: TradeAgreement | null
@@ -40,10 +34,6 @@ type Props = {
 
 export function ChatRightRailContractsPanel({
   bodyClassName,
-  cFilter,
-  setCFilter,
-  storeName,
-  buyerName,
   selContract,
   setSelContract,
   agreementForDetail,
@@ -67,18 +57,6 @@ export function ChatRightRailContractsPanel({
           Cargando acuerdos...
         </div>
       ) : null}
-      <div className="mb-2.5 flex flex-wrap gap-1.5">
-        <button type="button" className={filterChipClass(cFilter === 'all')} onClick={() => setCFilter('all')}>
-          Todos
-        </button>
-        <button type="button" className={filterChipClass(cFilter === 'store')} onClick={() => setCFilter('store')}>
-          {storeName}
-        </button>
-        <button type="button" className={filterChipClass(cFilter === 'buyer')} onClick={() => setCFilter('buyer')}>
-          {buyerName}
-        </button>
-      </div>
-
       {selContract && agreementForDetail ? (
         <div className="text-[13px]">
           <button

@@ -994,7 +994,7 @@ export function ChatPage() {
 
   const canSend = !recording && hasComposeToSend && !chatActionsLocked;
 
-  console.log({ carrierTelemetryTargets });
+
 
   return (
     <div className="container vt-page vt-chat-page">
@@ -1170,8 +1170,6 @@ export function ChatPage() {
               contractsLoading={contractsLoading}
               routeSheetsLoading={routeSheetsLoading}
               actionsLocked={chatActionsLocked}
-              storeName={store.name}
-              buyerName={buyerForRail.name}
               buyer={buyerForRail}
               seller={sellerForPeople ?? store}
               chatCarriers={thread.chatCarriers}

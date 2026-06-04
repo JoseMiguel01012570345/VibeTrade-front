@@ -1,77 +1,127 @@
 # VibeTrade frontend
 
-React + TypeScript + Vite app. Unit tests use Vitest; browser E2E uses Playwright under `test/e2e/test-feats/`.
+React + TypeScript + Vite app.
 
-### Run all tests
+- **E2E (Playwright):** specs en `test/e2e/test-feats/` — flujos reales en navegador + API.
+- **Unit (Vitest):** `npm run test:unit` / `npm run test:run` (cuando haya specs bajo `src/`).
 
-With the backend API on `http://localhost:5110`:
+## Tests
 
-```bash
-npm run test
-```
+### Prerequisites (E2E)
 
-Runs Vitest (`test:run`) then Playwright E2E (`test:e2e`). For unit tests only: `npm run test:unit` (watch) or `npm run test:run` (single run).
+1. `npm install`
+2. Primera vez: `npx playwright install chromium`
+3. Backend en `http://localhost:5110` con `Auth:ExposeDevCodes=true` (dev por defecto).
+4. Datos de catálogo/feed en la base para que el `global-setup` pueda provisionar tienda, oferta y escenario de chat.
 
-## E2E tests (Playwright)
+Playwright arranca `npm run dev` en `http://localhost:5173` salvo que uses `PLAYWRIGHT_SKIP_WEBSERVER=1` (útil si ya tienes Vite corriendo).
 
-Playwright specs live in `test/e2e/test-feats/`. Most tests are **integration E2E**: they hit the real API and browser. Auth and offer/store ids are resolved automatically when possible.
-
-### Prerequisites
-
-1. Install dependencies: `npm install`
-2. Install Playwright browsers (first time only): `npx playwright install chromium`
-3. Start the **backend API** on `http://localhost:5110` with `Auth:ExposeDevCodes=true` (default in dev `appsettings`).
-4. Ensure the database has feed/search data (offers and recommended stores) so discovery helpers can find links on `/home`.
-
-Playwright starts `npm run dev` on `http://localhost:5173` unless `PLAYWRIGHT_SKIP_WEBSERVER=1`.
-
-### Run (recommended)
-
-With the API running:
+### Run all E2E tests
 
 ```bash
 npm run test:e2e
 ```
 
-**What happens automatically**
+`npm run test` es un alias de `test:e2e`.
 
-1. `global-setup.ts` calls `POST /api/v1/auth/request-code` and `verify` (same flow as backend integration tests, using `devMockCode`).
-2. If `PLAYWRIGHT_E2E_PHONE` is unset, a new test user is registered with a random `+549…` number.
-3. If `PLAYWRIGHT_E2E_PHONE` is set, that user is logged in (or registered if missing).
-4. The session is saved to `test/e2e/.auth/session.json` and injected into each test via `sessionStorage` (`vt_session_token`).
-5. Tests that need an offer or store id read them from `/home` when env overrides are not set.
+Suite completa con UI interactiva:
 
-The public vitrina spec runs without auth even if the API is down.
+```bash
+npm run test:e2e:ui
+```
+
+### Run a specific test (recommended workflow)
+
+Playwright filtra por **archivo**, **título** (`-g`) o **línea**. Usa siempre la ruta desde la raíz del frontend.
+
+**Un archivo entero**
+
+```bash
+npx playwright test test/e2e/test-feats/Chat/chat-route-sheets.spec.ts
+```
+
+**Un solo caso por nombre (grep en el título del `test(...)`)**
+
+```bash
+npx playwright test test/e2e/test-feats/Chat/chat-route-sheets.spec.ts -g "system message"
+```
+
+**Un caso concreto por línea** (útil en el IDE: “Run at line”)
+
+```bash
+npx playwright test test/e2e/test-feats/Chat/chat-route-sheets.spec.ts:934
+```
+
+**Varios archivos de una carpeta**
+
+```bash
+npx playwright test test/e2e/test-feats/Chat/
+```
+
+**Ver el navegador mientras corre un test**
+
+```bash
+npx playwright test test/e2e/test-feats/Chat/chat-route-sheets.spec.ts -g "Delete route sheet" --headed
+```
+
+**Depurar paso a paso**
+
+```bash
+npx playwright test test/e2e/test-feats/Chat/chat-route-sheets.spec.ts -g "Delete route sheet" --debug
+```
+
+**Elegir el test en la UI de Playwright** (sin memorizar `-g`)
+
+```bash
+npx playwright test test/e2e/test-feats/Chat/chat-route-sheets.spec.ts --ui
+```
+
+En PowerShell las comillas de `-g` van con `"..."` como arriba.
 
 ### npm scripts
 
-| Script         | Command               |
-| -------------- | --------------------- |
-| Unit + E2E     | `npm run test`        |
-| Unit (watch)   | `npm run test:unit`   |
-| Unit (once)    | `npm run test:run`    |
-| Headless E2E   | `npm run test:e2e`    |
-| Interactive UI | `npm run test:e2e:ui` |
+| Script         | Qué hace                          |
+| -------------- | --------------------------------- |
+| `npm run test` | E2E headless (alias de `test:e2e`) |
+| `npm run test:e2e` | Playwright headless           |
+| `npm run test:e2e:ui` | Playwright UI mode           |
+| `npm run test:unit` | Vitest en watch              |
+| `npm run test:run` | Vitest una sola pasada        |
 
-Single file:
+### Global setup y sesión
 
-```bash
-npx playwright test test/e2e/test-feats/Home/home-feed.spec.ts
-```
+Antes de los specs, `test/e2e/global-setup.ts`:
 
-### Test suites
+1. Registra **vendedor + comprador** vía UI, publica catálogo y guarda tokens en `test/e2e/.auth/`.
+2. Opcionalmente provisiona un hilo con acuerdos aceptados para tests de hojas de ruta (`scenario.json`).
+3. Inyecta `vt_session_token` en cada test.
 
-| Area            | Spec file                         | Auth                        |
-| --------------- | --------------------------------- | --------------------------- |
-| Catalog search  | `Catalog/catalog-search.spec.ts`  | Auto                        |
-| Home feed       | `Home/home-feed.spec.ts`          | Auto; discovers offer/store |
-| Offers save     | `Offers/offers-save.spec.ts`      | Auto; discovers offer       |
-| Profile account | `Profile/profile-account.spec.ts` | Auto                        |
-| Profile saved   | `Profile/profile-saved.spec.ts`   | Auto; discovers offer       |
-| Profile stores  | `Stores/stores-profile.spec.ts`   | Auto                        |
-| Store vitrina   | `Vitrina/store-vitrina.spec.ts`   | None (public)               |
+Variables útiles:
 
-Key files: `test/e2e/global-setup.ts`, `test/e2e/Resources/e2e-api.ts`, `test/e2e/Resources/e2e-discovery.ts`, `test/e2e/Resources/env.ts`.
+| Variable | Efecto |
+| -------- | ------ |
+| `PLAYWRIGHT_E2E_TOKEN` | Token del comprador (salta registro UI del buyer) |
+| `PLAYWRIGHT_E2E_SELLER_TOKEN` | Token del vendedor |
+| `PLAYWRIGHT_E2E_SKIP_AUTH=1` | Sin auth; muchos specs se saltan |
+| `PLAYWRIGHT_SKIP_WEBSERVER=1` | No levantar Vite; usar dev server ya activo |
+| `PLAYWRIGHT_BASE_URL` | URL del frontend (default `http://localhost:5173`) |
+
+Helpers compartidos: `test/e2e/Resources/` (`env.ts`, `e2e-chat-scenario.ts`, `route-sheet-ui-helpers.ts`, etc.).
+
+### Layout de specs E2E
+
+| Carpeta | Ejemplos |
+| ------- | -------- |
+| `Chat/` | `chat-route-sheets.spec.ts`, `chat-agreements.spec.ts`, `chat-messaging-realtime.spec.ts` |
+| `Catalog/` | `catalog-search.spec.ts`, `catalog-owner.spec.ts` |
+| `Home/` | `home-feed.spec.ts` |
+| `Offers/` | `offers-save.spec.ts` |
+| `Profile/` | `profile-account.spec.ts`, `profile-saved.spec.ts` |
+| `Stores/` | `stores-crud.spec.ts` |
+| `Vitrina/` | `store-vitrina.spec.ts` (público, sin auth) |
+| `Notifications/` | `notifications-panel.spec.ts` |
+
+Los specs de **chat con hojas de ruta** requieren escenario provisionado (`routeSheetThreadId` en `test/e2e/.auth/scenario.json`); si falla el setup, esos tests hacen `test.skip` con un mensaje explícito.
 
 ## Expanding the ESLint configuration
 

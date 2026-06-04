@@ -16,6 +16,10 @@ import {
 export function composeRoutesRailDetailShellMerged(
   navigate: NavigateFunction,
   props: RoutesRailSheetDetailProps,
+  overrides?: {
+    onRequestDelete?: () => void;
+    onPublishClick?: () => void;
+  },
 ): RoutesRailSheetDetailShellMergedProps {
   const titles = routesRailTitlesForSeller({
     actionsLocked: props.actionsLocked,
@@ -34,8 +38,12 @@ export function composeRoutesRailDetailShellMerged(
       deliveriesByAgreement: props.deliveriesByAgreement,
       meId: props.meId,
     }),
-    handleDeleteConfirmed: () => invokeRoutesRailSheetDeleteConfirmation(props),
-    handlePublishClick: () => invokeRoutesRailSheetPublishToggle(props),
+    handleDeleteConfirmed:
+      overrides?.onRequestDelete ??
+      (() => invokeRoutesRailSheetDeleteConfirmation(props)),
+    handlePublishClick:
+      overrides?.onPublishClick ??
+      (() => invokeRoutesRailSheetPublishToggle(props)),
     acceptCarrierAck: () => invokeRoutesRailCarrierAcceptAck(props),
     rejectCarrierAck: () => invokeRoutesRailCarrierRejectAck(navigate, props),
   };
