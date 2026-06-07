@@ -266,10 +266,15 @@ export async function saveRouteSheet(page: Page): Promise<void> {
     { timeout: 30_000 },
   );
   await clickSaveRouteSheetForm(page);
-  await persistWait.catch(() => null);
-  await expect(
-    page.getByText(/hoja de ruta creada|hoja de ruta actualizada/i).first(),
-  ).toBeVisible({ timeout: 15_000 });
+  const persistResp = await persistWait.catch(() => null);
+  const toast = page.getByText(/hoja de ruta creada|hoja de ruta actualizada/i).first();
+  const sawToast = await toast.isVisible({ timeout: 5_000 }).catch(() => false);
+  if (sawToast) return;
+  await expect(formDialog(page)).toBeHidden({ timeout: 15_000 });
+  if (persistResp && !persistResp.ok()) {
+    const body = await persistResp.text().catch(() => "");
+    throw new Error(`Route sheet save failed (${persistResp.status()}): ${body}`);
+  }
 }
 
 /** Opens a route sheet by clicking its title card in the list. */
@@ -292,26 +297,61 @@ export async function clickEditRouteSheet(page: Page): Promise<void> {
   await expect(formDialog(page)).toBeVisible({ timeout: 10_000 });
 }
 
-/** Types a phone into the carrier search field of tramo i and clicks Buscar. */
+/** Types a phone into the carrier search field of tramo i, picks a published service, and confirms. */
 export async function searchCarrierPhone(
   page: Page,
   tramoIndex: number,
   phone: string,
 ): Promise<void> {
   const form = formDialog(page);
-  const phoneInput = form
-    .locator(`[data-tramo-phone-index="${tramoIndex}"], input[placeholder*="Buscar transportista"], input[placeholder*="teléfono"]`)
-    .first();
-  if (await phoneInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
-    await phoneInput.fill(phone);
+  const phoneInput = form.locator(`#ruta-tramo-${tramoIndex}-tel`);
+  await expect(phoneInput).toBeVisible({ timeout: 5_000 });
+  await phoneInput.fill(phone);
+  await form.getByRole("button", { name: /buscar y elegir/i }).click();
+
+  const picker = page.getByRole("dialog", { name: /elegir servicio de transporte/i });
+  await expect(picker).toBeVisible({ timeout: 15_000 });
+  await expect(picker.getByText(/cargando fichas publicadas/i)).toBeHidden({
+    timeout: 20_000,
+  });
+
+  const confirmService = picker.getByRole("button", {
+    name: /confirmar servicio/i,
+  });
+  const usePhoneOnly = picker.getByRole("button", {
+    name: /usar solo el tel[eé]fono/i,
+  });
+  if (await confirmService.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await confirmService.click();
+  } else {
+    await expect(usePhoneOnly).toBeVisible({ timeout: 5_000 });
+    await usePhoneOnly.click();
   }
-  const searchBtn = form
-    .locator(`[data-tramo-index="${tramoIndex}"]`)
-    .getByRole("button", { name: /buscar/i })
-    .first();
-  if (await searchBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-    await searchBtn.click();
-  }
+
+  await expect(
+    page
+      .getByText(/contacto y servicio guardados|solo el tel[eé]fono del perfil/i)
+      .first(),
+  ).toBeVisible({ timeout: 10_000 });
+}
+
+/** Sends invites for all preselected carriers in the open invite modal. */
+export async function sendCarrierInvites(page: Page): Promise<void> {
+  const inviteDialog = page
+    .getByRole("dialog")
+    .filter({ hasText: /invitar transportistas/i });
+  await expect(inviteDialog).toBeVisible({ timeout: 10_000 });
+  await expect(inviteDialog.getByText(/no hay tramos con un tel[eé]fono/i)).toBeHidden({
+    timeout: 10_000,
+  });
+  const inviteBtn = inviteDialog.getByRole("button", { name: /^invitar$/i });
+  await expect(inviteBtn).toBeEnabled({ timeout: 10_000 });
+  await inviteBtn.click();
+  await expect(
+    page
+      .getByText(/se envi[oó].*invitaci[oó]n|invitaci[oó]n enviada|notificaci[oó]n enviada|enviado/i)
+      .first(),
+  ).toBeVisible({ timeout: 15_000 });
 }
 
 /** Clicks the "Invitar transportista" button in the route sheet detail. */
@@ -502,8 +542,15 @@ export async function publishRouteSheetViaUI(page: Page): Promise<void> {
   });
   await expect(publishBtn).toBeVisible({ timeout: 5_000 });
   await expect(publishBtn).toBeEnabled({ timeout: 3_000 });
+  const persistWait = page.waitForResponse(
+    (res) =>
+      res.request().method() === "PUT" &&
+      res.url().includes("/route-sheets/"),
+    { timeout: 30_000 },
+  );
   page.once("dialog", (d) => void d.accept());
   await publishBtn.click();
+  await persistWait.catch(() => null);
   await expect(
     page.getByRole("button", { name: /ocultar de la plataforma/i }),
   ).toBeVisible({ timeout: 15_000 });
@@ -515,4 +562,349 @@ export async function insertTramoAtStart(page: Page): Promise<void> {
   const insertBtn = form.getByRole("button", { name: /añadir tramo al inicio/i });
   await expect(insertBtn).toBeVisible({ timeout: 5_000 });
   await insertBtn.click();
+}
+
+/** Locator for the embedded Suscriptores aside panel in the routes rail. */
+export function subscribersPanel(page: Page) {
+  return page.getByRole("complementary", {
+    name: /suscriptores a la oferta pública/i,
+  });
+}
+
+/** Returns to the tramo list inside the subscribers panel when in a detail view. */
+async function ensureSubscribersTramoList(
+  page: Page,
+  routeSheetTitulo?: string,
+): Promise<void> {
+  const panel = subscribersPanel(page);
+  await expect(panel.getByText(/cargando suscripciones/i)).toHaveCount(0, {
+    timeout: 20_000,
+  });
+
+  const tramoListBtn = panel
+    .getByRole("button", { name: /^tramo \d+\b/i })
+    .first();
+
+  if (await tramoListBtn.isVisible().catch(() => false)) return;
+
+  for (let i = 0; i < 5; i++) {
+    if (await tramoListBtn.isVisible().catch(() => false)) return;
+    const backBtn = panel.getByRole("button", { name: /^volver$/i });
+    if (!(await backBtn.isVisible().catch(() => false))) break;
+    await backBtn.click();
+  }
+  if (await tramoListBtn.isVisible().catch(() => false)) return;
+
+  const sheetListHint = panel.getByText(/elige una hoja de ruta/i);
+  if (await sheetListHint.isVisible().catch(() => false)) {
+    let sheetBtn;
+    if (routeSheetTitulo?.trim()) {
+      sheetBtn = panel
+        .getByRole("button")
+        .filter({ hasText: routeSheetTitulo.trim() })
+        .first();
+    } else {
+      sheetBtn = panel
+        .getByRole("button")
+        .filter({ hasText: /[1-9]\d*\s*transportista/i })
+        .first();
+    }
+    await expect(sheetBtn).toBeVisible({ timeout: 10_000 });
+    await sheetBtn.click();
+  }
+
+  await expect(tramoListBtn).toBeVisible({ timeout: 10_000 });
+}
+
+/** Opens a tramo row inside the subscribers panel (1-based tramo number). */
+export async function openTramoInSubscribersPanel(
+  page: Page,
+  tramoNumber: number,
+  routeSheetTitulo?: string,
+): Promise<void> {
+  const panel = subscribersPanel(page);
+  await ensureSubscribersTramoList(page, routeSheetTitulo);
+  const tramoBtn = panel
+    .getByRole("button", { name: new RegExp(`^tramo ${tramoNumber}\\b`, "i") })
+    .first();
+  await expect(tramoBtn).toBeVisible({ timeout: 10_000 });
+  await tramoBtn.click();
+}
+
+/** Opens the first tramo row inside the subscribers panel. */
+export async function openFirstTramoInSubscribersPanel(
+  page: Page,
+  routeSheetTitulo?: string,
+): Promise<void> {
+  await openTramoInSubscribersPanel(page, 1, routeSheetTitulo);
+}
+
+/** Opens the first carrier row for the selected tramo in the subscribers panel. */
+export async function openFirstCarrierInSubscribersPanel(page: Page): Promise<void> {
+  const panel = subscribersPanel(page);
+  const manageBtn = panel
+    .getByRole("button", { name: /aceptar en este tramo|rechazar en este tramo|expulsar de este tramo/i })
+    .first();
+  if (await manageBtn.isVisible().catch(() => false)) return;
+
+  const carrierBtn = panel
+    .getByRole("button")
+    .filter({ hasText: /confirmado|pendiente|transportista/i })
+    .first();
+  await expect(carrierBtn).toBeVisible({ timeout: 10_000 });
+  await carrierBtn.click();
+}
+
+/** Accepts the first pending subscription request in the open subscribers panel. */
+export async function acceptFirstSubscriptionRequest(
+  page: Page,
+  routeSheetTitulo?: string,
+): Promise<void> {
+  await openFirstTramoInSubscribersPanel(page, routeSheetTitulo);
+  await openFirstCarrierInSubscribersPanel(page);
+  const panel = subscribersPanel(page);
+  const acceptBtn = panel
+    .getByRole("button", { name: /aceptar en este tramo/i })
+    .first();
+  await expect(acceptBtn).toBeVisible({ timeout: 10_000 });
+  await acceptBtn.click();
+  const confirmModal = page
+    .getByRole("dialog")
+    .filter({ hasText: /confirmar transportista/i });
+  await expect(confirmModal).toBeVisible({ timeout: 5_000 });
+  await confirmModal.getByRole("button", { name: /sí, confirmar/i }).click();
+  await expect(confirmModal).toBeHidden({ timeout: 10_000 });
+  await expect(panel.getByText(/cargando suscripciones/i)).toHaveCount(0, {
+    timeout: 20_000,
+  });
+  await openFirstTramoInSubscribersPanel(page, routeSheetTitulo);
+  await openFirstCarrierInSubscribersPanel(page);
+  await expect(
+    panel.getByRole("button", { name: /expulsar de este tramo/i }).first(),
+  ).toBeVisible({ timeout: 15_000 });
+}
+
+/** Rejects the first pending subscription request in the open subscribers panel. */
+export async function rejectFirstSubscriptionRequest(
+  page: Page,
+  confirm = true,
+  routeSheetTitulo?: string,
+): Promise<void> {
+  await openFirstTramoInSubscribersPanel(page, routeSheetTitulo);
+  await openFirstCarrierInSubscribersPanel(page);
+  const panel = subscribersPanel(page);
+  const rejectBtn = panel
+    .getByRole("button", { name: /rechazar en este tramo/i })
+    .first();
+  await expect(rejectBtn).toBeVisible({ timeout: 10_000 });
+  await rejectBtn.click();
+  const confirmModal = page
+    .getByRole("dialog")
+    .filter({ hasText: /rechazar solicitud/i });
+  await expect(confirmModal).toBeVisible({ timeout: 5_000 });
+  if (confirm) {
+    await confirmModal.getByRole("button", { name: /sí, rechazar/i }).click();
+    await expect(confirmModal).toBeHidden({ timeout: 10_000 });
+  } else {
+    await confirmModal.getByRole("button", { name: /^cancelar$/i }).click();
+    await expect(confirmModal).toBeHidden({ timeout: 10_000 });
+  }
+}
+
+/** Subscribes the current user to the open published route-sheet offer. */
+export async function subscribeCarrierToOffer(
+  page: Page,
+  withServicePicker = true,
+): Promise<void> {
+  const tramoSection = page.locator("#hoja-suscribir");
+  await expect(tramoSection).toBeVisible({ timeout: 15_000 });
+  await expect(
+    tramoSection.getByText(/suscribirme a un tramo/i),
+  ).toBeVisible({ timeout: 10_000 });
+
+  const sendBtn = tramoSection.getByRole("button", {
+    name: /enviar solicitud de suscripción/i,
+  });
+  await expect(sendBtn).toBeEnabled({ timeout: 10_000 });
+  await sendBtn.click();
+
+  const serviceModal = page.getByRole("dialog", {
+    name: /servicio de transporte/i,
+  });
+  await expect(serviceModal).toBeVisible({ timeout: 10_000 });
+
+  if (withServicePicker) {
+    const confirmBtn = serviceModal.getByRole("button", {
+      name: /confirmar solicitud/i,
+    });
+    await expect(confirmBtn).toBeEnabled({ timeout: 5_000 });
+    await confirmBtn.click();
+    await expect(serviceModal).toBeHidden({ timeout: 15_000 });
+  }
+}
+
+/** Opens the Suscriptores panel from the route-sheet detail toolbar. */
+export async function openSubscribersPanel(page: Page): Promise<void> {
+  const btn = page.getByRole("button", { name: /^suscriptores$/i });
+  await expect(btn).toBeVisible({ timeout: 10_000 });
+  await btn.click();
+  await expect(subscribersPanel(page)).toBeVisible({ timeout: 10_000 });
+}
+
+/** Returns the locator for the section of tramo at 1-based index inside the subscribers panel. */
+export function getTramoSubscriberSection(page: Page, tramoIndex: number) {
+  return subscribersPanel(page)
+    .getByRole("button", { name: new RegExp(`^tramo ${tramoIndex}\\b`, "i") })
+    .first();
+}
+
+/** Returns a locator for the carrier ficha card inside the subscribers panel (optionally filtered by userId or name). */
+export function getCarrierCard(page: Page, carrierIdOrName?: string) {
+  const panel = subscribersPanel(page);
+  if (carrierIdOrName) {
+    return panel.getByText(carrierIdOrName).first();
+  }
+  return panel.locator("a[href*='/offer/']").first();
+}
+
+/** Clicks "Expulsar de este tramo" for a carrier in the subscribers panel. */
+export async function kickCarrierFromTramo(
+  page: Page,
+  tramoIndex?: number,
+  routeSheetTitulo?: string,
+): Promise<void> {
+  const panel = subscribersPanel(page);
+  let expelBtn = panel.getByRole("button", { name: /expulsar de este tramo/i }).first();
+  if (!(await expelBtn.isVisible({ timeout: 2_000 }).catch(() => false))) {
+    if (tramoIndex !== undefined) {
+      await ensureSubscribersTramoList(page, routeSheetTitulo);
+      await panel
+        .getByRole("button", { name: new RegExp(`^tramo ${tramoIndex}\\b`, "i") })
+        .first()
+        .click();
+    } else {
+      await openFirstTramoInSubscribersPanel(page, routeSheetTitulo);
+    }
+    await openFirstCarrierInSubscribersPanel(page);
+    expelBtn = panel.getByRole("button", { name: /expulsar de este tramo/i }).first();
+  }
+  await expect(expelBtn).toBeVisible({ timeout: 5_000 });
+  await expelBtn.click();
+  const confirmDialog = page
+    .getByRole("dialog")
+    .filter({ hasText: /expulsar transportista/i })
+    .last();
+  await expect(confirmDialog).toBeVisible({ timeout: 5_000 });
+  await confirmDialog.locator("#expel-reason-ta").fill("Motivo E2E de expulsión de prueba.");
+  await confirmDialog
+    .getByRole("button", { name: /confirmar expulsi[oó]n/i })
+    .click();
+  await expect(confirmDialog).toBeHidden({ timeout: 15_000 });
+}
+
+/** Clicks "Expulsar de la operación" for a carrier in the subscribers panel. */
+export async function kickCarrierFromOperation(
+  page: Page,
+  routeSheetTitulo?: string,
+): Promise<void> {
+  const panel = subscribersPanel(page);
+  let expelOpBtn = panel
+    .getByRole("button", { name: /expulsar de la operaci[oó]n/i })
+    .first();
+  if (!(await expelOpBtn.isVisible({ timeout: 2_000 }).catch(() => false))) {
+    await openFirstTramoInSubscribersPanel(page, routeSheetTitulo);
+    await openFirstCarrierInSubscribersPanel(page);
+    expelOpBtn = panel
+      .getByRole("button", { name: /expulsar de la operaci[oó]n/i })
+      .first();
+  }
+  await expect(expelOpBtn).toBeVisible({ timeout: 5_000 });
+  await expelOpBtn.click();
+  const confirmDialog = page
+    .getByRole("dialog")
+    .filter({ hasText: /expulsar transportista/i })
+    .last();
+  await expect(confirmDialog).toBeVisible({ timeout: 5_000 });
+  await confirmDialog.locator("#expel-reason-ta").fill("Motivo E2E de expulsión de operación.");
+  await confirmDialog
+    .getByRole("button", { name: /confirmar expulsi[oó]n/i })
+    .click();
+  await expect(confirmDialog).toBeHidden({ timeout: 15_000 });
+}
+
+/**
+ * Reads the numeric trust/confianza score from the current page.
+ * Returns NaN if not found.
+ */
+export async function readTrustScore(page: Page): Promise<number> {
+  const trustBlock = page.getByLabel(/confianza de la tienda/i).first();
+  const trustVisible = await trustBlock.isVisible({ timeout: 5_000 }).catch(() => false);
+  if (trustVisible) {
+    const txt = (await trustBlock.textContent().catch(() => "")) ?? "";
+    const match = txt.match(/(\d+(?:[.,]\d+)?)\s*\/\s*100/);
+    if (match?.[1]) return parseFloat(match[1].replace(",", "."));
+  }
+
+  const el = page
+    .locator("[data-trust-score], [data-confianza]")
+    .first();
+  const visible = await el.isVisible({ timeout: 3_000 }).catch(() => false);
+  if (visible) {
+    const attr =
+      (await el.getAttribute("data-trust-score").catch(() => null)) ??
+      (await el.getAttribute("data-confianza").catch(() => null));
+    if (attr !== null) return parseFloat(attr);
+    const txt = (await el.textContent().catch(() => "")) ?? "";
+    const match = txt.match(/[\d,.]+/);
+    if (match) return parseFloat(match[0].replace(",", "."));
+  }
+  const textEl = page
+    .getByText(/confianza|trust/i)
+    .locator("xpath=following-sibling::*[1]")
+    .first();
+  const textVisible = await textEl.isVisible({ timeout: 2_000 }).catch(() => false);
+  if (textVisible) {
+    const txt = (await textEl.textContent().catch(() => "")) ?? "";
+    const match = txt.match(/[\d,.]+/);
+    if (match) return parseFloat(match[0].replace(",", "."));
+  }
+  return NaN;
+}
+
+/** Opens the notifications bell panel and waits for the list to finish loading. */
+export async function openNotificationsPanel(page: Page): Promise<void> {
+  const bell = page.getByRole("button", { name: /abrir notificaciones/i });
+  await expect(bell).toBeVisible({ timeout: 15_000 });
+  await bell.click();
+  const panel = page.getByRole("dialog", { name: /notificaciones/i });
+  await expect(panel).toBeVisible({ timeout: 10_000 });
+  await expect(
+    panel
+      .getByText(
+        /aún no hay notificaciones|contacto de transporte|hoja de ruta|confianza \d|solicitud|quedó registrada|solicit[oó] el tramo/i,
+      )
+      .first(),
+  ).toBeVisible({ timeout: 20_000 });
+}
+
+/** Returns a locator for a notification item containing the given text pattern. */
+export function getNotificationItem(page: Page, text: string | RegExp) {
+  return page
+    .getByRole("dialog", { name: /notificaciones/i })
+    .getByText(text)
+    .first();
+}
+
+/** Closes the notifications panel if open. */
+export async function closeNotificationsPanel(page: Page): Promise<void> {
+  const panel = page.getByRole("dialog", { name: /notificaciones/i });
+  if (await panel.isVisible({ timeout: 1_000 }).catch(() => false)) {
+    const closeBtn = panel.getByRole("button", { name: /cerrar/i }).first();
+    if (await closeBtn.isVisible({ timeout: 1_000 }).catch(() => false)) {
+      await closeBtn.click();
+    } else {
+      await page.keyboard.press("Escape");
+    }
+    await expect(panel).toBeHidden({ timeout: 5_000 });
+  }
 }

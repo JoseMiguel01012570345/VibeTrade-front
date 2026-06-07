@@ -23,6 +23,16 @@ export type E2EChatScenario = {
   routeSheetAgreementId?: string;
   /** All accepted agreement IDs inside routeSheetThreadId (indices 0-5). */
   routeSheetAgreementIds?: string[];
+  /** Session token for the provisioned carrier user (3rd party with a transport service). */
+  carrierSessionToken?: string;
+  /** User ID of the provisioned carrier. */
+  carrierUserId?: string;
+  /** Store ID of the carrier's store. */
+  carrierStoreId?: string;
+  /** Service ID of the carrier's published transport service. */
+  carrierServiceId?: string;
+  /** Phone of the carrier user (for search). */
+  carrierPhone?: string;
 };
 
 export type ProvisionedChatE2E = {

@@ -142,6 +142,13 @@ export async function publishCatalogItemViaUI(
   }
 }
 
+const SERVICE_TRANSPORT_HINT =
+  /transporte|logística|logistica|flete|transport|cadena|fulfillment|última milla|picking|envío|almacenaje/i;
+
+function serviceTypeQualifiesAsTransport(serviceType: string): boolean {
+  return SERVICE_TRANSPORT_HINT.test(serviceType);
+}
+
 async function fillMinimalServiceForm(
   page: Page,
   serviceType: string,
@@ -163,6 +170,14 @@ async function fillMinimalServiceForm(
     .filter({ hasText: /propiedad intelectual/i })
     .locator("textarea")
     .fill(text);
+
+  if (serviceTypeQualifiesAsTransport(serviceType)) {
+    await dialog.locator('input[type="file"]').setInputFiles(FIXTURE_PNG);
+    await expect(dialog.getByText("Subiendo…", { exact: true })).toBeHidden({
+      timeout: 60_000,
+    });
+    await expect(dialog.locator("img").first()).toBeVisible({ timeout: 15_000 });
+  }
 }
 
 export async function addServiceViaUI(

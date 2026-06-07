@@ -66,11 +66,7 @@ export async function openChatThread(page: Page, threadId: string): Promise<void
     waitUntil: "domcontentloaded",
     timeout: 45_000,
   });
-  await expect(page.getByText(/cargando chat/i)).toBeHidden({ timeout: 30_000 });
-  await waitForChatThread(page);
-  await expect(page.getByRole("button", { name: /emitir acuerdo/i })).toBeVisible({
-    timeout: 20_000,
-  });
+  await waitForChatReady(page);
 }
 
 export async function openChatPeoplePanel(page: Page): Promise<void> {

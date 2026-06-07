@@ -389,12 +389,9 @@ export function ChatRouteSubscribersPanel({
     return selectedCarrier.tramos.some((t) => t.status === "confirmed");
   }, [selectedCarrier]);
 
-  /** Incluye pendientes: el vendedor puede retirar al transportista de la operación sin tramos confirmados. */
   const selectedCarrierHasExpellableTramo = useMemo(() => {
     if (!selectedCarrier) return false;
-    return selectedCarrier.tramos.some(
-      (t) => t.status === "confirmed" || t.status === "pending",
-    );
+    return selectedCarrier.tramos.some((t) => t.status === "confirmed");
   }, [selectedCarrier]);
 
   const selectedHasPending = tramoRowForSelection?.status === "pending";
@@ -475,8 +472,8 @@ export function ChatRouteSubscribersPanel({
     }
     if (scope === "stop") {
       const st = tramoRowForSelection?.status;
-      if (st !== "confirmed" && st !== "pending") {
-        toast.error("Solo puedes retirar en un tramo pendiente o confirmado.");
+      if (st !== "confirmed") {
+        toast.error("Solo puedes expulsar en un tramo con transportista confirmado.");
         return;
       }
     }
@@ -748,20 +745,17 @@ export function ChatRouteSubscribersPanel({
               ) : null}
               {canSellerManageRouteSubscriptions && selectedCarrier ? (
                 <>
-                  {tramoRowForSelection &&
-                  (tramoRowForSelection.status === "confirmed" ||
-                    tramoRowForSelection.status === "pending") ? (
+                  {tramoRowForSelection?.status === "confirmed" ? (
                     <div className="mt-4 border-t border-[var(--border)] pt-3">
                       <p className="mb-2 mt-0 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
                         Este tramo
                       </p>
                       <p className="vt-muted mb-2 text-[11px] leading-snug">
                         Retirá a este transportista solo de este tramo
-                        {tramoRowForSelection.status === "confirmed"
-                          ? " confirmado. Por cada tramo confirmado que retires, en la demo puede aplicarse un ajuste a la confianza de la tienda."
-                          : " pendiente (sin ajuste por tramo pendiente)."}
-                        Si era su último tramo en el hilo, pierde el acceso a
-                        este chat.
+                        confirmado. Por cada tramo confirmado que retires, en la
+                        demo puede aplicarse un ajuste a la confianza de la
+                        tienda. Si era su último tramo en el hilo, pierde el
+                        acceso a este chat.
                       </p>
                       <button
                         type="button"

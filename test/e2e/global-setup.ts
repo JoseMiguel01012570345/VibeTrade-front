@@ -3,7 +3,18 @@ import { chromium } from "@playwright/test";
 import type { E2ESession } from "./Resources/e2e-session";
 import { provisionChatE2EScenario } from "./Resources/e2e-chat-scenario";
 import type { E2EChatScenario } from "./Resources/e2e-chat-scenario";
-import { isE2EAppReachable, loginUserViaUI } from "./Resources/e2e-ui-auth";
+import {
+  isE2EAppReachable,
+  loginUserViaUI,
+  logoutViaUI,
+  registerUserViaUI,
+  waitForE2EStackReady,
+} from "./Resources/e2e-ui-auth";
+import {
+  addServiceViaUI,
+  createStoreViaUI,
+  publishCatalogItemViaUI,
+} from "./Resources/e2e-ui-store";
 import {
   e2eAuthDir,
   e2eScenarioFile,
@@ -53,11 +64,13 @@ export default async function globalSetup(): Promise<void> {
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
-  if (!(await isE2EAppReachable(page, baseURL))) {
+  const stackError = await waitForE2EStackReady(page, baseURL);
+  if (stackError) {
     await browser.close();
     clearSession();
+    console.warn(`[e2e] ${stackError}`);
     console.warn(
-      `[e2e] App not reachable at ${baseURL}; authenticated tests will skip.`,
+      `[e2e] Authenticated tests will skip until both frontend (:5173) and API (:5110) are up.`,
     );
     return;
   }
@@ -83,6 +96,20 @@ export default async function globalSetup(): Promise<void> {
       );
     } catch (rsErr) {
       console.warn("[e2e] Route sheet scenario provisioning failed (non-fatal):", rsErr);
+    }
+
+    try {
+      const carrierScenario = await provisionCarrierScenario(page, baseURL);
+      scenario.carrierSessionToken = carrierScenario.sessionToken;
+      scenario.carrierUserId = carrierScenario.userId;
+      scenario.carrierStoreId = carrierScenario.storeId;
+      scenario.carrierServiceId = carrierScenario.serviceId;
+      scenario.carrierPhone = carrierScenario.phone;
+      console.log(
+        `[e2e] Carrier: ${carrierScenario.phone} (user ${carrierScenario.userId}) — store ${carrierScenario.storeId}`,
+      );
+    } catch (carrierErr) {
+      console.warn("[e2e] Carrier scenario provisioning failed (non-fatal):", carrierErr);
     }
 
     writeSession(e2eSellerSessionFile, seller);
@@ -202,6 +229,43 @@ async function provisionRouteSheetScenario(
   const agreementId = agreementIds[0]!;
 
   return { threadId, agreementId, agreementIds };
+}
+
+type CarrierScenario = {
+  sessionToken: string;
+  userId: string;
+  phone: string;
+  storeId: string;
+  serviceId: string;
+};
+
+async function provisionCarrierScenario(
+  page: import("@playwright/test").Page,
+  url: string,
+): Promise<CarrierScenario> {
+  await logoutViaUI(page, url);
+  const suffix = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const storeName = `Transportista E2E ${suffix}`;
+  const serviceType = `Servicio de Transporte E2E ${suffix}`;
+
+  const carrier = await registerUserViaUI(page, url);
+  if (!carrier.userId) {
+    throw new Error("carrier user id missing after UI registration");
+  }
+
+  const storeId = await createStoreViaUI(page, url, storeName);
+  const serviceId = await addServiceViaUI(page, url, storeId, serviceType);
+  await publishCatalogItemViaUI(page, serviceType);
+
+  await logoutViaUI(page, url);
+
+  return {
+    sessionToken: carrier.sessionToken,
+    userId: carrier.userId,
+    phone: carrier.phone,
+    storeId,
+    serviceId,
+  };
 }
 
 async function setupSellerSessionManual(): Promise<void> {
