@@ -164,6 +164,9 @@ test.describe("chat agreements (UI + buyer respond)", () => {
     await sellerEditAgreementInRail(sellerPage, title, revised, "Producto E2E");
 
     await reloadChatThread(buyerPage);
+    await expect(
+      buyerPage.getByText(/modificó el acuerdo/i).first(),
+    ).toBeVisible({ timeout: 20_000 });
     await buyerRespondToAgreement(buyerPage, revised, "reject");
 
     const trustAfter = await fetchStoreTrustScore(
@@ -171,6 +174,61 @@ test.describe("chat agreements (UI + buyer respond)", () => {
       scenario.storeId,
     );
     expect(trustAfter).toBe(trustBefore - SELLER_TRUST_PENALTY_PTS);
+
+    await sellerPage.close();
+    await buyerPage.context().close();
+    await sellerTrustCtx.close();
+  });
+
+  test("buyer rejects, seller edits, buyer rejects again and store trust unchanged", async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000);
+    const seller = getE2ESellerSession()!;
+    const scenario = getE2EScenario()!;
+    const title = `E2E NoTrust ${Date.now()}`;
+    const revised = `${title} rev`;
+
+    const sellerTrustCtx = await browser.newContext();
+    await injectE2ESession(sellerTrustCtx, seller.sessionToken);
+    const sellerTrustPage = await sellerTrustCtx.newPage();
+    const trustBefore = await fetchStoreTrustScore(
+      sellerTrustPage,
+      scenario.storeId,
+    );
+
+    const { buyerPage, threadId } = await createThreadAsBuyer(
+      browser,
+      getE2EToken(),
+      e2eOfferId,
+    );
+    const sellerPage = await openSellerPage(
+      browser,
+      seller.sessionToken,
+      threadId,
+    );
+
+    await sellerEmitMerchandiseAgreement(sellerPage, {
+      title,
+      productNamePart: "Producto E2E",
+    });
+    await reloadChatThread(buyerPage);
+    await buyerRespondToAgreement(buyerPage, title, "reject");
+
+    await reloadChatThread(sellerPage);
+    await sellerEditAgreementInRail(sellerPage, title, revised, "Producto E2E");
+
+    await reloadChatThread(buyerPage);
+    await expect(
+      buyerPage.getByText(/revisó el acuerdo/i).first(),
+    ).toBeVisible({ timeout: 20_000 });
+    await buyerRespondToAgreement(buyerPage, revised, "reject");
+
+    const trustAfter = await fetchStoreTrustScore(
+      sellerTrustPage,
+      scenario.storeId,
+    );
+    expect(trustAfter).toBe(trustBefore);
 
     await sellerPage.close();
     await buyerPage.context().close();

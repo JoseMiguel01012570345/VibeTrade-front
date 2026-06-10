@@ -223,6 +223,17 @@ export async function fillTramoFields(
     await form.locator(`#ruta-tramo-${i}-precio`).fill(opts.precio);
   }
 
+  const moneda = opts.moneda ?? (opts.precio !== undefined ? "USD" : undefined);
+  if (moneda !== undefined) {
+    const monedaBtn = form.getByRole("button", {
+      name: new RegExp(`moneda de pago del tramo ${i + 1}`, "i"),
+    });
+    if (await monedaBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await monedaBtn.click();
+      await page.getByRole("option", { name: moneda }).first().click();
+    }
+  }
+
   if (opts.responsabilidad !== undefined) {
     await form.locator(`#ruta-tramo-${i}-resp-emb`).fill(opts.responsabilidad);
   }
@@ -907,4 +918,155 @@ export async function closeNotificationsPanel(page: Page): Promise<void> {
     }
     await expect(panel).toBeHidden({ timeout: 5_000 });
   }
+}
+
+export type RouteTramoSpec = {
+  origen: string;
+  destino: string;
+  recogidaDate: string;
+  recogidaTime: string;
+  entregaDate: string;
+  entregaTime: string;
+  precio: string;
+  responsabilidad?: string;
+  requisitos?: string;
+  tipoVehiculo?: string;
+  carga?: string;
+  origenLat?: string;
+  origenLng?: string;
+  destinoLat?: string;
+  destinoLng?: string;
+};
+
+const DEFAULT_TRAMO: Omit<RouteTramoSpec, "origen" | "destino" | "precio"> = {
+  recogidaDate: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10),
+  recogidaTime: "09:00",
+  entregaDate: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10),
+  entregaTime: "17:00",
+  responsabilidad: "Vendedor",
+  requisitos: "Ninguno",
+  tipoVehiculo: "Camión",
+  carga: "Paquetes",
+};
+
+async function createTwoStopRouteSheet(
+  page: Page,
+  titulo: string,
+  tramo0: RouteTramoSpec,
+  tramo1: RouteTramoSpec,
+): Promise<void> {
+  await waitForThreadContractsLoaded(page);
+  await openRoutesRail(page);
+  await clickNewRouteSheet(page);
+  await waitForRouteSheetForm(page);
+  await fillRouteSheetBasicFields(page, titulo);
+  await deleteTramoAt(page, 1);
+  await fillTramoFields(page, 0, { ...DEFAULT_TRAMO, ...tramo0 });
+  await insertTramoAfter(page, 0);
+  await fillTramoFields(page, 1, { ...DEFAULT_TRAMO, ...tramo1 });
+  await saveRouteSheet(page);
+  await expect(page.getByText(/hoja de ruta creada/i).first()).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
+/** Linked A→B, B→C — one payable route path with two stops. */
+export async function createLinkedTwoStopRouteSheet(
+  page: Page,
+  agreementTitle: string,
+): Promise<string> {
+  const titulo = `E2E Ruta Enlazada ${Date.now()}`;
+  const day = DEFAULT_TRAMO.recogidaDate;
+  const linkLat = "-34.6200";
+  const linkLng = "-58.4000";
+  await createTwoStopRouteSheet(
+    page,
+    titulo,
+    {
+      origen: "Ciudad A",
+      destino: "Ciudad B",
+      recogidaDate: day,
+      recogidaTime: "08:00",
+      entregaDate: day,
+      entregaTime: "12:00",
+      destinoLat: linkLat,
+      destinoLng: linkLng,
+      precio: "10",
+    },
+    {
+      origen: "Ciudad B",
+      destino: "Ciudad C",
+      origenLat: linkLat,
+      origenLng: linkLng,
+      destinoLat: "-34.6300",
+      destinoLng: "-58.4100",
+      recogidaDate: day,
+      recogidaTime: "13:00",
+      entregaDate: day,
+      entregaTime: "18:00",
+      precio: "20",
+    },
+  );
+
+  const { openRailContracts } = await import("./chat-helpers");
+  await openRailContracts(page);
+  await page
+    .getByRole("button")
+    .filter({ hasText: agreementTitle })
+    .first()
+    .click();
+  await linkRouteSheetToAgreementViaUI(page, titulo);
+  await openRoutesRail(page);
+  await openRouteSheetDetail(page, titulo);
+  await publishRouteSheetViaUI(page);
+  return titulo;
+}
+
+/** Disconnected A→B and X→Y — two independent route paths. */
+export async function createDisconnectedTwoStopRouteSheet(
+  page: Page,
+  agreementTitle: string,
+): Promise<string> {
+  const titulo = `E2E Ruta Desconexa ${Date.now()}`;
+  const day = DEFAULT_TRAMO.recogidaDate;
+  const day2 = new Date(Date.now() + 172_800_000).toISOString().slice(0, 10);
+  await createTwoStopRouteSheet(
+    page,
+    titulo,
+    {
+      origen: "Punto A",
+      destino: "Punto B",
+      recogidaDate: day,
+      recogidaTime: "08:00",
+      entregaDate: day,
+      entregaTime: "12:00",
+      precio: "50",
+    },
+    {
+      origen: "Punto X",
+      destino: "Punto Y",
+      origenLat: "-23.5505",
+      origenLng: "-46.6333",
+      destinoLat: "-23.5600",
+      destinoLng: "-46.6500",
+      recogidaDate: day2,
+      recogidaTime: "09:00",
+      entregaDate: day2,
+      entregaTime: "15:00",
+      precio: "80",
+    },
+  );
+
+  const { openRailContracts } = await import("./chat-helpers");
+  await openRailContracts(page);
+  await page
+    .getByRole("button")
+    .filter({ hasText: agreementTitle })
+    .first()
+    .click();
+  await linkRouteSheetToAgreementViaUI(page, titulo);
+  await openRoutesRail(page);
+  await openRouteSheetDetail(page, titulo);
+  await publishRouteSheetViaUI(page);
+  return titulo;
 }

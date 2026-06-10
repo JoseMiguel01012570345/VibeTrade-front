@@ -16,6 +16,11 @@ import {
   publishCatalogItemViaUI,
 } from "./Resources/e2e-ui-store";
 import {
+  E2E_DEMO_CARD_LAST4,
+  ensureStripeCustomerViaFetch,
+  listStripeCardsViaFetch,
+} from "./Resources/e2e-stripe-customer";
+import {
   e2eAuthDir,
   e2eScenarioFile,
   e2eSellerSessionFile,
@@ -115,6 +120,28 @@ export default async function globalSetup(): Promise<void> {
     writeSession(e2eSellerSessionFile, seller);
     writeSession(e2eSessionFile, buyer);
     writeScenario(scenario);
+
+    const stripeCustomerOk = await ensureStripeCustomerViaFetch(
+      buyer.sessionToken,
+      baseURL,
+    );
+    if (stripeCustomerOk) {
+      const cards = await listStripeCardsViaFetch(buyer.sessionToken, baseURL);
+      if (cards.length > 0) {
+        console.log(
+          `[e2e] Buyer payment card ready (${cards[0]?.brand ?? "card"} •••• ${cards[0]?.last4 ?? E2E_DEMO_CARD_LAST4}).`,
+        );
+      } else {
+        console.warn(
+          "[e2e] Buyer Stripe customer exists but payment-methods returned no cards; rebuild/restart API with VIBETRADE_SKIP_PAYMENT_INTENTS=true.",
+        );
+      }
+    } else {
+      console.warn(
+        "[e2e] Buyer Stripe customer setup failed; payment E2E tests may skip.",
+      );
+    }
+
     console.log(
       `[e2e] Seller: ${seller.phone} (user ${seller.userId}) — store ${scenario.storeId}`,
     );

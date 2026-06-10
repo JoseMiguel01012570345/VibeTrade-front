@@ -64,19 +64,32 @@ export async function createStoreViaUI(
   return match[1];
 }
 
+export type ProductFormOpts = {
+  price?: string;
+  priceCurrency?: "USD" | "EUR";
+  acceptedCurrencies?: ("USD" | "EUR")[];
+};
+
 async function fillMinimalProductForm(
   page: Page,
   productName: string,
+  opts: ProductFormOpts = {},
 ): Promise<void> {
+  const price = opts.price ?? "100";
+  const priceCurrency = opts.priceCurrency ?? "USD";
+  const accepted = opts.acceptedCurrencies ?? [priceCurrency];
+
   const dialog = page.getByRole("dialog").filter({
     has: page.locator(".vt-modal-title", { hasText: /añadir producto/i }),
   });
   await pickVtOption(dialog, /transporte incluido en este producto/i, /no, transporte no incluido/i);
   await pickVtOption(dialog, /categoría del producto/i, "Mercancías");
   await dialog.getByLabel(/nombre del producto/i).fill(productName);
-  await dialog.getByLabel(/^precio$/i).fill("100");
-  await pickVtOption(dialog, /tipo de moneda del precio/i, "USD");
-  await pickVtMultiOption(dialog, /monedas aceptadas para el pago/i, "USD");
+  await dialog.getByLabel(/^precio$/i).fill(price);
+  await pickVtOption(dialog, /tipo de moneda del precio/i, priceCurrency);
+  for (const cur of accepted) {
+    await pickVtMultiOption(dialog, /monedas aceptadas para el pago/i, cur);
+  }
 
   const text = "Texto E2E válido para el formulario.";
   await dialog.getByLabel(/descripción breve/i).fill(text);
@@ -100,6 +113,7 @@ export async function addProductViaUI(
   baseURL: string,
   storeId: string,
   productName: string,
+  formOpts: ProductFormOpts = {},
 ): Promise<string> {
   await page.goto(`${baseURL}/store/${storeId}/products`, {
     waitUntil: "domcontentloaded",
@@ -111,7 +125,7 @@ export async function addProductViaUI(
     }),
   ).toBeVisible({ timeout: 10_000 });
 
-  await fillMinimalProductForm(page, productName);
+  await fillMinimalProductForm(page, productName, formOpts);
 
   const putResponse = page.waitForResponse(
     (r) =>
@@ -124,6 +138,9 @@ export async function addProductViaUI(
   const res = await putResponse;
   const match = res.url().match(/\/products\/([^/?]+)/);
   if (!match?.[1]) throw new Error("product id missing from save response URL");
+  await page.goto(`${baseURL}/store/${storeId}/products`, {
+    waitUntil: "domcontentloaded",
+  });
   await expect(page.getByText(productName).first()).toBeVisible({
     timeout: 15_000,
   });
@@ -149,16 +166,24 @@ function serviceTypeQualifiesAsTransport(serviceType: string): boolean {
   return SERVICE_TRANSPORT_HINT.test(serviceType);
 }
 
+export type ServiceFormOpts = {
+  acceptedCurrencies?: ("USD" | "EUR")[];
+};
+
 async function fillMinimalServiceForm(
   page: Page,
   serviceType: string,
+  opts: ServiceFormOpts = {},
 ): Promise<void> {
+  const accepted = opts.acceptedCurrencies ?? ["USD"];
   const dialog = page.getByRole("dialog").filter({
     has: page.locator(".vt-modal-title", { hasText: /añadir servicio/i }),
   });
   await pickVtOption(dialog, /categoría del servicio/i, "Servicios");
   await dialog.getByLabel(/tipo de servicio/i).fill(serviceType);
-  await pickVtMultiOption(dialog, /monedas aceptadas para el pago/i, "USD");
+  for (const cur of accepted) {
+    await pickVtMultiOption(dialog, /monedas aceptadas para el pago/i, cur);
+  }
 
   const text = "Descripción E2E del servicio.";
   await dialog.getByLabel(/descripción del servicio/i).fill(text);
@@ -185,6 +210,7 @@ export async function addServiceViaUI(
   baseURL: string,
   storeId: string,
   serviceType: string,
+  formOpts: ServiceFormOpts = {},
 ): Promise<string> {
   await page.goto(`${baseURL}/store/${storeId}/services`, {
     waitUntil: "domcontentloaded",
@@ -196,7 +222,7 @@ export async function addServiceViaUI(
     }),
   ).toBeVisible({ timeout: 10_000 });
 
-  await fillMinimalServiceForm(page, serviceType);
+  await fillMinimalServiceForm(page, serviceType, formOpts);
 
   const putResponse = page.waitForResponse(
     (r) =>
@@ -209,6 +235,9 @@ export async function addServiceViaUI(
   const res = await putResponse;
   const match = res.url().match(/\/services\/([^/?]+)/);
   if (!match?.[1]) throw new Error("service id missing from save response URL");
+  await page.goto(`${baseURL}/store/${storeId}/services`, {
+    waitUntil: "domcontentloaded",
+  });
   await expect(page.getByText(serviceType).first()).toBeVisible({
     timeout: 15_000,
   });
