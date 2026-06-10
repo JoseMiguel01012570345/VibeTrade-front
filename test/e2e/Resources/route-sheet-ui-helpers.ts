@@ -26,13 +26,25 @@ export async function openRoutesRail(page: Page): Promise<void> {
   const tab = page.getByRole("button", { name: /^rutas$/i });
   await expect(tab).toBeVisible({ timeout: 15_000 });
   await tab.click();
+  await expect(
+    page.getByRole("button", { name: /nueva hoja de ruta/i }),
+  ).toBeVisible({ timeout: 15_000 });
 }
 
 /** Clicks "Nueva hoja de ruta" button in the rail. */
 export async function clickNewRouteSheet(page: Page): Promise<void> {
-  const btn = page.getByRole("button", { name: /nueva hoja de ruta/i });
-  await expect(btn).toBeVisible({ timeout: 10_000 });
-  await btn.click();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const btn = page.getByRole("button", { name: /nueva hoja de ruta/i });
+    await expect(btn).toBeVisible({ timeout: 10_000 });
+    try {
+      await btn.click({ timeout: 8_000 });
+      await waitForRouteSheetForm(page);
+      return;
+    } catch (err) {
+      if (attempt === 2) throw err;
+      await page.waitForTimeout(400);
+    }
+  }
 }
 
 /** Waits for the route sheet form modal to appear. */
@@ -305,6 +317,10 @@ export async function openRouteSheetDetail(
 /** Clicks "Editar" on the route sheet detail toolbar. */
 export async function clickEditRouteSheet(page: Page): Promise<void> {
   await page.getByRole("button", { name: /^editar$/i }).click();
+  const confirmEdit = page.getByRole("button", { name: /continuar y editar/i });
+  if (await confirmEdit.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await confirmEdit.click();
+  }
   await expect(formDialog(page)).toBeVisible({ timeout: 10_000 });
 }
 

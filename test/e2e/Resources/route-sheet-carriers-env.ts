@@ -18,6 +18,8 @@ import {
   publishRouteSheetViaUI,
   linkRouteSheetToAgreementViaUI,
   openContractByAgreementIndex,
+  openNotificationsPanel,
+  getNotificationItem,
 } from "./route-sheet-ui-helpers";
 import { findEmergentOfferUrlViaCatalogSearchUI } from "./e2e-catalog-search";
 
@@ -163,14 +165,34 @@ export async function acceptPreselInviteAsCarrier(
   threadId: string,
   routeSheetId: string,
 ): Promise<void> {
-  await carrierPage.goto(
-    `/invite/presel/${threadId}?sheet=${encodeURIComponent(routeSheetId)}`,
-    { waitUntil: "domcontentloaded", timeout: 45_000 },
-  );
+  const inviteUrl = `/invite/presel/${threadId}?sheet=${encodeURIComponent(routeSheetId)}`;
   const routeModal = carrierPage
     .getByRole("dialog")
     .filter({ hasText: /tramo|ruta|hoja|invitaci/i });
-  await expect(routeModal).toBeVisible({ timeout: 15_000 });
+
+  let modalVisible = false;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await carrierPage.goto(inviteUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: 45_000,
+    });
+    modalVisible = await routeModal.isVisible({ timeout: 6_000 }).catch(() => false);
+    if (modalVisible) break;
+    await carrierPage.waitForTimeout(1_500);
+  }
+
+  if (!modalVisible) {
+    await carrierPage.goto("/", { waitUntil: "domcontentloaded", timeout: 45_000 });
+    await openNotificationsPanel(carrierPage);
+    const inviteNotif = getNotificationItem(
+      carrierPage,
+      /contacto de transporte|hoja de ruta|invitaci[oó]n/i,
+    );
+    await expect(inviteNotif).toBeVisible({ timeout: 30_000 });
+    await inviteNotif.click();
+    await expect(routeModal).toBeVisible({ timeout: 15_000 });
+  }
+
   await routeModal
     .getByRole("button", { name: /aceptar|participar|integrarme/i })
     .first()

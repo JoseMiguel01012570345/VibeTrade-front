@@ -85,6 +85,95 @@ export async function sendChatMessageViaUI(page: Page, text: string): Promise<vo
   const input = page.getByPlaceholder(/escribe un mensaje|escribe una respuesta/i);
   await expect(input).toBeVisible({ timeout: 15_000 });
   await input.fill(text);
-  await page.getByRole("button", { name: /^enviar mensaje$/i }).click();
+  await sendComposerViaUI(page);
   await expect(page.getByText(text).first()).toBeVisible({ timeout: 20_000 });
+}
+
+export async function sendComposerViaUI(page: Page): Promise<void> {
+  await page.getByRole("button", { name: /^enviar mensaje$/i }).click();
+}
+
+export async function attachImagesViaUI(
+  page: Page,
+  filePaths: string[],
+  caption?: string,
+): Promise<void> {
+  await page.getByLabel(/adjuntar imágenes/i).locator('input[type="file"]').setInputFiles(filePaths);
+  await expect(
+    page.getByLabel(/archivos listos para enviar/i),
+  ).toBeVisible({ timeout: 30_000 });
+  if (caption) {
+    const input = page.getByPlaceholder(/escribe un mensaje|añade un mensaje/i);
+    await input.fill(caption);
+  }
+}
+
+export async function attachDocumentsViaUI(
+  page: Page,
+  filePaths: string[],
+  caption?: string,
+): Promise<void> {
+  await page.getByLabel(/adjuntar documentos/i).locator('input[type="file"]').setInputFiles(filePaths);
+  await expect(
+    page.getByLabel(/archivos listos para enviar/i),
+  ).toBeVisible({ timeout: 30_000 });
+  if (caption) {
+    const input = page.getByPlaceholder(/escribe un mensaje|añade un mensaje/i);
+    await input.fill(caption);
+  }
+}
+
+export async function selectMessageRowForReply(
+  page: Page,
+  text: string,
+): Promise<void> {
+  const row = page
+    .locator("[data-chat-message-row]")
+    .filter({ hasText: text })
+    .first();
+  await expect(row).toBeVisible({ timeout: 20_000 });
+  // Image/doc bubbles use data-chat-interactive on media; click caption/text instead.
+  await row.getByText(text, { exact: false }).first().click();
+}
+
+export async function expectReplyQuoteVisible(
+  page: Page,
+  quotedText: string,
+): Promise<void> {
+  await expect(
+    page.getByRole("region", {
+      name: /respondiendo a mensajes en un hilo nuevo/i,
+    }),
+  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(quotedText).first()).toBeVisible();
+}
+
+export async function recordAndSendVoiceNoteViaUI(page: Page): Promise<void> {
+  const micBtn = page.getByRole("button", { name: /^grabar nota de voz$/i });
+  await expect(micBtn).toBeVisible({ timeout: 15_000 });
+  await micBtn.click();
+  await expect(page.getByText(/grabando nota de voz/i).first()).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect
+    .poll(
+      async () => {
+        const status = await page.getByRole("status").textContent();
+        return status?.includes("0:01") || status?.includes("0:02");
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true);
+  const stopBtn = page.getByRole("button", { name: /detener y enviar nota de voz/i });
+  await stopBtn.click();
+  await expect(page.getByText(/grabando nota de voz/i).first()).toBeHidden({
+    timeout: 20_000,
+  });
+  const pendingVoice = page
+    .getByLabel(/archivos listos para enviar/i)
+    .getByText(/nota de voz/i);
+  const sentNotice = page.getByText(/nota de voz enviada|nota de voz añadida/i);
+  await expect(pendingVoice.or(sentNotice).first()).toBeVisible({
+    timeout: 20_000,
+  });
 }

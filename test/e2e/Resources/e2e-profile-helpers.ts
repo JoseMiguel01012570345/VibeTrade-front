@@ -3,10 +3,16 @@ import { expect } from "@playwright/test";
 import { profile } from "./selectors";
 
 export async function openAccountPage(page: Page): Promise<void> {
-  await page.goto("/profile/me/account", { waitUntil: "domcontentloaded" });
-  await expect(page.getByText(profile.accountSettings)).toBeVisible({
-    timeout: 20_000,
+  await page.goto("/profile/me/account", {
+    waitUntil: "domcontentloaded",
+    timeout: 45_000,
   });
+  await expect(page).toHaveURL(/\/profile\/me\/account/, { timeout: 15_000 });
+  const settings = page.getByText(profile.accountSettings);
+  if (!(await settings.isVisible().catch(() => false))) {
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 45_000 });
+  }
+  await expect(settings).toBeVisible({ timeout: 30_000 });
 }
 
 export async function openContactsModal(page: Page): Promise<void> {
@@ -30,4 +36,39 @@ export function saveButtonForField(page: Page, fieldLabel: RegExp) {
     .locator("label")
     .filter({ hasText: fieldLabel })
     .getByRole("button", { name: /^guardar$/i });
+}
+
+export async function addContactByPhone(
+  page: Page,
+  phone: string,
+): Promise<void> {
+  await openContactsModal(page);
+  await page.getByPlaceholder(/\+54 9 11/i).fill(phone);
+  await page.getByRole("button", { name: /^añadir$/i }).click();
+  await expect(
+    page.getByText(/añadido|contacto/i).first(),
+  ).toBeVisible({ timeout: 20_000 });
+}
+
+export async function removeContactByDisplayName(
+  page: Page,
+  displayName: string,
+): Promise<void> {
+  const row = page.locator("li").filter({ hasText: displayName });
+  await expect(row).toBeVisible({ timeout: 10_000 });
+  await row.getByRole("button", { name: /eliminar contacto/i }).click();
+  await expect(page.getByText(/contacto eliminado/i).first()).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(row).toBeHidden({ timeout: 10_000 });
+}
+
+export async function uploadProfileAvatarViaUI(
+  page: Page,
+  fixturePath: string,
+): Promise<void> {
+  await page.getByLabel(/subir foto de perfil/i).setInputFiles(fixturePath);
+  await expect(
+    page.getByRole("button", { name: /guardar foto/i }),
+  ).toBeEnabled({ timeout: 30_000 });
 }

@@ -1,13 +1,6 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
-
-const FIXTURE_PNG = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "fixtures",
-  "pixel.png",
-);
+import { FIXTURE_PNG } from "./e2e-fixtures";
 
 async function pickVtOption(
   scope: Page | Locator,
@@ -242,4 +235,86 @@ export async function addServiceViaUI(
     timeout: 15_000,
   });
   return match[1];
+}
+
+export async function editProductNameViaUI(
+  page: Page,
+  baseURL: string,
+  storeId: string,
+  productName: string,
+  newName: string,
+): Promise<void> {
+  await page.goto(`${baseURL}/store/${storeId}/products`, {
+    waitUntil: "domcontentloaded",
+  });
+  const row = page.locator("li").filter({ hasText: productName });
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await row.getByRole("button", { name: /^editar$/i }).click();
+  const dialog = page.getByRole("dialog").filter({
+    has: page.locator(".vt-modal-title", { hasText: /editar producto/i }),
+  });
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await dialog.getByLabel(/nombre del producto/i).fill(newName);
+  const putResponse = page.waitForResponse(
+    (r) =>
+      r.request().method() === "PUT" &&
+      r.url().includes(`/market/stores/${encodeURIComponent(storeId)}/products/`) &&
+      r.ok(),
+    { timeout: 45_000 },
+  );
+  await dialog.getByRole("button", { name: /guardar producto/i }).click();
+  await putResponse;
+  await expect(page.getByText(newName).first()).toBeVisible({ timeout: 15_000 });
+}
+
+export async function deleteProductViaUI(
+  page: Page,
+  baseURL: string,
+  storeId: string,
+  productName: string,
+): Promise<void> {
+  await page.goto(`${baseURL}/store/${storeId}/products`, {
+    waitUntil: "domcontentloaded",
+  });
+  const row = page.locator("li").filter({ hasText: productName });
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await row.getByRole("button", { name: /^quitar$/i }).click();
+  const modal = page.getByRole("dialog").filter({
+    hasText: /eliminar producto/i,
+  });
+  await expect(modal).toBeVisible({ timeout: 8_000 });
+  const delResponse = page.waitForResponse(
+    (r) =>
+      r.request().method() === "DELETE" &&
+      r.url().includes("/products/") &&
+      (r.ok() || r.status() === 204),
+    { timeout: 30_000 },
+  );
+  await modal.getByRole("button", { name: /^eliminar$/i }).click();
+  await delResponse;
+  await expect(row).toBeHidden({ timeout: 15_000 });
+}
+
+export async function deleteStoreViaUI(
+  page: Page,
+  baseURL: string,
+  storeName: string,
+): Promise<void> {
+  await page.goto(`${baseURL}/profile/me/stores`, {
+    waitUntil: "domcontentloaded",
+  });
+  const card = page.locator("li, article, [class*='card']").filter({
+    hasText: storeName,
+  }).first();
+  await expect(card).toBeVisible({ timeout: 15_000 });
+  await card.getByRole("button", { name: /^eliminar$/i }).click();
+  const modal = page.getByRole("dialog").filter({
+    hasText: /eliminar la tienda/i,
+  });
+  await expect(modal).toBeVisible({ timeout: 8_000 });
+  await modal.getByRole("button", { name: /^eliminar$/i }).click();
+  await expect(page.getByText(/tienda eliminada/i).first()).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(card).toBeHidden({ timeout: 15_000 });
 }

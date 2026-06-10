@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 import {
   clearCatalogSearchPersistence,
   waitForCatalogSearchSettled,
@@ -82,4 +83,77 @@ export async function findEmergentOfferUrlViaCatalogSearchUI(
   }
 
   return null;
+}
+
+export async function setCatalogSearchKindsProductsOnly(page: Page): Promise<void> {
+  await page.getByRole("button", { name: /filtrar por tipo/i }).click();
+  for (const name of [/^tiendas$/i, /^servicios$/i, /^hojas de ruta$/i]) {
+    const opt = page.getByRole("option", { name });
+    if ((await opt.getAttribute("aria-selected")) === "true") {
+      await opt.click();
+    }
+  }
+  const products = page.getByRole("option", { name: /^productos$/i });
+  if ((await products.getAttribute("aria-selected")) !== "true") {
+    await products.click();
+  }
+  await page.keyboard.press("Escape");
+}
+
+/** Polls autocomplete API until a suggestion contains expectedSubstring. */
+export async function waitForAutocompleteApiSuggestion(
+  page: Page,
+  prefix: string,
+  expectedSubstring: string,
+  timeoutMs = 60_000,
+): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          async ([q, needle]) => {
+            const res = await fetch(
+              `/api/v1/market/stores/autocomplete?q=${encodeURIComponent(q)}&kinds=product&limit=15`,
+            );
+            if (!res.ok) return false;
+            const json = (await res.json()) as { suggestions?: string[] };
+            const needleLower = String(needle).toLowerCase();
+            return (json.suggestions ?? []).some((s) =>
+              s.toLowerCase().includes(needleLower),
+            );
+          },
+          [prefix, expectedSubstring],
+        ),
+      { timeout: timeoutMs },
+    )
+    .toBe(true);
+}
+
+/** Polls autocomplete listbox until an option contains expectedSubstring. */
+export async function waitForAutocompleteSuggestion(
+  page: Page,
+  prefix: string,
+  expectedSubstring: string,
+  timeoutMs = 20_000,
+): Promise<void> {
+  const input = page.getByLabel(/buscar en cat[aá]logo/i);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await input.fill("");
+    await input.fill(prefix);
+    await page.waitForTimeout(400);
+    const option = page
+      .getByRole("listbox")
+      .getByRole("option")
+      .filter({ hasText: expectedSubstring })
+      .first();
+    if (await option.isVisible().catch(() => false)) {
+      await expect(option).toBeVisible();
+      return;
+    }
+    await page.waitForTimeout(1_000);
+  }
+  throw new Error(
+    `Autocomplete option containing "${expectedSubstring}" not found within ${timeoutMs}ms`,
+  );
 }
