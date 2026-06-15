@@ -3,7 +3,7 @@ import { expect } from "@playwright/test";
 
 const FORM_DIALOG_TEXT = /nueva hoja de rutas|editar hoja de rutas/i;
 
-function formDialog(page: Page) {
+export function formDialog(page: Page) {
   return page.locator('[role="dialog"]').filter({ hasText: FORM_DIALOG_TEXT });
 }
 
@@ -216,7 +216,7 @@ export async function fillTramoFields(
   const destinoLat = opts.destinoLat ?? String(-34.62 - i * 0.01);
   const destinoLng = opts.destinoLng ?? String(-58.4 - i * 0.01);
 
-  if (origenLat !== undefined && origenLng !== undefined) {
+  if (i === 0 && origenLat !== undefined && origenLng !== undefined) {
     await fillTramoMapCoords(page, i, "origen", origenLat, origenLng, opts.origen);
   }
   await fillTramoMapCoords(page, i, "destino", destinoLat, destinoLng, opts.destino);
@@ -1187,53 +1187,3 @@ export async function createLinkedTwoStopRouteSheet(
   return titulo;
 }
 
-/** Disconnected A→B and X→Y — two independent route paths. */
-export async function createDisconnectedTwoStopRouteSheet(
-  page: Page,
-  agreementTitle: string,
-  carrierPhone?: string,
-): Promise<string> {
-  const titulo = `E2E Ruta Desconexa ${Date.now()}`;
-  const day = DEFAULT_TRAMO.recogidaDate;
-  const day2 = new Date(Date.now() + 172_800_000).toISOString().slice(0, 10);
-  await createTwoStopRouteSheet(
-    page,
-    titulo,
-    {
-      origen: "Punto A",
-      destino: "Punto B",
-      recogidaDate: day,
-      recogidaTime: "08:00",
-      entregaDate: day,
-      entregaTime: "12:00",
-      precio: "50",
-    },
-    {
-      origen: "Punto X",
-      destino: "Punto Y",
-      origenLat: "-23.5505",
-      origenLng: "-46.6333",
-      destinoLat: "-23.5600",
-      destinoLng: "-46.6500",
-      recogidaDate: day2,
-      recogidaTime: "09:00",
-      entregaDate: day2,
-      entregaTime: "15:00",
-      precio: "80",
-    },
-    carrierPhone ? { tramo0: carrierPhone, tramo1: carrierPhone } : undefined,
-  );
-
-  const { openRailContracts } = await import("./chat-helpers");
-  await openRailContracts(page);
-  await page
-    .getByRole("button")
-    .filter({ hasText: agreementTitle })
-    .first()
-    .click();
-  await linkRouteSheetToAgreementViaUI(page, titulo);
-  await openRoutesRail(page);
-  await openRouteSheetDetail(page, titulo);
-  await publishRouteSheetViaUI(page);
-  return titulo;
-}

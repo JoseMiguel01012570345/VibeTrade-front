@@ -309,7 +309,7 @@ export function RouteSheetFormModal({
       setTitulo(rs.titulo);
       setMerc(rs.mercanciasResumen);
       setNotasG(rs.notasGenerales ?? "");
-      setTramos(tramosInitRaw);
+      setTramos(expandChainedTramoOrigins(tramosToLimpios(tramosInitRaw)));
       const limpios0 = expandChainedTramoOrigins(
         tramosToLimpios(tramosInitRaw),
       );
@@ -414,6 +414,7 @@ export function RouteSheetFormModal({
   if (!open) return null;
 
   function openMapPicker(tramoIndex: number, punto: "origen" | "destino") {
+    if (punto === "origen" && tramoIndex > 0) return;
     const t = tramos[tramoIndex];
     if (!t) return;
     setMapCoordError(undefined);
@@ -423,19 +424,9 @@ export function RouteSheetFormModal({
     let lngStr = "";
     let labelStr = "";
     if (punto === "origen") {
-      const prev = tramoIndex > 0 ? tramos[tramoIndex - 1] : null;
-      const ownLat = (t.origenLat ?? "").trim();
-      const ownLng = (t.origenLng ?? "").trim();
-      const hasOwnCoords = ownLat !== "" && ownLng !== "";
-      if (hasOwnCoords || tramoIndex === 0) {
-        latStr = t.origenLat ?? "";
-        lngStr = t.origenLng ?? "";
-        labelStr = t.origen ?? "";
-      } else if (prev) {
-        latStr = prev.destinoLat ?? "";
-        lngStr = prev.destinoLng ?? "";
-        labelStr = prev.destino ?? "";
-      }
+      latStr = t.origenLat ?? "";
+      lngStr = t.origenLng ?? "";
+      labelStr = t.origen ?? "";
     } else {
       latStr = t.destinoLat ?? "";
       lngStr = t.destinoLng ?? "";
@@ -513,7 +504,7 @@ export function RouteSheetFormModal({
         if (place) row.destino = place;
       }
       next[mapPick.tramoIndex] = row;
-      return next;
+      return expandChainedTramoOrigins(tramosToLimpios(next));
     });
     toast.success("Ubicación guardada");
     setMapPick(null);
@@ -611,7 +602,7 @@ export function RouteSheetFormModal({
     setTramos((prev) => {
       const next = [...prev];
       next[i] = { ...next[i], ...patch };
-      return next;
+      return expandChainedTramoOrigins(tramosToLimpios(next));
     });
   }
 
@@ -727,11 +718,9 @@ export function RouteSheetFormModal({
             <strong>fecha y hora</strong> estimadas de recogida y de entrega con
             los selectores. El precio del tramo debe ser un número (monto). La
             moneda de pago se elige en cada tramo. Origen, destino y el mapa se
-            sincronizan (dirección ↔ pin). Por defecto el origen del tramo 2+
-            sigue al destino del anterior; puedes fijar otro con «Coordenadas
-            origen (mapa)». Podés insertar un tramo en cualquier punto: el nuevo
-            tramo propone origen = fin del anterior y destino = inicio del que
-            seguía; ambos son editables.
+            sincronizan (dirección ↔ pin). El origen del tramo 2+ siempre coincide
+            con el destino del tramo anterior y no se puede modificar. Podés insertar
+            un tramo en cualquier punto: el nuevo tramo toma origen = fin del anterior.
           </div>
           <div
             className={cn(
@@ -805,20 +794,12 @@ export function RouteSheetFormModal({
                 const minRecogidaD = todayIsoDateLocal();
                 const minEntregaD = maxIsoDate(minRecogidaD, recEst.date);
                 const prevStop = i > 0 ? tramos[i - 1] : null;
-                const ownOLat = (p.origenLat ?? "").trim();
-                const ownOLng = (p.origenLng ?? "").trim();
-                const hasStoredOriginCoords = ownOLat !== "" && ownOLng !== "";
-                const origenTextReadOnly = i > 0 && !hasStoredOriginCoords;
+                const origenTextReadOnly = i > 0;
                 let origenNombre: string;
                 let origenLatShown: string;
                 let origenLngShown: string;
                 if (i === 0) {
                   origenNombre = p.origen;
-                  origenLatShown = p.origenLat ?? "";
-                  origenLngShown = p.origenLng ?? "";
-                } else if (hasStoredOriginCoords) {
-                  origenNombre =
-                    p.origen.trim() || prevStop?.destino?.trim() || "";
                   origenLatShown = p.origenLat ?? "";
                   origenLngShown = p.origenLng ?? "";
                 } else {
@@ -883,30 +864,21 @@ export function RouteSheetFormModal({
                       </div>
                       {origenTextReadOnly ? (
                         <p className="vt-muted mb-2 text-[11px] leading-snug">
-                          Por defecto, mismo lugar que el{" "}
-                          <b>destino del tramo {i}</b>. Para otro punto de
-                          salida, usa «Coordenadas origen (mapa)» o editá ese
+                          Mismo lugar que el <b>destino del tramo {i}</b> (no
+                          editable). Para cambiar el punto de salida, editá ese
                           destino.
-                        </p>
-                      ) : i > 0 ? (
-                        <p className="vt-muted mb-2 text-[11px] leading-snug">
-                          Origen con coordenadas propias (puedes ajustar el
-                          texto o reabrir el mapa).
                         </p>
                       ) : null}
                       <div className={rutaCoordsRow}>
-                        <button
-                          type="button"
-                          className={rutaMapBtn}
-                          title={
-                            i > 0 && !hasStoredOriginCoords
-                              ? "Por defecto coincide con el destino del tramo anterior; abre el mapa para otro origen"
-                              : undefined
-                          }
-                          onClick={() => openMapPicker(i, "origen")}
-                        >
-                          <MapPin size={14} /> Coordenadas origen (mapa)
-                        </button>
+                        {i === 0 ? (
+                          <button
+                            type="button"
+                            className={rutaMapBtn}
+                            onClick={() => openMapPicker(i, "origen")}
+                          >
+                            <MapPin size={14} /> Coordenadas origen (mapa)
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className={rutaMapBtn}

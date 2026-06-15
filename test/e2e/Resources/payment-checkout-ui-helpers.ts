@@ -309,8 +309,22 @@ export async function waitForPayableRoutePathsInPaymentModal(
     modal.getByText(/cargando tarjetas/i),
   ).toBeHidden({ timeout: 45_000 });
   await expect(
-    modal.getByText(/transporte \(rutas enlazadas\)/i),
+    modal.getByText(/transporte \(hoja de ruta\)/i),
   ).toBeVisible({ timeout: 30_000 });
+}
+
+export async function selectAllRoutePathsForPayment(page: Page): Promise<void> {
+  const modal = paymentModal(page);
+  const transport = modal
+    .locator("label")
+    .filter({ hasText: /incluir transporte en este cobro/i })
+    .first();
+  await expect(transport).toBeVisible({ timeout: 15_000 });
+  const box = transport.locator('input[type="checkbox"]');
+  if (!(await box.isChecked())) {
+    await box.check();
+  }
+  await waitForInformeReady(page);
 }
 
 export async function syncBuyerRouteSheetsForCheckout(
@@ -351,11 +365,6 @@ export async function prepareBuyerRouteCheckout(
   await waitForPayableRoutePathsInPaymentModal(page);
 }
 
-export async function selectAllRoutePathsForPayment(page: Page): Promise<void> {
-  const modal = paymentModal(page);
-  await modal.getByRole("button", { name: /seleccionar todas/i }).click();
-  await waitForInformeReady(page);
-}
 
 export async function waitForInformeReady(page: Page): Promise<void> {
   const modal = paymentModal(page);

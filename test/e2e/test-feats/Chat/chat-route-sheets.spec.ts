@@ -32,6 +32,7 @@ import {
   openContractLinkedToRouteSheet,
   openContractByAgreementIndex,
   pickRouteSheetInAgreementLinkSelect,
+  formDialog,
 } from "../../Resources/route-sheet-ui-helpers";
 
 const TODAY = new Date();
@@ -194,8 +195,8 @@ test.describe("chat route sheets (UI)", () => {
     await sellerPage.close();
   });
 
-  // ─── Test 4: Non-connected graph (two disconnected legs) ─────────────────────
-  test("Creates route sheet with two disconnected legs (non-connected graph)", async ({
+  // ─── Test 4: Origen del tramo 2+ enlazado y no editable ─────────────────────
+  test("Tramo 2 origin is read-only and chained to tramo 1 destination", async ({
     browser,
   }) => {
     test.skip(!rsReady(), rsSkipReason);
@@ -213,7 +214,7 @@ test.describe("chat route sheets (UI)", () => {
     await clickNewRouteSheet(sellerPage);
     await waitForRouteSheetForm(sellerPage);
 
-    const titulo = `Hoja Grafo No Conexo ${Date.now()}`;
+    const titulo = `Hoja Cadena ${Date.now()}`;
     await fillRouteSheetBasicFields(sellerPage, titulo);
     await deleteTramoAt(sellerPage, 1);
 
@@ -233,13 +234,19 @@ test.describe("chat route sheets (UI)", () => {
 
     await insertTramoAfter(sellerPage, 0);
 
+    const form = formDialog(sellerPage);
+    const origenTramo2 = form.locator("#ruta-tramo-1-origen");
+    await expect(origenTramo2).toHaveValue("Punto B");
+    await expect(origenTramo2).not.toBeEditable();
+    await expect(
+      form.getByRole("button", { name: /coordenadas origen \(mapa\)/i }),
+    ).toHaveCount(1);
+
     await fillTramoFields(sellerPage, 1, {
-      origen: "Punto X",
-      destino: "Punto Z",
-      origenLat: "-23.5505",
-      origenLng: "-46.6333",
-      destinoLat: "-23.5600",
-      destinoLng: "-46.6500",
+      origen: "Punto B",
+      destino: "Punto C",
+      destinoLat: "-34.62",
+      destinoLng: "-58.41",
       recogidaDate: isoDayAfter,
       recogidaTime: "09:00",
       entregaDate: isoDayAfter,
@@ -254,13 +261,6 @@ test.describe("chat route sheets (UI)", () => {
     await saveRouteSheet(sellerPage);
     await expect(sellerPage.getByText(/hoja de ruta creada/i)).toBeVisible({
       timeout: 15_000,
-    });
-
-    await expect(
-      sellerPage.getByRole("button").filter({ hasText: titulo }).first(),
-    ).toBeVisible({ timeout: 10_000 });
-    await expect(sellerPage.getByText(/2 tramos/i).first()).toBeVisible({
-      timeout: 5_000,
     });
 
     await sellerPage.close();

@@ -531,33 +531,3 @@ export function consecutiveTramoPair(
   ];
 }
 
-export function disconnectedSubroutePair(
-  carrier1Phone: string,
-  carrier2Phone: string,
-): RouteTramoConfig[] {
-  return [
-    baseTramoFields({
-      origen: "Isla A origen",
-      destino: "Isla A destino",
-      origenLat: E2E_COORDS.t1Origin.lat,
-      origenLng: E2E_COORDS.t1Origin.lng,
-      destinoLat: E2E_COORDS.t1Dest.lat,
-      destinoLng: E2E_COORDS.t1Dest.lng,
-      carrierPhone: carrier1Phone,
-    }),
-    baseTramoFields({
-      origen: "Isla B origen",
-      destino: "Isla B destino",
-      origenLat: E2E_COORDS.islandOrigin.lat,
-      origenLng: E2E_COORDS.islandOrigin.lng,
-      destinoLat: E2E_COORDS.islandDest.lat,
-      destinoLng: E2E_COORDS.islandDest.lng,
-      recogidaDate: isoDayAfter,
-      recogidaTime: "10:00",
-      entregaDate: isoDayAfterPlus,
-      entregaTime: "12:00",
-      precio: "180",
-      carrierPhone: carrier2Phone,
-    }),
-  ];
-}

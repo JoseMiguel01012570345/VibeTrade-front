@@ -23,7 +23,7 @@ import {
   assertPayWhileCarrierInChatShowsPinAndCede,
   baseTramoFields,
   consecutiveTramoPair,
-  disconnectedSubroutePair,
+  consecutiveTramoPair,
   E2E_COORDS,
   setupFlexibleRouteScenario,
 } from "../../Resources/pay-live-map-helpers";
@@ -136,16 +136,17 @@ test.describe("chat route logistics — pay live map & cede ownership", () => {
     await carrier2Page.context().close();
   });
 
-  test("L-24: disconnected subroutes — first island owner gets cede; second carrier waits", async ({
+  test("L-24: linked chain — first tramo owner gets cede; second carrier waits", async ({
     browser,
   }) => {
     test.skip(!hasCarrier2Session(), carrier2SkipReason);
 
     const scenario = getE2EScenario()!;
     const s = await setupFlexibleRouteScenario(browser, {
-      tituloPrefix: "Hoja L24 Subroutes",
-      tramos: disconnectedSubroutePair(
+      tituloPrefix: "Hoja L24 Linked",
+      tramos: consecutiveTramoPair(
         scenario.carrierPhone!,
+        false,
         scenario.carrier2Phone!,
       ),
     });

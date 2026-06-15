@@ -21,22 +21,12 @@ export function effectiveDestino(tramo: RouteTramoFormInput): EffectiveRoutePlac
 }
 
 /**
- * Origen «real» del tramo: coords propias en el formulario o, si encadena, el destino del anterior.
+ * Origen «real» del tramo: solo el tramo 1 tiene origen propio; el resto encadena al destino del anterior.
  */
 export function effectiveOrigen(
   tramo: RouteTramoFormInput,
   prev: RouteTramoFormInput | null,
 ): EffectiveRoutePlace {
-  const ownLat = (tramo.origenLat ?? "").trim();
-  const ownLng = (tramo.origenLng ?? "").trim();
-  if (ownLat !== "" && ownLng !== "") {
-    const fallbackName = prev ? effectiveDestino(prev).text : "";
-    return {
-      text: tramo.origen?.trim() || fallbackName,
-      lat: ownLat,
-      lng: ownLng,
-    };
-  }
   if (prev) {
     const d = effectiveDestino(prev);
     return { text: d.text, lat: d.lat, lng: d.lng };
@@ -131,7 +121,6 @@ export function emptyTramoInsertedBetween(
   next: RouteTramoFormInput,
 ): RouteTramoFormInput {
   const oEnd = effectiveDestino(prev);
-  const oStart = effectiveOrigen(next, prev);
   const chainedRecogida = tiempoRecogidaChainedFromPrevEntrega(prev);
   const chainedEntrega = tiempoEntregaChainedFromNextRecogida(next);
   return {
@@ -139,9 +128,9 @@ export function emptyTramoInsertedBetween(
       origen: oEnd.text,
       origenLat: oEnd.lat,
       origenLng: oEnd.lng,
-      destino: oStart.text,
-      destinoLat: oStart.lat,
-      destinoLng: oStart.lng,
+      destino: "",
+      destinoLat: "",
+      destinoLng: "",
     }),
     tiempoRecogidaEstimado: chainedRecogida,
     tiempoEntregaEstimado: chainedEntrega,
@@ -198,8 +187,7 @@ export function tramosToLimpios(
 }
 
 /**
- * Tras limpiar cada fila con `tramosToLimpios`, asigna origen del tramo i al destino del i−1
- * salvo que el tramo i ya tenga par lat/lng de origen (definido en mapa).
+ * Tras limpiar cada fila con `tramosToLimpios`, asigna origen del tramo i al destino del i−1.
  */
 export function expandChainedTramoOrigins(
   tramos: RouteTramoFormInput[],
@@ -207,17 +195,6 @@ export function expandChainedTramoOrigins(
   return tramos.map((t, i) => {
     if (i === 0) return t;
     const prev = tramos[i - 1];
-    const lat = (t.origenLat ?? "").trim();
-    const lng = (t.origenLng ?? "").trim();
-    if (lat !== "" && lng !== "") {
-      const name = (t.origen ?? "").trim();
-      return {
-        ...t,
-        origen: name || prev.destino.trim(),
-        origenLat: lat,
-        origenLng: lng,
-      };
-    }
     return {
       ...t,
       origen: prev.destino.trim(),

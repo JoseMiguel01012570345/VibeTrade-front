@@ -62,7 +62,6 @@ import {
   hasCarrierSession,
 } from "../../Resources/route-sheet-carriers-env";
 import {
-  createDisconnectedTwoStopRouteSheet,
   createLinkedTwoStopRouteSheet,
 } from "../../Resources/route-sheet-ui-helpers";
 
@@ -327,11 +326,11 @@ test.describe("chat agreement checkout (UI)", () => {
       await pickServiceRecurrences(buyerPage, [/usd/i], dualServiceName);
       await confirmInformeCheckbox(buyerPage);
       await clickPayCurrency(buyerPage, "USD");
-      await expectPaidServiceRecurrenceHidden(
-        buyerPage,
-        /usd/i,
-        dualServiceName,
-      );
+      await expect(
+        paymentModal(buyerPage).getByText(
+          /todas las recurrencias de este servicio ya fueron cobradas/i,
+        ),
+      ).toBeVisible({ timeout: 30_000 });
       await expect(
         paymentModal(buyerPage).getByRole("button", { name: /^pagar USD$/i }),
       ).toHaveCount(0);
@@ -395,6 +394,7 @@ test.describe("chat agreement checkout (UI)", () => {
       await buyerRespondToAgreement(buyerPage, title, "accept");
       await reloadChatThread(buyerPage);
       await openChatPaymentModal(buyerPage);
+      await setAllMerchandiseLines(buyerPage, true);
 
       await expectInformeCurrencyBlocks(buyerPage, ["USD"]);
 
@@ -496,70 +496,19 @@ test.describe("chat agreement checkout (UI)", () => {
 
       const modal = paymentModal(buyerPage);
       await expect(
-        modal.getByText(/transporte \(rutas enlazadas\)/i),
+        modal.getByText(/transporte \(hoja de ruta\)/i),
       ).toBeVisible();
       await expect(modal.getByText(/1\. ciudad a → ciudad b/i)).toBeVisible();
       await expect(modal.getByText(/2\. ciudad b → ciudad c/i)).toBeVisible();
-      const routeChecks = modal
-        .locator("label")
-        .filter({ hasText: /parada\(s\)/i });
-      await expect(routeChecks).toHaveCount(1);
+      await expect(
+        modal.getByText(/incluir transporte en este cobro/i),
+      ).toBeVisible();
 
       await sellerPage.close();
       await buyerPage.context().close();
     });
 
-    test("disconnected stops show two route paths", async ({ browser }) => {
-      test.skip(!hasCarrierSession(), carrierSkipReason);
-      const seller = getE2ESellerSession()!;
-      const scenario = getE2EScenario()!;
-      const title = `E2E Ruta disc ${Date.now()}`;
-
-      const { buyerPage, threadId } = await createThreadAsBuyer(
-        browser,
-        getE2EToken(),
-        e2eOfferId,
-      );
-      const sellerPage = await openSellerPage(
-        browser,
-        seller.sessionToken,
-        threadId,
-      );
-
-      await sellerEmitMerchandiseAgreement(sellerPage, {
-        title,
-        productNamePart: "Producto E2E",
-      });
-      await waitForAgreementBubble(buyerPage, title);
-      await buyerRespondToAgreement(buyerPage, title, "accept");
-
-      const routeTitulo = await createDisconnectedTwoStopRouteSheet(
-        sellerPage,
-        title,
-        scenario.carrierPhone,
-      );
-      await inviteAndConfirmRouteCarriersForCheckout(
-        browser,
-        sellerPage,
-        threadId,
-        routeTitulo,
-        seller.sessionToken,
-        { carrierSessionToken: scenario.carrierSessionToken! },
-      );
-      await reloadChatThread(buyerPage);
-      await prepareBuyerRouteCheckout(buyerPage, title, routeTitulo);
-
-      const modal = paymentModal(buyerPage);
-      const routeChecks = modal
-        .locator("label")
-        .filter({ hasText: /parada\(s\)/i });
-      await expect(routeChecks).toHaveCount(2);
-
-      await sellerPage.close();
-      await buyerPage.context().close();
-    });
-
-    test("selecting linked path expands both stops in informe", async ({
+    test("selecting transport expands both stops in informe", async ({
       browser,
     }) => {
       test.skip(!hasCarrierSession(), carrierSkipReason);
@@ -609,73 +558,6 @@ test.describe("chat agreement checkout (UI)", () => {
       await expect(modal.getByText(/informe/i).first()).toBeVisible();
       const informeText = (await modal.textContent()) ?? "";
       expect(informeText.toLowerCase()).toMatch(/transporte|ruta|tramo|10|20|30/);
-
-      await sellerPage.close();
-      await buyerPage.context().close();
-    });
-
-    test("pay one disconnected path leaves sibling payable", async ({
-      browser,
-    }) => {
-      test.skip(!hasCarrierSession(), carrierSkipReason);
-      const seller = getE2ESellerSession()!;
-      const scenario = getE2EScenario()!;
-      const title = `E2E Ruta partial ${Date.now()}`;
-
-      const { buyerPage, threadId } = await createThreadAsBuyer(
-        browser,
-        getE2EToken(),
-        e2eOfferId,
-      );
-      const sellerPage = await openSellerPage(
-        browser,
-        seller.sessionToken,
-        threadId,
-      );
-
-      await sellerEmitMerchandiseAgreement(sellerPage, {
-        title,
-        productNamePart: "Producto E2E",
-      });
-      await waitForAgreementBubble(buyerPage, title);
-      await buyerRespondToAgreement(buyerPage, title, "accept");
-      const routeTitulo = await createDisconnectedTwoStopRouteSheet(
-        sellerPage,
-        title,
-        scenario.carrierPhone,
-      );
-      await inviteAndConfirmRouteCarriersForCheckout(
-        browser,
-        sellerPage,
-        threadId,
-        routeTitulo,
-        seller.sessionToken,
-        { carrierSessionToken: scenario.carrierSessionToken! },
-      );
-      await ensureBuyerDemoCard(buyerPage, threadId);
-      test.skip(
-        !(await buyerHasPayCard(buyerPage, threadId)),
-        "Buyer needs a saved Stripe card to execute payments",
-      );
-
-      await syncBuyerRouteSheetsForCheckout(buyerPage, title, routeTitulo);
-      await openChatPaymentModal(buyerPage);
-      await waitForPayableRoutePathsInPaymentModal(buyerPage);
-      await setAllMerchandiseLines(buyerPage, false);
-
-      const modal = paymentModal(buyerPage);
-      const paths = modal.locator("label").filter({ hasText: /parada\(s\)/i });
-      await paths.nth(0).locator('input[type="checkbox"]').check();
-      await paths.nth(1).locator('input[type="checkbox"]').uncheck();
-      await confirmInformeCheckbox(buyerPage);
-      await clickPayCurrency(buyerPage, "USD");
-
-      await pageKeyboardCloseAndReopen(buyerPage, threadId);
-      await setAllMerchandiseLines(buyerPage, false);
-      const pathsAfter = paymentModal(buyerPage)
-        .locator("label")
-        .filter({ hasText: /parada\(s\)/i });
-      await expect(pathsAfter).toHaveCount(1);
 
       await sellerPage.close();
       await buyerPage.context().close();
@@ -731,7 +613,7 @@ test.describe("chat agreement checkout (UI)", () => {
         modalBlocked.getByText(/transportistas de cada tramo estén confirmados/i),
       ).toBeVisible({ timeout: 15_000 });
       await expect(
-        modalBlocked.locator("label").filter({ hasText: /parada\(s\)/i }),
+        modalBlocked.getByText(/incluir transporte en este cobro/i),
       ).toHaveCount(0);
 
       await inviteAndConfirmRouteCarriersForCheckout(
@@ -749,10 +631,8 @@ test.describe("chat agreement checkout (UI)", () => {
       await pageKeyboardCloseAndReopen(buyerPage, threadId);
       await waitForPayableRoutePathsInPaymentModal(buyerPage);
       await expect(
-        paymentModal(buyerPage)
-          .locator("label")
-          .filter({ hasText: /parada\(s\)/i }),
-      ).toHaveCount(1);
+        paymentModal(buyerPage).getByText(/incluir transporte en este cobro/i),
+      ).toBeVisible();
 
       await sellerPage.close();
       await buyerPage.context().close();

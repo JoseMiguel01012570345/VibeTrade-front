@@ -149,9 +149,7 @@ export function ChatPaymentModal({
   const [agreementRoutePaths, setAgreementRoutePaths] = useState<
     AgreementRoutePathApi[]
   >([]);
-  const [selectedRoutePathIds, setSelectedRoutePathIds] = useState<string[]>(
-    [],
-  );
+  const [includeTransportInCharge, setIncludeTransportInCharge] = useState(true);
   const [selectedMerchandiseLineIds, setSelectedMerchandiseLineIds] = useState<
     string[]
   >([]);
@@ -232,6 +230,8 @@ export function ChatPaymentModal({
     [payableRoutePaths],
   );
 
+  const payableRoutePath = payableRoutePaths[0] ?? null;
+
   const routeLegSelectionRequired =
     routePickAgreement && payableRoutePaths.length > 0;
 
@@ -310,10 +310,7 @@ export function ChatPaymentModal({
     [selectedServicePayments],
   );
 
-  const routePathSelectionKey = useMemo(
-    () => [...selectedRoutePathIds].sort().join("|"),
-    [selectedRoutePathIds],
-  );
+  const transportSelectionKey = includeTransportInCharge ? "1" : "0";
 
   const merchSelectionKey = useMemo(
     () => [...selectedMerchandiseLineIds].sort().join("|"),
@@ -349,7 +346,7 @@ export function ChatPaymentModal({
 
   const selectedServicePaymentsRef = useRef(selectedServicePayments);
   const selectedServicePaymentsReadyRef = useRef(selectedServicePaymentsReady);
-  const selectedRoutePathIdsRef = useRef(selectedRoutePathIds);
+  const includeTransportInChargeRef = useRef(includeTransportInCharge);
   const agreementRoutePathsRef = useRef(agreementRoutePaths);
   const selectedMerchandiseLineIdsRef = useRef(selectedMerchandiseLineIds);
   const routeDeliveriesRef = useRef(routeDeliveries);
@@ -357,11 +354,11 @@ export function ChatPaymentModal({
   const fetchCheckoutBreakdownOnlyRef = useRef<() => Promise<void>>(
     async () => {},
   );
-  const routePathSelectionTouchedRef = useRef(false);
+  const transportSelectionTouchedRef = useRef(false);
   selectedServicePaymentsRef.current = selectedServicePayments;
   servicePaymentsPaidRef.current = servicePaymentsPaid;
   selectedServicePaymentsReadyRef.current = selectedServicePaymentsReady;
-  selectedRoutePathIdsRef.current = selectedRoutePathIds;
+  includeTransportInChargeRef.current = includeTransportInCharge;
   agreementRoutePathsRef.current = agreementRoutePaths;
   selectedMerchandiseLineIdsRef.current = selectedMerchandiseLineIds;
   routeDeliveriesRef.current = routeDeliveries;
@@ -378,7 +375,7 @@ export function ChatPaymentModal({
     let anySelected = false;
     if (routeLegSelectionRequired) {
       anyBucket = true;
-      if (selectedRoutePathIds.length > 0) anySelected = true;
+      if (includeTransportInCharge) anySelected = true;
     }
     if (merchCheckboxSectionVisible) {
       anyBucket = true;
@@ -392,7 +389,7 @@ export function ChatPaymentModal({
   }, [
     serviceOnlyAgreement,
     routeLegSelectionRequired,
-    selectedRoutePathIds,
+    includeTransportInCharge,
     merchCheckboxSectionVisible,
     selectedMerchandiseLineIds,
     hybridServiceBlocks,
@@ -688,13 +685,10 @@ export function ChatPaymentModal({
       }
       const includeMerch = payableMerchIds.size > 0;
 
-      const allowedPathIds = new Set(
-        payablePaths.map((p) => p.routePathId.trim()).filter(Boolean),
-      );
       const pathsPick = routeLegReqLocal
-        ? selectedRoutePathIdsRef.current.filter((id) =>
-            allowedPathIds.has(id.trim()),
-          )
+        ? includeTransportInChargeRef.current
+          ? null
+          : []
         : [];
 
       const merchPick = includeMerch
@@ -839,8 +833,8 @@ export function ChatPaymentModal({
     setAllRecurrencesPaidVerified(false);
     routeDeliveriesRef.current = [];
     setRouteDeliveries([]);
-    routePathSelectionTouchedRef.current = false;
-    setSelectedRoutePathIds([]);
+    transportSelectionTouchedRef.current = false;
+    setIncludeTransportInCharge(true);
     setAgreementRoutePaths([]);
     setSelectedMerchandiseLineIds([]);
     setCheckoutHydrated(false);
@@ -850,21 +844,12 @@ export function ChatPaymentModal({
     if (!open) return;
     if (serviceOnlyAgreement) return;
     if (!routeLegSelectionRequired) {
-      setSelectedRoutePathIds((prev) => (prev.length === 0 ? prev : []));
+      setIncludeTransportInCharge((prev) => (prev ? prev : false));
       return;
     }
-    setSelectedRoutePathIds((prev) => {
-      const allowed = new Set(payableRoutePaths.map((p) => p.routePathId.trim()));
-      const filtered = prev.filter((id) => allowed.has(id.trim()));
-      if (routePathSelectionTouchedRef.current) {
-        return sameStringArray(prev, filtered) ? prev : filtered;
-      }
-      const next =
-        filtered.length > 0
-          ? filtered
-          : payableRoutePaths.map((p) => p.routePathId.trim());
-      return sameStringArray(prev, next) ? prev : next;
-    });
+    if (!transportSelectionTouchedRef.current) {
+      setIncludeTransportInCharge(true);
+    }
   }, [
     open,
     serviceOnlyAgreement,
@@ -932,7 +917,7 @@ export function ChatPaymentModal({
     serviceOnlyAgreement,
     allRecurrencesPaidVerified,
     servicePaymentsSelectionKey,
-    routePathSelectionKey,
+    transportSelectionKey,
     merchSelectionKey,
   ]);
 
@@ -1000,13 +985,10 @@ export function ChatPaymentModal({
       payableMerchIdsExec.add(mid);
     }
 
-    const allowedPathIdsExec = new Set(
-      payablePathsExec.map((p) => p.routePathId.trim()).filter(Boolean),
-    );
     const pathsPickExec = routeLegReqExec
-      ? selectedRoutePathIds
-          .map((x) => x.trim())
-          .filter((id) => allowedPathIdsExec.has(id))
+      ? includeTransportInCharge
+        ? null
+        : []
       : [];
 
     const merchPickExec =
@@ -1336,109 +1318,68 @@ export function ChatPaymentModal({
               {!serviceOnlyAgreement && routeLegSelectionRequired ? (
                 <section className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
                   <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
-                    Transporte (rutas enlazadas)
+                    Transporte (hoja de ruta)
                   </div>
                   <p className="vt-muted mt-1 text-[12px] leading-snug">
-                    Cada ruta es un tramo enlazado; solo se puede cobrar la ruta
-                    completa. Marcá las rutas pendientes que quieras incluir en
-                    este cobro (podés combinarlo con mercancía).
+                    Podés incluir o excluir el transporte de la hoja de ruta en
+                    este cobro (combinable con mercancía).
                   </p>
                   {!agreementRouteSheet ? (
                     <p className="vt-muted mt-2 text-[13px]">
                       No encontramos la hoja de ruta en este chat todavía. Abrí
                       el chat para sincronizar rutas y volvé a intentar.
                     </p>
-                  ) : payableRoutePaths.length === 0 ? (
+                  ) : payableRoutePath == null ? (
                     <p className="vt-muted mt-2 text-[13px]">
                       {routePathsAwaitingCarriers.length > 0
-                        ? "Hay rutas con precio, pero aún no se pueden cobrar hasta que todos los transportistas de cada tramo estén confirmados en la hoja de ruta."
-                        : "No hay rutas pendientes de cobro (o ya están pagadas o parcialmente pagadas)."}
+                        ? "Hay transporte con precio, pero aún no se puede cobrar hasta que todos los transportistas de cada tramo estén confirmados en la hoja de ruta."
+                        : "No hay transporte pendiente de cobro (o ya está pagado o parcialmente pagado)."}
                     </p>
                   ) : (
                     <>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
-                          onClick={() => {
-                            routePathSelectionTouchedRef.current = true;
-                            setSelectedRoutePathIds(
-                              payableRoutePaths.map((p) => p.routePathId),
-                            );
+                      <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] p-2.5 text-[13px] text-[var(--text)]">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5"
+                          checked={includeTransportInCharge}
+                          disabled={busyInit || busyPay}
+                          onChange={(e) => {
+                            transportSelectionTouchedRef.current = true;
+                            setIncludeTransportInCharge(e.target.checked);
                             setAcceptedInforme(false);
                           }}
-                        >
-                          Seleccionar todas
-                        </button>
-                        <button
-                          type="button"
-                          className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
-                          onClick={() => {
-                            routePathSelectionTouchedRef.current = true;
-                            setSelectedRoutePathIds([]);
-                            setAcceptedInforme(false);
-                          }}
-                        >
-                          Limpiar
-                        </button>
-                      </div>
-                      <div className="mt-2 space-y-2">
-                        {payableRoutePaths.map((path) => {
-                          const pid = path.routePathId.trim();
-                          const checked = selectedRoutePathIds.includes(pid);
-                          const amountHint = path.totalsByCurrency
-                            .map((t) => {
-                              const maj = minorToMajor(
-                                t.amountMinor,
-                                t.currencyLower,
-                              );
-                              return `${maj} ${t.currencyLower.toUpperCase()}`;
-                            })
-                            .join(" · ");
-                          return (
-                            <label
-                              key={pid}
-                              className="flex cursor-pointer items-start gap-2 rounded-xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] p-2.5 text-[13px] text-[var(--text)]"
-                            >
-                              <input
-                                type="checkbox"
-                                className="mt-0.5"
-                                checked={checked}
-                                disabled={busyInit || busyPay}
-                                onChange={(e) => {
-                                  routePathSelectionTouchedRef.current = true;
-                                  const on = e.target.checked;
-                                  setSelectedRoutePathIds((prev) => {
-                                    const set = new Set(prev);
-                                    if (on) set.add(pid);
-                                    else set.delete(pid);
-                                    return [...set];
-                                  });
-                                  setAcceptedInforme(false);
-                                }}
-                              />
-                              <span className="min-w-0">
-                                <span className="font-bold">{path.label}</span>
-                                <span className="vt-muted mt-0.5 block text-[12px]">
-                                  {path.stopIds.length} parada(s)
-                                  {amountHint ? ` · ${amountHint}` : ""}
-                                </span>
-                                <ul className="vt-muted mt-1 list-disc pl-4 text-[11px]">
-                                  {path.stops.map((s) => (
-                                    <li key={s.routeStopId}>
-                                      {s.orden}. {s.origen} → {s.destino}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
+                        />
+                        <span className="min-w-0">
+                          <span className="font-bold">
+                            Incluir transporte en este cobro
+                          </span>
+                          <span className="vt-muted mt-0.5 block text-[12px]">
+                            {payableRoutePath.label}
+                            {payableRoutePath.totalsByCurrency.length > 0
+                              ? ` · ${payableRoutePath.totalsByCurrency
+                                  .map((t) => {
+                                    const maj = minorToMajor(
+                                      t.amountMinor,
+                                      t.currencyLower,
+                                    );
+                                    return `${maj} ${t.currencyLower.toUpperCase()}`;
+                                  })
+                                  .join(" · ")}`
+                              : ""}
+                          </span>
+                          <ul className="vt-muted mt-1 list-disc pl-4 text-[11px]">
+                            {payableRoutePath.stops.map((s) => (
+                              <li key={s.routeStopId}>
+                                {s.orden}. {s.origen} → {s.destino}
+                              </li>
+                            ))}
+                          </ul>
+                        </span>
+                      </label>
                       {agreementRoutePaths.some((p) => p.partiallyPaid) ? (
                         <p className="mt-2 text-[12px] text-amber-600 dark:text-amber-400">
-                          Hay rutas parcialmente pagadas: no se pueden volver a
-                          cobrar hasta regularizar el pago.
+                          Hay transporte parcialmente pagado: no se puede volver
+                          a cobrar hasta regularizar el pago.
                         </p>
                       ) : null}
                     </>
