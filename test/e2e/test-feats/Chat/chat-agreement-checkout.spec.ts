@@ -9,15 +9,18 @@ import {
   getE2ESession,
   getE2EToken,
   hasDistinctSellerSession,
+  hasCarrier2Session,
+  carrier2SkipReason,
 } from "../../Resources/chat-env";
 import {
   buyerRespondToAgreement,
   createThreadAsBuyer,
   injectE2ESession,
   openSellerPage,
-  sellerEmitDualCurrencyServiceAgreement,
+  sellerEmitSingleCurrencyTwoRecurrenceServiceAgreement,
+  sellerAttemptEmitDualCurrencyServiceAgreementRejected,
+  sellerAttemptEmitMerchandiseDualCurrencyAgreementRejected,
   sellerEmitMerchandiseAgreement,
-  sellerEmitMerchandiseDualCurrencyAgreement,
 } from "../../Resources/agreement-ui-helpers";
 import { openChatThread, reloadChatThread, waitForAgreementBubble } from "../../Resources/chat-helpers";
 import {
@@ -41,6 +44,7 @@ import {
   openCardConfigFromPaymentModal,
   openChatPaymentModal,
   paymentModal,
+  pickFirstServiceRecurrenceOnly,
   pickServiceRecurrences,
   setAllMerchandiseLines,
   setMerchandiseLineChecked,
@@ -51,7 +55,12 @@ import {
   syncBuyerRouteSheetsForCheckout,
   prepareBuyerRouteCheckout,
   selectAllRoutePathsForPayment,
+  inviteAndConfirmRouteCarriersForCheckout,
 } from "../../Resources/payment-checkout-ui-helpers";
+import {
+  carrierSkipReason,
+  hasCarrierSession,
+} from "../../Resources/route-sheet-carriers-env";
 import {
   createDisconnectedTwoStopRouteSheet,
   createLinkedTwoStopRouteSheet,
@@ -76,9 +85,14 @@ test.describe("chat agreement checkout (UI)", () => {
     const page = await ctx.newPage();
 
     dualServiceName = `Transporte dual E2E ${Date.now()}`;
-    await addServiceViaUI(page, BASE_URL, scenario.storeId, dualServiceName, {
-      acceptedCurrencies: ["USD", "EUR"],
-    });
+    await addServiceViaUI(
+      page,
+      BASE_URL,
+      scenario.storeId,
+      dualServiceName,
+      { acceptedCurrencies: ["USD"], monedasAfterSave: ["USD", "EUR"] },
+      seller.sessionToken,
+    );
     await publishCatalogItemViaUI(page, dualServiceName);
 
     eurProductName = `Producto EUR E2E ${Date.now()}`;
@@ -92,7 +106,31 @@ test.describe("chat agreement checkout (UI)", () => {
     await ctx.close();
   });
 
-  test.describe("service dual currency breakdown", () => {
+  test.describe("service single currency checkout", () => {
+    test("dual currency service agreement emit blocked", async ({ browser }) => {
+      const seller = getE2ESellerSession()!;
+      const title = `E2E Svc reject dual ${Date.now()}`;
+
+      const { buyerPage, threadId } = await createThreadAsBuyer(
+        browser,
+        getE2EToken(),
+        e2eOfferId,
+      );
+      const sellerPage = await openSellerPage(
+        browser,
+        seller.sessionToken,
+        threadId,
+      );
+
+      await sellerAttemptEmitDualCurrencyServiceAgreementRejected(sellerPage, {
+        title,
+        serviceNamePart: dualServiceName,
+      });
+
+      await sellerPage.close();
+      await buyerPage.context().close();
+    });
+
     test("modal chrome, PDF informe and card config link", async ({
       browser,
     }) => {
@@ -111,7 +149,7 @@ test.describe("chat agreement checkout (UI)", () => {
         threadId,
       );
 
-      await sellerEmitDualCurrencyServiceAgreement(sellerPage, {
+      await sellerEmitSingleCurrencyTwoRecurrenceServiceAgreement(sellerPage, {
         title,
         serviceNamePart: dualServiceName,
       });
@@ -156,7 +194,7 @@ test.describe("chat agreement checkout (UI)", () => {
         threadId,
       );
 
-      await sellerEmitDualCurrencyServiceAgreement(sellerPage, {
+      await sellerEmitSingleCurrencyTwoRecurrenceServiceAgreement(sellerPage, {
         title,
         serviceNamePart: dualServiceName,
       });
@@ -175,7 +213,7 @@ test.describe("chat agreement checkout (UI)", () => {
       await buyerPage.context().close();
     });
 
-    test("service recurrence selection filters EUR, USD, then both sorted", async ({
+    test("service two recurrences same currency single bucket", async ({
       browser,
     }) => {
       const seller = getE2ESellerSession()!;
@@ -192,7 +230,7 @@ test.describe("chat agreement checkout (UI)", () => {
         threadId,
       );
 
-      await sellerEmitDualCurrencyServiceAgreement(sellerPage, {
+      await sellerEmitSingleCurrencyTwoRecurrenceServiceAgreement(sellerPage, {
         title,
         serviceNamePart: dualServiceName,
       });
@@ -203,28 +241,18 @@ test.describe("chat agreement checkout (UI)", () => {
       await enableServiceForPayment(buyerPage, dualServiceName);
 
       await clearServiceRecurrences(buyerPage, dualServiceName);
-      await pickServiceRecurrences(buyerPage, [/eur/i], dualServiceName);
-      await expectInformeCurrencyBlocks(buyerPage, ["EUR"]);
-
-      await clearServiceRecurrences(buyerPage, dualServiceName);
       await pickServiceRecurrences(buyerPage, [/usd/i], dualServiceName);
-      await expectInformeCurrencyBlocks(buyerPage, ["USD"]);
-
-      await clearServiceRecurrences(buyerPage, dualServiceName);
-      await pickServiceRecurrences(buyerPage, [/eur/i, /usd/i], dualServiceName);
       const modal = paymentModal(buyerPage);
-      const blocks = modal.getByText(/^moneda /i);
-      await expect(blocks).toHaveCount(2);
-      const first = ((await blocks.nth(0).textContent()) ?? "").toLowerCase();
-      const second = ((await blocks.nth(1).textContent()) ?? "").toLowerCase();
-      expect(first).toContain("eur");
-      expect(second).toContain("usd");
+      await expect(modal.getByText(/^moneda /i)).toHaveCount(1);
+      await expect(modal.getByText(/moneda usd/i)).toBeVisible();
 
       await sellerPage.close();
       await buyerPage.context().close();
     });
 
-    test("service pay USD then EUR after breakdown", async ({ browser }) => {
+    test("service pay first then second recurrence same USD", async ({
+      browser,
+    }) => {
       const seller = getE2ESellerSession()!;
       const title = `E2E Svc pay ${Date.now()}`;
 
@@ -239,7 +267,7 @@ test.describe("chat agreement checkout (UI)", () => {
         threadId,
       );
 
-      await sellerEmitDualCurrencyServiceAgreement(sellerPage, {
+      await sellerEmitSingleCurrencyTwoRecurrenceServiceAgreement(sellerPage, {
         title,
         serviceNamePart: dualServiceName,
       });
@@ -253,13 +281,14 @@ test.describe("chat agreement checkout (UI)", () => {
 
       await openChatPaymentModal(buyerPage);
       await enableServiceForPayment(buyerPage, dualServiceName);
-      await pickServiceRecurrences(buyerPage, [/usd/i], dualServiceName);
+      await pickFirstServiceRecurrenceOnly(buyerPage, dualServiceName);
       await confirmInformeCheckbox(buyerPage);
       await clickPayCurrency(buyerPage, "USD");
 
-      await pickServiceRecurrences(buyerPage, [/eur/i], dualServiceName);
+      await enableServiceForPayment(buyerPage, dualServiceName);
+      await pickServiceRecurrences(buyerPage, [/usd/i], dualServiceName);
       await confirmInformeCheckbox(buyerPage);
-      await clickPayCurrency(buyerPage, "EUR");
+      await clickPayCurrency(buyerPage, "USD");
       await expectAllPaymentsSettled(buyerPage);
 
       await sellerPage.close();
@@ -281,7 +310,7 @@ test.describe("chat agreement checkout (UI)", () => {
         threadId,
       );
 
-      await sellerEmitDualCurrencyServiceAgreement(sellerPage, {
+      await sellerEmitSingleCurrencyTwoRecurrenceServiceAgreement(sellerPage, {
         title,
         serviceNamePart: dualServiceName,
       });
@@ -312,10 +341,12 @@ test.describe("chat agreement checkout (UI)", () => {
     });
   });
 
-  test.describe("merchandise dual currency breakdown", () => {
-    test("merch EUR line only then both buckets", async ({ browser }) => {
+  test.describe("merchandise single currency checkout", () => {
+    test("dual currency merchandise agreement emit blocked", async ({
+      browser,
+    }) => {
       const seller = getE2ESellerSession()!;
-      const title = `E2E Merch 2ccy ${Date.now()}`;
+      const title = `E2E Merch reject dual ${Date.now()}`;
 
       const { buyerPage, threadId } = await createThreadAsBuyer(
         browser,
@@ -328,76 +359,44 @@ test.describe("chat agreement checkout (UI)", () => {
         threadId,
       );
 
-      await sellerEmitMerchandiseDualCurrencyAgreement(sellerPage, {
+      await sellerAttemptEmitMerchandiseDualCurrencyAgreementRejected(
+        sellerPage,
+        {
+          title,
+          usdProductNamePart: "Producto E2E",
+          eurProductNamePart: eurProductName,
+        },
+      );
+
+      await sellerPage.close();
+      await buyerPage.context().close();
+    });
+
+    test("merch single line checkout USD", async ({ browser }) => {
+      const seller = getE2ESellerSession()!;
+      const title = `E2E Merch 1ccy ${Date.now()}`;
+
+      const { buyerPage, threadId } = await createThreadAsBuyer(
+        browser,
+        getE2EToken(),
+        e2eOfferId,
+      );
+      const sellerPage = await openSellerPage(
+        browser,
+        seller.sessionToken,
+        threadId,
+      );
+
+      await sellerEmitMerchandiseAgreement(sellerPage, {
         title,
-        usdProductNamePart: "Producto E2E",
-        eurProductNamePart: eurProductName,
-        usdQty: "1",
-        eurQty: "2",
+        productNamePart: "Producto E2E",
       });
       await waitForAgreementBubble(buyerPage, title);
       await buyerRespondToAgreement(buyerPage, title, "accept");
       await reloadChatThread(buyerPage);
       await openChatPaymentModal(buyerPage);
 
-      await setAllMerchandiseLines(buyerPage, false);
-      await setMerchandiseLineChecked(buyerPage, new RegExp(eurProductName, "i"), true);
-      await expectInformeCurrencyBlocks(buyerPage, ["EUR"]);
-
-      await setMerchandiseLineChecked(
-        buyerPage,
-        /Producto E2E/i,
-        true,
-      );
-      await expectInformeCurrencyBlocks(buyerPage, ["EUR", "USD"]);
-
-      await sellerPage.close();
-      await buyerPage.context().close();
-    });
-
-    test("merch pay EUR then USD after breakdown", async ({ browser }) => {
-      const seller = getE2ESellerSession()!;
-      const title = `E2E Merch pay ${Date.now()}`;
-
-      const { buyerPage, threadId } = await createThreadAsBuyer(
-        browser,
-        getE2EToken(),
-        e2eOfferId,
-      );
-      const sellerPage = await openSellerPage(
-        browser,
-        seller.sessionToken,
-        threadId,
-      );
-
-      await sellerEmitMerchandiseDualCurrencyAgreement(sellerPage, {
-        title,
-        usdProductNamePart: "Producto E2E",
-        eurProductNamePart: eurProductName,
-      });
-      await waitForAgreementBubble(buyerPage, title);
-      await buyerRespondToAgreement(buyerPage, title, "accept");
-      await ensureBuyerDemoCard(buyerPage, threadId);
-      test.skip(
-        !(await buyerHasPayCard(buyerPage, threadId)),
-        "Buyer needs a saved Stripe card to execute payments",
-      );
-
-      await openChatPaymentModal(buyerPage);
-      await setAllMerchandiseLines(buyerPage, false);
-      await setMerchandiseLineChecked(buyerPage, new RegExp(eurProductName, "i"), true);
-      await confirmInformeCheckbox(buyerPage);
-      await clickPayCurrency(buyerPage, "EUR");
-
-      await setMerchandiseLineChecked(
-        buyerPage,
-        new RegExp(eurProductName, "i"),
-        false,
-      );
-      await setMerchandiseLineChecked(buyerPage, /Producto E2E/i, true);
-      await confirmInformeCheckbox(buyerPage);
-      await clickPayCurrency(buyerPage, "USD");
-      await expectAllPaymentsSettled(buyerPage);
+      await expectInformeCurrencyBlocks(buyerPage, ["USD"]);
 
       await sellerPage.close();
       await buyerPage.context().close();
@@ -418,10 +417,9 @@ test.describe("chat agreement checkout (UI)", () => {
         threadId,
       );
 
-      await sellerEmitMerchandiseDualCurrencyAgreement(sellerPage, {
+      await sellerEmitMerchandiseAgreement(sellerPage, {
         title,
-        usdProductNamePart: "Producto E2E",
-        eurProductNamePart: eurProductName,
+        productNamePart: "Producto E2E",
       });
       await waitForAgreementBubble(buyerPage, title);
       await buyerRespondToAgreement(buyerPage, title, "accept");
@@ -454,7 +452,10 @@ test.describe("chat agreement checkout (UI)", () => {
     test("linked stops show one route path with two paradas", async ({
       browser,
     }) => {
+      test.skip(!hasCarrierSession(), carrierSkipReason);
+      test.skip(!hasCarrier2Session(), carrier2SkipReason);
       const seller = getE2ESellerSession()!;
+      const scenario = getE2EScenario()!;
       const title = `E2E Ruta link ${Date.now()}`;
 
       const { buyerPage, threadId } = await createThreadAsBuyer(
@@ -475,7 +476,21 @@ test.describe("chat agreement checkout (UI)", () => {
       await waitForAgreementBubble(buyerPage, title);
       await buyerRespondToAgreement(buyerPage, title, "accept");
 
-      const routeTitulo = await createLinkedTwoStopRouteSheet(sellerPage, title);
+      const routeTitulo = await createLinkedTwoStopRouteSheet(sellerPage, title, {
+        tramo0: scenario.carrierPhone!,
+        tramo1: scenario.carrier2Phone!,
+      });
+      await inviteAndConfirmRouteCarriersForCheckout(
+        browser,
+        sellerPage,
+        threadId,
+        routeTitulo,
+        seller.sessionToken,
+        {
+          carrierSessionToken: scenario.carrierSessionToken!,
+          carrier2SessionToken: scenario.carrier2SessionToken!,
+        },
+      );
       await reloadChatThread(buyerPage);
       await prepareBuyerRouteCheckout(buyerPage, title, routeTitulo);
 
@@ -495,7 +510,9 @@ test.describe("chat agreement checkout (UI)", () => {
     });
 
     test("disconnected stops show two route paths", async ({ browser }) => {
+      test.skip(!hasCarrierSession(), carrierSkipReason);
       const seller = getE2ESellerSession()!;
+      const scenario = getE2EScenario()!;
       const title = `E2E Ruta disc ${Date.now()}`;
 
       const { buyerPage, threadId } = await createThreadAsBuyer(
@@ -519,6 +536,15 @@ test.describe("chat agreement checkout (UI)", () => {
       const routeTitulo = await createDisconnectedTwoStopRouteSheet(
         sellerPage,
         title,
+        scenario.carrierPhone,
+      );
+      await inviteAndConfirmRouteCarriersForCheckout(
+        browser,
+        sellerPage,
+        threadId,
+        routeTitulo,
+        seller.sessionToken,
+        { carrierSessionToken: scenario.carrierSessionToken! },
       );
       await reloadChatThread(buyerPage);
       await prepareBuyerRouteCheckout(buyerPage, title, routeTitulo);
@@ -536,7 +562,10 @@ test.describe("chat agreement checkout (UI)", () => {
     test("selecting linked path expands both stops in informe", async ({
       browser,
     }) => {
+      test.skip(!hasCarrierSession(), carrierSkipReason);
+      test.skip(!hasCarrier2Session(), carrier2SkipReason);
       const seller = getE2ESellerSession()!;
+      const scenario = getE2EScenario()!;
       const title = `E2E Ruta informe ${Date.now()}`;
 
       const { buyerPage, threadId } = await createThreadAsBuyer(
@@ -556,7 +585,21 @@ test.describe("chat agreement checkout (UI)", () => {
       });
       await waitForAgreementBubble(buyerPage, title);
       await buyerRespondToAgreement(buyerPage, title, "accept");
-      const routeTitulo = await createLinkedTwoStopRouteSheet(sellerPage, title);
+      const routeTitulo = await createLinkedTwoStopRouteSheet(sellerPage, title, {
+        tramo0: scenario.carrierPhone!,
+        tramo1: scenario.carrier2Phone!,
+      });
+      await inviteAndConfirmRouteCarriersForCheckout(
+        browser,
+        sellerPage,
+        threadId,
+        routeTitulo,
+        seller.sessionToken,
+        {
+          carrierSessionToken: scenario.carrierSessionToken!,
+          carrier2SessionToken: scenario.carrier2SessionToken!,
+        },
+      );
       await reloadChatThread(buyerPage);
       await prepareBuyerRouteCheckout(buyerPage, title, routeTitulo);
 
@@ -574,7 +617,9 @@ test.describe("chat agreement checkout (UI)", () => {
     test("pay one disconnected path leaves sibling payable", async ({
       browser,
     }) => {
+      test.skip(!hasCarrierSession(), carrierSkipReason);
       const seller = getE2ESellerSession()!;
+      const scenario = getE2EScenario()!;
       const title = `E2E Ruta partial ${Date.now()}`;
 
       const { buyerPage, threadId } = await createThreadAsBuyer(
@@ -597,6 +642,15 @@ test.describe("chat agreement checkout (UI)", () => {
       const routeTitulo = await createDisconnectedTwoStopRouteSheet(
         sellerPage,
         title,
+        scenario.carrierPhone,
+      );
+      await inviteAndConfirmRouteCarriersForCheckout(
+        browser,
+        sellerPage,
+        threadId,
+        routeTitulo,
+        seller.sessionToken,
+        { carrierSessionToken: scenario.carrierSessionToken! },
       );
       await ensureBuyerDemoCard(buyerPage, threadId);
       test.skip(
@@ -622,6 +676,83 @@ test.describe("chat agreement checkout (UI)", () => {
         .locator("label")
         .filter({ hasText: /parada\(s\)/i });
       await expect(pathsAfter).toHaveCount(1);
+
+      await sellerPage.close();
+      await buyerPage.context().close();
+    });
+
+    test("linked route path is not payable until all tramo carriers are confirmed", async ({
+      browser,
+    }) => {
+      test.skip(!hasCarrierSession(), carrierSkipReason);
+      test.skip(!hasCarrier2Session(), carrier2SkipReason);
+      const seller = getE2ESellerSession()!;
+      const scenario = getE2EScenario()!;
+      const title = `E2E Ruta carriers ${Date.now()}`;
+
+      const { buyerPage, threadId } = await createThreadAsBuyer(
+        browser,
+        getE2EToken(),
+        e2eOfferId,
+      );
+      const sellerPage = await openSellerPage(
+        browser,
+        seller.sessionToken,
+        threadId,
+      );
+
+      await sellerEmitMerchandiseAgreement(sellerPage, {
+        title,
+        productNamePart: "Producto E2E",
+      });
+      await waitForAgreementBubble(buyerPage, title);
+      await buyerRespondToAgreement(buyerPage, title, "accept");
+
+      const routeTitulo = await createLinkedTwoStopRouteSheet(sellerPage, title, {
+        tramo0: scenario.carrierPhone!,
+        tramo1: scenario.carrier2Phone!,
+      });
+      await inviteAndConfirmRouteCarriersForCheckout(
+        browser,
+        sellerPage,
+        threadId,
+        routeTitulo,
+        seller.sessionToken,
+        {
+          carrierSessionToken: scenario.carrierSessionToken!,
+          confirmSecondCarrier: false,
+        },
+      );
+
+      await reloadChatThread(buyerPage);
+      await prepareBuyerRouteCheckout(buyerPage, title, routeTitulo);
+      const modalBlocked = paymentModal(buyerPage);
+      await expect(
+        modalBlocked.getByText(/transportistas de cada tramo estén confirmados/i),
+      ).toBeVisible({ timeout: 15_000 });
+      await expect(
+        modalBlocked.locator("label").filter({ hasText: /parada\(s\)/i }),
+      ).toHaveCount(0);
+
+      await inviteAndConfirmRouteCarriersForCheckout(
+        browser,
+        sellerPage,
+        threadId,
+        routeTitulo,
+        seller.sessionToken,
+        {
+          carrierSessionToken: scenario.carrier2SessionToken!,
+          confirmSecondCarrier: false,
+        },
+      );
+
+      await pageKeyboardCloseAndReopen(buyerPage, threadId);
+      await waitForPayableRoutePathsInPaymentModal(buyerPage);
+      await expect(
+        paymentModal(buyerPage)
+          .locator("label")
+          .filter({ hasText: /parada\(s\)/i }),
+      ).toHaveCount(1);
 
       await sellerPage.close();
       await buyerPage.context().close();

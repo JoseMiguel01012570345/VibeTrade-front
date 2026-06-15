@@ -12,6 +12,7 @@ type Props = {
   >;
   setLogisticsBusyKey: Dispatch<SetStateAction<string | null>>;
   refreshDeliveriesForAgreement: (agreementId: string) => Promise<void>;
+  onCedeSuccess?: (routeSheetId: string, routeStopId: string) => void;
 };
 
 /** Confirmación de cesión de titularidad del paquete entre tramos (overlay). */
@@ -21,6 +22,7 @@ export function CedeCarrierOwnershipModal({
   setCedeOwnershipModal,
   setLogisticsBusyKey,
   refreshDeliveriesForAgreement,
+  onCedeSuccess,
 }: Props) {
   if (!modal) return null;
   const snap = modal;
@@ -38,6 +40,7 @@ export function CedeCarrierOwnershipModal({
       threadId,
       modal: snap,
       refreshDeliveriesForAgreement,
+      onCedeSuccess,
       setModalBusy: setBusy,
       onSuccessClose: dismiss,
       setLogisticsBusyKey,

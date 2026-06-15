@@ -86,6 +86,19 @@ export default async function globalSetup(): Promise<void> {
       baseURL,
     );
 
+    let rsProvisioned = false;
+    let priorLogisticsCursor = 0;
+    try {
+      if (fs.existsSync(e2eScenarioFile)) {
+        const existing = JSON.parse(
+          fs.readFileSync(e2eScenarioFile, "utf8"),
+        ) as E2EChatScenario;
+        priorLogisticsCursor = existing.logisticsAgreementCursor ?? 0;
+      }
+    } catch {
+      priorLogisticsCursor = 0;
+    }
+
     try {
       const rsScenario = await provisionRouteSheetScenario(
         baseURL,
@@ -96,6 +109,7 @@ export default async function globalSetup(): Promise<void> {
       scenario.routeSheetThreadId = rsScenario.threadId;
       scenario.routeSheetAgreementId = rsScenario.agreementId;
       scenario.routeSheetAgreementIds = rsScenario.agreementIds;
+      rsProvisioned = true;
       console.log(
         `[e2e] Route sheet thread: ${rsScenario.threadId} — agreement: ${rsScenario.agreementId}`,
       );
@@ -113,13 +127,29 @@ export default async function globalSetup(): Promise<void> {
       console.log(
         `[e2e] Carrier: ${carrierScenario.phone} (user ${carrierScenario.userId}) — store ${carrierScenario.storeId}`,
       );
+      try {
+        const carrier2Scenario = await provisionCarrierScenario(page, baseURL);
+        scenario.carrier2SessionToken = carrier2Scenario.sessionToken;
+        scenario.carrier2UserId = carrier2Scenario.userId;
+        scenario.carrier2StoreId = carrier2Scenario.storeId;
+        scenario.carrier2ServiceId = carrier2Scenario.serviceId;
+        scenario.carrier2Phone = carrier2Scenario.phone;
+        console.log(
+          `[e2e] Carrier2: ${carrier2Scenario.phone} (user ${carrier2Scenario.userId})`,
+        );
+      } catch (carrier2Err) {
+        console.warn("[e2e] Carrier2 provisioning failed (non-fatal):", carrier2Err);
+      }
     } catch (carrierErr) {
       console.warn("[e2e] Carrier scenario provisioning failed (non-fatal):", carrierErr);
     }
 
     writeSession(e2eSellerSessionFile, seller);
     writeSession(e2eSessionFile, buyer);
-    writeScenario(scenario);
+    writeScenario({
+      ...scenario,
+      logisticsAgreementCursor: rsProvisioned ? 0 : priorLogisticsCursor,
+    });
 
     const stripeCustomerOk = await ensureStripeCustomerViaFetch(
       buyer.sessionToken,
@@ -249,8 +279,10 @@ async function provisionRouteSheetScenario(
     return id;
   }
 
+  /** Enough agreements for the full serial logistics suite (L-15 consumes two). */
+  const agreementCount = 45;
   const agreementIds: string[] = [];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < agreementCount; i++) {
     agreementIds.push(await createAndAcceptAgreement(i));
   }
   const agreementId = agreementIds[0]!;

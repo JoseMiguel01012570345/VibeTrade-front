@@ -2,6 +2,7 @@ import type {
   RouteOfferPublicState,
   RouteOfferTramoPublic,
 } from "@app/store/marketStoreTypes";
+import type { RouteTramoSubscriptionItemApi } from "@/utils/chat/chatApi";
 import type { RouteStopDeliveryStatusApi } from "@/utils/chat/routeLogisticsApi";
 import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
 import type { RouteSheet, RouteStop } from "@features/market/model/routeSheetTypes";
@@ -38,6 +39,44 @@ function confirmedCarriersForStopFromOffer(
   return [...map.values()];
 }
 
+function confirmedCarriersForStopFromSubscriptions(
+  routeTramoSubscriptions: RouteTramoSubscriptionItemApi[] | undefined,
+  sheetId: string,
+  stopId: string,
+): RailLegResumeCandidate[] {
+  const sid = sheetId.trim();
+  const pid = (stopId ?? "").trim();
+  if (!routeTramoSubscriptions?.length || !sid || !pid) return [];
+  const map = new Map<string, RailLegResumeCandidate>();
+  for (const it of routeTramoSubscriptions) {
+    if ((it.routeSheetId ?? "").trim() !== sid) continue;
+    if ((it.stopId ?? "").trim() !== pid) continue;
+    if ((it.status ?? "").trim().toLowerCase() !== "confirmed") continue;
+    const uid = (it.carrierUserId ?? "").trim();
+    if (uid.length < 2) continue;
+    if (!map.has(uid)) {
+      map.set(uid, {
+        userId: uid,
+        displayName: (it.displayName ?? "").trim() || "Transportista",
+      });
+    }
+  }
+  return [...map.values()];
+}
+
+function mergeResumeCandidates(
+  ...lists: RailLegResumeCandidate[][]
+): RailLegResumeCandidate[] {
+  const map = new Map<string, RailLegResumeCandidate>();
+  for (const list of lists) {
+    for (const c of list) {
+      const uid = c.userId.trim();
+      if (uid.length >= 2 && !map.has(uid)) map.set(uid, c);
+    }
+  }
+  return [...map.values()];
+}
+
 export type RailLegModel = {
   agreement: TradeAgreement | null;
   agreementId: string;
@@ -49,7 +88,7 @@ export type RailLegModel = {
   nextOt: RouteOfferTramoPublic | undefined;
   busyKeyBase: string;
   activeLike: boolean;
-  showEvidenceBtn: boolean | undefined;
+  showEvidenceBtn: boolean;
   showCedeOwnership: boolean;
   viewerIsConfirmedOnThisStop: boolean;
   viewerIsSeller: boolean;
@@ -112,9 +151,31 @@ function railLegOfferTramosForStop(
   return { ot, nextParada, nextOt };
 }
 
+function viewerIsConfirmedCarrierOnStop(
+  routeOfferResolved: RouteOfferPublicState | undefined,
+  routeTramoSubscriptions: RouteTramoSubscriptionItemApi[] | undefined,
+  sheetId: string,
+  stopId: string | undefined,
+  meId: string,
+): boolean {
+  if (!meId) return false;
+  const fromOffer = confirmedCarrierUidForOfferStop(
+    routeOfferResolved,
+    sheetId,
+    stopId,
+  );
+  if (fromOffer.length >= 2 && fromOffer === meId) return true;
+  return confirmedCarriersForStopFromSubscriptions(
+    routeTramoSubscriptions,
+    sheetId,
+    stopId ?? "",
+  ).some((c) => c.userId === meId);
+}
+
 function railLegUiFlags(args: {
   logisticsState: string;
   routeOfferResolved: RouteOfferPublicState | undefined;
+  routeTramoSubscriptions: RouteTramoSubscriptionItemApi[] | undefined;
   sheetId: string;
   stopId: string | undefined;
   meId: string;
@@ -133,6 +194,7 @@ function railLegUiFlags(args: {
   const {
     logisticsState,
     routeOfferResolved,
+    routeTramoSubscriptions,
     sheetId,
     stopId,
     meId,
@@ -148,30 +210,29 @@ function railLegUiFlags(args: {
     logisticsState === "evidence_submitted" ||
     logisticsState === "evidence_rejected";
 
-  const curCarrierUid = confirmedCarrierUidForOfferStop(
+  const viewerIsConfirmedOnThisStop = viewerIsConfirmedCarrierOnStop(
     routeOfferResolved,
+    routeTramoSubscriptions,
     sheetId,
     stopId,
+    meId,
   );
-  const viewerIsConfirmedOnThisStop =
-    !!meId && curCarrierUid.length >= 2 && meId === curCarrierUid;
 
   const ownerFromDelivery = (row?.currentOwnerUserId ?? "").trim();
   const viewerIsSeller = !!meId && sellerUid.length > 1 && meId === sellerUid;
   const viewerIsOwnerCarrierStrict =
     !!meId && ownerFromDelivery.length >= 2 && meId === ownerFromDelivery;
 
-  let showEvidenceBtn: boolean | undefined;
-  if (cedeOwnershipByAgreement?.[sheetId]) {
-    const route = cedeOwnershipByAgreement[sheetId];
-    if (route?.[stopId ?? ""]) showEvidenceBtn = route[stopId ?? ""];
-  }
-
-  const showCedeOwnership =
-    activeLike &&
-    viewerIsOwnerCarrierStrict &&
+  const cededFlag = cedeOwnershipByAgreement?.[sheetId]?.[stopId ?? ""];
+  const pendingEvidenceAfterCede =
     viewerIsConfirmedOnThisStop &&
-    !showEvidenceBtn;
+    (logisticsState === "delivered_pending_evidence" ||
+      logisticsState === "evidence_rejected");
+  const showEvidenceBtn = cededFlag === true || pendingEvidenceAfterCede;
+
+  // Ceder: visible para el transportista titular del paquete (ownership en delivery).
+  const showCedeOwnership =
+    activeLike && viewerIsOwnerCarrierStrict && !showEvidenceBtn;
 
   return {
     activeLike,
@@ -193,6 +254,7 @@ export function computeRailLegModel(input: {
   meId: string;
   sellerUid: string;
   cedeOwnershipByAgreement: Record<string, Record<string, boolean>> | undefined;
+  routeTramoSubscriptions?: RouteTramoSubscriptionItemApi[];
 }): RailLegModel {
   const {
     selRoute,
@@ -203,6 +265,7 @@ export function computeRailLegModel(input: {
     meId,
     sellerUid,
     cedeOwnershipByAgreement,
+    routeTramoSubscriptions,
   } = input;
   const sheetId = selRoute.id;
 
@@ -216,6 +279,7 @@ export function computeRailLegModel(input: {
   const ui = railLegUiFlags({
     logisticsState: a.logisticsState,
     routeOfferResolved,
+    routeTramoSubscriptions,
     sheetId,
     stopId: p.id,
     meId,
@@ -234,7 +298,7 @@ export function computeRailLegModel(input: {
     sheetId,
     p.id,
   ).trim();
-  const resumeCandidateCarriers: RailLegResumeCandidate[] =
+  const fromOfferOrCur: RailLegResumeCandidate[] =
     resumeCandidateCarriersRaw.length > 0
       ? resumeCandidateCarriersRaw
       : curUid.length >= 2
@@ -247,16 +311,38 @@ export function computeRailLegModel(input: {
             },
           ]
         : [];
+  const resumeCandidateCarriers = mergeResumeCandidates(
+    fromOfferOrCur,
+    confirmedCarriersForStopFromSubscriptions(
+      routeTramoSubscriptions,
+      sheetId,
+      p.id,
+    ),
+  );
 
-  const hasConfirmedOnStop = resumeCandidateCarriers.length > 0;
+  const legHasOwnership = (a.row?.currentOwnerUserId ?? "").trim().length >= 2;
 
-  const canPauseState =
-    a.logisticsState === "in_transit" ||
-    (a.logisticsState === "awaiting_carrier_for_handoff" &&
-      (a.row?.currentOwnerUserId ?? "").trim().length >= 2);
+  const sheetHasIdleCustodyElsewhere = a.deliveries.some(
+    (d) =>
+      (d.routeSheetId ?? "").trim() === sheetId &&
+      (d.routeStopId ?? "").trim() !== (p.id ?? "").trim() &&
+      (d.state ?? "").trim().toLowerCase() === "idle_store_custody",
+  );
 
+  const activeOwnerStopId = a.deliveries.find(
+    (d) =>
+      (d.routeSheetId ?? "").trim() === sheetId &&
+      (d.state ?? "").trim().toLowerCase() === "in_transit" &&
+      (d.currentOwnerUserId ?? "").trim().length >= 2,
+  )?.routeStopId;
+
+  // Pausar: solo la tienda, tramo en tránsito con el único titular activo de la hoja.
   const showSellerPauseTramo =
-    ui.viewerIsSeller && canPauseState && hasConfirmedOnStop;
+    ui.viewerIsSeller &&
+    legHasOwnership &&
+    (p.id ?? "").trim() === (activeOwnerStopId ?? "").trim() &&
+    a.logisticsState === "in_transit" &&
+    !sheetHasIdleCustodyElsewhere;
 
   const showSellerResumeTramo =
     ui.viewerIsSeller &&

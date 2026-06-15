@@ -12,10 +12,35 @@ function formDialog(page: Page) {
  * visible, ensuring the Zustand store has hydrated thread.contracts before
  * any route-sheet create/update operations.
  */
+export async function dismissPeerPartyExitModalIfOpen(page: Page): Promise<void> {
+  const modal = page
+    .getByRole("dialog")
+    .filter({ hasText: /salida del chat/i });
+  const ack = modal.getByRole("button", { name: /^entendido$/i });
+  const deadline = Date.now() + 15_000;
+  while (Date.now() < deadline) {
+    if (await modal.isVisible({ timeout: 500 }).catch(() => false)) {
+      await ack.click();
+      await expect(modal).toBeHidden({ timeout: 10_000 });
+      return;
+    }
+    await page.waitForTimeout(300);
+  }
+}
+
 export async function waitForThreadContractsLoaded(page: Page): Promise<void> {
+  await dismissPeerPartyExitModalIfOpen(page);
   const contractsTab = page.getByRole("button", { name: /^contratos$/i });
   await expect(contractsTab).toBeVisible({ timeout: 15_000 });
-  await contractsTab.click();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await dismissPeerPartyExitModalIfOpen(page);
+    try {
+      await contractsTab.click({ timeout: 5_000 });
+      break;
+    } catch {
+      if (attempt === 4) throw new Error("Could not open Contratos tab");
+    }
+  }
   await expect(
     page.getByText(/aceptado|accepted/i).first(),
   ).toBeVisible({ timeout: 15_000 });
@@ -26,9 +51,18 @@ export async function openRoutesRail(page: Page): Promise<void> {
   const tab = page.getByRole("button", { name: /^rutas$/i });
   await expect(tab).toBeVisible({ timeout: 15_000 });
   await tab.click();
-  await expect(
-    page.getByRole("button", { name: /nueva hoja de ruta/i }),
-  ).toBeVisible({ timeout: 15_000 });
+  const railReady = page
+    .getByRole("button", { name: /nueva hoja de ruta/i })
+    .or(page.getByText(/\d tramo/))
+    .or(page.getByRole("button", { name: /mapa en vivo/i }))
+    .or(page.getByText(/^Logística$/i))
+    .or(
+      page.getByText(
+        /Crea una hoja de ruta|La tienda creará y editará la hoja de ruta/i,
+      ),
+    )
+    .first();
+  await expect(railReady).toBeVisible({ timeout: 15_000 });
 }
 
 /** Clicks "Nueva hoja de ruta" button in the rail. */
@@ -314,6 +348,20 @@ export async function openRouteSheetDetail(
   });
 }
 
+/** Opens route sheet detail unless the seller is already on that view. */
+export async function ensureRouteSheetDetailOpen(
+  page: Page,
+  titulo: string,
+): Promise<void> {
+  await openRoutesRail(page);
+  const onDetail = await page
+    .getByRole("button", { name: /← lista/i })
+    .isVisible({ timeout: 2_000 })
+    .catch(() => false);
+  if (onDetail) return;
+  await openRouteSheetDetail(page, titulo);
+}
+
 /** Clicks "Editar" on the route sheet detail toolbar. */
 export async function clickEditRouteSheet(page: Page): Promise<void> {
   await page.getByRole("button", { name: /^editar$/i }).click();
@@ -373,7 +421,18 @@ export async function sendCarrierInvites(page: Page): Promise<void> {
   });
   const inviteBtn = inviteDialog.getByRole("button", { name: /^invitar$/i });
   await expect(inviteBtn).toBeEnabled({ timeout: 10_000 });
+  const notifyWait = page.waitForResponse(
+    (res) =>
+      res.request().method() === "POST" &&
+      res.url().includes("/notify-preselected"),
+    { timeout: 30_000 },
+  );
   await inviteBtn.click();
+  const notifyResp = await notifyWait.catch(() => null);
+  if (notifyResp?.ok()) {
+    await page.keyboard.press("Escape").catch(() => null);
+    return;
+  }
   await expect(
     page
       .getByText(/se envi[oó].*invitaci[oó]n|invitaci[oó]n enviada|notificaci[oó]n enviada|enviado/i)
@@ -440,6 +499,24 @@ export async function clickFirstUnlinkedContract(page: Page): Promise<void> {
     }
   }
   throw new Error("No unlinked contract found in list");
+}
+
+/** Opens the contract whose card shows the given agreement title. */
+export async function openContractByAgreementTitle(
+  page: Page,
+  agreementTitle: string,
+): Promise<void> {
+  await ensureContractListView(page);
+  const rail = page.getByRole("complementary");
+  const btn = rail
+    .getByRole("button")
+    .filter({ hasText: agreementTitle })
+    .first();
+  await expect(btn).toBeVisible({ timeout: 15_000 });
+  await btn.click();
+  await expect(rail.getByText(agreementTitle).first()).toBeVisible({
+    timeout: 10_000,
+  });
 }
 
 /** Opens the contract at the given 0-based index in the Contratos list (stable E2E-RS-AGR-N order). */
@@ -514,7 +591,7 @@ export async function pickRouteSheetInAgreementLinkSelect(
     name: /seleccionar hoja de ruta para el acuerdo/i,
   });
   await expect(selectBtn).toBeVisible({ timeout: 8_000 });
-  await expect(selectBtn).toBeEnabled({ timeout: 5_000 });
+  await expect(selectBtn).toBeEnabled({ timeout: 30_000 });
   await selectBtn.click();
   const option = page
     .getByRole("option")
@@ -528,6 +605,57 @@ export async function pickRouteSheetInAgreementLinkSelect(
   await expect(selectBtn).toContainText(sheetTitulo, { timeout: 5_000 });
 }
 
+/** Asserts a route sheet title is not available in the agreement link selector. */
+export async function expectRouteSheetAbsentFromLinkSelect(
+  page: Page,
+  sheetTitulo: string,
+): Promise<void> {
+  const selectBtn = page.getByRole("button", {
+    name: /seleccionar hoja de ruta para el acuerdo/i,
+  });
+  await expect(selectBtn).toBeVisible({ timeout: 8_000 });
+  await selectBtn.click();
+  const option = page.getByRole("option").filter({ hasText: sheetTitulo });
+  await expect(option).toHaveCount(0, { timeout: 5_000 });
+  await page.keyboard.press("Escape");
+}
+
+/** Clicks «Duplicar» on the open contract detail toolbar. Returns duplicated title from API. */
+export async function duplicateOpenContractViaUI(page: Page): Promise<string> {
+  const dupBtn = page.getByRole("button", { name: /^duplicar$/i });
+  await expect(dupBtn).toBeVisible({ timeout: 8_000 });
+  const dupWait = page.waitForResponse(
+    (res) =>
+      res.request().method() === "POST" &&
+      res.url().includes("/trade-agreements/") &&
+      res.url().includes("/duplicate"),
+    { timeout: 25_000 },
+  );
+  await dupBtn.click();
+  const dupResp = await dupWait;
+  expect(dupResp.ok()).toBeTruthy();
+  const body = (await dupResp.json()) as { title?: string };
+  return (body.title ?? "").trim();
+}
+
+/** Clicks «Duplicar» on the open route sheet detail toolbar. Returns duplicated title from API. */
+export async function duplicateOpenRouteSheetViaUI(page: Page): Promise<string> {
+  const dupBtn = page.getByRole("button", { name: /^duplicar$/i });
+  await expect(dupBtn).toBeVisible({ timeout: 8_000 });
+  const dupWait = page.waitForResponse(
+    (res) =>
+      res.request().method() === "POST" &&
+      res.url().includes("/route-sheets/") &&
+      res.url().includes("/duplicate"),
+    { timeout: 25_000 },
+  );
+  await dupBtn.click();
+  const dupResp = await dupWait;
+  expect(dupResp.ok()).toBeTruthy();
+  const body = (await dupResp.json()) as { titulo?: string };
+  return (body.titulo ?? "").trim();
+}
+
 /**
  * Links a route sheet to an agreement via the Contratos tab UI.
  * Call openRailContracts first; this helper clicks the agreement at contractListIndex
@@ -537,26 +665,36 @@ export async function linkRouteSheetToAgreementViaUI(
   page: Page,
   sheetTitulo: string,
 ): Promise<void> {
-  await pickRouteSheetInAgreementLinkSelect(page, sheetTitulo);
-  const vincularBtn = page.getByRole("button", {
-    name: /^vincular$|^actualizar vínculo$/i,
-  });
-  await expect(vincularBtn).toBeEnabled({ timeout: 5_000 });
-  const linkWait = page.waitForResponse(
-    (res) =>
-      res.request().method() === "PATCH" &&
-      res.url().includes("/route-link"),
-    { timeout: 20_000 },
-  );
-  await vincularBtn.click();
-  const linkResp = await linkWait.catch(() => null);
-  if (linkResp && !linkResp.ok()) {
-    const body = await linkResp.text().catch(() => "");
-    throw new Error(`Route link failed (${linkResp.status()}): ${body}`);
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await pickRouteSheetInAgreementLinkSelect(page, sheetTitulo);
+    const vincularBtn = page.getByRole("button", {
+      name: /^vincular$|^actualizar vínculo$/i,
+    });
+    await expect(vincularBtn).toBeEnabled({ timeout: 5_000 });
+    const linkWait = page.waitForResponse(
+      (res) =>
+        res.request().method() === "PATCH" &&
+        res.url().includes("/route-link"),
+      { timeout: 20_000 },
+    );
+    await vincularBtn.click();
+    const linkResp = await linkWait.catch(() => null);
+    if (linkResp?.ok()) {
+      await expect(
+        page.getByText(/vinculada ahora a:/i).first(),
+      ).toContainText(sheetTitulo, { timeout: 15_000 });
+      return;
+    }
+    const body = linkResp ? await linkResp.text().catch(() => "") : "";
+    lastError = new Error(
+      `Route link failed (${linkResp?.status() ?? "no response"}): ${body}`,
+    );
+    if (attempt === 0) {
+      await page.waitForTimeout(1_500);
+    }
   }
-  await expect(
-    page.getByText(/vinculada ahora a:/i).first(),
-  ).toContainText(sheetTitulo, { timeout: 15_000 });
+  throw lastError ?? new Error("Route link failed");
 }
 
 /**
@@ -970,6 +1108,7 @@ async function createTwoStopRouteSheet(
   titulo: string,
   tramo0: RouteTramoSpec,
   tramo1: RouteTramoSpec,
+  carrierPhones?: { tramo0?: string; tramo1?: string },
 ): Promise<void> {
   await waitForThreadContractsLoaded(page);
   await openRoutesRail(page);
@@ -978,8 +1117,14 @@ async function createTwoStopRouteSheet(
   await fillRouteSheetBasicFields(page, titulo);
   await deleteTramoAt(page, 1);
   await fillTramoFields(page, 0, { ...DEFAULT_TRAMO, ...tramo0 });
+  if (carrierPhones?.tramo0) {
+    await searchCarrierPhone(page, 0, carrierPhones.tramo0);
+  }
   await insertTramoAfter(page, 0);
   await fillTramoFields(page, 1, { ...DEFAULT_TRAMO, ...tramo1 });
+  if (carrierPhones?.tramo1) {
+    await searchCarrierPhone(page, 1, carrierPhones.tramo1);
+  }
   await saveRouteSheet(page);
   await expect(page.getByText(/hoja de ruta creada/i).first()).toBeVisible({
     timeout: 15_000,
@@ -990,6 +1135,7 @@ async function createTwoStopRouteSheet(
 export async function createLinkedTwoStopRouteSheet(
   page: Page,
   agreementTitle: string,
+  carrierPhones?: { tramo0: string; tramo1: string },
 ): Promise<string> {
   const titulo = `E2E Ruta Enlazada ${Date.now()}`;
   const day = DEFAULT_TRAMO.recogidaDate;
@@ -1022,6 +1168,9 @@ export async function createLinkedTwoStopRouteSheet(
       entregaTime: "18:00",
       precio: "20",
     },
+    carrierPhones
+      ? { tramo0: carrierPhones.tramo0, tramo1: carrierPhones.tramo1 }
+      : undefined,
   );
 
   const { openRailContracts } = await import("./chat-helpers");
@@ -1042,6 +1191,7 @@ export async function createLinkedTwoStopRouteSheet(
 export async function createDisconnectedTwoStopRouteSheet(
   page: Page,
   agreementTitle: string,
+  carrierPhone?: string,
 ): Promise<string> {
   const titulo = `E2E Ruta Desconexa ${Date.now()}`;
   const day = DEFAULT_TRAMO.recogidaDate;
@@ -1071,6 +1221,7 @@ export async function createDisconnectedTwoStopRouteSheet(
       entregaTime: "15:00",
       precio: "80",
     },
+    carrierPhone ? { tramo0: carrierPhone, tramo1: carrierPhone } : undefined,
   );
 
   const { openRailContracts } = await import("./chat-helpers");

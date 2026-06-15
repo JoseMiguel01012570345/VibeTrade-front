@@ -70,7 +70,6 @@ async function fillMinimalProductForm(
 ): Promise<void> {
   const price = opts.price ?? "100";
   const priceCurrency = opts.priceCurrency ?? "USD";
-  const accepted = opts.acceptedCurrencies ?? [priceCurrency];
 
   const dialog = page.getByRole("dialog").filter({
     has: page.locator(".vt-modal-title", { hasText: /añadir producto/i }),
@@ -80,9 +79,6 @@ async function fillMinimalProductForm(
   await dialog.getByLabel(/nombre del producto/i).fill(productName);
   await dialog.getByLabel(/^precio$/i).fill(price);
   await pickVtOption(dialog, /tipo de moneda del precio/i, priceCurrency);
-  for (const cur of accepted) {
-    await pickVtMultiOption(dialog, /monedas aceptadas para el pago/i, cur);
-  }
 
   const text = "Texto E2E válido para el formulario.";
   await dialog.getByLabel(/descripción breve/i).fill(text);
@@ -161,6 +157,8 @@ function serviceTypeQualifiesAsTransport(serviceType: string): boolean {
 
 export type ServiceFormOpts = {
   acceptedCurrencies?: ("USD" | "EUR")[];
+  /** Tras guardar, reescribe monedas vía PUT (p. ej. USD+EUR cuando la UI solo permite una). */
+  monedasAfterSave?: string[];
 };
 
 async function fillMinimalServiceForm(
@@ -168,15 +166,13 @@ async function fillMinimalServiceForm(
   serviceType: string,
   opts: ServiceFormOpts = {},
 ): Promise<void> {
-  const accepted = opts.acceptedCurrencies ?? ["USD"];
+  const acceptedCurrency = (opts.acceptedCurrencies ?? ["USD"])[0]!;
   const dialog = page.getByRole("dialog").filter({
     has: page.locator(".vt-modal-title", { hasText: /añadir servicio/i }),
   });
   await pickVtOption(dialog, /categoría del servicio/i, "Servicios");
   await dialog.getByLabel(/tipo de servicio/i).fill(serviceType);
-  for (const cur of accepted) {
-    await pickVtMultiOption(dialog, /monedas aceptadas para el pago/i, cur);
-  }
+  await pickVtOption(dialog, /moneda aceptada para el pago/i, acceptedCurrency);
 
   const text = "Descripción E2E del servicio.";
   await dialog.getByLabel(/descripción del servicio/i).fill(text);
@@ -204,6 +200,7 @@ export async function addServiceViaUI(
   storeId: string,
   serviceType: string,
   formOpts: ServiceFormOpts = {},
+  sessionToken?: string,
 ): Promise<string> {
   await page.goto(`${baseURL}/store/${storeId}/services`, {
     waitUntil: "domcontentloaded",
@@ -228,13 +225,26 @@ export async function addServiceViaUI(
   const res = await putResponse;
   const match = res.url().match(/\/services\/([^/?]+)/);
   if (!match?.[1]) throw new Error("service id missing from save response URL");
+  const serviceId = match[1];
+
+  if (formOpts.monedasAfterSave?.length && sessionToken) {
+    const savedBody = res.request().postDataJSON() as Record<string, unknown>;
+    const putRes = await page.request.put(res.url(), {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      data: { ...savedBody, monedas: formOpts.monedasAfterSave },
+    });
+    if (!putRes.ok()) {
+      throw new Error(`PUT service monedas after save failed: ${putRes.status()}`);
+    }
+  }
+
   await page.goto(`${baseURL}/store/${storeId}/services`, {
     waitUntil: "domcontentloaded",
   });
   await expect(page.getByText(serviceType).first()).toBeVisible({
     timeout: 15_000,
   });
-  return match[1];
+  return serviceId;
 }
 
 export async function editProductNameViaUI(

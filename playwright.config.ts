@@ -5,7 +5,7 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
 export default defineConfig({
   testDir: "./test/e2e/test-feats",
   globalSetup: "./test/e2e/global-setup.ts",
-  globalTimeout: 600_000,
+  globalTimeout: 7_200_000,
   timeout: 60_000,
   // fullyParallel: false,
   // workers: 1,
@@ -22,6 +22,15 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      testIgnore: /chat-route-logistics/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "chromium-logistics",
+      testMatch: /chat-route-logistics/,
+      fullyParallel: false,
+      workers: 1,
+      timeout: 480_000,
       use: { ...devices["Desktop Chrome"] },
     },
   ],

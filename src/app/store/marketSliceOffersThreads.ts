@@ -21,6 +21,7 @@ import {
   fetchThreadTradeAgreements,
   patchThreadTradeAgreement,
   postThreadTradeAgreement,
+  postThreadTradeAgreementDuplicate,
   postThreadTradeAgreementRespond,
   type ChatMessageDto,
   type ChatThreadDto,
@@ -203,6 +204,7 @@ export function createOffersThreadsSlice(set: MarketSliceSet, get: MarketSliceGe
   | 'emitTradeAgreement'
   | 'updatePendingTradeAgreement'
   | 'deleteTradeAgreement'
+  | 'duplicateTradeAgreement'
   | 'respondTradeAgreement'
   | 'refreshThreadTradeAgreements'
   | 'recordChatExitFromList'
@@ -958,6 +960,36 @@ deleteTradeAgreement: async (threadId, agreementId) => {
     }
   })
   return ok
+},
+
+duplicateTradeAgreement: async (threadId, agreementId) => {
+  const persist = !!getSessionToken() && threadId.startsWith('cth_')
+  if (persist) {
+    try {
+      const created = await postThreadTradeAgreementDuplicate(threadId, agreementId)
+      const mapped = mapTradeAgreementApiToTradeAgreement(created)
+      set((s) => {
+        const t = s.threads[threadId]
+        if (!t) return s
+        const list = t.contracts ?? []
+        const idx = list.findIndex((c) => c.id === mapped.id)
+        const nextContracts =
+          idx < 0 ? [...list, mapped] : list.map((c, i) => (i === idx ? mapped : c))
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...t, contracts: nextContracts },
+          },
+        }
+      })
+      void syncPersistedAgreementsAndMessages(set, get, threadId).catch(() => {})
+      return created.id
+    } catch {
+      return null
+    }
+  }
+  return null
 },
 
 respondTradeAgreement: async (threadId, agreementId, response) => {

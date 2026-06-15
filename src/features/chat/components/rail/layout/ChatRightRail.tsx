@@ -46,6 +46,7 @@ type Props = {
   onRequestEditAgreement?: (agreement: TradeAgreement) => void;
   isActingSeller?: boolean;
   onDeleteAgreement?: (agreement: TradeAgreement) => void;
+  onDuplicateAgreement?: (agreement: TradeAgreement) => void;
   chatCarriers?: ThreadChatCarrier[];
   onOpenRouteSubscribers?: (routeSheetId: string) => void;
   /** Tras mutaciones de ruta en hilo persistido: hojas + suscripciones desde API. */
@@ -72,6 +73,7 @@ export function ChatRightRail({
   onRequestEditAgreement,
   isActingSeller = false,
   onDeleteAgreement,
+  onDuplicateAgreement,
   chatCarriers,
   onOpenRouteSubscribers,
   onPersistedRouteDataRefresh,
@@ -89,6 +91,7 @@ export function ChatRightRail({
     (s) => s.unlinkAgreementFromRouteSheet,
   );
   const deleteRouteSheet = useMarketStore((s) => s.deleteRouteSheet);
+  const duplicateRouteSheet = useMarketStore((s) => s.duplicateRouteSheet);
   const routeOfferForThread = useMarketStore(
     useShallow((s) => {
       const th = s.threads[threadId];
@@ -190,6 +193,7 @@ export function ChatRightRail({
           onRequestEditAgreement={onRequestEditAgreement}
           isActingSeller={isActingSeller}
           onDeleteAgreement={onDeleteAgreement}
+          onDuplicateAgreement={onDuplicateAgreement}
           actionsLocked={actionsLocked}
         />
       )}
@@ -211,6 +215,7 @@ export function ChatRightRail({
           onEditRouteSheet={onEditRouteSheet}
           toggleRouteStop={toggleRouteStop}
           deleteRouteSheet={deleteRouteSheet}
+          duplicateRouteSheet={duplicateRouteSheet}
           publishRouteSheetsToPlatform={publishRouteSheetsToPlatform}
           unpublishRouteSheetFromPlatform={unpublishRouteSheetFromPlatform}
           routeOffer={routeOfferForThread}

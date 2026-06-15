@@ -6,6 +6,7 @@ export async function submitCedeCarrierOwnership(args: {
   threadId: string;
   modal: CedeOwnershipModalState;
   refreshDeliveriesForAgreement: (agreementId: string) => Promise<void>;
+  onCedeSuccess?: (routeSheetId: string, routeStopId: string) => void;
   setModalBusy: (busy: boolean) => void;
   onSuccessClose: () => void;
   setLogisticsBusyKey: (key: string | null) => void;
@@ -15,6 +16,7 @@ export async function submitCedeCarrierOwnership(args: {
     threadId,
     modal: m,
     refreshDeliveriesForAgreement,
+    onCedeSuccess,
     setModalBusy,
     onSuccessClose,
     setLogisticsBusyKey,
@@ -38,6 +40,7 @@ export async function submitCedeCarrierOwnership(args: {
       setModalBusy(false);
       return;
     }
+    onCedeSuccess?.(m.routeSheetId, m.routeStopId);
     if (r.errorCode === "end_of_route") {
       toast.success("Trayectoria finalizada.");
       await refreshDeliveriesForAgreement(m.agreementId);

@@ -11,6 +11,7 @@ import {
   normRoutePhoneKey,
   resolveRouteStopIdForFormRow,
 } from "./routeSheetOfferGuards";
+import { ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES } from "./merchandiseRouteCurrency";
 
 const TITLE_MIN = 3;
 const TITLE_MAX = 200;
@@ -182,6 +183,7 @@ function mergeTramo(
  */
 export function getRouteSheetFormErrors(
   p: RouteSheetCreatePayload,
+  opts?: { routeLegPaymentCurrency?: string | null },
 ): RouteSheetFormErrors {
   const e: RouteSheetFormErrors = {};
 
@@ -316,8 +318,15 @@ export function getRouteSheetFormErrors(
     }
 
     {
+      const requiredMerch = norm(opts?.routeLegPaymentCurrency ?? "");
       const m = norm(raw.monedaPago);
-      if (m !== "") {
+      if (requiredMerch !== "") {
+        if (m !== "" && m.toUpperCase() !== requiredMerch.toUpperCase()) {
+          mergeTramo(e, i, {
+            monedaPago: ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES,
+          });
+        }
+      } else if (m !== "") {
         const mx = optionalMax(m, MONEDA_MAX);
         if (mx) mergeTramo(e, i, { monedaPago: mx });
       }

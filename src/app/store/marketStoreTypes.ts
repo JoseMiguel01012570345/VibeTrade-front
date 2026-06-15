@@ -582,6 +582,11 @@ export type MarketState = {
   ) => Promise<{ ok: true } | { ok: false; message?: string }>;
   /** Sólo si el acuerdo no está aceptado y, tras el borrado, hojas ≤ acuerdos. */
   deleteTradeAgreement: (threadId: string, agreementId: string) => Promise<boolean>;
+  /** Copia el contenido del acuerdo en un borrador nuevo (sin hoja vinculada). */
+  duplicateTradeAgreement: (
+    threadId: string,
+    agreementId: string,
+  ) => Promise<string | null>;
   respondTradeAgreement: (
     threadId: string,
     agreementId: string,
@@ -627,6 +632,11 @@ export type MarketState = {
     agreementId: string,
   ) => Promise<boolean>;
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean;
+  /** Clona la hoja en el mismo hilo (nuevo id, sin publicar). Devuelve el id de la copia. */
+  duplicateRouteSheet: (
+    threadId: string,
+    routeSheetId: string,
+  ) => Promise<string | null>;
   /**
    * Marca salida prematura con acuerdo y aplica penalización demo al comprador o vendedor que sale:
    * puntos base × cantidad de integrantes (comprador + vendedor + transportistas en el hilo).

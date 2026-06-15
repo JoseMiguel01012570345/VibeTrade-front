@@ -173,6 +173,18 @@ export function ChatPaymentModal({
     [agreementRoutePaths],
   );
 
+  const routePathsAwaitingCarriers = useMemo(
+    () =>
+      agreementRoutePaths.filter(
+        (p) =>
+          !p.paid &&
+          !p.partiallyPaid &&
+          !p.payable &&
+          (p.totalsByCurrency?.length ?? 0) > 0,
+      ),
+    [agreementRoutePaths],
+  );
+
   const routePickAgreement = useMemo(() => {
     if (!selectedAgreement) return false;
     if (serviceOnlyAgreement) return false;
@@ -1097,6 +1109,14 @@ export function ChatPaymentModal({
         await reloadCheckout();
         return;
       }
+      if (!r.accepted && r.errorCode === "agreement_currency_mismatch") {
+        toast.error(
+          r.stripeErrorMessage ??
+            "Este acuerdo ya tiene un cobro en otra moneda; no se puede cobrar en otra.",
+        );
+        await reloadCheckout();
+        return;
+      }
 
       const needs = (r.clientSecretForConfirmation ?? "").trim();
       if (
@@ -1330,8 +1350,9 @@ export function ChatPaymentModal({
                     </p>
                   ) : payableRoutePaths.length === 0 ? (
                     <p className="vt-muted mt-2 text-[13px]">
-                      No hay rutas pendientes de cobro (o ya están pagadas o
-                      parcialmente pagadas).
+                      {routePathsAwaitingCarriers.length > 0
+                        ? "Hay rutas con precio, pero aún no se pueden cobrar hasta que todos los transportistas de cada tramo estén confirmados en la hoja de ruta."
+                        : "No hay rutas pendientes de cobro (o ya están pagadas o parcialmente pagadas)."}
                     </p>
                   ) : (
                     <>
@@ -1815,8 +1836,9 @@ export function ChatPaymentModal({
           cards.length > 0 &&
           pendingCurrencies.length > 0 ? (
             <div className="flex flex-col gap-3">
-              {pendingCurrencies.map((cur) => {
-                const curOk = cur.trim().length >= 3;
+              {(() => {
+                const cur = pendingCurrencies[0]?.trim() ?? "";
+                const curOk = cur.length >= 3;
                 const payDisabled =
                   busyPay ||
                   !acceptedInforme ||
@@ -1824,10 +1846,7 @@ export function ChatPaymentModal({
                   !curOk ||
                   !checkoutSelectionsReady;
                 return (
-                  <div
-                    key={cur}
-                    className="flex flex-col gap-2 rounded-xl border border-[color-mix(in_oklab,var(--border)_88%,transparent)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] p-2.5 sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-2"
-                  >
+                  <div className="flex flex-col gap-2 rounded-xl border border-[color-mix(in_oklab,var(--border)_88%,transparent)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] p-2.5 sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-2">
                     <VtSelect
                       className="min-w-0 w-full sm:flex-1 sm:min-w-[200px]"
                       value={selectedCardId}
@@ -1842,11 +1861,6 @@ export function ChatPaymentModal({
                         type="button"
                         className="vt-btn shrink-0"
                         disabled={payDisabled}
-                        title={
-                          pendingCurrencies.length > 1
-                            ? "Un cobro por moneda; podés completar las demás después."
-                            : undefined
-                        }
                         onClick={() => void handlePayCurrency(cur)}
                       >
                         {busyPay ? "Procesando…" : `Pagar ${cur.toUpperCase()}`}
@@ -1854,7 +1868,7 @@ export function ChatPaymentModal({
                     </div>
                   </div>
                 );
-              })}
+              })()}
             </div>
           ) : null}
 

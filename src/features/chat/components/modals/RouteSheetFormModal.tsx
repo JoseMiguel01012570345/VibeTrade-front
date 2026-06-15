@@ -92,6 +92,10 @@ import {
   normRoutePhoneKey,
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
 } from "@features/market/model/routeSheetOfferGuards";
+import {
+  applyRouteLegPaymentCurrencyToParadas,
+  ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES,
+} from "@features/market/model/merchandiseRouteCurrency";
 
 /** Por encima del modal y de los `VtSelect` con listPortal z-[400]. */
 const ROUTE_SHEET_DT_POPOVER_Z = "z-[500]";
@@ -114,6 +118,8 @@ type Props = {
   routeOfferForSheet?: RouteOfferPublicState | undefined;
   /** Oferta pública del hilo (`resolveRouteOfferPublicForThread`); usada como respaldo si la de arriba es undefined. */
   routeOfferForThread?: RouteOfferPublicState | undefined;
+  /** Acuerdo con mercadería: tramos se cobran en esta moneda (ISO 4217). */
+  routeLegPaymentCurrency?: string | null;
   onSubmit: (p: RouteSheetFormPayload) => RouteSheetSubmitResult;
 };
 
@@ -207,6 +213,7 @@ export function RouteSheetFormModal({
   lockedByPaidAgreement = false,
   routeOfferForSheet,
   routeOfferForThread,
+  routeLegPaymentCurrency = null,
   onSubmit,
 }: Props) {
   const [titulo, setTitulo] = useState("");
@@ -238,6 +245,14 @@ export function RouteSheetFormModal({
   const offerTramoRef = useRef(offerForTramo);
   offerTramoRef.current = offerForTramo;
   const editBaselineJsonRef = useRef<string | null>(null);
+  const routeLegCurrencyNorm = (routeLegPaymentCurrency ?? "").trim().toUpperCase();
+  const formValidationOpts = useMemo(
+    () =>
+      routeLegCurrencyNorm
+        ? { routeLegPaymentCurrency: routeLegCurrencyNorm }
+        : undefined,
+    [routeLegCurrencyNorm],
+  );
   /** Invalida búsquedas Nominatim al cerrar el mapa o abrir otro punto. */
   const mapForwardTokenRef = useRef(0);
 
@@ -256,6 +271,17 @@ export function RouteSheetFormModal({
       cancel = true;
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !routeLegCurrencyNorm) return;
+    setTramos((prev) =>
+      prev.map((t) =>
+        (t.monedaPago ?? "").trim().toUpperCase() === routeLegCurrencyNorm
+          ? t
+          : { ...t, monedaPago: routeLegCurrencyNorm },
+      ),
+    );
+  }, [open, routeLegCurrencyNorm]);
 
   useEffect(() => {
     if (!open) return;
@@ -293,7 +319,7 @@ export function RouteSheetFormModal({
         paradas: limpios0,
         notasGenerales: (rs.notasGenerales ?? "").trim(),
       };
-      const err0 = getRouteSheetFormErrors(draft0);
+      const err0 = getRouteSheetFormErrors(draft0, formValidationOpts);
       if (hasRouteSheetFormErrors(err0)) {
         editBaselineJsonRef.current = null;
       } else {
@@ -507,7 +533,7 @@ export function RouteSheetFormModal({
       paradas: limpios,
       notasGenerales: notasG.trim(),
     };
-    const e = getRouteSheetFormErrors(draft);
+    const e = getRouteSheetFormErrors(draft, formValidationOpts);
     setFormErrors(e);
     if (hasRouteSheetFormErrors(e)) {
       const n = routeSheetFormErrorCount(e);
@@ -534,10 +560,15 @@ export function RouteSheetFormModal({
         }
       }
     }
-    const paradasFinal = normalizeRouteSheetParadas(limpios);
+    const paradasFinal = normalizeRouteSheetParadas(
+      routeLegCurrencyNorm
+        ? applyRouteLegPaymentCurrencyToParadas(limpios, routeLegCurrencyNorm)
+        : limpios,
+    );
     const payload: RouteSheetCreatePayload = {
       ...draft,
       paradas: paradasFinal,
+      ...(routeLegCurrencyNorm ? { monedaPago: routeLegCurrencyNorm } : {}),
     };
 
     if (initialRouteSheet && editBaselineJsonRef.current !== null) {
@@ -1096,16 +1127,30 @@ export function RouteSheetFormModal({
                         >
                           Moneda de pago (este tramo)
                         </span>
-                        <VtSelect
-                          value={p.monedaPago ?? ""}
-                          onChange={(v) => updateTramo(i, { monedaPago: v })}
-                          options={monedaOptionsFor(p.monedaPago ?? "")}
-                          placeholder="Elegir moneda…"
-                          listPortal
-                          listPortalZIndexClass="z-[400]"
-                          ariaLabel={`Moneda de pago del tramo ${i + 1}`}
-                          buttonClassName="vt-input w-full min-h-[2.5rem] justify-between"
-                        />
+                        {routeLegCurrencyNorm ? (
+                          <>
+                            <p
+                              className="vt-input w-full min-h-[2.5rem] flex items-center px-3 text-[var(--text)] bg-[var(--surface-muted)]"
+                              aria-labelledby={`ruta-tramo-${i}-moneda-lbl`}
+                            >
+                              {routeLegCurrencyNorm}
+                            </p>
+                            <p className={cn(modalSub, "mt-1")}>
+                              {ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES}
+                            </p>
+                          </>
+                        ) : (
+                          <VtSelect
+                            value={p.monedaPago ?? ""}
+                            onChange={(v) => updateTramo(i, { monedaPago: v })}
+                            options={monedaOptionsFor(p.monedaPago ?? "")}
+                            placeholder="Elegir moneda…"
+                            listPortal
+                            listPortalZIndexClass="z-[400]"
+                            ariaLabel={`Moneda de pago del tramo ${i + 1}`}
+                            buttonClassName="vt-input w-full min-h-[2.5rem] justify-between"
+                          />
+                        )}
                         {te?.monedaPago ? (
                           <span className={fieldError} role="alert">
                             {te.monedaPago}

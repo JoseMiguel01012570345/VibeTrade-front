@@ -21,6 +21,7 @@ import {
   threadHasAcceptedAgreement,
   useMarketStore,
 } from "@app/store/useMarketStore";
+import { resolveRouteLegPaymentCurrencyForThread } from "@features/market/model/merchandiseRouteCurrency";
 import { ImageLightbox } from "./components/media/ChatMedia";
 import {
   ChatComposerSection,
@@ -111,6 +112,9 @@ export function ChatPage() {
     (s) => s.updatePendingTradeAgreement,
   );
   const deleteTradeAgreement = useMarketStore((s) => s.deleteTradeAgreement);
+  const duplicateTradeAgreement = useMarketStore(
+    (s) => s.duplicateTradeAgreement,
+  );
   const respondTradeAgreement = useMarketStore((s) => s.respondTradeAgreement);
   const createRouteSheet = useMarketStore((s) => s.createRouteSheet);
   const updateRouteSheet = useMarketStore((s) => s.updateRouteSheet);
@@ -308,6 +312,14 @@ export function ChatPage() {
       (c) => c.routeSheetId === rs.id && c.hasSucceededPayments === true,
     );
   }, [thread?.contracts, routeSheetBeingEdited?.id]);
+  const routeLegPaymentCurrency = useMemo(
+    () =>
+      resolveRouteLegPaymentCurrencyForThread(
+        thread?.contracts ?? [],
+        routeSheetBeingEdited?.id,
+      ),
+    [thread?.contracts, routeSheetBeingEdited?.id],
+  );
   const [railOpen, setRailOpen] = useState(false);
   /** Tras cobro: refrescar entregas + volver a intentar permiso de ubicación para telemetría. */
   const [carrierGeoNonce, setCarrierGeoNonce] = useState(0);
@@ -1253,6 +1265,17 @@ export function ChatPage() {
                 setAgreementBeingEditedId(ag.id);
                 setShowAgreementForm(true);
               }}
+              onDuplicateAgreement={(ag) => {
+                if (!isActingSeller) {
+                  toast.error("Solo la tienda puede duplicar el acuerdo.");
+                  return;
+                }
+                void (async () => {
+                  const newId = await duplicateTradeAgreement(thread.id, ag.id);
+                  if (newId) toast.success("Acuerdo duplicado.");
+                  else toast.error("No se pudo duplicar el acuerdo.");
+                })();
+              }}
               onDeleteAgreement={(ag) => {
                 if (ag.hasSucceededPayments) {
                   toast.error(
@@ -1446,6 +1469,7 @@ export function ChatPage() {
         lockedByPaidAgreement={routeSheetLockedByPaidAgreement}
         routeOfferForSheet={routeOfferForEditingRouteSheet}
         routeOfferForThread={routeOfferForThisThread}
+        routeLegPaymentCurrency={routeLegPaymentCurrency}
         onClose={() => {
           setShowRouteSheetForm(false);
           setRouteSheetBeingEdited(null);

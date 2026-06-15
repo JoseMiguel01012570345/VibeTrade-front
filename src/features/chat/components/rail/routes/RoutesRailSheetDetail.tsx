@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import type { RoutesRailSheetDetailProps } from "./routesRailSheetDetailTypes";
 import { composeRoutesRailDetailShellMerged } from "./routesRailSheetDetailComposer";
 import { RoutesRailSheetDetailShell } from "./RoutesRailSheetDetailShell";
@@ -48,13 +49,35 @@ export function RoutesRailSheetDetail(props: RoutesRailSheetDetailProps) {
     });
   }, [openUnpublishConfirm, props]);
 
+  const handleDuplicateRouteSheet = useCallback(() => {
+    void (async () => {
+      const newId = await props.duplicateRouteSheet(
+        props.threadId,
+        props.selRoute.id,
+      );
+      if (!newId) {
+        toast.error("No se pudo duplicar la hoja de ruta.");
+        return;
+      }
+      toast.success("Hoja de ruta duplicada.");
+      props.setSelRouteId(newId);
+    })();
+  }, [props]);
+
   const shellMerged = useMemo(
     () =>
       composeRoutesRailDetailShellMerged(navigate, props, {
         onRequestDelete: openDeleteConfirm,
         onPublishClick: handlePublishClick,
+        onDuplicateRouteSheet: handleDuplicateRouteSheet,
       }),
-    [navigate, props, openDeleteConfirm, handlePublishClick],
+    [
+      navigate,
+      props,
+      openDeleteConfirm,
+      handlePublishClick,
+      handleDuplicateRouteSheet,
+    ],
   );
 
   const deleteMessage = railBuildDeleteSheetConfirmMessage(

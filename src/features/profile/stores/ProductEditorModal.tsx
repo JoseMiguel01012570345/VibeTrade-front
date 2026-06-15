@@ -5,7 +5,6 @@ import type { MerchandiseCondition } from "@features/market/model/tradeAgreement
 import {
   catalogMonedasList,
   mergeMonedaPrecioIntoMonedas,
-  stripMonedaPrecioFromSelection,
   type StoreProduct,
 } from "@features/market/model/storeCatalogTypes";
 import {
@@ -25,7 +24,6 @@ import {
 } from "@shared/styles/modals/formModalStyles";
 import { cn } from "@shared/lib/cn";
 import { VtSelect } from "@shared/components/ui/VtSelect";
-import { VtMultiSelect } from "@shared/components/ui/VtMultiSelect";
 import { UploadBlockingOverlay } from "@shared/components/ui/UploadBlockingOverlay";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
@@ -42,15 +40,6 @@ import {
   revokeIfBlob,
   type ProductPhotoSlot,
 } from "./helpers";
-
-function initialMonedasExtras(
-  init: Omit<StoreProduct, "id" | "storeId">,
-): string[] {
-  return stripMonedaPrecioFromSelection(
-    catalogMonedasList(init),
-    init.monedaPrecio,
-  );
-}
 
 type Props = Readonly<{
   open: boolean;
@@ -75,10 +64,6 @@ export function ProductEditorModal({
 }: Props) {
   const photoInputId = useId();
   const [form, setForm] = useState(initial);
-  /** Monedas elegidas solo en el multiselect (sin la moneda del precio del select). */
-  const [monedasExtras, setMonedasExtras] = useState(() =>
-    initialMonedasExtras(initial),
-  );
   const [photoSlots, setPhotoSlots] = useState<ProductPhotoSlot[]>(() =>
     productPhotoSlotsFromUrls(initial.photoUrls),
   );
@@ -89,8 +74,8 @@ export function ProductEditorModal({
   const photoOk = photoSlots.length >= 1;
 
   const acceptedMonedasMerged = useMemo(
-    () => mergeMonedaPrecioIntoMonedas(monedasExtras, form.monedaPrecio),
-    [monedasExtras, form.monedaPrecio],
+    () => mergeMonedaPrecioIntoMonedas([], form.monedaPrecio),
+    [form.monedaPrecio],
   );
 
   const categorySelectOptions = useMemo(() => {
@@ -100,7 +85,7 @@ export function ProductEditorModal({
     return [...merged].sort((a, b) => a.localeCompare(b, "es"));
   }, [categoryOptions, form.category]);
 
-  /** Lista para el precio (única) y para monedas aceptadas (múltiple); incluye CUP. */
+  /** Lista para el tipo de moneda del precio; incluye CUP. */
   const allCurrencyCodes = useMemo(() => {
     const merged = new Set<string>(
       currencyOptions.map((c) => c.trim()).filter(Boolean),
@@ -108,12 +93,8 @@ export function ProductEditorModal({
     merged.add("CUP");
     const mp = (form.monedaPrecio ?? "").trim();
     if (mp) merged.add(mp);
-    for (const c of acceptedMonedasMerged) {
-      const t = c.trim();
-      if (t) merged.add(t);
-    }
     return [...merged].sort((a, b) => a.localeCompare(b, "es"));
-  }, [currencyOptions, form.monedaPrecio, acceptedMonedasMerged]);
+  }, [currencyOptions, form.monedaPrecio]);
 
   if (!open) return null;
 
@@ -338,37 +319,6 @@ export function ProductEditorModal({
                       label: c,
                     })),
                   ]}
-                />
-              </label>
-              <label
-                className={cn(
-                  fieldRootWithInvalid(
-                    showVal &&
-                      catalogMonedasList({
-                        monedas: acceptedMonedasMerged,
-                        moneda: form.moneda,
-                      }).length < 1,
-                  ),
-                  "min-[560px]:col-span-2",
-                )}
-              >
-                <span className={fieldLabel}>Monedas aceptadas</span>
-                <VtMultiSelect
-                  value={acceptedMonedasMerged}
-                  onChange={(selected) =>
-                    setMonedasExtras(
-                      stripMonedaPrecioFromSelection(
-                        selected,
-                        form.monedaPrecio,
-                      ),
-                    )
-                  }
-                  ariaLabel="Monedas aceptadas para el pago (obligatorio)"
-                  placeholder="Elige una o más…"
-                  options={allCurrencyCodes.map((c) => ({
-                    value: c,
-                    label: c,
-                  }))}
                 />
               </label>
             </div>

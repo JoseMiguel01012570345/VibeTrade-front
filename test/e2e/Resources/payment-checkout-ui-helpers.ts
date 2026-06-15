@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import type { Download, Page } from "@playwright/test";
+import type { Browser, Download, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { openChatThread, waitForChatReady } from "./chat-helpers";
 import {
@@ -8,6 +8,16 @@ import {
   ensureStripeCustomerViaPage,
   listStripeCardsViaPage,
 } from "./e2e-stripe-customer";
+import {
+  acceptPreselInviteAsCarrier,
+  resolveRouteSheetIdByTitulo,
+} from "./route-sheet-carriers-env";
+import {
+  clickInviteCarriers,
+  openRouteSheetDetail,
+  openRoutesRail,
+  sendCarrierInvites,
+} from "./route-sheet-ui-helpers";
 const STRIPE_PRICING_PAGE_URL = "https://stripe.com/pricing";
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
@@ -194,6 +204,57 @@ export async function pickServiceRecurrences(
   await waitForInformeReady(page);
 }
 
+/** Selecciona solo la primera recurrencia disponible (pago parcial). */
+export async function pickFirstServiceRecurrenceOnly(
+  page: Page,
+  serviceNamePart: string | RegExp,
+): Promise<void> {
+  const modal = paymentModal(page);
+  const serviceLabel = modal
+    .locator("label")
+    .filter({ hasText: serviceNamePart })
+    .first();
+  await expect(serviceLabel).toBeVisible({ timeout: 15_000 });
+  const serviceBox = serviceLabel.locator('input[type="checkbox"]').first();
+  if (!(await serviceBox.isChecked())) {
+    await serviceBox.check();
+  }
+
+  const multi = modal.getByRole("button", {
+    name: /seleccionar recurrencias para/i,
+  });
+  await expect(multi).toBeVisible({ timeout: 10_000 });
+  await multi.click();
+  const listbox = page.getByRole("listbox", {
+    name: /seleccionar recurrencias para/i,
+  });
+  await expect(listbox).toBeVisible({ timeout: 5_000 });
+
+  const opts = listbox.getByRole("option");
+  const n = await opts.count();
+  if (n === 0) {
+    throw new Error("No hay recurrencias disponibles para pagar");
+  }
+  if (n >= 2) {
+    for (let i = 1; i < n; i++) {
+      const opt = opts.nth(i);
+      if ((await opt.getAttribute("aria-selected")) === "true") {
+        await opt.click();
+      }
+    }
+  }
+  const first = opts.first();
+  if ((await first.getAttribute("aria-selected")) !== "true") {
+    await first.click();
+  }
+
+  if (await listbox.isVisible().catch(() => false)) {
+    await multi.click();
+    await expect(listbox).toBeHidden({ timeout: 5_000 });
+  }
+  await waitForInformeReady(page);
+}
+
 /** After a service recurrence is paid, it should not reappear as a payable option. */
 export async function expectPaidServiceRecurrenceHidden(
   page: Page,
@@ -286,6 +347,7 @@ export async function prepareBuyerRouteCheckout(
     routeSheetTitle,
   );
   await openChatPaymentModal(page);
+  await selectAgreementInPaymentModal(page, agreementTitle);
   await waitForPayableRoutePathsInPaymentModal(page);
 }
 
@@ -630,4 +692,50 @@ export async function buyerHasPayCard(
   await page.keyboard.press("Escape");
   await expect(modal).toBeHidden({ timeout: 10_000 });
   return has;
+}
+
+/** Invita transportistas ya asignados en la hoja y confirma vía presel (API). */
+export async function inviteAndConfirmRouteCarriersForCheckout(
+  browser: Browser,
+  sellerPage: Page,
+  threadId: string,
+  routeTitulo: string,
+  sellerToken: string,
+  opts: {
+    carrierSessionToken: string;
+    carrier2SessionToken?: string;
+    confirmSecondCarrier?: boolean;
+  },
+): Promise<void> {
+  await openRoutesRail(sellerPage);
+  await openRouteSheetDetail(sellerPage, routeTitulo);
+  await clickInviteCarriers(sellerPage);
+  await sendCarrierInvites(sellerPage);
+  const routeSheetId = await resolveRouteSheetIdByTitulo(
+    sellerPage,
+    threadId,
+    sellerToken,
+    routeTitulo,
+  );
+
+  async function acceptAsCarrier(sessionToken: string): Promise<void> {
+    const ctx = await browser.newContext();
+    await ctx.addInitScript((t: string) => {
+      sessionStorage.setItem("vt_session_active", "1");
+      sessionStorage.setItem("vt_session_token", t);
+    }, sessionToken);
+    const carrierPage = await ctx.newPage();
+    await acceptPreselInviteAsCarrier(
+      carrierPage,
+      threadId,
+      routeSheetId,
+      sessionToken,
+    );
+    await ctx.close();
+  }
+
+  await acceptAsCarrier(opts.carrierSessionToken);
+  if (opts.confirmSecondCarrier !== false && opts.carrier2SessionToken) {
+    await acceptAsCarrier(opts.carrier2SessionToken);
+  }
 }

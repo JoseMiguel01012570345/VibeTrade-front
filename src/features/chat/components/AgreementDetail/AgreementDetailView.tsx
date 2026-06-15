@@ -382,6 +382,7 @@ export function AgreementDetailView({
   isActingSeller = false,
   onOpenRouteSheet,
   routeSheets = [],
+  routeSheetIdsLinkedElsewhere,
   onLinkRouteSheet,
   onUnlinkRouteSheet,
   linkActionsDisabled = false,
@@ -391,6 +392,7 @@ export function AgreementDetailView({
   isActingSeller?: boolean;
   onOpenRouteSheet?: (routeSheetId: string) => void;
   routeSheets?: RouteSheet[];
+  routeSheetIdsLinkedElsewhere?: ReadonlySet<string>;
   onLinkRouteSheet?: (agreementId: string, routeSheetId: string) => void;
   onUnlinkRouteSheet?: (agreementId: string) => void;
   linkActionsDisabled?: boolean;
@@ -503,12 +505,18 @@ export function AgreementDetailView({
   const routeSheetSelectOptions: VtSelectOption[] = useMemo(
     () => [
       { value: "", label: "Sin vincular — seleccionar…" },
-      ...routeSheets.map((r) => ({
-        value: r.id,
-        label: r.publicadaPlataforma ? `${r.titulo} (publicada)` : r.titulo,
-      })),
+      ...routeSheets
+        .filter(
+          (r) =>
+            !routeSheetIdsLinkedElsewhere?.has(r.id) ||
+            r.id === (a.routeSheetId ?? ""),
+        )
+        .map((r) => ({
+          value: r.id,
+          label: r.publicadaPlataforma ? `${r.titulo} (publicada)` : r.titulo,
+        })),
     ],
-    [routeSheets],
+    [routeSheets, routeSheetIdsLinkedElsewhere, a.routeSheetId],
   );
 
   return (
@@ -623,6 +631,7 @@ export function AgreementDetailView({
                     <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
                       Podés elegir otra hoja en el selector y usar «Actualizar
                       vínculo», o desvincular para dejar el acuerdo sin roadmap.
+                      Cada hoja solo puede estar vinculada a un acuerdo a la vez.
                     </p>
                   ) : null}
                 </>

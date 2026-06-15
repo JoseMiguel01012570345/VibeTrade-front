@@ -19,6 +19,7 @@ export function composeRoutesRailDetailShellMerged(
   overrides?: {
     onRequestDelete?: () => void;
     onPublishClick?: () => void;
+    onDuplicateRouteSheet?: () => void;
   },
 ): RoutesRailSheetDetailShellMergedProps {
   const titles = routesRailTitlesForSeller({
@@ -44,6 +45,8 @@ export function composeRoutesRailDetailShellMerged(
     handlePublishClick:
       overrides?.onPublishClick ??
       (() => invokeRoutesRailSheetPublishToggle(props)),
+    handleDuplicateRouteSheet:
+      overrides?.onDuplicateRouteSheet ?? (() => undefined),
     acceptCarrierAck: () => invokeRoutesRailCarrierAcceptAck(props),
     rejectCarrierAck: () => invokeRoutesRailCarrierRejectAck(navigate, props),
   };

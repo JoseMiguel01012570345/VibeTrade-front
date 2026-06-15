@@ -143,6 +143,9 @@ export async function getCedeCarrierOwnership(args: {
       `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/logistics/ownership/cede?routeSheetId=${encodeURIComponent(args.routeSheetId)}&routeStopId=${encodeURIComponent(args.routeStopId)}`,
     );
     const raw = await res.text().catch(() => "");
+    if (!res.ok) {
+      return { ok: false, errorCode: null, message: null };
+    }
     const result = JSON.parse(raw) as CarrierOwnershipCedeResultApi;
     return result.ok ? result : { ok: false, errorCode: null, message: null };
   } catch {
@@ -230,12 +233,13 @@ export async function decideCarrierDeliveryEvidence(args: {
     routeSheetId: args.routeSheetId,
     routeStopId: args.routeStopId,
   });
+  const apiDecision = args.decision === "accept" ? "accepted" : "rejected";
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/agreements/${encodeURIComponent(args.agreementId)}/logistics/evidence/decide?${qs.toString()}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision: args.decision }),
+      body: JSON.stringify({ decision: apiDecision }),
     },
   );
   if (!res.ok) {

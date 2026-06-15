@@ -37,6 +37,7 @@ import {
   fetchThreadRouteSheets,
   fetchThreadRouteTramoSubscriptions,
   patchThreadTradeAgreementRouteLink,
+  postThreadRouteSheetDuplicate,
   putThreadRouteSheet,
 } from "@/utils/chat/chatApi"
 import { getSessionToken } from "@shared/services/http/sessionToken"
@@ -66,6 +67,7 @@ export function createRouteSheetsSlice(set: MarketSliceSet, get: MarketSliceGet)
   | 'linkAgreementToRouteSheet'
   | 'unlinkAgreementFromRouteSheet'
   | 'deleteRouteSheet'
+  | 'duplicateRouteSheet'
 > {
   return {
 createRouteSheet: (threadId, payload) => {
@@ -776,6 +778,36 @@ deleteRouteSheet: (threadId, routeSheetId) => {
     })()
   }
   return ok
+},
+
+duplicateRouteSheet: async (threadId, routeSheetId) => {
+  const th0 = get().threads[threadId]
+  if (!th0 || threadIsActionLocked(th0)) return null
+  const persist = threadId.startsWith('cth_') && getSessionToken()
+  if (!persist) return null
+  try {
+    const created = await postThreadRouteSheetDuplicate(threadId, routeSheetId)
+    const sheets = await fetchThreadRouteSheets(threadId)
+    const acks = routeSheetEditAcksRecordFromSheets(sheets as RouteSheet[])
+    set((s) => {
+      const th = s.threads[threadId]
+      if (!th) return s
+      return {
+        ...s,
+        threads: {
+          ...s.threads,
+          [threadId]: {
+            ...th,
+            routeSheets: sheets as RouteSheet[],
+            routeSheetEditAcks: { ...(th.routeSheetEditAcks ?? {}), ...acks },
+          },
+        },
+      }
+    })
+    return (created.id ?? "").trim() || null
+  } catch {
+    return null
+  }
 },
   }
 }

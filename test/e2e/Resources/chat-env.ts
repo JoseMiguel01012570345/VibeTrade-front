@@ -48,3 +48,11 @@ export const chatE2ESkipReason =
 
 export const chatE2ESellerSkipReason =
   "global-setup must provision seller and buyer (check test/e2e/.auth/scenario.json)";
+
+export function hasCarrier2Session(): boolean {
+  const s = getE2EScenario();
+  return !!s?.carrier2SessionToken && !!s?.carrier2Phone;
+}
+
+export const carrier2SkipReason =
+  "Carrier2 not provisioned — run global-setup with API on :5110";

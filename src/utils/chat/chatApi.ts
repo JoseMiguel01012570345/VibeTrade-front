@@ -1,4 +1,7 @@
-import type { RouteSheetPayload } from "@features/market/model/routeSheetTypes";
+import type {
+  RouteSheet,
+  RouteSheetPayload,
+} from "@features/market/model/routeSheetTypes";
 import type {
   ChatUnifiedMessagePayloadDto,
   PostChatMessageBody,
@@ -745,6 +748,33 @@ export async function deleteThreadTradeAgreement(
     const t = await res.text().catch(() => "");
     throw new Error(chatApiErrorMessage(t, res.status));
   }
+}
+
+export async function postThreadTradeAgreementDuplicate(
+  threadId: string,
+  agreementId: string,
+): Promise<TradeAgreementApiDto> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}/duplicate`,
+    { method: "POST" },
+  );
+  await throwIfTradeAgreementResponseNotOk(res);
+  return (await res.json()) as TradeAgreementApiDto;
+}
+
+export async function postThreadRouteSheetDuplicate(
+  threadId: string,
+  routeSheetId: string,
+): Promise<RouteSheet> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}/duplicate`,
+    { method: "POST" },
+  );
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
+  }
+  return (await res.json()) as RouteSheet;
 }
 
 export async function postChatMessage(

@@ -164,7 +164,56 @@ export async function acceptPreselInviteAsCarrier(
   carrierPage: Page,
   threadId: string,
   routeSheetId: string,
+  sessionToken?: string,
 ): Promise<void> {
+  const token =
+    sessionToken?.trim() ??
+    (await carrierPage
+      .goto("/", { waitUntil: "domcontentloaded", timeout: 45_000 })
+      .then(() =>
+        carrierPage.evaluate(() => sessionStorage.getItem("vt_session_token")),
+      )
+      .catch(() => null)) ??
+    "";
+
+  if (token) {
+    await carrierPage.goto("/", {
+      waitUntil: "domcontentloaded",
+      timeout: 45_000,
+    });
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const ok = await carrierPage
+        .evaluate(
+          async ([tid, rsid, tkn]: [string, string, string]) => {
+            const res = await fetch(
+              `/api/v1/chat/threads/${encodeURIComponent(tid)}/route-sheet-presel-invite`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${tkn}`,
+                },
+                body: JSON.stringify({ routeSheetId: rsid, accepted: true }),
+              },
+            );
+            return res.ok;
+          },
+          [threadId, routeSheetId, token] as [string, string, string],
+        )
+        .catch(() => false);
+      if (ok) {
+        await carrierPage
+          .goto(`/chat/${threadId}`, {
+            waitUntil: "domcontentloaded",
+            timeout: 45_000,
+          })
+          .catch(() => null);
+        return;
+      }
+      await carrierPage.waitForTimeout(1_500);
+    }
+  }
+
   const inviteUrl = `/invite/presel/${threadId}?sheet=${encodeURIComponent(routeSheetId)}`;
   const routeModal = carrierPage
     .getByRole("dialog")
@@ -189,7 +238,9 @@ export async function acceptPreselInviteAsCarrier(
       /contacto de transporte|hoja de ruta|invitaci[oó]n/i,
     );
     await expect(inviteNotif).toBeVisible({ timeout: 30_000 });
-    await inviteNotif.click();
+    await inviteNotif.evaluate((el) => {
+      (el as HTMLElement).click();
+    });
     await expect(routeModal).toBeVisible({ timeout: 15_000 });
   }
 

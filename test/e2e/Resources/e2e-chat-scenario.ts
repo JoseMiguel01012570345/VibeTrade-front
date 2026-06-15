@@ -33,6 +33,14 @@ export type E2EChatScenario = {
   carrierServiceId?: string;
   /** Phone of the carrier user (for search). */
   carrierPhone?: string;
+  /** Second carrier for dual-tramo / handoff / proximity tests. */
+  carrier2SessionToken?: string;
+  carrier2UserId?: string;
+  carrier2StoreId?: string;
+  carrier2ServiceId?: string;
+  carrier2Phone?: string;
+  /** Next agreement index for serial logistics E2E (persisted across Playwright workers). */
+  logisticsAgreementCursor?: number;
 };
 
 export type ProvisionedChatE2E = {

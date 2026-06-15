@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { Badge, Button } from "flowbite-react";
 import {
   EyeOff,
+  Copy,
   MapPinned,
   Megaphone,
   Pencil,
@@ -42,8 +43,10 @@ export function RoutesRailToolbarTop(props: {
   inviteTitleStr: string;
   editTitleStr: string;
   deleteTitleStr: string;
+  duplicateTitleStr?: string;
   onInvite: () => void;
   onEdit: () => void;
+  onDuplicate?: () => void;
   onRequestDelete: () => void;
 }) {
   // Estados
@@ -79,8 +82,10 @@ function RoutesRailToolbarSellerRow(props: {
   selRoute: RouteSheet;
   inviteTitleStr: string;
   editTitleStr: string;
+  duplicateTitleStr?: string;
   onInvite: () => void;
   onEdit: () => void;
+  onDuplicate?: () => void;
 }) {
   // Estados
 
@@ -109,6 +114,21 @@ function RoutesRailToolbarSellerRow(props: {
           Editar
         </span>
       </Button>
+      {props.onDuplicate ? (
+        <Button
+          className="[&>span]:gap-1.5 [&>span]:text-xs"
+          color="gray"
+          disabled={props.actionsLocked}
+          title={props.duplicateTitleStr ?? "Duplicar hoja de ruta"}
+          size="xs"
+          onClick={props.onDuplicate}
+        >
+          <span className="flex items-center gap-1.5">
+            <Copy className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            Duplicar
+          </span>
+        </Button>
+      ) : null}
       <Button
         className="[&>span]:gap-1.5 [&>span]:text-xs"
         color="gray"
