@@ -7,6 +7,7 @@ import { e2eScenarioFile } from "./e2e-paths";
 import type { E2EChatScenario } from "./e2e-chat-scenario";
 import { openChatThread, openRailContracts, reloadChatThread, waitForChatReady } from "./chat-helpers";
 import {
+  ensureCarrierConfirmedOnSheetStops,
   fetchAgreementTitleById,
   fetchRouteSheetStopIds,
   payRouteStopsViaBuyerApi,
@@ -41,7 +42,11 @@ import {
   searchCarrierPhone,
   waitForRouteSheetForm,
   waitForThreadContractsLoaded,
+  closeSubscribersPanelIfOpen,
   dismissPeerPartyExitModalIfOpen,
+  openTramoInSubscribersPanel,
+  openFirstCarrierInSubscribersPanel,
+  subscribersPanel,
 } from "./route-sheet-ui-helpers";
 import {
   acceptPreselInviteAsCarrier,
@@ -117,7 +122,7 @@ function carrierSessionTokenForPhone(
   return scenario.carrierSessionToken!;
 }
 
-async function newAuthenticatedPage(
+export async function newAuthenticatedPage(
   browser: Browser,
   sessionToken: string,
 ): Promise<Page> {
@@ -177,6 +182,9 @@ export type SetupPaidRouteOpts = {
   carrierPhone?: string;
   carrier2Phone?: string;
   agreementIndex?: number;
+  /** Override global RS thread (e.g. isolated exit-policy scenario). */
+  threadId?: string;
+  agreementId?: string;
   publish?: boolean;
   payRoutes?: boolean;
   /** Use when the buyer was party-soft-expelled and cannot open the chat UI to pay. */
@@ -191,10 +199,14 @@ export async function setupPaidRouteLogisticsScenario(
   const scenario = getE2EScenario()!;
   const seller = getE2ESellerSession()!;
   const buyer = getE2ESession()!;
-  const threadId = scenario.routeSheetThreadId!;
-  const agreementIndex = opts.agreementIndex ?? takeNextAgreementIndex();
+  const threadId = opts.threadId ?? scenario.routeSheetThreadId!;
+  const agreementIndex =
+    opts.agreementId != null
+      ? undefined
+      : (opts.agreementIndex ?? takeNextAgreementIndex());
   const agreementId =
-    scenario.routeSheetAgreementIds?.[agreementIndex] ??
+    opts.agreementId ??
+    scenario.routeSheetAgreementIds?.[agreementIndex!] ??
     scenario.routeSheetAgreementId!;
   const carrierPhone = opts.carrierPhone ?? scenario.carrierPhone!;
   const primaryCarrierToken = carrierSessionTokenForPhone(
@@ -280,34 +292,66 @@ export async function setupPaidRouteLogisticsScenario(
   }
 
   if (tramoCount === 2) {
-    await ensureRouteSheetDetailOpen(sellerPage, titulo);
-    await openSubscribersPanel(sellerPage);
-    const panel = sellerPage.getByRole("dialog").filter({
-      hasText: /suscriptores/i,
+    const stopIdsForConfirm = await fetchRouteSheetStopIds(
+      sellerPage,
+      seller.sessionToken,
+      threadId,
+      routeSheetId,
+    );
+    const phone2 = opts.carrier2Phone ?? carrierPhone;
+    const distinctCarriers = phone2.trim() !== carrierPhone.trim();
+    const primaryCarrierUserId = (scenario.carrierUserId ?? carrierPhone).trim();
+    const stop0 = stopIdsForConfirm[0];
+    const stop1 = stopIdsForConfirm[1];
+
+    await ensureCarrierConfirmedOnSheetStops(sellerPage, seller.sessionToken, {
+      threadId,
+      routeSheetId,
+      carrierUserId: primaryCarrierUserId,
+      stopIds: distinctCarriers
+        ? stop0
+          ? [stop0]
+          : []
+        : stopIdsForConfirm,
     });
-    const tramo2 = panel
-      .getByRole("button", { name: /^tramo 2\b/i })
-      .first();
-    if (await tramo2.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await tramo2.click();
-      const acceptBtn = panel
-        .getByRole("button", { name: /aceptar en este tramo/i })
-        .first();
-      if (await acceptBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-        await acceptBtn.click();
-        const confirmModal = sellerPage
-          .getByRole("dialog")
-          .filter({ hasText: /confirmar transportista/i });
-        await confirmModal
-          .getByRole("button", { name: /sí, confirmar/i })
-          .click()
-          .catch(() => null);
+
+    if (distinctCarriers && stop1) {
+      const secondaryCarrierUserId = (scenario.carrier2UserId ?? phone2).trim();
+      const confirmedViaApi = await ensureCarrierConfirmedOnSheetStops(
+        sellerPage,
+        seller.sessionToken,
+        {
+          threadId,
+          routeSheetId,
+          carrierUserId: secondaryCarrierUserId,
+          stopIds: [stop1],
+        },
+      )
+        .then(() => true)
+        .catch(() => false);
+
+      if (!confirmedViaApi) {
+        await ensureRouteSheetDetailOpen(sellerPage, titulo);
+        await openSubscribersPanel(sellerPage);
+        await openTramoInSubscribersPanel(sellerPage, 2, titulo);
+        await openFirstCarrierInSubscribersPanel(sellerPage);
+        const panel = subscribersPanel(sellerPage);
+        const acceptBtn = panel
+          .getByRole("button", { name: /aceptar en este tramo/i })
+          .first();
+        if (await acceptBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+          await acceptBtn.click();
+          const confirmModal = sellerPage
+            .getByRole("dialog")
+            .filter({ hasText: /confirmar transportista/i });
+          await confirmModal
+            .getByRole("button", { name: /sí, confirmar/i })
+            .click()
+            .catch(() => null);
+        }
+        await closeSubscribersPanelIfOpen(sellerPage);
       }
     }
-    await sellerPage
-      .getByRole("button", { name: /cerrar panel de suscriptores/i })
-      .click()
-      .catch(() => null);
   }
 
   if (opts.payRoutes !== false) {

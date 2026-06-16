@@ -762,7 +762,7 @@ export async function openAgreementDetailInRail(
   });
   await page.getByRole("button").filter({ hasText: title }).first().click();
   await expect(
-    page.getByRole("button", { name: /descargar pdf/i }),
+    page.getByRole("button", { name: /descargar pdf/i }).first(),
   ).toBeVisible({ timeout: 15_000 });
 }
 

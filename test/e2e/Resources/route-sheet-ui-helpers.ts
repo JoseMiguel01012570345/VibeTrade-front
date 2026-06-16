@@ -47,7 +47,21 @@ export async function waitForThreadContractsLoaded(page: Page): Promise<void> {
 }
 
 /** Opens the Rutas tab in the right rail. */
+export async function closeSubscribersPanelIfOpen(page: Page): Promise<void> {
+  const closeBtn = page.getByRole("button", {
+    name: /cerrar panel de suscriptores/i,
+  });
+  if (await closeBtn.isVisible({ timeout: 1_500 }).catch(() => false)) {
+    await closeBtn.click();
+    await expect(subscribersPanel(page))
+      .toBeHidden({ timeout: 8_000 })
+      .catch(() => null);
+  }
+}
+
+/** Opens the Rutas tab in the right rail. */
 export async function openRoutesRail(page: Page): Promise<void> {
+  await closeSubscribersPanelIfOpen(page);
   const tab = page.getByRole("button", { name: /^rutas$/i });
   await expect(tab).toBeVisible({ timeout: 15_000 });
   await tab.click();
@@ -702,6 +716,12 @@ export async function linkRouteSheetToAgreementViaUI(
  * Handles the native window.confirm() dialog by accepting it.
  */
 export async function publishRouteSheetViaUI(page: Page): Promise<void> {
+  const alreadyPublished = page.getByRole("button", {
+    name: /ocultar de la plataforma/i,
+  });
+  if (await alreadyPublished.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    return;
+  }
   const publishBtn = page.getByRole("button", {
     name: /publicar en la plataforma/i,
   });
@@ -950,7 +970,15 @@ export async function kickCarrierFromTramo(
     } else {
       await openFirstTramoInSubscribersPanel(page, routeSheetTitulo);
     }
-    await openFirstCarrierInSubscribersPanel(page);
+    const confirmedCarrier = panel
+      .getByRole("button")
+      .filter({ hasText: /confirmado/i })
+      .first();
+    if (await confirmedCarrier.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await confirmedCarrier.click();
+    } else {
+      await openFirstCarrierInSubscribersPanel(page);
+    }
     expelBtn = panel.getByRole("button", { name: /expulsar de este tramo/i }).first();
   }
   await expect(expelBtn).toBeVisible({ timeout: 5_000 });

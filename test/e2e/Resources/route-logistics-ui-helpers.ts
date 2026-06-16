@@ -1,6 +1,7 @@
 import type { Page, Request } from "@playwright/test";
 import { expect } from "@playwright/test";
 import {
+  closeSubscribersPanelIfOpen,
   openRoutesRail,
   openRouteSheetDetail,
 } from "./route-sheet-ui-helpers";
@@ -21,6 +22,7 @@ export async function openLogisticsRouteSheet(
   page: Page,
   routeSheetTitulo: string,
 ): Promise<void> {
+  await closeSubscribersPanelIfOpen(page);
   const panel = logisticsPanel(page, 0);
   const panelOpen = await panel.isVisible({ timeout: 3_000 }).catch(() => false);
   if (panelOpen) {

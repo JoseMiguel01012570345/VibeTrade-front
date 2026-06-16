@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { getE2EApiBaseUrl, getE2EAppBaseUrl } from "./e2e-api-base";
 
 export const E2E_DEMO_CARD_LAST4 = "4242";
 
@@ -20,7 +21,7 @@ function authHeaders(sessionToken?: string): Record<string, string> {
 /** Creates Stripe customer (skip mode) or real customer via POST setup-intents. */
 export async function ensureStripeCustomerViaFetch(
   sessionToken: string,
-  baseURL: string,
+  baseURL = getE2EApiBaseUrl(),
 ): Promise<boolean> {
   const origin = baseURL.replace(/\/$/, "");
   try {
@@ -37,7 +38,7 @@ export async function ensureStripeCustomerViaFetch(
 
 export async function listStripeCardsViaFetch(
   sessionToken: string,
-  baseURL: string,
+  baseURL = getE2EApiBaseUrl(),
 ): Promise<E2EStripeSavedCard[]> {
   const origin = baseURL.replace(/\/$/, "");
   try {
@@ -54,7 +55,7 @@ export async function listStripeCardsViaFetch(
 
 export async function ensureStripeCustomerViaPage(
   page: Page,
-  baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173",
+  baseURL = getE2EAppBaseUrl(),
 ): Promise<boolean> {
   const origin = baseURL.replace(/\/$/, "");
   const token = await page
@@ -77,7 +78,7 @@ export async function ensureStripeCustomerViaPage(
 
 export async function listStripeCardsViaPage(
   page: Page,
-  baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173",
+  baseURL = getE2EAppBaseUrl(),
 ): Promise<E2EStripeSavedCard[]> {
   const origin = baseURL.replace(/\/$/, "");
   const token = await page
@@ -103,7 +104,7 @@ export async function listStripeCardsViaPage(
 /** True when skip-mode demo card or any saved card is available for checkout. */
 export async function buyerHasStripeCardViaPage(
   page: Page,
-  baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173",
+  baseURL = getE2EAppBaseUrl(),
 ): Promise<boolean> {
   await ensureStripeCustomerViaPage(page, baseURL);
   const cards = await listStripeCardsViaPage(page, baseURL);

@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { e2eApiUrl } from "./e2e-api-base";
 import { listStripeCardsViaFetch } from "./e2e-stripe-customer";
 
 export type E2ERouteStopDelivery = {
@@ -35,44 +36,43 @@ export type E2EChatNotification = {
 type FetchResult<T> = { status: number; ok: boolean; data: T; text: string };
 
 async function e2eAuthorizedFetch<T = unknown>(
-  page: Page,
+  _page: Page,
   token: string,
   path: string,
   init?: { method?: string; body?: unknown },
 ): Promise<FetchResult<T>> {
-  return page.evaluate(
-    async ([p, t, method, bodyJson]: [string, string, string, string | null]) => {
-      const res = await fetch(p, {
-        method,
-        headers: {
-          Authorization: `Bearer ${t}`,
-          ...(bodyJson ? { "Content-Type": "application/json" } : {}),
-        },
-        body: bodyJson ?? undefined,
-      });
-      const text = await res.text().catch(() => "");
-      let data: unknown = null;
-      if (text.trim().startsWith("{") || text.trim().startsWith("[")) {
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = null;
-        }
-      }
-      return {
-        status: res.status,
-        ok: res.ok,
-        data: data as T,
-        text,
-      };
-    },
-    [
-      path,
-      token,
-      init?.method ?? "GET",
-      init?.body != null ? JSON.stringify(init.body) : null,
-    ] as [string, string, string, string | null],
-  );
+  const url = path.startsWith("http") ? path : e2eApiUrl(path);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: init?.method ?? "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(init?.body != null ? { "Content-Type": "application/json" } : {}),
+      },
+      body: init?.body != null ? JSON.stringify(init.body) : undefined,
+    });
+  } catch (cause) {
+    const msg = cause instanceof Error ? cause.message : String(cause);
+    throw new Error(
+      `${msg} — start the backend on :5110 (or set PLAYWRIGHT_E2E_API_URL). [${url}]`,
+    );
+  }
+  const text = await res.text().catch(() => "");
+  let data: unknown = null;
+  if (text.trim().startsWith("{") || text.trim().startsWith("[")) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = null;
+    }
+  }
+  return {
+    status: res.status,
+    ok: res.ok,
+    data: data as T,
+    text,
+  };
 }
 
 export type E2ETradeAgreementApi = {
@@ -161,6 +161,98 @@ export async function fetchRouteSheetStopIds(
       .filter((id) => id.length > 0);
   }
   return [];
+}
+
+export type E2ERouteTramoSubscription = {
+  routeSheetId?: string;
+  stopId?: string;
+  carrierUserId?: string;
+  status?: string;
+};
+
+export async function fetchRouteTramoSubscriptions(
+  page: Page,
+  token: string,
+  threadId: string,
+): Promise<E2ERouteTramoSubscription[]> {
+  const res = await e2eAuthorizedFetch<unknown>(
+    page,
+    token,
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions`,
+  );
+  if (!res.ok) {
+    throw new Error(`fetchRouteTramoSubscriptions failed: ${res.status}`);
+  }
+  return Array.isArray(res.data) ? (res.data as E2ERouteTramoSubscription[]) : [];
+}
+
+export async function waitForStopSubscriptionStatus(
+  page: Page,
+  token: string,
+  args: {
+    threadId: string;
+    routeSheetId: string;
+    stopId: string;
+    status: string;
+  },
+  timeoutMs = 30_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  const rsid = args.routeSheetId.trim();
+  const sid = args.stopId.trim();
+  const want = args.status.trim().toLowerCase();
+  while (Date.now() < deadline) {
+    const subs = await fetchRouteTramoSubscriptions(page, token, args.threadId);
+    const row = subs.find(
+      (s) =>
+        (s.routeSheetId ?? "").trim() === rsid &&
+        (s.stopId ?? "").trim() === sid &&
+        (s.status ?? "").trim().toLowerCase() === want,
+    );
+    if (row) return;
+    await page.waitForTimeout(1_000);
+  }
+  throw new Error(
+    `waitForStopSubscriptionStatus timeout: ${want} on stop ${sid} (sheet ${rsid})`,
+  );
+}
+
+/** Confirms the carrier on every stop of the sheet (idempotent for already-confirmed tramos). */
+export async function ensureCarrierConfirmedOnSheetStops(
+  page: Page,
+  sellerToken: string,
+  args: {
+    threadId: string;
+    routeSheetId: string;
+    carrierUserId: string;
+    stopIds: string[];
+  },
+): Promise<void> {
+  const subs = await fetchRouteTramoSubscriptions(page, sellerToken, args.threadId);
+  const rsid = args.routeSheetId.trim();
+  const cid = args.carrierUserId.trim();
+  for (const stopId of args.stopIds) {
+    const sid = stopId.trim();
+    if (!sid) continue;
+    const row = subs.find(
+      (s) =>
+        (s.routeSheetId ?? "").trim() === rsid &&
+        (s.stopId ?? "").trim() === sid &&
+        (s.carrierUserId ?? "").trim() === cid,
+    );
+    if ((row?.status ?? "").trim().toLowerCase() === "confirmed") continue;
+    const res = await acceptCarrierSubscriptionOnSheetApi(page, sellerToken, {
+      threadId: args.threadId,
+      routeSheetId: rsid,
+      carrierUserId: cid,
+      stopId: sid,
+    });
+    if (res.status >= 300) {
+      throw new Error(
+        `ensureCarrierConfirmedOnSheetStops failed for ${sid}: HTTP ${res.status}`,
+      );
+    }
+  }
 }
 
 export async function fetchRouteSheetTitles(
@@ -758,9 +850,8 @@ export async function payRouteStopsViaBuyerApi(
     routeStopIds: string[];
   },
 ): Promise<{ status: number; text: string }> {
-  const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  const cards = await listStripeCardsViaFetch(buyerToken, baseURL);
+  const cards = await listStripeCardsViaFetch(buyerToken);
   const paymentMethodId =
     cards.find((c) => (c.id ?? "").trim().length > 0)?.id ??
     `pm_test_skip_${Date.now()}`;

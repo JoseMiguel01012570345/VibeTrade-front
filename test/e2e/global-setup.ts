@@ -26,8 +26,9 @@ import {
   e2eSellerSessionFile,
   e2eSessionFile,
 } from "./Resources/e2e-paths";
+import { getE2EApiBaseUrl, getE2EAppBaseUrl } from "./Resources/e2e-api-base";
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
+const baseURL = getE2EAppBaseUrl();
 
 function writeSession(path: string, session: E2ESession): void {
   fs.mkdirSync(e2eAuthDir, { recursive: true });
@@ -191,7 +192,7 @@ async function provisionRouteSheetScenario(
   buyerToken: string,
   offerId: string,
 ): Promise<{ threadId: string; agreementId: string; agreementIds: string[] }> {
-  const apiBase = baseURL.replace(/\/$/, "");
+  const apiBase = getE2EApiBaseUrl();
 
   const buyerHeaders = {
     "Content-Type": "application/json",

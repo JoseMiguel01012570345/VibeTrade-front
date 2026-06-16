@@ -483,14 +483,19 @@ export type CarrierWithdrawFromThreadApiResult = {
 /** Transportista: abandona el hilo y des-suscribe tramos (no borra el hilo para comprador/vendedor). */
 export async function postCarrierWithdrawFromThread(
   threadId: string,
+  reason: string,
 ): Promise<CarrierWithdrawFromThreadApiResult> {
   const res = await apiFetch(
     `/api/v1/policies/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/carrier-withdraw`,
-    { method: "POST" },
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reason.trim() }),
+    },
   );
   if (!res.ok) {
     const t = await res.text().catch(() => "");
-    throw new Error(chatApiErrorMessage(t, res.status));
+    throwVtHttpFromChatResponse(res, t);
   }
   return (await res.json()) as CarrierWithdrawFromThreadApiResult;
 }

@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import type { E2ESession } from "./e2e-session";
+import { getE2EApiBaseUrl } from "./e2e-api-base";
 
 function randomNationalNumber(): string {
   const n = Math.floor(100_000_000 + Math.random() * 899_999_999);
@@ -14,8 +15,8 @@ export function randomE2EPhone(): string {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Backend must respond before React mounts (main.tsx awaits bootstrap/guest). */
-export async function isE2EApiReachable(baseURL: string): Promise<boolean> {
-  const origin = baseURL.replace(/\/$/, "");
+export async function isE2EApiReachable(baseURL?: string): Promise<boolean> {
+  const origin = (baseURL ?? getE2EApiBaseUrl()).replace(/\/$/, "");
   const url = `${origin}/api/v1/bootstrap/guest?${new URLSearchParams({
     guestId: "e2e-probe",
   }).toString()}`;
@@ -63,7 +64,7 @@ export async function waitForE2EStackReady(
   page: Page,
   baseURL: string,
 ): Promise<string | null> {
-  if (!(await isE2EApiReachable(baseURL))) {
+  if (!(await isE2EApiReachable())) {
     return (
       "Backend API not reachable at /api/v1/bootstrap/guest — start the API on :5110 " +
       "(docker compose up or dotnet run). The frontend will not render onboarding until bootstrap succeeds."
