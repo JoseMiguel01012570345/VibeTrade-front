@@ -91,6 +91,7 @@ import {
   effectiveRouteOfferForSheetForm,
   normRoutePhoneKey,
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
+  ROUTE_SHEET_PAID_CARRIER_CONTACT_ONLY_ES,
 } from "@features/market/model/routeSheetOfferGuards";
 import {
   applyRouteLegPaymentCurrencyToParadas,
@@ -114,6 +115,8 @@ type Props = {
   initialRouteSheet?: RouteSheet | null;
   /** Acuerdo vinculado con cobros: solo lectura (sincronizado con API). */
   lockedByPaidAgreement?: boolean;
+  /** Con cobros registrados: solo contacto de transportista en tramos sin confirmación. */
+  carrierContactEditOnly?: boolean;
   /** Oferta pública resuelta por hoja (preferida para bloqueo / teléfono). */
   routeOfferForSheet?: RouteOfferPublicState | undefined;
   /** Oferta pública del hilo (`resolveRouteOfferPublicForThread`); usada como respaldo si la de arriba es undefined. */
@@ -211,6 +214,7 @@ export function RouteSheetFormModal({
   threadId: _threadId,
   initialRouteSheet,
   lockedByPaidAgreement = false,
+  carrierContactEditOnly = false,
   routeOfferForSheet,
   routeOfferForThread,
   routeLegPaymentCurrency = null,
@@ -242,6 +246,11 @@ export function RouteSheetFormModal({
       ),
     [routeOfferForSheet, routeOfferForThread, initialRouteSheet?.id],
   );
+  const formFullyLockedByPaid =
+    lockedByPaidAgreement && !carrierContactEditOnly;
+  const carrierInviteReadOnlyShell = carrierContactEditOnly
+    ? "pointer-events-none opacity-60 select-none"
+    : undefined;
   const offerTramoRef = useRef(offerForTramo);
   offerTramoRef.current = offerForTramo;
   const editBaselineJsonRef = useRef<string | null>(null);
@@ -414,6 +423,7 @@ export function RouteSheetFormModal({
   if (!open) return null;
 
   function openMapPicker(tramoIndex: number, punto: "origen" | "destino") {
+    if (carrierContactEditOnly) return;
     if (punto === "origen" && tramoIndex > 0) return;
     const t = tramos[tramoIndex];
     if (!t) return;
@@ -511,7 +521,7 @@ export function RouteSheetFormModal({
   }
 
   function trySubmit() {
-    if (lockedByPaidAgreement) {
+    if (formFullyLockedByPaid) {
       toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);
       return;
     }
@@ -580,6 +590,15 @@ export function RouteSheetFormModal({
   }
 
   function updateTramo(i: number, patch: Partial<RouteTramoFormInput>) {
+    if (carrierContactEditOnly) {
+      const inviteOnly = Object.keys(patch).every(
+        (k) =>
+          k === "telefonoTransportista" ||
+          k === "transportInvitedStoreServiceId" ||
+          k === "transportInvitedServiceSummary",
+      );
+      if (!inviteOnly) return;
+    }
     if (patch.telefonoTransportista !== undefined) {
       const row = tramos[i];
       const asg = confirmedAssignmentOnFormTramo(
@@ -607,6 +626,7 @@ export function RouteSheetFormModal({
   }
 
   function removeTramoAt(index: number) {
+    if (carrierContactEditOnly) return;
     const row = tramos[index];
     if (
       initialRouteSheet?.id &&
@@ -653,6 +673,7 @@ export function RouteSheetFormModal({
   }
 
   function insertTramoAt(ins: number) {
+    if (carrierContactEditOnly) return;
     const n = tramos.length;
     if (ins < 0 || ins > n) return;
 
@@ -705,12 +726,19 @@ export function RouteSheetFormModal({
           <div className="vt-modal-title">
             {initialRouteSheet ? "Editar hoja de rutas" : "Nueva hoja de rutas"}
           </div>
-          {lockedByPaidAgreement ? (
+          {formFullyLockedByPaid ? (
             <p
               className="mb-2 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_92%,transparent)] px-2.5 py-2 text-[12px] leading-snug text-[var(--muted)]"
               role="status"
             >
               {ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES}
+            </p>
+          ) : carrierContactEditOnly ? (
+            <p
+              className="mb-2 rounded-lg border border-[color-mix(in_oklab,var(--primary)_22%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_6%,var(--surface))] px-2.5 py-2 text-[12px] leading-snug text-[var(--text)]"
+              role="status"
+            >
+              {ROUTE_SHEET_PAID_CARRIER_CONTACT_ONLY_ES}
             </p>
           ) : null}
           <div className={modalSub}>
@@ -725,25 +753,29 @@ export function RouteSheetFormModal({
           <div
             className={cn(
               modalFormBody,
-              lockedByPaidAgreement && "pointer-events-none opacity-60",
+              formFullyLockedByPaid && "pointer-events-none opacity-60",
             )}
           >
-            <Field
-              label="Título"
-              value={titulo}
-              onChange={setTitulo}
-              error={err.titulo}
-              inputId="ruta-titulo"
-            />
-            <Field
-              label="Mercancías / bultos (resumen general)"
-              value={merc}
-              onChange={setMerc}
-              multiline
-              rows={3}
-              error={err.mercanciasResumen}
-              inputId="ruta-merc"
-            />
+            <div className={carrierInviteReadOnlyShell}>
+              <Field
+                label="Título"
+                value={titulo}
+                onChange={setTitulo}
+                error={err.titulo}
+                inputId="ruta-titulo"
+                readOnly={carrierContactEditOnly}
+              />
+              <Field
+                label="Mercancías / bultos (resumen general)"
+                value={merc}
+                onChange={setMerc}
+                multiline
+                rows={3}
+                error={err.mercanciasResumen}
+                inputId="ruta-merc"
+                readOnly={carrierContactEditOnly}
+              />
+            </div>
             <div className={cn(detailsBlock, rutaTramosBlock)}>
               <strong>Tramos del recorrido</strong>
               {err.paradasGlobal ? (
@@ -751,10 +783,11 @@ export function RouteSheetFormModal({
                   {err.paradasGlobal}
                 </div>
               ) : null}
-              <div className="flex justify-center py-1">
+              <div className={cn("flex justify-center py-1", carrierInviteReadOnlyShell)}>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 border-0 bg-transparent p-1 text-[12px] font-extrabold text-[var(--primary)] hover:underline"
+                  className="inline-flex items-center gap-1.5 border-0 bg-transparent p-1 text-[12px] font-extrabold text-[var(--primary)] hover:underline disabled:opacity-40"
+                  disabled={carrierContactEditOnly}
                   onClick={() => insertTramoAt(0)}
                 >
                   <Plus size={14} strokeWidth={2.5} aria-hidden />
@@ -781,6 +814,7 @@ export function RouteSheetFormModal({
                 );
                 const carrierServiceOfferId = activeAsg?.storeServiceId?.trim();
                 const phoneLocked = confAsg != null;
+                const tramoFieldsReadOnly = carrierContactEditOnly;
                 const displayTel =
                   p.telefonoTransportista?.trim() ||
                   confAsg?.phone?.trim() ||
@@ -810,12 +844,13 @@ export function RouteSheetFormModal({
                 return (
                   <Fragment key={p.paradaId ?? `tramo-${i}`}>
                     <div className={rutaTramoCard}>
+                      <div className={carrierInviteReadOnlyShell}>
                       <div className={rutaTramoHead}>
                         <span className={agrDetailSub}>Tramo {i + 1}</span>
                         <button
                           type="button"
                           className={rutaTramoRemoveBtn}
-                          disabled={tramos.length <= 1 || phoneLocked}
+                          disabled={tramos.length <= 1 || phoneLocked || tramoFieldsReadOnly}
                           title={
                             tramos.length <= 1
                               ? "Debe quedar al menos un tramo"
@@ -848,7 +883,7 @@ export function RouteSheetFormModal({
                             if (origenTextReadOnly) return;
                             updateTramo(i, { origen: v });
                           }}
-                          readOnly={origenTextReadOnly}
+                          readOnly={origenTextReadOnly || tramoFieldsReadOnly}
                           error={te?.origen}
                           placeholder="Ubicación de origen"
                           inputId={`ruta-tramo-${i}-origen`}
@@ -857,6 +892,7 @@ export function RouteSheetFormModal({
                           label="Destino"
                           value={p.destino}
                           onChange={(v) => updateTramo(i, { destino: v })}
+                          readOnly={tramoFieldsReadOnly}
                           error={te?.destino}
                           placeholder="Ubicación de destino"
                           inputId={`ruta-tramo-${i}-destino`}
@@ -921,6 +957,7 @@ export function RouteSheetFormModal({
                           updateTramo(i, { responsabilidadEmbalaje: v })
                         }
                         multiline
+                        readOnly={tramoFieldsReadOnly}
                         placeholder="Quién responde y en qué casos"
                         error={te?.responsabilidadEmbalaje}
                         inputId={`ruta-tramo-${i}-resp-emb`}
@@ -932,6 +969,7 @@ export function RouteSheetFormModal({
                           updateTramo(i, { requisitosEspeciales: v })
                         }
                         multiline
+                        readOnly={tramoFieldsReadOnly}
                         placeholder="Frágil, refrigerado, ADR, etc."
                         error={te?.requisitosEspeciales}
                         inputId={`ruta-tramo-${i}-req`}
@@ -942,10 +980,12 @@ export function RouteSheetFormModal({
                         onChange={(v) =>
                           updateTramo(i, { tipoVehiculoRequerido: v })
                         }
+                        readOnly={tramoFieldsReadOnly}
                         placeholder="Ej. camión baranda, refrigerado, sider"
                         error={te?.tipoVehiculoRequerido}
                         inputId={`ruta-tramo-${i}-veh`}
                       />
+                      </div>
                       <RouteSheetTransportistaPhoneField
                         tramoIndex={i}
                         value={displayTel}
@@ -968,6 +1008,7 @@ export function RouteSheetFormModal({
                         phoneLocked={phoneLocked}
                         lockedDisplayName={confAsg?.displayName}
                       />
+                      <div className={carrierInviteReadOnlyShell}>
                       <div className="flex flex-col gap-3">
                         <div
                           className={fieldRootWithInvalid(
@@ -985,6 +1026,7 @@ export function RouteSheetFormModal({
                               aria-label={`Tramo ${i + 1}: fecha de recogida estimada`}
                               value={recEst.date}
                               allowEmpty
+                              disabled={tramoFieldsReadOnly}
                               min={minRecogidaD}
                               placeholder="Fecha"
                               popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
@@ -1002,6 +1044,7 @@ export function RouteSheetFormModal({
                             <VtTimeField
                               aria-label={`Tramo ${i + 1}: hora de recogida estimada`}
                               value={recEst.time}
+                              disabled={tramoFieldsReadOnly}
                               placeholder="Hora"
                               popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
                               onChange={(tm) => {
@@ -1038,6 +1081,7 @@ export function RouteSheetFormModal({
                               aria-label={`Tramo ${i + 1}: fecha de entrega estimada`}
                               value={entEst.date}
                               allowEmpty
+                              disabled={tramoFieldsReadOnly}
                               min={minEntregaD}
                               placeholder="Fecha"
                               popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
@@ -1055,6 +1099,7 @@ export function RouteSheetFormModal({
                             <VtTimeField
                               aria-label={`Tramo ${i + 1}: hora de entrega estimada`}
                               value={entEst.time}
+                              disabled={tramoFieldsReadOnly}
                               placeholder="Hora"
                               popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
                               onChange={(tm) => {
@@ -1082,6 +1127,7 @@ export function RouteSheetFormModal({
                         onChange={(v) =>
                           updateTramo(i, { precioTransportista: v })
                         }
+                        readOnly={tramoFieldsReadOnly}
                         placeholder="Monto numérico (ej. 150000 o 1500.50)"
                         error={te?.precioTransportista}
                         inputId={`ruta-tramo-${i}-precio`}
@@ -1115,6 +1161,7 @@ export function RouteSheetFormModal({
                           <VtSelect
                             value={p.monedaPago ?? ""}
                             onChange={(v) => updateTramo(i, { monedaPago: v })}
+                            disabled={tramoFieldsReadOnly}
                             options={monedaOptionsFor(p.monedaPago ?? "")}
                             placeholder="Elegir moneda…"
                             listPortal
@@ -1134,6 +1181,7 @@ export function RouteSheetFormModal({
                         value={p.cargaEnTramo ?? ""}
                         onChange={(v) => updateTramo(i, { cargaEnTramo: v })}
                         multiline
+                        readOnly={tramoFieldsReadOnly}
                         placeholder="Qué lleva el transportista en el tramo"
                         error={te?.cargaEnTramo}
                         inputId={`ruta-tramo-${i}-carga`}
@@ -1145,6 +1193,7 @@ export function RouteSheetFormModal({
                           onChange={(v) =>
                             updateTramo(i, { tipoMercanciaCarga: v })
                           }
+                          readOnly={tramoFieldsReadOnly}
                           error={te?.tipoMercanciaCarga}
                           inputId={`ruta-tramo-${i}-tmc`}
                         />
@@ -1154,6 +1203,7 @@ export function RouteSheetFormModal({
                           onChange={(v) =>
                             updateTramo(i, { tipoMercanciaDescarga: v })
                           }
+                          readOnly={tramoFieldsReadOnly}
                           error={te?.tipoMercanciaDescarga}
                           inputId={`ruta-tramo-${i}-tmd`}
                         />
@@ -1163,14 +1213,17 @@ export function RouteSheetFormModal({
                         value={p.notas ?? ""}
                         onChange={(v) => updateTramo(i, { notas: v })}
                         multiline
+                        readOnly={tramoFieldsReadOnly}
                         error={te?.notas}
                         inputId={`ruta-tramo-${i}-notas`}
                       />
+                      </div>
                     </div>
-                    <div className="flex justify-center py-1">
+                    <div className={cn("flex justify-center py-1", carrierInviteReadOnlyShell)}>
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1.5 border-0 bg-transparent p-1 text-[12px] font-extrabold text-[var(--primary)] hover:underline"
+                        className="inline-flex items-center gap-1.5 border-0 bg-transparent p-1 text-[12px] font-extrabold text-[var(--primary)] hover:underline disabled:opacity-40"
+                        disabled={carrierContactEditOnly}
                         onClick={() => insertTramoAt(i + 1)}
                       >
                         <Plus size={14} strokeWidth={2.5} aria-hidden />
@@ -1184,6 +1237,7 @@ export function RouteSheetFormModal({
               })}
             </div>
 
+            <div className={carrierInviteReadOnlyShell}>
             <Field
               label="Notas generales"
               value={notasG}
@@ -1191,7 +1245,9 @@ export function RouteSheetFormModal({
               multiline
               error={err.notasGenerales}
               inputId="ruta-notas-g"
+              readOnly={carrierContactEditOnly}
             />
+            </div>
           </div>
           <div className="vt-modal-actions">
             <button type="button" className="vt-btn" onClick={onClose}>
@@ -1200,9 +1256,9 @@ export function RouteSheetFormModal({
             <button
               type="button"
               className="vt-btn vt-btn-primary"
-              disabled={lockedByPaidAgreement}
+              disabled={formFullyLockedByPaid}
               title={
-                lockedByPaidAgreement
+                formFullyLockedByPaid
                   ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
                   : undefined
               }

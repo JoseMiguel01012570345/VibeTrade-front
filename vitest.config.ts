@@ -10,8 +10,12 @@ export default mergeConfig(
       globals: true,
       css: false,
       pool: "threads",
-      include: ["test/**/*.{test,spec}.{ts,tsx}"],
-      exclude: ["test/e2e/**", "node_modules/**"],
+      include: ["test/**/*.test.{ts,tsx}"],
+      exclude: [
+        "test/e2e/Resources/**",
+        "test/e2e/global-setup.ts",
+        "node_modules/**",
+      ],
       server: {
         deps: {
           inline: [/@csstools\//, /@asamuzakjp\//],

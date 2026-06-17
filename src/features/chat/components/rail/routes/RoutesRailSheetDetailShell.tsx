@@ -83,6 +83,7 @@ function RoutesRailDetailToolbarPublishStripe(props: {
         isActingSeller={q.isActingSeller}
         actionsLocked={q.actionsLocked}
         sheetLockedByPaid={q.sheetLockedByPaid}
+        sheetStructuralEditBlockedByPaid={q.sheetStructuralEditBlockedByPaid}
         sheetEditBlockedByCarrierAck={q.sheetEditBlockedByCarrierAck}
         selRoute={q.selRoute}
         inviteTitleStr={t.inviteTitleStr}
@@ -96,10 +97,7 @@ function RoutesRailDetailToolbarPublishStripe(props: {
       />
       <RoutesRailPublishStrip
         isActingSeller={q.isActingSeller}
-        actionsLocked={q.actionsLocked}
-        sheetLockedByPaid={q.sheetLockedByPaid}
         selRoute={q.selRoute}
-        linkedRouteSheetIds={q.linkedRouteSheetIds}
         publishTitleStr={t.publishTitleStr}
         onPublishClick={q.handlePublishClick}
       />

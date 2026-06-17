@@ -13,6 +13,7 @@ export type RoutesRailSheetDetailProps = {
   threadId: string;
   isActingSeller: boolean;
   sheetLockedByPaid: boolean;
+  sheetStructuralEditBlockedByPaid: boolean;
   sheetEditBlockedByCarrierAck: boolean;
   linkedRouteSheetIds: ReadonlySet<string>;
   routeOfferResolved: RouteOfferPublicState | undefined;

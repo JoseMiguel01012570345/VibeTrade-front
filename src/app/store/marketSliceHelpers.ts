@@ -73,11 +73,28 @@ export function routeOfferTramosAllConfirmed(ro: RouteOfferPublicState | undefin
   return ro.tramos.every((t) => t.assignment?.status === 'confirmed')
 }
 
-/** Bloquea borrar la hoja si algún tramo tiene transportista ya aceptado (confirmado). Las suscripciones solo pendientes no impiden eliminar. */
-export function routeSheetHasPendingCarrierAck(th: Thread, routeSheetId: string): boolean {
+/** Bloquea edición si un transportista confirmado aún debe acusar la última versión de la hoja. */
+export function routeSheetHasPendingCarrierAck(
+  th: Thread,
+  routeSheetId: string,
+  routeOffer?: RouteOfferPublicState,
+): boolean {
   const ack = th.routeSheetEditAcks?.[routeSheetId]
   if (!ack) return false
-  return Object.values(ack.byCarrier).some((v) => v === 'pending')
+
+  const activeConfirmedIds = new Set<string>()
+  if (routeOffer?.routeSheetId === routeSheetId) {
+    for (const t of routeOffer.tramos) {
+      const uid = t.assignment?.userId?.trim()
+      if (uid && t.assignment?.status === 'confirmed') activeConfirmedIds.add(uid)
+    }
+  }
+
+  return Object.entries(ack.byCarrier).some(([carrierId, v]) => {
+    if (v !== 'pending') return false
+    if (activeConfirmedIds.size === 0) return true
+    return activeConfirmedIds.has(carrierId.trim())
+  })
 }
 
 export function routeSheetHasConfirmedCarriers(

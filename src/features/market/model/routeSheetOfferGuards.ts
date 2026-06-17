@@ -11,6 +11,11 @@ import type {
   RouteSheetCreatePayload,
   RouteStop,
 } from "./routeSheetTypes";
+import type { RouteStopDeliveryStatusApi } from "@/utils/chat/routeLogisticsApi";
+
+/** Mensaje cuando la tienda intenta expulsar con tramo activo sin pausa previa. */
+export const SELLER_EXPEL_REQUIRES_PAUSE_ES =
+  "Pausá el tramo (custodia tienda) antes de expulsar al transportista mientras tiene la carga en curso.";
 
 /** Mensaje cuando el comprador del hilo intenta suscribirse como transportista a la misma hoja publicada. */
 export const ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES =
@@ -18,7 +23,46 @@ export const ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES =
 
 /** Hoja vinculada a acuerdo con cobros registrados (bloqueo local + API). */
 export const ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES =
-  "Esta hoja está vinculada a un acuerdo con cobros registrados; no se puede editar, eliminar ni publicar.";
+  "Esta hoja está vinculada a un acuerdo con cobros registrados; no se puede editar ni eliminar.";
+
+/** Con cobros registrados: solo se permite cambiar contacto de transportista en tramos sin confirmación. */
+export const ROUTE_SHEET_PAID_CARRIER_CONTACT_ONLY_ES =
+  "Hay cobros registrados: podés actualizar solo el contacto de transportista en tramos sin asignación confirmada.";
+
+/** Tramos de la hoja sin transportista confirmado (p. ej. tras expulsión). */
+export function routeSheetVacantStopIds(
+  offer: RouteOfferPublicState | undefined,
+  sheetId: string,
+): Set<string> {
+  const vacant = new Set<string>();
+  if (offer?.routeSheetId !== sheetId) return vacant;
+  for (const t of offer.tramos ?? []) {
+    const sid = t.stopId?.trim();
+    if (!sid) continue;
+    if (t.assignment?.status === "confirmed") continue;
+    vacant.add(sid);
+  }
+  return vacant;
+}
+
+export function routeSheetAllowsCarrierContactEditWhenPaid(
+  sheetLockedByPaid: boolean,
+  offer: RouteOfferPublicState | undefined,
+  sheetId: string,
+): boolean {
+  return sheetLockedByPaid && routeSheetVacantStopIds(offer, sheetId).size > 0;
+}
+
+export function routeSheetStructuralEditBlockedByPaid(
+  sheetLockedByPaid: boolean,
+  offer: RouteOfferPublicState | undefined,
+  sheetId: string,
+): boolean {
+  return (
+    sheetLockedByPaid &&
+    !routeSheetAllowsCarrierContactEditWhenPaid(sheetLockedByPaid, offer, sheetId)
+  );
+}
 
 /** Prioridad: teléfono en la parada de la hoja → asignación en la oferta → campo público del tramo. */
 export function effectiveTramoContactPhone(
@@ -309,4 +353,72 @@ export function effectiveRouteOfferForSheetForm(
   if (!sid || !forThread) return undefined;
   if (forThread.routeSheetId?.trim() === sid) return forThread;
   return undefined;
+}
+
+type DeliveryExpelInput = Pick<
+  RouteStopDeliveryStatusApi,
+  "state" | "currentOwnerUserId"
+>;
+
+/** True si el transportista es titular y el tramo no está pausado ni cerrado logísticamente. */
+export function carrierDeliveryBlocksSellerExpel(
+  delivery: DeliveryExpelInput | undefined,
+  carrierUserId: string,
+): boolean {
+  const carrierId = carrierUserId.trim();
+  if (carrierId.length < 2) return false;
+  if ((delivery?.currentOwnerUserId ?? "").trim() !== carrierId) return false;
+
+  const state = (delivery?.state ?? "").trim().toLowerCase();
+  if (!state) return false;
+  if (
+    state === "evidence_accepted" ||
+    state === "idle_store_custody" ||
+    state === "refunded"
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export function findRouteStopDelivery(
+  deliveries: RouteStopDeliveryStatusApi[],
+  routeSheetId: string,
+  stopId: string,
+): RouteStopDeliveryStatusApi | undefined {
+  const rsid = routeSheetId.trim();
+  const sid = stopId.trim();
+  if (!rsid || !sid) return undefined;
+  return deliveries.find(
+    (d) =>
+      (d.routeSheetId ?? "").trim() === rsid &&
+      (d.routeStopId ?? "").trim() === sid,
+  );
+}
+
+export function sellerExpelBlockedForStop(
+  deliveries: RouteStopDeliveryStatusApi[],
+  routeSheetId: string,
+  stopId: string,
+  carrierUserId: string,
+): boolean {
+  return carrierDeliveryBlocksSellerExpel(
+    findRouteStopDelivery(deliveries, routeSheetId, stopId),
+    carrierUserId,
+  );
+}
+
+export function sellerExpelBlockedForCarrier(
+  deliveries: RouteStopDeliveryStatusApi[],
+  confirmedTramos: { routeSheetId: string; stopId: string }[],
+  carrierUserId: string,
+): boolean {
+  return confirmedTramos.some((t) =>
+    sellerExpelBlockedForStop(
+      deliveries,
+      t.routeSheetId,
+      t.stopId,
+      carrierUserId,
+    ),
+  );
 }

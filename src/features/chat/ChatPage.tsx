@@ -17,6 +17,7 @@ import { cn } from "@shared/lib/cn";
 import toast from "react-hot-toast";
 import { useShallow } from "zustand/react/shallow";
 import { useAppStore } from "@app/store/useAppStore";
+import { routeSheetHasPendingCarrierAck } from "@app/store/marketSliceHelpers";
 import {
   threadHasAcceptedAgreement,
   useMarketStore,
@@ -47,6 +48,8 @@ import {
   resolveRouteOfferPublicForSheet,
   resolveRouteOfferPublicForThread,
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
+  routeSheetAllowsCarrierContactEditWhenPaid,
+  routeSheetStructuralEditBlockedByPaid,
   tramoNotifyLineFromOffer,
 } from "@features/market/model/routeSheetOfferGuards";
 import { tradeAgreementToDraft } from "@features/market/model/tradeAgreementTypes";
@@ -186,6 +189,11 @@ export function ChatPage() {
     [thread],
   );
 
+  const acceptedAgreementIdsForSubscribers = useMemo(
+    () => acceptedAgreementsForPayment.map((c) => c.id),
+    [acceptedAgreementsForPayment],
+  );
+
   /** Cobro en chat: solo comprador (el backend también lo exige). Oculta «Pagar» para transportistas y terceros. */
   const showBuyerPaymentInChat = useMemo(() => {
     if (!thread) return false;
@@ -312,6 +320,20 @@ export function ChatPage() {
       (c) => c.routeSheetId === rs.id && c.hasSucceededPayments === true,
     );
   }, [thread?.contracts, routeSheetBeingEdited?.id]);
+  const routeSheetCarrierContactEditOnly = useMemo(() => {
+    const rs = routeSheetBeingEdited;
+    if (!rs?.id || !routeSheetLockedByPaidAgreement) return false;
+    return routeSheetAllowsCarrierContactEditWhenPaid(
+      true,
+      routeOfferForEditingRouteSheet ?? routeOfferForThisThread,
+      rs.id,
+    );
+  }, [
+    routeSheetBeingEdited?.id,
+    routeSheetLockedByPaidAgreement,
+    routeOfferForEditingRouteSheet,
+    routeOfferForThisThread,
+  ]);
   const routeLegPaymentCurrency = useMemo(
     () =>
       resolveRouteLegPaymentCurrencyForThread(
@@ -1223,14 +1245,23 @@ export function ChatPage() {
                     c.routeSheetId === sheet.id &&
                     c.hasSucceededPayments === true,
                 );
-                if (lockedByPaid) {
+                if (
+                  routeSheetStructuralEditBlockedByPaid(
+                    lockedByPaid,
+                    routeOfferForThisThread,
+                    sheet.id,
+                  )
+                ) {
                   toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);
                   return;
                 }
-                const ack = thread.routeSheetEditAcks?.[sheet.id];
                 if (
-                  ack &&
-                  Object.values(ack.byCarrier).some((v) => v === "pending")
+                  thread &&
+                  routeSheetHasPendingCarrierAck(
+                    thread,
+                    sheet.id,
+                    routeOfferForThisThread,
+                  )
                 ) {
                   toast.error(
                     "No puedes editar de nuevo hasta que los transportistas del hilo acepten o rechacen la última versión de la hoja.",
@@ -1328,6 +1359,7 @@ export function ChatPage() {
                       (r.titulo ?? "Hoja de ruta").trim() || "Hoja de ruta",
                   }))}
                   canSellerManageRouteSubscriptions={viewerIsThreadSeller}
+                  acceptedAgreementIds={acceptedAgreementIdsForSubscribers}
                   onSubscriptionsChanged={refreshChatRouteData}
                   highlightUserId={highlightSubscriberUserId}
                   onThreadRouteSheetsSynced={
@@ -1370,6 +1402,7 @@ export function ChatPage() {
                   titulo: (r.titulo ?? "Hoja de ruta").trim() || "Hoja de ruta",
                 }))}
                 canSellerManageRouteSubscriptions={viewerIsThreadSeller}
+                acceptedAgreementIds={acceptedAgreementIdsForSubscribers}
                 onSubscriptionsChanged={refreshChatRouteData}
                 highlightUserId={highlightSubscriberUserId}
                 onThreadRouteSheetsSynced={
@@ -1467,6 +1500,7 @@ export function ChatPage() {
         threadId={thread.id}
         initialRouteSheet={routeSheetBeingEdited}
         lockedByPaidAgreement={routeSheetLockedByPaidAgreement}
+        carrierContactEditOnly={routeSheetCarrierContactEditOnly}
         routeOfferForSheet={routeOfferForEditingRouteSheet}
         routeOfferForThread={routeOfferForThisThread}
         routeLegPaymentCurrency={routeLegPaymentCurrency}

@@ -11,11 +11,14 @@ import {
   summarizeRouteSheetMonedaPago,
 } from "@features/market/model/routeSheetTypes"
 import { agreementHasMerchandiseForRouteLink } from "@features/market/model/tradeAgreementValidation"
+import {
+  resolveRouteOfferPublicForThread,
+  routeSheetAllowsCarrierContactEditWhenPaid,
+} from "@features/market/model/routeSheetOfferGuards"
 import type { Message, MarketState } from './marketStoreTypes'
 import { threadHasAcceptedAgreement } from './marketStoreTypes'
 import {
   stripLegacyRouteSheetHead,
-  routeSheetIdsLinkedToContracts,
   routeSheetIdsLockedByPaidAgreements,
   threadIsActionLocked,
   uid,
@@ -154,10 +157,23 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
   if (threadIsActionLocked(thGuard)) return false
   if (
     thGuard &&
-    routeSheetIdsLockedByPaidAgreements(thGuard).has(routeSheetId)
+    routeSheetIdsLockedByPaidAgreements(thGuard).has(routeSheetId) &&
+    !routeSheetAllowsCarrierContactEditWhenPaid(
+      true,
+      resolveRouteOfferPublicForThread(get(), thGuard),
+      routeSheetId,
+    )
   )
     return false
-  if (thGuard && routeSheetHasPendingCarrierAck(thGuard, routeSheetId)) return false
+  if (
+    thGuard &&
+    routeSheetHasPendingCarrierAck(
+      thGuard,
+      routeSheetId,
+      resolveRouteOfferPublicForThread(get(), thGuard),
+    )
+  )
+    return false
   if (hasRouteSheetFormErrors(getRouteSheetFormErrors(payload))) return false
   const paradasNorm = normalizeRouteSheetParadas(payload.paradas)
   if (paradasNorm.length === 0) return false
@@ -378,11 +394,7 @@ publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
     const th = s.threads[threadId]
     const sheets = th?.routeSheets
     if (!th || threadIsActionLocked(th) || !sheets?.length) return s
-    const linked = routeSheetIdsLinkedToContracts(th)
-    const paidLocked = routeSheetIdsLockedByPaidAgreements(th)
-    const allowedArr = [...idSet].filter(
-      (id) => linked.has(id) && !paidLocked.has(id),
-    )
+    const allowedArr = [...idSet].filter((id) => sheets.some((rs) => rs.id === id))
     if (allowedArr.length === 0) return s
     const ro = s.routeOfferPublic[th.offerId]
     const now = Date.now()
@@ -431,12 +443,6 @@ publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
 },
 
 unpublishRouteSheetFromPlatform: (threadId, routeSheetId) => {
-  const thG = get().threads[threadId]
-  if (
-    thG &&
-    routeSheetIdsLockedByPaidAgreements(thG).has(routeSheetId)
-  )
-    return
   let toSync: RouteSheet | null = null
   set((s) => {
     const th = s.threads[threadId]

@@ -11,6 +11,11 @@ import {
   resolveRouteOfferPublicForThread,
 } from "@features/market/model/routeSheetOfferGuards";
 import { routeSheetIdsLockedByPaidAgreements } from "@app/store/marketStoreHelpers";
+import { routeSheetHasPendingCarrierAck } from "@app/store/marketSliceHelpers";
+import {
+  routeSheetAllowsCarrierContactEditWhenPaid,
+  routeSheetStructuralEditBlockedByPaid,
+} from "@features/market/model/routeSheetOfferGuards";
 import {
   fetchAgreementRouteDeliveries,
   getCedeCarrierOwnership,
@@ -298,11 +303,15 @@ export function ChatRightRailRoutesPanel({
       ? routeSheetEditAcks?.[selRoute.id]?.byCarrier[me.id]
       : undefined;
 
+  const threadForAck = useMarketStore((s) => s.threads[threadId]);
+
   const sheetEditBlockedByCarrierAck =
     !!selRoute &&
-    !!routeSheetEditAcks?.[selRoute.id] &&
-    Object.values(routeSheetEditAcks[selRoute.id].byCarrier).some(
-      (v) => v === "pending",
+    !!threadForAck &&
+    routeSheetHasPendingCarrierAck(
+      threadForAck,
+      selRoute.id,
+      routeOfferResolved,
     );
 
   const paidLockedSheetIds = useMarketStore(
@@ -312,6 +321,20 @@ export function ChatRightRailRoutesPanel({
     }),
   );
   const sheetLockedByPaid = !!selRoute && paidLockedSheetIds.has(selRoute.id);
+  const sheetStructuralEditBlockedByPaid =
+    !!selRoute &&
+    routeSheetStructuralEditBlockedByPaid(
+      sheetLockedByPaid,
+      routeOfferResolved,
+      selRoute.id,
+    );
+  const sheetCarrierContactEditOnly =
+    !!selRoute &&
+    routeSheetAllowsCarrierContactEditWhenPaid(
+      sheetLockedByPaid,
+      routeOfferResolved,
+      selRoute.id,
+    );
 
   const subscribersTargetSheetId = useMemo(() => {
     if (routeSheets.length === 0) return null;
@@ -425,6 +448,7 @@ export function ChatRightRailRoutesPanel({
             threadId={threadId}
             isActingSeller={isActingSeller}
             sheetLockedByPaid={sheetLockedByPaid}
+            sheetStructuralEditBlockedByPaid={sheetStructuralEditBlockedByPaid}
             sheetEditBlockedByCarrierAck={sheetEditBlockedByCarrierAck}
             linkedRouteSheetIds={linkedRouteSheetIds}
             routeOfferResolved={routeOfferResolved}

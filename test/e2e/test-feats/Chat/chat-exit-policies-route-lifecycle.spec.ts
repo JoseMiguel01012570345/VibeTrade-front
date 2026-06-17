@@ -45,6 +45,7 @@ import {
 import {
   postSellerPauseApi,
   waitForDeliveryState,
+  ensureStopReadyForCedeApi,
 } from "../../Resources/e2e-logistics-api";
 import {
   clickEditRouteSheet,
@@ -173,6 +174,51 @@ test.describe("chat exit policies — route lifecycle", () => {
 
     await sellerPage.close();
     await trustPage.context().close();
+  });
+
+  test("E-RL07: expulsión bloqueada sin pausa con tramo en tránsito", async ({
+    browser,
+  }) => {
+    const route = await setupPaidRouteForExitPolicies(browser, {
+      tituloPrefix: "E-RL07 Expel Block",
+      payRoutes: true,
+    });
+    const seller = getE2ESellerSession()!;
+    const scenario = getE2EScenario()!;
+    const carrierToken = scenario.carrierSessionToken!;
+
+    const sellerPage = await openSellerPage(
+      browser,
+      seller.sessionToken,
+      route.threadId,
+    );
+
+    await ensureStopReadyForCedeApi(sellerPage, carrierToken, {
+      threadId: route.threadId,
+      agreementId: route.agreementId,
+      routeSheetId: route.routeSheetId,
+      routeStopId: route.stopIds[0],
+    });
+
+    await ensureRouteSheetDetailOpen(sellerPage, route.routeSheetTitulo);
+    await openSubscribersPanel(sellerPage);
+    await openTramoInSubscribersPanel(sellerPage, 1, route.routeSheetTitulo);
+
+    const panel = subscribersPanel(sellerPage);
+    const confirmedCarrier = panel
+      .getByRole("button")
+      .filter({ hasText: /confirmado/i })
+      .first();
+    await expect(confirmedCarrier).toBeVisible({ timeout: 10_000 });
+    await confirmedCarrier.click();
+
+    const expelBtn = panel.getByRole("button", {
+      name: /expulsar de este tramo/i,
+    });
+    await expect(expelBtn).toBeDisabled({ timeout: 15_000 });
+    await expect(panel.getByText(/paus[aá] el tramo/i).first()).toBeVisible();
+
+    await sellerPage.close();
   });
 
   test.skip(!hasCarrier2Session(), carrier2SkipReason);
@@ -304,6 +350,33 @@ test.describe("chat exit policies — route lifecycle", () => {
         destinationEditable: false,
       });
     }
+    await sellerPage.close();
+  });
+
+  test("E-RL06: edición solo contacto tras expulsión en ruta pagada", async ({
+    browser,
+  }) => {
+    const route = await setupPaidRouteForExitPolicies(browser, {
+      tituloPrefix: "E-RL06 Contact Edit",
+      payRoutes: true,
+    });
+    const seller = getE2ESellerSession()!;
+    const sellerPage = await openSellerPage(
+      browser,
+      seller.sessionToken,
+      route.threadId,
+    );
+    await openLogisticsRouteSheet(sellerPage, route.routeSheetTitulo);
+    await sellerPauseTramoViaUI(sellerPage, 1);
+    await ensureRouteSheetDetailOpen(sellerPage, route.routeSheetTitulo);
+    await openSubscribersPanel(sellerPage);
+    await kickCarrierFromTramo(sellerPage, 1, route.routeSheetTitulo);
+    await clickEditRouteSheet(sellerPage);
+    await waitForRouteSheetForm(sellerPage);
+    await expectRouteSheetTramoFieldStates(sellerPage, 0, {
+      phoneEditable: true,
+      destinationEditable: false,
+    });
     await sellerPage.close();
   });
 

@@ -40,6 +40,7 @@ import {
 import { ServiceItemPreview } from "../modals/serviceConfig/ServiceItemPreview";
 import type { RouteSheet } from "@features/market/model/routeSheetTypes";
 import { agreementHasMerchandiseForRouteLink } from "@features/market/model/tradeAgreementValidation";
+import { AgreementMerchandiseEvidenceSection } from "./AgreementMerchandiseEvidenceSection";
 import { downloadTradeAgreementPdf } from "@features/chat/utils/tradeAgreementPdfDownload";
 import {
   decideServiceEvidence,
@@ -75,6 +76,7 @@ import {
   linkRutaRow,
   linkRutaSelect,
 } from "../../styles/formModalStyles";
+import { EvidenceAttachmentsList } from "../shared/EvidenceAttachmentsList";
 
 function Row({ label, value }: { label: string; value: string }) {
   if (!value.trim()) return null;
@@ -99,45 +101,6 @@ function fmtMoneyMinor(amountMinor: number, currencyLower: string): string {
   } catch {
     return `${maj.toFixed(pow)} ${cur.toUpperCase()}`;
   }
-}
-
-function EvidenceAttachmentsList({
-  atts,
-  onRemove,
-}: {
-  atts: ServiceEvidenceAttachmentApi[];
-  onRemove?: (id: string) => void;
-}) {
-  if (atts.length === 0) return null;
-  return (
-    <div className="mt-2 space-y-2">
-      {atts.map((a) => (
-        <div
-          key={a.id}
-          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_52%,var(--surface))] px-2.5 py-2 text-[13px]"
-        >
-          <a
-            href={a.url}
-            target="_blank"
-            rel="noreferrer"
-            className="min-w-0 break-words font-semibold text-[var(--primary)] underline"
-          >
-            {a.fileName || "Abrir adjunto"}
-          </a>
-          {onRemove ? (
-            <button
-              type="button"
-              className="vt-btn vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-1.5 text-[12px]"
-              onClick={() => onRemove(a.id)}
-            >
-              <XCircle size={14} aria-hidden />
-              Quitar
-            </button>
-          ) : null}
-        </div>
-      ))}
-    </div>
-  );
 }
 
 function normalizeEvidenceForCompare(
@@ -519,6 +482,13 @@ export function AgreementDetailView({
     [routeSheets, routeSheetIdsLinkedElsewhere, a.routeSheetId],
   );
 
+  const evidenceModalSellerCanEdit =
+    evidenceModal !== null &&
+    isActingSeller &&
+    evidenceModal.pay.status !== "released" &&
+    (evidenceModal.pay.evidence?.status ?? "").trim().toLowerCase() !==
+      "accepted";
+
   return (
     <div className={agrDetailRoot}>
       <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
@@ -678,6 +648,24 @@ export function AgreementDetailView({
 
       {showMerch ? (
         <MerchandiseBlock lines={a.merchandise} catalog={catalog} />
+      ) : null}
+
+      {showMerch ? (
+        <AgreementMerchandiseEvidenceSection
+          threadId={threadId}
+          agreementId={a.id}
+          isActingSeller={isActingSeller}
+          routeSheetId={a.routeSheetId}
+          routeSheetEstado={linkedSheet?.estado}
+          lastSystemMessageId={
+            lastMsg?.from === "system" ? lastMsg.id : undefined
+          }
+          lastSystemMessageText={
+            lastMsg?.from === "system" && lastMsg.type === "text"
+              ? lastMsg.text
+              : undefined
+          }
+        />
       ) : null}
 
       {showMerch && merchandiseScopedExtraFields(a.extraFields).length ? (
@@ -1038,7 +1026,7 @@ export function AgreementDetailView({
             </div>
 
             <div className="max-h-[70vh] overflow-y-auto px-4 py-3">
-              {isActingSeller ? (
+              {evidenceModalSellerCanEdit ? (
                 <>
                   <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
                     Texto
@@ -1160,7 +1148,7 @@ export function AgreementDetailView({
             </div>
 
             <div className="flex flex-wrap gap-2 border-t border-[var(--border)] px-4 py-3">
-              {isActingSeller ? (
+              {evidenceModalSellerCanEdit ? (
                 <>
                   {(() => {
                     const original = evidenceModal.pay.evidence;

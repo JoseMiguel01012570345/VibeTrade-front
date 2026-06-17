@@ -25,9 +25,9 @@ export function composeRoutesRailDetailShellMerged(
   const titles = routesRailTitlesForSeller({
     actionsLocked: props.actionsLocked,
     sheetLockedByPaid: props.sheetLockedByPaid,
+    sheetStructuralEditBlockedByPaid: props.sheetStructuralEditBlockedByPaid,
     sheetEditBlockedByCarrierAck: props.sheetEditBlockedByCarrierAck,
     publicadaPlataforma: props.selRoute.publicadaPlataforma ?? false,
-    linked: props.linkedRouteSheetIds.has(props.selRoute.id),
   });
 
   return {
@@ -70,7 +70,6 @@ function invokeRoutesRailSheetPublishToggle(
 ): void {
   runRoutesRailPublishToggle({
     selRoute: p.selRoute,
-    sheetLockedByPaid: p.sheetLockedByPaid,
     threadId: p.threadId,
     publishRouteSheetsToPlatform: p.publishRouteSheetsToPlatform,
     unpublishRouteSheetFromPlatform: p.unpublishRouteSheetFromPlatform,

@@ -708,8 +708,8 @@ test.describe("chat route sheets (UI)", () => {
     await sellerPage.close();
   });
 
-  // ─── Test 11: Cannot publish without agreement link ───────────────────────────
-  test("Cannot publish route sheet without agreement link", async ({
+  // ─── Test 11: Publish without agreement link ──────────────────────────────────
+  test("Can publish route sheet without agreement link", async ({
     browser,
   }) => {
     test.skip(!rsReady(), rsSkipReason);
@@ -754,7 +754,7 @@ test.describe("chat route sheets (UI)", () => {
       name: /publicar en la plataforma/i,
     });
     await expect(publishBtn).toBeVisible({ timeout: 5_000 });
-    await expect(publishBtn).toBeDisabled();
+    await expect(publishBtn).toBeEnabled();
 
     await sellerPage.close();
   });

@@ -38,6 +38,7 @@ export function RoutesRailToolbarTop(props: {
   isActingSeller: boolean;
   actionsLocked: boolean;
   sheetLockedByPaid: boolean;
+  sheetStructuralEditBlockedByPaid: boolean;
   sheetEditBlockedByCarrierAck: boolean;
   selRoute: RouteSheet;
   inviteTitleStr: string;
@@ -67,7 +68,13 @@ export function RoutesRailToolbarTop(props: {
         ← Lista
       </Button>
       {RoutesRailToolbarSellerRow(props)}
-      {props.sheetLockedByPaid ? RoutesRailPaidLockNote() : null}
+      {props.sheetLockedByPaid ? (
+        props.sheetStructuralEditBlockedByPaid ? (
+          RoutesRailPaidLockNote()
+        ) : (
+          RoutesRailPaidCarrierContactNote()
+        )
+      ) : null}
       {props.sheetEditBlockedByCarrierAck ? RoutesRailPendingAckNote() : null}
       {RoutesRailToolbarDeleteBtn(props)}
     </div>
@@ -78,6 +85,7 @@ function RoutesRailToolbarSellerRow(props: {
   isActingSeller: boolean;
   actionsLocked: boolean;
   sheetLockedByPaid: boolean;
+  sheetStructuralEditBlockedByPaid: boolean;
   sheetEditBlockedByCarrierAck: boolean;
   selRoute: RouteSheet;
   inviteTitleStr: string;
@@ -93,7 +101,7 @@ function RoutesRailToolbarSellerRow(props: {
   const dis =
     props.actionsLocked ||
     props.sheetEditBlockedByCarrierAck ||
-    props.sheetLockedByPaid;
+    props.sheetStructuralEditBlockedByPaid;
 
   // useEffects
 
@@ -118,8 +126,11 @@ function RoutesRailToolbarSellerRow(props: {
         <Button
           className="[&>span]:gap-1.5 [&>span]:text-xs"
           color="gray"
-          disabled={props.actionsLocked}
-          title={props.duplicateTitleStr ?? "Duplicar hoja de ruta"}
+          title={
+            props.sheetLockedByPaid
+              ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
+              : (props.duplicateTitleStr ?? "Duplicar hoja de ruta")
+          }
           size="xs"
           onClick={props.onDuplicate}
         >
@@ -159,6 +170,16 @@ function RoutesRailPaidLockNote(): ReactElement {
       Hay <strong className="text-[var(--text)]">cobros registrados</strong> en
       un acuerdo vinculado a esta hoja: no podés editarla, eliminarla ni cambiar
       su publicación en la plataforma.
+    </p>
+  );
+}
+
+function RoutesRailPaidCarrierContactNote(): ReactElement {
+  return (
+    <p className="vt-muted w-full text-[11px] leading-snug">
+      Hay <strong className="text-[var(--text)]">cobros registrados</strong>, pero
+      podés indicar un nuevo transportista en tramos sin asignación confirmada
+      (Editar → teléfono → Invitar).
     </p>
   );
 }
@@ -213,10 +234,7 @@ function RoutesRailToolbarDeleteBtn(props: {
 
 export function RoutesRailPublishStrip(props: {
   isActingSeller: boolean;
-  actionsLocked: boolean;
-  sheetLockedByPaid: boolean;
   selRoute: RouteSheet;
-  linkedRouteSheetIds: ReadonlySet<string>;
   publishTitleStr: string;
   onPublishClick: () => void;
 }) {
@@ -233,12 +251,6 @@ export function RoutesRailPublishStrip(props: {
       <Button
         className="w-full justify-center [&>span]:gap-2"
         color={props.selRoute.publicadaPlataforma ? "gray" : "blue"}
-        disabled={
-          props.actionsLocked ||
-          props.sheetLockedByPaid ||
-          (!props.selRoute.publicadaPlataforma &&
-            !props.linkedRouteSheetIds.has(props.selRoute.id))
-        }
         title={props.publishTitleStr}
         onClick={props.onPublishClick}
       >
@@ -447,15 +459,10 @@ export function runRoutesRailDeleteConfirmation(args: {
 
 export function runRoutesRailPublishToggle(args: {
   selRoute: RouteSheet;
-  sheetLockedByPaid: boolean;
   threadId: string;
   publishRouteSheetsToPlatform: (threadId: string, ids: string[]) => void;
   unpublishRouteSheetFromPlatform: (threadId: string, id: string) => void;
 }): void {
-  if (args.sheetLockedByPaid) {
-    toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);
-    return;
-  }
   if (args.selRoute.publicadaPlataforma) {
     args.unpublishRouteSheetFromPlatform(args.threadId, args.selRoute.id);
     toast.success("Hoja retirada de la plataforma");
@@ -479,28 +486,30 @@ export type RoutesRailTitlesBundle = {
 export function routesRailTitlesForSeller(args: {
   actionsLocked: boolean;
   sheetLockedByPaid: boolean;
+  sheetStructuralEditBlockedByPaid: boolean;
   sheetEditBlockedByCarrierAck: boolean;
   publicadaPlataforma: boolean;
-  linked: boolean;
 }): RoutesRailTitlesBundle {
+  const carrierContactEditOnly =
+    args.sheetLockedByPaid && !args.sheetStructuralEditBlockedByPaid;
   return {
     editTitleStr: railDetailSellerEditTitle(
       args.actionsLocked,
-      args.sheetLockedByPaid,
+      args.sheetStructuralEditBlockedByPaid,
       args.sheetEditBlockedByCarrierAck,
       args.publicadaPlataforma,
+      carrierContactEditOnly,
     ),
-    inviteTitleStr: railInviteTitle(args.actionsLocked, args.sheetLockedByPaid),
+    inviteTitleStr: railInviteTitle(
+      args.actionsLocked,
+      args.sheetStructuralEditBlockedByPaid,
+      carrierContactEditOnly,
+    ),
     deleteTitleStr: railDetailDeleteTitle(
       args.actionsLocked,
       args.sheetLockedByPaid,
     ),
-    publishTitleStr: railDetailPublishTitle(
-      args.actionsLocked,
-      args.sheetLockedByPaid,
-      args.linked,
-      args.publicadaPlataforma,
-    ),
+    publishTitleStr: railDetailPublishTitle(args.publicadaPlataforma),
   };
 }
 

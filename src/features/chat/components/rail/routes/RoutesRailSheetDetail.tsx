@@ -42,7 +42,6 @@ export function RoutesRailSheetDetail(props: RoutesRailSheetDetailProps) {
     }
     runRoutesRailPublishToggle({
       selRoute: props.selRoute,
-      sheetLockedByPaid: props.sheetLockedByPaid,
       threadId: props.threadId,
       publishRouteSheetsToPlatform: props.publishRouteSheetsToPlatform,
       unpublishRouteSheetFromPlatform: props.unpublishRouteSheetFromPlatform,
@@ -120,7 +119,6 @@ export function RoutesRailSheetDetail(props: RoutesRailSheetDetailProps) {
         onConfirm={() => {
           runRoutesRailPublishToggle({
             selRoute: props.selRoute,
-            sheetLockedByPaid: props.sheetLockedByPaid,
             threadId: props.threadId,
             publishRouteSheetsToPlatform: props.publishRouteSheetsToPlatform,
             unpublishRouteSheetFromPlatform: props.unpublishRouteSheetFromPlatform,

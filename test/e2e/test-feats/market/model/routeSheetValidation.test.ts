@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "vitest";
 import type { RouteSheetCreatePayload, RouteTramoFormInput } from "@features/market/model/routeSheetTypes";
 import {
   getRouteSheetFormErrors,
@@ -49,7 +49,7 @@ function minimalLinkedRouteSheetPayload(
 }
 
 describe("getRouteSheetFormErrors — cadena única de tramos", () => {
-  it("rejects disconnected tramos", () => {
+  test("rejects disconnected tramos", () => {
     const payload = minimalLinkedRouteSheetPayload([
       minimalTramo({
         origenLat: "1",
@@ -72,7 +72,7 @@ describe("getRouteSheetFormErrors — cadena única de tramos", () => {
     expect(errors.tramos?.[1]?.coordOrigen).toBe(tramoLinkErrorMessage(2));
   });
 
-  it("accepts linked tramos", () => {
+  test("accepts linked tramos", () => {
     const rec1 = futureIsoLocal(48);
     const ent1 = futureIsoLocal(72);
     const rec2 = ent1;

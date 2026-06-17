@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { e2eApiUrl } from "./e2e-api-base";
 import { listStripeCardsViaFetch } from "./e2e-stripe-customer";
 
@@ -872,4 +873,134 @@ export async function payRouteStopsViaBuyerApi(
     },
   );
   return { status: res.status, text: res.text };
+}
+
+export async function payMerchandiseLinesViaBuyerApi(
+  page: Page,
+  buyerToken: string,
+  args: {
+    threadId: string;
+    agreementId: string;
+  },
+): Promise<{ status: number; text: string }> {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  const agRes = await e2eAuthorizedFetch(
+    page,
+    buyerToken,
+    `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/trade-agreements`,
+    { method: "GET" },
+  );
+  if (agRes.status >= 400) {
+    return { status: agRes.status, text: agRes.text };
+  }
+  let merchandiseIds: string[] = [];
+  try {
+    const agreements = JSON.parse(agRes.text) as Array<{
+      id?: string;
+      merchandise?: Array<{ id?: string }>;
+    }>;
+    const agreement = agreements.find(
+      (a) => (a.id ?? "").trim() === args.agreementId.trim(),
+    );
+    merchandiseIds = (agreement?.merchandise ?? [])
+      .map((m) => (m.id ?? "").trim())
+      .filter((id) => id.length >= 4);
+  } catch {
+    return { status: 500, text: "invalid agreement json" };
+  }
+  if (merchandiseIds.length === 0) {
+    return { status: 400, text: "no merchandise lines on agreement" };
+  }
+
+  const cards = await listStripeCardsViaFetch(buyerToken);
+  const paymentMethodId =
+    cards.find((c) => (c.id ?? "").trim().length > 0)?.id ??
+    `pm_test_skip_${Date.now()}`;
+  const res = await e2eAuthorizedFetch(
+    page,
+    buyerToken,
+    `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/agreements/${encodeURIComponent(args.agreementId)}/payments/execute`,
+    {
+      method: "POST",
+      body: {
+        currency: "USD",
+        paymentMethodId,
+        idempotencyKey: `idem-e2e-merch-${Date.now()}`,
+        selectedRoutePathIds: null,
+        selectedMerchandiseLineIds: merchandiseIds,
+        selectedServicePayments: null,
+      },
+    },
+  );
+  return { status: res.status, text: res.text };
+}
+
+/** Polls until at least one merchandise line payment is in `held` status. */
+export async function waitForHeldMerchPayment(
+  page: Page,
+  token: string,
+  threadId: string,
+  agreementId: string,
+): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          async ([tid, tok, aid]: [string, string, string]) => {
+            const res = await fetch(
+              `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments`,
+              { headers: { Authorization: `Bearer ${tok}` } },
+            );
+            if (!res.ok) return 0;
+            const rows = (await res.json()) as Array<{ status?: string }>;
+            return rows.filter(
+              (p) => (p.status ?? "").trim().toLowerCase() === "held",
+            ).length;
+          },
+          [threadId, token, agreementId] as [string, string, string],
+        ),
+      { timeout: 45_000 },
+    )
+    .toBeGreaterThan(0);
+}
+
+/** PUT merchandise evidence for the first held payment; returns HTTP status. */
+export async function submitMerchandiseEvidenceViaApi(
+  page: Page,
+  token: string,
+  threadId: string,
+  agreementId: string,
+  note: string,
+): Promise<number> {
+  return page.evaluate(
+    async ([tid, tok, aid, text]: [string, string, string, string]) => {
+      const hdr: Record<string, string> = {
+        Authorization: `Bearer ${tok}`,
+        "Content-Type": "application/json",
+      };
+      const listRes = await fetch(
+        `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments`,
+        { headers: hdr },
+      );
+      if (!listRes.ok) return listRes.status;
+      const payments = (await listRes.json()) as Array<{
+        id?: string;
+        status?: string;
+      }>;
+      const payId = payments.find(
+        (p) => (p.status ?? "").trim().toLowerCase() === "held",
+      )?.id;
+      if (!payId) return 404;
+      const putRes = await fetch(
+        `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments/${encodeURIComponent(payId)}/evidence`,
+        {
+          method: "PUT",
+          headers: hdr,
+          body: JSON.stringify({ text, submit: true }),
+        },
+      );
+      return putRes.status;
+    },
+    [threadId, token, agreementId, note] as [string, string, string, string],
+  );
 }
