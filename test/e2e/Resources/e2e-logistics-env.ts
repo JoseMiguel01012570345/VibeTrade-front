@@ -32,7 +32,6 @@ import {
   insertTramoAfter,
   linkRouteSheetToAgreementViaUI,
   openContractByAgreementTitle,
-  openLinkedRouteSheetFromContractDetail,
   openRouteSheetDetail,
   openRoutesRail,
   openSubscribersPanel,
@@ -188,6 +187,8 @@ export type SetupPaidRouteOpts = {
   agreementId?: string;
   publish?: boolean;
   payRoutes?: boolean;
+  /** Omit agreement ↔ route sheet link (e.g. pay merch first, link later). */
+  skipLink?: boolean;
   /** Use when the buyer was party-soft-expelled and cannot open the chat UI to pay. */
   payRoutesViaBuyerApi?: boolean;
 };
@@ -249,13 +250,36 @@ export async function setupPaidRouteLogisticsScenario(
 
   await openRailContracts(sellerPage);
   await openContractByAgreementTitle(sellerPage, agreementTitle);
-  await linkRouteSheetToAgreementViaUI(sellerPage, titulo);
+  if (!opts.skipLink) {
+    await expect
+      .poll(
+        async () => {
+          try {
+            const id = await resolveRouteSheetIdByTitulo(
+              sellerPage,
+              threadId,
+              seller.sessionToken,
+              titulo,
+            );
+            return id.length > 0;
+          } catch {
+            return false;
+          }
+        },
+        { timeout: 45_000 },
+      )
+      .toBe(true);
+    await linkRouteSheetToAgreementViaUI(sellerPage, titulo);
+  }
 
   if (opts.publish !== false) {
-    await reloadChatThread(sellerPage);
-    await waitForThreadContractsLoaded(sellerPage);
-    await openContractByAgreementTitle(sellerPage, agreementTitle);
-    await openLinkedRouteSheetFromContractDetail(sellerPage, titulo);
+    if (opts.skipLink) {
+      await openRoutesRail(sellerPage);
+      await openRouteSheetDetail(sellerPage, titulo);
+    } else {
+      await openRoutesRail(sellerPage);
+      await ensureRouteSheetDetailOpen(sellerPage, titulo);
+    }
     await publishRouteSheetViaUI(sellerPage);
     await clickInviteCarriers(sellerPage);
     await sendCarrierInvites(sellerPage);

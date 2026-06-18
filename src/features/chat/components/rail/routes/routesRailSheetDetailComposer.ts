@@ -28,6 +28,7 @@ export function composeRoutesRailDetailShellMerged(
     sheetStructuralEditBlockedByPaid: props.sheetStructuralEditBlockedByPaid,
     sheetEditBlockedByCarrierAck: props.sheetEditBlockedByCarrierAck,
     publicadaPlataforma: props.selRoute.publicadaPlataforma ?? false,
+    sheetEstado: props.selRoute.estado,
   });
 
   return {

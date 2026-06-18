@@ -3,7 +3,7 @@ import {
   applyViewerRouteTramoSubscriptions,
   mergeTramoSubscriptionsIntoRouteOffer,
 } from "@features/market/model/routeOfferSubscriptionMerge"
-import { routeOfferPublicBlockedForBuyerWithAgreement } from "@features/market/model/routeSheetOfferGuards"
+import { routeOfferPublicBlockedForBuyerWithAgreement, routeSheetPublishBlockedWhenDelivered, routeStopTramoSubscribeBlockedOnSheet } from "@features/market/model/routeSheetOfferGuards"
 import type { Message } from './marketStoreTypes'
 import { threadIsActionLocked, uid } from './marketStoreHelpers'
 import { routeOfferPublicAfterSheetEdit } from './marketSliceHelpers'
@@ -45,6 +45,10 @@ subscribeRouteOfferTramo: (offerId, stopId, carrier, vehicleLabel, storeServiceI
     const ro = s.routeOfferPublic[offerId]
     if (!ro) return s
     if (routeOfferPublicBlockedForBuyerWithAgreement(ro, s.threads, carrier.userId)) return s
+    const th = s.threads[ro.threadId]
+    const sheet = th?.routeSheets?.find((r) => r.id === ro.routeSheetId)
+    if (routeSheetPublishBlockedWhenDelivered(sheet?.estado)) return s
+    if (routeStopTramoSubscribeBlockedOnSheet(sheet, stopId)) return s
     const ti = ro.tramos.findIndex((t) => t.stopId === stopId)
     if (ti < 0) return s
     const tr = ro.tramos[ti]
@@ -69,7 +73,7 @@ subscribeRouteOfferTramo: (offerId, stopId, carrier, vehicleLabel, storeServiceI
         }
       : t,
     )
-    const th = s.threads[ro.threadId]
+    const th0 = s.threads[ro.threadId]
     const sys: Message = {
       id: uid('m'),
       from: 'system',
@@ -82,8 +86,8 @@ subscribeRouteOfferTramo: (offerId, stopId, carrier, vehicleLabel, storeServiceI
       ...s,
       routeOfferPublic: { ...s.routeOfferPublic, [offerId]: { ...ro, tramos: nextTramos } },
       threads:
-        th ?
-          { ...s.threads, [ro.threadId]: { ...th, messages: [...th.messages, sys] } }
+        th0 ?
+          { ...s.threads, [ro.threadId]: { ...th0, messages: [...th0.messages, sys] } }
         : s.threads,
     }
   })

@@ -7,10 +7,9 @@ import type { RouteOfferPublicState } from "@app/store/marketStoreTypes";
 import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
 import type { RouteSheet } from "@features/market/model/routeSheetTypes";
 import {
-  resolveRouteOfferPublicForSheet,
   resolveRouteOfferPublicForThread,
 } from "@features/market/model/routeSheetOfferGuards";
-import { routeSheetIdsLockedByPaidAgreements } from "@app/store/marketStoreHelpers";
+import { routeOfferPublicFromThreadRouteSheet } from "@/utils/market/routeOfferPublicFromEmergentCard";
 import { routeSheetHasPendingCarrierAck } from "@app/store/marketSliceHelpers";
 import {
   routeSheetAllowsCarrierContactEditWhenPaid,
@@ -111,14 +110,27 @@ export function ChatRightRailRoutesPanel({
   actionsLocked = false,
 }: Props) {
   const me = useAppStore((s) => s.me);
-  const routeOfferForSelectedSheet = useMarketStore(
+  /** Solo referencias del store; el fallback sintético va en useMemo (evita bucle de re-render). */
+  const storedRouteOfferForSelectedSheet = useMarketStore(
     useShallow((s) => {
       const th = s.threads[threadId];
       const sid = selRoute?.id?.trim();
-      if (!sid) return undefined;
-      return resolveRouteOfferPublicForSheet(s, th, sid);
+      if (!sid || !th) return undefined;
+      for (const ro of Object.values(s.routeOfferPublic)) {
+        if (ro.threadId === threadId && ro.routeSheetId?.trim() === sid) {
+          return ro;
+        }
+      }
+      const forThread = resolveRouteOfferPublicForThread(s, th);
+      if (forThread?.routeSheetId?.trim() === sid) return forThread;
+      return undefined;
     }),
   );
+  const routeOfferForSelectedSheet = useMemo(() => {
+    if (storedRouteOfferForSelectedSheet) return storedRouteOfferForSelectedSheet;
+    if (!selRoute?.paradas?.length) return undefined;
+    return routeOfferPublicFromThreadRouteSheet(threadId, selRoute);
+  }, [storedRouteOfferForSelectedSheet, selRoute, threadId]);
   const routeOfferFromThread = useMarketStore(
     useShallow((s) => {
       const th = s.threads[threadId];
@@ -166,6 +178,15 @@ export function ChatRightRailRoutesPanel({
   const acceptedAgreements = useMemo(
     () => agreements.filter((a) => a.status === "accepted"),
     [agreements],
+  );
+  const acceptedAgreementIdsKey = useMemo(
+    () =>
+      acceptedAgreements
+        .map((a) => a.id.trim())
+        .filter((id) => id.length >= 8)
+        .sort()
+        .join("\0"),
+    [acceptedAgreements],
   );
 
   function agreementForSheet(routeSheetId: string): TradeAgreement | null {
@@ -266,7 +287,7 @@ export function ChatRightRailRoutesPanel({
       });
       await refreshRouteTramoSubscriptions();
     })();
-  }, [threadId, acceptedAgreements]);
+  }, [threadId, acceptedAgreementIdsKey]);
 
   const refreshDeliveriesRef = useRef(refreshDeliveriesForAgreement);
   refreshDeliveriesRef.current = refreshDeliveriesForAgreement;
@@ -314,13 +335,15 @@ export function ChatRightRailRoutesPanel({
       routeOfferResolved,
     );
 
-  const paidLockedSheetIds = useMarketStore(
-    useShallow((s) => {
-      const th = s.threads[threadId];
-      return th ? routeSheetIdsLockedByPaidAgreements(th) : new Set<string>();
-    }),
-  );
-  const sheetLockedByPaid = !!selRoute && paidLockedSheetIds.has(selRoute.id);
+  const sheetLockedByPaid = useMarketStore((s) => {
+    const th = s.threads[threadId];
+    const sid = selRoute?.id?.trim();
+    if (!th || !sid) return false;
+    for (const c of th.contracts ?? []) {
+      if (c.routeSheetId === sid && c.hasSucceededPayments === true) return true;
+    }
+    return false;
+  });
   const sheetStructuralEditBlockedByPaid =
     !!selRoute &&
     routeSheetStructuralEditBlockedByPaid(

@@ -1111,3 +1111,101 @@ export async function waitForMerchandisePaymentsReleased(
     )
     .toBe(0);
 }
+
+type E2ERouteSheetRecord = Record<string, unknown> & {
+  id?: string;
+  titulo?: string;
+  estado?: string;
+  publicadaPlataforma?: boolean;
+  payload?: Record<string, unknown>;
+};
+
+export async function fetchRouteSheetRecord(
+  page: Page,
+  token: string,
+  threadId: string,
+  routeSheetId: string,
+): Promise<E2ERouteSheetRecord | null> {
+  const res = await e2eAuthorizedFetch<unknown>(
+    page,
+    token,
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets`,
+  );
+  if (!res.ok) {
+    throw new Error(`fetchRouteSheetRecord failed: ${res.status}`);
+  }
+  const sheets = Array.isArray(res.data)
+    ? res.data
+    : ((res.data as { items?: unknown[] })?.items ?? []);
+  for (const raw of sheets) {
+    const sheet = raw as E2ERouteSheetRecord;
+    if ((sheet.id ?? "").trim() === routeSheetId.trim()) {
+      return sheet;
+    }
+  }
+  return null;
+}
+
+export async function attemptRepublishRouteSheetViaApi(
+  page: Page,
+  token: string,
+  threadId: string,
+  routeSheetId: string,
+): Promise<{ status: number; error?: string; text: string }> {
+  const sheet = await fetchRouteSheetRecord(page, token, threadId, routeSheetId);
+  if (!sheet) {
+    throw new Error(`Route sheet not found: ${routeSheetId}`);
+  }
+  const payload: Record<string, unknown> = {
+    ...sheet,
+    id: routeSheetId,
+    threadId,
+    publicadaPlataforma: true,
+  };
+  delete payload.payload;
+  const res = await e2eAuthorizedFetch<{ error?: string }>(
+    page,
+    token,
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}`,
+    { method: "PUT", body: payload },
+  );
+  return {
+    status: res.status,
+    error: res.data?.error,
+    text: res.text,
+  };
+}
+
+export async function postEmergentTramoSubscriptionRequestViaApi(
+  page: Page,
+  token: string,
+  emergentOfferId: string,
+  stopId: string,
+  storeServiceId: string,
+): Promise<{ status: number; error?: string; text: string }> {
+  const res = await e2eAuthorizedFetch<{ error?: string }>(
+    page,
+    token,
+    `/api/v1/emergent-offers/${encodeURIComponent(emergentOfferId)}/tramo-subscription-requests`,
+    {
+      method: "POST",
+      body: { stopId, storeServiceId },
+    },
+  );
+  return {
+    status: res.status,
+    error: res.data?.error,
+    text: res.text,
+  };
+}
+
+export async function fetchRouteSheetEstado(
+  page: Page,
+  token: string,
+  threadId: string,
+  routeSheetId: string,
+): Promise<string> {
+  const sheet = await fetchRouteSheetRecord(page, token, threadId, routeSheetId);
+  const estado = (sheet?.estado ?? sheet?.payload?.estado ?? "").toString().trim();
+  return estado;
+}

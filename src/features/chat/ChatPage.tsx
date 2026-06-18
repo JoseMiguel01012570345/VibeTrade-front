@@ -61,6 +61,7 @@ import { rebuildRouteOfferAssignmentsFromThreadItems } from "@features/market/mo
 import { userHasTransportService } from "@/utils/user/transportEligibility";
 import { fetchStoreDetail } from "@/utils/market/fetchStoreDetail";
 import { mergeStoreCatalogWithLocalExtras } from "@features/market/model/storeCatalogTypes";
+import { threadCanCreateRouteSheet } from "@features/market/model/routeSheetCreationGate";
 import {
   fetchThreadHasUnpaidRouteSheets,
   fetchSocialThreadMembers,
@@ -1258,12 +1259,17 @@ export function ChatPage() {
               onOpenNewRouteSheet={() => {
                 void (async () => {
                   try {
-                    const hasUnpaid = await fetchThreadHasUnpaidRouteSheets(
-                      thread.id,
+                    const contracts = thread.contracts ?? [];
+                    const hasAccepted = contracts.some(
+                      (c) => c.status === "accepted",
                     );
-                    if (!hasUnpaid) {
+                    const canCreate =
+                      hasAccepted
+                        ? threadCanCreateRouteSheet(contracts)
+                        : await fetchThreadHasUnpaidRouteSheets(thread.id);
+                    if (!canCreate) {
                       toast.error(
-                        "Solo puedes crear hojas de rutas si existen acuerdos sin pagar",
+                        "No hay acuerdos pendientes de hoja de ruta (sin pago o con mercancía cobrada sin roadmap vinculado).",
                       );
                       return;
                     }
@@ -1271,7 +1277,7 @@ export function ChatPage() {
                     const msg =
                       e instanceof Error
                         ? e.message
-                        : "No se pudo validar si hay hojas no pagadas.";
+                        : "No se pudo validar si podés crear una hoja de ruta.";
                     toast.error(msg);
                     return;
                   }

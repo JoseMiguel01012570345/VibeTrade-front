@@ -29,7 +29,7 @@ import {
   acceptMerchandiseEvidenceViaApi,
   waitForMerchandisePaymentsReleased,
 } from "../../Resources/e2e-logistics-api";
-import { openAuthenticatedChatListPage, scenarioCarrierUserId, scenarioSellerStoreId } from "../../Resources/e2e-exit-policies-env";
+import { openAuthenticatedChatListPage, scenarioCarrierUserId, scenarioSellerStoreId, provisionFreshMerchandiseThread } from "../../Resources/e2e-exit-policies-env";
 import { fetchStoreTrustScore } from "../../Resources/e2e-trust-api";
 import {
   assertNoNativeDialogDuring,
@@ -465,8 +465,11 @@ test.describe("chat route logistics — withdraw & party leave", () => {
     const seller = getE2ESellerSession()!;
     const scenario = getE2EScenario()!;
     const carrierToken = scenario.carrierSessionToken!;
+    const fresh = await provisionFreshMerchandiseThread(browser, "L17");
     const s = await setupPaidRouteLogisticsScenario(browser, {
       tituloPrefix: "Hoja L17 Seller Leave",
+      threadId: fresh.threadId,
+      agreementId: fresh.agreementId,
     });
 
     const sellerPage = await openSellerPage(

@@ -169,7 +169,7 @@ type FreshMerchThread = {
 };
 
 /** Hilo comprador+vendedor aislado (evita party-soft-leave en el hilo RS compartido del global-setup). */
-async function provisionFreshMerchandiseThread(
+export async function provisionFreshMerchandiseThread(
   browser: Browser,
   titlePrefix: string,
 ): Promise<FreshMerchThread> {

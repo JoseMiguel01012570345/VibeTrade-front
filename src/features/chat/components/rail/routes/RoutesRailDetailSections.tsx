@@ -16,7 +16,7 @@ import type {
   RouteOfferPublicState,
   RouteSheetEditAckState,
 } from "@app/store/marketStoreTypes";
-import { ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES } from "@features/market/model/routeSheetOfferGuards";
+import { ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES, ROUTE_SHEET_PUBLISH_BLOCKED_DELIVERED_ES, routeSheetPublishBlockedWhenDelivered } from "@features/market/model/routeSheetOfferGuards";
 import {
   routeStatusLabel,
   type RouteSheet,
@@ -468,6 +468,10 @@ export function runRoutesRailPublishToggle(args: {
     toast.success("Hoja retirada de la plataforma");
     return;
   }
+  if (routeSheetPublishBlockedWhenDelivered(args.selRoute.estado)) {
+    toast.error(ROUTE_SHEET_PUBLISH_BLOCKED_DELIVERED_ES);
+    return;
+  }
   args.publishRouteSheetsToPlatform(args.threadId, [args.selRoute.id]);
   toast.success("Hoja publicada en la plataforma");
 }
@@ -489,6 +493,7 @@ export function routesRailTitlesForSeller(args: {
   sheetStructuralEditBlockedByPaid: boolean;
   sheetEditBlockedByCarrierAck: boolean;
   publicadaPlataforma: boolean;
+  sheetEstado?: RouteSheet["estado"];
 }): RoutesRailTitlesBundle {
   const carrierContactEditOnly =
     args.sheetLockedByPaid && !args.sheetStructuralEditBlockedByPaid;
@@ -509,7 +514,7 @@ export function routesRailTitlesForSeller(args: {
       args.actionsLocked,
       args.sheetLockedByPaid,
     ),
-    publishTitleStr: railDetailPublishTitle(args.publicadaPlataforma),
+    publishTitleStr: railDetailPublishTitle(args.publicadaPlataforma, args.sheetEstado),
   };
 }
 

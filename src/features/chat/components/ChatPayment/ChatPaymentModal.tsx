@@ -48,8 +48,9 @@ import {
   fmtPaymentAmount as fmt,
   parseMajorAmount,
   recurrenceSlotKey,
-  routeStopIsPayable,
+  shouldWarnUnconfirmedRouteCarriers,
 } from "./chatPaymentUtils";
+import { RoutePaymentCarrierWarningModal } from "./RoutePaymentCarrierWarningModal";
 import {
   downloadPaymentCheckoutInformePdf,
   sanitizePaymentInformeLabel,
@@ -154,6 +155,9 @@ export function ChatPaymentModal({
     string[]
   >([]);
   const [checkoutHydrated, setCheckoutHydrated] = useState(false);
+  const [carrierWarningOpen, setCarrierWarningOpen] = useState(false);
+  const [carrierWarningSheetTitle, setCarrierWarningSheetTitle] = useState("");
+  const lastCarrierWarningKeyRef = useRef<string | null>(null);
 
   const serviceOnlyAgreement = useMemo(() => {
     if (!selectedAgreement) return false;
@@ -583,17 +587,8 @@ export function ChatPaymentModal({
         setAllRecurrencesPaidVerified(mayCommitVerified && fullyPaid);
 
         const rsid = (ag.routeSheetId ?? "").trim();
-        const sheet = rsid
-          ? routeSheetsRef.current.find((r) => r.id === rsid)
-          : undefined;
-        const payable = (sheet?.paradas ?? []).filter((p) =>
-          routeStopIsPayable(p),
-        );
         const pickRouteLegs =
-          !svcOnly &&
-          agreementDeclaresMerchandise(ag) &&
-          rsid.length > 1 &&
-          payable.length > 0;
+          !svcOnly && agreementDeclaresMerchandise(ag) && rsid.length > 1;
 
         let deliveries: RouteStopDeliveryStatusApi[] = [];
         let paths: AgreementRoutePathApi[] = [];
@@ -825,6 +820,45 @@ export function ChatPaymentModal({
     // Al cambiar de acuerdo, resetear selección específica de servicios.
     setSelectedServiceEntriesByServiceId({});
   }, [open, agreementId]);
+
+  useEffect(() => {
+    if (!open) {
+      setCarrierWarningOpen(false);
+      lastCarrierWarningKeyRef.current = null;
+      return;
+    }
+    lastCarrierWarningKeyRef.current = null;
+  }, [open, agreementId]);
+
+  useEffect(() => {
+    if (!open || !checkoutHydrated || busyInit) return;
+    if (
+      !shouldWarnUnconfirmedRouteCarriers(
+        selectedAgreement,
+        agreementRoutePaths,
+        serviceOnlyAgreement,
+        agreementRouteSheet,
+      )
+    ) {
+      return;
+    }
+    const key = `${selectedAgreement?.id ?? ""}:${agreementRoutePaths
+      .map((p) => `${p.routePathId}:${p.payable}:${p.paid}`)
+      .join("|")}`;
+    if (lastCarrierWarningKeyRef.current === key) return;
+    lastCarrierWarningKeyRef.current = key;
+    setCarrierWarningSheetTitle(agreementRouteSheet?.titulo?.trim() ?? "");
+    setCarrierWarningOpen(true);
+  }, [
+    open,
+    checkoutHydrated,
+    busyInit,
+    selectedAgreement,
+    agreementRoutePaths,
+    serviceOnlyAgreement,
+    agreementRouteSheet?.titulo,
+    agreementRouteSheet?.estado,
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -1168,13 +1202,18 @@ export function ChatPaymentModal({
     >
       <div
         className={cn(
-          "vt-modal flex max-h-[min(88vh,780px)] w-full max-w-[560px] flex-col overflow-hidden p-0",
+          "vt-modal relative flex max-h-[min(88vh,780px)] w-full max-w-[560px] flex-col overflow-hidden p-0",
         )}
         role="dialog"
         aria-modal="true"
         aria-labelledby="chat-pay-title"
         onMouseDown={(e) => e.stopPropagation()}
       >
+        <RoutePaymentCarrierWarningModal
+          open={carrierWarningOpen}
+          routeSheetTitle={carrierWarningSheetTitle}
+          onAcknowledge={() => setCarrierWarningOpen(false)}
+        />
         <div className="border-b border-[var(--border)] px-4 py-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">

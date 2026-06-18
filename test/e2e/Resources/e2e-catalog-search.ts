@@ -85,6 +85,30 @@ export async function findEmergentOfferUrlViaCatalogSearchUI(
   return null;
 }
 
+/** Resolves `emo_*` id via GET /api/v1/market/stores/search (no UI). */
+export async function findEmergentOfferIdViaSearchApi(
+  page: Page,
+  token: string,
+  titulo: string,
+): Promise<string | null> {
+  const q = encodeURIComponent(titulo.trim());
+  const items = await page.evaluate(
+    async ([searchQ, authToken]: [string, string]) => {
+      const r = await fetch(
+        `/api/v1/market/stores/search?name=${searchQ}&kinds=emergent&limit=20`,
+        {
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        },
+      );
+      if (!r.ok) return null;
+      const json = (await r.json()) as { items?: SearchItemJson[] };
+      return json.items ?? null;
+    },
+    [q, token] as [string, string],
+  );
+  return findEmergentOfferIdInSearchItems(items ?? undefined, titulo);
+}
+
 export async function setCatalogSearchKindsProductsOnly(page: Page): Promise<void> {
   await page.getByRole("button", { name: /filtrar por tipo/i }).click();
   for (const name of [/^tiendas$/i, /^servicios$/i, /^hojas de ruta$/i]) {

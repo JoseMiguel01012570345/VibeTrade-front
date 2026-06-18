@@ -349,6 +349,7 @@ export function AgreementDetailView({
   onLinkRouteSheet,
   onUnlinkRouteSheet,
   linkActionsDisabled = false,
+  routeLinkFrozenAfterPayment = false,
 }: {
   a: TradeAgreement;
   threadId: string;
@@ -359,6 +360,8 @@ export function AgreementDetailView({
   onLinkRouteSheet?: (agreementId: string, routeSheetId: string) => void;
   onUnlinkRouteSheet?: (agreementId: string) => void;
   linkActionsDisabled?: boolean;
+  /** Cobros registrados y hoja ya vinculada: no cambiar ni desvincular. */
+  routeLinkFrozenAfterPayment?: boolean;
 }) {
   const nav = useNavigate();
   const m = a.merchandiseMeta ?? undefined;
@@ -452,15 +455,18 @@ export function AgreementDetailView({
   const canUnlinkRoute =
     !!a.routeSheetId &&
     !linkedSheet?.publicadaPlataforma &&
-    !!onUnlinkRouteSheet;
+    !!onUnlinkRouteSheet &&
+    !routeLinkFrozenAfterPayment;
   const merchOkForRouteLink = agreementHasMerchandiseForRouteLink(a);
   const selectRouteSheetDisabled =
     linkPublishedLocked ||
     linkActionsDisabled ||
+    routeLinkFrozenAfterPayment ||
     (!!onLinkRouteSheet && !merchOkForRouteLink);
   const vincularDisabled =
     linkActionsDisabled ||
     linkPublishedLocked ||
+    routeLinkFrozenAfterPayment ||
     !pickId ||
     pickId === (a.routeSheetId ?? "") ||
     !merchOkForRouteLink;
@@ -523,7 +529,11 @@ export function AgreementDetailView({
             <>
               <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
                 Elige una sola hoja de ruta del chat para este acuerdo. Podés
-                cambiarla mientras la hoja no esté publicada a transportistas.
+                cambiarla mientras la hoja no esté publicada a transportistas
+                {a.hasSucceededPayments && !a.routeSheetId ?
+                  ", incluso después del primer cobro de mercancía"
+                : ""}
+                .
               </p>
               {!merchOkForRouteLink ? (
                 <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
@@ -541,8 +551,28 @@ export function AgreementDetailView({
                 <>
                   {linkActionsDisabled ? (
                     <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
-                      La vinculación de hojas de ruta no está disponible hasta
-                      registrar el pago en el chat.
+                      La vinculación de hojas de ruta no está disponible en este
+                      momento.
+                    </p>
+                  ) : routeLinkFrozenAfterPayment ? (
+                    <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
+                      {a.hasAcceptedMerchandiseEvidence ?
+                        <>
+                          Con evidencia de mercancía{" "}
+                          <strong className="text-[var(--text)]">aceptada</strong>
+                          , el roadmap vinculado no se puede modificar ni quitar
+                          desde aquí.
+                        </>
+                      : <>
+                          Con pagos de transporte registrados y hoja vinculada, el
+                          roadmap no se puede modificar ni quitar desde aquí.
+                        </>
+                      }
+                    </p>
+                  ) : a.hasSucceededPayments && !a.routeSheetId ? (
+                    <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
+                      Ya hay cobros de mercancía: vinculá una hoja para habilitar
+                      el pago del transporte.
                     </p>
                   ) : null}
                   <div className={linkRutaRow}>
@@ -579,9 +609,13 @@ export function AgreementDetailView({
                       <button
                         type="button"
                         className="vt-btn shrink-0"
-                        disabled={linkActionsDisabled}
+                        disabled={linkActionsDisabled || routeLinkFrozenAfterPayment}
                         onClick={() => {
-                          if (linkActionsDisabled || !onUnlinkRouteSheet)
+                          if (
+                            linkActionsDisabled ||
+                            routeLinkFrozenAfterPayment ||
+                            !onUnlinkRouteSheet
+                          )
                             return;
                           onUnlinkRouteSheet(a.id);
                         }}

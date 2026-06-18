@@ -11,6 +11,7 @@ import type {
   RouteSheetCreatePayload,
   RouteStop,
 } from "./routeSheetTypes";
+import { routeSheetEstadoIsEntregada } from "./routeSheetTypes";
 import type { RouteTramoSubscriptionItemApi } from "@/utils/chat/chatApi";
 import type { RouteStopDeliveryStatusApi } from "@/utils/chat/routeLogisticsApi";
 import { routeOfferPublicFromThreadRouteSheet } from "@/utils/market/routeOfferPublicFromEmergentCard";
@@ -22,6 +23,14 @@ export const SELLER_EXPEL_REQUIRES_PAUSE_ES =
 /** Mensaje cuando el comprador del hilo intenta suscribirse como transportista a la misma hoja publicada. */
 export const ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES =
   "No puedes suscribirte como transportista: en esta operación eres el comprador con un acuerdo aceptado.";
+
+/** Mensaje cuando la hoja ya fue entregada y no puede republicarse. */
+export const ROUTE_SHEET_PUBLISH_BLOCKED_DELIVERED_ES =
+  "Esta hoja de ruta ya fue entregada; no se puede publicar en la plataforma.";
+
+/** Mensaje cuando el tramo ya fue entregado y no admite nuevas suscripciones. */
+export const ROUTE_TRAMO_SUBSCRIBE_BLOCKED_DELIVERED_ES =
+  "Este tramo ya fue entregado; no se aceptan nuevas suscripciones.";
 
 /** Hoja vinculada a acuerdo con cobros registrados (bloqueo local + API). */
 export const ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES =
@@ -433,6 +442,40 @@ export function effectiveRouteOfferForSheetForm(
   if (!sid || !forThread) return undefined;
   if (forThread.routeSheetId?.trim() === sid) return forThread;
   return undefined;
+}
+
+export function routeSheetPublishBlockedWhenDelivered(
+  estado: RouteSheet["estado"] | string | undefined,
+): boolean {
+  return routeSheetEstadoIsEntregada(estado);
+}
+
+/** Tramo liquidado con evidencia aceptada (entregado). */
+export function routeStopTramoDeliveredByEvidence(
+  delivery: Pick<RouteStopDeliveryStatusApi, "state"> | undefined,
+): boolean {
+  return (delivery?.state ?? "").trim().toLowerCase() === "evidence_accepted";
+}
+
+export function routeStopTramoSubscribeBlocked(
+  deliveries: RouteStopDeliveryStatusApi[],
+  routeSheetId: string,
+  stopId: string,
+): boolean {
+  return routeStopTramoDeliveredByEvidence(
+    findRouteStopDelivery(deliveries, routeSheetId, stopId),
+  );
+}
+
+/** Señales locales en la hoja (demo) cuando aún no hay filas de entrega cargadas. */
+export function routeStopTramoSubscribeBlockedOnSheet(
+  sheet: RouteSheet | undefined,
+  stopId: string,
+): boolean {
+  if (!sheet) return false;
+  if (routeSheetPublishBlockedWhenDelivered(sheet.estado)) return true;
+  const parada = sheet.paradas.find((p) => p.id === stopId);
+  return parada?.completada === true;
 }
 
 type DeliveryExpelInput = Pick<

@@ -103,8 +103,12 @@ export type TradeAgreementApiDto = {
   extraFields?: TradeAgreementExtraFieldApiDto[];
   routeSheetId?: string | null;
   routeSheetUrl?: string | null;
-  /** Hay al menos un cobro exitoso (Stripe); bloquea edición, borrado y cambios del vínculo de ruta. */
+  /** Hay al menos un cobro exitoso (Stripe); bloquea edición y borrado. */
   hasSucceededPayments?: boolean | null;
+  /** Hay al menos un tramo de transporte cobrado; bloquea cambiar o desvincular la hoja. */
+  hasSucceededRoutePayments?: boolean | null;
+  /** Evidencia de mercancía aceptada; bloquea vincular o desvincular hoja de ruta. */
+  hasAcceptedMerchandiseEvidence?: boolean | null;
 };
 
 /** Payload unificado del mensaje (respuesta API); alineado a ChatUnifiedMessagePayload del backend. */
@@ -362,7 +366,7 @@ export async function fetchThreadRouteSheets(
   return (await res.json()) as RouteSheetPayload[];
 }
 
-/** True si hay hojas de ruta vinculadas a acuerdos aceptados sin pagos exitosos. */
+/** True si el hilo permite crear otra hoja (acuerdo sin pago o con mercancía cobrada sin roadmap vinculado). */
 export async function fetchThreadHasUnpaidRouteSheets(
   threadId: string,
 ): Promise<boolean> {

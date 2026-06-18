@@ -15,6 +15,7 @@ import {
   resolveRouteOfferPublicForSheet,
   resolveRouteOfferPublicForThread,
   routeSheetAllowsCarrierContactEditWhenPaid,
+  routeSheetPublishBlockedWhenDelivered,
 } from "@features/market/model/routeSheetOfferGuards"
 import type { Message, MarketState } from './marketStoreTypes'
 import { threadHasAcceptedAgreement } from './marketStoreTypes'
@@ -405,6 +406,7 @@ publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
     const extraMsgs: Message[] = []
     const list = sheets.map((rs) => {
       if (!allowedArr.includes(rs.id)) return rs
+      if (!rs.publicadaPlataforma && routeSheetPublishBlockedWhenDelivered(rs.estado)) return rs
       if (!rs.publicadaPlataforma) {
         extraMsgs.push({
           id: uid('m'),

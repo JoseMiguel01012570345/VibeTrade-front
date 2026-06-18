@@ -21,6 +21,7 @@ import {
 } from "../../Resources/e2e-trust-api";
 import {
   openAuthenticatedChatListPage,
+  provisionFreshMerchandiseThread,
   scenarioSellerStoreId,
 } from "../../Resources/e2e-exit-policies-env";
 import { openSellerPage } from "../../Resources/agreement-ui-helpers";
@@ -115,8 +116,11 @@ test.describe("chat route completion — agreement merchandise evidence", () => 
     const scenario = getE2EScenario()!;
     const seller = getE2ESellerSession()!;
     const buyer = getE2ESession()!;
+    const fresh = await provisionFreshMerchandiseThread(browser, "R-CE02");
     const s = await setupPaidRouteLogisticsScenario(browser, {
       tituloPrefix: "R-CE02 Exit",
+      threadId: fresh.threadId,
+      agreementId: fresh.agreementId,
       payRoutes: true,
       payRoutesViaBuyerApi: true,
     });

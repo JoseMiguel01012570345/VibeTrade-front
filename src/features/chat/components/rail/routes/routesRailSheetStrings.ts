@@ -4,6 +4,8 @@ import type { RouteSheet } from "@features/market/model/routeSheetTypes";
 import {
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
   ROUTE_SHEET_PAID_CARRIER_CONTACT_ONLY_ES,
+  ROUTE_SHEET_PUBLISH_BLOCKED_DELIVERED_ES,
+  routeSheetPublishBlockedWhenDelivered,
 } from "@features/market/model/routeSheetOfferGuards";
 import { SELLER_TRUST_PENALTY_ON_EDIT } from "../../modals/TrustRiskEditConfirmModal";
 
@@ -53,7 +55,13 @@ export function railDetailDeleteTitle(
   return "Eliminar la hoja: los transportistas con tramo en la oferta salen del chat; penalización a la tienda por cada confirmado (demo)";
 }
 
-export function railDetailPublishTitle(publicadaPlataforma: boolean): string {
+export function railDetailPublishTitle(
+  publicadaPlataforma: boolean,
+  estado?: RouteSheet["estado"],
+): string {
+  if (!publicadaPlataforma && routeSheetPublishBlockedWhenDelivered(estado)) {
+    return ROUTE_SHEET_PUBLISH_BLOCKED_DELIVERED_ES;
+  }
   return publicadaPlataforma
     ? "Dejar de mostrar la hoja en el mercado y búsqueda"
     : "Publicar la hoja en el mercado (demo)";

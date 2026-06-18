@@ -65,9 +65,28 @@ export async function closeSubscribersPanelIfOpen(page: Page): Promise<void> {
 export async function openRoutesRail(page: Page): Promise<void> {
   await dismissPeerPartyExitModalIfOpen(page);
   await closeSubscribersPanelIfOpen(page);
+  await expect(page.getByText(/cargando chat/i)).toBeHidden({ timeout: 45_000 });
+
   const tab = page.getByRole("button", { name: /^rutas$/i });
-  await expect(tab).toBeVisible({ timeout: 15_000 });
-  await tab.click();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (await tab.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await tab.click();
+      break;
+    }
+    if (attempt === 2) {
+      const threadId = page.url().match(/\/chat\/(cth_[^/?#]+)/)?.[1];
+      if (threadId) {
+        const { openChatThread } = await import("./chat-helpers");
+        await openChatThread(page, threadId);
+      }
+      await expect(tab).toBeVisible({ timeout: 15_000 });
+      await tab.click();
+      break;
+    }
+    await dismissPeerPartyExitModalIfOpen(page);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
+  }
   const railReady = page
     .getByRole("button", { name: /nueva hoja de ruta/i })
     .or(page.getByText(/\d tramo/))
@@ -608,15 +627,19 @@ export async function openContractByAgreementTitle(
 ): Promise<void> {
   await ensureContractListView(page);
   const rail = page.getByRole("complementary");
-  const btn = rail
-    .getByRole("button")
-    .filter({ hasText: agreementTitle })
-    .first();
-  await expect(btn).toBeVisible({ timeout: 15_000 });
-  await btn.click();
-  await expect(rail.getByText(agreementTitle).first()).toBeVisible({
-    timeout: 10_000,
-  });
+  const contractBtns = rail.locator("ul li button");
+  const count = await contractBtns.count();
+  for (let i = 0; i < count; i++) {
+    await contractBtns.nth(i).click();
+    const titleInDetail = rail
+      .getByText(agreementTitle, { exact: true })
+      .first();
+    if (await titleInDetail.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      return;
+    }
+    await ensureContractListView(page);
+  }
+  throw new Error(`Contract not found for agreement title «${agreementTitle}»`);
 }
 
 /** Opens the contract at the given 0-based index in the Contratos list (stable E2E-RS-AGR-N order). */
@@ -766,7 +789,10 @@ export async function linkRouteSheetToAgreementViaUI(
   sheetTitulo: string,
 ): Promise<void> {
   let lastError: Error | null = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) {
+      await page.waitForTimeout(1_000 * attempt);
+    }
     await pickRouteSheetInAgreementLinkSelect(page, sheetTitulo);
     const vincularBtn = page.getByRole("button", {
       name: /^vincular$|^actualizar vínculo$/i,
@@ -790,9 +816,6 @@ export async function linkRouteSheetToAgreementViaUI(
     lastError = new Error(
       `Route link failed (${linkResp?.status() ?? "no response"}): ${body}`,
     );
-    if (attempt === 0) {
-      await page.waitForTimeout(1_500);
-    }
   }
   throw lastError ?? new Error("Route link failed");
 }
@@ -825,6 +848,27 @@ export async function publishRouteSheetViaUI(page: Page): Promise<void> {
   await expect(
     page.getByRole("button", { name: /ocultar de la plataforma/i }),
   ).toBeVisible({ timeout: 15_000 });
+}
+
+/** Tras entrega total: republicar desde UI muestra aviso y no persiste publicación. */
+export async function expectRepublishBlockedOnDeliveredRouteSheetViaUI(
+  page: Page,
+  routeSheetTitulo: string,
+): Promise<void> {
+  await openRoutesRail(page);
+  await openRouteSheetDetail(page, routeSheetTitulo);
+  const publishBtn = page.getByRole("button", {
+    name: /publicar en la plataforma/i,
+  });
+  await expect(publishBtn).toBeVisible({ timeout: 10_000 });
+  await expect(publishBtn).toHaveAttribute(
+    "title",
+    /ya fue entregada.*no se puede publicar/i,
+  );
+  await publishBtn.click();
+  await expect(
+    page.getByText(/ya fue entregada.*no se puede publicar/i).first(),
+  ).toBeVisible({ timeout: 10_000 });
 }
 
 /** Inserts a tramo at the beginning (before tramo 1). */

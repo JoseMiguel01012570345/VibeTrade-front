@@ -89,7 +89,7 @@ test.describe("chat route sheets (UI)", () => {
       await newBtn.click();
       await expect(
         sellerPage.getByText(
-          /solo puedes crear hojas de rutas si existen acuerdos sin pagar|no hay acuerdos sin pagar|límite|no se puede crear/i,
+          /solo puedes crear hojas de rutas si existen acuerdos sin pagar|no hay acuerdos pendientes de hoja de ruta|no hay acuerdos sin pagar|límite|no se puede crear/i,
         ),
       ).toBeVisible({ timeout: 10_000 });
     } else {

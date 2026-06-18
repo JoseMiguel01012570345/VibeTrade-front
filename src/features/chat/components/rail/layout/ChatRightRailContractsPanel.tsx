@@ -1,6 +1,9 @@
 import toast from 'react-hot-toast'
 import { ChevronRight, Copy, ExternalLink, MapPin, Trash2 } from 'lucide-react'
-import { type TradeAgreement } from "@features/market/model/tradeAgreementTypes"
+import {
+  agreementRouteLinkFrozen,
+  type TradeAgreement,
+} from "@features/market/model/tradeAgreementTypes"
 import type { RouteSheet } from "@features/market/model/routeSheetTypes"
 import { AgreementDetailView } from "../../AgreementDetail";
 import {
@@ -95,8 +98,16 @@ export function ChatRightRailContractsPanel({
           {agreementForDetail.hasSucceededPayments ? (
             <p className="mb-2.5 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_92%,transparent)] px-2.5 py-2 text-[12px] leading-snug text-[var(--muted)]">
               Hay <strong className="text-[var(--text)]">cobros registrados</strong> para este acuerdo. No se puede
-              editar ni eliminar ni cambiar el vínculo con la hoja de ruta. Podés{' '}
-              <strong className="text-[var(--text)]">duplicarlo</strong> para crear una copia pendiente sin cobros.
+              editar ni eliminar
+              {agreementRouteLinkFrozen(agreementForDetail) ?
+                agreementForDetail.hasAcceptedMerchandiseEvidence ?
+                  ' ni modificar el vínculo con la hoja de ruta (evidencia de mercancía aceptada)'
+                : ' ni cambiar el vínculo con la hoja de ruta'
+              : agreementForDetail.routeSheetId ?
+                '; podés desvincular la hoja si el transporte aún no fue pagado'
+              : '; podés vincular una hoja de ruta para cobrar el transporte después'}
+              . Podés <strong className="text-[var(--text)]">duplicarlo</strong> para crear una copia pendiente sin
+              cobros.
             </p>
           ) : null}
           {isActingSeller &&
@@ -166,10 +177,11 @@ export function ChatRightRailContractsPanel({
             routeSheets={routeSheets}
             routeSheetIdsLinkedElsewhere={routeSheetIdsLinkedElsewhere}
             linkActionsDisabled={
-              actionsLocked ||
-              agreementForDetail.status === 'deleted' ||
-              agreementForDetail.hasSucceededPayments === true
+              actionsLocked || agreementForDetail.status === 'deleted'
             }
+            routeLinkFrozenAfterPayment={agreementRouteLinkFrozen(
+              agreementForDetail,
+            )}
             onLinkRouteSheet={
               isActingSeller
                 ? async (agreementId, routeSheetId) => {
