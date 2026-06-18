@@ -276,17 +276,26 @@ export async function expectRouteSheetTramoFieldStates(
     destinationEditable?: boolean;
   },
 ): Promise<void> {
-  const tramo = page.getByRole("listitem").nth(tramoIndex);
-  const phone = tramo.locator('input[id*="telefono"], input[name*="telefono"]');
+  const form = page
+    .locator('[role="dialog"]')
+    .filter({ hasText: /nueva hoja de rutas|editar hoja de rutas/i });
+  await expect(form).toBeVisible({ timeout: 10_000 });
+  const phone = form.locator(`#ruta-tramo-${tramoIndex}-tel`);
   if (opts.phoneEditable === true) {
-    await expect(phone.first()).toBeEnabled({ timeout: 10_000 });
+    await expect(phone).toBeVisible({ timeout: 10_000 });
+    await expect(phone).toBeEnabled({ timeout: 10_000 });
   } else if (opts.phoneEditable === false) {
-    await expect(phone.first()).toBeDisabled({ timeout: 10_000 });
+    const hasInput = await phone.isVisible({ timeout: 3_000 }).catch(() => false);
+    if (hasInput) {
+      await expect(phone).toBeDisabled({ timeout: 10_000 });
+    } else {
+      await expect(phone).toHaveCount(0, { timeout: 5_000 });
+    }
   }
-  const dest = tramo.locator('input[id*="destino"], input[name*="destino"]');
+  const dest = form.locator(`#ruta-tramo-${tramoIndex}-destino`);
   if (opts.destinationEditable === true) {
-    await expect(dest.first()).toBeEnabled({ timeout: 10_000 });
+    await expect(dest).toBeEditable({ timeout: 10_000 });
   } else if (opts.destinationEditable === false) {
-    await expect(dest.first()).toBeDisabled({ timeout: 10_000 });
+    await expect(dest).not.toBeEditable({ timeout: 10_000 });
   }
 }

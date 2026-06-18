@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
+import { waitForChatReady } from "./chat-helpers";
 
 const FORM_DIALOG_TEXT = /nueva hoja de rutas|editar hoja de rutas/i;
 
@@ -29,9 +30,10 @@ export async function dismissPeerPartyExitModalIfOpen(page: Page): Promise<void>
 }
 
 export async function waitForThreadContractsLoaded(page: Page): Promise<void> {
+  await waitForChatReady(page);
   await dismissPeerPartyExitModalIfOpen(page);
   const contractsTab = page.getByRole("button", { name: /^contratos$/i });
-  await expect(contractsTab).toBeVisible({ timeout: 15_000 });
+  await expect(contractsTab).toBeVisible({ timeout: 45_000 });
   for (let attempt = 0; attempt < 5; attempt++) {
     await dismissPeerPartyExitModalIfOpen(page);
     try {
@@ -61,6 +63,7 @@ export async function closeSubscribersPanelIfOpen(page: Page): Promise<void> {
 
 /** Opens the Rutas tab in the right rail. */
 export async function openRoutesRail(page: Page): Promise<void> {
+  await dismissPeerPartyExitModalIfOpen(page);
   await closeSubscribersPanelIfOpen(page);
   const tab = page.getByRole("button", { name: /^rutas$/i });
   await expect(tab).toBeVisible({ timeout: 15_000 });
@@ -132,20 +135,28 @@ async function pickTimeInPopover(
 
   const scrollCols = timePop.locator(".vt-time-scroll");
 
-  const hourPill = scrollCols.nth(0).getByRole("button", {
-    name: new RegExp(`^${String(h12).padStart(2, "0")}$`),
-  }).first();
+  const apPill = scrollCols.nth(2).getByRole("button", { name: ap }).first();
+  await apPill.click();
+
+  const hourPill = scrollCols
+    .nth(0)
+    .getByRole("button", {
+      name: new RegExp(`^${String(h12).padStart(2, "0")}$`),
+      disabled: false,
+    })
+    .first();
   await hourPill.scrollIntoViewIfNeeded();
   await hourPill.click();
 
-  const minPill = scrollCols.nth(1).getByRole("button", {
-    name: new RegExp(`^${String(mm).padStart(2, "0")}$`),
-  }).first();
+  const minPill = scrollCols
+    .nth(1)
+    .getByRole("button", {
+      name: new RegExp(`^${String(mm).padStart(2, "0")}$`),
+      disabled: false,
+    })
+    .first();
   await minPill.scrollIntoViewIfNeeded();
   await minPill.click();
-
-  const apPill = scrollCols.nth(2).getByRole("button", { name: ap }).first();
-  await apPill.click();
 
   await page.keyboard.press("Escape");
   await expect(timePop).toBeHidden({ timeout: 3_000 });
@@ -188,6 +199,18 @@ async function fillTramoMapCoords(
 
   await mapModal.getByRole("button", { name: /guardar coordenadas/i }).click();
   await expect(mapModal).toBeHidden({ timeout: 5_000 });
+}
+
+/** Sets lat/lng for origen or destino via the map picker in the route sheet form. */
+export async function setTramoMapCoordsViaUI(
+  page: Page,
+  tramoIndex: number,
+  punto: "origen" | "destino",
+  lat: string,
+  lng: string,
+  label?: string,
+): Promise<void> {
+  await fillTramoMapCoords(page, tramoIndex, punto, lat, lng, label);
 }
 
 /** Fills the origin, destination, time and required fields for a tramo (0-indexed). */
@@ -348,18 +371,78 @@ export async function saveRouteSheet(page: Page): Promise<void> {
   }
 }
 
+/** After linking a route sheet in Contratos, opens it in the Rutas panel. */
+export async function openLinkedRouteSheetFromContractDetail(
+  page: Page,
+  tituloFallback?: string,
+): Promise<void> {
+  const openBtn = page.getByRole("button", {
+    name: /ver hoja de ruta en el panel/i,
+  });
+  const detailReady = page
+    .getByRole("button", { name: /← lista/i })
+    .or(
+      page.getByRole("button", {
+        name: /publicar en la plataforma|ocultar de la plataforma/i,
+      }),
+    )
+    .first();
+  if (await openBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await openBtn.click({ timeout: 5_000 }).catch(() => null);
+      if (await detailReady.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        return;
+      }
+      await page.waitForTimeout(400);
+    }
+  }
+  if (tituloFallback?.trim()) {
+    await openRouteSheetDetailFromList(page, tituloFallback);
+    return;
+  }
+  await expect(detailReady).toBeVisible({ timeout: 20_000 });
+}
+
+async function openRouteSheetDetailFromList(
+  page: Page,
+  titulo: string,
+): Promise<void> {
+  await openRoutesRail(page);
+  const card = page
+    .getByRole("button")
+    .filter({ hasText: titulo })
+    .filter({ hasText: /\d tramo/i })
+    .first();
+  const fallback = page.getByRole("button").filter({ hasText: titulo }).first();
+  const target =
+    (await card.isVisible({ timeout: 5_000 }).catch(() => false)) ? card : fallback;
+  await expect(target).toBeVisible({ timeout: 25_000 });
+  await target.click();
+  await expect(
+    page
+      .getByRole("button", { name: /← lista/i })
+      .or(
+        page.getByRole("button", {
+          name: /publicar en la plataforma|ocultar de la plataforma/i,
+        }),
+      )
+      .first(),
+  ).toBeVisible({ timeout: 20_000 });
+}
+
 /** Opens a route sheet by clicking its title card in the list. */
 export async function openRouteSheetDetail(
   page: Page,
   titulo: string,
 ): Promise<void> {
-  await expect(
-    page.getByRole("button").filter({ hasText: titulo }).first(),
-  ).toBeVisible({ timeout: 15_000 });
-  await page.getByRole("button").filter({ hasText: titulo }).first().click();
-  await expect(page.getByRole("button", { name: /← lista/i })).toBeVisible({
-    timeout: 10_000,
+  const fromContract = page.getByRole("button", {
+    name: /ver hoja de ruta en el panel/i,
   });
+  if (await fromContract.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await openLinkedRouteSheetFromContractDetail(page, titulo);
+    return;
+  }
+  await openRouteSheetDetailFromList(page, titulo);
 }
 
 /** Opens route sheet detail unless the seller is already on that view. */
@@ -396,7 +479,10 @@ export async function searchCarrierPhone(
   const phoneInput = form.locator(`#ruta-tramo-${tramoIndex}-tel`);
   await expect(phoneInput).toBeVisible({ timeout: 5_000 });
   await phoneInput.fill(phone);
-  await form.getByRole("button", { name: /buscar y elegir/i }).click();
+  await form
+    .getByRole("button", { name: /buscar y elegir/i })
+    .nth(tramoIndex)
+    .click();
 
   const picker = page.getByRole("dialog", { name: /elegir servicio de transporte/i });
   await expect(picker).toBeVisible({ timeout: 15_000 });
@@ -822,6 +908,37 @@ export async function openFirstTramoInSubscribersPanel(
   routeSheetTitulo?: string,
 ): Promise<void> {
   await openTramoInSubscribersPanel(page, 1, routeSheetTitulo);
+}
+
+/** Selects the first confirmed carrier card in the subscribers panel. */
+export async function selectConfirmedCarrierInSubscribersPanel(
+  page: Page,
+): Promise<void> {
+  const panel = subscribersPanel(page);
+  const confirmedCarrier = panel
+    .getByRole("button")
+    .filter({ hasText: /confirmado/i })
+    .first();
+  await expect(confirmedCarrier).toBeVisible({ timeout: 10_000 });
+  await confirmedCarrier.click();
+}
+
+/** Opens route sheet detail → suscriptores → tramo → transportista confirmado. */
+export async function prepareSubscribersPanelForExpel(
+  page: Page,
+  tramoIndex: number,
+  routeSheetTitulo: string,
+): Promise<void> {
+  await ensureRouteSheetDetailOpen(page, routeSheetTitulo);
+  await openSubscribersPanel(page);
+  await openTramoInSubscribersPanel(page, tramoIndex, routeSheetTitulo);
+  await selectConfirmedCarrierInSubscribersPanel(page);
+}
+
+export function expelFromTramoButton(page: Page) {
+  return subscribersPanel(page).getByRole("button", {
+    name: /expulsar de este tramo/i,
+  });
 }
 
 /** Opens the first carrier row for the selected tramo in the subscribers panel. */

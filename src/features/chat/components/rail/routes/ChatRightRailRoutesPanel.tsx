@@ -327,6 +327,8 @@ export function ChatRightRailRoutesPanel({
       sheetLockedByPaid,
       routeOfferResolved,
       selRoute.id,
+      selRoute,
+      routeTramoSubscriptions,
     );
   const sheetCarrierContactEditOnly =
     !!selRoute &&
@@ -334,6 +336,8 @@ export function ChatRightRailRoutesPanel({
       sheetLockedByPaid,
       routeOfferResolved,
       selRoute.id,
+      selRoute,
+      routeTramoSubscriptions,
     );
 
   const subscribersTargetSheetId = useMemo(() => {

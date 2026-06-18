@@ -53,7 +53,11 @@ import {
   tramoNotifyLineFromOffer,
 } from "@features/market/model/routeSheetOfferGuards";
 import { tradeAgreementToDraft } from "@features/market/model/tradeAgreementTypes";
-import { routeOfferPublicFromEmergentCardOffer } from "@/utils/market/routeOfferPublicFromEmergentCard";
+import {
+  routeOfferPublicFromEmergentCardOffer,
+  routeOfferPublicFromThreadRouteSheet,
+} from "@/utils/market/routeOfferPublicFromEmergentCard";
+import { rebuildRouteOfferAssignmentsFromThreadItems } from "@features/market/model/routeOfferSubscriptionMerge";
 import { userHasTransportService } from "@/utils/user/transportEligibility";
 import { fetchStoreDetail } from "@/utils/market/fetchStoreDetail";
 import { mergeStoreCatalogWithLocalExtras } from "@features/market/model/storeCatalogTypes";
@@ -80,6 +84,10 @@ import {
   mergeSocialThreadMembersIntoProfileStore,
 } from "@/utils/chat/chatSenderLabels";
 import { resolveBuyerUserId } from "@/utils/chat/chatParticipantLabels";
+import {
+  isBuyerExpelledFromThread,
+  isSellerExpelledFromThread,
+} from "@/utils/chat/threadPartyExpelled";
 import { getThreadPeerPartyExit } from "@/utils/chat/threadPeerPartyExit";
 import { useMinWidth961 } from "./hooks/useMinWidth961";
 import { useBuyerForRail } from "./hooks/useBuyerForRail";
@@ -217,6 +225,14 @@ export function ChatPage() {
     profileTrustScores,
     viewerIsConfirmedCarrier,
   );
+  const excludeBuyerFromParticipants = useMemo(
+    () => (thread ? isBuyerExpelledFromThread(thread) : false),
+    [thread],
+  );
+  const excludeSellerFromParticipants = useMemo(
+    () => (thread ? isSellerExpelledFromThread(thread) : false),
+    [thread],
+  );
   useChatPeerProfileHydration(thread, me.id, isSocialThread);
 
   useEffect(() => {
@@ -288,7 +304,16 @@ export function ChatPage() {
       th,
       routeSheetBeingEdited?.id,
     );
-    if (fromResolve) return fromResolve;
+    if (fromResolve) {
+      const subs = th?.routeTramoSubscriptionsSnapshot;
+      if (subs?.length) {
+        return (
+          rebuildRouteOfferAssignmentsFromThreadItems(fromResolve, subs) ??
+          fromResolve
+        );
+      }
+      return fromResolve;
+    }
     if (!th?.id || !rsid) return undefined;
     const emo = th.offerId?.trim();
     if (emo) {
@@ -305,6 +330,20 @@ export function ChatPage() {
       fromCard.threadId?.trim() === th.id.trim()
     ) {
       return fromCard;
+    }
+    if (routeSheetBeingEdited?.paradas?.length) {
+      const synthetic = routeOfferPublicFromThreadRouteSheet(
+        th.id,
+        routeSheetBeingEdited,
+      );
+      const subs = th.routeTramoSubscriptionsSnapshot;
+      if (subs?.length) {
+        return (
+          rebuildRouteOfferAssignmentsFromThreadItems(synthetic, subs) ??
+          synthetic
+        );
+      }
+      return synthetic;
     }
     return undefined;
   }, [
@@ -327,12 +366,16 @@ export function ChatPage() {
       true,
       routeOfferForEditingRouteSheet ?? routeOfferForThisThread,
       rs.id,
+      routeSheetBeingEdited ?? undefined,
+      thread?.routeTramoSubscriptionsSnapshot,
     );
   }, [
     routeSheetBeingEdited?.id,
     routeSheetLockedByPaidAgreement,
+    routeSheetBeingEdited,
     routeOfferForEditingRouteSheet,
     routeOfferForThisThread,
+    thread?.routeTramoSubscriptionsSnapshot,
   ]);
   const routeLegPaymentCurrency = useMemo(
     () =>
@@ -1048,6 +1091,7 @@ export function ChatPage() {
               store={store}
               me={me}
               profileDisplayNames={profileDisplayNames}
+              offerTitle={offerForThread?.title}
               isSocialThread={isSocialThread}
               railOpen={railOpen}
               mobileChatActionsOpen={mobileChatActionsOpen}
@@ -1207,6 +1251,8 @@ export function ChatPage() {
               buyer={buyerForRail}
               seller={sellerForPeople ?? store}
               chatCarriers={thread.chatCarriers}
+              excludeBuyerFromParticipants={excludeBuyerFromParticipants}
+              excludeSellerFromParticipants={excludeSellerFromParticipants}
               focusRouteId={focusRouteId}
               onConsumedRouteFocus={() => setFocusRouteId(null)}
               onOpenNewRouteSheet={() => {
@@ -1245,11 +1291,19 @@ export function ChatPage() {
                     c.routeSheetId === sheet.id &&
                     c.hasSucceededPayments === true,
                 );
+                const perSheetOffer =
+                  resolveRouteOfferPublicForSheet(
+                    useMarketStore.getState(),
+                    thread,
+                    sheet.id,
+                  ) ?? routeOfferForThisThread;
                 if (
                   routeSheetStructuralEditBlockedByPaid(
                     lockedByPaid,
-                    routeOfferForThisThread,
+                    perSheetOffer,
                     sheet.id,
+                    sheet,
+                    thread.routeTramoSubscriptionsSnapshot,
                   )
                 ) {
                   toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);

@@ -81,10 +81,13 @@ import { VtSelect } from "@shared/components/ui/VtSelect";
 import { RouteSheetTransportistaPhoneField } from "./RouteSheetTransportistaPhoneField";
 import {
   joinRouteEstimadoStored,
-  maxIsoDate,
   splitRouteEstimadoStored,
-  todayIsoDateLocal,
 } from "@features/market/model/routeSheetDateTime";
+import {
+  isRouteEstimadoTimeDisabled,
+  routeEntregaDateBounds,
+  routeRecogidaDateBounds,
+} from "@features/market/model/routeTramoEstimadoPickerConstraints";
 import {
   activeAssignmentOnFormTramo,
   confirmedAssignmentOnFormTramo,
@@ -825,8 +828,8 @@ export function RouteSheetFormModal({
                 const entEst = splitRouteEstimadoStored(
                   p.tiempoEntregaEstimado,
                 );
-                const minRecogidaD = todayIsoDateLocal();
-                const minEntregaD = maxIsoDate(minRecogidaD, recEst.date);
+                const recogidaDateBounds = routeRecogidaDateBounds(tramos, i);
+                const entregaDateBounds = routeEntregaDateBounds(tramos, i);
                 const prevStop = i > 0 ? tramos[i - 1] : null;
                 const origenTextReadOnly = i > 0;
                 let origenNombre: string;
@@ -1027,7 +1030,8 @@ export function RouteSheetFormModal({
                               value={recEst.date}
                               allowEmpty
                               disabled={tramoFieldsReadOnly}
-                              min={minRecogidaD}
+                              min={recogidaDateBounds.min}
+                              max={recogidaDateBounds.max || undefined}
                               placeholder="Fecha"
                               popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
                               onChange={(d) => {
@@ -1045,6 +1049,15 @@ export function RouteSheetFormModal({
                               aria-label={`Tramo ${i + 1}: hora de recogida estimada`}
                               value={recEst.time}
                               disabled={tramoFieldsReadOnly}
+                              isTimeDisabled={(tm) =>
+                                isRouteEstimadoTimeDisabled(
+                                  "recogida",
+                                  tramos,
+                                  i,
+                                  recEst.date,
+                                  tm,
+                                )
+                              }
                               placeholder="Hora"
                               popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
                               onChange={(tm) => {
@@ -1082,7 +1095,8 @@ export function RouteSheetFormModal({
                               value={entEst.date}
                               allowEmpty
                               disabled={tramoFieldsReadOnly}
-                              min={minEntregaD}
+                              min={entregaDateBounds.min}
+                              max={entregaDateBounds.max || undefined}
                               placeholder="Fecha"
                               popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
                               onChange={(d) => {
@@ -1100,6 +1114,15 @@ export function RouteSheetFormModal({
                               aria-label={`Tramo ${i + 1}: hora de entrega estimada`}
                               value={entEst.time}
                               disabled={tramoFieldsReadOnly}
+                              isTimeDisabled={(tm) =>
+                                isRouteEstimadoTimeDisabled(
+                                  "entrega",
+                                  tramos,
+                                  i,
+                                  entEst.date,
+                                  tm,
+                                )
+                              }
                               placeholder="Hora"
                               popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
                               onChange={(tm) => {

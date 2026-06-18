@@ -377,6 +377,10 @@ export type Thread = {
   partyExitedUserId?: string;
   partyExitedReason?: string;
   partyExitedAtUtc?: string;
+  /** Comprador que hizo soft-leave o notify-participant-left (API). */
+  buyerExpelledAtUtc?: string;
+  /** Vendedor que hizo soft-leave o notify-participant-left (API). */
+  sellerExpelledAtUtc?: string;
   paymentCompleted?: boolean;
   chatActionsLocked?: boolean;
   /** Comprador mostrado en integrantes cuando el hilo es vista logística (p. ej. demo cooperativa). */
@@ -389,6 +393,8 @@ export type Thread = {
   chatCarriers?: ThreadChatCarrier[];
   /** Acuses por hoja (se reinicia al guardar ediciones con transportistas en el hilo). */
   routeSheetEditAcks?: Record<string, RouteSheetEditAckState>;
+  /** Último GET de suscripciones de tramo del hilo (guards multi-hoja con cobros). */
+  routeTramoSubscriptionsSnapshot?: RouteTramoSubscriptionItemApi[];
   /** Hilo de mensajería sin oferta (grupo / directo): sin acuerdos, pagos ni panel de rutas. */
   isSocialGroup?: boolean;
   /** Título personalizado del grupo social (API; solo el creador puede cambiarlo). */

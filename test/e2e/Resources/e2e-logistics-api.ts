@@ -786,6 +786,39 @@ export async function postCarrierWithdrawApi(
   return { status: res.status, text: res.text };
 }
 
+export async function postSellerExpelCarrierApi(
+  page: Page,
+  token: string,
+  args: {
+    threadId: string;
+    carrierUserId: string;
+    reason: string;
+    routeSheetId?: string;
+    stopId?: string;
+  },
+): Promise<{ status: number; text: string; json?: Record<string, unknown> }> {
+  const res = await e2eAuthorizedFetch<Record<string, unknown>>(
+    page,
+    token,
+    `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/route-tramo-subscriptions/seller-expel-carrier`,
+    {
+      method: "POST",
+      body: {
+        carrierUserId: args.carrierUserId,
+        reason: args.reason,
+        ...(args.routeSheetId?.trim() && args.stopId?.trim()
+          ? { routeSheetId: args.routeSheetId.trim(), stopId: args.stopId.trim() }
+          : {}),
+      },
+    },
+  );
+  return {
+    status: res.status,
+    text: res.text,
+    json: res.ok ? res.data : undefined,
+  };
+}
+
 async function ensureE2EApiOrigin(page: Page, threadId: string): Promise<void> {
   if (!page.url().includes(threadId)) {
     await page.goto(`/chat/${encodeURIComponent(threadId)}`, {
@@ -1003,4 +1036,78 @@ export async function submitMerchandiseEvidenceViaApi(
     },
     [threadId, token, agreementId, note] as [string, string, string, string],
   );
+}
+
+/** POST buyer accept on submitted merchandise evidence; returns HTTP status. */
+export async function acceptMerchandiseEvidenceViaApi(
+  page: Page,
+  token: string,
+  threadId: string,
+  agreementId: string,
+): Promise<number> {
+  return page.evaluate(
+    async ([tid, tok, aid]: [string, string, string]) => {
+      const hdr: Record<string, string> = {
+        Authorization: `Bearer ${tok}`,
+        "Content-Type": "application/json",
+      };
+      const listRes = await fetch(
+        `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments`,
+        { headers: hdr },
+      );
+      if (!listRes.ok) return listRes.status;
+      const payments = (await listRes.json()) as Array<{
+        id?: string;
+        status?: string;
+        evidence?: { status?: string };
+      }>;
+      const payId = payments.find((p) => {
+        const paySt = (p.status ?? "").trim().toLowerCase();
+        const evSt = (p.evidence?.status ?? "").trim().toLowerCase();
+        return paySt === "held" && evSt === "submitted";
+      })?.id;
+      if (!payId) return 404;
+      const decideRes = await fetch(
+        `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments/${encodeURIComponent(payId)}/evidence/decision`,
+        {
+          method: "POST",
+          headers: hdr,
+          body: JSON.stringify({ decision: "accepted" }),
+        },
+      );
+      return decideRes.status;
+    },
+    [threadId, token, agreementId] as [string, string, string],
+  );
+}
+
+/** Poll until no merchandise line payments remain in `held` status. */
+export async function waitForMerchandisePaymentsReleased(
+  page: Page,
+  token: string,
+  threadId: string,
+  agreementId: string,
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const held = await page.evaluate(
+          async ([tid, tok, aid]: [string, string, string]) => {
+            const res = await fetch(
+              `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments`,
+              { headers: { Authorization: `Bearer ${tok}` } },
+            );
+            if (!res.ok) return -1;
+            const rows = (await res.json()) as Array<{ status?: string }>;
+            return rows.filter(
+              (r) => (r.status ?? "").trim().toLowerCase() === "held",
+            ).length;
+          },
+          [threadId, token, agreementId] as [string, string, string],
+        );
+        return held;
+      },
+      { timeout: 45_000 },
+    )
+    .toBe(0);
 }

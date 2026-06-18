@@ -51,6 +51,9 @@ type Props = {
   onOpenRouteSubscribers?: (routeSheetId: string) => void;
   /** Tras mutaciones de ruta en hilo persistido: hojas + suscripciones desde API. */
   onPersistedRouteDataRefresh?: () => Promise<void>;
+  /** Comprador/vendedor que ya salió del hilo no debe figurar en integrantes. */
+  excludeBuyerFromParticipants?: boolean;
+  excludeSellerFromParticipants?: boolean;
 };
 
 export function ChatRightRail({
@@ -77,6 +80,8 @@ export function ChatRightRail({
   chatCarriers,
   onOpenRouteSubscribers,
   onPersistedRouteDataRefresh,
+  excludeBuyerFromParticipants = false,
+  excludeSellerFromParticipants = false,
 }: Props) {
   const publishRouteSheetsToPlatform = useMarketStore(
     (s) => s.publishRouteSheetsToPlatform,
@@ -112,8 +117,18 @@ export function ChatRightRail({
   }, [focusRouteId, onConsumedRouteFocus]);
 
   const participants = useMemo(
-    () => buildChatParticipants(buyer, seller, chatCarriers),
-    [buyer, seller, chatCarriers],
+    () =>
+      buildChatParticipants(buyer, seller, chatCarriers, {
+        excludeBuyer: excludeBuyerFromParticipants,
+        excludeSeller: excludeSellerFromParticipants,
+      }),
+    [
+      buyer,
+      seller,
+      chatCarriers,
+      excludeBuyerFromParticipants,
+      excludeSellerFromParticipants,
+    ],
   );
 
   const linkedRouteSheetIds = useMemo(() => {

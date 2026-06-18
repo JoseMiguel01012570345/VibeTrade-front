@@ -61,6 +61,7 @@ import {
   counterpartyAlreadyRecordedPartyExitFromThread,
   peerPartyExitFromDto,
 } from "@/utils/chat/threadPeerPartyExit"
+import { partyExpelledFieldsFromDto, markPartyExpelledOnThread } from "@/utils/chat/threadPartyExpelled"
 import { isOfferPublishedForBuyerChat } from "@/utils/market/offerPublishedForBuyerChat"
 import { useAppStore } from "./useAppStore";
 import {
@@ -259,6 +260,7 @@ onThreadCreatedFromServer: (dto: ChatThreadDto) => {
             partyExitedAtUtc: peer.atUtc,
           }
         : {}),
+      ...partyExpelledFieldsFromDto(dto),
     }
     return { ...s, threads: nextThreads, offers, stores }
   })
@@ -386,6 +388,8 @@ ensureThreadForOffer: async (offerId, opts) => {
       | 'partyExitedUserId'
       | 'partyExitedReason'
       | 'partyExitedAtUtc'
+      | 'buyerExpelledAtUtc'
+      | 'sellerExpelledAtUtc'
       | 'isSocialGroup'
       | 'socialGroupTitle'
     >,
@@ -455,6 +459,7 @@ ensureThreadForOffer: async (offerId, opts) => {
               prematureExitUnderInvestigation: premature,
             }
           : {}),
+        ...partyExpelledFieldsFromDto(participantDto ?? undefined),
         ...(participantDto?.isSocialGroup ||
         participantDto?.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID
           ? { isSocialGroup: true as const }
@@ -1206,12 +1211,14 @@ applyPeerPartyExitedFromServer: (threadId, payload) => {
       atUtc,
       ...(leaverRole === 'buyer' || leaverRole === 'seller' ? { leaverRole } : {}),
     }
+    const expelled = markPartyExpelledOnThread(th, uid, atUtc, leaverRole)
     return {
       ...s,
       threads: {
         ...s.threads,
         [tid]: {
           ...th,
+          ...expelled,
           peerPartyExit: peer,
           partyExitedUserId: uid,
           partyExitedReason: reason,

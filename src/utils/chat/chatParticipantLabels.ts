@@ -121,13 +121,15 @@ export function formatChatParticipantDisplayName(args: {
 }
 
 /**
- * Título del hilo (lista / barra del chat): el comprador ve la tienda; el vendedor
- * <code>«nombre de la tienda» · «nombre del comprador»</code> (U+00B7).
+ * Título del hilo (lista / barra del chat): comprador
+ * <code>«tienda» · «producto/servicio»</code>; vendedor
+ * <code>«comprador» · «producto/servicio»</code> (U+00B7).
  */
 export function chatThreadHeaderTitle(
   th: Thread,
   me: { id: string; name: string },
   profileDisplayNames: Record<string, string>,
+  offerTitle?: string,
 ): string {
   if (threadIsSocialLike(th)) {
     const custom = th.socialGroupTitle?.trim();
@@ -159,16 +161,17 @@ export function chatThreadHeaderTitle(
     return "Chat";
   }
   const storeName = (th.store.name || "Negocio").trim();
+  const productLabel = (offerTitle ?? "Oferta").trim();
   const sellerUid = resolveSellerUserId(th);
   const imSeller = sellerUid != null && me.id === sellerUid;
-  if (!imSeller) return storeName;
+  if (!imSeller) return `${storeName} \u00b7 ${productLabel}`;
   const buyerName = buyerFirstNameForThread(
     th,
     me.id,
     me.name,
     profileDisplayNames,
   );
-  return `${storeName} \u00b7 ${buyerName}`;
+  return `${buyerName} \u00b7 ${productLabel}`;
 }
 
 /** Encabezado de burbuja para un mensaje (tú / el otro). */

@@ -41,6 +41,7 @@ import {
   kickCarrierFromTramo,
   linkRouteSheetToAgreementViaUI,
   openContractByAgreementTitle,
+  openLinkedRouteSheetFromContractDetail,
   openRouteSheetDetail,
   openRoutesRail,
   publishRouteSheetViaUI,
@@ -475,8 +476,28 @@ export async function setupPublishedRouteTwoTramosCarrierOnFirstOnly(
   await openRailContracts(sellerPage);
   await openContractByAgreementTitle(sellerPage, agreementTitle);
   await linkRouteSheetToAgreementViaUI(sellerPage, titulo);
-  await openRoutesRail(sellerPage);
-  await openRouteSheetDetail(sellerPage, titulo);
+  await reloadChatThread(sellerPage);
+  await waitForThreadContractsLoaded(sellerPage);
+  await expect
+    .poll(
+      async () => {
+        try {
+          const id = await resolveRouteSheetIdByTitulo(
+            sellerPage,
+            threadId,
+            seller.sessionToken,
+            titulo,
+          );
+          return id.length > 0;
+        } catch {
+          return false;
+        }
+      },
+      { timeout: 45_000 },
+    )
+    .toBe(true);
+  await openContractByAgreementTitle(sellerPage, agreementTitle);
+  await openLinkedRouteSheetFromContractDetail(sellerPage, titulo);
   await publishRouteSheetViaUI(sellerPage);
   await clickInviteCarriers(sellerPage);
   await sendCarrierInvites(sellerPage);

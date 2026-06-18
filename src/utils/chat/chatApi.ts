@@ -53,6 +53,8 @@ export type ChatThreadDto = {
   partyExitedUserId?: string | null;
   partyExitedReason?: string | null;
   partyExitedAtUtc?: string | null;
+  buyerExpelledAtUtc?: string | null;
+  sellerExpelledAtUtc?: string | null;
   /** Chat directo/grupal sin oferta comercial (sin acuerdos ni rutas). */
   isSocialGroup?: boolean;
   /** Nombre del grupo (solo lo edita el creador en API). */
@@ -132,6 +134,11 @@ export type ChatThreadSummaryDto = {
   sellerUserId: string;
   buyerDisplayName?: string | null;
   buyerAvatarUrl?: string | null;
+  partyExitedUserId?: string | null;
+  partyExitedReason?: string | null;
+  partyExitedAtUtc?: string | null;
+  buyerExpelledAtUtc?: string | null;
+  sellerExpelledAtUtc?: string | null;
   isSocialGroup?: boolean;
   socialGroupTitle?: string | null;
 };

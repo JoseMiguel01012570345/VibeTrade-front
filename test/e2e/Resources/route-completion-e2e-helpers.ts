@@ -2,6 +2,7 @@ import type { Browser, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { openSellerPage } from "./agreement-ui-helpers";
 import { reloadChatThread } from "./chat-helpers";
+import { getE2ESession } from "./chat-env";
 import {
   payMerchandiseLinesViaBuyerApi,
   submitMerchandiseEvidenceViaApi,
@@ -16,32 +17,38 @@ import {
   submitEvidenceViaUI,
 } from "./route-logistics-ui-helpers";
 import {
-  openContractByAgreementIndex,
+  openContractByAgreementTitle,
   waitForThreadContractsLoaded,
 } from "./route-sheet-ui-helpers";
 
 export const CARRIER_TRAMO_BONUS = 2;
 
-export async function payHeldMerchandiseViaApi(
+export async function payHeldMerchandiseViaUI(
   page: Page,
-  buyerToken: string,
   threadId: string,
+  _agreementTitle: string,
   agreementId: string,
 ): Promise<void> {
-  const res = await payMerchandiseLinesViaBuyerApi(page, buyerToken, {
+  const buyer = getE2ESession()!;
+  const res = await payMerchandiseLinesViaBuyerApi(page, buyer.sessionToken, {
     threadId,
     agreementId,
   });
-  expect(res.status).toBeLessThan(300);
+  if (res.status >= 400) {
+    throw new Error(
+      `Merchandise held payment failed (${res.status}): ${res.text}`,
+    );
+  }
+  await waitForHeldMerchPayment(page, buyer.sessionToken, threadId, agreementId);
 }
 
 export async function openAgreementEvidencePanel(
   page: Page,
-  _opts: { agreementTitle: string; routeSheetTitulo?: string },
+  opts: { agreementTitle: string; routeSheetTitulo?: string },
 ): Promise<void> {
   await reloadChatThread(page);
   await waitForThreadContractsLoaded(page);
-  await openContractByAgreementIndex(page, 0);
+  await openContractByAgreementTitle(page, opts.agreementTitle);
   await expect(
     page
       .getByText(/pagos y evidencia/i)

@@ -12,6 +12,7 @@ import {
 } from "@features/market/model/routeSheetTypes"
 import { agreementHasMerchandiseForRouteLink } from "@features/market/model/tradeAgreementValidation"
 import {
+  resolveRouteOfferPublicForSheet,
   resolveRouteOfferPublicForThread,
   routeSheetAllowsCarrierContactEditWhenPaid,
 } from "@features/market/model/routeSheetOfferGuards"
@@ -160,8 +161,11 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
     routeSheetIdsLockedByPaidAgreements(thGuard).has(routeSheetId) &&
     !routeSheetAllowsCarrierContactEditWhenPaid(
       true,
-      resolveRouteOfferPublicForThread(get(), thGuard),
+      resolveRouteOfferPublicForSheet(get(), thGuard, routeSheetId) ??
+        resolveRouteOfferPublicForThread(get(), thGuard),
       routeSheetId,
+      thGuard.routeSheets?.find((r) => r.id === routeSheetId),
+      thGuard.routeTramoSubscriptionsSnapshot,
     )
   )
     return false

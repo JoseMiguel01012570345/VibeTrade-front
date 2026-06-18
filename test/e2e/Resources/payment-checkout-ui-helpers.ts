@@ -65,7 +65,12 @@ export async function selectAgreementInPaymentModal(
   page: Page,
   titlePart: string | RegExp,
 ): Promise<void> {
-  const trigger = paymentModal(page).getByRole("button", {
+  const modal = paymentModal(page);
+  const selected = modal.getByRole("button").filter({ hasText: titlePart }).first();
+  if (await selected.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    return;
+  }
+  const trigger = modal.getByRole("button", {
     name: /seleccionar acuerdo/i,
   });
   await trigger.click();
@@ -75,6 +80,9 @@ export async function selectAgreementInPaymentModal(
     .first();
   await expect(option).toBeVisible({ timeout: 10_000 });
   await option.click();
+  await expect(
+    modal.getByRole("button").filter({ hasText: titlePart }).first(),
+  ).toBeVisible({ timeout: 10_000 });
 }
 
 export async function setMerchandiseLineChecked(

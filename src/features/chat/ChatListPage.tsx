@@ -471,10 +471,16 @@ export function ChatListPage() {
       .map((th) => {
         const offer = offers[th.offerId];
         const last = lastMessage(th);
-        const listTitle = chatThreadHeaderTitle(th, me, profileDisplayNames);
+        const offerTitle = offer?.title ?? "Oferta";
+        const listTitle = chatThreadHeaderTitle(
+          th,
+          me,
+          profileDisplayNames,
+          offerTitle,
+        );
         return {
           th,
-          offerTitle: offer?.title ?? "Oferta",
+          offerTitle,
           preview: last ? messagePreviewLine(last) : "Sin mensajes",
           at: threadLastActivity(th),
           listTitle,
@@ -639,7 +645,7 @@ export function ChatListPage() {
           </div>
         ) : (
           <div className="flex flex-col">
-            {rows.map(({ th, offerTitle, preview, at, listTitle }) => {
+            {rows.map(({ th, preview, at, listTitle }) => {
               const inv = Boolean(th.prematureExitUnderInvestigation);
               const sellerUid = resolveSellerUserId(th);
               const imSeller = sellerUid != null && me.id === sellerUid;
@@ -699,9 +705,6 @@ export function ChatListPage() {
                             {fmtShort(at)}
                           </span>
                         </div>
-                      </div>
-                      <div className="mb-0.5 truncate text-[13px] text-[var(--muted)]">
-                        {offerTitle}
                       </div>
                       <div className="truncate text-[13px] text-[var(--muted)]">
                         {preview}

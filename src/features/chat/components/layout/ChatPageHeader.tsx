@@ -12,6 +12,7 @@ type Props = {
   store: Thread["store"];
   me: Me;
   profileDisplayNames: Record<string, string>;
+  offerTitle?: string;
   isSocialThread: boolean;
   railOpen: boolean;
   mobileChatActionsOpen: boolean;
@@ -32,6 +33,7 @@ export function ChatPageHeader({
   store,
   me,
   profileDisplayNames,
+  offerTitle,
   isSocialThread,
   railOpen,
   mobileChatActionsOpen,
@@ -59,7 +61,12 @@ export function ChatPageHeader({
             <div className="flex flex-wrap items-center gap-2 font-black tracking-[-0.03em] break-words text-[clamp(14px,3.9vw,18px)] leading-snug">
               <span>
                 {thread
-                  ? chatThreadHeaderTitle(thread, me, profileDisplayNames)
+                  ? chatThreadHeaderTitle(
+                      thread,
+                      me,
+                      profileDisplayNames,
+                      offerTitle,
+                    )
                   : store.name}
               </span>
               {store.verified ? (

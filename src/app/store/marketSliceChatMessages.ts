@@ -25,6 +25,7 @@ import { mediaApiUrl, uploadMediaBlob } from "@/utils/media/mediaClient";
 import { useAppStore } from "./useAppStore";
 import { mergeChatSenderLabelsIntoProfileStore } from "@/utils/chat/chatSenderLabels";
 import { rehydrateCthThreadInStoreForIncomingMessage } from "@/utils/chat/rehydrateCthThreadInStoreForIncomingMessage";
+import { markPartyExpelledOnThread } from "@/utils/chat/threadPartyExpelled";
 
 async function blobUrlToMediaApiUrl(
   blobUrl: string,
@@ -142,12 +143,14 @@ export function createChatMessagesSlice(
           : carriers;
         const chatCarriers =
           wasCarrier && cc.length !== carriers.length ? cc : t.chatCarriers;
+        const expelled = markPartyExpelledOnThread(t, leftId, new Date().toISOString());
         return {
           ...s,
           threads: {
             ...s.threads,
             [threadId]: {
               ...t,
+              ...expelled,
               ...(chatCarriers !== t.chatCarriers ? { chatCarriers } : {}),
               messages: normalizeThreadMessages([...t.messages, m]),
             },

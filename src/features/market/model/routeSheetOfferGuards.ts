@@ -11,7 +11,9 @@ import type {
   RouteSheetCreatePayload,
   RouteStop,
 } from "./routeSheetTypes";
+import type { RouteTramoSubscriptionItemApi } from "@/utils/chat/chatApi";
 import type { RouteStopDeliveryStatusApi } from "@/utils/chat/routeLogisticsApi";
+import { routeOfferPublicFromThreadRouteSheet } from "@/utils/market/routeOfferPublicFromEmergentCard";
 
 /** Mensaje cuando la tienda intenta expulsar con tramo activo sin pausa previa. */
 export const SELLER_EXPEL_REQUIRES_PAUSE_ES =
@@ -45,22 +47,96 @@ export function routeSheetVacantStopIds(
   return vacant;
 }
 
+function confirmedStopIdsFromSubscriptions(
+  sheetId: string,
+  items: RouteTramoSubscriptionItemApi[] | undefined,
+): Set<string> {
+  const confirmed = new Set<string>();
+  const sid = sheetId.trim();
+  if (!sid || !items?.length) return confirmed;
+  for (const it of items) {
+    if (it.routeSheetId?.trim() !== sid) continue;
+    if ((it.status ?? "").trim().toLowerCase() !== "confirmed") continue;
+    const stopId = it.stopId?.trim();
+    if (stopId) confirmed.add(stopId);
+  }
+  return confirmed;
+}
+
+/**
+ * Tramos vacantes para edición de contacto con cobros registrados.
+ * En hilos con varias hojas, la oferta del hilo puede apuntar a otra hoja: se usan paradas + suscripciones.
+ */
+export function routeSheetVacantStopIdsForPaidEdit(
+  sheet: RouteSheet | undefined,
+  offer: RouteOfferPublicState | undefined,
+  sheetId: string,
+  subscriptions?: RouteTramoSubscriptionItemApi[],
+): Set<string> {
+  const sid = sheetId.trim();
+  if (!sid) return new Set();
+
+  if (offer?.routeSheetId?.trim() === sid) {
+    const fromOffer = routeSheetVacantStopIds(offer, sid);
+    if (fromOffer.size > 0 || !subscriptions?.length) return fromOffer;
+  }
+
+  const paradas = sheet?.paradas ?? [];
+  if (!paradas.length) {
+    return offer?.routeSheetId?.trim() === sid
+      ? routeSheetVacantStopIds(offer, sid)
+      : new Set();
+  }
+
+  const confirmed = confirmedStopIdsFromSubscriptions(sid, subscriptions);
+  if (offer?.routeSheetId?.trim() === sid) {
+    for (const t of offer.tramos ?? []) {
+      if (t.assignment?.status === "confirmed") {
+        const stopId = t.stopId?.trim();
+        if (stopId) confirmed.add(stopId);
+      }
+    }
+  }
+
+  const vacant = new Set<string>();
+  for (const p of paradas) {
+    const pid = p.id?.trim();
+    if (!pid) continue;
+    if (!confirmed.has(pid)) vacant.add(pid);
+  }
+  return vacant;
+}
+
 export function routeSheetAllowsCarrierContactEditWhenPaid(
   sheetLockedByPaid: boolean,
   offer: RouteOfferPublicState | undefined,
   sheetId: string,
+  sheet?: RouteSheet,
+  subscriptions?: RouteTramoSubscriptionItemApi[],
 ): boolean {
-  return sheetLockedByPaid && routeSheetVacantStopIds(offer, sheetId).size > 0;
+  return (
+    sheetLockedByPaid &&
+    routeSheetVacantStopIdsForPaidEdit(sheet, offer, sheetId, subscriptions)
+      .size > 0
+  );
 }
 
 export function routeSheetStructuralEditBlockedByPaid(
   sheetLockedByPaid: boolean,
   offer: RouteOfferPublicState | undefined,
   sheetId: string,
+  sheet?: RouteSheet,
+  subscriptions?: RouteTramoSubscriptionItemApi[],
 ): boolean {
   return (
     sheetLockedByPaid &&
-    !routeSheetAllowsCarrierContactEditWhenPaid(sheetLockedByPaid, offer, sheetId)
+    !routeSheetAllowsCarrierContactEditWhenPaid(
+      sheetLockedByPaid,
+      offer,
+      sheetId,
+      sheet,
+      subscriptions,
+    )
   );
 }
 
@@ -336,6 +412,10 @@ export function resolveRouteOfferPublicForSheet(
   }
   const fallback = resolveRouteOfferPublicForThread(state, thread);
   if (fallback?.routeSheetId?.trim() === rsid) return fallback;
+  const sheet = thread.routeSheets?.find((r) => r.id === rsid);
+  if (sheet?.paradas?.length) {
+    return routeOfferPublicFromThreadRouteSheet(thread.id, sheet);
+  }
   return undefined;
 }
 
@@ -367,10 +447,17 @@ export function carrierDeliveryBlocksSellerExpel(
 ): boolean {
   const carrierId = carrierUserId.trim();
   if (carrierId.length < 2) return false;
-  if ((delivery?.currentOwnerUserId ?? "").trim() !== carrierId) return false;
 
   const state = (delivery?.state ?? "").trim().toLowerCase();
   if (!state) return false;
+
+  if (
+    state === "evidence_rejected" ||
+    state === "delivered_pending_evidence" ||
+    state === "evidence_submitted"
+  ) {
+    return true;
+  }
   if (
     state === "evidence_accepted" ||
     state === "idle_store_custody" ||
@@ -378,6 +465,8 @@ export function carrierDeliveryBlocksSellerExpel(
   ) {
     return false;
   }
+
+  if ((delivery?.currentOwnerUserId ?? "").trim() !== carrierId) return false;
   return true;
 }
 

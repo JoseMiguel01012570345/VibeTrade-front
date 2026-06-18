@@ -75,6 +75,59 @@ export async function openChatPeoplePanel(page: Page): Promise<void> {
   await peopleTab.click();
 }
 
+export async function readIntegrantesCount(page: Page): Promise<number> {
+  const memberBtn = page.getByRole("button", { name: /integrantes/i });
+  await expect(memberBtn).toBeVisible({ timeout: 15_000 });
+  const text = (await memberBtn.textContent().catch(() => "")) ?? "";
+  return parseInt(text.match(/\d+/)?.[0] ?? "0", 10);
+}
+
+export async function readChatHeaderTitle(page: Page): Promise<string> {
+  const header = page.locator(".vt-card").filter({
+    has: page.getByRole("button", { name: /volver a la lista de chats/i }),
+  });
+  await expect(header).toBeVisible({ timeout: 15_000 });
+  const title = await header.locator(".font-black").first().textContent();
+  return (title ?? "").trim();
+}
+
+/** «Salir» en la lista de chats (sin acuerdo aceptado → notify-participant-left). */
+export async function leaveChatFromListUI(
+  page: Page,
+  threadId: string,
+): Promise<void> {
+  await page.goto("/chat", {
+    waitUntil: "domcontentloaded",
+    timeout: 45_000,
+  });
+  const threadLink = page.locator(`a[href="/chat/${threadId}"]`);
+  await expect(threadLink).toBeVisible({ timeout: 20_000 });
+  await threadLink
+    .locator("xpath=..")
+    .getByRole("button", { name: /^salir$/i })
+    .click();
+  const dialog = page.getByRole("dialog", { name: /salir del chat/i });
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await dialog.getByRole("button", { name: /sí, salir/i }).click();
+  await expect(dialog).toBeHidden({ timeout: 15_000 });
+}
+
+export async function expectParticipantRoleVisible(
+  page: Page,
+  roleLabel: "Comprador" | "Vendedor",
+  visible: boolean,
+): Promise<void> {
+  const rail = page.getByRole("complementary", {
+    name: /contratos, rutas e integrantes/i,
+  });
+  const role = rail.getByText(roleLabel, { exact: true });
+  if (visible) {
+    await expect(role).toBeVisible({ timeout: 15_000 });
+  } else {
+    await expect(role).toBeHidden({ timeout: 15_000 });
+  }
+}
+
 export function chatParticipantProfileLinks(page: Page) {
   return page.locator(
     "a[href^='/profile/'], a[href*='/store/'][href*='vitrina']",

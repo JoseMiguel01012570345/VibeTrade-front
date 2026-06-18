@@ -32,6 +32,7 @@ import {
   insertTramoAfter,
   linkRouteSheetToAgreementViaUI,
   openContractByAgreementTitle,
+  openLinkedRouteSheetFromContractDetail,
   openRouteSheetDetail,
   openRoutesRail,
   openSubscribersPanel,
@@ -251,8 +252,10 @@ export async function setupPaidRouteLogisticsScenario(
   await linkRouteSheetToAgreementViaUI(sellerPage, titulo);
 
   if (opts.publish !== false) {
-    await openRoutesRail(sellerPage);
-    await openRouteSheetDetail(sellerPage, titulo);
+    await reloadChatThread(sellerPage);
+    await waitForThreadContractsLoaded(sellerPage);
+    await openContractByAgreementTitle(sellerPage, agreementTitle);
+    await openLinkedRouteSheetFromContractDetail(sellerPage, titulo);
     await publishRouteSheetViaUI(sellerPage);
     await clickInviteCarriers(sellerPage);
     await sendCarrierInvites(sellerPage);

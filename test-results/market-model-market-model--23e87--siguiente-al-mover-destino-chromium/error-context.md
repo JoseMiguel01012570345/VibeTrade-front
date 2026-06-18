@@ -1,0 +1,1212 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: market\model\market-model-route-sheet-validation.spec.ts >> route sheet validation — UI >> RV-01: reencadena origen del tramo siguiente al mover destino
+- Location: test\e2e\test-feats\market\model\market-model-route-sheet-validation.spec.ts:52:3
+
+# Error details
+
+```
+Test timeout of 180000ms exceeded.
+```
+
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - main [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e8]:
+          - generic [ref=e10]:
+            - generic [ref=e11]:
+              - button "Volver a la lista de chats" [ref=e12] [cursor=pointer]:
+                - img [ref=e13]
+              - generic [ref=e17]: Usuario sin nombre · Producto E2E mqjpm8xy_tynhy3
+            - button "Emitir acuerdo" [ref=e19] [cursor=pointer]:
+              - img [ref=e20]
+              - generic [ref=e23]: Emitir acuerdo
+          - generic [ref=e25]:
+            - generic [ref=e26]:
+              - link "U" [ref=e27] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e28]:
+                - generic [ref=e29]:
+                  - generic [ref=e30]: Comprador · Usuario sin nombre
+                  - generic [ref=e31]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e32]': "0"
+                - generic [ref=e35]: Hola, me interesa tu oferta (E2E setup)
+                - generic [ref=e37]: 12:25 PM
+            - generic [ref=e38]:
+              - link "U" [ref=e39] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e40]:
+                - generic [ref=e41]:
+                  - generic [ref=e42]: Comprador · Usuario sin nombre
+                  - generic [ref=e43]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e44]': "0"
+                - generic [ref=e45]:
+                  - generic [ref=e46]:
+                    - img [ref=e47]
+                    - generic [ref=e50]: Acuerdo de compra
+                  - generic [ref=e51]: E2E-RS-AGR-0-1781799922745
+                  - generic [ref=e52]: Solo mercancías
+                  - generic [ref=e54]: Aceptado · no revocable
+                - generic [ref=e56]: 12:25 PM
+            - generic [ref=e58]:
+              - generic [ref=e61]: Acuerdo «E2E-RS-AGR-0-1781799922745» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e63]: 12:25 PM
+            - generic [ref=e64]:
+              - link "U" [ref=e65] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e66]:
+                - generic [ref=e67]:
+                  - generic [ref=e68]: Comprador · Usuario sin nombre
+                  - generic [ref=e69]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e70]': "0"
+                - generic [ref=e71]:
+                  - generic [ref=e72]:
+                    - img [ref=e73]
+                    - generic [ref=e76]: Acuerdo de compra
+                  - generic [ref=e77]: E2E-RS-AGR-1-1781799923471
+                  - generic [ref=e78]: Solo mercancías
+                  - generic [ref=e80]: Aceptado · no revocable
+                - generic [ref=e82]: 12:25 PM
+            - generic [ref=e84]:
+              - generic [ref=e87]: Acuerdo «E2E-RS-AGR-1-1781799923471» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e89]: 12:25 PM
+            - generic [ref=e90]:
+              - link "U" [ref=e91] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e92]:
+                - generic [ref=e93]:
+                  - generic [ref=e94]: Comprador · Usuario sin nombre
+                  - generic [ref=e95]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e96]': "0"
+                - generic [ref=e97]:
+                  - generic [ref=e98]:
+                    - img [ref=e99]
+                    - generic [ref=e102]: Acuerdo de compra
+                  - generic [ref=e103]: E2E-RS-AGR-2-1781799923617
+                  - generic [ref=e104]: Solo mercancías
+                  - generic [ref=e106]: Aceptado · no revocable
+                - generic [ref=e108]: 12:25 PM
+            - generic [ref=e110]:
+              - generic [ref=e113]: Acuerdo «E2E-RS-AGR-2-1781799923617» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e115]: 12:25 PM
+            - generic [ref=e116]:
+              - link "U" [ref=e117] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e118]:
+                - generic [ref=e119]:
+                  - generic [ref=e120]: Comprador · Usuario sin nombre
+                  - generic [ref=e121]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e122]': "0"
+                - generic [ref=e123]:
+                  - generic [ref=e124]:
+                    - img [ref=e125]
+                    - generic [ref=e128]: Acuerdo de compra
+                  - generic [ref=e129]: E2E-RS-AGR-3-1781799923778
+                  - generic [ref=e130]: Solo mercancías
+                  - generic [ref=e132]: Aceptado · no revocable
+                - generic [ref=e134]: 12:25 PM
+            - generic [ref=e136]:
+              - generic [ref=e139]: Acuerdo «E2E-RS-AGR-3-1781799923778» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e141]: 12:25 PM
+            - generic [ref=e142]:
+              - link "U" [ref=e143] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e144]:
+                - generic [ref=e145]:
+                  - generic [ref=e146]: Comprador · Usuario sin nombre
+                  - generic [ref=e147]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e148]': "0"
+                - generic [ref=e149]:
+                  - generic [ref=e150]:
+                    - img [ref=e151]
+                    - generic [ref=e154]: Acuerdo de compra
+                  - generic [ref=e155]: E2E-RS-AGR-4-1781799923914
+                  - generic [ref=e156]: Solo mercancías
+                  - generic [ref=e158]: Aceptado · no revocable
+                - generic [ref=e160]: 12:25 PM
+            - generic [ref=e162]:
+              - generic [ref=e165]: Acuerdo «E2E-RS-AGR-4-1781799923914» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e167]: 12:25 PM
+            - generic [ref=e168]:
+              - link "U" [ref=e169] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e170]:
+                - generic [ref=e171]:
+                  - generic [ref=e172]: Comprador · Usuario sin nombre
+                  - generic [ref=e173]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e174]': "0"
+                - generic [ref=e175]:
+                  - generic [ref=e176]:
+                    - img [ref=e177]
+                    - generic [ref=e180]: Acuerdo de compra
+                  - generic [ref=e181]: E2E-RS-AGR-5-1781799924030
+                  - generic [ref=e182]: Solo mercancías
+                  - generic [ref=e184]: Aceptado · no revocable
+                - generic [ref=e186]: 12:25 PM
+            - generic [ref=e188]:
+              - generic [ref=e191]: Acuerdo «E2E-RS-AGR-5-1781799924030» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e193]: 12:25 PM
+            - generic [ref=e194]:
+              - link "U" [ref=e195] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e196]:
+                - generic [ref=e197]:
+                  - generic [ref=e198]: Comprador · Usuario sin nombre
+                  - generic [ref=e199]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e200]': "0"
+                - generic [ref=e201]:
+                  - generic [ref=e202]:
+                    - img [ref=e203]
+                    - generic [ref=e206]: Acuerdo de compra
+                  - generic [ref=e207]: E2E-RS-AGR-6-1781799924236
+                  - generic [ref=e208]: Solo mercancías
+                  - generic [ref=e210]: Aceptado · no revocable
+                - generic [ref=e212]: 12:25 PM
+            - generic [ref=e214]:
+              - generic [ref=e217]: Acuerdo «E2E-RS-AGR-6-1781799924236» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e219]: 12:25 PM
+            - generic [ref=e220]:
+              - link "U" [ref=e221] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e222]:
+                - generic [ref=e223]:
+                  - generic [ref=e224]: Comprador · Usuario sin nombre
+                  - generic [ref=e225]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e226]': "0"
+                - generic [ref=e227]:
+                  - generic [ref=e228]:
+                    - img [ref=e229]
+                    - generic [ref=e232]: Acuerdo de compra
+                  - generic [ref=e233]: E2E-RS-AGR-7-1781799924411
+                  - generic [ref=e234]: Solo mercancías
+                  - generic [ref=e236]: Aceptado · no revocable
+                - generic [ref=e238]: 12:25 PM
+            - generic [ref=e240]:
+              - generic [ref=e243]: Acuerdo «E2E-RS-AGR-7-1781799924411» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e245]: 12:25 PM
+            - generic [ref=e246]:
+              - link "U" [ref=e247] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e248]:
+                - generic [ref=e249]:
+                  - generic [ref=e250]: Comprador · Usuario sin nombre
+                  - generic [ref=e251]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e252]': "0"
+                - generic [ref=e253]:
+                  - generic [ref=e254]:
+                    - img [ref=e255]
+                    - generic [ref=e258]: Acuerdo de compra
+                  - generic [ref=e259]: E2E-RS-AGR-8-1781799924502
+                  - generic [ref=e260]: Solo mercancías
+                  - generic [ref=e262]: Aceptado · no revocable
+                - generic [ref=e264]: 12:25 PM
+            - generic [ref=e266]:
+              - generic [ref=e269]: Acuerdo «E2E-RS-AGR-8-1781799924502» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e271]: 12:25 PM
+            - generic [ref=e272]:
+              - link "U" [ref=e273] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e274]:
+                - generic [ref=e275]:
+                  - generic [ref=e276]: Comprador · Usuario sin nombre
+                  - generic [ref=e277]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e278]': "0"
+                - generic [ref=e279]:
+                  - generic [ref=e280]:
+                    - img [ref=e281]
+                    - generic [ref=e284]: Acuerdo de compra
+                  - generic [ref=e285]: E2E-RS-AGR-9-1781799924601
+                  - generic [ref=e286]: Solo mercancías
+                  - generic [ref=e288]: Aceptado · no revocable
+                - generic [ref=e290]: 12:25 PM
+            - generic [ref=e292]:
+              - generic [ref=e295]: Acuerdo «E2E-RS-AGR-9-1781799924601» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e297]: 12:25 PM
+            - generic [ref=e298]:
+              - link "U" [ref=e299] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e300]:
+                - generic [ref=e301]:
+                  - generic [ref=e302]: Comprador · Usuario sin nombre
+                  - generic [ref=e303]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e304]': "0"
+                - generic [ref=e305]:
+                  - generic [ref=e306]:
+                    - img [ref=e307]
+                    - generic [ref=e310]: Acuerdo de compra
+                  - generic [ref=e311]: E2E-RS-AGR-10-1781799924750
+                  - generic [ref=e312]: Solo mercancías
+                  - generic [ref=e314]: Aceptado · no revocable
+                - generic [ref=e316]: 12:25 PM
+            - generic [ref=e318]:
+              - generic [ref=e321]: Acuerdo «E2E-RS-AGR-10-1781799924750» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e323]: 12:25 PM
+            - generic [ref=e324]:
+              - link "U" [ref=e325] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e326]:
+                - generic [ref=e327]:
+                  - generic [ref=e328]: Comprador · Usuario sin nombre
+                  - generic [ref=e329]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e330]': "0"
+                - generic [ref=e331]:
+                  - generic [ref=e332]:
+                    - img [ref=e333]
+                    - generic [ref=e336]: Acuerdo de compra
+                  - generic [ref=e337]: E2E-RS-AGR-11-1781799924897
+                  - generic [ref=e338]: Solo mercancías
+                  - generic [ref=e340]: Aceptado · no revocable
+                - generic [ref=e342]: 12:25 PM
+            - generic [ref=e344]:
+              - generic [ref=e347]: Acuerdo «E2E-RS-AGR-11-1781799924897» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e349]: 12:25 PM
+            - generic [ref=e350]:
+              - link "U" [ref=e351] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e352]:
+                - generic [ref=e353]:
+                  - generic [ref=e354]: Comprador · Usuario sin nombre
+                  - generic [ref=e355]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e356]': "0"
+                - generic [ref=e357]:
+                  - generic [ref=e358]:
+                    - img [ref=e359]
+                    - generic [ref=e362]: Acuerdo de compra
+                  - generic [ref=e363]: E2E-RS-AGR-12-1781799925045
+                  - generic [ref=e364]: Solo mercancías
+                  - generic [ref=e366]: Aceptado · no revocable
+                - generic [ref=e368]: 12:25 PM
+            - generic [ref=e370]:
+              - generic [ref=e373]: Acuerdo «E2E-RS-AGR-12-1781799925045» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e375]: 12:25 PM
+            - generic [ref=e376]:
+              - link "U" [ref=e377] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e378]:
+                - generic [ref=e379]:
+                  - generic [ref=e380]: Comprador · Usuario sin nombre
+                  - generic [ref=e381]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e382]': "0"
+                - generic [ref=e383]:
+                  - generic [ref=e384]:
+                    - img [ref=e385]
+                    - generic [ref=e388]: Acuerdo de compra
+                  - generic [ref=e389]: E2E-RS-AGR-13-1781799925234
+                  - generic [ref=e390]: Solo mercancías
+                  - generic [ref=e392]: Aceptado · no revocable
+                - generic [ref=e394]: 12:25 PM
+            - generic [ref=e396]:
+              - generic [ref=e399]: Acuerdo «E2E-RS-AGR-13-1781799925234» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e401]: 12:25 PM
+            - generic [ref=e402]:
+              - link "U" [ref=e403] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e404]:
+                - generic [ref=e405]:
+                  - generic [ref=e406]: Comprador · Usuario sin nombre
+                  - generic [ref=e407]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e408]': "0"
+                - generic [ref=e409]:
+                  - generic [ref=e410]:
+                    - img [ref=e411]
+                    - generic [ref=e414]: Acuerdo de compra
+                  - generic [ref=e415]: E2E-RS-AGR-14-1781799925433
+                  - generic [ref=e416]: Solo mercancías
+                  - generic [ref=e418]: Aceptado · no revocable
+                - generic [ref=e420]: 12:25 PM
+            - generic [ref=e422]:
+              - generic [ref=e425]: Acuerdo «E2E-RS-AGR-14-1781799925433» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e427]: 12:25 PM
+            - generic [ref=e428]:
+              - link "U" [ref=e429] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e430]:
+                - generic [ref=e431]:
+                  - generic [ref=e432]: Comprador · Usuario sin nombre
+                  - generic [ref=e433]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e434]': "0"
+                - generic [ref=e435]:
+                  - generic [ref=e436]:
+                    - img [ref=e437]
+                    - generic [ref=e440]: Acuerdo de compra
+                  - generic [ref=e441]: E2E-RS-AGR-15-1781799925571
+                  - generic [ref=e442]: Solo mercancías
+                  - generic [ref=e444]: Aceptado · no revocable
+                - generic [ref=e446]: 12:25 PM
+            - generic [ref=e448]:
+              - generic [ref=e451]: Acuerdo «E2E-RS-AGR-15-1781799925571» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e453]: 12:25 PM
+            - generic [ref=e454]:
+              - link "U" [ref=e455] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e456]:
+                - generic [ref=e457]:
+                  - generic [ref=e458]: Comprador · Usuario sin nombre
+                  - generic [ref=e459]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e460]': "0"
+                - generic [ref=e461]:
+                  - generic [ref=e462]:
+                    - img [ref=e463]
+                    - generic [ref=e466]: Acuerdo de compra
+                  - generic [ref=e467]: E2E-RS-AGR-16-1781799925738
+                  - generic [ref=e468]: Solo mercancías
+                  - generic [ref=e470]: Aceptado · no revocable
+                - generic [ref=e472]: 12:25 PM
+            - generic [ref=e474]:
+              - generic [ref=e477]: Acuerdo «E2E-RS-AGR-16-1781799925738» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e479]: 12:25 PM
+            - generic [ref=e480]:
+              - link "U" [ref=e481] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e482]:
+                - generic [ref=e483]:
+                  - generic [ref=e484]: Comprador · Usuario sin nombre
+                  - generic [ref=e485]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e486]': "0"
+                - generic [ref=e487]:
+                  - generic [ref=e488]:
+                    - img [ref=e489]
+                    - generic [ref=e492]: Acuerdo de compra
+                  - generic [ref=e493]: E2E-RS-AGR-17-1781799925941
+                  - generic [ref=e494]: Solo mercancías
+                  - generic [ref=e496]: Aceptado · no revocable
+                - generic [ref=e498]: 12:25 PM
+            - generic [ref=e500]:
+              - generic [ref=e503]: Acuerdo «E2E-RS-AGR-17-1781799925941» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e505]: 12:25 PM
+            - generic [ref=e506]:
+              - link "U" [ref=e507] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e508]:
+                - generic [ref=e509]:
+                  - generic [ref=e510]: Comprador · Usuario sin nombre
+                  - generic [ref=e511]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e512]': "0"
+                - generic [ref=e513]:
+                  - generic [ref=e514]:
+                    - img [ref=e515]
+                    - generic [ref=e518]: Acuerdo de compra
+                  - generic [ref=e519]: E2E-RS-AGR-18-1781799926123
+                  - generic [ref=e520]: Solo mercancías
+                  - generic [ref=e522]: Aceptado · no revocable
+                - generic [ref=e524]: 12:25 PM
+            - generic [ref=e526]:
+              - generic [ref=e529]: Acuerdo «E2E-RS-AGR-18-1781799926123» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e531]: 12:25 PM
+            - generic [ref=e532]:
+              - link "U" [ref=e533] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e534]:
+                - generic [ref=e535]:
+                  - generic [ref=e536]: Comprador · Usuario sin nombre
+                  - generic [ref=e537]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e538]': "0"
+                - generic [ref=e539]:
+                  - generic [ref=e540]:
+                    - img [ref=e541]
+                    - generic [ref=e544]: Acuerdo de compra
+                  - generic [ref=e545]: E2E-RS-AGR-19-1781799926291
+                  - generic [ref=e546]: Solo mercancías
+                  - generic [ref=e548]: Aceptado · no revocable
+                - generic [ref=e550]: 12:25 PM
+            - generic [ref=e552]:
+              - generic [ref=e555]: Acuerdo «E2E-RS-AGR-19-1781799926291» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e557]: 12:25 PM
+            - generic [ref=e558]:
+              - link "U" [ref=e559] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e560]:
+                - generic [ref=e561]:
+                  - generic [ref=e562]: Comprador · Usuario sin nombre
+                  - generic [ref=e563]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e564]': "0"
+                - generic [ref=e565]:
+                  - generic [ref=e566]:
+                    - img [ref=e567]
+                    - generic [ref=e570]: Acuerdo de compra
+                  - generic [ref=e571]: E2E-RS-AGR-20-1781799926453
+                  - generic [ref=e572]: Solo mercancías
+                  - generic [ref=e574]: Aceptado · no revocable
+                - generic [ref=e576]: 12:25 PM
+            - generic [ref=e578]:
+              - generic [ref=e581]: Acuerdo «E2E-RS-AGR-20-1781799926453» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e583]: 12:25 PM
+            - generic [ref=e584]:
+              - link "U" [ref=e585] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e586]:
+                - generic [ref=e587]:
+                  - generic [ref=e588]: Comprador · Usuario sin nombre
+                  - generic [ref=e589]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e590]': "0"
+                - generic [ref=e591]:
+                  - generic [ref=e592]:
+                    - img [ref=e593]
+                    - generic [ref=e596]: Acuerdo de compra
+                  - generic [ref=e597]: E2E-RS-AGR-21-1781799926593
+                  - generic [ref=e598]: Solo mercancías
+                  - generic [ref=e600]: Aceptado · no revocable
+                - generic [ref=e602]: 12:25 PM
+            - generic [ref=e604]:
+              - generic [ref=e607]: Acuerdo «E2E-RS-AGR-21-1781799926593» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e609]: 12:25 PM
+            - generic [ref=e610]:
+              - link "U" [ref=e611] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e612]:
+                - generic [ref=e613]:
+                  - generic [ref=e614]: Comprador · Usuario sin nombre
+                  - generic [ref=e615]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e616]': "0"
+                - generic [ref=e617]:
+                  - generic [ref=e618]:
+                    - img [ref=e619]
+                    - generic [ref=e622]: Acuerdo de compra
+                  - generic [ref=e623]: E2E-RS-AGR-22-1781799926708
+                  - generic [ref=e624]: Solo mercancías
+                  - generic [ref=e626]: Aceptado · no revocable
+                - generic [ref=e628]: 12:25 PM
+            - generic [ref=e630]:
+              - generic [ref=e633]: Acuerdo «E2E-RS-AGR-22-1781799926708» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e635]: 12:25 PM
+            - generic [ref=e636]:
+              - link "U" [ref=e637] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e638]:
+                - generic [ref=e639]:
+                  - generic [ref=e640]: Comprador · Usuario sin nombre
+                  - generic [ref=e641]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e642]': "0"
+                - generic [ref=e643]:
+                  - generic [ref=e644]:
+                    - img [ref=e645]
+                    - generic [ref=e648]: Acuerdo de compra
+                  - generic [ref=e649]: E2E-RS-AGR-23-1781799926828
+                  - generic [ref=e650]: Solo mercancías
+                  - generic [ref=e652]: Aceptado · no revocable
+                - generic [ref=e654]: 12:25 PM
+            - generic [ref=e656]:
+              - generic [ref=e659]: Acuerdo «E2E-RS-AGR-23-1781799926828» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e661]: 12:25 PM
+            - generic [ref=e662]:
+              - link "U" [ref=e663] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e664]:
+                - generic [ref=e665]:
+                  - generic [ref=e666]: Comprador · Usuario sin nombre
+                  - generic [ref=e667]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e668]': "0"
+                - generic [ref=e669]:
+                  - generic [ref=e670]:
+                    - img [ref=e671]
+                    - generic [ref=e674]: Acuerdo de compra
+                  - generic [ref=e675]: E2E-RS-AGR-24-1781799926953
+                  - generic [ref=e676]: Solo mercancías
+                  - generic [ref=e678]: Aceptado · no revocable
+                - generic [ref=e680]: 12:25 PM
+            - generic [ref=e682]:
+              - generic [ref=e685]: Acuerdo «E2E-RS-AGR-24-1781799926953» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e687]: 12:25 PM
+            - generic [ref=e688]:
+              - link "U" [ref=e689] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e690]:
+                - generic [ref=e691]:
+                  - generic [ref=e692]: Comprador · Usuario sin nombre
+                  - generic [ref=e693]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e694]': "0"
+                - generic [ref=e695]:
+                  - generic [ref=e696]:
+                    - img [ref=e697]
+                    - generic [ref=e700]: Acuerdo de compra
+                  - generic [ref=e701]: E2E-RS-AGR-25-1781799927148
+                  - generic [ref=e702]: Solo mercancías
+                  - generic [ref=e704]: Aceptado · no revocable
+                - generic [ref=e706]: 12:25 PM
+            - generic [ref=e708]:
+              - generic [ref=e711]: Acuerdo «E2E-RS-AGR-25-1781799927148» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e713]: 12:25 PM
+            - generic [ref=e714]:
+              - link "U" [ref=e715] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e716]:
+                - generic [ref=e717]:
+                  - generic [ref=e718]: Comprador · Usuario sin nombre
+                  - generic [ref=e719]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e720]': "0"
+                - generic [ref=e721]:
+                  - generic [ref=e722]:
+                    - img [ref=e723]
+                    - generic [ref=e726]: Acuerdo de compra
+                  - generic [ref=e727]: E2E-RS-AGR-26-1781799927420
+                  - generic [ref=e728]: Solo mercancías
+                  - generic [ref=e730]: Aceptado · no revocable
+                - generic [ref=e732]: 12:25 PM
+            - generic [ref=e734]:
+              - generic [ref=e737]: Acuerdo «E2E-RS-AGR-26-1781799927420» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e739]: 12:25 PM
+            - generic [ref=e740]:
+              - link "U" [ref=e741] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e742]:
+                - generic [ref=e743]:
+                  - generic [ref=e744]: Comprador · Usuario sin nombre
+                  - generic [ref=e745]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e746]': "0"
+                - generic [ref=e747]:
+                  - generic [ref=e748]:
+                    - img [ref=e749]
+                    - generic [ref=e752]: Acuerdo de compra
+                  - generic [ref=e753]: E2E-RS-AGR-27-1781799927505
+                  - generic [ref=e754]: Solo mercancías
+                  - generic [ref=e756]: Aceptado · no revocable
+                - generic [ref=e758]: 12:25 PM
+            - generic [ref=e760]:
+              - generic [ref=e763]: Acuerdo «E2E-RS-AGR-27-1781799927505» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e765]: 12:25 PM
+            - generic [ref=e766]:
+              - link "U" [ref=e767] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e768]:
+                - generic [ref=e769]:
+                  - generic [ref=e770]: Comprador · Usuario sin nombre
+                  - generic [ref=e771]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e772]': "0"
+                - generic [ref=e773]:
+                  - generic [ref=e774]:
+                    - img [ref=e775]
+                    - generic [ref=e778]: Acuerdo de compra
+                  - generic [ref=e779]: E2E-RS-AGR-28-1781799927569
+                  - generic [ref=e780]: Solo mercancías
+                  - generic [ref=e782]: Aceptado · no revocable
+                - generic [ref=e784]: 12:25 PM
+            - generic [ref=e786]:
+              - generic [ref=e789]: Acuerdo «E2E-RS-AGR-28-1781799927569» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e791]: 12:25 PM
+            - generic [ref=e792]:
+              - link "U" [ref=e793] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e794]:
+                - generic [ref=e795]:
+                  - generic [ref=e796]: Comprador · Usuario sin nombre
+                  - generic [ref=e797]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e798]': "0"
+                - generic [ref=e799]:
+                  - generic [ref=e800]:
+                    - img [ref=e801]
+                    - generic [ref=e804]: Acuerdo de compra
+                  - generic [ref=e805]: E2E-RS-AGR-29-1781799927651
+                  - generic [ref=e806]: Solo mercancías
+                  - generic [ref=e808]: Aceptado · no revocable
+                - generic [ref=e810]: 12:25 PM
+            - generic [ref=e812]:
+              - generic [ref=e815]: Acuerdo «E2E-RS-AGR-29-1781799927651» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e817]: 12:25 PM
+            - generic [ref=e818]:
+              - link "U" [ref=e819] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e820]:
+                - generic [ref=e821]:
+                  - generic [ref=e822]: Comprador · Usuario sin nombre
+                  - generic [ref=e823]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e824]': "0"
+                - generic [ref=e825]:
+                  - generic [ref=e826]:
+                    - img [ref=e827]
+                    - generic [ref=e830]: Acuerdo de compra
+                  - generic [ref=e831]: E2E-RS-AGR-30-1781799927738
+                  - generic [ref=e832]: Solo mercancías
+                  - generic [ref=e834]: Aceptado · no revocable
+                - generic [ref=e836]: 12:25 PM
+            - generic [ref=e838]:
+              - generic [ref=e841]: Acuerdo «E2E-RS-AGR-30-1781799927738» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e843]: 12:25 PM
+            - generic [ref=e844]:
+              - link "U" [ref=e845] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e846]:
+                - generic [ref=e847]:
+                  - generic [ref=e848]: Comprador · Usuario sin nombre
+                  - generic [ref=e849]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e850]': "0"
+                - generic [ref=e851]:
+                  - generic [ref=e852]:
+                    - img [ref=e853]
+                    - generic [ref=e856]: Acuerdo de compra
+                  - generic [ref=e857]: E2E-RS-AGR-31-1781799927821
+                  - generic [ref=e858]: Solo mercancías
+                  - generic [ref=e860]: Aceptado · no revocable
+                - generic [ref=e862]: 12:25 PM
+            - generic [ref=e864]:
+              - generic [ref=e867]: Acuerdo «E2E-RS-AGR-31-1781799927821» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e869]: 12:25 PM
+            - generic [ref=e870]:
+              - link "U" [ref=e871] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e872]:
+                - generic [ref=e873]:
+                  - generic [ref=e874]: Comprador · Usuario sin nombre
+                  - generic [ref=e875]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e876]': "0"
+                - generic [ref=e877]:
+                  - generic [ref=e878]:
+                    - img [ref=e879]
+                    - generic [ref=e882]: Acuerdo de compra
+                  - generic [ref=e883]: E2E-RS-AGR-32-1781799927908
+                  - generic [ref=e884]: Solo mercancías
+                  - generic [ref=e886]: Aceptado · no revocable
+                - generic [ref=e888]: 12:25 PM
+            - generic [ref=e890]:
+              - generic [ref=e893]: Acuerdo «E2E-RS-AGR-32-1781799927908» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e895]: 12:25 PM
+            - generic [ref=e896]:
+              - link "U" [ref=e897] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e898]:
+                - generic [ref=e899]:
+                  - generic [ref=e900]: Comprador · Usuario sin nombre
+                  - generic [ref=e901]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e902]': "0"
+                - generic [ref=e903]:
+                  - generic [ref=e904]:
+                    - img [ref=e905]
+                    - generic [ref=e908]: Acuerdo de compra
+                  - generic [ref=e909]: E2E-RS-AGR-33-1781799928002
+                  - generic [ref=e910]: Solo mercancías
+                  - generic [ref=e912]: Aceptado · no revocable
+                - generic [ref=e914]: 12:25 PM
+            - generic [ref=e916]:
+              - generic [ref=e919]: Acuerdo «E2E-RS-AGR-33-1781799928002» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e921]: 12:25 PM
+            - generic [ref=e922]:
+              - link "U" [ref=e923] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e924]:
+                - generic [ref=e925]:
+                  - generic [ref=e926]: Comprador · Usuario sin nombre
+                  - generic [ref=e927]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e928]': "0"
+                - generic [ref=e929]:
+                  - generic [ref=e930]:
+                    - img [ref=e931]
+                    - generic [ref=e934]: Acuerdo de compra
+                  - generic [ref=e935]: E2E-RS-AGR-34-1781799928089
+                  - generic [ref=e936]: Solo mercancías
+                  - generic [ref=e938]: Aceptado · no revocable
+                - generic [ref=e940]: 12:25 PM
+            - generic [ref=e942]:
+              - generic [ref=e945]: Acuerdo «E2E-RS-AGR-34-1781799928089» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e947]: 12:25 PM
+            - generic [ref=e948]:
+              - link "U" [ref=e949] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e950]:
+                - generic [ref=e951]:
+                  - generic [ref=e952]: Comprador · Usuario sin nombre
+                  - generic [ref=e953]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e954]': "0"
+                - generic [ref=e955]:
+                  - generic [ref=e956]:
+                    - img [ref=e957]
+                    - generic [ref=e960]: Acuerdo de compra
+                  - generic [ref=e961]: E2E-RS-AGR-35-1781799928178
+                  - generic [ref=e962]: Solo mercancías
+                  - generic [ref=e964]: Aceptado · no revocable
+                - generic [ref=e966]: 12:25 PM
+            - generic [ref=e968]:
+              - generic [ref=e971]: Acuerdo «E2E-RS-AGR-35-1781799928178» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e973]: 12:25 PM
+            - generic [ref=e974]:
+              - link "U" [ref=e975] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e976]:
+                - generic [ref=e977]:
+                  - generic [ref=e978]: Comprador · Usuario sin nombre
+                  - generic [ref=e979]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e980]': "0"
+                - generic [ref=e981]:
+                  - generic [ref=e982]:
+                    - img [ref=e983]
+                    - generic [ref=e986]: Acuerdo de compra
+                  - generic [ref=e987]: E2E-RS-AGR-36-1781799928277
+                  - generic [ref=e988]: Solo mercancías
+                  - generic [ref=e990]: Aceptado · no revocable
+                - generic [ref=e992]: 12:25 PM
+            - generic [ref=e994]:
+              - generic [ref=e997]: Acuerdo «E2E-RS-AGR-36-1781799928277» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e999]: 12:25 PM
+            - generic [ref=e1000]:
+              - link "U" [ref=e1001] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e1002]:
+                - generic [ref=e1003]:
+                  - generic [ref=e1004]: Comprador · Usuario sin nombre
+                  - generic [ref=e1005]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1006]': "0"
+                - generic [ref=e1007]:
+                  - generic [ref=e1008]:
+                    - img [ref=e1009]
+                    - generic [ref=e1012]: Acuerdo de compra
+                  - generic [ref=e1013]: E2E-RS-AGR-37-1781799928399
+                  - generic [ref=e1014]: Solo mercancías
+                  - generic [ref=e1016]: Aceptado · no revocable
+                - generic [ref=e1018]: 12:25 PM
+            - generic [ref=e1020]:
+              - generic [ref=e1023]: Acuerdo «E2E-RS-AGR-37-1781799928399» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e1025]: 12:25 PM
+            - generic [ref=e1026]:
+              - link "U" [ref=e1027] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e1028]:
+                - generic [ref=e1029]:
+                  - generic [ref=e1030]: Comprador · Usuario sin nombre
+                  - generic [ref=e1031]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1032]': "0"
+                - generic [ref=e1033]:
+                  - generic [ref=e1034]:
+                    - img [ref=e1035]
+                    - generic [ref=e1038]: Acuerdo de compra
+                  - generic [ref=e1039]: E2E-RS-AGR-38-1781799928483
+                  - generic [ref=e1040]: Solo mercancías
+                  - generic [ref=e1042]: Aceptado · no revocable
+                - generic [ref=e1044]: 12:25 PM
+            - generic [ref=e1046]:
+              - generic [ref=e1049]: Acuerdo «E2E-RS-AGR-38-1781799928483» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e1051]: 12:25 PM
+            - generic [ref=e1052]:
+              - link "U" [ref=e1053] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e1054]:
+                - generic [ref=e1055]:
+                  - generic [ref=e1056]: Comprador · Usuario sin nombre
+                  - generic [ref=e1057]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1058]': "0"
+                - generic [ref=e1059]:
+                  - generic [ref=e1060]:
+                    - img [ref=e1061]
+                    - generic [ref=e1064]: Acuerdo de compra
+                  - generic [ref=e1065]: E2E-RS-AGR-39-1781799928564
+                  - generic [ref=e1066]: Solo mercancías
+                  - generic [ref=e1068]: Aceptado · no revocable
+                - generic [ref=e1070]: 12:25 PM
+            - generic [ref=e1072]:
+              - generic [ref=e1075]: Acuerdo «E2E-RS-AGR-39-1781799928564» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e1077]: 12:25 PM
+            - generic [ref=e1078]:
+              - link "U" [ref=e1079] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e1080]:
+                - generic [ref=e1081]:
+                  - generic [ref=e1082]: Comprador · Usuario sin nombre
+                  - generic [ref=e1083]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1084]': "0"
+                - generic [ref=e1085]:
+                  - generic [ref=e1086]:
+                    - img [ref=e1087]
+                    - generic [ref=e1090]: Acuerdo de compra
+                  - generic [ref=e1091]: E2E-RS-AGR-40-1781799928649
+                  - generic [ref=e1092]: Solo mercancías
+                  - generic [ref=e1094]: Aceptado · no revocable
+                - generic [ref=e1096]: 12:25 PM
+            - generic [ref=e1098]:
+              - generic [ref=e1101]: Acuerdo «E2E-RS-AGR-40-1781799928649» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e1103]: 12:25 PM
+            - generic [ref=e1104]:
+              - link "U" [ref=e1105] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e1106]:
+                - generic [ref=e1107]:
+                  - generic [ref=e1108]: Comprador · Usuario sin nombre
+                  - generic [ref=e1109]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1110]': "0"
+                - generic [ref=e1111]:
+                  - generic [ref=e1112]:
+                    - img [ref=e1113]
+                    - generic [ref=e1116]: Acuerdo de compra
+                  - generic [ref=e1117]: E2E-RS-AGR-41-1781799928733
+                  - generic [ref=e1118]: Solo mercancías
+                  - generic [ref=e1120]: Aceptado · no revocable
+                - generic [ref=e1122]: 12:25 PM
+            - generic [ref=e1124]:
+              - generic [ref=e1127]: Acuerdo «E2E-RS-AGR-41-1781799928733» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e1129]: 12:25 PM
+            - generic [ref=e1130]:
+              - link "U" [ref=e1131] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e1132]:
+                - generic [ref=e1133]:
+                  - generic [ref=e1134]: Comprador · Usuario sin nombre
+                  - generic [ref=e1135]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1136]': "0"
+                - generic [ref=e1137]:
+                  - generic [ref=e1138]:
+                    - img [ref=e1139]
+                    - generic [ref=e1142]: Acuerdo de compra
+                  - generic [ref=e1143]: E2E-RS-AGR-42-1781799928827
+                  - generic [ref=e1144]: Solo mercancías
+                  - generic [ref=e1146]: Aceptado · no revocable
+                - generic [ref=e1148]: 12:25 PM
+            - generic [ref=e1150]:
+              - generic [ref=e1153]: Acuerdo «E2E-RS-AGR-42-1781799928827» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e1155]: 12:25 PM
+            - generic [ref=e1156]:
+              - link "U" [ref=e1157] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e1158]:
+                - generic [ref=e1159]:
+                  - generic [ref=e1160]: Comprador · Usuario sin nombre
+                  - generic [ref=e1161]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1162]': "0"
+                - generic [ref=e1163]:
+                  - generic [ref=e1164]:
+                    - img [ref=e1165]
+                    - generic [ref=e1168]: Acuerdo de compra
+                  - generic [ref=e1169]: E2E-RS-AGR-43-1781799928933
+                  - generic [ref=e1170]: Solo mercancías
+                  - generic [ref=e1172]: Aceptado · no revocable
+                - generic [ref=e1174]: 12:25 PM
+            - generic [ref=e1176]:
+              - generic [ref=e1179]: Acuerdo «E2E-RS-AGR-43-1781799928933» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e1181]: 12:25 PM
+            - generic [ref=e1182]:
+              - link "U" [ref=e1183] [cursor=pointer]:
+                - /url: /profile/53182967068
+              - generic [ref=e1184]:
+                - generic [ref=e1185]:
+                  - generic [ref=e1186]: Comprador · Usuario sin nombre
+                  - generic [ref=e1187]: +54 11 0000-0000
+                  - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1188]': "0"
+                - generic [ref=e1189]:
+                  - generic [ref=e1190]:
+                    - img [ref=e1191]
+                    - generic [ref=e1194]: Acuerdo de compra
+                  - generic [ref=e1195]: E2E-RS-AGR-44-1781799929045
+                  - generic [ref=e1196]: Solo mercancías
+                  - generic [ref=e1198]: Aceptado · no revocable
+                - generic [ref=e1200]: 12:25 PM
+            - generic [ref=e1202]:
+              - generic [ref=e1205]: Acuerdo «E2E-RS-AGR-44-1781799929045» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+              - generic [ref=e1207]: 12:25 PM
+            - generic [ref=e1209]:
+              - generic [ref=e1212]: Se actualizó la hoja de ruta «R-CE03 Gate 1781800020388».
+              - generic [ref=e1214]: 12:28 PM
+            - generic [ref=e1216]:
+              - generic [ref=e1217]:
+                - generic [ref=e1218]: Recibo de pago
+                - paragraph [ref=e1219]: "Emisor: VibeTrade · Tienda: Tienda E2E mqjpm8xy_tynhy3"
+                - paragraph [ref=e1220]: "Acuerdo: E2E-RS-AGR-0-1781799922745 · USD"
+                - generic [ref=e1221]:
+                  - generic [ref=e1222]:
+                    - generic [ref=e1223]: Subtotal
+                    - generic [ref=e1224]: US$ 150,00
+                  - generic [ref=e1225]:
+                    - generic [ref=e1226]: Climate ref. (0.05%, no cobrado)
+                    - generic [ref=e1227]: US$ 0,08
+                  - generic [ref=e1228]:
+                    - generic [ref=e1229]: Tarifa Stripe liquidación (referencia)
+                    - generic [ref=e1230]: US$ 4,65
+                  - generic [ref=e1231]:
+                    - generic [ref=e1232]: Total cobrado (subtotal)
+                    - generic [ref=e1233]: US$ 150,00
+                - paragraph [ref=e1234]:
+                  - text: "Tarifa Stripe estimada antes del pago (referencia): US$ 4,65. Políticas Stripe:"
+                  - link "consultá aquí" [ref=e1235] [cursor=pointer]:
+                    - /url: https://stripe.com/pricing
+                  - text: .
+                - button "Descargar PDF del desglose" [ref=e1236]:
+                  - img [ref=e1237]
+                  - text: Descargar PDF del desglose
+              - generic [ref=e1242]: 12:28 PM
+            - generic [ref=e1244]:
+              - generic [ref=e1245]:
+                - generic [ref=e1246]: Recibo de pago
+                - paragraph [ref=e1247]: "Emisor: VibeTrade · Tienda: Tienda E2E mqjpm8xy_tynhy3"
+                - paragraph [ref=e1248]: "Acuerdo: E2E-RS-AGR-0-1781799922745 · USD"
+                - generic [ref=e1249]:
+                  - generic [ref=e1250]:
+                    - generic [ref=e1251]: Subtotal
+                    - generic [ref=e1252]: US$ 250,00
+                  - generic [ref=e1253]:
+                    - generic [ref=e1254]: Climate ref. (0.05%, no cobrado)
+                    - generic [ref=e1255]: US$ 0,13
+                  - generic [ref=e1256]:
+                    - generic [ref=e1257]: Tarifa Stripe liquidación (referencia)
+                    - generic [ref=e1258]: US$ 7,55
+                  - generic [ref=e1259]:
+                    - generic [ref=e1260]: Total cobrado (subtotal)
+                    - generic [ref=e1261]: US$ 250,00
+                - paragraph [ref=e1262]:
+                  - text: "Tarifa Stripe estimada antes del pago (referencia): US$ 7,55. Políticas Stripe:"
+                  - link "consultá aquí" [ref=e1263] [cursor=pointer]:
+                    - /url: https://stripe.com/pricing
+                  - text: .
+                - button "Descargar PDF del desglose" [ref=e1264]:
+                  - img [ref=e1265]
+                  - text: Descargar PDF del desglose
+              - generic [ref=e1270]: 12:29 PM
+          - generic [ref=e1273]:
+            - generic [ref=e1274]:
+              - generic "Adjuntar documentos" [ref=e1275] [cursor=pointer]:
+                - button "Adjuntar documentos" [ref=e1276]
+                - generic:
+                  - img
+              - generic "Adjuntar imágenes" [ref=e1277] [cursor=pointer]:
+                - button "Adjuntar imágenes" [ref=e1278]
+                - generic:
+                  - img
+            - generic [ref=e1279]:
+              - textbox "Escribe un mensaje…" [ref=e1280]
+              - button "Grabar nota de voz" [ref=e1282] [cursor=pointer]:
+                - img [ref=e1283]
+        - complementary "Contratos, rutas e integrantes del chat" [ref=e1287]:
+          - generic [ref=e1288]:
+            - button "Contratos" [ref=e1289] [cursor=pointer]:
+              - img [ref=e1290]
+              - text: Contratos
+            - button "Rutas" [ref=e1293] [cursor=pointer]:
+              - img [ref=e1294]
+              - text: Rutas
+            - button "Integrantes (3)" [ref=e1298] [cursor=pointer]:
+              - img [ref=e1299]
+              - text: Integrantes (3)
+          - generic [ref=e1304]:
+            - generic [ref=e1305]:
+              - button "Nueva hoja de ruta" [ref=e1306]:
+                - img [ref=e1307]
+                - generic [ref=e1310]: Nueva hoja de ruta
+              - button "Suscriptores" [ref=e1311]:
+                - img [ref=e1312]
+                - text: Suscriptores
+            - list [ref=e1317]:
+              - listitem [ref=e1318]:
+                - 'button "R-CE03 Gate 1781800020388 Borrador 1 tramo · Plataforma Contacto: 53948026481" [ref=e1319] [cursor=pointer]':
+                  - generic [ref=e1320]:
+                    - generic [ref=e1321]: R-CE03 Gate 1781800020388
+                    - generic [ref=e1323]: Borrador
+                  - generic [ref=e1324]:
+                    - text: 1 tramo
+                    - generic [ref=e1325]: · Plataforma
+                  - generic [ref=e1326]: "Contacto: 53948026481"
+                  - img
+              - listitem [ref=e1327]:
+                - 'button "R-CE02 Exit 1781800219530 Borrador 1 tramo Contacto: 53948026481" [ref=e1328] [cursor=pointer]':
+                  - generic [ref=e1329]:
+                    - generic [ref=e1330]: R-CE02 Exit 1781800219530
+                    - generic [ref=e1332]: Borrador
+                  - generic [ref=e1333]: 1 tramo
+                  - generic [ref=e1334]: "Contacto: 53948026481"
+                  - img
+      - dialog [ref=e1335]:
+        - generic [ref=e1336]:
+          - generic [ref=e1337]: Nueva hoja de rutas
+          - generic [ref=e1338]:
+            - text: Todos los campos son obligatorios. Indicá
+            - strong [ref=e1339]: fecha y hora
+            - text: "estimadas de recogida y de entrega con los selectores. El precio del tramo debe ser un número (monto). La moneda de pago se elige en cada tramo. Origen, destino y el mapa se sincronizan (dirección ↔ pin). El origen del tramo 2+ siempre coincide con el destino del tramo anterior y no se puede modificar. Podés insertar un tramo en cualquier punto: el nuevo tramo toma origen = fin del anterior."
+          - generic [ref=e1340]:
+            - generic [ref=e1341]:
+              - generic [ref=e1342]:
+                - generic [ref=e1343]: Título
+                - textbox "Título" [ref=e1344]: RV-01 Desconectado 1781800432465
+              - generic [ref=e1345]:
+                - generic [ref=e1346]: Mercancías / bultos (resumen general)
+                - textbox "Mercancías / bultos (resumen general)" [ref=e1347]: Mercancía E2E de prueba
+            - generic [ref=e1348]:
+              - strong [ref=e1349]: Tramos del recorrido
+              - button "Añadir tramo al inicio" [ref=e1351]:
+                - img [ref=e1352]
+                - text: Añadir tramo al inicio
+              - generic [ref=e1353]:
+                - generic [ref=e1354]:
+                  - generic [ref=e1355]:
+                    - generic [ref=e1356]: Tramo 1
+                    - button "Eliminar tramo" [disabled] [ref=e1357]:
+                      - img [ref=e1358]
+                      - generic [ref=e1361]: Eliminar tramo
+                  - generic [ref=e1362]:
+                    - generic [ref=e1363]:
+                      - generic [ref=e1364]: Origen
+                      - textbox "Origen" [ref=e1365]:
+                        - /placeholder: Ubicación de origen
+                        - text: Punto A
+                    - generic [ref=e1366]:
+                      - generic [ref=e1367]: Destino
+                      - textbox "Destino" [ref=e1368]:
+                        - /placeholder: Ubicación de destino
+                        - text: Punto B
+                  - generic [ref=e1369]:
+                    - button "Coordenadas origen (mapa)" [ref=e1370] [cursor=pointer]:
+                      - img [ref=e1371]
+                      - text: Coordenadas origen (mapa)
+                    - button "Coordenadas destino (mapa)" [ref=e1374] [cursor=pointer]:
+                      - img [ref=e1375]
+                      - text: Coordenadas destino (mapa)
+                  - generic [ref=e1378]: "Origen: -34.6037, -58.3816"
+                  - generic [ref=e1379]: "Destino: -34.6100, -58.3900"
+                  - generic [ref=e1380]:
+                    - generic [ref=e1381]: Responsabilidad por daños por embalaje (este tramo)
+                    - textbox "Responsabilidad por daños por embalaje (este tramo)" [ref=e1382]:
+                      - /placeholder: Quién responde y en qué casos
+                  - generic [ref=e1383]:
+                    - generic [ref=e1384]: Requisitos especiales (este tramo)
+                    - textbox "Requisitos especiales (este tramo)" [ref=e1385]:
+                      - /placeholder: Frágil, refrigerado, ADR, etc.
+                  - generic [ref=e1386]:
+                    - generic [ref=e1387]: Tipo de vehículo requerido (este tramo)
+                    - textbox "Tipo de vehículo requerido (este tramo)" [ref=e1388]:
+                      - /placeholder: Ej. camión baranda, refrigerado, sider
+                - generic [ref=e1389]:
+                  - generic [ref=e1390]: Teléfono del transportista (este tramo)
+                  - paragraph [ref=e1391]: "Buscá por número como en Contactos: la cuenta tiene que existir en VibeTrade. Luego elige una ficha de servicio publicada (transporte)."
+                  - generic [ref=e1392]:
+                    - 'textbox "Teléfono del transportista (este tramo) Buscá por número como en Contactos: la cuenta tiene que existir en VibeTrade. Luego elige una ficha de servicio publicada (transporte). Buscar y elegir" [ref=e1393]':
+                      - /placeholder: Ej. +54 9 11 1234-5678
+                    - button "Buscar y elegir" [ref=e1394] [cursor=pointer]:
+                      - img [ref=e1395]
+                      - text: Buscar y elegir
+                - generic [ref=e1399]:
+                  - generic [ref=e1400]:
+                    - generic [ref=e1401]:
+                      - generic [ref=e1402]: Recogida estimada
+                      - generic [ref=e1403]:
+                        - 'button "Tramo 1: fecha de recogida estimada" [ref=e1405] [cursor=pointer]':
+                          - generic [ref=e1406]: vie, 19 jun 2026
+                          - img [ref=e1407]
+                        - 'button "Tramo 1: hora de recogida estimada" [ref=e1410] [cursor=pointer]':
+                          - generic [ref=e1411]: 8:00 AM
+                          - img [ref=e1412]
+                    - generic [ref=e1415]:
+                      - generic [ref=e1416]: Entrega estimada
+                      - generic [ref=e1417]:
+                        - 'button "Tramo 1: fecha de entrega estimada" [ref=e1419] [cursor=pointer]':
+                          - generic [ref=e1420]: vie, 19 jun 2026
+                          - img [ref=e1421]
+                        - 'button "Tramo 1: hora de entrega estimada" [expanded] [active] [ref=e1424] [cursor=pointer]':
+                          - generic [ref=e1425]: Hora
+                          - img [ref=e1426]
+                  - generic [ref=e1429]:
+                    - generic [ref=e1430]: Precio desglosado (transportista, este tramo)
+                    - textbox "Precio desglosado (transportista, este tramo)" [ref=e1431]:
+                      - /placeholder: Monto numérico (ej. 150000 o 1500.50)
+                  - generic [ref=e1432]:
+                    - generic [ref=e1433]: Moneda de pago (este tramo)
+                    - paragraph [ref=e1434]: USD
+                    - paragraph [ref=e1435]: Los tramos deben usar la misma moneda de pago que el resto del acuerdo vinculado.
+                  - generic [ref=e1436]:
+                    - generic [ref=e1437]: Carga en este tramo
+                    - textbox "Carga en este tramo" [ref=e1438]:
+                      - /placeholder: Qué lleva el transportista en el tramo
+                  - generic [ref=e1439]:
+                    - generic [ref=e1440]:
+                      - generic [ref=e1441]: Tipo de mercancía (carga)
+                      - textbox "Tipo de mercancía (carga)" [ref=e1442]
+                    - generic [ref=e1443]:
+                      - generic [ref=e1444]: Tipo de mercancía (descarga)
+                      - textbox "Tipo de mercancía (descarga)" [ref=e1445]
+                  - generic [ref=e1446]:
+                    - generic [ref=e1447]: Notas del tramo
+                    - textbox "Notas del tramo" [ref=e1448]
+              - button "Añadir tramo al final" [ref=e1450]:
+                - img [ref=e1451]
+                - text: Añadir tramo al final
+            - generic [ref=e1453]:
+              - generic [ref=e1454]: Notas generales
+              - textbox "Notas generales" [ref=e1455]: Notas E2E de prueba
+          - generic [ref=e1456]:
+            - button "Cancelar" [ref=e1457] [cursor=pointer]
+            - button "Guardar hoja de ruta" [ref=e1458] [cursor=pointer]
+  - dialog "Elegir hora" [ref=e1459]:
+    - generic [ref=e1460]: Hora
+    - generic [ref=e1461]:
+      - generic [ref=e1462]:
+        - generic [ref=e1463]: H
+        - generic [ref=e1464]:
+          - button "12" [disabled] [ref=e1465]
+          - button "01" [disabled] [ref=e1466]
+          - button "02" [disabled] [ref=e1467]
+          - button "03" [disabled] [ref=e1468]
+          - button "04" [disabled] [ref=e1469]
+          - button "05" [disabled] [ref=e1470]
+          - button "06" [disabled] [ref=e1471]
+          - button "07" [disabled] [ref=e1472]
+          - button "08" [disabled] [ref=e1473]
+          - button "09" [ref=e1474]
+          - button "10" [ref=e1475]
+          - button "11" [ref=e1476]
+      - generic [ref=e1477]:
+        - generic [ref=e1478]: Min
+        - generic [ref=e1479]:
+          - button "00" [ref=e1480]
+          - button "01" [ref=e1481]
+          - button "02" [ref=e1482]
+          - button "03" [ref=e1483]
+          - button "04" [ref=e1484]
+          - button "05" [ref=e1485]
+          - button "06" [ref=e1486]
+          - button "07" [ref=e1487]
+          - button "08" [ref=e1488]
+          - button "09" [ref=e1489]
+          - button "10" [ref=e1490]
+          - button "11" [ref=e1491]
+          - button "12" [ref=e1492]
+          - button "13" [ref=e1493]
+          - button "14" [ref=e1494]
+          - button "15" [ref=e1495]
+          - button "16" [ref=e1496]
+          - button "17" [ref=e1497]
+          - button "18" [ref=e1498]
+          - button "19" [ref=e1499]
+          - button "20" [ref=e1500]
+          - button "21" [ref=e1501]
+          - button "22" [ref=e1502]
+          - button "23" [ref=e1503]
+          - button "24" [ref=e1504]
+          - button "25" [ref=e1505]
+          - button "26" [ref=e1506]
+          - button "27" [ref=e1507]
+          - button "28" [ref=e1508]
+          - button "29" [ref=e1509]
+          - button "30" [ref=e1510]
+          - button "31" [ref=e1511]
+          - button "32" [ref=e1512]
+          - button "33" [ref=e1513]
+          - button "34" [ref=e1514]
+          - button "35" [ref=e1515]
+          - button "36" [ref=e1516]
+          - button "37" [ref=e1517]
+          - button "38" [ref=e1518]
+          - button "39" [ref=e1519]
+          - button "40" [ref=e1520]
+          - button "41" [ref=e1521]
+          - button "42" [ref=e1522]
+          - button "43" [ref=e1523]
+          - button "44" [ref=e1524]
+          - button "45" [ref=e1525]
+          - button "46" [ref=e1526]
+          - button "47" [ref=e1527]
+          - button "48" [ref=e1528]
+          - button "49" [ref=e1529]
+          - button "50" [ref=e1530]
+          - button "51" [ref=e1531]
+          - button "52" [ref=e1532]
+          - button "53" [ref=e1533]
+          - button "54" [ref=e1534]
+          - button "55" [ref=e1535]
+          - button "56" [ref=e1536]
+          - button "57" [ref=e1537]
+          - button "58" [ref=e1538]
+          - button "59" [ref=e1539]
+      - generic [ref=e1541]:
+        - button "AM" [ref=e1542]
+        - button "PM" [ref=e1543]
+```

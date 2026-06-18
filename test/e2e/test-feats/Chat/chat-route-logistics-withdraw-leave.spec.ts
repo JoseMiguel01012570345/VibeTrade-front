@@ -21,10 +21,28 @@ import {
   openCarrierPage,
 } from "../../Resources/e2e-logistics-env";
 import {
-  postCarrierWithdrawApi,
-  postPartySoftLeaveApi,
   waitForDeliveryState,
+  postSellerExpelCarrierApi,
+  postCedeOwnershipApi,
+  completeLegEvidenceFlowViaApi,
+  ensureStopReadyForCedeApi,
+  acceptMerchandiseEvidenceViaApi,
+  waitForMerchandisePaymentsReleased,
 } from "../../Resources/e2e-logistics-api";
+import { openAuthenticatedChatListPage, scenarioCarrierUserId, scenarioSellerStoreId } from "../../Resources/e2e-exit-policies-env";
+import { fetchStoreTrustScore } from "../../Resources/e2e-trust-api";
+import {
+  assertNoNativeDialogDuring,
+  carrierWithdrawViaChatListUI,
+  confirmChatLeaveFirstStep,
+  expectLeaveBlockedInModal,
+  expectLeaveSuccessToast,
+  expectThreadAbsentFromChatList,
+  expectThreadPresentInChatList,
+  fillChatLeaveReasonModal,
+  openChatLeaveFlow,
+  partySoftLeaveViaChatListUI,
+} from "../../Resources/exit-policies-ui-helpers";
 import {
   openLogisticsRouteSheet,
   cedeOwnershipViaUI,
@@ -32,6 +50,10 @@ import {
   sellerDecideEvidenceViaUI,
 } from "../../Resources/route-logistics-ui-helpers";
 import { openSellerPage } from "../../Resources/agreement-ui-helpers";
+import {
+  payHeldMerchandiseViaUI,
+  submitMerchandiseEvidenceAsSeller,
+} from "../../Resources/route-completion-e2e-helpers";
 
 test.describe("chat route logistics — withdraw & party leave", () => {
   test.describe.configure({ mode: "serial", timeout: 480_000 });
@@ -73,20 +95,19 @@ test.describe("chat route logistics — withdraw & party leave", () => {
     await sellerDecideEvidenceViaUI(sellerPage, "reject");
     await sellerPage.context().close();
 
-    const sellerCtx = await browser.newContext();
-    await sellerCtx.addInitScript((t: string) => {
-      sessionStorage.setItem("vt_session_active", "1");
-      sessionStorage.setItem("vt_session_token", t);
-    }, seller.sessionToken);
-    const sellerLeavePage = await sellerCtx.newPage();
-    const leave = await postPartySoftLeaveApi(
-      sellerLeavePage,
+    const sellerList = await openAuthenticatedChatListPage(
+      browser,
       seller.sessionToken,
-      s.threadId,
     );
-    expect(leave.status).toBeGreaterThanOrEqual(400);
-    expect(leave.text).toMatch(/evidence|rechaz|bloque|conflict|route/i);
-    await sellerCtx.close();
+    await openChatLeaveFlow(sellerList, s.threadId);
+    await confirmChatLeaveFirstStep(sellerList);
+    await fillChatLeaveReasonModal(sellerList, "Motivo L14 seller");
+    await expectLeaveBlockedInModal(
+      sellerList,
+      /evidence|rechaz|bloque|conflict|route/i,
+    );
+    await expectThreadPresentInChatList(sellerList, s.threadId);
+    await sellerList.context().close();
 
     const carrierCleanup = await openCarrierPage(
       browser,
@@ -135,18 +156,22 @@ test.describe("chat route logistics — withdraw & party leave", () => {
     await sellerDecideEvidenceViaUI(sellerPage, "reject");
     await sellerPage.context().close();
 
-    const carrierPage2 = await openCarrierPage(
+    const carrierList = await openAuthenticatedChatListPage(
       browser,
       scenario.carrierSessionToken!,
-      s.threadId,
     );
-    const res = await postCarrierWithdrawApi(
-      carrierPage2,
-      scenario.carrierSessionToken!,
-      s.threadId,
-    );
-    expect(res.status).toBeGreaterThanOrEqual(400);
-    await carrierPage2.context().close();
+    await openChatLeaveFlow(carrierList, s.threadId);
+    await confirmChatLeaveFirstStep(carrierList);
+    await fillChatLeaveReasonModal(carrierList, "Motivo L12 carrier");
+    await expect(
+      carrierList
+        .getByText(
+          /evidence|rechaz|route|bloque|conflict|no podés salir|no puedes salir|evidencia/i,
+        )
+        .first(),
+    ).toBeVisible({ timeout: 15_000 });
+    await expectThreadPresentInChatList(carrierList, s.threadId);
+    await carrierList.context().close();
 
     const carrierCleanup = await openCarrierPage(
       browser,
@@ -184,14 +209,24 @@ test.describe("chat route logistics — withdraw & party leave", () => {
     await openLogisticsRouteSheet(carrierPage, s.routeSheetTitulo);
     await cedeOwnershipViaUI(carrierPage, 0, s.routeSheetTitulo);
     await submitEvidenceViaUI(carrierPage, { note: "L11 pending" });
-
-    const blocked = await postCarrierWithdrawApi(
-      carrierPage,
-      scenario.carrierSessionToken!,
-      s.threadId,
-    );
-    expect(blocked.status).toBeGreaterThanOrEqual(400);
     await carrierPage.context().close();
+
+    const carrierList = await openAuthenticatedChatListPage(
+      browser,
+      scenario.carrierSessionToken!,
+    );
+    await openChatLeaveFlow(carrierList, s.threadId);
+    await confirmChatLeaveFirstStep(carrierList);
+    await fillChatLeaveReasonModal(carrierList, "Motivo L11 blocked");
+    await expect(
+      carrierList
+        .getByText(
+          /evidence|titularidad|ownership|pendiente|route|carga asignada|evidencia|no podés salir|no puedes salir/i,
+        )
+        .first(),
+    ).toBeVisible({ timeout: 15_000 });
+    await expectThreadPresentInChatList(carrierList, s.threadId);
+    await carrierList.context().close();
 
     const sellerPage = await openSellerPage(
       browser,
@@ -200,22 +235,33 @@ test.describe("chat route logistics — withdraw & party leave", () => {
     );
     await openLogisticsRouteSheet(sellerPage, s.routeSheetTitulo);
     await sellerDecideEvidenceViaUI(sellerPage, "accept");
+    const stop0 = s.stopIds[0]!;
+    await waitForDeliveryState(
+      sellerPage,
+      seller.sessionToken,
+      s.threadId,
+      s.agreementId,
+      stop0,
+      "evidence_accepted",
+    );
     await sellerPage.context().close();
 
-    const carrierPage2 = await openCarrierPage(
+    const carrierList2 = await openAuthenticatedChatListPage(
       browser,
       scenario.carrierSessionToken!,
-      s.threadId,
     );
-    const ok = await postCarrierWithdrawApi(
-      carrierPage2,
-      scenario.carrierSessionToken!,
-      s.threadId,
-      "E2E carrier withdraw",
-      s.agreementId,
+    await assertNoNativeDialogDuring(carrierList2, async () => {
+      await carrierWithdrawViaChatListUI(
+        carrierList2,
+        s.threadId,
+        "E2E carrier withdraw L11",
+      );
+    });
+    await expectLeaveSuccessToast(
+      carrierList2,
+      /transportista|des-suscribiste|salida registrada/i,
     );
-    expect(ok.status).toBeLessThan(400);
-    await carrierPage2.context().close();
+    await carrierList2.context().close();
   });
 
   // L-11 withdraws the primary carrier; L-13 uses carrier2 when available.
@@ -232,6 +278,7 @@ test.describe("chat route logistics — withdraw & party leave", () => {
     const s = await setupPaidRouteLogisticsScenario(browser, {
       tituloPrefix: "Hoja L13 Leave OK",
       carrierPhone: scenario.carrier2Phone,
+      payRoutesViaBuyerApi: true,
     });
 
     const carrierPage = await openCarrierPage(
@@ -262,23 +309,199 @@ test.describe("chat route logistics — withdraw & party leave", () => {
     );
     await sellerPage.context().close();
 
-    const buyerCtx = await browser.newContext();
-    await buyerCtx.addInitScript((t: string) => {
-      sessionStorage.setItem("vt_session_active", "1");
-      sessionStorage.setItem("vt_session_token", t);
-    }, buyer.sessionToken);
-    const buyerPage = await buyerCtx.newPage();
-    const leave = await postPartySoftLeaveApi(
-      buyerPage,
+    const buyerPayPage = await openSellerPage(
+      browser,
       buyer.sessionToken,
       s.threadId,
-      "E2E party soft leave",
+    );
+    await payHeldMerchandiseViaUI(buyerPayPage, s.threadId, s.agreementTitle, s.agreementId);
+    await buyerPayPage.context().close();
+
+    await submitMerchandiseEvidenceAsSeller(
+      browser,
+      {
+        threadId: s.threadId,
+        agreementId: s.agreementId,
+        agreementTitle: s.agreementTitle,
+        routeSheetTitulo: s.routeSheetTitulo,
+        sellerSessionToken: seller.sessionToken,
+      },
+      "L13 merch evidence",
+    );
+
+    const buyerAcceptPage = await openSellerPage(
+      browser,
+      buyer.sessionToken,
+      s.threadId,
+    );
+    const acceptStatus = await acceptMerchandiseEvidenceViaApi(
+      buyerAcceptPage,
+      buyer.sessionToken,
+      s.threadId,
       s.agreementId,
     );
-    expect(
-      leave.status,
-      `party-soft-leave failed (${leave.status}): ${leave.text.slice(0, 800)}`,
-    ).toBeLessThan(400);
-    await buyerCtx.close();
+    expect(acceptStatus).toBeLessThan(300);
+    await waitForMerchandisePaymentsReleased(
+      buyerAcceptPage,
+      buyer.sessionToken,
+      s.threadId,
+      s.agreementId,
+    );
+    await buyerAcceptPage.context().close();
+
+    const buyerList = await openAuthenticatedChatListPage(
+      browser,
+      buyer.sessionToken,
+    );
+    await assertNoNativeDialogDuring(buyerList, async () => {
+      await partySoftLeaveViaChatListUI(
+        buyerList,
+        s.threadId,
+        "E2E party soft leave L13",
+      );
+    });
+    await expectThreadAbsentFromChatList(buyerList, s.threadId);
+    await buyerList.context().close();
+  });
+
+  test("L-15: seller expel blocked when route evidence pending after cede", async ({
+    browser,
+  }) => {
+    const seller = getE2ESellerSession()!;
+    const scenario = getE2EScenario()!;
+    const carrierToken = scenario.carrierSessionToken!;
+    const s = await setupPaidRouteLogisticsScenario(browser, {
+      tituloPrefix: "Hoja L15 Expel Block",
+    });
+
+    const sellerPage = await openSellerPage(
+      browser,
+      seller.sessionToken,
+      s.threadId,
+    );
+    const carrierPage = await openCarrierPage(
+      browser,
+      carrierToken,
+      s.threadId,
+    );
+    const stop0 = s.stopIds[0]!;
+    const ctx = {
+      threadId: s.threadId,
+      agreementId: s.agreementId,
+      routeSheetId: s.routeSheetId,
+      routeStopId: stop0,
+    };
+    await ensureStopReadyForCedeApi(carrierPage, carrierToken, ctx);
+    const cede = await postCedeOwnershipApi(carrierPage, carrierToken, ctx);
+    expect(cede.ok).toBe(true);
+
+    const expel = await postSellerExpelCarrierApi(sellerPage, seller.sessionToken, {
+      threadId: s.threadId,
+      carrierUserId: scenarioCarrierUserId(),
+      reason: "E2E expel con evidencia pendiente",
+      routeSheetId: s.routeSheetId,
+      stopId: stop0,
+    });
+    expect(expel.status).toBe(409);
+    expect(expel.text).toMatch(/seller_expel_evidence_pending|evidencia/i);
+    await sellerPage.context().close();
+    await carrierPage.context().close();
+  });
+
+  test("L-16: seller expel after evidence accepted applies no store trust penalty", async ({
+    browser,
+  }) => {
+    const seller = getE2ESellerSession()!;
+    const scenario = getE2EScenario()!;
+    const carrierToken = scenario.carrierSessionToken!;
+    const s = await setupPaidRouteLogisticsScenario(browser, {
+      tituloPrefix: "Hoja L16 Expel OK",
+    });
+
+    const sellerPage = await openSellerPage(
+      browser,
+      seller.sessionToken,
+      s.threadId,
+    );
+    const stop0 = s.stopIds[0]!;
+    await completeLegEvidenceFlowViaApi(
+      sellerPage,
+      carrierToken,
+      seller.sessionToken,
+      {
+        threadId: s.threadId,
+        agreementId: s.agreementId,
+        routeSheetId: s.routeSheetId,
+        routeStopId: stop0,
+      },
+    );
+
+    const trustPage = await openAuthenticatedChatListPage(
+      browser,
+      seller.sessionToken,
+    );
+    const storeId = scenarioSellerStoreId();
+    const before = await fetchStoreTrustScore(trustPage, storeId);
+
+    const expel = await postSellerExpelCarrierApi(trustPage, seller.sessionToken, {
+      threadId: s.threadId,
+      carrierUserId: scenarioCarrierUserId(),
+      reason: "E2E expel tras evidencia aceptada",
+      routeSheetId: s.routeSheetId,
+      stopId: stop0,
+    });
+    expect(expel.status).toBe(200);
+    expect(expel.json?.applyStoreTrustPenalty).toBe(false);
+
+    const after = await fetchStoreTrustScore(trustPage, storeId);
+    expect(after).toBe(before);
+    await trustPage.context().close();
+    await sellerPage.context().close();
+  });
+
+  test("L-17: seller party soft leave when all agreements settled applies no trust penalty", async ({
+    browser,
+  }) => {
+    const seller = getE2ESellerSession()!;
+    const scenario = getE2EScenario()!;
+    const carrierToken = scenario.carrierSessionToken!;
+    const s = await setupPaidRouteLogisticsScenario(browser, {
+      tituloPrefix: "Hoja L17 Seller Leave",
+    });
+
+    const sellerPage = await openSellerPage(
+      browser,
+      seller.sessionToken,
+      s.threadId,
+    );
+    const stop0 = s.stopIds[0]!;
+    await completeLegEvidenceFlowViaApi(
+      sellerPage,
+      carrierToken,
+      seller.sessionToken,
+      {
+        threadId: s.threadId,
+        agreementId: s.agreementId,
+        routeSheetId: s.routeSheetId,
+        routeStopId: stop0,
+      },
+    );
+    await sellerPage.context().close();
+
+    const sellerList = await openAuthenticatedChatListPage(
+      browser,
+      seller.sessionToken,
+    );
+    const storeId = scenarioSellerStoreId();
+    const before = await fetchStoreTrustScore(sellerList, storeId);
+    await partySoftLeaveViaChatListUI(
+      sellerList,
+      s.threadId,
+      "E2E seller leave settled",
+    );
+    await expectLeaveSuccessToast(sellerList);
+    const after = await fetchStoreTrustScore(sellerList, storeId);
+    expect(after).toBe(before);
+    await sellerList.context().close();
   });
 });
