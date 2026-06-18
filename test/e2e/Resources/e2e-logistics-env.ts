@@ -389,11 +389,14 @@ export async function setupPaidRouteLogisticsScenario(
         threadId,
         routeSheetId,
       );
+      // Linked tramos share one route path; checkout expects the path id (head stop), not each stop id.
+      const routePathIdsForPay =
+        stopIdsForPay.length > 1 ? [stopIdsForPay[0]!] : stopIdsForPay;
       const payPage = await newAuthenticatedPage(browser, buyer.sessionToken);
       const payRes = await payRouteStopsViaBuyerApi(
         payPage,
         buyer.sessionToken,
-        { threadId, agreementId, routeStopIds: stopIdsForPay },
+        { threadId, agreementId, routeStopIds: routePathIdsForPay },
       );
       if (payRes.status >= 400) {
         throw new Error(

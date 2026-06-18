@@ -69,10 +69,10 @@ export const TRAMO_OPTS = {
 export const TRAMO_OPTS_2 = {
   origen: "Ciudad B",
   destino: "Ciudad C",
-  recogidaDate: isoDayAfter,
-  recogidaTime: "18:00",
+  recogidaDate: isoDayAfterPlus,
+  recogidaTime: "09:00",
   entregaDate: isoDayAfterPlus,
-  entregaTime: "20:00",
+  entregaTime: "17:00",
   precio: "200",
   responsabilidad: "Transportista",
   requisitos: "Ninguno",

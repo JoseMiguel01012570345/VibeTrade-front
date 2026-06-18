@@ -155,7 +155,9 @@ async function pickTimeInPopover(
   const scrollCols = timePop.locator(".vt-time-scroll");
 
   const apPill = scrollCols.nth(2).getByRole("button", { name: ap }).first();
-  await apPill.click();
+  if (await apPill.isEnabled({ timeout: 2_000 }).catch(() => false)) {
+    await apPill.click();
+  }
 
   const hourPill = scrollCols
     .nth(0)
@@ -498,9 +500,10 @@ export async function searchCarrierPhone(
   const phoneInput = form.locator(`#ruta-tramo-${tramoIndex}-tel`);
   await expect(phoneInput).toBeVisible({ timeout: 5_000 });
   await phoneInput.fill(phone);
-  await form
+  // Scope to this tramo's row: earlier tramos may already show "Quitar" instead of search.
+  await phoneInput
+    .locator("xpath=..")
     .getByRole("button", { name: /buscar y elegir/i })
-    .nth(tramoIndex)
     .click();
 
   const picker = page.getByRole("dialog", { name: /elegir servicio de transporte/i });

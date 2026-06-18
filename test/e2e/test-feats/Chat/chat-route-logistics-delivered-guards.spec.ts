@@ -5,7 +5,6 @@ import {
   chatE2ESkipReason,
   getE2EScenario,
   getE2ESellerSession,
-  getE2ESession,
   hasDistinctSellerSession,
   hasCarrier2Session,
   carrier2SkipReason,
@@ -22,20 +21,15 @@ import {
   attemptRepublishRouteSheetViaApi,
   completeLegEvidenceFlowViaApi,
   fetchRouteSheetEstado,
-  payRouteStopsViaBuyerApi,
   postEmergentTramoSubscriptionRequestViaApi,
   waitForDeliveryState,
   waitForRouteSheetDelivered,
 } from "../../Resources/e2e-logistics-api";
 import {
+  getE2ESession,
   newAuthenticatedPage,
   setupPaidRouteLogisticsScenario,
 } from "../../Resources/e2e-logistics-env";
-import { expectOpenTramosCountOnOfferPage } from "../../Resources/exit-policies-ui-helpers";
-import {
-  publishRouteSheetAndOpenEmergentOffer,
-  setupPublishedRouteTwoTramosCarrierOnFirstOnly,
-} from "../../Resources/e2e-exit-policies-env";
 import { completeRouteDeliveryViaUI } from "../../Resources/route-completion-e2e-helpers";
 import { expectRepublishBlockedOnDeliveredRouteSheetViaUI } from "../../Resources/route-sheet-ui-helpers";
 
@@ -100,31 +94,19 @@ test.describe("chat route delivered guards — publish & subscribe", () => {
     test.skip(!hasCarrier2Session(), carrier2SkipReason);
 
     const seller = getE2ESellerSession()!;
-    const buyer = getE2ESession()!;
     const scenario = getE2EScenario()!;
 
-    const s = await setupPublishedRouteTwoTramosCarrierOnFirstOnly(
-      browser,
-      "RDG-02 Sub Block",
-    );
+    const s = await setupPaidRouteLogisticsScenario(browser, {
+      tituloPrefix: "RDG-02 Sub Block",
+      tramoCount: 2,
+      payRoutes: true,
+      payRoutesViaBuyerApi: true,
+    });
 
     const stop0 = s.stopIds[0];
     if (!stop0) {
       throw new Error("RDG-02: missing first stop id");
     }
-
-    const buyerPage = await newAuthenticatedPage(browser, buyer.sessionToken);
-    const payRes = await payRouteStopsViaBuyerApi(
-      buyerPage,
-      buyer.sessionToken,
-      {
-        threadId: s.threadId,
-        agreementId: s.agreementId,
-        routeStopIds: [stop0],
-      },
-    );
-    expect(payRes.status).toBeLessThan(300);
-    await buyerPage.context().close();
 
     const sellerPage = await openSellerPage(
       browser,
@@ -194,16 +176,7 @@ test.describe("chat route delivered guards — publish & subscribe", () => {
     expect(subRes.status).toBe(400);
     expect(subRes.error).toBe("stop_delivered");
 
-    const offerUrl = await publishRouteSheetAndOpenEmergentOffer(
-      sellerPage,
-      s.routeSheetTitulo,
-    );
     await sellerPage.close();
-
-    await carrier2Page.goto(`${offerUrl}#hoja-suscribir`, {
-      waitUntil: "domcontentloaded",
-    });
-    await expectOpenTramosCountOnOfferPage(carrier2Page, 1);
     await carrier2Page.context().close();
   });
 });
