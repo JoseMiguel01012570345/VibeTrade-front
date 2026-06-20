@@ -28,6 +28,8 @@ type Props = Readonly<{
   placeholder?: string;
   /** z-index del popover portaled (alinear con `VtDateField` en modales apilados). */
   popoverZIndexClass?: string;
+  /** Si devuelve true, la hora no se puede elegir (p. ej. viola recogida &lt; entrega). */
+  isTimeDisabled?: (hhmm: string) => boolean;
   "aria-label"?: string;
 }>;
 
@@ -111,6 +113,7 @@ export function VtTimeField({
   buttonClassName,
   placeholder = "Elegir hora",
   popoverZIndexClass = "z-[220]",
+  isTimeDisabled,
   "aria-label": ariaLabel,
 }: Props) {
   const genId = useId();
@@ -211,18 +214,24 @@ export function VtTimeField({
   }, [open]);
 
   function applyH12(next: number) {
+    const hhmm = to24hFrom12(next, m, ap);
+    if (isTimeDisabled?.(hhmm)) return;
     setH12(next);
-    onChange(to24hFrom12(next, m, ap));
+    onChange(hhmm);
   }
 
   function applyMin(next: number) {
+    const hhmm = to24hFrom12(h12, next, ap);
+    if (isTimeDisabled?.(hhmm)) return;
     setM(next);
-    onChange(to24hFrom12(h12, next, ap));
+    onChange(hhmm);
   }
 
   function applyAp(next: Meridiem) {
+    const hhmm = to24hFrom12(h12, m, next);
+    if (isTimeDisabled?.(hhmm)) return;
     setAp(next);
-    onChange(to24hFrom12(h12, m, next));
+    onChange(hhmm);
   }
 
   const label = useMemo(
@@ -233,14 +242,20 @@ export function VtTimeField({
   const colClass =
     "vt-time-scroll max-h-52 min-w-0 flex-1 overflow-y-auto overscroll-y-contain scroll-smooth rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_88%,var(--surface))] py-1.5";
 
-  const itemBtn = (sel: boolean) =>
+  const itemBtn = (sel: boolean, dis: boolean) =>
     cn(
       "w-full min-h-[2.25rem] px-2 text-center text-[14px] font-semibold tabular-nums text-[var(--text)]",
       "transition-[background,color,box-shadow] duration-100",
-      !sel && "hover:bg-[color-mix(in_oklab,var(--primary)_10%,transparent)]",
-      sel &&
+      dis && "cursor-not-allowed opacity-30",
+      !dis && !sel && "hover:bg-[color-mix(in_oklab,var(--primary)_10%,transparent)]",
+      !dis &&
+        sel &&
         "bg-[var(--primary)] text-white shadow-[0_1px_0_rgba(0,0,0,0.06)]",
     );
+
+  function timeDisabled(hhmm: string): boolean {
+    return isTimeDisabled?.(hhmm) ?? false;
+  }
 
   const popover = open && box && !disabled && (
     <div
@@ -267,12 +282,14 @@ export function VtTimeField({
           <div ref={hourRef} className={colClass}>
             {H12_LIST.map((n) => {
               const selected = h12 === n;
+              const dis = timeDisabled(to24hFrom12(n, m, ap));
               return (
                 <button
                   key={n}
                   ref={selected ? hSel : undefined}
                   type="button"
-                  className={itemBtn(selected)}
+                  disabled={dis}
+                  className={itemBtn(selected, dis)}
                   onClick={() => applyH12(n)}
                 >
                   {formatHourPill(n)}
@@ -286,12 +303,14 @@ export function VtTimeField({
           <div ref={minRef} className={colClass}>
             {MINUTES.map((n) => {
               const selected = m === n;
+              const dis = timeDisabled(to24hFrom12(h12, n, ap));
               return (
                 <button
                   key={n}
                   ref={selected ? mSel : undefined}
                   type="button"
-                  className={itemBtn(selected)}
+                  disabled={dis}
+                  className={itemBtn(selected, dis)}
                   onClick={() => applyMin(n)}
                 >
                   {formatMinutePill(n)}
@@ -305,12 +324,14 @@ export function VtTimeField({
           <div ref={apRef} className={colClass}>
             {MERIDIEM.map((mer) => {
               const selected = ap === mer;
+              const dis = timeDisabled(to24hFrom12(h12, m, mer));
               return (
                 <button
                   key={mer}
                   ref={selected ? aSel : undefined}
                   type="button"
-                  className={itemBtn(selected)}
+                  disabled={dis}
+                  className={itemBtn(selected, dis)}
                   onClick={() => applyAp(mer)}
                 >
                   {mer}

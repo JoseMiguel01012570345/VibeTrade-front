@@ -11,6 +11,7 @@ import {
   normRoutePhoneKey,
   resolveRouteStopIdForFormRow,
 } from "./routeSheetOfferGuards";
+import { ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES } from "./merchandiseRouteCurrency";
 
 const TITLE_MIN = 3;
 const TITLE_MAX = 200;
@@ -26,6 +27,23 @@ const CARGA_MIN = 5;
 const TIPO_MERC_MIN = 2;
 const NOTA_TRAMO_MIN = 3;
 const MONEDA_MAX = 32;
+
+/** Mensaje cuando el origen de un tramo no coincide con el destino del anterior. */
+export function tramoLinkErrorMessage(tramoOneBased: number): string {
+  return `El origen del tramo ${tramoOneBased} debe coincidir con el destino del tramo anterior`;
+}
+
+export function origenCoincideConDestinoAnterior(
+  anterior: RouteTramoFormInput,
+  siguiente: RouteTramoFormInput,
+): boolean {
+  const dLat = norm(anterior.destinoLat);
+  const dLng = norm(anterior.destinoLng);
+  const oLat = norm(siguiente.origenLat);
+  const oLng = norm(siguiente.origenLng);
+  if (!dLat || !dLng || !oLat || !oLng) return false;
+  return dLat === oLat && dLng === oLng;
+}
 
 function norm(s: string | undefined): string {
   return (s ?? "").trim();
@@ -182,6 +200,7 @@ function mergeTramo(
  */
 export function getRouteSheetFormErrors(
   p: RouteSheetCreatePayload,
+  opts?: { routeLegPaymentCurrency?: string | null },
 ): RouteSheetFormErrors {
   const e: RouteSheetFormErrors = {};
 
@@ -316,85 +335,55 @@ export function getRouteSheetFormErrors(
     }
 
     {
+      const requiredMerch = norm(opts?.routeLegPaymentCurrency ?? "");
       const m = norm(raw.monedaPago);
-      if (m !== "") {
+      if (requiredMerch !== "") {
+        if (m !== "" && m.toUpperCase() !== requiredMerch.toUpperCase()) {
+          mergeTramo(e, i, {
+            monedaPago: ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES,
+          });
+        }
+      } else if (m !== "") {
         const mx = optionalMax(m, MONEDA_MAX);
         if (mx) mergeTramo(e, i, { monedaPago: mx });
       }
     }
   });
 
-  /**
-   * Construye sub-rutas (cadenas) y valida tiempos solo dentro de cada cadena.
-   * Una cadena agrupa nodos `(tramoIndex, origen, destino)` consecutivos donde
-   * `origen` del nodo siguiente coincide con `destino` del anterior (mismas coords lat/lng).
-   * Si el origen es independiente (otra pierna logística), arranca una cadena nueva.
-   */
-  const tramoChains = buildTramoChainsByCoords(paradas);
-  const MSG_ENTREGA_VS_SIGUIENTE =
-    "La entrega estimada no puede ser posterior a la recogida estimada del tramo siguiente";
-  const MSG_RECOGIDA_VS_ANTERIOR =
-    "La recogida estimada no puede ser anterior a la entrega estimada del tramo anterior";
-  for (const chain of tramoChains) {
-    for (let k = 0; k < chain.length - 1; k++) {
-      const a = chain[k];
-      const b = chain[k + 1];
-      if (a === undefined || b === undefined) continue;
-      const msEnt = estimadoInstantMs(paradas[a]?.tiempoEntregaEstimado);
-      const msRecNext = estimadoInstantMs(paradas[b]?.tiempoRecogidaEstimado);
-      if (msEnt === null || msRecNext === null) continue;
-      if (msEnt > msRecNext) {
-        if (!e.tramos?.[a]?.tiempoEntregaEstimado) {
-          mergeTramo(e, a, { tiempoEntregaEstimado: MSG_ENTREGA_VS_SIGUIENTE });
-        }
-        if (!e.tramos?.[b]?.tiempoRecogidaEstimado) {
-          mergeTramo(e, b, {
-            tiempoRecogidaEstimado: MSG_RECOGIDA_VS_ANTERIOR,
-          });
-        }
-      }
-    }
-  }
-
-  return e;
-}
-
-/**
- * Sub-rutas: lista de listas con índices de tramos (0-based). Dos tramos consecutivos quedan en la misma cadena
- * si el origen del segundo coincide con el destino del primero (lat/lng tras `trim`); si difieren, abre cadena nueva.
- */
-function buildTramoChainsByCoords(paradas: RouteTramoFormInput[]): number[][] {
-  const chains: number[][] = [];
-  if (paradas.length === 0) return chains;
-  let current: number[] = [0];
   for (let i = 1; i < paradas.length; i++) {
     const anterior = paradas[i - 1];
     const siguiente = paradas[i];
     if (
       anterior &&
       siguiente &&
-      origenCoincideConDestinoAnterior(anterior, siguiente)
+      !origenCoincideConDestinoAnterior(anterior, siguiente) &&
+      !e.tramos?.[i]?.coordOrigen
     ) {
-      current.push(i);
-    } else {
-      chains.push(current);
-      current = [i];
+      mergeTramo(e, i, { coordOrigen: tramoLinkErrorMessage(i + 1) });
     }
   }
-  chains.push(current);
-  return chains;
-}
 
-function origenCoincideConDestinoAnterior(
-  anterior: RouteTramoFormInput,
-  siguiente: RouteTramoFormInput,
-): boolean {
-  const dLat = norm(anterior.destinoLat);
-  const dLng = norm(anterior.destinoLng);
-  const oLat = norm(siguiente.origenLat);
-  const oLng = norm(siguiente.origenLng);
-  if (!dLat || !dLng || !oLat || !oLng) return false;
-  return dLat === oLat && dLng === oLng;
+  const MSG_ENTREGA_VS_SIGUIENTE =
+    "La entrega estimada no puede ser posterior a la recogida estimada del tramo siguiente";
+  const MSG_RECOGIDA_VS_ANTERIOR =
+    "La recogida estimada no puede ser anterior a la entrega estimada del tramo anterior";
+  for (let i = 0; i < paradas.length - 1; i++) {
+    const msEnt = estimadoInstantMs(paradas[i]?.tiempoEntregaEstimado);
+    const msRecNext = estimadoInstantMs(paradas[i + 1]?.tiempoRecogidaEstimado);
+    if (msEnt === null || msRecNext === null) continue;
+    if (msEnt > msRecNext) {
+      if (!e.tramos?.[i]?.tiempoEntregaEstimado) {
+        mergeTramo(e, i, { tiempoEntregaEstimado: MSG_ENTREGA_VS_SIGUIENTE });
+      }
+      if (!e.tramos?.[i + 1]?.tiempoRecogidaEstimado) {
+        mergeTramo(e, i + 1, {
+          tiempoRecogidaEstimado: MSG_RECOGIDA_VS_ANTERIOR,
+        });
+      }
+    }
+  }
+
+  return e;
 }
 
 export function hasRouteSheetFormErrors(e: RouteSheetFormErrors): boolean {

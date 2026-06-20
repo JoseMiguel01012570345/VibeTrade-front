@@ -360,6 +360,7 @@ export function ChatMessageList({
             )}
 
             <div
+              {...(system ? { "data-chat-system-message": true } : {})}
               className={cn(
                 isAudio
                   ? "w-[min(420px,100%)] max-w-[420px] min-w-0 [contain:inline-size]"

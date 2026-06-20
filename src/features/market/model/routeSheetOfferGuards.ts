@@ -11,14 +11,143 @@ import type {
   RouteSheetCreatePayload,
   RouteStop,
 } from "./routeSheetTypes";
+import { routeSheetEstadoIsEntregada } from "./routeSheetTypes";
+import type { RouteTramoSubscriptionItemApi } from "@/utils/chat/chatApi";
+import type { RouteStopDeliveryStatusApi } from "@/utils/chat/routeLogisticsApi";
+import { routeOfferPublicFromThreadRouteSheet } from "@/utils/market/routeOfferPublicFromEmergentCard";
+
+/** Mensaje cuando la tienda intenta expulsar con tramo activo sin pausa previa. */
+export const SELLER_EXPEL_REQUIRES_PAUSE_ES =
+  "Pausá el tramo (custodia tienda) antes de expulsar al transportista mientras tiene la carga en curso.";
 
 /** Mensaje cuando el comprador del hilo intenta suscribirse como transportista a la misma hoja publicada. */
 export const ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES =
   "No puedes suscribirte como transportista: en esta operación eres el comprador con un acuerdo aceptado.";
 
+/** Mensaje cuando la hoja ya fue entregada y no puede republicarse. */
+export const ROUTE_SHEET_PUBLISH_BLOCKED_DELIVERED_ES =
+  "Esta hoja de ruta ya fue entregada; no se puede publicar en la plataforma.";
+
+/** Mensaje cuando el tramo ya fue entregado y no admite nuevas suscripciones. */
+export const ROUTE_TRAMO_SUBSCRIBE_BLOCKED_DELIVERED_ES =
+  "Este tramo ya fue entregado; no se aceptan nuevas suscripciones.";
+
 /** Hoja vinculada a acuerdo con cobros registrados (bloqueo local + API). */
 export const ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES =
-  "Esta hoja está vinculada a un acuerdo con cobros registrados; no se puede editar, eliminar ni publicar.";
+  "Esta hoja está vinculada a un acuerdo con cobros registrados; no se puede editar ni eliminar.";
+
+/** Con cobros registrados: solo se permite cambiar contacto de transportista en tramos sin confirmación. */
+export const ROUTE_SHEET_PAID_CARRIER_CONTACT_ONLY_ES =
+  "Hay cobros registrados: podés actualizar solo el contacto de transportista en tramos sin asignación confirmada.";
+
+/** Tramos de la hoja sin transportista confirmado (p. ej. tras expulsión). */
+export function routeSheetVacantStopIds(
+  offer: RouteOfferPublicState | undefined,
+  sheetId: string,
+): Set<string> {
+  const vacant = new Set<string>();
+  if (offer?.routeSheetId !== sheetId) return vacant;
+  for (const t of offer.tramos ?? []) {
+    const sid = t.stopId?.trim();
+    if (!sid) continue;
+    if (t.assignment?.status === "confirmed") continue;
+    vacant.add(sid);
+  }
+  return vacant;
+}
+
+function confirmedStopIdsFromSubscriptions(
+  sheetId: string,
+  items: RouteTramoSubscriptionItemApi[] | undefined,
+): Set<string> {
+  const confirmed = new Set<string>();
+  const sid = sheetId.trim();
+  if (!sid || !items?.length) return confirmed;
+  for (const it of items) {
+    if (it.routeSheetId?.trim() !== sid) continue;
+    if ((it.status ?? "").trim().toLowerCase() !== "confirmed") continue;
+    const stopId = it.stopId?.trim();
+    if (stopId) confirmed.add(stopId);
+  }
+  return confirmed;
+}
+
+/**
+ * Tramos vacantes para edición de contacto con cobros registrados.
+ * En hilos con varias hojas, la oferta del hilo puede apuntar a otra hoja: se usan paradas + suscripciones.
+ */
+export function routeSheetVacantStopIdsForPaidEdit(
+  sheet: RouteSheet | undefined,
+  offer: RouteOfferPublicState | undefined,
+  sheetId: string,
+  subscriptions?: RouteTramoSubscriptionItemApi[],
+): Set<string> {
+  const sid = sheetId.trim();
+  if (!sid) return new Set();
+
+  if (offer?.routeSheetId?.trim() === sid) {
+    const fromOffer = routeSheetVacantStopIds(offer, sid);
+    if (fromOffer.size > 0 || !subscriptions?.length) return fromOffer;
+  }
+
+  const paradas = sheet?.paradas ?? [];
+  if (!paradas.length) {
+    return offer?.routeSheetId?.trim() === sid
+      ? routeSheetVacantStopIds(offer, sid)
+      : new Set();
+  }
+
+  const confirmed = confirmedStopIdsFromSubscriptions(sid, subscriptions);
+  if (offer?.routeSheetId?.trim() === sid) {
+    for (const t of offer.tramos ?? []) {
+      if (t.assignment?.status === "confirmed") {
+        const stopId = t.stopId?.trim();
+        if (stopId) confirmed.add(stopId);
+      }
+    }
+  }
+
+  const vacant = new Set<string>();
+  for (const p of paradas) {
+    const pid = p.id?.trim();
+    if (!pid) continue;
+    if (!confirmed.has(pid)) vacant.add(pid);
+  }
+  return vacant;
+}
+
+export function routeSheetAllowsCarrierContactEditWhenPaid(
+  sheetLockedByPaid: boolean,
+  offer: RouteOfferPublicState | undefined,
+  sheetId: string,
+  sheet?: RouteSheet,
+  subscriptions?: RouteTramoSubscriptionItemApi[],
+): boolean {
+  return (
+    sheetLockedByPaid &&
+    routeSheetVacantStopIdsForPaidEdit(sheet, offer, sheetId, subscriptions)
+      .size > 0
+  );
+}
+
+export function routeSheetStructuralEditBlockedByPaid(
+  sheetLockedByPaid: boolean,
+  offer: RouteOfferPublicState | undefined,
+  sheetId: string,
+  sheet?: RouteSheet,
+  subscriptions?: RouteTramoSubscriptionItemApi[],
+): boolean {
+  return (
+    sheetLockedByPaid &&
+    !routeSheetAllowsCarrierContactEditWhenPaid(
+      sheetLockedByPaid,
+      offer,
+      sheetId,
+      sheet,
+      subscriptions,
+    )
+  );
+}
 
 /** Prioridad: teléfono en la parada de la hoja → asignación en la oferta → campo público del tramo. */
 export function effectiveTramoContactPhone(
@@ -292,6 +421,10 @@ export function resolveRouteOfferPublicForSheet(
   }
   const fallback = resolveRouteOfferPublicForThread(state, thread);
   if (fallback?.routeSheetId?.trim() === rsid) return fallback;
+  const sheet = thread.routeSheets?.find((r) => r.id === rsid);
+  if (sheet?.paradas?.length) {
+    return routeOfferPublicFromThreadRouteSheet(thread.id, sheet);
+  }
   return undefined;
 }
 
@@ -309,4 +442,115 @@ export function effectiveRouteOfferForSheetForm(
   if (!sid || !forThread) return undefined;
   if (forThread.routeSheetId?.trim() === sid) return forThread;
   return undefined;
+}
+
+export function routeSheetPublishBlockedWhenDelivered(
+  estado: RouteSheet["estado"] | string | undefined,
+): boolean {
+  return routeSheetEstadoIsEntregada(estado);
+}
+
+/** Tramo liquidado con evidencia aceptada (entregado). */
+export function routeStopTramoDeliveredByEvidence(
+  delivery: Pick<RouteStopDeliveryStatusApi, "state"> | undefined,
+): boolean {
+  return (delivery?.state ?? "").trim().toLowerCase() === "evidence_accepted";
+}
+
+export function routeStopTramoSubscribeBlocked(
+  deliveries: RouteStopDeliveryStatusApi[],
+  routeSheetId: string,
+  stopId: string,
+): boolean {
+  return routeStopTramoDeliveredByEvidence(
+    findRouteStopDelivery(deliveries, routeSheetId, stopId),
+  );
+}
+
+/** Señales locales en la hoja (demo) cuando aún no hay filas de entrega cargadas. */
+export function routeStopTramoSubscribeBlockedOnSheet(
+  sheet: RouteSheet | undefined,
+  stopId: string,
+): boolean {
+  if (!sheet) return false;
+  if (routeSheetPublishBlockedWhenDelivered(sheet.estado)) return true;
+  const parada = sheet.paradas.find((p) => p.id === stopId);
+  return parada?.completada === true;
+}
+
+type DeliveryExpelInput = Pick<
+  RouteStopDeliveryStatusApi,
+  "state" | "currentOwnerUserId"
+>;
+
+/** True si el transportista es titular y el tramo no está pausado ni cerrado logísticamente. */
+export function carrierDeliveryBlocksSellerExpel(
+  delivery: DeliveryExpelInput | undefined,
+  carrierUserId: string,
+): boolean {
+  const carrierId = carrierUserId.trim();
+  if (carrierId.length < 2) return false;
+
+  const state = (delivery?.state ?? "").trim().toLowerCase();
+  if (!state) return false;
+
+  if (
+    state === "evidence_rejected" ||
+    state === "delivered_pending_evidence" ||
+    state === "evidence_submitted"
+  ) {
+    return true;
+  }
+  if (
+    state === "evidence_accepted" ||
+    state === "idle_store_custody" ||
+    state === "refunded"
+  ) {
+    return false;
+  }
+
+  if ((delivery?.currentOwnerUserId ?? "").trim() !== carrierId) return false;
+  return true;
+}
+
+export function findRouteStopDelivery(
+  deliveries: RouteStopDeliveryStatusApi[],
+  routeSheetId: string,
+  stopId: string,
+): RouteStopDeliveryStatusApi | undefined {
+  const rsid = routeSheetId.trim();
+  const sid = stopId.trim();
+  if (!rsid || !sid) return undefined;
+  return deliveries.find(
+    (d) =>
+      (d.routeSheetId ?? "").trim() === rsid &&
+      (d.routeStopId ?? "").trim() === sid,
+  );
+}
+
+export function sellerExpelBlockedForStop(
+  deliveries: RouteStopDeliveryStatusApi[],
+  routeSheetId: string,
+  stopId: string,
+  carrierUserId: string,
+): boolean {
+  return carrierDeliveryBlocksSellerExpel(
+    findRouteStopDelivery(deliveries, routeSheetId, stopId),
+    carrierUserId,
+  );
+}
+
+export function sellerExpelBlockedForCarrier(
+  deliveries: RouteStopDeliveryStatusApi[],
+  confirmedTramos: { routeSheetId: string; stopId: string }[],
+  carrierUserId: string,
+): boolean {
+  return confirmedTramos.some((t) =>
+    sellerExpelBlockedForStop(
+      deliveries,
+      t.routeSheetId,
+      t.stopId,
+      carrierUserId,
+    ),
+  );
 }

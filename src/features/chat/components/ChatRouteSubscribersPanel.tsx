@@ -17,7 +17,6 @@ import {
   type RouteTramoSubscriptionItemApi,
 } from "@/utils/chat/chatApi";
 import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
-import { subscribeRouteTramoSubscriptionsChanged } from "@/utils/chat/chatRealtime";
 import {
   buildRouteSheetsMetaForGrouping,
   collectRouteOfferSubscribersForThreadSheets,
@@ -27,6 +26,19 @@ import {
   type RouteOfferSubscriberSummary,
   type RouteSheetSubscriberSection,
 } from "@features/market/model/routeOfferSubscribers";
+import {
+  SELLER_EXPEL_REQUIRES_PAUSE_ES,
+  sellerExpelBlockedForCarrier,
+  sellerExpelBlockedForStop,
+} from "@features/market/model/routeSheetOfferGuards";
+import {
+  fetchAgreementRouteDeliveries,
+  type RouteStopDeliveryStatusApi,
+} from "@/utils/chat/routeLogisticsApi";
+import {
+  subscribeRouteDeliveriesRefresh,
+  subscribeRouteTramoSubscriptionsChanged,
+} from "@/utils/chat/chatRealtime";
 import { onBackdropPointerClose } from "../lib/modalClose";
 import { modalShellWide, modalSub } from "../styles/formModalStyles";
 import { railItemClass } from "./rail/layout/chatRailStyles";
@@ -46,6 +58,8 @@ type Props = {
   routeSheets: { id: string; titulo: string }[];
   /** Solo vendedor del hilo: aceptar o rechazar suscripciones en servidor. */
   canSellerManageRouteSubscriptions?: boolean;
+  /** Acuerdos aceptados del hilo (para estado logístico al evaluar expulsión). */
+  acceptedAgreementIds?: string[];
   onSubscriptionsChanged?: () => void | Promise<void>;
   onClose: () => void;
   /** Desde notificación: abrir detalle y resaltar. */
@@ -74,6 +88,7 @@ export function ChatRouteSubscribersPanel({
   contextRouteSheetId,
   routeSheets,
   canSellerManageRouteSubscriptions = false,
+  acceptedAgreementIds = [],
   onSubscriptionsChanged,
   onClose,
   highlightUserId,
@@ -116,6 +131,9 @@ export function ChatRouteSubscribersPanel({
   const [expelScope, setExpelScope] = useState<"stop" | "all" | null>(null);
   const [expelReason, setExpelReason] = useState("");
   const [expelBusy, setExpelBusy] = useState(false);
+  const [routeDeliveries, setRouteDeliveries] = useState<
+    RouteStopDeliveryStatusApi[]
+  >([]);
   const expelTitleId = useId();
 
   const routeSheetsMeta = useMemo(
@@ -185,6 +203,52 @@ export function ChatRouteSubscribersPanel({
       cancelled = true;
     };
   }, [threadId, onThreadRouteSheetsSynced]);
+
+  const agreementIdsKey = useMemo(
+    () =>
+      acceptedAgreementIds
+        .map((id) => id.trim())
+        .filter((id) => id.length >= 8)
+        .sort()
+        .join("|"),
+    [acceptedAgreementIds],
+  );
+
+  useEffect(() => {
+    const tid = threadId.trim();
+    if (!canSellerManageRouteSubscriptions || tid.length < 4 || !agreementIdsKey) {
+      setRouteDeliveries([]);
+      return () => {};
+    }
+
+    const agreementIds = agreementIdsKey.split("|").filter((id) => id.length >= 8);
+    let cancelled = false;
+
+    const loadDeliveries = () => {
+      void Promise.all(
+        agreementIds.map((aid) => fetchAgreementRouteDeliveries(tid, aid)),
+      )
+        .then((groups) => {
+          if (cancelled) return;
+          setRouteDeliveries(groups.flat());
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setRouteDeliveries([]);
+        });
+    };
+
+    loadDeliveries();
+    const unsub = subscribeRouteDeliveriesRefresh((p) => {
+      if (p.threadId !== tid) return;
+      loadDeliveries();
+    });
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [threadId, canSellerManageRouteSubscriptions, agreementIdsKey]);
 
   useEffect(() => {
     const tid = threadId.trim();
@@ -389,13 +453,50 @@ export function ChatRouteSubscribersPanel({
     return selectedCarrier.tramos.some((t) => t.status === "confirmed");
   }, [selectedCarrier]);
 
-  /** Incluye pendientes: el vendedor puede retirar al transportista de la operación sin tramos confirmados. */
   const selectedCarrierHasExpellableTramo = useMemo(() => {
     if (!selectedCarrier) return false;
-    return selectedCarrier.tramos.some(
-      (t) => t.status === "confirmed" || t.status === "pending",
-    );
+    return selectedCarrier.tramos.some((t) => t.status === "confirmed");
   }, [selectedCarrier]);
+
+  const selectedStopExpelBlocked = useMemo(() => {
+    if (!selectedCarrier || tramoRowForSelection?.status !== "confirmed")
+      return false;
+    const rsid = (
+      selectedTramo?.routeSheetId ??
+      focusRouteSheetId ??
+      ""
+    ).trim();
+    const stopId = (focusTramoId ?? "").trim();
+    if (!rsid || !stopId) return false;
+    return sellerExpelBlockedForStop(
+      routeDeliveries,
+      rsid,
+      stopId,
+      selectedCarrier.userId,
+    );
+  }, [
+    selectedCarrier,
+    tramoRowForSelection?.status,
+    selectedTramo?.routeSheetId,
+    focusRouteSheetId,
+    focusTramoId,
+    routeDeliveries,
+  ]);
+
+  const selectedCarrierExpelAllBlocked = useMemo(() => {
+    if (!selectedCarrier) return false;
+    const confirmedTramos = selectedCarrier.tramos
+      .filter((t) => t.status === "confirmed")
+      .map((t) => ({
+        routeSheetId: t.routeSheetId,
+        stopId: t.stopId,
+      }));
+    return sellerExpelBlockedForCarrier(
+      routeDeliveries,
+      confirmedTramos,
+      selectedCarrier.userId,
+    );
+  }, [selectedCarrier, routeDeliveries]);
 
   const selectedHasPending = tramoRowForSelection?.status === "pending";
   const selectedHasAcceptablePending =
@@ -475,10 +576,18 @@ export function ChatRouteSubscribersPanel({
     }
     if (scope === "stop") {
       const st = tramoRowForSelection?.status;
-      if (st !== "confirmed" && st !== "pending") {
-        toast.error("Solo puedes retirar en un tramo pendiente o confirmado.");
+      if (st !== "confirmed") {
+        toast.error("Solo puedes expulsar en un tramo con transportista confirmado.");
         return;
       }
+      if (selectedStopExpelBlocked) {
+        toast.error(SELLER_EXPEL_REQUIRES_PAUSE_ES);
+        return;
+      }
+    }
+    if (scope === "all" && selectedCarrierExpelAllBlocked) {
+      toast.error(SELLER_EXPEL_REQUIRES_PAUSE_ES);
+      return;
     }
     const tid = threadId.trim();
     const cid = selectedCarrier.userId.trim();
@@ -748,24 +857,27 @@ export function ChatRouteSubscribersPanel({
               ) : null}
               {canSellerManageRouteSubscriptions && selectedCarrier ? (
                 <>
-                  {tramoRowForSelection &&
-                  (tramoRowForSelection.status === "confirmed" ||
-                    tramoRowForSelection.status === "pending") ? (
+                  {tramoRowForSelection?.status === "confirmed" ? (
                     <div className="mt-4 border-t border-[var(--border)] pt-3">
                       <p className="mb-2 mt-0 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
                         Este tramo
                       </p>
                       <p className="vt-muted mb-2 text-[11px] leading-snug">
                         Retirá a este transportista solo de este tramo
-                        {tramoRowForSelection.status === "confirmed"
-                          ? " confirmado. Por cada tramo confirmado que retires, en la demo puede aplicarse un ajuste a la confianza de la tienda."
-                          : " pendiente (sin ajuste por tramo pendiente)."}
-                        Si era su último tramo en el hilo, pierde el acceso a
-                        este chat.
+                        confirmado. Por cada tramo confirmado que retires, en la
+                        demo puede aplicarse un ajuste a la confianza de la
+                        tienda. Si era su último tramo en el hilo, pierde el
+                        acceso a este chat.
                       </p>
                       <button
                         type="button"
                         className="vt-btn w-full border-[color-mix(in_oklab,var(--bad)_50%,var(--border))] text-[12px] font-extrabold text-[var(--bad)]"
+                        disabled={selectedStopExpelBlocked}
+                        title={
+                          selectedStopExpelBlocked
+                            ? SELLER_EXPEL_REQUIRES_PAUSE_ES
+                            : undefined
+                        }
                         onClick={() => {
                           setExpelScope("stop");
                           setExpelReason("");
@@ -774,6 +886,11 @@ export function ChatRouteSubscribersPanel({
                       >
                         Expulsar de este tramo
                       </button>
+                      {selectedStopExpelBlocked ? (
+                        <p className="mb-0 mt-2 text-[10px] font-semibold leading-snug text-[var(--bad)]">
+                          {SELLER_EXPEL_REQUIRES_PAUSE_ES}
+                        </p>
+                      ) : null}
                     </div>
                   ) : null}
                   <div className="mt-4 border-t border-[var(--border)] pt-3">
@@ -792,6 +909,12 @@ export function ChatRouteSubscribersPanel({
                         <button
                           type="button"
                           className="vt-btn w-full border-[color-mix(in_oklab,var(--bad)_50%,var(--border))] text-[12px] font-extrabold text-[var(--bad)]"
+                          disabled={selectedCarrierExpelAllBlocked}
+                          title={
+                            selectedCarrierExpelAllBlocked
+                              ? SELLER_EXPEL_REQUIRES_PAUSE_ES
+                              : undefined
+                          }
                           onClick={() => {
                             setExpelScope("all");
                             setExpelReason("");
@@ -800,6 +923,11 @@ export function ChatRouteSubscribersPanel({
                         >
                           Expulsar de la operación
                         </button>
+                        {selectedCarrierExpelAllBlocked ? (
+                          <p className="mb-0 mt-2 text-[10px] font-semibold leading-snug text-[var(--bad)]">
+                            {SELLER_EXPEL_REQUIRES_PAUSE_ES}
+                          </p>
+                        ) : null}
                       </>
                     ) : (
                       <p className="mb-0 text-[11px] font-semibold leading-snug text-[var(--muted)]">

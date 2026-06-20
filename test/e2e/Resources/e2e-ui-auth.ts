@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import type { E2ESession } from "./e2e-session";
+import { getE2EApiBaseUrl } from "./e2e-api-base";
 
 function randomNationalNumber(): string {
   const n = Math.floor(100_000_000 + Math.random() * 899_999_999);
@@ -11,22 +12,71 @@ export function randomE2EPhone(): string {
   return `+549${randomNationalNumber()}`;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Backend must respond before React mounts (main.tsx awaits bootstrap/guest). */
+export async function isE2EApiReachable(baseURL?: string): Promise<boolean> {
+  const origin = (baseURL ?? getE2EApiBaseUrl()).replace(/\/$/, "");
+  const url = `${origin}/api/v1/bootstrap/guest?${new URLSearchParams({
+    guestId: "e2e-probe",
+  }).toString()}`;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+      if (res.ok) return true;
+    } catch {
+      /* retry */
+    }
+    await sleep(2_500);
+  }
+  return false;
+}
+
 export async function isE2EAppReachable(
   page: Page,
   baseURL: string,
 ): Promise<boolean> {
-  try {
-    await page.goto(`${baseURL}/onboarding`, {
-      waitUntil: "domcontentloaded",
-      timeout: 20_000,
-    });
-    await expect(
-      page.getByRole("button", { name: /crear una cuenta nueva/i }),
-    ).toBeVisible({ timeout: 15_000 });
-    return true;
-  } catch {
-    return false;
+  let lastError = "unknown";
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      await page.goto(`${baseURL}/onboarding`, {
+        waitUntil: "load",
+        timeout: 60_000,
+      });
+      await expect(
+        page.getByRole("heading", { name: /bienvenido a vibetrade/i }),
+      ).toBeVisible({ timeout: 60_000 });
+      await expect(
+        page.getByRole("button", { name: /crear una cuenta nueva/i }),
+      ).toBeVisible({ timeout: 15_000 });
+      return true;
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+      await sleep(3_000);
+    }
   }
+  console.warn(`[e2e] UI reachability failed after retries: ${lastError}`);
+  return false;
+}
+
+/** Waits for Vite (:5173) and API (:5110 via proxy). Returns a human-readable failure reason. */
+export async function waitForE2EStackReady(
+  page: Page,
+  baseURL: string,
+): Promise<string | null> {
+  if (!(await isE2EApiReachable())) {
+    return (
+      "Backend API not reachable at /api/v1/bootstrap/guest — start the API on :5110 " +
+      "(docker compose up or dotnet run). The frontend will not render onboarding until bootstrap succeeds."
+    );
+  }
+  if (!(await isE2EAppReachable(page, baseURL))) {
+    return (
+      `Frontend UI not ready at ${baseURL}/onboarding — is Vite running on :5173? ` +
+      "First compile after startup can take ~60s; retry once dev is fully warm."
+    );
+  }
+  return null;
 }
 
 async function fillPhoneAndRequestCode(

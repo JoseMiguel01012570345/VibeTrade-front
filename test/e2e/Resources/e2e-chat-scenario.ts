@@ -17,6 +17,30 @@ export type E2EChatScenario = {
   sellerUserId: string;
   buyerUserId: string;
   createdAt: string;
+  /** Thread with one accepted service agreement ready for route sheet tests. */
+  routeSheetThreadId?: string;
+  /** ID of the first accepted agreement inside routeSheetThreadId (backward compat). */
+  routeSheetAgreementId?: string;
+  /** All accepted agreement IDs inside routeSheetThreadId (indices 0-5). */
+  routeSheetAgreementIds?: string[];
+  /** Session token for the provisioned carrier user (3rd party with a transport service). */
+  carrierSessionToken?: string;
+  /** User ID of the provisioned carrier. */
+  carrierUserId?: string;
+  /** Store ID of the carrier's store. */
+  carrierStoreId?: string;
+  /** Service ID of the carrier's published transport service. */
+  carrierServiceId?: string;
+  /** Phone of the carrier user (for search). */
+  carrierPhone?: string;
+  /** Second carrier for dual-tramo / handoff / proximity tests. */
+  carrier2SessionToken?: string;
+  carrier2UserId?: string;
+  carrier2StoreId?: string;
+  carrier2ServiceId?: string;
+  carrier2Phone?: string;
+  /** Next agreement index for serial logistics E2E (persisted across Playwright workers). */
+  logisticsAgreementCursor?: number;
 };
 
 export type ProvisionedChatE2E = {

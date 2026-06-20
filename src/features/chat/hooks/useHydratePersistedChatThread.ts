@@ -33,6 +33,7 @@ import {
   type RouteSheet,
 } from "@features/market/model/routeSheetTypes";
 import { useMarketStore } from "@app/store/useMarketStore";
+import { partyExpelledFieldsFromDto } from "@/utils/chat/threadPartyExpelled";
 
 type Params = {
   threadId: string | undefined;
@@ -198,6 +199,7 @@ export function useHydratePersistedChatThread({
                     : null,
                 }
               : {}),
+            ...partyExpelledFieldsFromDto(dto),
             messages: qaSynced,
             contracts,
             routeSheets: sheetsForThread,

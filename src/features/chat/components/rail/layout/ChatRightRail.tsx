@@ -16,13 +16,10 @@ import {
   RAIL_ROOT,
   TAB_BASE,
   TAB_ON,
-  type ContractFilter,
 } from "./chatRailStyles";
 import { ChatRightRailContractsPanel } from "./ChatRightRailContractsPanel";
 import { ChatRightRailPeoplePanel } from "./ChatRightRailPeoplePanel";
 import { ChatRightRailRoutesPanel } from "../routes/ChatRightRailRoutesPanel";
-
-export type { ContractFilter } from "./chatRailStyles";
 
 type Props = {
   threadId: string;
@@ -35,8 +32,6 @@ type Props = {
   contractsLoading?: boolean;
   routeSheetsLoading?: boolean;
   actionsLocked?: boolean;
-  storeName: string;
-  buyerName: string;
   buyer: { id: string; name: string; trustScore: number; avatarUrl?: string };
   seller: StoreBadge;
   focusRouteId?: string | null;
@@ -51,10 +46,14 @@ type Props = {
   onRequestEditAgreement?: (agreement: TradeAgreement) => void;
   isActingSeller?: boolean;
   onDeleteAgreement?: (agreement: TradeAgreement) => void;
+  onDuplicateAgreement?: (agreement: TradeAgreement) => void;
   chatCarriers?: ThreadChatCarrier[];
   onOpenRouteSubscribers?: (routeSheetId: string) => void;
   /** Tras mutaciones de ruta en hilo persistido: hojas + suscripciones desde API. */
   onPersistedRouteDataRefresh?: () => Promise<void>;
+  /** Comprador/vendedor que ya salió del hilo no debe figurar en integrantes. */
+  excludeBuyerFromParticipants?: boolean;
+  excludeSellerFromParticipants?: boolean;
 };
 
 export function ChatRightRail({
@@ -67,8 +66,6 @@ export function ChatRightRail({
   contractsLoading = false,
   routeSheetsLoading = false,
   actionsLocked = false,
-  storeName,
-  buyerName,
   focusRouteId,
   buyer,
   seller,
@@ -79,9 +76,12 @@ export function ChatRightRail({
   onRequestEditAgreement,
   isActingSeller = false,
   onDeleteAgreement,
+  onDuplicateAgreement,
   chatCarriers,
   onOpenRouteSubscribers,
   onPersistedRouteDataRefresh,
+  excludeBuyerFromParticipants = false,
+  excludeSellerFromParticipants = false,
 }: Props) {
   const publishRouteSheetsToPlatform = useMarketStore(
     (s) => s.publishRouteSheetsToPlatform,
@@ -96,6 +96,7 @@ export function ChatRightRail({
     (s) => s.unlinkAgreementFromRouteSheet,
   );
   const deleteRouteSheet = useMarketStore((s) => s.deleteRouteSheet);
+  const duplicateRouteSheet = useMarketStore((s) => s.duplicateRouteSheet);
   const routeOfferForThread = useMarketStore(
     useShallow((s) => {
       const th = s.threads[threadId];
@@ -105,7 +106,6 @@ export function ChatRightRail({
   const [tab, setTab] = useState<"contracts" | "routes" | "people">(
     "contracts",
   );
-  const [cFilter, setCFilter] = useState<ContractFilter>("all");
   const [selContract, setSelContract] = useState<TradeAgreement | null>(null);
   const [selRouteId, setSelRouteId] = useState<string | null>(null);
 
@@ -117,8 +117,18 @@ export function ChatRightRail({
   }, [focusRouteId, onConsumedRouteFocus]);
 
   const participants = useMemo(
-    () => buildChatParticipants(buyer, seller, chatCarriers),
-    [buyer, seller, chatCarriers],
+    () =>
+      buildChatParticipants(buyer, seller, chatCarriers, {
+        excludeBuyer: excludeBuyerFromParticipants,
+        excludeSeller: excludeSellerFromParticipants,
+      }),
+    [
+      buyer,
+      seller,
+      chatCarriers,
+      excludeBuyerFromParticipants,
+      excludeSellerFromParticipants,
+    ],
   );
 
   const linkedRouteSheetIds = useMemo(() => {
@@ -129,18 +139,6 @@ export function ChatRightRail({
     }
     return s;
   }, [contracts]);
-
-  const displayContracts = useMemo(() => {
-    if (cFilter === "all") return contracts;
-    if (cFilter === "store")
-      return contracts.filter((c) => c.issuedByStoreId === threadStoreId);
-    return contracts.filter(
-      (c) =>
-        c.status === "pending_buyer" ||
-        c.respondedAt != null ||
-        c.status === "deleted",
-    );
-  }, [contracts, cFilter, threadStoreId]);
 
   const selRoute = selRouteId
     ? routeSheets.find((r) => r.id === selRouteId)
@@ -196,14 +194,10 @@ export function ChatRightRail({
       {tab === "contracts" && (
         <ChatRightRailContractsPanel
           bodyClassName={RAIL_BODY}
-          cFilter={cFilter}
-          setCFilter={setCFilter}
-          storeName={storeName}
-          buyerName={buyerName}
           selContract={selContract}
           setSelContract={setSelContract}
           agreementForDetail={agreementForDetail}
-          displayContracts={displayContracts}
+          displayContracts={contracts}
           contractsLoading={contractsLoading}
           routeSheets={routeSheets}
           threadId={threadId}
@@ -214,6 +208,7 @@ export function ChatRightRail({
           onRequestEditAgreement={onRequestEditAgreement}
           isActingSeller={isActingSeller}
           onDeleteAgreement={onDeleteAgreement}
+          onDuplicateAgreement={onDuplicateAgreement}
           actionsLocked={actionsLocked}
         />
       )}
@@ -235,6 +230,7 @@ export function ChatRightRail({
           onEditRouteSheet={onEditRouteSheet}
           toggleRouteStop={toggleRouteStop}
           deleteRouteSheet={deleteRouteSheet}
+          duplicateRouteSheet={duplicateRouteSheet}
           publishRouteSheetsToPlatform={publishRouteSheetsToPlatform}
           unpublishRouteSheetFromPlatform={unpublishRouteSheetFromPlatform}
           routeOffer={routeOfferForThread}

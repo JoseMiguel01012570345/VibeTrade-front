@@ -26,6 +26,7 @@ import { getSessionToken } from "@shared/services/http/sessionToken";
 import { fetchPublicOfferCard } from "../market/marketPersistence";
 import { mergedRouteOfferPublicAfterChatThreadHydration } from "../market/routeOfferPublicFromEmergentCard";
 import { peerPartyExitFromDto } from "./threadPeerPartyExit";
+import { partyExpelledFieldsFromDto } from "./threadPartyExpelled";
 import {
   minimalOfferStoreFromChatThreadDto,
   VT_SOCIAL_PLACEHOLDER_OFFER_ID,
@@ -198,6 +199,7 @@ export async function rehydrateCthThreadInStoreForIncomingMessage(
             prematureExitUnderInvestigation: premature,
           }
         : {}),
+      ...partyExpelledFieldsFromDto(dto),
       messages: qaSynced,
       contracts,
       routeSheets: routeSheets.length > 0 ? routeSheets : bootstrap.routeSheets ?? [],

@@ -157,6 +157,44 @@ const carrierTelemetryListeners = new Set<
   (p: CarrierTelemetryUpdatedPayload) => void
 >();
 
+/** Cambios hub que implican re-fetch de GET deliveries (ownership / estado logístico). */
+const ROUTE_DELIVERIES_REFRESH_CHANGES = new Set([
+  "route_deliveries_updated",
+  "ownership_cede",
+  "route_stop_idle",
+  "ownership_resume_idle",
+]);
+
+export type RouteDeliveriesRefreshPayload = {
+  threadId: string;
+  routeSheetId: string;
+  change: string;
+};
+
+const routeDeliveriesRefreshListeners = new Set<
+  (p: RouteDeliveriesRefreshPayload) => void
+>();
+
+/** Panel Rutas: refrescar entregas por tramo tras pago, cede, pausa, telemetría→in_transit. */
+export function subscribeRouteDeliveriesRefresh(
+  cb: (p: RouteDeliveriesRefreshPayload) => void,
+): () => void {
+  routeDeliveriesRefreshListeners.add(cb);
+  return () => {
+    routeDeliveriesRefreshListeners.delete(cb);
+  };
+}
+
+function notifyRouteDeliveriesRefresh(p: RouteDeliveriesRefreshPayload): void {
+  for (const cb of routeDeliveriesRefreshListeners) {
+    try {
+      cb(p);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 /** Panel de suscriptores u otros: recibe la misma respuesta del GET ya aplicada al store. */
 export function subscribeRouteTramoSubscriptionsChanged(
   cb: (p: RouteTramoSubscriptionsChangedPayload) => void,
@@ -376,6 +414,13 @@ export function startChatRealtime(): void {
           emergentOfferId:
             emergentOfferId.length >= 4 ? emergentOfferId : null,
         };
+        if (ROUTE_DELIVERIES_REFRESH_CHANGES.has(change)) {
+          notifyRouteDeliveriesRefresh({
+            threadId: tid,
+            routeSheetId: sid,
+            change,
+          });
+        }
         for (const cb of routeTramoSubsListeners) {
           try {
             cb(enriched);
@@ -402,6 +447,10 @@ export function startChatRealtime(): void {
             "Un transportista rechazó los cambios en la hoja de ruta."
           : change === "presel_decline" ?
             "Un transportista rechazó la invitación; la hoja de ruta se actualizó."
+          : change === "sheet_deleted" ?
+            "Una hoja de ruta se eliminó en este chat."
+          : change === "sheet_completed" ?
+            "Una hoja de ruta finalizó y se retiró de la plataforma."
           : "Se actualizaron las suscripciones a la hoja de ruta.";
         if (change === "sheet_edit_pending") {
           const byCarrier =

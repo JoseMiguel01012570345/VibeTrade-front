@@ -108,7 +108,11 @@ export function confirmedCarrierUidForOfferStop(
   sheetId: string,
   stopId: string | undefined,
 ): string {
-  if (!stopId?.trim() || offer?.routeSheetId !== sheetId) return "";
+  if (
+    !stopId?.trim() ||
+    (offer?.routeSheetId ?? "").trim() !== sheetId.trim()
+  )
+    return "";
   const tr = offer?.tramos.find((x) => x.stopId === stopId);
   return tr?.assignment?.status === "confirmed"
     ? (tr.assignment.userId ?? "").trim()

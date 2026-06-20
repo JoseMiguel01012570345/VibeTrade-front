@@ -1,4 +1,7 @@
-import type { RouteSheetPayload } from "@features/market/model/routeSheetTypes";
+import type {
+  RouteSheet,
+  RouteSheetPayload,
+} from "@features/market/model/routeSheetTypes";
 import type {
   ChatUnifiedMessagePayloadDto,
   PostChatMessageBody,
@@ -50,6 +53,8 @@ export type ChatThreadDto = {
   partyExitedUserId?: string | null;
   partyExitedReason?: string | null;
   partyExitedAtUtc?: string | null;
+  buyerExpelledAtUtc?: string | null;
+  sellerExpelledAtUtc?: string | null;
   /** Chat directo/grupal sin oferta comercial (sin acuerdos ni rutas). */
   isSocialGroup?: boolean;
   /** Nombre del grupo (solo lo edita el creador en API). */
@@ -98,8 +103,12 @@ export type TradeAgreementApiDto = {
   extraFields?: TradeAgreementExtraFieldApiDto[];
   routeSheetId?: string | null;
   routeSheetUrl?: string | null;
-  /** Hay al menos un cobro exitoso (Stripe); bloquea edición, borrado y cambios del vínculo de ruta. */
+  /** Hay al menos un cobro exitoso (Stripe); bloquea edición y borrado. */
   hasSucceededPayments?: boolean | null;
+  /** Hay al menos un tramo de transporte cobrado; bloquea cambiar o desvincular la hoja. */
+  hasSucceededRoutePayments?: boolean | null;
+  /** Evidencia de mercancía aceptada; bloquea vincular o desvincular hoja de ruta. */
+  hasAcceptedMerchandiseEvidence?: boolean | null;
 };
 
 /** Payload unificado del mensaje (respuesta API); alineado a ChatUnifiedMessagePayload del backend. */
@@ -129,6 +138,11 @@ export type ChatThreadSummaryDto = {
   sellerUserId: string;
   buyerDisplayName?: string | null;
   buyerAvatarUrl?: string | null;
+  partyExitedUserId?: string | null;
+  partyExitedReason?: string | null;
+  partyExitedAtUtc?: string | null;
+  buyerExpelledAtUtc?: string | null;
+  sellerExpelledAtUtc?: string | null;
   isSocialGroup?: boolean;
   socialGroupTitle?: string | null;
 };
@@ -352,7 +366,7 @@ export async function fetchThreadRouteSheets(
   return (await res.json()) as RouteSheetPayload[];
 }
 
-/** True si hay hojas de ruta vinculadas a acuerdos aceptados sin pagos exitosos. */
+/** True si el hilo permite crear otra hoja (acuerdo sin pago o con mercancía cobrada sin roadmap vinculado). */
 export async function fetchThreadHasUnpaidRouteSheets(
   threadId: string,
 ): Promise<boolean> {
@@ -480,14 +494,19 @@ export type CarrierWithdrawFromThreadApiResult = {
 /** Transportista: abandona el hilo y des-suscribe tramos (no borra el hilo para comprador/vendedor). */
 export async function postCarrierWithdrawFromThread(
   threadId: string,
+  reason: string,
 ): Promise<CarrierWithdrawFromThreadApiResult> {
   const res = await apiFetch(
     `/api/v1/policies/chat/threads/${encodeURIComponent(threadId)}/route-tramo-subscriptions/carrier-withdraw`,
-    { method: "POST" },
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reason.trim() }),
+    },
   );
   if (!res.ok) {
     const t = await res.text().catch(() => "");
-    throw new Error(chatApiErrorMessage(t, res.status));
+    throwVtHttpFromChatResponse(res, t);
   }
   return (await res.json()) as CarrierWithdrawFromThreadApiResult;
 }
@@ -745,6 +764,33 @@ export async function deleteThreadTradeAgreement(
     const t = await res.text().catch(() => "");
     throw new Error(chatApiErrorMessage(t, res.status));
   }
+}
+
+export async function postThreadTradeAgreementDuplicate(
+  threadId: string,
+  agreementId: string,
+): Promise<TradeAgreementApiDto> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}/duplicate`,
+    { method: "POST" },
+  );
+  await throwIfTradeAgreementResponseNotOk(res);
+  return (await res.json()) as TradeAgreementApiDto;
+}
+
+export async function postThreadRouteSheetDuplicate(
+  threadId: string,
+  routeSheetId: string,
+): Promise<RouteSheet> {
+  const res = await apiFetch(
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/route-sheets/${encodeURIComponent(routeSheetId)}/duplicate`,
+    { method: "POST" },
+  );
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
+  }
+  return (await res.json()) as RouteSheet;
 }
 
 export async function postChatMessage(

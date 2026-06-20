@@ -14,6 +14,12 @@ import {
   normalizeAgreementServices,
   normalizeMerchandiseLine,
 } from "./tradeAgreementTypes";
+import {
+  agreementSingleCurrencyError,
+  MULTIPLE_AGREEMENT_CURRENCIES_ES,
+  resolveSingleAgreementCurrency,
+  ROUTE_LEG_MUST_MATCH_AGREEMENT_CURRENCY_ES,
+} from "./agreementCheckoutCurrency";
 
 export type CheckoutLineCategory =
   | "merchandise"
@@ -159,6 +165,15 @@ export function buildPaymentCheckoutBreakdown(
     };
   }
 
+  const linkIdEarly = agreement.routeSheetId?.trim() ?? "";
+  const rsEarly =
+    linkIdEarly && routeSheet?.id?.trim() === linkIdEarly ? routeSheet : null;
+  const fullCur = resolveSingleAgreementCurrency(agreement, rsEarly);
+  if (!fullCur.ok && fullCur.reason === "multiple") {
+    errors.push(MULTIPLE_AGREEMENT_CURRENCIES_ES);
+    return { basisLines: [], byCurrency: [], errors };
+  }
+
   if (agreementDeclaresMerchandise(agreement)) {
     agreement.merchandise.forEach((raw, i) => {
       const line = normalizeMerchandiseLine(raw);
@@ -218,24 +233,43 @@ export function buildPaymentCheckoutBreakdown(
     const paradas = [...(rsMatch.paradas ?? [])].sort(
       (a, b) => (a.orden ?? 0) - (b.orden ?? 0),
     );
-    paradas.forEach((p, idx) => {
-      const amt = parseDecimal(p.precioTransportista ?? "");
-      const sheetCur = isoNorm(rsMatch.monedaPago);
-      const mono = isoNorm(p.monedaPago) || sheetCur;
-      if ((amt ?? 0) <= 0 || !mono) return;
-      const from = p.origen || "?";
-      const to = p.destino || "?";
-      const legLabel = `Transporte — tramo ${String(idx + 1)}: ${from} → ${to}`.slice(0, 220);
-      pushLineBucket(bucket, {
-        category: "route_leg",
-        label: legLabel,
-        currency: mono,
-        amountMajor: amt as number,
-        routeSheetId: rsMatch.id,
-        stopId: p.id?.trim(),
-        tramoOrdinal: idx + 1,
+    const curCheck = resolveSingleAgreementCurrency(agreement, rsMatch);
+    if (!curCheck.ok) {
+      if (curCheck.reason === "multiple") {
+        errors.push(MULTIPLE_AGREEMENT_CURRENCIES_ES);
+      } else if (curCheck.reason === "route_mismatch") {
+        errors.push(ROUTE_LEG_MUST_MATCH_AGREEMENT_CURRENCY_ES);
+      } else if (curCheck.reason === "missing") {
+        errors.push(
+          "El acuerdo con mercadería debe indicar la moneda de la mercadería antes de cobrar transporte.",
+        );
+      }
+    } else {
+      const requiredCur = curCheck.currency;
+      paradas.forEach((p, idx) => {
+        const amt = parseDecimal(p.precioTransportista ?? "");
+        const sheetCur = isoNorm(rsMatch.monedaPago);
+        const mono = isoNorm(p.monedaPago) || sheetCur;
+        if ((amt ?? 0) <= 0) return;
+        if (!mono) return;
+        if (requiredCur && mono !== requiredCur) {
+          errors.push(ROUTE_LEG_MUST_MATCH_AGREEMENT_CURRENCY_ES);
+          return;
+        }
+        const from = p.origen || "?";
+        const to = p.destino || "?";
+        const legLabel = `Transporte — tramo ${String(idx + 1)}: ${from} → ${to}`.slice(0, 220);
+        pushLineBucket(bucket, {
+          category: "route_leg",
+          label: legLabel,
+          currency: mono,
+          amountMajor: amt as number,
+          routeSheetId: rsMatch.id,
+          stopId: p.id?.trim(),
+          tramoOrdinal: idx + 1,
+        });
       });
-    });
+    }
   } else if (
     linkId.length > 0 &&
     !routeSheet &&
@@ -272,6 +306,10 @@ export function buildPaymentCheckoutBreakdown(
   });
 
   byCurrency.sort((a, b) => a.currency.localeCompare(b.currency));
+
+  if (bucket.size > 1) {
+    errors.push(MULTIPLE_AGREEMENT_CURRENCIES_ES);
+  }
 
   if (byCurrency.length === 0 && errors.length === 0) {
     errors.push("No hay importes para cobrar en este acuerdo.");

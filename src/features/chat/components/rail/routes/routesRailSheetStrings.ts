@@ -1,23 +1,30 @@
 import { confirmedCarrierIdsOnOffer } from "@app/store/marketSliceHelpers";
 import type { RouteOfferPublicState } from "@app/store/marketStoreTypes";
 import type { RouteSheet } from "@features/market/model/routeSheetTypes";
-import { ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES } from "@features/market/model/routeSheetOfferGuards";
+import {
+  ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
+  ROUTE_SHEET_PAID_CARRIER_CONTACT_ONLY_ES,
+  ROUTE_SHEET_PUBLISH_BLOCKED_DELIVERED_ES,
+  routeSheetPublishBlockedWhenDelivered,
+} from "@features/market/model/routeSheetOfferGuards";
 import { SELLER_TRUST_PENALTY_ON_EDIT } from "../../modals/TrustRiskEditConfirmModal";
 
 export function routesRailSheetListEmptyText(isActingSeller: boolean): string {
   return isActingSeller
-    ? "Crea una hoja de ruta y vinculala al acuerdo desde Contratos (con mercancías) antes de publicar en la plataforma."
+    ? "Crea una hoja de ruta para planificar los tramos de transporte."
     : "La tienda creará y editará la hoja de ruta; aquí podrás ver el avance cuando exista.";
 }
 
 export function railDetailSellerEditTitle(
   actionsLocked: boolean,
-  sheetLockedByPaid: boolean,
+  sheetStructuralEditBlockedByPaid: boolean,
   sheetEditBlockedByCarrierAck: boolean,
   publicadaPlataforma: boolean,
+  carrierContactEditOnly: boolean,
 ): string {
   if (actionsLocked) return "No disponible hasta registrar el pago";
-  if (sheetLockedByPaid) return ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES;
+  if (sheetStructuralEditBlockedByPaid) return ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES;
+  if (carrierContactEditOnly) return ROUTE_SHEET_PAID_CARRIER_CONTACT_ONLY_ES;
   if (sheetEditBlockedByCarrierAck) {
     return "Esperá a que todos los transportistas en el hilo acepten o rechacen la última edición";
   }
@@ -28,10 +35,14 @@ export function railDetailSellerEditTitle(
 
 export function railInviteTitle(
   actionsLocked: boolean,
-  sheetLockedByPaid: boolean,
+  sheetStructuralEditBlockedByPaid: boolean,
+  carrierContactEditOnly: boolean,
 ): string {
   if (actionsLocked) return "No disponible hasta registrar el pago";
-  if (sheetLockedByPaid) return ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES;
+  if (sheetStructuralEditBlockedByPaid) return ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES;
+  if (carrierContactEditOnly) {
+    return "Invitar transportista (tras indicar teléfono en tramo vacante)";
+  }
   return "Invitar transportista a la hoja de ruta";
 }
 
@@ -45,15 +56,12 @@ export function railDetailDeleteTitle(
 }
 
 export function railDetailPublishTitle(
-  actionsLocked: boolean,
-  sheetLockedByPaid: boolean,
-  linked: boolean,
   publicadaPlataforma: boolean,
+  estado?: RouteSheet["estado"],
 ): string {
-  if (actionsLocked) return "No disponible hasta registrar el pago";
-  if (sheetLockedByPaid) return ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES;
-  if (!linked)
-    return "Vinculá esta hoja a un acuerdo en Contratos antes de publicar";
+  if (!publicadaPlataforma && routeSheetPublishBlockedWhenDelivered(estado)) {
+    return ROUTE_SHEET_PUBLISH_BLOCKED_DELIVERED_ES;
+  }
   return publicadaPlataforma
     ? "Dejar de mostrar la hoja en el mercado y búsqueda"
     : "Publicar la hoja en el mercado (demo)";

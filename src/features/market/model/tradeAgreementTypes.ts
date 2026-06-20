@@ -257,6 +257,10 @@ export type TradeAgreement = {
   routeSheetUrl?: string;
   /** Al menos un cobro Stripe exitoso para este acuerdo. */
   hasSucceededPayments?: boolean;
+  /** Al menos un tramo de transporte cobrado con éxito. */
+  hasSucceededRoutePayments?: boolean;
+  /** El comprador aceptó evidencia de mercancía. */
+  hasAcceptedMerchandiseEvidence?: boolean;
   /** Cláusulas adicionales (título + texto o adjunto) por bloque o legado combinado. */
   extraFields?: TradeAgreementExtraFieldDraft[];
 };
@@ -275,6 +279,8 @@ type TradeAgreementDraftBase = Omit<
   | "merchandiseMeta"
   | "service"
   | "hasSucceededPayments"
+  | "hasSucceededRoutePayments"
+  | "hasAcceptedMerchandiseEvidence"
 >;
 
 /** Borrador del formulario: siempre incluye lista de servicios (puede estar vacía). */
@@ -743,4 +749,27 @@ export function agreementDeclaresService(
   a: Pick<TradeAgreement, "includeService">,
 ): boolean {
   return a.includeService !== false;
+}
+
+/** Bloquea cambiar o desvincular la hoja cuando ya hubo cobro de transporte (tramos). */
+export function agreementRouteLinkFrozenAfterPayment(
+  a: Pick<TradeAgreement, "hasSucceededRoutePayments" | "routeSheetId">,
+): boolean {
+  return (
+    a.hasSucceededRoutePayments === true &&
+    !!(a.routeSheetId ?? "").trim()
+  );
+}
+
+/** Bloquea vincular o desvincular hoja (evidencia aceptada o transporte ya cobrado). */
+export function agreementRouteLinkFrozen(
+  a: Pick<
+    TradeAgreement,
+    | "hasSucceededRoutePayments"
+    | "hasAcceptedMerchandiseEvidence"
+    | "routeSheetId"
+  >,
+): boolean {
+  if (a.hasAcceptedMerchandiseEvidence === true) return true;
+  return agreementRouteLinkFrozenAfterPayment(a);
 }

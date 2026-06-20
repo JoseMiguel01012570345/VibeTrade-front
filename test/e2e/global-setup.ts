@@ -3,15 +3,32 @@ import { chromium } from "@playwright/test";
 import type { E2ESession } from "./Resources/e2e-session";
 import { provisionChatE2EScenario } from "./Resources/e2e-chat-scenario";
 import type { E2EChatScenario } from "./Resources/e2e-chat-scenario";
-import { isE2EAppReachable, loginUserViaUI } from "./Resources/e2e-ui-auth";
+import {
+  isE2EAppReachable,
+  loginUserViaUI,
+  logoutViaUI,
+  registerUserViaUI,
+  waitForE2EStackReady,
+} from "./Resources/e2e-ui-auth";
+import {
+  addServiceViaUI,
+  createStoreViaUI,
+  publishCatalogItemViaUI,
+} from "./Resources/e2e-ui-store";
+import {
+  E2E_DEMO_CARD_LAST4,
+  ensureStripeCustomerViaFetch,
+  listStripeCardsViaFetch,
+} from "./Resources/e2e-stripe-customer";
 import {
   e2eAuthDir,
   e2eScenarioFile,
   e2eSellerSessionFile,
   e2eSessionFile,
 } from "./Resources/e2e-paths";
+import { getE2EApiBaseUrl, getE2EAppBaseUrl } from "./Resources/e2e-api-base";
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
+const baseURL = getE2EAppBaseUrl();
 
 function writeSession(path: string, session: E2ESession): void {
   fs.mkdirSync(e2eAuthDir, { recursive: true });
@@ -53,11 +70,13 @@ export default async function globalSetup(): Promise<void> {
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
-  if (!(await isE2EAppReachable(page, baseURL))) {
+  const stackError = await waitForE2EStackReady(page, baseURL);
+  if (stackError) {
     await browser.close();
     clearSession();
+    console.warn(`[e2e] ${stackError}`);
     console.warn(
-      `[e2e] App not reachable at ${baseURL}; authenticated tests will skip.`,
+      `[e2e] Authenticated tests will skip until both frontend (:5173) and API (:5110) are up.`,
     );
     return;
   }
@@ -67,9 +86,93 @@ export default async function globalSetup(): Promise<void> {
       page,
       baseURL,
     );
+
+    let rsProvisioned = false;
+    let priorLogisticsCursor = 0;
+    try {
+      if (fs.existsSync(e2eScenarioFile)) {
+        const existing = JSON.parse(
+          fs.readFileSync(e2eScenarioFile, "utf8"),
+        ) as E2EChatScenario;
+        priorLogisticsCursor = existing.logisticsAgreementCursor ?? 0;
+      }
+    } catch {
+      priorLogisticsCursor = 0;
+    }
+
+    try {
+      const rsScenario = await provisionRouteSheetScenario(
+        baseURL,
+        seller.sessionToken,
+        buyer.sessionToken,
+        scenario.offerId,
+      );
+      scenario.routeSheetThreadId = rsScenario.threadId;
+      scenario.routeSheetAgreementId = rsScenario.agreementId;
+      scenario.routeSheetAgreementIds = rsScenario.agreementIds;
+      rsProvisioned = true;
+      console.log(
+        `[e2e] Route sheet thread: ${rsScenario.threadId} — agreement: ${rsScenario.agreementId}`,
+      );
+    } catch (rsErr) {
+      console.warn("[e2e] Route sheet scenario provisioning failed (non-fatal):", rsErr);
+    }
+
+    try {
+      const carrierScenario = await provisionCarrierScenario(page, baseURL);
+      scenario.carrierSessionToken = carrierScenario.sessionToken;
+      scenario.carrierUserId = carrierScenario.userId;
+      scenario.carrierStoreId = carrierScenario.storeId;
+      scenario.carrierServiceId = carrierScenario.serviceId;
+      scenario.carrierPhone = carrierScenario.phone;
+      console.log(
+        `[e2e] Carrier: ${carrierScenario.phone} (user ${carrierScenario.userId}) — store ${carrierScenario.storeId}`,
+      );
+      try {
+        const carrier2Scenario = await provisionCarrierScenario(page, baseURL);
+        scenario.carrier2SessionToken = carrier2Scenario.sessionToken;
+        scenario.carrier2UserId = carrier2Scenario.userId;
+        scenario.carrier2StoreId = carrier2Scenario.storeId;
+        scenario.carrier2ServiceId = carrier2Scenario.serviceId;
+        scenario.carrier2Phone = carrier2Scenario.phone;
+        console.log(
+          `[e2e] Carrier2: ${carrier2Scenario.phone} (user ${carrier2Scenario.userId})`,
+        );
+      } catch (carrier2Err) {
+        console.warn("[e2e] Carrier2 provisioning failed (non-fatal):", carrier2Err);
+      }
+    } catch (carrierErr) {
+      console.warn("[e2e] Carrier scenario provisioning failed (non-fatal):", carrierErr);
+    }
+
     writeSession(e2eSellerSessionFile, seller);
     writeSession(e2eSessionFile, buyer);
-    writeScenario(scenario);
+    writeScenario({
+      ...scenario,
+      logisticsAgreementCursor: rsProvisioned ? 0 : priorLogisticsCursor,
+    });
+
+    const stripeCustomerOk = await ensureStripeCustomerViaFetch(
+      buyer.sessionToken,
+      baseURL,
+    );
+    if (stripeCustomerOk) {
+      const cards = await listStripeCardsViaFetch(buyer.sessionToken, baseURL);
+      if (cards.length > 0) {
+        console.log(
+          `[e2e] Buyer payment card ready (${cards[0]?.brand ?? "card"} •••• ${cards[0]?.last4 ?? E2E_DEMO_CARD_LAST4}).`,
+        );
+      } else {
+        console.warn(
+          "[e2e] Buyer Stripe customer exists but payment-methods returned no cards; rebuild/restart API with VIBETRADE_SKIP_PAYMENT_INTENTS=true.",
+        );
+      }
+    } else {
+      console.warn(
+        "[e2e] Buyer Stripe customer setup failed; payment E2E tests may skip.",
+      );
+    }
+
     console.log(
       `[e2e] Seller: ${seller.phone} (user ${seller.userId}) — store ${scenario.storeId}`,
     );
@@ -81,6 +184,148 @@ export default async function globalSetup(): Promise<void> {
   } finally {
     await browser.close();
   }
+}
+
+async function provisionRouteSheetScenario(
+  baseURL: string,
+  sellerToken: string,
+  buyerToken: string,
+  offerId: string,
+): Promise<{ threadId: string; agreementId: string; agreementIds: string[] }> {
+  const apiBase = getE2EApiBaseUrl();
+
+  const buyerHeaders = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${buyerToken}`,
+  };
+  const sellerHeaders = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${sellerToken}`,
+  };
+
+  const threadRes = await fetch(`${apiBase}/api/v1/chat/threads`, {
+    method: "POST",
+    headers: buyerHeaders,
+    body: JSON.stringify({ offerId, purchaseIntent: true, forceNew: false }),
+  });
+  if (!threadRes.ok) {
+    const body = await threadRes.text().catch(() => "");
+    throw new Error(`Thread creation failed: ${threadRes.status} — ${body}`);
+  }
+  const threadJson = (await threadRes.json()) as Record<string, unknown>;
+  const threadId = String(threadJson["id"] ?? threadJson["threadId"] ?? "").trim();
+  if (!threadId || !threadId.startsWith("cth_")) {
+    throw new Error(`Thread ID missing or invalid from response: ${JSON.stringify(threadJson)}`);
+  }
+  console.log(`[e2e] RS provisioning: thread=${threadId}`);
+
+  const msgRes = await fetch(
+    `${apiBase}/api/v1/chat/threads/${encodeURIComponent(threadId)}/messages`,
+    {
+      method: "POST",
+      headers: buyerHeaders,
+      body: JSON.stringify({ text: "Hola, me interesa tu oferta (E2E setup)" }),
+    },
+  );
+  if (!msgRes.ok) {
+    const body = await msgRes.text().catch(() => "");
+    throw new Error(`First message send failed: ${msgRes.status} — ${body}`);
+  }
+
+  const merchandiseLine = {
+    tipo: "Producto de transporte E2E",
+    cantidad: "1",
+    valorUnitario: "100",
+    estado: "nuevo",
+    descuento: "",
+    impuestos: "",
+    moneda: "USD",
+    tipoEmbalaje: "",
+    devolucionesDesc: "",
+    devolucionQuienPaga: "",
+    devolucionPlazos: "",
+    regulaciones: "",
+  };
+
+  async function createAndAcceptAgreement(index: number): Promise<string> {
+    const agTitle = `E2E-RS-AGR-${index}-${Date.now()}`;
+    const agPayload = {
+      title: agTitle,
+      includeMerchandise: true,
+      includeService: false,
+      merchandise: [merchandiseLine],
+      services: [],
+    };
+    const agRes = await fetch(
+      `${apiBase}/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements`,
+      { method: "POST", headers: sellerHeaders, body: JSON.stringify(agPayload) },
+    );
+    if (!agRes.ok) {
+      const body = await agRes.text().catch(() => "");
+      throw new Error(`Agreement creation failed [${index}]: ${agRes.status} — ${body}`);
+    }
+    const agJson = (await agRes.json()) as Record<string, unknown>;
+    const id = String(agJson["id"] ?? agJson["agreementId"] ?? "").trim();
+    if (!id) throw new Error(`Agreement ID missing [${index}]: ${JSON.stringify(agJson)}`);
+
+    const acceptRes = await fetch(
+      `${apiBase}/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(id)}/respond`,
+      { method: "POST", headers: buyerHeaders, body: JSON.stringify({ accept: true }) },
+    );
+    if (!acceptRes.ok) {
+      const body = await acceptRes.text().catch(() => "");
+      throw new Error(`Agreement accept failed [${index}]: ${acceptRes.status} — ${body}`);
+    }
+    console.log(`[e2e] RS provisioning: agreement[${index}]=${id}`);
+    return id;
+  }
+
+  /** Enough agreements for the full serial logistics suite (L-15 consumes two). */
+  const agreementCount = 45;
+  const agreementIds: string[] = [];
+  for (let i = 0; i < agreementCount; i++) {
+    agreementIds.push(await createAndAcceptAgreement(i));
+  }
+  const agreementId = agreementIds[0]!;
+
+  return { threadId, agreementId, agreementIds };
+}
+
+type CarrierScenario = {
+  sessionToken: string;
+  userId: string;
+  phone: string;
+  storeId: string;
+  serviceId: string;
+};
+
+async function provisionCarrierScenario(
+  page: import("@playwright/test").Page,
+  url: string,
+): Promise<CarrierScenario> {
+  await logoutViaUI(page, url);
+  const suffix = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const storeName = `Transportista E2E ${suffix}`;
+  const serviceType = `Servicio de Transporte E2E ${suffix}`;
+
+  const carrier = await registerUserViaUI(page, url);
+  if (!carrier.userId) {
+    throw new Error("carrier user id missing after UI registration");
+  }
+
+  const storeId = await createStoreViaUI(page, url, storeName);
+  const serviceId = await addServiceViaUI(page, url, storeId, serviceType);
+  await publishCatalogItemViaUI(page, serviceType);
+
+  await logoutViaUI(page, url);
+
+  return {
+    sessionToken: carrier.sessionToken,
+    userId: carrier.userId,
+    phone: carrier.phone,
+    storeId,
+    serviceId,
+  };
 }
 
 async function setupSellerSessionManual(): Promise<void> {

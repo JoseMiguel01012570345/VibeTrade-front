@@ -7,15 +7,24 @@ import type { RouteOfferPublicState } from "@app/store/marketStoreTypes";
 import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
 import type { RouteSheet } from "@features/market/model/routeSheetTypes";
 import {
-  resolveRouteOfferPublicForSheet,
   resolveRouteOfferPublicForThread,
 } from "@features/market/model/routeSheetOfferGuards";
-import { routeSheetIdsLockedByPaidAgreements } from "@app/store/marketStoreHelpers";
+import { routeOfferPublicFromThreadRouteSheet } from "@/utils/market/routeOfferPublicFromEmergentCard";
+import { routeSheetHasPendingCarrierAck } from "@app/store/marketSliceHelpers";
+import {
+  routeSheetAllowsCarrierContactEditWhenPaid,
+  routeSheetStructuralEditBlockedByPaid,
+} from "@features/market/model/routeSheetOfferGuards";
 import {
   fetchAgreementRouteDeliveries,
   getCedeCarrierOwnership,
   type RouteStopDeliveryStatusApi,
 } from "@/utils/chat/routeLogisticsApi";
+import {
+  fetchThreadRouteTramoSubscriptions,
+  type RouteTramoSubscriptionItemApi,
+} from "@/utils/chat/chatApi";
+import { subscribeRouteDeliveriesRefresh } from "@/utils/chat/chatRealtime";
 import { RouteSheetLiveTrackingModal } from "../../modals/RouteSheetLiveTrackingModal";
 import { InviteModal } from "../../modals/InviteModal";
 import type {
@@ -57,6 +66,10 @@ type Props = {
     stopId: string,
   ) => void;
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean;
+  duplicateRouteSheet: (
+    threadId: string,
+    routeSheetId: string,
+  ) => Promise<string | null>;
   publishRouteSheetsToPlatform: (
     threadId: string,
     routeSheetIds: string[],
@@ -88,6 +101,7 @@ export function ChatRightRailRoutesPanel({
   onEditRouteSheet,
   toggleRouteStop,
   deleteRouteSheet,
+  duplicateRouteSheet,
   publishRouteSheetsToPlatform,
   unpublishRouteSheetFromPlatform,
   routeOffer,
@@ -96,14 +110,27 @@ export function ChatRightRailRoutesPanel({
   actionsLocked = false,
 }: Props) {
   const me = useAppStore((s) => s.me);
-  const routeOfferForSelectedSheet = useMarketStore(
+  /** Solo referencias del store; el fallback sintético va en useMemo (evita bucle de re-render). */
+  const storedRouteOfferForSelectedSheet = useMarketStore(
     useShallow((s) => {
       const th = s.threads[threadId];
       const sid = selRoute?.id?.trim();
-      if (!sid) return undefined;
-      return resolveRouteOfferPublicForSheet(s, th, sid);
+      if (!sid || !th) return undefined;
+      for (const ro of Object.values(s.routeOfferPublic)) {
+        if (ro.threadId === threadId && ro.routeSheetId?.trim() === sid) {
+          return ro;
+        }
+      }
+      const forThread = resolveRouteOfferPublicForThread(s, th);
+      if (forThread?.routeSheetId?.trim() === sid) return forThread;
+      return undefined;
     }),
   );
+  const routeOfferForSelectedSheet = useMemo(() => {
+    if (storedRouteOfferForSelectedSheet) return storedRouteOfferForSelectedSheet;
+    if (!selRoute?.paradas?.length) return undefined;
+    return routeOfferPublicFromThreadRouteSheet(threadId, selRoute);
+  }, [storedRouteOfferForSelectedSheet, selRoute, threadId]);
   const routeOfferFromThread = useMarketStore(
     useShallow((s) => {
       const th = s.threads[threadId];
@@ -118,6 +145,9 @@ export function ChatRightRailRoutesPanel({
   const chatCarriers = useMarketStore((s) => s.threads[threadId]?.chatCarriers);
   const respondRouteSheetEdit = useMarketStore((s) => s.respondRouteSheetEdit);
   const removeThreadFromList = useMarketStore((s) => s.removeThreadFromList);
+  const applyThreadRouteTramoSubscriptions = useMarketStore(
+    (s) => s.applyThreadRouteTramoSubscriptions,
+  );
 
   const [liveMapOpen, setLiveMapOpen] = useState(false);
   const [liveFocusStopId, setLiveFocusStopId] = useState<string | null>(null);
@@ -126,6 +156,9 @@ export function ChatRightRailRoutesPanel({
   >({});
   const [cedeOwnershipByAgreement, setCedeOwnershipByAgreement] =
     useState<Record<string, Record<string, boolean>>>();
+  const [routeTramoSubscriptions, setRouteTramoSubscriptions] = useState<
+    RouteTramoSubscriptionItemApi[]
+  >([]);
   const [logisticsBusyKey, setLogisticsBusyKey] = useState<string | null>(null);
   const [carrierEvEditModal, setCarrierEvEditModal] =
     useState<CarrierEvEditModalState | null>(null);
@@ -145,6 +178,15 @@ export function ChatRightRailRoutesPanel({
   const acceptedAgreements = useMemo(
     () => agreements.filter((a) => a.status === "accepted"),
     [agreements],
+  );
+  const acceptedAgreementIdsKey = useMemo(
+    () =>
+      acceptedAgreements
+        .map((a) => a.id.trim())
+        .filter((id) => id.length >= 8)
+        .sort()
+        .join("\0"),
+    [acceptedAgreements],
   );
 
   function agreementForSheet(routeSheetId: string): TradeAgreement | null {
@@ -168,6 +210,26 @@ export function ChatRightRailRoutesPanel({
     }
   }
 
+  async function refreshRouteTramoSubscriptions() {
+    try {
+      const subs = await fetchThreadRouteTramoSubscriptions(threadId);
+      const items = subs ?? [];
+      setRouteTramoSubscriptions(items);
+      const meId = (me.id ?? "").trim();
+      if (meId.length >= 2) {
+        applyThreadRouteTramoSubscriptions(threadId, items, meId);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function refreshLogisticsForAgreement(agreementId: string) {
+    await refreshDeliveriesForAgreement(agreementId);
+    await refreshCedeOwnershipForAgreement();
+    await refreshRouteTramoSubscriptions();
+  }
+
   async function refreshCedeOwnershipForAgreement() {
     let cedeOwnershipEntries: Record<string, Record<string, boolean>> = {};
     for (const rsheet of routeSheets) {
@@ -184,6 +246,19 @@ export function ChatRightRailRoutesPanel({
       cedeOwnershipEntries[rsheet.id] = stopEntries;
     }
     setCedeOwnershipByAgreement(cedeOwnershipEntries);
+  }
+
+  function markCedeOwnershipLocal(routeSheetId: string, routeStopId: string) {
+    const rsid = routeSheetId.trim();
+    const sid = routeStopId.trim();
+    if (!rsid || !sid) return;
+    setCedeOwnershipByAgreement((prev) => ({
+      ...prev,
+      [rsid]: {
+        ...(prev?.[rsid] ?? {}),
+        [sid]: true,
+      },
+    }));
   }
 
   useEffect(() => {
@@ -210,28 +285,83 @@ export function ChatRightRailRoutesPanel({
         for (const [id, rows] of entries) next[id] = rows;
         return next;
       });
+      await refreshRouteTramoSubscriptions();
     })();
-  }, [threadId, acceptedAgreements]);
+  }, [threadId, acceptedAgreementIdsKey]);
+
+  const refreshDeliveriesRef = useRef(refreshDeliveriesForAgreement);
+  refreshDeliveriesRef.current = refreshDeliveriesForAgreement;
+  const refreshCedeOwnershipRef = useRef(refreshCedeOwnershipForAgreement);
+  refreshCedeOwnershipRef.current = refreshCedeOwnershipForAgreement;
+  const agreementsRef = useRef(acceptedAgreements);
+  agreementsRef.current = acceptedAgreements;
+
+  useEffect(() => {
+    const tid = threadId.trim();
+    if (tid.length < 4) return;
+    return subscribeRouteDeliveriesRefresh((p) => {
+      if (p.threadId !== tid) return;
+      void refreshCedeOwnershipRef.current();
+      const rsid = p.routeSheetId.trim();
+      const agreements = agreementsRef.current;
+      const linked = agreements.find(
+        (a) => (a.routeSheetId ?? "").trim() === rsid,
+      );
+      if (linked) {
+        void refreshDeliveriesRef.current(linked.id);
+        return;
+      }
+      for (const a of agreements) {
+        if ((a.routeSheetId ?? "").trim().length >= 2) {
+          void refreshDeliveriesRef.current(a.id);
+        }
+      }
+    });
+  }, [threadId]);
 
   const myCarrierAck =
     selRoute && me.id && chatCarriers?.some((c) => c.id === me.id)
       ? routeSheetEditAcks?.[selRoute.id]?.byCarrier[me.id]
       : undefined;
 
+  const threadForAck = useMarketStore((s) => s.threads[threadId]);
+
   const sheetEditBlockedByCarrierAck =
     !!selRoute &&
-    !!routeSheetEditAcks?.[selRoute.id] &&
-    Object.values(routeSheetEditAcks[selRoute.id].byCarrier).some(
-      (v) => v === "pending",
+    !!threadForAck &&
+    routeSheetHasPendingCarrierAck(
+      threadForAck,
+      selRoute.id,
+      routeOfferResolved,
     );
 
-  const paidLockedSheetIds = useMarketStore(
-    useShallow((s) => {
-      const th = s.threads[threadId];
-      return th ? routeSheetIdsLockedByPaidAgreements(th) : new Set<string>();
-    }),
-  );
-  const sheetLockedByPaid = !!selRoute && paidLockedSheetIds.has(selRoute.id);
+  const sheetLockedByPaid = useMarketStore((s) => {
+    const th = s.threads[threadId];
+    const sid = selRoute?.id?.trim();
+    if (!th || !sid) return false;
+    for (const c of th.contracts ?? []) {
+      if (c.routeSheetId === sid && c.hasSucceededPayments === true) return true;
+    }
+    return false;
+  });
+  const sheetStructuralEditBlockedByPaid =
+    !!selRoute &&
+    routeSheetStructuralEditBlockedByPaid(
+      sheetLockedByPaid,
+      routeOfferResolved,
+      selRoute.id,
+      selRoute,
+      routeTramoSubscriptions,
+    );
+  const sheetCarrierContactEditOnly =
+    !!selRoute &&
+    routeSheetAllowsCarrierContactEditWhenPaid(
+      sheetLockedByPaid,
+      routeOfferResolved,
+      selRoute.id,
+      selRoute,
+      routeTramoSubscriptions,
+    );
 
   const subscribersTargetSheetId = useMemo(() => {
     if (routeSheets.length === 0) return null;
@@ -254,7 +384,7 @@ export function ChatRightRailRoutesPanel({
     setCarrierEvReadModal,
     setSellerPauseTramoModal,
     setSellerResumeTramoModal,
-    refreshDeliveriesForAgreement,
+    refreshDeliveriesForAgreement: refreshLogisticsForAgreement,
     toggleRouteStop,
   });
   railRoutesHandlersRef.current = {
@@ -264,7 +394,7 @@ export function ChatRightRailRoutesPanel({
     setCarrierEvReadModal,
     setSellerPauseTramoModal,
     setSellerResumeTramoModal,
-    refreshDeliveriesForAgreement,
+    refreshDeliveriesForAgreement: refreshLogisticsForAgreement,
     toggleRouteStop,
   };
 
@@ -345,6 +475,7 @@ export function ChatRightRailRoutesPanel({
             threadId={threadId}
             isActingSeller={isActingSeller}
             sheetLockedByPaid={sheetLockedByPaid}
+            sheetStructuralEditBlockedByPaid={sheetStructuralEditBlockedByPaid}
             sheetEditBlockedByCarrierAck={sheetEditBlockedByCarrierAck}
             linkedRouteSheetIds={linkedRouteSheetIds}
             routeOfferResolved={routeOfferResolved}
@@ -358,10 +489,12 @@ export function ChatRightRailRoutesPanel({
             onEditRouteSheet={onEditRouteSheet}
             onInviteTransportista={() => setInviteRouteSheet(selRoute)}
             deleteRouteSheet={deleteRouteSheet}
+            duplicateRouteSheet={duplicateRouteSheet}
             publishRouteSheetsToPlatform={publishRouteSheetsToPlatform}
             unpublishRouteSheetFromPlatform={unpublishRouteSheetFromPlatform}
             getAgreementForSheet={agreementForSheet}
             deliveriesByAgreement={deliveriesByAgreement}
+            routeTramoSubscriptions={routeTramoSubscriptions}
             cedeOwnershipByAgreement={cedeOwnershipByAgreement}
             logisticsBusyKey={logisticsBusyKey}
             onOpenLiveMapAllStops={openLiveMapAllStops}
@@ -378,15 +511,16 @@ export function ChatRightRailRoutesPanel({
 
         <CedeCarrierOwnershipModal
           modal={cedeOwnershipModal}
-          refreshDeliveriesForAgreement={refreshDeliveriesForAgreement}
+          refreshDeliveriesForAgreement={refreshLogisticsForAgreement}
           setCedeOwnershipModal={setCedeOwnershipModal}
           setLogisticsBusyKey={setLogisticsBusyKey}
           threadId={threadId}
+          onCedeSuccess={markCedeOwnershipLocal}
         />
 
         <SellerPauseTramoModal
           modal={sellerPauseTramoModal}
-          refreshDeliveriesForAgreement={refreshDeliveriesForAgreement}
+          refreshDeliveriesForAgreement={refreshLogisticsForAgreement}
           setLogisticsBusyKey={setLogisticsBusyKey}
           setSellerPauseTramoModal={setSellerPauseTramoModal}
           threadId={threadId}
@@ -394,7 +528,7 @@ export function ChatRightRailRoutesPanel({
 
         <SellerResumeTramoModal
           modal={sellerResumeTramoModal}
-          refreshDeliveriesForAgreement={refreshDeliveriesForAgreement}
+          refreshDeliveriesForAgreement={refreshLogisticsForAgreement}
           setLogisticsBusyKey={setLogisticsBusyKey}
           setSellerResumeTramoModal={setSellerResumeTramoModal}
           threadId={threadId}

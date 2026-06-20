@@ -81,17 +81,25 @@ import { VtSelect } from "@shared/components/ui/VtSelect";
 import { RouteSheetTransportistaPhoneField } from "./RouteSheetTransportistaPhoneField";
 import {
   joinRouteEstimadoStored,
-  maxIsoDate,
   splitRouteEstimadoStored,
-  todayIsoDateLocal,
 } from "@features/market/model/routeSheetDateTime";
+import {
+  isRouteEstimadoTimeDisabled,
+  routeEntregaDateBounds,
+  routeRecogidaDateBounds,
+} from "@features/market/model/routeTramoEstimadoPickerConstraints";
 import {
   activeAssignmentOnFormTramo,
   confirmedAssignmentOnFormTramo,
   effectiveRouteOfferForSheetForm,
   normRoutePhoneKey,
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
+  ROUTE_SHEET_PAID_CARRIER_CONTACT_ONLY_ES,
 } from "@features/market/model/routeSheetOfferGuards";
+import {
+  applyRouteLegPaymentCurrencyToParadas,
+  ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES,
+} from "@features/market/model/merchandiseRouteCurrency";
 
 /** Por encima del modal y de los `VtSelect` con listPortal z-[400]. */
 const ROUTE_SHEET_DT_POPOVER_Z = "z-[500]";
@@ -110,10 +118,14 @@ type Props = {
   initialRouteSheet?: RouteSheet | null;
   /** Acuerdo vinculado con cobros: solo lectura (sincronizado con API). */
   lockedByPaidAgreement?: boolean;
+  /** Con cobros registrados: solo contacto de transportista en tramos sin confirmación. */
+  carrierContactEditOnly?: boolean;
   /** Oferta pública resuelta por hoja (preferida para bloqueo / teléfono). */
   routeOfferForSheet?: RouteOfferPublicState | undefined;
   /** Oferta pública del hilo (`resolveRouteOfferPublicForThread`); usada como respaldo si la de arriba es undefined. */
   routeOfferForThread?: RouteOfferPublicState | undefined;
+  /** Acuerdo con mercadería: tramos se cobran en esta moneda (ISO 4217). */
+  routeLegPaymentCurrency?: string | null;
   onSubmit: (p: RouteSheetFormPayload) => RouteSheetSubmitResult;
 };
 
@@ -205,8 +217,10 @@ export function RouteSheetFormModal({
   threadId: _threadId,
   initialRouteSheet,
   lockedByPaidAgreement = false,
+  carrierContactEditOnly = false,
   routeOfferForSheet,
   routeOfferForThread,
+  routeLegPaymentCurrency = null,
   onSubmit,
 }: Props) {
   const [titulo, setTitulo] = useState("");
@@ -235,9 +249,22 @@ export function RouteSheetFormModal({
       ),
     [routeOfferForSheet, routeOfferForThread, initialRouteSheet?.id],
   );
+  const formFullyLockedByPaid =
+    lockedByPaidAgreement && !carrierContactEditOnly;
+  const carrierInviteReadOnlyShell = carrierContactEditOnly
+    ? "pointer-events-none opacity-60 select-none"
+    : undefined;
   const offerTramoRef = useRef(offerForTramo);
   offerTramoRef.current = offerForTramo;
   const editBaselineJsonRef = useRef<string | null>(null);
+  const routeLegCurrencyNorm = (routeLegPaymentCurrency ?? "").trim().toUpperCase();
+  const formValidationOpts = useMemo(
+    () =>
+      routeLegCurrencyNorm
+        ? { routeLegPaymentCurrency: routeLegCurrencyNorm }
+        : undefined,
+    [routeLegCurrencyNorm],
+  );
   /** Invalida búsquedas Nominatim al cerrar el mapa o abrir otro punto. */
   const mapForwardTokenRef = useRef(0);
 
@@ -256,6 +283,17 @@ export function RouteSheetFormModal({
       cancel = true;
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !routeLegCurrencyNorm) return;
+    setTramos((prev) =>
+      prev.map((t) =>
+        (t.monedaPago ?? "").trim().toUpperCase() === routeLegCurrencyNorm
+          ? t
+          : { ...t, monedaPago: routeLegCurrencyNorm },
+      ),
+    );
+  }, [open, routeLegCurrencyNorm]);
 
   useEffect(() => {
     if (!open) return;
@@ -283,7 +321,7 @@ export function RouteSheetFormModal({
       setTitulo(rs.titulo);
       setMerc(rs.mercanciasResumen);
       setNotasG(rs.notasGenerales ?? "");
-      setTramos(tramosInitRaw);
+      setTramos(expandChainedTramoOrigins(tramosToLimpios(tramosInitRaw)));
       const limpios0 = expandChainedTramoOrigins(
         tramosToLimpios(tramosInitRaw),
       );
@@ -293,7 +331,7 @@ export function RouteSheetFormModal({
         paradas: limpios0,
         notasGenerales: (rs.notasGenerales ?? "").trim(),
       };
-      const err0 = getRouteSheetFormErrors(draft0);
+      const err0 = getRouteSheetFormErrors(draft0, formValidationOpts);
       if (hasRouteSheetFormErrors(err0)) {
         editBaselineJsonRef.current = null;
       } else {
@@ -388,6 +426,8 @@ export function RouteSheetFormModal({
   if (!open) return null;
 
   function openMapPicker(tramoIndex: number, punto: "origen" | "destino") {
+    if (carrierContactEditOnly) return;
+    if (punto === "origen" && tramoIndex > 0) return;
     const t = tramos[tramoIndex];
     if (!t) return;
     setMapCoordError(undefined);
@@ -397,19 +437,9 @@ export function RouteSheetFormModal({
     let lngStr = "";
     let labelStr = "";
     if (punto === "origen") {
-      const prev = tramoIndex > 0 ? tramos[tramoIndex - 1] : null;
-      const ownLat = (t.origenLat ?? "").trim();
-      const ownLng = (t.origenLng ?? "").trim();
-      const hasOwnCoords = ownLat !== "" && ownLng !== "";
-      if (hasOwnCoords || tramoIndex === 0) {
-        latStr = t.origenLat ?? "";
-        lngStr = t.origenLng ?? "";
-        labelStr = t.origen ?? "";
-      } else if (prev) {
-        latStr = prev.destinoLat ?? "";
-        lngStr = prev.destinoLng ?? "";
-        labelStr = prev.destino ?? "";
-      }
+      latStr = t.origenLat ?? "";
+      lngStr = t.origenLng ?? "";
+      labelStr = t.origen ?? "";
     } else {
       latStr = t.destinoLat ?? "";
       lngStr = t.destinoLng ?? "";
@@ -487,14 +517,14 @@ export function RouteSheetFormModal({
         if (place) row.destino = place;
       }
       next[mapPick.tramoIndex] = row;
-      return next;
+      return expandChainedTramoOrigins(tramosToLimpios(next));
     });
     toast.success("Ubicación guardada");
     setMapPick(null);
   }
 
   function trySubmit() {
-    if (lockedByPaidAgreement) {
+    if (formFullyLockedByPaid) {
       toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);
       return;
     }
@@ -507,7 +537,7 @@ export function RouteSheetFormModal({
       paradas: limpios,
       notasGenerales: notasG.trim(),
     };
-    const e = getRouteSheetFormErrors(draft);
+    const e = getRouteSheetFormErrors(draft, formValidationOpts);
     setFormErrors(e);
     if (hasRouteSheetFormErrors(e)) {
       const n = routeSheetFormErrorCount(e);
@@ -534,10 +564,15 @@ export function RouteSheetFormModal({
         }
       }
     }
-    const paradasFinal = normalizeRouteSheetParadas(limpios);
+    const paradasFinal = normalizeRouteSheetParadas(
+      routeLegCurrencyNorm
+        ? applyRouteLegPaymentCurrencyToParadas(limpios, routeLegCurrencyNorm)
+        : limpios,
+    );
     const payload: RouteSheetCreatePayload = {
       ...draft,
       paradas: paradasFinal,
+      ...(routeLegCurrencyNorm ? { monedaPago: routeLegCurrencyNorm } : {}),
     };
 
     if (initialRouteSheet && editBaselineJsonRef.current !== null) {
@@ -558,6 +593,15 @@ export function RouteSheetFormModal({
   }
 
   function updateTramo(i: number, patch: Partial<RouteTramoFormInput>) {
+    if (carrierContactEditOnly) {
+      const inviteOnly = Object.keys(patch).every(
+        (k) =>
+          k === "telefonoTransportista" ||
+          k === "transportInvitedStoreServiceId" ||
+          k === "transportInvitedServiceSummary",
+      );
+      if (!inviteOnly) return;
+    }
     if (patch.telefonoTransportista !== undefined) {
       const row = tramos[i];
       const asg = confirmedAssignmentOnFormTramo(
@@ -580,11 +624,12 @@ export function RouteSheetFormModal({
     setTramos((prev) => {
       const next = [...prev];
       next[i] = { ...next[i], ...patch };
-      return next;
+      return expandChainedTramoOrigins(tramosToLimpios(next));
     });
   }
 
   function removeTramoAt(index: number) {
+    if (carrierContactEditOnly) return;
     const row = tramos[index];
     if (
       initialRouteSheet?.id &&
@@ -631,6 +676,7 @@ export function RouteSheetFormModal({
   }
 
   function insertTramoAt(ins: number) {
+    if (carrierContactEditOnly) return;
     const n = tramos.length;
     if (ins < 0 || ins > n) return;
 
@@ -683,12 +729,19 @@ export function RouteSheetFormModal({
           <div className="vt-modal-title">
             {initialRouteSheet ? "Editar hoja de rutas" : "Nueva hoja de rutas"}
           </div>
-          {lockedByPaidAgreement ? (
+          {formFullyLockedByPaid ? (
             <p
               className="mb-2 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_92%,transparent)] px-2.5 py-2 text-[12px] leading-snug text-[var(--muted)]"
               role="status"
             >
               {ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES}
+            </p>
+          ) : carrierContactEditOnly ? (
+            <p
+              className="mb-2 rounded-lg border border-[color-mix(in_oklab,var(--primary)_22%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_6%,var(--surface))] px-2.5 py-2 text-[12px] leading-snug text-[var(--text)]"
+              role="status"
+            >
+              {ROUTE_SHEET_PAID_CARRIER_CONTACT_ONLY_ES}
             </p>
           ) : null}
           <div className={modalSub}>
@@ -696,34 +749,36 @@ export function RouteSheetFormModal({
             <strong>fecha y hora</strong> estimadas de recogida y de entrega con
             los selectores. El precio del tramo debe ser un número (monto). La
             moneda de pago se elige en cada tramo. Origen, destino y el mapa se
-            sincronizan (dirección ↔ pin). Por defecto el origen del tramo 2+
-            sigue al destino del anterior; puedes fijar otro con «Coordenadas
-            origen (mapa)». Podés insertar un tramo en cualquier punto: el nuevo
-            tramo propone origen = fin del anterior y destino = inicio del que
-            seguía; ambos son editables.
+            sincronizan (dirección ↔ pin). El origen del tramo 2+ siempre coincide
+            con el destino del tramo anterior y no se puede modificar. Podés insertar
+            un tramo en cualquier punto: el nuevo tramo toma origen = fin del anterior.
           </div>
           <div
             className={cn(
               modalFormBody,
-              lockedByPaidAgreement && "pointer-events-none opacity-60",
+              formFullyLockedByPaid && "pointer-events-none opacity-60",
             )}
           >
-            <Field
-              label="Título"
-              value={titulo}
-              onChange={setTitulo}
-              error={err.titulo}
-              inputId="ruta-titulo"
-            />
-            <Field
-              label="Mercancías / bultos (resumen general)"
-              value={merc}
-              onChange={setMerc}
-              multiline
-              rows={3}
-              error={err.mercanciasResumen}
-              inputId="ruta-merc"
-            />
+            <div className={carrierInviteReadOnlyShell}>
+              <Field
+                label="Título"
+                value={titulo}
+                onChange={setTitulo}
+                error={err.titulo}
+                inputId="ruta-titulo"
+                readOnly={carrierContactEditOnly}
+              />
+              <Field
+                label="Mercancías / bultos (resumen general)"
+                value={merc}
+                onChange={setMerc}
+                multiline
+                rows={3}
+                error={err.mercanciasResumen}
+                inputId="ruta-merc"
+                readOnly={carrierContactEditOnly}
+              />
+            </div>
             <div className={cn(detailsBlock, rutaTramosBlock)}>
               <strong>Tramos del recorrido</strong>
               {err.paradasGlobal ? (
@@ -731,10 +786,11 @@ export function RouteSheetFormModal({
                   {err.paradasGlobal}
                 </div>
               ) : null}
-              <div className="flex justify-center py-1">
+              <div className={cn("flex justify-center py-1", carrierInviteReadOnlyShell)}>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 border-0 bg-transparent p-1 text-[12px] font-extrabold text-[var(--primary)] hover:underline"
+                  className="inline-flex items-center gap-1.5 border-0 bg-transparent p-1 text-[12px] font-extrabold text-[var(--primary)] hover:underline disabled:opacity-40"
+                  disabled={carrierContactEditOnly}
                   onClick={() => insertTramoAt(0)}
                 >
                   <Plus size={14} strokeWidth={2.5} aria-hidden />
@@ -761,6 +817,7 @@ export function RouteSheetFormModal({
                 );
                 const carrierServiceOfferId = activeAsg?.storeServiceId?.trim();
                 const phoneLocked = confAsg != null;
+                const tramoFieldsReadOnly = carrierContactEditOnly;
                 const displayTel =
                   p.telefonoTransportista?.trim() ||
                   confAsg?.phone?.trim() ||
@@ -771,23 +828,15 @@ export function RouteSheetFormModal({
                 const entEst = splitRouteEstimadoStored(
                   p.tiempoEntregaEstimado,
                 );
-                const minRecogidaD = todayIsoDateLocal();
-                const minEntregaD = maxIsoDate(minRecogidaD, recEst.date);
+                const recogidaDateBounds = routeRecogidaDateBounds(tramos, i);
+                const entregaDateBounds = routeEntregaDateBounds(tramos, i);
                 const prevStop = i > 0 ? tramos[i - 1] : null;
-                const ownOLat = (p.origenLat ?? "").trim();
-                const ownOLng = (p.origenLng ?? "").trim();
-                const hasStoredOriginCoords = ownOLat !== "" && ownOLng !== "";
-                const origenTextReadOnly = i > 0 && !hasStoredOriginCoords;
+                const origenTextReadOnly = i > 0;
                 let origenNombre: string;
                 let origenLatShown: string;
                 let origenLngShown: string;
                 if (i === 0) {
                   origenNombre = p.origen;
-                  origenLatShown = p.origenLat ?? "";
-                  origenLngShown = p.origenLng ?? "";
-                } else if (hasStoredOriginCoords) {
-                  origenNombre =
-                    p.origen.trim() || prevStop?.destino?.trim() || "";
                   origenLatShown = p.origenLat ?? "";
                   origenLngShown = p.origenLng ?? "";
                 } else {
@@ -798,12 +847,13 @@ export function RouteSheetFormModal({
                 return (
                   <Fragment key={p.paradaId ?? `tramo-${i}`}>
                     <div className={rutaTramoCard}>
+                      <div className={carrierInviteReadOnlyShell}>
                       <div className={rutaTramoHead}>
                         <span className={agrDetailSub}>Tramo {i + 1}</span>
                         <button
                           type="button"
                           className={rutaTramoRemoveBtn}
-                          disabled={tramos.length <= 1 || phoneLocked}
+                          disabled={tramos.length <= 1 || phoneLocked || tramoFieldsReadOnly}
                           title={
                             tramos.length <= 1
                               ? "Debe quedar al menos un tramo"
@@ -836,7 +886,7 @@ export function RouteSheetFormModal({
                             if (origenTextReadOnly) return;
                             updateTramo(i, { origen: v });
                           }}
-                          readOnly={origenTextReadOnly}
+                          readOnly={origenTextReadOnly || tramoFieldsReadOnly}
                           error={te?.origen}
                           placeholder="Ubicación de origen"
                           inputId={`ruta-tramo-${i}-origen`}
@@ -845,6 +895,7 @@ export function RouteSheetFormModal({
                           label="Destino"
                           value={p.destino}
                           onChange={(v) => updateTramo(i, { destino: v })}
+                          readOnly={tramoFieldsReadOnly}
                           error={te?.destino}
                           placeholder="Ubicación de destino"
                           inputId={`ruta-tramo-${i}-destino`}
@@ -852,30 +903,21 @@ export function RouteSheetFormModal({
                       </div>
                       {origenTextReadOnly ? (
                         <p className="vt-muted mb-2 text-[11px] leading-snug">
-                          Por defecto, mismo lugar que el{" "}
-                          <b>destino del tramo {i}</b>. Para otro punto de
-                          salida, usa «Coordenadas origen (mapa)» o editá ese
+                          Mismo lugar que el <b>destino del tramo {i}</b> (no
+                          editable). Para cambiar el punto de salida, editá ese
                           destino.
-                        </p>
-                      ) : i > 0 ? (
-                        <p className="vt-muted mb-2 text-[11px] leading-snug">
-                          Origen con coordenadas propias (puedes ajustar el
-                          texto o reabrir el mapa).
                         </p>
                       ) : null}
                       <div className={rutaCoordsRow}>
-                        <button
-                          type="button"
-                          className={rutaMapBtn}
-                          title={
-                            i > 0 && !hasStoredOriginCoords
-                              ? "Por defecto coincide con el destino del tramo anterior; abre el mapa para otro origen"
-                              : undefined
-                          }
-                          onClick={() => openMapPicker(i, "origen")}
-                        >
-                          <MapPin size={14} /> Coordenadas origen (mapa)
-                        </button>
+                        {i === 0 ? (
+                          <button
+                            type="button"
+                            className={rutaMapBtn}
+                            onClick={() => openMapPicker(i, "origen")}
+                          >
+                            <MapPin size={14} /> Coordenadas origen (mapa)
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className={rutaMapBtn}
@@ -918,6 +960,7 @@ export function RouteSheetFormModal({
                           updateTramo(i, { responsabilidadEmbalaje: v })
                         }
                         multiline
+                        readOnly={tramoFieldsReadOnly}
                         placeholder="Quién responde y en qué casos"
                         error={te?.responsabilidadEmbalaje}
                         inputId={`ruta-tramo-${i}-resp-emb`}
@@ -929,6 +972,7 @@ export function RouteSheetFormModal({
                           updateTramo(i, { requisitosEspeciales: v })
                         }
                         multiline
+                        readOnly={tramoFieldsReadOnly}
                         placeholder="Frágil, refrigerado, ADR, etc."
                         error={te?.requisitosEspeciales}
                         inputId={`ruta-tramo-${i}-req`}
@@ -939,10 +983,12 @@ export function RouteSheetFormModal({
                         onChange={(v) =>
                           updateTramo(i, { tipoVehiculoRequerido: v })
                         }
+                        readOnly={tramoFieldsReadOnly}
                         placeholder="Ej. camión baranda, refrigerado, sider"
                         error={te?.tipoVehiculoRequerido}
                         inputId={`ruta-tramo-${i}-veh`}
                       />
+                      </div>
                       <RouteSheetTransportistaPhoneField
                         tramoIndex={i}
                         value={displayTel}
@@ -965,6 +1011,7 @@ export function RouteSheetFormModal({
                         phoneLocked={phoneLocked}
                         lockedDisplayName={confAsg?.displayName}
                       />
+                      <div className={carrierInviteReadOnlyShell}>
                       <div className="flex flex-col gap-3">
                         <div
                           className={fieldRootWithInvalid(
@@ -982,7 +1029,9 @@ export function RouteSheetFormModal({
                               aria-label={`Tramo ${i + 1}: fecha de recogida estimada`}
                               value={recEst.date}
                               allowEmpty
-                              min={minRecogidaD}
+                              disabled={tramoFieldsReadOnly}
+                              min={recogidaDateBounds.min}
+                              max={recogidaDateBounds.max || undefined}
                               placeholder="Fecha"
                               popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
                               onChange={(d) => {
@@ -999,6 +1048,16 @@ export function RouteSheetFormModal({
                             <VtTimeField
                               aria-label={`Tramo ${i + 1}: hora de recogida estimada`}
                               value={recEst.time}
+                              disabled={tramoFieldsReadOnly}
+                              isTimeDisabled={(tm) =>
+                                isRouteEstimadoTimeDisabled(
+                                  "recogida",
+                                  tramos,
+                                  i,
+                                  recEst.date,
+                                  tm,
+                                )
+                              }
                               placeholder="Hora"
                               popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
                               onChange={(tm) => {
@@ -1035,7 +1094,9 @@ export function RouteSheetFormModal({
                               aria-label={`Tramo ${i + 1}: fecha de entrega estimada`}
                               value={entEst.date}
                               allowEmpty
-                              min={minEntregaD}
+                              disabled={tramoFieldsReadOnly}
+                              min={entregaDateBounds.min}
+                              max={entregaDateBounds.max || undefined}
                               placeholder="Fecha"
                               popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
                               onChange={(d) => {
@@ -1052,6 +1113,16 @@ export function RouteSheetFormModal({
                             <VtTimeField
                               aria-label={`Tramo ${i + 1}: hora de entrega estimada`}
                               value={entEst.time}
+                              disabled={tramoFieldsReadOnly}
+                              isTimeDisabled={(tm) =>
+                                isRouteEstimadoTimeDisabled(
+                                  "entrega",
+                                  tramos,
+                                  i,
+                                  entEst.date,
+                                  tm,
+                                )
+                              }
                               placeholder="Hora"
                               popoverZIndexClass={ROUTE_SHEET_DT_POPOVER_Z}
                               onChange={(tm) => {
@@ -1079,6 +1150,7 @@ export function RouteSheetFormModal({
                         onChange={(v) =>
                           updateTramo(i, { precioTransportista: v })
                         }
+                        readOnly={tramoFieldsReadOnly}
                         placeholder="Monto numérico (ej. 150000 o 1500.50)"
                         error={te?.precioTransportista}
                         inputId={`ruta-tramo-${i}-precio`}
@@ -1096,16 +1168,31 @@ export function RouteSheetFormModal({
                         >
                           Moneda de pago (este tramo)
                         </span>
-                        <VtSelect
-                          value={p.monedaPago ?? ""}
-                          onChange={(v) => updateTramo(i, { monedaPago: v })}
-                          options={monedaOptionsFor(p.monedaPago ?? "")}
-                          placeholder="Elegir moneda…"
-                          listPortal
-                          listPortalZIndexClass="z-[400]"
-                          ariaLabel={`Moneda de pago del tramo ${i + 1}`}
-                          buttonClassName="vt-input w-full min-h-[2.5rem] justify-between"
-                        />
+                        {routeLegCurrencyNorm ? (
+                          <>
+                            <p
+                              className="vt-input w-full min-h-[2.5rem] flex items-center px-3 text-[var(--text)] bg-[var(--surface-muted)]"
+                              aria-labelledby={`ruta-tramo-${i}-moneda-lbl`}
+                            >
+                              {routeLegCurrencyNorm}
+                            </p>
+                            <p className={cn(modalSub, "mt-1")}>
+                              {ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES}
+                            </p>
+                          </>
+                        ) : (
+                          <VtSelect
+                            value={p.monedaPago ?? ""}
+                            onChange={(v) => updateTramo(i, { monedaPago: v })}
+                            disabled={tramoFieldsReadOnly}
+                            options={monedaOptionsFor(p.monedaPago ?? "")}
+                            placeholder="Elegir moneda…"
+                            listPortal
+                            listPortalZIndexClass="z-[400]"
+                            ariaLabel={`Moneda de pago del tramo ${i + 1}`}
+                            buttonClassName="vt-input w-full min-h-[2.5rem] justify-between"
+                          />
+                        )}
                         {te?.monedaPago ? (
                           <span className={fieldError} role="alert">
                             {te.monedaPago}
@@ -1117,6 +1204,7 @@ export function RouteSheetFormModal({
                         value={p.cargaEnTramo ?? ""}
                         onChange={(v) => updateTramo(i, { cargaEnTramo: v })}
                         multiline
+                        readOnly={tramoFieldsReadOnly}
                         placeholder="Qué lleva el transportista en el tramo"
                         error={te?.cargaEnTramo}
                         inputId={`ruta-tramo-${i}-carga`}
@@ -1128,6 +1216,7 @@ export function RouteSheetFormModal({
                           onChange={(v) =>
                             updateTramo(i, { tipoMercanciaCarga: v })
                           }
+                          readOnly={tramoFieldsReadOnly}
                           error={te?.tipoMercanciaCarga}
                           inputId={`ruta-tramo-${i}-tmc`}
                         />
@@ -1137,6 +1226,7 @@ export function RouteSheetFormModal({
                           onChange={(v) =>
                             updateTramo(i, { tipoMercanciaDescarga: v })
                           }
+                          readOnly={tramoFieldsReadOnly}
                           error={te?.tipoMercanciaDescarga}
                           inputId={`ruta-tramo-${i}-tmd`}
                         />
@@ -1146,14 +1236,17 @@ export function RouteSheetFormModal({
                         value={p.notas ?? ""}
                         onChange={(v) => updateTramo(i, { notas: v })}
                         multiline
+                        readOnly={tramoFieldsReadOnly}
                         error={te?.notas}
                         inputId={`ruta-tramo-${i}-notas`}
                       />
+                      </div>
                     </div>
-                    <div className="flex justify-center py-1">
+                    <div className={cn("flex justify-center py-1", carrierInviteReadOnlyShell)}>
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1.5 border-0 bg-transparent p-1 text-[12px] font-extrabold text-[var(--primary)] hover:underline"
+                        className="inline-flex items-center gap-1.5 border-0 bg-transparent p-1 text-[12px] font-extrabold text-[var(--primary)] hover:underline disabled:opacity-40"
+                        disabled={carrierContactEditOnly}
                         onClick={() => insertTramoAt(i + 1)}
                       >
                         <Plus size={14} strokeWidth={2.5} aria-hidden />
@@ -1167,6 +1260,7 @@ export function RouteSheetFormModal({
               })}
             </div>
 
+            <div className={carrierInviteReadOnlyShell}>
             <Field
               label="Notas generales"
               value={notasG}
@@ -1174,7 +1268,9 @@ export function RouteSheetFormModal({
               multiline
               error={err.notasGenerales}
               inputId="ruta-notas-g"
+              readOnly={carrierContactEditOnly}
             />
+            </div>
           </div>
           <div className="vt-modal-actions">
             <button type="button" className="vt-btn" onClick={onClose}>
@@ -1183,9 +1279,9 @@ export function RouteSheetFormModal({
             <button
               type="button"
               className="vt-btn vt-btn-primary"
-              disabled={lockedByPaidAgreement}
+              disabled={formFullyLockedByPaid}
               title={
-                lockedByPaidAgreement
+                formFullyLockedByPaid
                   ? ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES
                   : undefined
               }

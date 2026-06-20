@@ -38,6 +38,7 @@ import {
   CHAT_PARTY_EXIT_TRUST_PER_MEMBER,
 } from "./components/modals/TrustRiskEditConfirmModal";
 import { ChatLeaveConfirmModal } from "./components/modals/ChatLeaveConfirmModal";
+import { ChatLeaveReasonModal } from "./components/modals/ChatLeaveReasonModal";
 import { messagePreviewLine } from "./lib/chatAttachments";
 import { mergeMissingChatListThreadsFromServer } from "@/utils/chat/mergeMissingChatListThreadsFromServer";
 import { ChatNewConversationModal } from "./components/modals/ChatNewConversationModal";
@@ -104,6 +105,11 @@ export function ChatListPage() {
     routeStopId: string;
   } | null>(null);
   const [leaveRefundBusy, setLeaveRefundBusy] = useState(false);
+  const [leaveReasonModalThreadId, setLeaveReasonModalThreadId] = useState<string | null>(
+    null,
+  );
+  const [leaveReasonBusy, setLeaveReasonBusy] = useState(false);
+  const [leaveReasonError, setLeaveReasonError] = useState<string | null>(null);
   const [nameFilterQuery, setNameFilterQuery] = useState("");
   const [newConversationOpen, setNewConversationOpen] = useState(false);
 
@@ -112,8 +118,35 @@ export function ChatListPage() {
     void mergeMissingChatListThreadsFromServer();
   }, [me.id]);
 
-  async function runExitChatAfterConfirm(threadId: string) {
-    const th = threads[threadId];
+  function threadNeedsLeaveReason(th: Thread): boolean {
+    const sellerId = resolveSellerUserId(th);
+    const inferredBuyer = resolveBuyerUserId(th, me.id);
+    const actsAsRouteCarrier = viewerIsConfirmedRouteCarrierOnThread(
+      useMarketStore.getState(),
+      th,
+      me.id,
+    );
+    const isBuyerOrSeller =
+      (sellerId != null && me.id === sellerId) ||
+      (inferredBuyer != null &&
+        me.id === inferredBuyer &&
+        !actsAsRouteCarrier);
+    if (isBuyerOrSeller && threadHasAcceptedAgreement(th)) return true;
+    if (
+      !isBuyerOrSeller &&
+      th.id.startsWith("cth_") &&
+      getSessionToken()
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  async function runExitChatWithReason(
+    threadId: string,
+    reasonTrim: string,
+  ): Promise<boolean | void> {
+    const th = useMarketStore.getState().threads[threadId];
     if (!th) return;
     const sellerId = resolveSellerUserId(th);
     const inferredBuyer = resolveBuyerUserId(th, me.id);
@@ -132,10 +165,14 @@ export function ChatListPage() {
     let withdrewAsCarrier = false;
     let notifiedParticipantsBeforeCarrierWithdraw = false;
     if (!isBuyerOrSeller && threadId.startsWith("cth_") && getSessionToken()) {
+      if (!reasonTrim) {
+        setLeaveReasonError("El motivo es obligatorio.");
+        return false;
+      }
       await notifyChatParticipantsUserLeft(threadId);
       notifiedParticipantsBeforeCarrierWithdraw = true;
       try {
-        const r = await postCarrierWithdrawFromThread(threadId);
+        const r = await postCarrierWithdrawFromThread(threadId, reasonTrim);
         if (r.withdrawnRowCount > 0) {
           withdrewAsCarrier = true;
           if (r.applyTrustPenalty) {
@@ -157,17 +194,28 @@ export function ChatListPage() {
             );
           }
         }
-      } catch {
-        /* sin suscripciones activas o error de red */
+      } catch (e) {
+        if (e instanceof VtHttpError) {
+          toast.error(e.message);
+        } else {
+          toast.error(
+            errorToUserMessage(
+              e,
+              "No se pudo registrar la salida como transportista.",
+            ),
+          );
+        }
+        return;
       }
     }
 
     const hadAccepted = threadHasAcceptedAgreement(th);
     if (isBuyerOrSeller) {
       if (hadAccepted) {
-        const reason = globalThis.prompt("Motivo para salir del chat");
-        if (reason == null || !String(reason).trim()) return;
-        const reasonTrim = String(reason).trim();
+        if (!reasonTrim) {
+          setLeaveReasonError("El motivo es obligatorio.");
+          return false;
+        }
         const imSeller = sellerId != null && me.id === sellerId;
         for (const rs of th.routeSheets ?? []) {
           if (rs.publicadaPlataforma) {
@@ -225,7 +273,7 @@ export function ChatListPage() {
             if (threadId.startsWith("cth_") && getSessionToken()) {
               try {
                 await notifyChatParticipantsUserLeft(threadId);
-                const r = await postCarrierWithdrawFromThread(threadId);
+                const r = await postCarrierWithdrawFromThread(threadId, reasonTrim);
                 if (r.withdrawnRowCount > 0) {
                   if (r.applyTrustPenalty) {
                     const nextTrust =
@@ -261,6 +309,8 @@ export function ChatListPage() {
           if (e instanceof VtHttpError && e.code) {
             setLeaveBlockingCode(e.code);
             setLeaveBlockingMessage(e.message);
+            setLeaveReasonModalThreadId(null);
+            setLeaveModalThreadId(threadId);
             if (
               e.code === "route_delivery_active_buyer" ||
               e.code === "route_delivery_active_seller"
@@ -421,10 +471,16 @@ export function ChatListPage() {
       .map((th) => {
         const offer = offers[th.offerId];
         const last = lastMessage(th);
-        const listTitle = chatThreadHeaderTitle(th, me, profileDisplayNames);
+        const offerTitle = offer?.title ?? "Oferta";
+        const listTitle = chatThreadHeaderTitle(
+          th,
+          me,
+          profileDisplayNames,
+          offerTitle,
+        );
         return {
           th,
-          offerTitle: offer?.title ?? "Oferta",
+          offerTitle,
           preview: last ? messagePreviewLine(last) : "Sin mensajes",
           at: threadLastActivity(th),
           listTitle,
@@ -480,8 +536,47 @@ export function ChatListPage() {
         }
         onConfirm={async () => {
           const id = leaveModalThreadId;
-          if (!id) return;
-          await runExitChatAfterConfirm(id);
+          if (!id) return false;
+          let th = useMarketStore.getState().threads[id];
+          if (!th) return false;
+          if (!threadHasAcceptedAgreement(th) && id.startsWith("cth_") && getSessionToken()) {
+            try {
+              await refreshThreadTradeAgreements(id);
+              th = useMarketStore.getState().threads[id] ?? th;
+            } catch {
+              /* sin red */
+            }
+          }
+          if (threadNeedsLeaveReason(th)) {
+            setLeaveReasonModalThreadId(id);
+            setLeaveModalThreadId(null);
+            setLeaveReasonError(null);
+            return;
+          }
+          await runExitChatWithReason(id, "");
+        }}
+      />
+      <ChatLeaveReasonModal
+        open={leaveReasonModalThreadId !== null}
+        busy={leaveReasonBusy}
+        emptyReasonError={leaveReasonError}
+        onClose={() => {
+          setLeaveReasonModalThreadId(null);
+          setLeaveReasonError(null);
+          setLeaveReasonBusy(false);
+        }}
+        onConfirm={async (reason) => {
+          const id = leaveReasonModalThreadId;
+          if (!id) return false;
+          setLeaveReasonBusy(true);
+          setLeaveReasonError(null);
+          try {
+            const r = await runExitChatWithReason(id, reason);
+            if (r === false) return false;
+            setLeaveReasonModalThreadId(null);
+          } finally {
+            setLeaveReasonBusy(false);
+          }
         }}
       />
       {/*
@@ -550,7 +645,7 @@ export function ChatListPage() {
           </div>
         ) : (
           <div className="flex flex-col">
-            {rows.map(({ th, offerTitle, preview, at, listTitle }) => {
+            {rows.map(({ th, preview, at, listTitle }) => {
               const inv = Boolean(th.prematureExitUnderInvestigation);
               const sellerUid = resolveSellerUserId(th);
               const imSeller = sellerUid != null && me.id === sellerUid;
@@ -610,9 +705,6 @@ export function ChatListPage() {
                             {fmtShort(at)}
                           </span>
                         </div>
-                      </div>
-                      <div className="mb-0.5 truncate text-[13px] text-[var(--muted)]">
-                        {offerTitle}
                       </div>
                       <div className="truncate text-[13px] text-[var(--muted)]">
                         {preview}

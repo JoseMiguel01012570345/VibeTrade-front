@@ -278,7 +278,7 @@ function LegBtnCedeOwnership(props: {
         props.logisticsBusyKey === `${props.busyKeyBase}:cede`
       }
       size="xs"
-      title="Solo si sos el titular del paquete y el transportista confirmado en este tramo: cedé al confirmado en el siguiente."
+      title="Solo si sos el titular del paquete en este tramo: cedé al confirmado en el siguiente."
       onClick={props.onClick}
     >
       Ceder ownership
@@ -415,9 +415,7 @@ export function LegLogisticsButtons(props: {
           />
         ) : null}
 
-        {m.activeLike &&
-        m.viewerIsOwnerCarrierStrict &&
-        m.showEvidenceBtn ? (
+        {!isActingSeller && m.activeLike && m.showEvidenceBtn ? (
           <LegBtnCarrierEvidenceUpload
             onClick={props.onCarrierEvidenceUploadClick}
           />

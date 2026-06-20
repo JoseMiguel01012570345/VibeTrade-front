@@ -146,7 +146,7 @@ export function routeSheetIdsLinkedToContracts(th: Thread): Set<string> {
   return out
 }
 
-/** Hojas vinculadas a un acuerdo con cobros exitosos (no editar / borrar / publicar). */
+/** Hojas vinculadas a un acuerdo con cobros exitosos (no editar / borrar). */
 export function routeSheetIdsLockedByPaidAgreements(th: Thread): Set<string> {
   const out = new Set<string>()
   for (const c of th.contracts ?? []) {

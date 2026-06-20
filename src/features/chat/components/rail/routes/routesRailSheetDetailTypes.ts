@@ -4,6 +4,7 @@ import type {
 } from "@app/store/marketStoreTypes";
 import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
 import type { RouteSheet } from "@features/market/model/routeSheetTypes";
+import type { RouteTramoSubscriptionItemApi } from "@/utils/chat/chatApi";
 import type { RouteStopDeliveryStatusApi } from "@/utils/chat/routeLogisticsApi";
 
 export type RoutesRailSheetDetailProps = {
@@ -12,6 +13,7 @@ export type RoutesRailSheetDetailProps = {
   threadId: string;
   isActingSeller: boolean;
   sheetLockedByPaid: boolean;
+  sheetStructuralEditBlockedByPaid: boolean;
   sheetEditBlockedByCarrierAck: boolean;
   linkedRouteSheetIds: ReadonlySet<string>;
   routeOfferResolved: RouteOfferPublicState | undefined;
@@ -33,6 +35,10 @@ export type RoutesRailSheetDetailProps = {
   onEditRouteSheet: (sheet: RouteSheet) => void;
   onInviteTransportista: () => void;
   deleteRouteSheet: (threadId: string, routeSheetId: string) => boolean;
+  duplicateRouteSheet: (
+    threadId: string,
+    routeSheetId: string,
+  ) => Promise<string | null>;
   publishRouteSheetsToPlatform: (
     threadId: string,
     routeSheetIds: string[],
@@ -43,6 +49,8 @@ export type RoutesRailSheetDetailProps = {
   ) => void;
   getAgreementForSheet: (routeSheetId: string) => TradeAgreement | null;
   deliveriesByAgreement: Record<string, RouteStopDeliveryStatusApi[]>;
+  /** Suscripciones del hilo (GET autoritativo) para candidatos de reanudar tramo. */
+  routeTramoSubscriptions?: RouteTramoSubscriptionItemApi[];
   cedeOwnershipByAgreement:
     | Record<string, Record<string, boolean>>
     | undefined;

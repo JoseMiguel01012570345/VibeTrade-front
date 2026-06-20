@@ -71,7 +71,7 @@ function assignmentFromSubscriptionRow(
  * Evita dejar “confirmado” u otro transportista en un tramo cuando ya no hay fila en servidor
  * (el merge incremental por transportista conservaba el `t` anterior).
  */
-function rebuildRouteOfferAssignmentsFromThreadItems(
+export function rebuildRouteOfferAssignmentsFromThreadItems(
   ro: RouteOfferPublicState | undefined,
   items: RouteTramoSubscriptionItemApi[],
 ): RouteOfferPublicState | undefined {
@@ -400,7 +400,11 @@ export function applyViewerRouteTramoSubscriptions(
   );
   threads = {
     ...threads,
-    [tid]: { ...th0, chatCarriers: ccNext },
+    [tid]: {
+      ...th0,
+      chatCarriers: ccNext,
+      routeTramoSubscriptionsSnapshot: items,
+    },
   };
 
   if (routeOfferPublic === state.routeOfferPublic && threads === state.threads)

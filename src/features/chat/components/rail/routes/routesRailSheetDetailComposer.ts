@@ -16,13 +16,19 @@ import {
 export function composeRoutesRailDetailShellMerged(
   navigate: NavigateFunction,
   props: RoutesRailSheetDetailProps,
+  overrides?: {
+    onRequestDelete?: () => void;
+    onPublishClick?: () => void;
+    onDuplicateRouteSheet?: () => void;
+  },
 ): RoutesRailSheetDetailShellMergedProps {
   const titles = routesRailTitlesForSeller({
     actionsLocked: props.actionsLocked,
     sheetLockedByPaid: props.sheetLockedByPaid,
+    sheetStructuralEditBlockedByPaid: props.sheetStructuralEditBlockedByPaid,
     sheetEditBlockedByCarrierAck: props.sheetEditBlockedByCarrierAck,
     publicadaPlataforma: props.selRoute.publicadaPlataforma ?? false,
-    linked: props.linkedRouteSheetIds.has(props.selRoute.id),
+    sheetEstado: props.selRoute.estado,
   });
 
   return {
@@ -34,8 +40,14 @@ export function composeRoutesRailDetailShellMerged(
       deliveriesByAgreement: props.deliveriesByAgreement,
       meId: props.meId,
     }),
-    handleDeleteConfirmed: () => invokeRoutesRailSheetDeleteConfirmation(props),
-    handlePublishClick: () => invokeRoutesRailSheetPublishToggle(props),
+    handleDeleteConfirmed:
+      overrides?.onRequestDelete ??
+      (() => invokeRoutesRailSheetDeleteConfirmation(props)),
+    handlePublishClick:
+      overrides?.onPublishClick ??
+      (() => invokeRoutesRailSheetPublishToggle(props)),
+    handleDuplicateRouteSheet:
+      overrides?.onDuplicateRouteSheet ?? (() => undefined),
     acceptCarrierAck: () => invokeRoutesRailCarrierAcceptAck(props),
     rejectCarrierAck: () => invokeRoutesRailCarrierRejectAck(navigate, props),
   };
@@ -59,7 +71,6 @@ function invokeRoutesRailSheetPublishToggle(
 ): void {
   runRoutesRailPublishToggle({
     selRoute: p.selRoute,
-    sheetLockedByPaid: p.sheetLockedByPaid,
     threadId: p.threadId,
     publishRouteSheetsToPlatform: p.publishRouteSheetsToPlatform,
     unpublishRouteSheetFromPlatform: p.unpublishRouteSheetFromPlatform,

@@ -93,5 +93,9 @@ export function mapTradeAgreementApiToTradeAgreement(
     routeSheetId: d.routeSheetId ?? undefined,
     routeSheetUrl: d.routeSheetUrl ?? undefined,
     hasSucceededPayments: d.hasSucceededPayments === true ? true : undefined,
+    hasSucceededRoutePayments:
+      d.hasSucceededRoutePayments === true ? true : undefined,
+    hasAcceptedMerchandiseEvidence:
+      d.hasAcceptedMerchandiseEvidence === true ? true : undefined,
   };
 }

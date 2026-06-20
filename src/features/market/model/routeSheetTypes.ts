@@ -278,6 +278,12 @@ export function routeStatusLabel(s: RouteSheetStatus): string {
   }
 }
 
+export function routeSheetEstadoIsEntregada(
+  estado: RouteSheetStatus | string | undefined,
+): boolean {
+  return (estado ?? '').trim().toLowerCase() === 'entregada'
+}
+
 /** Texto legible de un tramo (compat. datos viejos con solo `lugar`). */
 export function tramoResumenLinea(p: RouteStop): string {
   const o = p.origen?.trim()

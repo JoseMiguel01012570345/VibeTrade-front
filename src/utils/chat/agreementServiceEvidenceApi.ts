@@ -90,12 +90,13 @@ export async function decideServiceEvidence(args: {
   paymentId: string;
   decision: "accept" | "reject";
 }): Promise<boolean> {
+  const apiDecision = args.decision === "accept" ? "accepted" : "rejected";
   const res = await apiFetch(
     `/api/v1/chat/threads/${encodeURIComponent(args.threadId)}/agreements/${encodeURIComponent(args.agreementId)}/service-payments/${encodeURIComponent(args.paymentId)}/evidence/decision`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision: args.decision }),
+      body: JSON.stringify({ decision: apiDecision }),
     },
   );
   if (res.ok) return true;

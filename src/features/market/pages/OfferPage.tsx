@@ -1212,14 +1212,6 @@ export function OfferPage() {
                         figures en el hilo como transportista.
                       </p>
                     ) : null}
-                    {canOpenRouteChat &&
-                    !carrierConfirmedOnRoute &&
-                    carrierInChatThread ? (
-                      <p className="text-[12px] leading-snug text-[var(--muted)]">
-                        Abres el chat como integrante del hilo aunque no tengas
-                        un tramo confirmado en este momento (demo).
-                      </p>
-                    ) : null}
                   </div>
                 ) : null}
               </div>

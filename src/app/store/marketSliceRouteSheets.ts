@@ -11,11 +11,16 @@ import {
   summarizeRouteSheetMonedaPago,
 } from "@features/market/model/routeSheetTypes"
 import { agreementHasMerchandiseForRouteLink } from "@features/market/model/tradeAgreementValidation"
+import {
+  resolveRouteOfferPublicForSheet,
+  resolveRouteOfferPublicForThread,
+  routeSheetAllowsCarrierContactEditWhenPaid,
+  routeSheetPublishBlockedWhenDelivered,
+} from "@features/market/model/routeSheetOfferGuards"
 import type { Message, MarketState } from './marketStoreTypes'
 import { threadHasAcceptedAgreement } from './marketStoreTypes'
 import {
   stripLegacyRouteSheetHead,
-  routeSheetIdsLinkedToContracts,
   routeSheetIdsLockedByPaidAgreements,
   threadIsActionLocked,
   uid,
@@ -37,6 +42,7 @@ import {
   fetchThreadRouteSheets,
   fetchThreadRouteTramoSubscriptions,
   patchThreadTradeAgreementRouteLink,
+  postThreadRouteSheetDuplicate,
   putThreadRouteSheet,
 } from "@/utils/chat/chatApi"
 import { getSessionToken } from "@shared/services/http/sessionToken"
@@ -66,6 +72,7 @@ export function createRouteSheetsSlice(set: MarketSliceSet, get: MarketSliceGet)
   | 'linkAgreementToRouteSheet'
   | 'unlinkAgreementFromRouteSheet'
   | 'deleteRouteSheet'
+  | 'duplicateRouteSheet'
 > {
   return {
 createRouteSheet: (threadId, payload) => {
@@ -152,10 +159,26 @@ updateRouteSheet: (threadId, routeSheetId, payload) => {
   if (threadIsActionLocked(thGuard)) return false
   if (
     thGuard &&
-    routeSheetIdsLockedByPaidAgreements(thGuard).has(routeSheetId)
+    routeSheetIdsLockedByPaidAgreements(thGuard).has(routeSheetId) &&
+    !routeSheetAllowsCarrierContactEditWhenPaid(
+      true,
+      resolveRouteOfferPublicForSheet(get(), thGuard, routeSheetId) ??
+        resolveRouteOfferPublicForThread(get(), thGuard),
+      routeSheetId,
+      thGuard.routeSheets?.find((r) => r.id === routeSheetId),
+      thGuard.routeTramoSubscriptionsSnapshot,
+    )
   )
     return false
-  if (thGuard && routeSheetHasPendingCarrierAck(thGuard, routeSheetId)) return false
+  if (
+    thGuard &&
+    routeSheetHasPendingCarrierAck(
+      thGuard,
+      routeSheetId,
+      resolveRouteOfferPublicForThread(get(), thGuard),
+    )
+  )
+    return false
   if (hasRouteSheetFormErrors(getRouteSheetFormErrors(payload))) return false
   const paradasNorm = normalizeRouteSheetParadas(payload.paradas)
   if (paradasNorm.length === 0) return false
@@ -376,17 +399,14 @@ publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
     const th = s.threads[threadId]
     const sheets = th?.routeSheets
     if (!th || threadIsActionLocked(th) || !sheets?.length) return s
-    const linked = routeSheetIdsLinkedToContracts(th)
-    const paidLocked = routeSheetIdsLockedByPaidAgreements(th)
-    const allowedArr = [...idSet].filter(
-      (id) => linked.has(id) && !paidLocked.has(id),
-    )
+    const allowedArr = [...idSet].filter((id) => sheets.some((rs) => rs.id === id))
     if (allowedArr.length === 0) return s
     const ro = s.routeOfferPublic[th.offerId]
     const now = Date.now()
     const extraMsgs: Message[] = []
     const list = sheets.map((rs) => {
       if (!allowedArr.includes(rs.id)) return rs
+      if (!rs.publicadaPlataforma && routeSheetPublishBlockedWhenDelivered(rs.estado)) return rs
       if (!rs.publicadaPlataforma) {
         extraMsgs.push({
           id: uid('m'),
@@ -429,12 +449,6 @@ publishRouteSheetsToPlatform: (threadId, routeSheetIds) => {
 },
 
 unpublishRouteSheetFromPlatform: (threadId, routeSheetId) => {
-  const thG = get().threads[threadId]
-  if (
-    thG &&
-    routeSheetIdsLockedByPaidAgreements(thG).has(routeSheetId)
-  )
-    return
   let toSync: RouteSheet | null = null
   set((s) => {
     const th = s.threads[threadId]
@@ -776,6 +790,36 @@ deleteRouteSheet: (threadId, routeSheetId) => {
     })()
   }
   return ok
+},
+
+duplicateRouteSheet: async (threadId, routeSheetId) => {
+  const th0 = get().threads[threadId]
+  if (!th0 || threadIsActionLocked(th0)) return null
+  const persist = threadId.startsWith('cth_') && getSessionToken()
+  if (!persist) return null
+  try {
+    const created = await postThreadRouteSheetDuplicate(threadId, routeSheetId)
+    const sheets = await fetchThreadRouteSheets(threadId)
+    const acks = routeSheetEditAcksRecordFromSheets(sheets as RouteSheet[])
+    set((s) => {
+      const th = s.threads[threadId]
+      if (!th) return s
+      return {
+        ...s,
+        threads: {
+          ...s.threads,
+          [threadId]: {
+            ...th,
+            routeSheets: sheets as RouteSheet[],
+            routeSheetEditAcks: { ...(th.routeSheetEditAcks ?? {}), ...acks },
+          },
+        },
+      }
+    })
+    return (created.id ?? "").trim() || null
+  } catch {
+    return null
+  }
 },
   }
 }

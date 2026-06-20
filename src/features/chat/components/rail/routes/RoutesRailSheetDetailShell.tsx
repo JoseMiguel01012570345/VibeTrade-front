@@ -21,6 +21,7 @@ export type RoutesRailSheetDetailShellMergedProps =
     sheetAnyLiveTracking: boolean;
     handleDeleteConfirmed: () => void;
     handlePublishClick: () => void;
+    handleDuplicateRouteSheet: () => void;
     acceptCarrierAck: () => Promise<void>;
     rejectCarrierAck: () => Promise<void>;
   };
@@ -82,6 +83,7 @@ function RoutesRailDetailToolbarPublishStripe(props: {
         isActingSeller={q.isActingSeller}
         actionsLocked={q.actionsLocked}
         sheetLockedByPaid={q.sheetLockedByPaid}
+        sheetStructuralEditBlockedByPaid={q.sheetStructuralEditBlockedByPaid}
         sheetEditBlockedByCarrierAck={q.sheetEditBlockedByCarrierAck}
         selRoute={q.selRoute}
         inviteTitleStr={t.inviteTitleStr}
@@ -89,14 +91,13 @@ function RoutesRailDetailToolbarPublishStripe(props: {
         deleteTitleStr={t.deleteTitleStr}
         onInvite={q.onInviteTransportista}
         onEdit={() => q.onEditRouteSheet(q.selRoute)}
+        onDuplicate={q.isActingSeller ? q.handleDuplicateRouteSheet : undefined}
+        duplicateTitleStr="Duplicar hoja de ruta (copia sin publicar)"
         onRequestDelete={q.handleDeleteConfirmed}
       />
       <RoutesRailPublishStrip
         isActingSeller={q.isActingSeller}
-        actionsLocked={q.actionsLocked}
-        sheetLockedByPaid={q.sheetLockedByPaid}
         selRoute={q.selRoute}
-        linkedRouteSheetIds={q.linkedRouteSheetIds}
         publishTitleStr={t.publishTitleStr}
         onPublishClick={q.handlePublishClick}
       />
@@ -145,6 +146,7 @@ function RoutesRailLegsUl(props: {
       meId: q.meId,
       sellerUid: q.sellerUid,
       cedeOwnershipByAgreement: q.cedeOwnershipByAgreement,
+      routeTramoSubscriptions: q.routeTramoSubscriptions,
     });
   }
 

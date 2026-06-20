@@ -31,7 +31,6 @@ import {
 } from "@shared/styles/modals/formModalStyles";
 import { cn } from "@shared/lib/cn";
 import { VtSelect } from "@shared/components/ui/VtSelect";
-import { VtMultiSelect } from "@shared/components/ui/VtMultiSelect";
 import { formServiceQualifiesAsTransport } from "@/utils/user/transportEligibility";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import {
@@ -167,6 +166,8 @@ export function ServiceEditorModal({
     return [...merged].sort((a, b) => a.localeCompare(b, "es"));
   }, [categoryOptions, form.category]);
 
+  const monedaAceptada = (form.monedas?.[0] ?? catalogMonedasList(form)[0] ?? "").trim();
+
   const currencySelectOptions = useMemo(() => {
     const merged = new Set<string>(
       currencyOptions.map((c) => c.trim()).filter(Boolean),
@@ -254,23 +255,27 @@ export function ServiceEditorModal({
               </label>
               <label
                 className={fieldRootWithInvalid(
-                  showVal &&
-                    catalogMonedasList({
-                      monedas: form.monedas,
-                      moneda: form.moneda,
-                    }).length < 1,
+                  showVal && monedaAceptada.length < 1,
                 )}
               >
-                <span className={fieldLabel}>Monedas aceptadas</span>
-                <VtMultiSelect
-                  value={form.monedas ?? []}
-                  onChange={(monedas) => setForm({ ...form, monedas })}
-                  ariaLabel="Monedas aceptadas para el pago (obligatorio)"
-                  placeholder="Elige una o más…"
-                  options={currencySelectOptions.map((c) => ({
-                    value: c,
-                    label: c,
-                  }))}
+                <span className={fieldLabel}>Moneda aceptada</span>
+                <VtSelect
+                  value={monedaAceptada}
+                  onChange={(v) =>
+                    setForm({
+                      ...form,
+                      monedas: v.trim() ? [v.trim()] : undefined,
+                    })
+                  }
+                  ariaLabel="Moneda aceptada para el pago (obligatorio)"
+                  placeholder="Seleccionar moneda…"
+                  options={[
+                    { value: "", label: "Seleccionar moneda…" },
+                    ...currencySelectOptions.map((c) => ({
+                      value: c,
+                      label: c,
+                    })),
+                  ]}
                 />
               </label>
             </div>

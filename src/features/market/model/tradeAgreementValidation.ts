@@ -13,6 +13,7 @@ import {
 } from "./tradeAgreementTypes";
 import { validateVigenciaRange } from "./serviceVigenciaDates";
 import type { StoreCatalog } from "./storeCatalogTypes";
+import { agreementSingleCurrencyError } from "./agreementCheckoutCurrency";
 
 type MerchandiseHolder = { merchandise: MerchandiseLine[] };
 
@@ -322,6 +323,9 @@ export function validateTradeAgreementDraft(
   });
   if (Object.keys(xfErr).length) errors.extraFieldsLines = xfErr;
 
+  const currencyErr = agreementSingleCurrencyError(d);
+  if (currencyErr) errors.scope = errors.scope ?? currencyErr;
+
   return errors;
 }
 
@@ -574,6 +578,10 @@ export function validateServiceItem(sv: ServiceItem): string[] {
   if (monedasFromRecurrenciaPagos(sv.recurrenciaPagos).length === 0) {
     msgs.push(
       "Indica la moneda en cada fila de la recurrencia de pagos (paso «Pagos recurrentes»).",
+    );
+  } else if (monedasFromRecurrenciaPagos(sv.recurrenciaPagos).length > 1) {
+    msgs.push(
+      "El acuerdo debe cobrarse en una sola moneda; unifica mercadería, servicios y transporte.",
     );
   }
 

@@ -187,7 +187,7 @@ export function mapChatMessageDtoToMessage(
   if (p.systemText?.trim()) {
     return {
       ...common,
-      from: p.issuedByVibeTradePlatform ? "system" : from,
+      from: "system",
       type: "text",
       text: p.systemText.trim(),
     };

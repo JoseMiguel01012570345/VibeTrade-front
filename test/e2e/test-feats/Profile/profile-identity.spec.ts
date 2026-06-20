@@ -37,6 +37,17 @@ test.describe("profileAccount identity E2E", () => {
     });
   });
 
+  test("saves valid email", async ({ page }) => {
+    await openAccountPage(page);
+    const email = `e2e_${Date.now().toString(36).slice(-6)}@test.local`;
+    await profileFieldInput(page, /email/i).fill(email);
+    await saveButtonForField(page, /email/i).click();
+    await expect(page.getByText(/email guardado|guardado/i).first()).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(profileFieldInput(page, /email/i)).toHaveValue(email);
+  });
+
   test("avatar save stays disabled without draft upload", async ({ page }) => {
     await openAccountPage(page);
     await expect(

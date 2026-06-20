@@ -2,13 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useMarketStore } from "@app/store/useMarketStore";
 import {
-  confirmedStopIdsForCarrier,
-  resolveRouteOfferPublicForSheet,
-} from "@features/market/model/routeSheetOfferGuards";
-import {
   fetchAgreementRouteDeliveries,
   type RouteStopDeliveryStatusApi,
 } from "@/utils/chat/routeLogisticsApi";
+import { subscribeRouteDeliveriesRefresh } from "@/utils/chat/chatRealtime";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 
 export type CarrierTelemetryTarget = {
@@ -33,11 +30,6 @@ const TELEMETRY_STATES = new Set([
   "awaiting_carrier_for_handoff",
   "delivered_pending_evidence",
 ]);
-
-function deliveryPaidLike(state: string): boolean {
-  const s = state.trim().toLowerCase();
-  return s.length > 0 && s !== "unpaid" && !s.startsWith("refunded");
-}
 
 function rowTelemetryTargetForOwner(
   row: RouteStopDeliveryStatusApi,
@@ -82,6 +74,44 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
     }),
   );
 
+  /** Re-ejecutar cuando hidratan suscripciones / routeOfferPublic tras F5 (threadDigest no cambia). */
+  const carrierRouteContextDigest = useMarketStore(
+    useShallow((s) => {
+      const th = threadId ? s.threads[threadId] : undefined;
+      if (!th) return "";
+      const carrierIds = (th.chatCarriers ?? [])
+        .map((c) => (c.id ?? "").trim())
+        .filter((x) => x.length > 0)
+        .sort()
+        .join(",");
+      const linkedSheetIds = new Set(
+        (th.contracts ?? [])
+          .filter(
+            (c) =>
+              c.status === "accepted" &&
+              (c.routeSheetId ?? "").trim().length > 1,
+          )
+          .map((c) => (c.routeSheetId ?? "").trim()),
+      );
+      const assignParts: string[] = [];
+      for (const ro of Object.values(s.routeOfferPublic)) {
+        if ((ro.threadId ?? "").trim() !== th.id.trim()) continue;
+        const rsid = (ro.routeSheetId ?? "").trim();
+        if (linkedSheetIds.size > 0 && rsid.length > 0 && !linkedSheetIds.has(rsid))
+          continue;
+        for (const t of ro.tramos ?? []) {
+          const a = t.assignment;
+          if ((a?.userId ?? "").trim().length < 2) continue;
+          assignParts.push(
+            `${(t.stopId ?? "").trim()}:${a!.userId!.trim()}:${a!.status ?? ""}`,
+          );
+        }
+      }
+      assignParts.sort();
+      return `${carrierIds}|${assignParts.join(",")}`;
+    }),
+  );
+
   const [targets, setTargets] = useState<CarrierTelemetryTarget[]>([]);
   const lastPrimeAtRef = useRef(0);
   const lastHandledRefreshNonceRef = useRef<number>(-1);
@@ -104,7 +134,7 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
         return;
       }
 
-      void ++reqIdRef.current;
+      const myReqId = ++reqIdRef.current;
 
       void (async () => {
         const state = useMarketStore.getState();
@@ -117,14 +147,9 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
         );
 
         const nextTargets: CarrierTelemetryTarget[] = [];
-        let anyConfirmedPaidStop = false;
+        let anyActiveTelemetryTarget = false;
 
         for (const c of accepted) {
-          const rsid = (c.routeSheetId ?? "").trim();
-          const ro = resolveRouteOfferPublicForSheet(state, th, rsid);
-          const confirmedStops = confirmedStopIdsForCarrier(ro, uid);
-          if (confirmedStops.size === 0) continue;
-
           let rows: RouteStopDeliveryStatusApi[];
           try {
             rows = await fetchAgreementRouteDeliveries(tid, c.id.trim());
@@ -134,9 +159,8 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
 
           for (const r of rows) {
             const sid = (r.routeStopId ?? "").trim();
-            const st = (r.state ?? "").trim().toLowerCase();
-            if (deliveryPaidLike(st)) anyConfirmedPaidStop = true;
             if (rowTelemetryTargetForOwner(r, uid)) {
+              anyActiveTelemetryTarget = true;
               nextTargets.push({
                 agreementId: c.id.trim(),
                 routeSheetId: (r.routeSheetId ?? "").trim(),
@@ -146,13 +170,15 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
           }
         }
 
+        if (myReqId !== reqIdRef.current) return;
+
         const dedup = new Map<string, CarrierTelemetryTarget>();
         for (const t of nextTargets) {
           dedup.set(`${t.agreementId}:${t.routeStopId}`, t);
         }
         setTargets([...dedup.values()]);
 
-        if (viewerIsConfirmedCarrier && anyConfirmedPaidStop) {
+        if (viewerIsConfirmedCarrier && anyActiveTelemetryTarget) {
           const now = Date.now();
           const firstEver = lastPrimeAtRef.current === 0;
           if (
@@ -174,7 +200,7 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
     const forcePaymentBump = n > 0 && n !== lastHandledRefreshNonceRef.current;
     if (forcePaymentBump) lastHandledRefreshNonceRef.current = n;
     runRefresh(forcePaymentBump);
-  }, [runRefresh, threadDigest, refreshNonce]);
+  }, [runRefresh, threadDigest, refreshNonce, carrierRouteContextDigest]);
 
   useEffect(() => {
     const tid = threadId?.trim();
@@ -192,6 +218,16 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
       window.removeEventListener("focus", onResume);
     };
   }, [threadId, isSocialThread, viewerIsConfirmedCarrier, runRefresh]);
-  console.log({ viewerIsConfirmedCarrier });
+
+  useEffect(() => {
+    const tid = threadId?.trim();
+    if (!tid || tid.length < 4 || isSocialThread || !viewerIsConfirmedCarrier)
+      return;
+    return subscribeRouteDeliveriesRefresh((p) => {
+      if (p.threadId !== tid) return;
+      runRefresh(p.change === "route_deliveries_updated");
+    });
+  }, [threadId, isSocialThread, viewerIsConfirmedCarrier, runRefresh]);
+
   return targets;
 }

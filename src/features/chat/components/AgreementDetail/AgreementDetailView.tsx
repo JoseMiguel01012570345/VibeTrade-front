@@ -40,6 +40,7 @@ import {
 import { ServiceItemPreview } from "../modals/serviceConfig/ServiceItemPreview";
 import type { RouteSheet } from "@features/market/model/routeSheetTypes";
 import { agreementHasMerchandiseForRouteLink } from "@features/market/model/tradeAgreementValidation";
+import { AgreementMerchandiseEvidenceSection } from "./AgreementMerchandiseEvidenceSection";
 import { downloadTradeAgreementPdf } from "@features/chat/utils/tradeAgreementPdfDownload";
 import {
   decideServiceEvidence,
@@ -75,6 +76,7 @@ import {
   linkRutaRow,
   linkRutaSelect,
 } from "../../styles/formModalStyles";
+import { EvidenceAttachmentsList } from "../shared/EvidenceAttachmentsList";
 
 function Row({ label, value }: { label: string; value: string }) {
   if (!value.trim()) return null;
@@ -99,45 +101,6 @@ function fmtMoneyMinor(amountMinor: number, currencyLower: string): string {
   } catch {
     return `${maj.toFixed(pow)} ${cur.toUpperCase()}`;
   }
-}
-
-function EvidenceAttachmentsList({
-  atts,
-  onRemove,
-}: {
-  atts: ServiceEvidenceAttachmentApi[];
-  onRemove?: (id: string) => void;
-}) {
-  if (atts.length === 0) return null;
-  return (
-    <div className="mt-2 space-y-2">
-      {atts.map((a) => (
-        <div
-          key={a.id}
-          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_52%,var(--surface))] px-2.5 py-2 text-[13px]"
-        >
-          <a
-            href={a.url}
-            target="_blank"
-            rel="noreferrer"
-            className="min-w-0 break-words font-semibold text-[var(--primary)] underline"
-          >
-            {a.fileName || "Abrir adjunto"}
-          </a>
-          {onRemove ? (
-            <button
-              type="button"
-              className="vt-btn vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-1.5 text-[12px]"
-              onClick={() => onRemove(a.id)}
-            >
-              <XCircle size={14} aria-hidden />
-              Quitar
-            </button>
-          ) : null}
-        </div>
-      ))}
-    </div>
-  );
 }
 
 function normalizeEvidenceForCompare(
@@ -382,18 +345,23 @@ export function AgreementDetailView({
   isActingSeller = false,
   onOpenRouteSheet,
   routeSheets = [],
+  routeSheetIdsLinkedElsewhere,
   onLinkRouteSheet,
   onUnlinkRouteSheet,
   linkActionsDisabled = false,
+  routeLinkFrozenAfterPayment = false,
 }: {
   a: TradeAgreement;
   threadId: string;
   isActingSeller?: boolean;
   onOpenRouteSheet?: (routeSheetId: string) => void;
   routeSheets?: RouteSheet[];
+  routeSheetIdsLinkedElsewhere?: ReadonlySet<string>;
   onLinkRouteSheet?: (agreementId: string, routeSheetId: string) => void;
   onUnlinkRouteSheet?: (agreementId: string) => void;
   linkActionsDisabled?: boolean;
+  /** Cobros registrados y hoja ya vinculada: no cambiar ni desvincular. */
+  routeLinkFrozenAfterPayment?: boolean;
 }) {
   const nav = useNavigate();
   const m = a.merchandiseMeta ?? undefined;
@@ -487,15 +455,18 @@ export function AgreementDetailView({
   const canUnlinkRoute =
     !!a.routeSheetId &&
     !linkedSheet?.publicadaPlataforma &&
-    !!onUnlinkRouteSheet;
+    !!onUnlinkRouteSheet &&
+    !routeLinkFrozenAfterPayment;
   const merchOkForRouteLink = agreementHasMerchandiseForRouteLink(a);
   const selectRouteSheetDisabled =
     linkPublishedLocked ||
     linkActionsDisabled ||
+    routeLinkFrozenAfterPayment ||
     (!!onLinkRouteSheet && !merchOkForRouteLink);
   const vincularDisabled =
     linkActionsDisabled ||
     linkPublishedLocked ||
+    routeLinkFrozenAfterPayment ||
     !pickId ||
     pickId === (a.routeSheetId ?? "") ||
     !merchOkForRouteLink;
@@ -503,13 +474,26 @@ export function AgreementDetailView({
   const routeSheetSelectOptions: VtSelectOption[] = useMemo(
     () => [
       { value: "", label: "Sin vincular — seleccionar…" },
-      ...routeSheets.map((r) => ({
-        value: r.id,
-        label: r.publicadaPlataforma ? `${r.titulo} (publicada)` : r.titulo,
-      })),
+      ...routeSheets
+        .filter(
+          (r) =>
+            !routeSheetIdsLinkedElsewhere?.has(r.id) ||
+            r.id === (a.routeSheetId ?? ""),
+        )
+        .map((r) => ({
+          value: r.id,
+          label: r.publicadaPlataforma ? `${r.titulo} (publicada)` : r.titulo,
+        })),
     ],
-    [routeSheets],
+    [routeSheets, routeSheetIdsLinkedElsewhere, a.routeSheetId],
   );
+
+  const evidenceModalSellerCanEdit =
+    evidenceModal !== null &&
+    isActingSeller &&
+    evidenceModal.pay.status !== "released" &&
+    (evidenceModal.pay.evidence?.status ?? "").trim().toLowerCase() !==
+      "accepted";
 
   return (
     <div className={agrDetailRoot}>
@@ -545,7 +529,11 @@ export function AgreementDetailView({
             <>
               <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
                 Elige una sola hoja de ruta del chat para este acuerdo. Podés
-                cambiarla mientras la hoja no esté publicada a transportistas.
+                cambiarla mientras la hoja no esté publicada a transportistas
+                {a.hasSucceededPayments && !a.routeSheetId ?
+                  ", incluso después del primer cobro de mercancía"
+                : ""}
+                .
               </p>
               {!merchOkForRouteLink ? (
                 <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
@@ -563,8 +551,28 @@ export function AgreementDetailView({
                 <>
                   {linkActionsDisabled ? (
                     <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
-                      La vinculación de hojas de ruta no está disponible hasta
-                      registrar el pago en el chat.
+                      La vinculación de hojas de ruta no está disponible en este
+                      momento.
+                    </p>
+                  ) : routeLinkFrozenAfterPayment ? (
+                    <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
+                      {a.hasAcceptedMerchandiseEvidence ?
+                        <>
+                          Con evidencia de mercancía{" "}
+                          <strong className="text-[var(--text)]">aceptada</strong>
+                          , el roadmap vinculado no se puede modificar ni quitar
+                          desde aquí.
+                        </>
+                      : <>
+                          Con pagos de transporte registrados y hoja vinculada, el
+                          roadmap no se puede modificar ni quitar desde aquí.
+                        </>
+                      }
+                    </p>
+                  ) : a.hasSucceededPayments && !a.routeSheetId ? (
+                    <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
+                      Ya hay cobros de mercancía: vinculá una hoja para habilitar
+                      el pago del transporte.
                     </p>
                   ) : null}
                   <div className={linkRutaRow}>
@@ -601,9 +609,13 @@ export function AgreementDetailView({
                       <button
                         type="button"
                         className="vt-btn shrink-0"
-                        disabled={linkActionsDisabled}
+                        disabled={linkActionsDisabled || routeLinkFrozenAfterPayment}
                         onClick={() => {
-                          if (linkActionsDisabled || !onUnlinkRouteSheet)
+                          if (
+                            linkActionsDisabled ||
+                            routeLinkFrozenAfterPayment ||
+                            !onUnlinkRouteSheet
+                          )
                             return;
                           onUnlinkRouteSheet(a.id);
                         }}
@@ -623,6 +635,7 @@ export function AgreementDetailView({
                     <p className={cn("vt-muted", agrDetailHint, "mt-1.5")}>
                       Podés elegir otra hoja en el selector y usar «Actualizar
                       vínculo», o desvincular para dejar el acuerdo sin roadmap.
+                      Cada hoja solo puede estar vinculada a un acuerdo a la vez.
                     </p>
                   ) : null}
                 </>
@@ -669,6 +682,24 @@ export function AgreementDetailView({
 
       {showMerch ? (
         <MerchandiseBlock lines={a.merchandise} catalog={catalog} />
+      ) : null}
+
+      {showMerch ? (
+        <AgreementMerchandiseEvidenceSection
+          threadId={threadId}
+          agreementId={a.id}
+          isActingSeller={isActingSeller}
+          routeSheetId={a.routeSheetId}
+          routeSheetEstado={linkedSheet?.estado}
+          lastSystemMessageId={
+            lastMsg?.from === "system" ? lastMsg.id : undefined
+          }
+          lastSystemMessageText={
+            lastMsg?.from === "system" && lastMsg.type === "text"
+              ? lastMsg.text
+              : undefined
+          }
+        />
       ) : null}
 
       {showMerch && merchandiseScopedExtraFields(a.extraFields).length ? (
@@ -1029,7 +1060,7 @@ export function AgreementDetailView({
             </div>
 
             <div className="max-h-[70vh] overflow-y-auto px-4 py-3">
-              {isActingSeller ? (
+              {evidenceModalSellerCanEdit ? (
                 <>
                   <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
                     Texto
@@ -1151,7 +1182,7 @@ export function AgreementDetailView({
             </div>
 
             <div className="flex flex-wrap gap-2 border-t border-[var(--border)] px-4 py-3">
-              {isActingSeller ? (
+              {evidenceModalSellerCanEdit ? (
                 <>
                   {(() => {
                     const original = evidenceModal.pay.evidence;

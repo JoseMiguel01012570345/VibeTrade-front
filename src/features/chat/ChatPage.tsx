@@ -17,10 +17,12 @@ import { cn } from "@shared/lib/cn";
 import toast from "react-hot-toast";
 import { useShallow } from "zustand/react/shallow";
 import { useAppStore } from "@app/store/useAppStore";
+import { routeSheetHasPendingCarrierAck } from "@app/store/marketSliceHelpers";
 import {
   threadHasAcceptedAgreement,
   useMarketStore,
 } from "@app/store/useMarketStore";
+import { resolveRouteLegPaymentCurrencyForThread } from "@features/market/model/merchandiseRouteCurrency";
 import { ImageLightbox } from "./components/media/ChatMedia";
 import {
   ChatComposerSection,
@@ -46,13 +48,20 @@ import {
   resolveRouteOfferPublicForSheet,
   resolveRouteOfferPublicForThread,
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
+  routeSheetAllowsCarrierContactEditWhenPaid,
+  routeSheetStructuralEditBlockedByPaid,
   tramoNotifyLineFromOffer,
 } from "@features/market/model/routeSheetOfferGuards";
 import { tradeAgreementToDraft } from "@features/market/model/tradeAgreementTypes";
-import { routeOfferPublicFromEmergentCardOffer } from "@/utils/market/routeOfferPublicFromEmergentCard";
+import {
+  routeOfferPublicFromEmergentCardOffer,
+  routeOfferPublicFromThreadRouteSheet,
+} from "@/utils/market/routeOfferPublicFromEmergentCard";
+import { rebuildRouteOfferAssignmentsFromThreadItems } from "@features/market/model/routeOfferSubscriptionMerge";
 import { userHasTransportService } from "@/utils/user/transportEligibility";
 import { fetchStoreDetail } from "@/utils/market/fetchStoreDetail";
 import { mergeStoreCatalogWithLocalExtras } from "@features/market/model/storeCatalogTypes";
+import { threadCanCreateRouteSheet } from "@features/market/model/routeSheetCreationGate";
 import {
   fetchThreadHasUnpaidRouteSheets,
   fetchSocialThreadMembers,
@@ -76,6 +85,10 @@ import {
   mergeSocialThreadMembersIntoProfileStore,
 } from "@/utils/chat/chatSenderLabels";
 import { resolveBuyerUserId } from "@/utils/chat/chatParticipantLabels";
+import {
+  isBuyerExpelledFromThread,
+  isSellerExpelledFromThread,
+} from "@/utils/chat/threadPartyExpelled";
 import { getThreadPeerPartyExit } from "@/utils/chat/threadPeerPartyExit";
 import { useMinWidth961 } from "./hooks/useMinWidth961";
 import { useBuyerForRail } from "./hooks/useBuyerForRail";
@@ -111,6 +124,9 @@ export function ChatPage() {
     (s) => s.updatePendingTradeAgreement,
   );
   const deleteTradeAgreement = useMarketStore((s) => s.deleteTradeAgreement);
+  const duplicateTradeAgreement = useMarketStore(
+    (s) => s.duplicateTradeAgreement,
+  );
   const respondTradeAgreement = useMarketStore((s) => s.respondTradeAgreement);
   const createRouteSheet = useMarketStore((s) => s.createRouteSheet);
   const updateRouteSheet = useMarketStore((s) => s.updateRouteSheet);
@@ -182,6 +198,11 @@ export function ChatPage() {
     [thread],
   );
 
+  const acceptedAgreementIdsForSubscribers = useMemo(
+    () => acceptedAgreementsForPayment.map((c) => c.id),
+    [acceptedAgreementsForPayment],
+  );
+
   /** Cobro en chat: solo comprador (el backend también lo exige). Oculta «Pagar» para transportistas y terceros. */
   const showBuyerPaymentInChat = useMemo(() => {
     if (!thread) return false;
@@ -204,6 +225,14 @@ export function ChatPage() {
     profileAvatarUrls,
     profileTrustScores,
     viewerIsConfirmedCarrier,
+  );
+  const excludeBuyerFromParticipants = useMemo(
+    () => (thread ? isBuyerExpelledFromThread(thread) : false),
+    [thread],
+  );
+  const excludeSellerFromParticipants = useMemo(
+    () => (thread ? isSellerExpelledFromThread(thread) : false),
+    [thread],
   );
   useChatPeerProfileHydration(thread, me.id, isSocialThread);
 
@@ -276,7 +305,16 @@ export function ChatPage() {
       th,
       routeSheetBeingEdited?.id,
     );
-    if (fromResolve) return fromResolve;
+    if (fromResolve) {
+      const subs = th?.routeTramoSubscriptionsSnapshot;
+      if (subs?.length) {
+        return (
+          rebuildRouteOfferAssignmentsFromThreadItems(fromResolve, subs) ??
+          fromResolve
+        );
+      }
+      return fromResolve;
+    }
     if (!th?.id || !rsid) return undefined;
     const emo = th.offerId?.trim();
     if (emo) {
@@ -294,6 +332,20 @@ export function ChatPage() {
     ) {
       return fromCard;
     }
+    if (routeSheetBeingEdited?.paradas?.length) {
+      const synthetic = routeOfferPublicFromThreadRouteSheet(
+        th.id,
+        routeSheetBeingEdited,
+      );
+      const subs = th.routeTramoSubscriptionsSnapshot;
+      if (subs?.length) {
+        return (
+          rebuildRouteOfferAssignmentsFromThreadItems(synthetic, subs) ??
+          synthetic
+        );
+      }
+      return synthetic;
+    }
     return undefined;
   }, [
     thread,
@@ -308,6 +360,32 @@ export function ChatPage() {
       (c) => c.routeSheetId === rs.id && c.hasSucceededPayments === true,
     );
   }, [thread?.contracts, routeSheetBeingEdited?.id]);
+  const routeSheetCarrierContactEditOnly = useMemo(() => {
+    const rs = routeSheetBeingEdited;
+    if (!rs?.id || !routeSheetLockedByPaidAgreement) return false;
+    return routeSheetAllowsCarrierContactEditWhenPaid(
+      true,
+      routeOfferForEditingRouteSheet ?? routeOfferForThisThread,
+      rs.id,
+      routeSheetBeingEdited ?? undefined,
+      thread?.routeTramoSubscriptionsSnapshot,
+    );
+  }, [
+    routeSheetBeingEdited?.id,
+    routeSheetLockedByPaidAgreement,
+    routeSheetBeingEdited,
+    routeOfferForEditingRouteSheet,
+    routeOfferForThisThread,
+    thread?.routeTramoSubscriptionsSnapshot,
+  ]);
+  const routeLegPaymentCurrency = useMemo(
+    () =>
+      resolveRouteLegPaymentCurrencyForThread(
+        thread?.contracts ?? [],
+        routeSheetBeingEdited?.id,
+      ),
+    [thread?.contracts, routeSheetBeingEdited?.id],
+  );
   const [railOpen, setRailOpen] = useState(false);
   /** Tras cobro: refrescar entregas + volver a intentar permiso de ubicación para telemetría. */
   const [carrierGeoNonce, setCarrierGeoNonce] = useState(0);
@@ -994,7 +1072,7 @@ export function ChatPage() {
 
   const canSend = !recording && hasComposeToSend && !chatActionsLocked;
 
-  console.log({ carrierTelemetryTargets });
+
 
   return (
     <div className="container vt-page vt-chat-page">
@@ -1014,6 +1092,7 @@ export function ChatPage() {
               store={store}
               me={me}
               profileDisplayNames={profileDisplayNames}
+              offerTitle={offerForThread?.title}
               isSocialThread={isSocialThread}
               railOpen={railOpen}
               mobileChatActionsOpen={mobileChatActionsOpen}
@@ -1170,22 +1249,27 @@ export function ChatPage() {
               contractsLoading={contractsLoading}
               routeSheetsLoading={routeSheetsLoading}
               actionsLocked={chatActionsLocked}
-              storeName={store.name}
-              buyerName={buyerForRail.name}
               buyer={buyerForRail}
               seller={sellerForPeople ?? store}
               chatCarriers={thread.chatCarriers}
+              excludeBuyerFromParticipants={excludeBuyerFromParticipants}
+              excludeSellerFromParticipants={excludeSellerFromParticipants}
               focusRouteId={focusRouteId}
               onConsumedRouteFocus={() => setFocusRouteId(null)}
               onOpenNewRouteSheet={() => {
                 void (async () => {
                   try {
-                    const hasUnpaid = await fetchThreadHasUnpaidRouteSheets(
-                      thread.id,
+                    const contracts = thread.contracts ?? [];
+                    const hasAccepted = contracts.some(
+                      (c) => c.status === "accepted",
                     );
-                    if (!hasUnpaid) {
+                    const canCreate =
+                      hasAccepted
+                        ? threadCanCreateRouteSheet(contracts)
+                        : await fetchThreadHasUnpaidRouteSheets(thread.id);
+                    if (!canCreate) {
                       toast.error(
-                        "Solo puedes crear hojas de rutas si existen acuerdos sin pagar",
+                        "No hay acuerdos pendientes de hoja de ruta (sin pago o con mercancía cobrada sin roadmap vinculado).",
                       );
                       return;
                     }
@@ -1193,7 +1277,7 @@ export function ChatPage() {
                     const msg =
                       e instanceof Error
                         ? e.message
-                        : "No se pudo validar si hay hojas no pagadas.";
+                        : "No se pudo validar si podés crear una hoja de ruta.";
                     toast.error(msg);
                     return;
                   }
@@ -1213,14 +1297,31 @@ export function ChatPage() {
                     c.routeSheetId === sheet.id &&
                     c.hasSucceededPayments === true,
                 );
-                if (lockedByPaid) {
+                const perSheetOffer =
+                  resolveRouteOfferPublicForSheet(
+                    useMarketStore.getState(),
+                    thread,
+                    sheet.id,
+                  ) ?? routeOfferForThisThread;
+                if (
+                  routeSheetStructuralEditBlockedByPaid(
+                    lockedByPaid,
+                    perSheetOffer,
+                    sheet.id,
+                    sheet,
+                    thread.routeTramoSubscriptionsSnapshot,
+                  )
+                ) {
                   toast.error(ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES);
                   return;
                 }
-                const ack = thread.routeSheetEditAcks?.[sheet.id];
                 if (
-                  ack &&
-                  Object.values(ack.byCarrier).some((v) => v === "pending")
+                  thread &&
+                  routeSheetHasPendingCarrierAck(
+                    thread,
+                    sheet.id,
+                    routeOfferForThisThread,
+                  )
                 ) {
                   toast.error(
                     "No puedes editar de nuevo hasta que los transportistas del hilo acepten o rechacen la última versión de la hoja.",
@@ -1254,6 +1355,17 @@ export function ChatPage() {
                 }
                 setAgreementBeingEditedId(ag.id);
                 setShowAgreementForm(true);
+              }}
+              onDuplicateAgreement={(ag) => {
+                if (!isActingSeller) {
+                  toast.error("Solo la tienda puede duplicar el acuerdo.");
+                  return;
+                }
+                void (async () => {
+                  const newId = await duplicateTradeAgreement(thread.id, ag.id);
+                  if (newId) toast.success("Acuerdo duplicado.");
+                  else toast.error("No se pudo duplicar el acuerdo.");
+                })();
               }}
               onDeleteAgreement={(ag) => {
                 if (ag.hasSucceededPayments) {
@@ -1307,6 +1419,7 @@ export function ChatPage() {
                       (r.titulo ?? "Hoja de ruta").trim() || "Hoja de ruta",
                   }))}
                   canSellerManageRouteSubscriptions={viewerIsThreadSeller}
+                  acceptedAgreementIds={acceptedAgreementIdsForSubscribers}
                   onSubscriptionsChanged={refreshChatRouteData}
                   highlightUserId={highlightSubscriberUserId}
                   onThreadRouteSheetsSynced={
@@ -1349,6 +1462,7 @@ export function ChatPage() {
                   titulo: (r.titulo ?? "Hoja de ruta").trim() || "Hoja de ruta",
                 }))}
                 canSellerManageRouteSubscriptions={viewerIsThreadSeller}
+                acceptedAgreementIds={acceptedAgreementIdsForSubscribers}
                 onSubscriptionsChanged={refreshChatRouteData}
                 highlightUserId={highlightSubscriberUserId}
                 onThreadRouteSheetsSynced={
@@ -1446,8 +1560,10 @@ export function ChatPage() {
         threadId={thread.id}
         initialRouteSheet={routeSheetBeingEdited}
         lockedByPaidAgreement={routeSheetLockedByPaidAgreement}
+        carrierContactEditOnly={routeSheetCarrierContactEditOnly}
         routeOfferForSheet={routeOfferForEditingRouteSheet}
         routeOfferForThread={routeOfferForThisThread}
+        routeLegPaymentCurrency={routeLegPaymentCurrency}
         onClose={() => {
           setShowRouteSheetForm(false);
           setRouteSheetBeingEdited(null);

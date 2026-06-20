@@ -21,6 +21,7 @@ import {
   fetchThreadTradeAgreements,
   patchThreadTradeAgreement,
   postThreadTradeAgreement,
+  postThreadTradeAgreementDuplicate,
   postThreadTradeAgreementRespond,
   type ChatMessageDto,
   type ChatThreadDto,
@@ -60,6 +61,7 @@ import {
   counterpartyAlreadyRecordedPartyExitFromThread,
   peerPartyExitFromDto,
 } from "@/utils/chat/threadPeerPartyExit"
+import { partyExpelledFieldsFromDto, markPartyExpelledOnThread } from "@/utils/chat/threadPartyExpelled"
 import { isOfferPublishedForBuyerChat } from "@/utils/market/offerPublishedForBuyerChat"
 import { useAppStore } from "./useAppStore";
 import {
@@ -203,6 +205,7 @@ export function createOffersThreadsSlice(set: MarketSliceSet, get: MarketSliceGe
   | 'emitTradeAgreement'
   | 'updatePendingTradeAgreement'
   | 'deleteTradeAgreement'
+  | 'duplicateTradeAgreement'
   | 'respondTradeAgreement'
   | 'refreshThreadTradeAgreements'
   | 'recordChatExitFromList'
@@ -257,6 +260,7 @@ onThreadCreatedFromServer: (dto: ChatThreadDto) => {
             partyExitedAtUtc: peer.atUtc,
           }
         : {}),
+      ...partyExpelledFieldsFromDto(dto),
     }
     return { ...s, threads: nextThreads, offers, stores }
   })
@@ -384,6 +388,8 @@ ensureThreadForOffer: async (offerId, opts) => {
       | 'partyExitedUserId'
       | 'partyExitedReason'
       | 'partyExitedAtUtc'
+      | 'buyerExpelledAtUtc'
+      | 'sellerExpelledAtUtc'
       | 'isSocialGroup'
       | 'socialGroupTitle'
     >,
@@ -453,6 +459,7 @@ ensureThreadForOffer: async (offerId, opts) => {
               prematureExitUnderInvestigation: premature,
             }
           : {}),
+        ...partyExpelledFieldsFromDto(participantDto ?? undefined),
         ...(participantDto?.isSocialGroup ||
         participantDto?.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID
           ? { isSocialGroup: true as const }
@@ -960,6 +967,36 @@ deleteTradeAgreement: async (threadId, agreementId) => {
   return ok
 },
 
+duplicateTradeAgreement: async (threadId, agreementId) => {
+  const persist = !!getSessionToken() && threadId.startsWith('cth_')
+  if (persist) {
+    try {
+      const created = await postThreadTradeAgreementDuplicate(threadId, agreementId)
+      const mapped = mapTradeAgreementApiToTradeAgreement(created)
+      set((s) => {
+        const t = s.threads[threadId]
+        if (!t) return s
+        const list = t.contracts ?? []
+        const idx = list.findIndex((c) => c.id === mapped.id)
+        const nextContracts =
+          idx < 0 ? [...list, mapped] : list.map((c, i) => (i === idx ? mapped : c))
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...t, contracts: nextContracts },
+          },
+        }
+      })
+      void syncPersistedAgreementsAndMessages(set, get, threadId).catch(() => {})
+      return created.id
+    } catch {
+      return null
+    }
+  }
+  return null
+},
+
 respondTradeAgreement: async (threadId, agreementId, response) => {
   const persist = !!getSessionToken() && threadId.startsWith('cth_')
   if (persist) {
@@ -1174,12 +1211,14 @@ applyPeerPartyExitedFromServer: (threadId, payload) => {
       atUtc,
       ...(leaverRole === 'buyer' || leaverRole === 'seller' ? { leaverRole } : {}),
     }
+    const expelled = markPartyExpelledOnThread(th, uid, atUtc, leaverRole)
     return {
       ...s,
       threads: {
         ...s.threads,
         [tid]: {
           ...th,
+          ...expelled,
           peerPartyExit: peer,
           partyExitedUserId: uid,
           partyExitedReason: reason,

@@ -1,22 +1,19 @@
 import toast from 'react-hot-toast'
-import { ChevronRight, ExternalLink, MapPin, Trash2 } from 'lucide-react'
-import { type TradeAgreement } from "@features/market/model/tradeAgreementTypes"
+import { ChevronRight, Copy, ExternalLink, MapPin, Trash2 } from 'lucide-react'
+import {
+  agreementRouteLinkFrozen,
+  type TradeAgreement,
+} from "@features/market/model/tradeAgreementTypes"
 import type { RouteSheet } from "@features/market/model/routeSheetTypes"
 import { AgreementDetailView } from "../../AgreementDetail";
 import {
   contractStatusClass,
   contractStatusLabel,
-  filterChipClass,
   railItemClass,
 } from './chatRailStyles'
-import type { ContractFilter } from './chatRailStyles'
 
 type Props = {
   bodyClassName: string
-  cFilter: ContractFilter
-  setCFilter: (f: ContractFilter) => void
-  storeName: string
-  buyerName: string
   selContract: TradeAgreement | null
   setSelContract: (c: TradeAgreement | null) => void
   agreementForDetail: TradeAgreement | null
@@ -36,14 +33,11 @@ type Props = {
   onRequestEditAgreement?: (agreement: TradeAgreement) => void
   isActingSeller?: boolean
   onDeleteAgreement?: (agreement: TradeAgreement) => void
+  onDuplicateAgreement?: (agreement: TradeAgreement) => void
 }
 
 export function ChatRightRailContractsPanel({
   bodyClassName,
-  cFilter,
-  setCFilter,
-  storeName,
-  buyerName,
   selContract,
   setSelContract,
   agreementForDetail,
@@ -59,7 +53,19 @@ export function ChatRightRailContractsPanel({
   onRequestEditAgreement,
   isActingSeller = false,
   onDeleteAgreement,
+  onDuplicateAgreement,
 }: Props) {
+  const routeSheetIdsLinkedElsewhere = (() => {
+    const ids = new Set<string>()
+    if (!agreementForDetail) return ids
+    for (const c of displayContracts) {
+      if (c.id === agreementForDetail.id || c.status === 'deleted') continue
+      const rid = (c.routeSheetId ?? '').trim()
+      if (rid) ids.add(rid)
+    }
+    return ids
+  })()
+
   return (
     <div className={bodyClassName}>
       {contractsLoading ? (
@@ -67,18 +73,6 @@ export function ChatRightRailContractsPanel({
           Cargando acuerdos...
         </div>
       ) : null}
-      <div className="mb-2.5 flex flex-wrap gap-1.5">
-        <button type="button" className={filterChipClass(cFilter === 'all')} onClick={() => setCFilter('all')}>
-          Todos
-        </button>
-        <button type="button" className={filterChipClass(cFilter === 'store')} onClick={() => setCFilter('store')}>
-          {storeName}
-        </button>
-        <button type="button" className={filterChipClass(cFilter === 'buyer')} onClick={() => setCFilter('buyer')}>
-          {buyerName}
-        </button>
-      </div>
-
       {selContract && agreementForDetail ? (
         <div className="text-[13px]">
           <button
@@ -104,30 +98,49 @@ export function ChatRightRailContractsPanel({
           {agreementForDetail.hasSucceededPayments ? (
             <p className="mb-2.5 rounded-lg border border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--bg)_92%,transparent)] px-2.5 py-2 text-[12px] leading-snug text-[var(--muted)]">
               Hay <strong className="text-[var(--text)]">cobros registrados</strong> para este acuerdo. No se puede
-              editar ni eliminar ni cambiar el vínculo con la hoja de ruta.
+              editar ni eliminar
+              {agreementRouteLinkFrozen(agreementForDetail) ?
+                agreementForDetail.hasAcceptedMerchandiseEvidence ?
+                  ' ni modificar el vínculo con la hoja de ruta (evidencia de mercancía aceptada)'
+                : ' ni cambiar el vínculo con la hoja de ruta'
+              : agreementForDetail.routeSheetId ?
+                '; podés desvincular la hoja si el transporte aún no fue pagado'
+              : '; podés vincular una hoja de ruta para cobrar el transporte después'}
+              . Podés <strong className="text-[var(--text)]">duplicarlo</strong> para crear una copia pendiente sin
+              cobros.
             </p>
           ) : null}
           {isActingSeller &&
           !actionsLocked &&
           agreementForDetail.status !== 'deleted' &&
-          !agreementForDetail.hasSucceededPayments &&
-          agreementForDetail.issuedByStoreId === threadStoreId &&
-          onRequestEditAgreement ? (
+          agreementForDetail.issuedByStoreId === threadStoreId ? (
             <div className="mb-2.5 flex flex-col gap-2">
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="vt-btn vt-btn-sm"
-                  disabled={agreementForDetail.sellerEditBlockedUntilBuyerResponse === true}
-                  title={
-                    agreementForDetail.sellerEditBlockedUntilBuyerResponse ?
-                      'Esperá la respuesta del comprador a la última versión antes de volver a editar'
-                    : undefined
-                  }
-                  onClick={() => onRequestEditAgreement(agreementForDetail)}
-                >
-                  Editar acuerdo
-                </button>
+                {!agreementForDetail.hasSucceededPayments && onRequestEditAgreement ? (
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-sm"
+                    disabled={agreementForDetail.sellerEditBlockedUntilBuyerResponse === true}
+                    title={
+                      agreementForDetail.sellerEditBlockedUntilBuyerResponse ?
+                        'Esperá la respuesta del comprador a la última versión antes de volver a editar'
+                      : undefined
+                    }
+                    onClick={() => onRequestEditAgreement(agreementForDetail)}
+                  >
+                    Editar acuerdo
+                  </button>
+                ) : null}
+                {onDuplicateAgreement ? (
+                  <button
+                    type="button"
+                    className="vt-btn vt-btn-sm inline-flex items-center gap-1"
+                    onClick={() => onDuplicateAgreement(agreementForDetail)}
+                    title="Crea una copia con los mismos datos; queda pendiente de aceptación, sin cobros ni hoja vinculada"
+                  >
+                    <Copy size={14} aria-hidden /> Duplicar
+                  </button>
+                ) : null}
                 {agreementForDetail.status !== 'accepted' &&
                   !agreementForDetail.hasSucceededPayments &&
                   onDeleteAgreement ? (
@@ -141,18 +154,20 @@ export function ChatRightRailContractsPanel({
                   </button>
                 ) : null}
               </div>
-              <p className="vt-muted text-[11px] leading-snug">
-                {agreementForDetail.sellerEditBlockedUntilBuyerResponse ?
-                  <>
-                    Ya enviaste cambios: no puedes editar de nuevo hasta que el comprador{' '}
-                    <strong className="text-[var(--text)]">acepte o rechace</strong> esta versión en el chat.
-                  </>
-                : agreementForDetail.status === 'accepted' ?
-                  'Podés editar; cada nueva versión queda pendiente. En la demo, la penalización a la tienda aplica cuando el comprador rechaza después de haber aceptado al menos una vez, no sólo por editar.'
-                : agreementForDetail.status === 'rejected' ?
-                  'Podés enviar una nueva propuesta sin aviso especial. El ajuste de confianza (demo) aplica cuando el comprador rechaza tras una aceptación previa.'
-                : 'Podés corregir el texto; el comprador deberá aceptar o rechazar los cambios si el acuerdo ya estaba aceptado, o seguirá pendiente si aún no lo aceptó.'}
-              </p>
+              {!agreementForDetail.hasSucceededPayments && onRequestEditAgreement ? (
+                <p className="vt-muted text-[11px] leading-snug">
+                  {agreementForDetail.sellerEditBlockedUntilBuyerResponse ?
+                    <>
+                      Ya enviaste cambios: no puedes editar de nuevo hasta que el comprador{' '}
+                      <strong className="text-[var(--text)]">acepte o rechace</strong> esta versión en el chat.
+                    </>
+                  : agreementForDetail.status === 'accepted' ?
+                    'Podés editar; cada nueva versión queda pendiente. En la demo, la penalización a la tienda aplica cuando el comprador rechaza después de haber aceptado al menos una vez, no sólo por editar.'
+                  : agreementForDetail.status === 'rejected' ?
+                    'Podés enviar una nueva propuesta sin aviso especial. El ajuste de confianza (demo) aplica cuando el comprador rechaza tras una aceptación previa.'
+                  : 'Podés corregir el texto; el comprador deberá aceptar o rechazar los cambios si el acuerdo ya estaba aceptado, o seguirá pendiente si aún no lo aceptó.'}
+                </p>
+              ) : null}
             </div>
           ) : null}
           <AgreementDetailView
@@ -160,11 +175,13 @@ export function ChatRightRailContractsPanel({
             threadId={threadId}
             isActingSeller={isActingSeller}
             routeSheets={routeSheets}
+            routeSheetIdsLinkedElsewhere={routeSheetIdsLinkedElsewhere}
             linkActionsDisabled={
-              actionsLocked ||
-              agreementForDetail.status === 'deleted' ||
-              agreementForDetail.hasSucceededPayments === true
+              actionsLocked || agreementForDetail.status === 'deleted'
             }
+            routeLinkFrozenAfterPayment={agreementRouteLinkFrozen(
+              agreementForDetail,
+            )}
             onLinkRouteSheet={
               isActingSeller
                 ? async (agreementId, routeSheetId) => {
