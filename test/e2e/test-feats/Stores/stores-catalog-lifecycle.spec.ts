@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test } from "@playwright/test";
 import {
   registerUserViaUI,
   readE2ESessionFromPage,
@@ -20,7 +20,6 @@ test.describe("store catalog lifecycle E2E", () => {
   let storeId = "";
   let storeName = "";
   let productName = "";
-  let sessionToken = "";
 
   test("creates store, product, service, edits and deletes product, deletes store", async ({
     page,
@@ -33,8 +32,7 @@ test.describe("store catalog lifecycle E2E", () => {
     const editedName = `Producto IT v2 ${suffix}`;
 
     await registerUserViaUI(page, baseURL!);
-    const session = await readE2ESessionFromPage(page);
-    sessionToken = session.sessionToken;
+    await readE2ESessionFromPage(page);
 
     storeId = await createStoreViaUI(page, baseURL!, storeName);
     await addProductViaUI(page, baseURL!, storeId, productName);

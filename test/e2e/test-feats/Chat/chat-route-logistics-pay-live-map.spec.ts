@@ -23,7 +23,6 @@ import {
   assertPayWhileCarrierInChatShowsPinAndCede,
   baseTramoFields,
   consecutiveTramoPair,
-  consecutiveTramoPair,
   E2E_COORDS,
   setupFlexibleRouteScenario,
 } from "../../Resources/pay-live-map-helpers";

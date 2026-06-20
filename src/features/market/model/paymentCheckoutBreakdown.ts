@@ -15,7 +15,6 @@ import {
   normalizeMerchandiseLine,
 } from "./tradeAgreementTypes";
 import {
-  agreementSingleCurrencyError,
   MULTIPLE_AGREEMENT_CURRENCIES_ES,
   resolveSingleAgreementCurrency,
   ROUTE_LEG_MUST_MATCH_AGREEMENT_CURRENCY_ES,

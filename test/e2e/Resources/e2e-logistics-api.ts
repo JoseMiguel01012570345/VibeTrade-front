@@ -451,7 +451,7 @@ export async function postCedeOwnershipApi(
     routeSheetId: string;
     routeStopId: string;
   },
-): Promise<{ status: number; ok: boolean }> {
+): Promise<{ status: number; ok: boolean; text: string }> {
   const res = await e2eAuthorizedFetch<{ ok?: boolean }>(
     page,
     token,

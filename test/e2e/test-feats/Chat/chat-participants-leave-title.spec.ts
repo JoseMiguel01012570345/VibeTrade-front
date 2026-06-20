@@ -27,9 +27,11 @@ import {
 } from "../../Resources/chat-helpers";
 
 function injectSession(
-  context: { addInitScript: (fn: (t: string) => void, arg: string) => Promise<void> },
+  context: {
+    addInitScript: (fn: (t: string) => void, arg: string) => Promise<unknown>;
+  },
   token: string,
-): Promise<void> {
+): Promise<unknown> {
   return context.addInitScript((t: string) => {
     sessionStorage.setItem("vt_session_active", "1");
     sessionStorage.setItem("vt_session_token", t);

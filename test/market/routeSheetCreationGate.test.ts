@@ -9,14 +9,17 @@ import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes"
 
 function agr(partial: Partial<TradeAgreement> & Pick<TradeAgreement, "id">): TradeAgreement {
   return {
-    id: partial.id,
-    title: partial.title ?? "A",
-    status: partial.status ?? "accepted",
-    issuedByStoreId: partial.issuedByStoreId ?? "st",
-    issuerLabel: partial.issuerLabel ?? "Tienda",
-    createdAt: partial.createdAt ?? 0,
-    updatedAt: partial.updatedAt ?? 0,
+    threadId: "cth_1",
+    title: "A",
+    status: "accepted",
+    issuedAt: 0,
+    issuedByStoreId: "st",
+    issuerLabel: "Tienda",
+    includeMerchandise: false,
+    includeService: false,
+    merchandise: [],
     ...partial,
+    id: partial.id,
   };
 }
 
@@ -54,7 +57,7 @@ describe("routeSheetCreationGate", () => {
   });
 
   it("ignora acuerdos no aceptados", () => {
-    const pending = agr({ id: "1", status: "pending" });
+    const pending = agr({ id: "1", status: "pending_buyer" });
     expect(threadCanCreateRouteSheet([pending])).toBe(false);
   });
 });

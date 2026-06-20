@@ -42,7 +42,6 @@ import {
   linkRouteSheetToAgreementViaUI,
   openContractByAgreementTitle,
   openLinkedRouteSheetFromContractDetail,
-  openRouteSheetDetail,
   openRoutesRail,
   publishRouteSheetViaUI,
   ensureRouteSheetDetailOpen,
