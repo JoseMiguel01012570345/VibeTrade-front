@@ -10,7 +10,6 @@ import type { RouteStopDeliveryStatusApi } from "@/utils/chat/routeLogisticsApi"
 
 function sheet(partial: Partial<RouteSheet> & Pick<RouteSheet, "id">): RouteSheet {
   return {
-    id: partial.id,
     threadId: "cth_1",
     titulo: "Ruta",
     creadoEn: 0,
@@ -19,6 +18,7 @@ function sheet(partial: Partial<RouteSheet> & Pick<RouteSheet, "id">): RouteShee
     mercanciasResumen: "Test",
     paradas: [],
     ...partial,
+    id: partial.id,
   };
 }
 
@@ -27,7 +27,6 @@ function delivery(
     Pick<RouteStopDeliveryStatusApi, "routeSheetId" | "routeStopId">,
 ): RouteStopDeliveryStatusApi {
   return {
-    agreementId: "agr_1",
     state: "unpaid",
     ...partial,
   };

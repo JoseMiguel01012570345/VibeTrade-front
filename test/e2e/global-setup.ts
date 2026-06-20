@@ -187,7 +187,7 @@ export default async function globalSetup(): Promise<void> {
 }
 
 async function provisionRouteSheetScenario(
-  baseURL: string,
+  _baseURL: string,
   sellerToken: string,
   buyerToken: string,
   offerId: string,

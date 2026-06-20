@@ -230,7 +230,6 @@ test.describe("chat exit policies — route lifecycle", () => {
       tituloPrefix: "E-RL02 Sub Req",
       tramoCount: 1,
       payRoutes: true,
-      publish: true,
     });
     const seller = getE2ESellerSession()!;
     const scenario = getE2EScenario()!;
@@ -367,7 +366,7 @@ test.describe("chat exit policies — route lifecycle", () => {
       route.threadId,
     );
     await openLogisticsRouteSheet(sellerPage, route.routeSheetTitulo);
-    await sellerPauseTramoViaUI(sellerPage, 1);
+    await sellerPauseTramoViaUI(sellerPage, "Pausa E2E RL06", 0);
     await ensureRouteSheetDetailOpen(sellerPage, route.routeSheetTitulo);
     await openSubscribersPanel(sellerPage);
     await kickCarrierFromTramo(sellerPage, 1, route.routeSheetTitulo);

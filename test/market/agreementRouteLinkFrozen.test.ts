@@ -9,15 +9,17 @@ function ag(
   partial: Partial<TradeAgreement> & Pick<TradeAgreement, "id">,
 ): TradeAgreement {
   return {
-    id: partial.id,
     threadId: "cth_1",
     title: "Test",
     status: "accepted",
+    issuedAt: 0,
     issuedByStoreId: "st",
     issuerLabel: "Tienda",
-    createdAt: 0,
-    updatedAt: 0,
+    includeMerchandise: false,
+    includeService: false,
+    merchandise: [],
     ...partial,
+    id: partial.id,
   };
 }
 

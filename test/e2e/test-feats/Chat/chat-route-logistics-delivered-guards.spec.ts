@@ -26,7 +26,6 @@ import {
   waitForRouteSheetDelivered,
 } from "../../Resources/e2e-logistics-api";
 import {
-  getE2ESession,
   newAuthenticatedPage,
   setupPaidRouteLogisticsScenario,
 } from "../../Resources/e2e-logistics-env";

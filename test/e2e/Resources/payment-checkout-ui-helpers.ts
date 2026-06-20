@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import type { Browser, Download, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
-import { openChatThread, waitForChatReady } from "./chat-helpers";
+import { openChatThread } from "./chat-helpers";
 import {
   E2E_DEMO_CARD_LAST4,
   buyerHasStripeCardViaPage,
@@ -267,7 +267,7 @@ export async function pickFirstServiceRecurrenceOnly(
 export async function expectPaidServiceRecurrenceHidden(
   page: Page,
   recurrencePattern: RegExp,
-  serviceNamePart: string | RegExp,
+  _serviceNamePart: string | RegExp,
 ): Promise<void> {
   const modal = paymentModal(page);
   await expect(

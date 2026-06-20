@@ -5,7 +5,6 @@ import {
   chatE2ESkipReason,
   getE2EScenario,
   getE2ESellerSession,
-  getE2ESession,
   getE2EToken,
   hasDistinctSellerSession,
 } from "../../Resources/chat-env";

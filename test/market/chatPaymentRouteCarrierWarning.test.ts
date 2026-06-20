@@ -5,6 +5,7 @@ import {
 } from "@features/chat/components/ChatPayment/chatPaymentUtils";
 import type { AgreementRoutePathApi } from "@/utils/chat/agreementCheckoutApi";
 import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
+import { emptyMerchandiseLine } from "@features/market/model/tradeAgreementTypes";
 
 function path(partial: Partial<AgreementRoutePathApi>): AgreementRoutePathApi {
   return {
@@ -25,14 +26,24 @@ function path(partial: Partial<AgreementRoutePathApi>): AgreementRoutePathApi {
 function merchAg(partial?: Partial<TradeAgreement>): TradeAgreement {
   return {
     id: "agr1",
+    threadId: "cth_1",
     title: "Test",
     status: "accepted",
+    issuedAt: 0,
     issuedByStoreId: "st",
     issuerLabel: "Tienda",
-    createdAt: 0,
-    updatedAt: 0,
+    includeMerchandise: true,
+    includeService: false,
+    merchandise: [
+      {
+        ...emptyMerchandiseLine(),
+        id: "m1",
+        cantidad: "1",
+        valorUnitario: "10",
+        moneda: "USD",
+      },
+    ],
     routeSheetId: "rs1",
-    merchandise: [{ id: "m1", cantidad: "1", valorUnitario: "10", moneda: "USD" }],
     ...partial,
   };
 }

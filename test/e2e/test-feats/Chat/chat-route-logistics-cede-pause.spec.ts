@@ -89,7 +89,6 @@ test.describe("chat route logistics — cede & pause (UI + API)", () => {
 
   test("L-6: seller pause then resume sets in_transit", async ({ browser }) => {
     const seller = getE2ESellerSession()!;
-    const scenario = getE2EScenario()!;
     const s = await setupPaidRouteLogisticsScenario(browser, {
       tituloPrefix: "Hoja L6 Pause",
     });

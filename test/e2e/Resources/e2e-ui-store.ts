@@ -2,23 +2,18 @@ import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { FIXTURE_PNG } from "./e2e-fixtures";
 
+function rootPage(scope: Page | Locator): Page {
+  return "page" in scope ? scope.page() : scope;
+}
+
 async function pickVtOption(
   scope: Page | Locator,
   ariaLabel: string | RegExp,
   optionLabel: string | RegExp,
 ): Promise<void> {
+  const page = rootPage(scope);
   await scope.getByRole("button", { name: ariaLabel }).click();
-  await scope.page().getByRole("option", { name: optionLabel }).click();
-}
-
-async function pickVtMultiOption(
-  scope: Page | Locator,
-  ariaLabel: string | RegExp,
-  optionLabel: string,
-): Promise<void> {
-  await scope.getByRole("button", { name: ariaLabel }).click();
-  await scope.page().getByRole("option", { name: optionLabel }).click();
-  await scope.page().keyboard.press("Escape");
+  await page.getByRole("option", { name: optionLabel }).click();
 }
 
 export async function createStoreViaUI(
