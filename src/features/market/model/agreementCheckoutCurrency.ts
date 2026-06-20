@@ -1,11 +1,11 @@
 import type { RouteSheet } from "./routeSheetTypes";
 import type {
+  MerchandiseSectionMeta,
   TradeAgreement,
   TradeAgreementDraft,
 } from "./tradeAgreementTypes";
 import {
   agreementDeclaresMerchandise,
-  agreementDeclaresService,
   normalizeAgreementServices,
   normalizeMerchandiseLine,
 } from "./tradeAgreementTypes";
@@ -42,11 +42,22 @@ function isoNorm(c: string | undefined | null): string {
   return t.slice(0, 3);
 }
 
+type MerchandiseCurrencyAgreementSlice = {
+  includeMerchandise: boolean;
+  merchandise: TradeAgreement["merchandise"];
+  merchandiseMeta?: MerchandiseSectionMeta;
+};
+
+function agreementRouteSheetId(
+  agreement: TradeAgreement | TradeAgreementDraft,
+): string | undefined {
+  if (!("routeSheetId" in agreement)) return undefined;
+  const id = agreement.routeSheetId?.trim();
+  return id || undefined;
+}
+
 function collectMerchandiseCurrencies(
-  agreement: Pick<
-    TradeAgreement | TradeAgreementDraft,
-    "includeMerchandise" | "merchandise" | "merchandiseMeta"
-  >,
+  agreement: MerchandiseCurrencyAgreementSlice,
   out: Set<string>,
 ): void {
   if (!agreement.includeMerchandise) return;
@@ -102,8 +113,8 @@ export function collectBillableAgreementCurrencies(
   collectServiceCurrencies(agreement, out);
   if (
     agreementDeclaresMerchandise(agreement as TradeAgreement) &&
-    agreement.routeSheetId?.trim() &&
-    routeSheet?.id?.trim() === agreement.routeSheetId.trim()
+    agreementRouteSheetId(agreement) &&
+    routeSheet?.id?.trim() === agreementRouteSheetId(agreement)
   ) {
     collectRouteCurrencies(routeSheet, out);
   }
@@ -122,7 +133,7 @@ export function resolveSingleAgreementCurrency(
   if (
     agreementDeclaresMerchandise(agreement as TradeAgreement) &&
     routeSheet?.paradas?.length &&
-    agreement.routeSheetId?.trim()
+    agreementRouteSheetId(agreement)
   ) {
     const required = isoNorm(currency);
     for (const p of routeSheet.paradas) {
@@ -151,10 +162,7 @@ export function agreementSingleCurrencyError(
 
 /** Moneda única de mercadería cobrable (compat). */
 export function resolveSingleMerchandiseCurrencyFromAgreement(
-  agreement: Pick<
-    TradeAgreement,
-    "includeMerchandise" | "merchandise" | "merchandiseMeta"
-  >,
+  agreement: MerchandiseCurrencyAgreementSlice,
 ): { ok: true; currency: string } | { ok: false; reason: "no_merchandise" | "missing" | "multiple" } {
   if (!agreement.includeMerchandise) {
     return { ok: false, reason: "no_merchandise" };

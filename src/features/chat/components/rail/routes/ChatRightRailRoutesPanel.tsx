@@ -12,7 +12,6 @@ import {
 import { routeOfferPublicFromThreadRouteSheet } from "@/utils/market/routeOfferPublicFromEmergentCard";
 import { routeSheetHasPendingCarrierAck } from "@app/store/marketSliceHelpers";
 import {
-  routeSheetAllowsCarrierContactEditWhenPaid,
   routeSheetStructuralEditBlockedByPaid,
 } from "@features/market/model/routeSheetOfferGuards";
 import {
@@ -347,15 +346,6 @@ export function ChatRightRailRoutesPanel({
   const sheetStructuralEditBlockedByPaid =
     !!selRoute &&
     routeSheetStructuralEditBlockedByPaid(
-      sheetLockedByPaid,
-      routeOfferResolved,
-      selRoute.id,
-      selRoute,
-      routeTramoSubscriptions,
-    );
-  const sheetCarrierContactEditOnly =
-    !!selRoute &&
-    routeSheetAllowsCarrierContactEditWhenPaid(
       sheetLockedByPaid,
       routeOfferResolved,
       selRoute.id,

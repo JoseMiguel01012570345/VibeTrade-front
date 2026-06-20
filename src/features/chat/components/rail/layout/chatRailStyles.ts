@@ -1,4 +1,3 @@
-import { cn } from "@shared/lib/cn";
 import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
 import {
   statusPillNo,
