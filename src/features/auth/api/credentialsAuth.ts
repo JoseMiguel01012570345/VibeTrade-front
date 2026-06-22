@@ -31,10 +31,15 @@ export async function login(email: string, password: string) {
   return (await res.json()) as { sessionToken: string; user: SessionUserJson };
 }
 
-export async function register(password: string, email: string, phone: string) {
+export async function register(
+  password: string,
+  email: string,
+  username: string,
+  phone: string,
+) {
   const res = await apiFetch("/api/v1/auth/register", {
     method: "POST",
-    body: JSON.stringify({ password, email, phone }),
+    body: JSON.stringify({ password, email, username, phone }),
   });
   if (!res.ok) {
     const err = await parseAuthError(res);

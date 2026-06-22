@@ -229,6 +229,7 @@ export function ProfilePage() {
 
   const safeName = me.name ?? "";
   const safeEmail = me.email ?? "";
+  const safeUsername = me.username ?? "";
 
   const storesForProfile = useMemo(() => {
     return Object.values(stores).filter(
@@ -783,6 +784,20 @@ export function ProfilePage() {
             ) : null}
 
             <div className="flex flex-col gap-3">
+              {isMe ? (
+                <label className="flex flex-col gap-2">
+                  <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+                    <User size={14} /> Nombre de usuario
+                  </span>
+                  <input
+                    className="vt-input"
+                    value={safeUsername}
+                    disabled
+                    readOnly
+                    autoComplete="username"
+                  />
+                </label>
+              ) : null}
               <label className="flex flex-col gap-2">
                 <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                   <User size={14} /> Nombre

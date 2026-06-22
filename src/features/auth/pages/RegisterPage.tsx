@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Lock, Mail, Phone } from 'lucide-react'
+import { Lock, Mail, Phone, User } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { CountrySelect } from './CountrySelect'
 import type { Country } from './countries'
 import { fetchSignInCountries } from '@shared/services/http/fetchSignInCountries'
 import { register } from '@features/auth/api/credentialsAuth'
-import { isValidEmail, isValidPassword } from '@features/auth/lib/credentialsValidation'
+import { isValidEmail, isValidPassword, isValidUsername } from '@features/auth/lib/credentialsValidation'
 import { PasswordInput } from './PasswordInput'
 
 export function RegisterPage() {
@@ -15,6 +15,7 @@ export function RegisterPage() {
   const [country, setCountry] = useState<Country | null>(null)
   const [countriesStatus, setCountriesStatus] = useState<'loading' | 'ok' | 'error'>('loading')
   const [number, setNumber] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -51,6 +52,7 @@ export function RegisterPage() {
   const canSubmit =
     country != null &&
     number.replace(/[^\d]/g, '').length >= 7 &&
+    isValidUsername(username) &&
     isValidEmail(email) &&
     isValidPassword(password) &&
     password === confirmPassword &&
@@ -62,7 +64,7 @@ export function RegisterPage() {
     if (!canSubmit) return
     setBusy(true)
     try {
-      const json = await register(password, email.trim(), phone)
+      const json = await register(password, email.trim(), username.trim(), phone)
       nav('/onboarding/verify-phone', {
         state: {
           registrationId: json.registrationId,
@@ -93,12 +95,24 @@ export function RegisterPage() {
           </button>
           <h1 className="vt-h1">Crear tu cuenta</h1>
           <div className="vt-muted">
-            Ingresá contraseña, email y teléfono. Luego verificaremos tu número y email.
+            Ingresá tu nombre de usuario, contraseña, email y teléfono. Luego verificaremos tu número y email.
           </div>
         </div>
 
         <form className="vt-card vt-card-pad bg-[var(--surface)]" onSubmit={(e) => void submit(e)}>
           <div className="flex flex-col gap-3">
+            <label className="flex flex-col gap-2">
+              <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+                <User size={14} /> Nombre de usuario
+              </span>
+              <input
+                className="vt-input"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 32))}
+                autoComplete="username"
+                maxLength={32}
+              />
+            </label>
             <label className="flex flex-col gap-2">
               <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                 <Mail size={14} /> Email

@@ -119,8 +119,10 @@ async function fillRegisterForm(
   page: Page,
   email: string,
   password: string,
+  username: string,
   phoneDigits: string,
 ): Promise<void> {
+  await page.getByLabel(/^nombre de usuario$/i).fill(username);
   await page.getByLabel(/^email$/i).fill(email);
   await page.locator('input[autocomplete="new-password"]').first().fill(password);
   await page.locator('input[autocomplete="new-password"]').nth(1).fill(password);
@@ -196,13 +198,14 @@ export async function registerUserViaUI(
   const national = randomNationalNumber();
   const fullPhone = phone?.trim() || randomE2EPhone();
   const email = randomE2EEmail();
+  const username = randomE2EUsername();
   const password = E2E_TEST_PASSWORD;
 
   await page.goto(`${baseURL}/onboarding`, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: /crear una cuenta nueva/i }).click();
   await expect(page).toHaveURL(/\/onboarding\/register/);
 
-  await fillRegisterForm(page, email, password, national);
+  await fillRegisterForm(page, email, password, username, national);
 
   const phoneCode = await readDevOtpCode(page);
   await submitOtp(page, phoneCode);
@@ -218,6 +221,7 @@ export async function registerUserViaUI(
     phone: session.phone || fullPhone,
     password,
     email,
+    username,
   };
 }
 
