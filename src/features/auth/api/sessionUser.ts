@@ -3,6 +3,7 @@ import type { User } from "@app/store/useAppStore";
 export type SessionUserJson = {
   id: string;
   name: string;
+  username?: string;
   email: string;
   phone: string;
   /** Ignorado: los roles operativos solo existen en el contexto del chat. */
@@ -30,6 +31,9 @@ export function userFromSessionJson(j: SessionUserJson): User {
     phone: typeof j.phone === "string" ? j.phone : "",
     trustScore: typeof j.trustScore === "number" ? j.trustScore : 50,
   };
+  if (Object.prototype.hasOwnProperty.call(j, "username")) {
+    u.username = optionalString(j.username);
+  }
   if (Object.prototype.hasOwnProperty.call(j, "avatarUrl")) {
     u.avatarUrl = optionalString(j.avatarUrl);
   }

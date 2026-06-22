@@ -12,9 +12,13 @@ import { ProfilePage } from "@features/profile/ProfilePage";
 import { ReelsPage } from "@features/reels/ReelsPage";
 import { StoreLocationMapPage } from "@features/market/pages/StoreLocationMapPage";
 import { StorePage } from "@features/market/pages/StorePage";
-import { OtpPage } from "@features/auth/pages/OtpPage";
 import { OnboardingWelcomePage } from "@features/auth/pages/OnboardingWelcomePage";
-import { PhoneEntryPage } from "@features/auth/pages/PhoneEntryPage";
+import { LoginPage } from "@features/auth/pages/LoginPage";
+import { RegisterPage } from "@features/auth/pages/RegisterPage";
+import { RegisterVerifyPhonePage } from "@features/auth/pages/RegisterVerifyPhonePage";
+import { RegisterVerifyEmailPage } from "@features/auth/pages/RegisterVerifyEmailPage";
+import { ForgotPasswordPage } from "@features/auth/pages/ForgotPasswordPage";
+import { ConfirmPasswordResetPage } from "@features/auth/pages/ConfirmPasswordResetPage";
 import { CatalogSearchPage } from "@features/catalog/pages/CatalogSearchPage";
 import { StoresSearchPage } from "@features/catalog/pages/StoresSearchPage";
 
@@ -37,8 +41,14 @@ export function AppRoutes() {
           <Route path="/" element={<RootRedirect />} />
 
           <Route path="/onboarding" element={<OnboardingWelcomePage />} />
-          <Route path="/onboarding/phone" element={<PhoneEntryPage />} />
-          <Route path="/onboarding/otp" element={<OtpPage />} />
+          <Route path="/onboarding/login" element={<LoginPage />} />
+          <Route path="/onboarding/register" element={<RegisterPage />} />
+          <Route path="/onboarding/verify-phone" element={<RegisterVerifyPhonePage />} />
+          <Route path="/onboarding/verify-email" element={<RegisterVerifyEmailPage />} />
+          <Route path="/onboarding/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/onboarding/confirm-password-reset" element={<ConfirmPasswordResetPage />} />
+          <Route path="/onboarding/phone" element={<Navigate to="/onboarding/register" replace />} />
+          <Route path="/onboarding/otp" element={<Navigate to="/onboarding" replace />} />
 
           <Route path="/home" element={<HomePage />} />
           <Route path="/search" element={<CatalogSearchPage />} />

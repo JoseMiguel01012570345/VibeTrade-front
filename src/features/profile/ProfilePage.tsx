@@ -51,6 +51,7 @@ import {
   patchProfileAvatar,
 } from "@features/auth/api/patchProfile";
 import { userFromSessionJson } from "@features/auth/api/sessionUser";
+import { formatPhoneForDisplay } from "@features/auth/lib/formatPhoneForDisplay";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { mediaApiUrl, uploadMedia } from "@/utils/media/mediaClient";
 import { StoreTrustMini } from "@shared/components/ui/StoreTrustMini";
@@ -853,7 +854,7 @@ export function ProfilePage() {
                 </span>
                 <input
                   className="vt-input"
-                  value={isMe ? "+" + (me.phone ?? "") : "—"}
+                  value={isMe ? formatPhoneForDisplay(me.phone) : "—"}
                   disabled
                   readOnly
                 />
@@ -1192,7 +1193,7 @@ export function ProfilePage() {
             try {
               await logoutWebApp();
               setLogoutConfirmOpen(false);
-              nav("/onboarding/phone", { replace: true });
+              nav("/onboarding", { replace: true });
               toast.success("Sesión cerrada");
             } finally {
               setLogoutBusy(false);

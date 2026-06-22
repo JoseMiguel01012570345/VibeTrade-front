@@ -341,17 +341,23 @@ async function setupSellerSessionManual(): Promise<void> {
     return;
   }
 
-  const sellerPhone = process.env.PLAYWRIGHT_E2E_SELLER_PHONE?.trim();
-  if (!sellerPhone) return;
+  const sellerEmail = process.env.PLAYWRIGHT_E2E_SELLER_EMAIL?.trim();
+  const sellerPassword = process.env.PLAYWRIGHT_E2E_SELLER_PASSWORD?.trim();
+  if (!sellerEmail || !sellerPassword) return;
 
   const browser = await chromium.launch();
   const page = await browser.newPage();
   try {
     if (!(await isE2EAppReachable(page, baseURL))) return;
-    const session = await loginUserViaUI(page, baseURL, sellerPhone);
+    const session = await loginUserViaUI(
+      page,
+      baseURL,
+      sellerEmail,
+      sellerPassword,
+    );
     writeSession(e2eSellerSessionFile, session);
     console.log(
-      `[e2e] Seller authenticated via UI (${session.phone}, user ${session.userId || "unknown"}).`,
+      `[e2e] Seller authenticated via UI (${session.email ?? sellerEmail}, user ${session.userId || "unknown"}).`,
     );
   } catch (err) {
     console.warn("[e2e] Seller UI auth failed:", err);

@@ -3,6 +3,7 @@ import type { SessionUserJson } from './sessionUser'
 
 export type PatchProfileBody = {
   name?: string
+  username?: string
   email?: string
   instagram?: string
   telegram?: string

@@ -16,16 +16,19 @@ import { profile } from "../../Resources/selectors";
 test.describe.configure({ mode: "serial", timeout: 120_000 });
 
 test.describe("profile auth E2E", () => {
-  let registeredPhone = "";
+  let registeredEmail = "";
+  let registeredPassword = "";
 
   test("register creates active session and profile page loads", async ({
     page,
     baseURL,
   }) => {
     const session = await registerUserViaUI(page, baseURL!);
-    registeredPhone = session.phone;
+    registeredEmail = session.email ?? "";
+    registeredPassword = session.password ?? "";
     expect(session.sessionToken.length).toBeGreaterThan(10);
     expect(session.userId.length).toBeGreaterThan(0);
+    expect(registeredEmail.length).toBeGreaterThan(2);
 
     const roundtrip = await readE2ESessionFromPage(page);
     expect(roundtrip.sessionToken).toBe(session.sessionToken);
@@ -38,10 +41,15 @@ test.describe("profile auth E2E", () => {
     page,
     baseURL,
   }) => {
-    test.skip(!registeredPhone, "register test must run first");
+    test.skip(!registeredEmail, "register test must run first");
 
     await logoutViaUI(page, baseURL!);
-    const session = await loginUserViaUI(page, baseURL!, registeredPhone);
+    const session = await loginUserViaUI(
+      page,
+      baseURL!,
+      registeredEmail,
+      registeredPassword,
+    );
     expect(session.sessionToken.length).toBeGreaterThan(10);
     await expect(page).toHaveURL(/\/home/, { timeout: 45_000 });
 
