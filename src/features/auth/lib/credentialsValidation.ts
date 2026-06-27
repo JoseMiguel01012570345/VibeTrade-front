@@ -1,4 +1,11 @@
-export const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,32}$/
+/** Letras Unicode, dígitos y `_`; alineado con `AuthUtils.IsValidUsername` en backend. */
+export const USERNAME_PATTERN = /^[\p{L}\p{N}_]{3,32}$/u
+
+const USERNAME_INPUT_FILTER = /[^\p{L}\p{N}_]/gu
+
+export function sanitizeUsernameInput(value: string): string {
+  return value.replace(USERNAME_INPUT_FILTER, "").slice(0, 32)
+}
 
 export function isValidUsername(value: string): boolean {
   return USERNAME_PATTERN.test(value)

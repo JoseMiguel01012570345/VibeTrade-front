@@ -6,7 +6,12 @@ import { CountrySelect } from './CountrySelect'
 import type { Country } from './countries'
 import { fetchSignInCountries } from '@shared/services/http/fetchSignInCountries'
 import { register } from '@features/auth/api/credentialsAuth'
-import { isValidEmail, isValidPassword, isValidUsername } from '@features/auth/lib/credentialsValidation'
+import {
+  isValidEmail,
+  isValidPassword,
+  isValidUsername,
+  sanitizeUsernameInput,
+} from '@features/auth/lib/credentialsValidation'
 import { PasswordInput } from './PasswordInput'
 
 export function RegisterPage() {
@@ -108,7 +113,7 @@ export function RegisterPage() {
               <input
                 className="vt-input"
                 value={username}
-                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 32))}
+                onChange={(e) => setUsername(sanitizeUsernameInput(e.target.value))}
                 autoComplete="username"
                 maxLength={32}
               />
