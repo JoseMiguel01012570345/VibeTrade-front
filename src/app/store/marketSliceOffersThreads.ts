@@ -774,7 +774,7 @@ emitTradeAgreement: async (threadId, draft) => {
     }
     const msg: Message = {
       id: uid('m'),
-      from: 'other',
+      from: 'me',
       type: 'agreement',
       agreementId: aid,
       title,

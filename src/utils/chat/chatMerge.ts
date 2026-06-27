@@ -166,7 +166,7 @@ export function mapChatMessageDtoToMessage(
   if (p.agreement?.agreementId) {
     return {
       ...common,
-      from: p.issuedByVibeTradePlatform ? ("other" as const) : (from as "me" | "other"),
+      from: from as "me" | "other",
       type: "agreement",
       agreementId: p.agreement.agreementId,
       title: p.agreement.title ?? "",
