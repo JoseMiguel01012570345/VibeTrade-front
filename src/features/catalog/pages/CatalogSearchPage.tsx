@@ -9,7 +9,8 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { VtMultiSelect } from "@shared/components/ui/VtMultiSelect";
 import type { VtSelectOption } from "@shared/components/ui/VtSelect";
-import { useCatalogCategories, useCatalogSearch } from '@features/catalog'
+import { useCatalogCategories } from '../hooks/useCatalogCategories'
+import { useCatalogSearch } from '../hooks/useCatalogSearch'
 import { fetchCatalogAutocomplete } from '@features/catalog/api/searchStores';
 import type {
   CatalogSearchKind,
