@@ -9,11 +9,14 @@ import type { RouteStopDeliveryStatusApi } from "@features/chat/Dtos/route-sheet
 import { fetchAgreementRouteDeliveries } from "@features/chat/api/routeLogisticsApi";
 import type { AgreementServicePaymentApi } from "@features/chat/Dtos/agreement/agreementServiceEvidenceApiTypes";
 import { listAgreementServicePayments } from "@features/chat/api/agreementServiceEvidenceApi";
+import type { SavedCard } from "@features/payments";
 import {
-  getPaymentGatewayConfig,
-  listSavedCards,
-  type SavedCard,
-} from "@features/payments";
+  fetchPaymentGatewayConfigCached,
+  usePaymentGatewayConfig,
+  useSavedCards,
+} from "@features/payments/hooks/usePaymentGatewayQueries";
+import { queryClient } from "@shared/lib/queryClient";
+import { queryKeys } from "@shared/lib/queryKeys";
 import {
   beginChatPaymentExecute,
   endChatPaymentExecute,
@@ -53,6 +56,10 @@ export function useChatPaymentModal({
 }: ChatPaymentModalProps) {
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
+  const gatewayQ = usePaymentGatewayConfig(open);
+  const savedCardsQ = useSavedCards({
+    enabled: open && gatewayQ.data?.enabled === true,
+  });
 
   const [busyInit, setBusyInit] = useState(false);
   const [busyPay, setBusyPay] = useState(false);
@@ -551,7 +558,11 @@ export function useChatPaymentModal({
         let paths: AgreementRoutePathApi[] = [];
         if (pickRouteLegs) {
           try {
-            deliveries = await fetchAgreementRouteDeliveries(threadId, ag.id);
+            deliveries = await queryClient.fetchQuery({
+              queryKey: queryKeys.agreementRouteDeliveries(threadId, ag.id),
+              queryFn: () => fetchAgreementRouteDeliveries(threadId, ag.id),
+              staleTime: 15_000,
+            });
           } catch {
             deliveries = [];
           }
@@ -872,21 +883,35 @@ export function useChatPaymentModal({
 
   useEffect(() => {
     if (!open) return;
+    if (savedCardsQ.data) {
+      setCards(savedCardsQ.data);
+      setSelectedCardId(savedCardsQ.data[0]?.id ?? "");
+    } else if (
+      gatewayQ.isSuccess &&
+      (!gatewayQ.data?.enabled || savedCardsQ.isSuccess)
+    ) {
+      setCards([]);
+      setSelectedCardId("");
+    }
+  }, [open, savedCardsQ.data, savedCardsQ.isSuccess, gatewayQ.isSuccess, gatewayQ.data?.enabled]);
+
+  useEffect(() => {
+    if (!open) return;
     setAcceptedInforme(false);
+    if (gatewayQ.isLoading) return;
+    if (gatewayQ.data?.enabled && savedCardsQ.isLoading) return;
     setBusyInit(true);
-    void (async () => {
-      try {
-        await getPaymentGatewayConfig();
-        const cs = await listSavedCards();
-        setCards(cs);
-        if (cs[0]?.id) setSelectedCardId(cs[0].id);
-        else setSelectedCardId("");
-      } catch {
-        setCards([]);
-      }
-      await hydratePaymentContext({ skipBusyToggle: true });
-    })().finally(() => setBusyInit(false));
-  }, [open, agreementId, hydratePaymentContext]);
+    void hydratePaymentContext({ skipBusyToggle: true }).finally(() =>
+      setBusyInit(false),
+    );
+  }, [
+    open,
+    agreementId,
+    hydratePaymentContext,
+    gatewayQ.isLoading,
+    gatewayQ.data?.enabled,
+    savedCardsQ.isLoading,
+  ]);
 
   /** Desglose (solo POST checkout-breakdown): al cambiar selección de ítems / tramos / cuotas. */
   useEffect(() => {
@@ -1018,7 +1043,7 @@ export function useChatPaymentModal({
     beginChatPaymentExecute(threadId);
 
     try {
-      await getPaymentGatewayConfig();
+      await fetchPaymentGatewayConfigCached();
       const r = await executeAgreementCurrencyPayment({
         threadId,
         agreementId: ag.id,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FileDown, Loader2, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@shared/lib/cn";
@@ -19,7 +19,7 @@ import {
   currencyMinorDecimals,
 } from "@features/payments/logic/paymentFeePolicy";
 import type { LinkPreviewResult } from "@features/chat/Dtos/thread/chatApiTypes";
-import { fetchLinkPreview } from "@features/chat/api/chatApi";
+import { useLinkPreview } from "@features/chat/hooks/useLinkPreview";
 
 function firstHttpUrl(text: string): string | null {
   const m = text.match(/https?:\/\/[^\s<>'")\]]+/i);
@@ -59,20 +59,10 @@ function TextMessageBody({
 }
 
 function LinkPreviewCard({ url }: { url: string }) {
-  const [data, setData] = useState<LinkPreviewResult | null | undefined>(
-    undefined,
-  );
-  useEffect(() => {
-    let cancel = false;
-    setData(undefined);
-    void fetchLinkPreview(url).then((r) => {
-      if (cancel) return;
-      setData(r);
-    });
-    return () => {
-      cancel = true;
-    };
-  }, [url]);
+  const previewQuery = useLinkPreview(url);
+  const data: LinkPreviewResult | null | undefined = previewQuery.isLoading
+    ? undefined
+    : (previewQuery.data ?? null);
   if (data === undefined) {
     return (
       <div className="mt-2 max-w-[min(100%,360px)] rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_50%,var(--surface))] px-3 py-2 text-[11px] font-semibold text-[var(--muted)]">

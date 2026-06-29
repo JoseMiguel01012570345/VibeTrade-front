@@ -1,27 +1,17 @@
 import { useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { fetchCatalogCategories } from '@features/catalog/api/fetchCatalogCategories'
-import { fetchCurrencies } from '@features/market/api/fetchCurrencies'
 import { fetchStoreDetail, storeDetailQueryKey } from '@features/market/api/fetchStoreDetail'
+import { useCatalogCategories } from '@features/catalog/hooks/useCatalogCategories'
+import { useCurrencies } from '@features/market/hooks/useCurrencies'
 import { useStoreDetail } from '@features/market/hooks/useStoreDetail'
 import { useAppStore } from '@features/auth/logic/useAppStore'
 import { setMarketHydrating } from '@features/market/api/marketPersistence'
 import { mergeStoreCatalogWithLocalExtras } from '@features/market/logic/storeCatalogTypes'
 import type { StoreDetailOwner } from '@features/market/api/fetchStoreDetail'
 import { useMarketStore } from '@features/market/logic/store/useMarketStore'
-export const storeCatalogMetaQueryKey = ['store-catalog-meta'] as const
 
 export function useStoreCatalogMeta() {
-  const categories = useQuery({
-    queryKey: [...storeCatalogMetaQueryKey, 'categories'],
-    queryFn: fetchCatalogCategories,
-    staleTime: 60_000,
-  })
-  const currencies = useQuery({
-    queryKey: [...storeCatalogMetaQueryKey, 'currencies'],
-    queryFn: fetchCurrencies,
-    staleTime: 60_000,
-  })
+  const categories = useCatalogCategories()
+  const currencies = useCurrencies()
   return {
     catalogCategories: categories.data ?? [],
     catalogCurrencies: currencies.data ?? [],

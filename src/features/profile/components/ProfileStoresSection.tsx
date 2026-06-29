@@ -10,7 +10,7 @@ import {
   setMarketHydrating,
 } from "@features/market/api/marketPersistence";
 import { mediaApiUrl, uploadMedia } from "@shared/services/media/mediaClient";
-import { fetchCatalogCategories } from "@features/catalog/api/fetchCatalogCategories";
+import { useCatalogCategories } from "@features/catalog/hooks/useCatalogCategories";
 import { VtMultiSelect } from "@shared/components/ui/VtMultiSelect";
 import type { VtSelectOption } from "@shared/components/ui/VtSelect";
 import { OwnerStoreCard } from "./stores/OwnerStoreCard";
@@ -153,22 +153,8 @@ export function ProfileStoresSection({
     storeName: string;
   }>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
-  const [catalogCategories, setCatalogCategories] = useState<string[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const cats = await fetchCatalogCategories();
-        if (!cancelled && cats.length > 0) setCatalogCategories(cats);
-      } catch {
-        /* ignore */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const categoriesQuery = useCatalogCategories();
+  const catalogCategories = categoriesQuery.data ?? [];
 
   useEffect(() => {
     avatarDraftsRef.current = avatarDrafts;

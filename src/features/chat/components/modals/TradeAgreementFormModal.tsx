@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { fetchCatalogCategories } from "@features/catalog/api/fetchCatalogCategories";
+import { useCatalogCategories } from "@features/catalog/hooks/useCatalogCategories";
 import { cn } from "@shared/lib/cn";
 import { onBackdropPointerClose } from '@shared/lib/modals/modalClose';
 import {
@@ -90,7 +90,8 @@ export function TradeAgreementFormModal({
   const [errors, setErrors] = useState<TradeAgreementFormErrors>({});
   const [configOpen, setConfigOpen] = useState(false);
   const [configId, setConfigId] = useState<string | null>(null);
-  const [agrCategoryHints, setAgrCategoryHints] = useState<string[]>([]);
+  const categoriesQuery = useCatalogCategories({ enabled: open });
+  const agrCategoryHints = categoriesQuery.data ?? [];
   const isEdit = !!editingAgreementId;
   const editBaselineJsonRef = useRef<string | null>(null);
   const contextDefaultAppliedRef = useRef(false);
@@ -136,20 +137,6 @@ export function TradeAgreementFormModal({
       });
     }
   }, [open, isEdit, initialDraft, contextOfferId, sellerCatalog]);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const cats = await fetchCatalogCategories();
-        if (!cancelled && cats.length > 0) setAgrCategoryHints(cats);
-      } catch {}
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
 
   useEffect(() => {
     if (open) {

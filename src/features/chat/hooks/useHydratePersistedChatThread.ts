@@ -1,16 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import {
   mergePersistedChatMessages,
   mapChatMessageDtoToMessage,
 } from "@features/chat/logic/thread/chatMerge";
-import {
-  fetchChatMessages,
-  fetchChatThread,
-  fetchThreadRouteSheets,
-  fetchThreadRouteTramoSubscriptions,
-  fetchThreadTradeAgreements,
-} from "@features/chat/api/chatApi";
 import { mapTradeAgreementApiToTradeAgreement } from "@features/chat/logic/agreement/tradeAgreementApiMapper";
 import {
   mergeBuyerLabelFromThreadDto,
@@ -20,7 +14,6 @@ import {
   minimalOfferStoreFromChatThreadDto,
   VT_SOCIAL_PLACEHOLDER_OFFER_ID,
 } from "@features/chat/logic/thread/chatThreadDtoFallbacks";
-import { fetchPublicOfferCard } from "@features/market/api/marketPersistence";
 import {
   buildPurchaseThreadMessages,
   buildPurchaseThreadSystemOnly,
@@ -32,6 +25,16 @@ import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes
 import { routeSheetEditAcksRecordFromSheets } from "@features/chat/logic/route-sheet/routeSheetTypes";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { partyExpelledFieldsFromDto } from "@features/chat/logic/party-exit/threadPartyExpelled";
+import { applyPublicOfferCardToStore } from "@features/market/logic/publicOfferCardStoreSync";
+import { queryKeys } from "@shared/lib/queryKeys";
+import { fetchPublicOfferCard } from "@features/market/api/marketPersistence";
+import {
+  useChatThreadAgreementsQuery,
+  useChatThreadMessagesQuery,
+  useChatThreadQuery,
+  useChatThreadRouteSheetsQuery,
+  useChatThreadRouteTramoSubsQuery,
+} from "./useChatThreadQueries";
 
 type Params = {
   threadId: string | undefined;
@@ -50,17 +53,71 @@ export function useHydratePersistedChatThread({
   setContractsLoading,
   setRouteSheetsLoading,
 }: Params) {
+  const queryClient = useQueryClient();
+  const syncedKeyRef = useRef<string | null>(null);
+
+  const tid = threadId?.trim() ?? "";
+  const preselBlock =
+    searchParams.get("presel") === "1" && !!searchParams.get("sheet")?.trim();
+  const enabled = tid.startsWith("cth_") && !preselBlock;
+
+  const threadQ = useChatThreadQuery(tid, enabled);
+  const threadReady = enabled && threadQ.isSuccess && !!threadQ.data;
+  const messagesQ = useChatThreadMessagesQuery(tid, threadReady);
+  const agreementsQ = useChatThreadAgreementsQuery(tid, threadReady);
+  const sheetsQ = useChatThreadRouteSheetsQuery(tid, threadReady);
+  const subsQ = useChatThreadRouteTramoSubsQuery(tid, threadReady);
+
   useEffect(() => {
-    const tid = threadId?.trim() ?? "";
-    if (!tid.startsWith("cth_")) return;
-    if (searchParams.get("presel") === "1" && searchParams.get("sheet")?.trim())
-      return;
-    const existingTh = useMarketStore.getState().threads[tid];
+    if (!enabled) return;
     setPersistThreadError(false);
+  }, [enabled, tid, setPersistThreadError]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const loading =
+      threadQ.isLoading ||
+      (threadReady &&
+        (messagesQ.isLoading ||
+          agreementsQ.isLoading ||
+          sheetsQ.isLoading ||
+          subsQ.isLoading));
+    setContractsLoading(loading);
+    setRouteSheetsLoading(loading);
+  }, [
+    enabled,
+    threadReady,
+    threadQ.isLoading,
+    messagesQ.isLoading,
+    agreementsQ.isLoading,
+    sheetsQ.isLoading,
+    subsQ.isLoading,
+    setContractsLoading,
+    setRouteSheetsLoading,
+  ]);
+
+  useEffect(() => {
+    if (threadQ.isError) setPersistThreadError(true);
+  }, [threadQ.isError, setPersistThreadError]);
+
+  useEffect(() => {
+    if (!threadReady || !threadQ.data || !messagesQ.data) return;
+    if (agreementsQ.isLoading || sheetsQ.isLoading || subsQ.isLoading) return;
+
+    const syncKey = [
+      tid,
+      threadQ.dataUpdatedAt,
+      messagesQ.dataUpdatedAt,
+      agreementsQ.dataUpdatedAt,
+      sheetsQ.dataUpdatedAt,
+      subsQ.dataUpdatedAt,
+    ].join(":");
+    if (syncedKeyRef.current === syncKey) return;
+
     let cancelled = false;
     void (async () => {
       try {
-        const dto = await fetchChatThread(tid);
+        const dto = threadQ.data!;
         mergeBuyerLabelFromThreadDto(dto);
         let offer = useMarketStore.getState().offers[dto.offerId];
         let store = useMarketStore.getState().stores[dto.storeId];
@@ -69,26 +126,13 @@ export function useHydratePersistedChatThread({
           dto.offerId?.trim() !== VT_SOCIAL_PLACEHOLDER_OFFER_ID &&
           dto.isSocialGroup !== true
         ) {
-          const card = await fetchPublicOfferCard(dto.offerId).catch(
-            () => null,
-          );
+          const card = await queryClient.fetchQuery({
+            queryKey: queryKeys.publicOfferCard(dto.offerId),
+            queryFn: () => fetchPublicOfferCard(dto.offerId),
+            staleTime: 30_000,
+          }).catch(() => null);
           if (card?.offer?.id) {
-            const storeKey = card.store.id?.trim() || card.offer.storeId;
-            useMarketStore.setState((s) => {
-              const nextStores = { ...s.stores };
-              if (storeKey) {
-                nextStores[storeKey] = {
-                  ...s.stores[storeKey],
-                  ...card.store,
-                  id: storeKey,
-                };
-              }
-              return {
-                ...s,
-                offers: { ...s.offers, [card.offer.id]: card.offer },
-                stores: nextStores,
-              };
-            });
+            applyPublicOfferCardToStore(card);
             offer = useMarketStore.getState().offers[dto.offerId];
             store = useMarketStore.getState().stores[dto.storeId];
           }
@@ -108,18 +152,15 @@ export function useHydratePersistedChatThread({
           if (!cancelled) setPersistThreadError(true);
           return;
         }
-        if (!cancelled) {
-          setContractsLoading(true);
-          setRouteSheetsLoading(true);
-        }
-        const [msgs, agResult, routeSheetsRs, subsRs] = await Promise.all([
-          fetchChatMessages(tid),
-          fetchThreadTradeAgreements(tid)
-            .then((a) => ({ ok: true as const, agreements: a }))
-            .catch(() => ({ ok: false as const })),
-          fetchThreadRouteSheets(tid).catch(() => null),
-          fetchThreadRouteTramoSubscriptions(tid).catch(() => null),
-        ]);
+
+        const existingTh = useMarketStore.getState().threads[tid];
+        const msgs = messagesQ.data!;
+        const agResult = agreementsQ.isSuccess
+          ? { ok: true as const, agreements: agreementsQ.data! }
+          : { ok: false as const };
+        const routeSheetsRs = sheetsQ.isSuccess ? sheetsQ.data! : null;
+        const subsRs = subsQ.isSuccess ? subsQ.data! : null;
+
         const contracts = agResult.ok
           ? agResult.agreements.map(mapTradeAgreementApiToTradeAgreement)
           : (existingTh?.contracts ?? []);
@@ -231,27 +272,38 @@ export function useHydratePersistedChatThread({
           }
           return next;
         });
+        syncedKeyRef.current = syncKey;
         if (dto.purchaseMode && dto.offerId?.trim()) {
           void refreshOfferQaFromServer(dto.offerId.trim());
         }
       } catch {
         if (!cancelled) setPersistThreadError(true);
-      } finally {
-        if (!cancelled) {
-          setContractsLoading(false);
-          setRouteSheetsLoading(false);
-        }
       }
     })();
     return () => {
       cancelled = true;
     };
   }, [
-    threadId,
+    tid,
+    threadReady,
+    threadQ.data,
+    threadQ.dataUpdatedAt,
+    messagesQ.data,
+    messagesQ.dataUpdatedAt,
+    agreementsQ.data,
+    agreementsQ.dataUpdatedAt,
+    agreementsQ.isSuccess,
+    agreementsQ.isLoading,
+    sheetsQ.data,
+    sheetsQ.dataUpdatedAt,
+    sheetsQ.isSuccess,
+    sheetsQ.isLoading,
+    subsQ.data,
+    subsQ.dataUpdatedAt,
+    subsQ.isSuccess,
+    subsQ.isLoading,
+    queryClient,
     refreshOfferQaFromServer,
-    searchParams,
     setPersistThreadError,
-    setContractsLoading,
-    setRouteSheetsLoading,
   ]);
 }

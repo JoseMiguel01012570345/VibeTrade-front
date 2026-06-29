@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import type { Thread } from "@features/market/logic/store/marketStoreTypes";
 import {
@@ -6,6 +7,7 @@ import {
   mergePublicProfileIntoAppStore,
   wasPublicProfileHydrated,
 } from "@features/auth/logic/publicProfile";
+import { publicProfileQueryKey } from "@features/profile/hooks/usePublicProfile";
 import { resolveBuyerUserId } from "@features/chat/logic/participants/chatParticipantLabels";
 
 export function useChatPeerProfileHydration(
@@ -13,6 +15,8 @@ export function useChatPeerProfileHydration(
   meId: string,
   isSocialThread: boolean,
 ) {
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     if (!thread) return;
     const trimmedMe = meId.trim();
@@ -51,14 +55,20 @@ export function useChatPeerProfileHydration(
     let cancelled = false;
     void Promise.all(
       unique.map((id) =>
-        fetchPublicProfile(id).then((p) => {
-          if (cancelled || !p) return;
-          mergePublicProfileIntoAppStore(p);
-        }),
+        queryClient
+          .fetchQuery({
+            queryKey: publicProfileQueryKey(id),
+            queryFn: () => fetchPublicProfile(id),
+            staleTime: 30_000,
+          })
+          .then((p) => {
+            if (cancelled || !p) return;
+            mergePublicProfileIntoAppStore(p);
+          }),
       ),
     );
     return () => {
       cancelled = true;
     };
-  }, [thread, meId, isSocialThread]);
+  }, [thread, meId, isSocialThread, queryClient]);
 }

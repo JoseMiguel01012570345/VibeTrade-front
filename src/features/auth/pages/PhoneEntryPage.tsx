@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { CountrySelect } from '../components/CountrySelect'
 import type { SignInCountry } from '../Dtos/signInCountry'
 import { apiFetch } from "@shared/services/http/apiClient"
-import { fetchSignInCountries } from "@shared/services/http/fetchSignInCountries"
+import { useSignInCountries } from '../hooks/useSignInCountries'
 import type { OnboardingMode } from '../Dtos/onboardingTypes'
 
 type PhoneLocationState = {
@@ -19,33 +19,34 @@ export function PhoneEntryPage() {
 
   const [countries, setCountries] = useState<SignInCountry[]>([])
   const [country, setCountry] = useState<SignInCountry | null>(null)
-  const [countriesStatus, setCountriesStatus] = useState<
-    'loading' | 'ok' | 'error'
-  >('loading')
+  const countriesQuery = useSignInCountries()
   const [number, setNumber] = useState('')
   const [sending, setSending] = useState(false)
 
-  const loadCountries = useCallback(async () => {
-    setCountriesStatus('loading')
-    try {
-      const list = await fetchSignInCountries()
-      if (list.length === 0) {
-        setCountriesStatus('error')
-        toast.error('No hay países disponibles para registro.')
-        return
-      }
-      setCountries(list)
-      setCountry(list[0])
-      setCountriesStatus('ok')
-    } catch {
-      setCountriesStatus('error')
-      toast.error('No se pudieron cargar los países.')
-    }
-  }, [])
+  useEffect(() => {
+    const list = countriesQuery.data ?? []
+    if (list.length === 0) return
+    setCountries(list)
+    setCountry((prev) => prev ?? list[0] ?? null)
+  }, [countriesQuery.data])
 
   useEffect(() => {
-    void loadCountries()
-  }, [loadCountries])
+    if (countriesQuery.isError) {
+      toast.error('No se pudieron cargar los países.')
+    } else if (countriesQuery.isSuccess && (countriesQuery.data?.length ?? 0) === 0) {
+      toast.error('No hay países disponibles para registro.')
+    }
+  }, [countriesQuery.isError, countriesQuery.isSuccess, countriesQuery.data])
+
+  const countriesStatus = countriesQuery.isLoading
+    ? ('loading' as const)
+    : countriesQuery.isError || (countriesQuery.data?.length ?? 0) === 0
+      ? ('error' as const)
+      : ('ok' as const)
+
+  const loadCountries = async () => {
+    await countriesQuery.refetch()
+  }
 
   const phone = useMemo(() => {
     const digits = number.replace(/[^\d]/g, '')

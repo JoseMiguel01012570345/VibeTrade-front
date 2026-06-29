@@ -1,8 +1,11 @@
 import { useEffect, useMemo } from 'react'
+import { useQueries } from '@tanstack/react-query'
 import type { Offer } from '@features/market/logic/store/marketStoreTypes'
 import { useAppStore } from '@features/auth/logic/useAppStore'
 import { useMarketStore } from '@features/market/logic/store/useMarketStore'
 import { fetchPublicOfferCard } from '@features/market/api/marketPersistence'
+import { queryKeys } from '@shared/lib/queryKeys'
+import { applyPublicOfferCardToStore } from '@features/market/logic/publicOfferCardStoreSync'
 
 export function useProfileSavedOffers(active: boolean) {
   const savedOffers = useAppStore((s) => s.savedOffers)
@@ -22,53 +25,28 @@ export function useProfileSavedOffers(active: boolean) {
     )
   }, [savedOfferIds, offers])
 
-  const savedOfferIdsKey = useMemo(
-    () => savedOfferIds.slice().sort().join('\u0000'),
-    [savedOfferIds],
+  const missingIds = useMemo(
+    () =>
+      active
+        ? savedOfferIds.filter((id) => !useMarketStore.getState().offers[id])
+        : [],
+    [active, savedOfferIds, offers],
   )
 
+  const cardQueries = useQueries({
+    queries: missingIds.map((id) => ({
+      queryKey: queryKeys.publicOfferCard(id),
+      queryFn: () => fetchPublicOfferCard(id),
+      enabled: active && missingIds.includes(id),
+      staleTime: 30_000,
+    })),
+  })
+
   useEffect(() => {
-    if (!active) return
-    const ids = Object.keys(useAppStore.getState().savedOffers).filter(
-      (i) => useAppStore.getState().savedOffers[i],
-    )
-    if (ids.length === 0) return
-    const missing = ids.filter((id) => !useMarketStore.getState().offers[id])
-    if (missing.length === 0) return
-    let cancelled = false
-    void (async () => {
-      for (const id of missing) {
-        if (cancelled) return
-        try {
-          const r = await fetchPublicOfferCard(id)
-          if (!r || cancelled) continue
-          const storeKey = r.store.id?.trim() || r.offer.storeId
-          const merged: Offer = { ...r.offer, id }
-          useMarketStore.setState((s) => {
-            if (s.offers[id]) return s
-            const nextStores = { ...s.stores }
-            if (storeKey) {
-              nextStores[storeKey] = {
-                ...s.stores[storeKey],
-                ...r.store,
-                id: storeKey,
-              }
-            }
-            return {
-              ...s,
-              offers: { ...s.offers, [id]: merged },
-              stores: nextStores,
-            }
-          })
-        } catch {
-          /* offline / 404 */
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
+    for (const q of cardQueries) {
+      if (q.data) applyPublicOfferCardToStore(q.data)
     }
-  }, [active, savedOfferIdsKey])
+  }, [cardQueries])
 
   return { savedOfferIds, savedOfferItems }
 }

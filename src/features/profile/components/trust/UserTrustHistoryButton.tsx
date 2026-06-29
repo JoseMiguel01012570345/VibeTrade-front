@@ -5,7 +5,7 @@ import { EMPTY_TRUST_LEDGER_ENTRIES } from "@features/profile/Dtos/trustLedgerTy
 import { TrustHistoryModal } from "@features/profile/components/trust/TrustHistoryModal";
 import { cn } from "@shared/lib/cn";
 import { getSessionToken } from "@shared/services/http/sessionToken";
-import { fetchMeTrustHistory } from "@features/profile/api/trustLedgerApi";
+import { useTrustHistory } from "@features/profile/hooks/useTrustHistory";
 
 export function UserTrustHistoryButton() {
   const me = useAppStore((s) => s.me);
@@ -15,30 +15,17 @@ export function UserTrustHistoryButton() {
       : EMPTY_TRUST_LEDGER_ENTRIES,
   );
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const trustQuery = useTrustHistory(
+    me.id,
+    open && !!getSessionToken(),
+  );
 
   useEffect(() => {
-    if (!open || !me.id || me.id === "guest") return;
-    if (!getSessionToken()) return;
-    let cancelled = false;
-    setLoading(true);
-    void fetchMeTrustHistory()
-      .then((list) => {
-        if (cancelled) return;
-        useAppStore.setState((s) => ({
-          userTrustLedger: { ...s.userTrustLedger, [me.id]: list },
-        }));
-      })
-      .catch(() => {
-        /* offline: se muestran entradas locales si las hay */
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, me.id]);
+    if (!trustQuery.data || !me.id || me.id === "guest") return;
+    useAppStore.setState((s) => ({
+      userTrustLedger: { ...s.userTrustLedger, [me.id]: trustQuery.data! },
+    }));
+  }, [trustQuery.data, me.id]);
 
   if (!me.id || me.id === "guest") return null;
 
@@ -63,7 +50,7 @@ export function UserTrustHistoryButton() {
         title="Historial de confianza"
         subtitle="Con sesión iniciada, el listado se sincroniza con el servidor. Sin sesión solo verás movimientos calculados en este dispositivo."
         entries={entries}
-        loading={loading}
+        loading={trustQuery.isLoading || trustQuery.isFetching}
       />
     </>
   );

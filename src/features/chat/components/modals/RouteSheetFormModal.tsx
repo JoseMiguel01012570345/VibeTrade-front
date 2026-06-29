@@ -68,7 +68,7 @@ import {
 } from "@features/chat/logic/route-sheet/routeSheetValidation";
 import type { RouteOfferPublicState } from "@features/market/logic/store/marketStoreTypes";
 import { paymentCurrencyVtOptions } from "@features/chat/logic/route-sheet/routeSheetMonedaOptions";
-import { fetchCurrencies } from "@features/market/api/fetchCurrencies";
+import { useCurrencies } from "@features/market/hooks/useCurrencies";
 import { VibeMapTileLayer } from "@features/home/components/EmergentRouteFeedMap";
 import { LeafletRoadSnappedRoute } from "@features/home/components/LeafletRoadSnappedRoute";
 import { VtSelect } from "@shared/components/ui/VtSelect";
@@ -231,7 +231,8 @@ export function RouteSheetFormModal({
   );
   const [formErrors, setFormErrors] = useState<RouteSheetFormErrors>({});
   /** Códigos de moneda permitidos (GET /api/v1/market/currencies), mismo origen que el catálogo. */
-  const [currencyCodes, setCurrencyCodes] = useState<string[]>([]);
+  const currenciesQuery = useCurrencies({ enabled: open });
+  const currencyCodes = currenciesQuery.data ?? [];
   const offerForTramo = useMemo(
     () =>
       effectiveRouteOfferForSheetForm(
@@ -259,22 +260,6 @@ export function RouteSheetFormModal({
   );
   /** Invalida búsquedas Nominatim al cerrar el mapa o abrir otro punto. */
   const mapForwardTokenRef = useRef(0);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancel = false;
-    void (async () => {
-      try {
-        const list = await fetchCurrencies();
-        if (!cancel) setCurrencyCodes(list);
-      } catch {
-        if (!cancel) setCurrencyCodes([]);
-      }
-    })();
-    return () => {
-      cancel = true;
-    };
-  }, [open]);
 
   useEffect(() => {
     if (!open || !routeLegCurrencyNorm) return;

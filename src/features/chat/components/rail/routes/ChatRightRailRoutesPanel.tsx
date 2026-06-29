@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useShallow } from "zustand/react/shallow";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
@@ -15,6 +16,7 @@ import {
 } from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
 import type { RouteStopDeliveryStatusApi } from "@features/chat/Dtos/route-sheet/routeLogisticsApiTypes";
 import { fetchAgreementRouteDeliveries, getCedeCarrierOwnership } from "@features/chat/api/routeLogisticsApi";
+import { queryKeys } from "@shared/lib/queryKeys";
 import type { RouteTramoSubscriptionItemApi } from "@features/chat/Dtos/thread/chatApiTypes";
 import { fetchThreadRouteTramoSubscriptions } from "@features/chat/api/chatApi";
 import { subscribeRouteDeliveriesRefresh } from "@features/chat/logic/realtime/chatRealtime";
@@ -184,6 +186,38 @@ export function ChatRightRailRoutesPanel({
     [acceptedAgreements],
   );
 
+  const deliveryAgreementIds = useMemo(
+    () =>
+      acceptedAgreements
+        .map((a) => a.id.trim())
+        .filter((id) => id.length >= 8),
+    [acceptedAgreements],
+  );
+
+  const queryClient = useQueryClient();
+
+  const deliveryQueries = useQueries({
+    queries: deliveryAgreementIds.map((id) => ({
+      queryKey: queryKeys.agreementRouteDeliveries(threadId, id),
+      queryFn: () => fetchAgreementRouteDeliveries(threadId, id),
+      enabled: deliveryAgreementIds.length > 0,
+      staleTime: 15_000,
+    })),
+  });
+
+  useEffect(() => {
+    if (deliveryAgreementIds.length === 0) {
+      setDeliveriesByAgreement({});
+      return;
+    }
+    if (deliveryQueries.some((q) => q.isLoading)) return;
+    const next: Record<string, RouteStopDeliveryStatusApi[]> = {};
+    deliveryAgreementIds.forEach((id, i) => {
+      next[id] = deliveryQueries[i]?.data ?? [];
+    });
+    setDeliveriesByAgreement(next);
+  }, [deliveryAgreementIds, deliveryQueries]);
+
   function agreementForSheet(routeSheetId: string): TradeAgreement | null {
     const rsid = routeSheetId.trim();
     if (rsid.length < 2) return null;
@@ -197,12 +231,9 @@ export function ChatRightRailRoutesPanel({
   async function refreshDeliveriesForAgreement(agreementId: string) {
     const aid = agreementId.trim();
     if (aid.length < 8) return;
-    try {
-      const rows = await fetchAgreementRouteDeliveries(threadId, aid);
-      setDeliveriesByAgreement((prev) => ({ ...prev, [aid]: rows }));
-    } catch {
-      /* ignore */
-    }
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.agreementRouteDeliveries(threadId, aid),
+    });
   }
 
   async function refreshRouteTramoSubscriptions() {
@@ -257,31 +288,9 @@ export function ChatRightRailRoutesPanel({
   }
 
   useEffect(() => {
-    void (async () => {
-      const ids = acceptedAgreements
-        .map((a) => a.id.trim())
-        .filter((x) => x.length >= 8);
-      if (ids.length === 0) return;
-      const entries = await Promise.all(
-        ids.map(async (id) => {
-          try {
-            const rows = await fetchAgreementRouteDeliveries(threadId, id);
-            return [id, rows] as const;
-          } catch {
-            return [id, [] as RouteStopDeliveryStatusApi[]] as const;
-          }
-        }),
-      );
-
-      await refreshCedeOwnershipForAgreement();
-
-      setDeliveriesByAgreement((prev) => {
-        const next = { ...prev };
-        for (const [id, rows] of entries) next[id] = rows;
-        return next;
-      });
-      await refreshRouteTramoSubscriptions();
-    })();
+    if (deliveryAgreementIds.length === 0) return;
+    void refreshCedeOwnershipForAgreement();
+    void refreshRouteTramoSubscriptions();
   }, [threadId, acceptedAgreementIdsKey]);
 
   const refreshDeliveriesRef = useRef(refreshDeliveriesForAgreement);

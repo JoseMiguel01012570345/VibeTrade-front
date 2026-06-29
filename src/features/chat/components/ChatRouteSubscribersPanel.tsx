@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, X } from "lucide-react";
 import toast from "react-hot-toast";
 import type {
@@ -20,6 +21,8 @@ import {
 } from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
 import type { RouteStopDeliveryStatusApi } from "@features/chat/Dtos/route-sheet/routeLogisticsApiTypes";
 import { fetchAgreementRouteDeliveries } from "@features/chat/api/routeLogisticsApi";
+import { useInvalidateAgreementDeliveriesForThread } from "@features/chat/hooks/useAgreementEvidenceMutations";
+import { queryKeys } from "@shared/lib/queryKeys";
 import {
   subscribeRouteDeliveriesRefresh,
   subscribeRouteTramoSubscriptionsChanged,
@@ -199,41 +202,61 @@ export function ChatRouteSubscribersPanel({
     [acceptedAgreementIds],
   );
 
+  const deliveryAgreementIds = useMemo(
+    () => agreementIdsKey.split("|").filter((id) => id.length >= 8),
+    [agreementIdsKey],
+  );
+
+  const deliveryQueries = useQueries({
+    queries: deliveryAgreementIds.map((aid) => ({
+      queryKey: queryKeys.agreementRouteDeliveries(threadId.trim(), aid),
+      queryFn: () => fetchAgreementRouteDeliveries(threadId.trim(), aid),
+      enabled:
+        canSellerManageRouteSubscriptions &&
+        threadId.trim().length >= 4 &&
+        deliveryAgreementIds.length > 0,
+      staleTime: 15_000,
+    })),
+  });
+
   useEffect(() => {
     const tid = threadId.trim();
     if (!canSellerManageRouteSubscriptions || tid.length < 4 || !agreementIdsKey) {
       setRouteDeliveries([]);
+      return;
+    }
+
+    if (deliveryQueries.some((q) => q.isLoading)) return;
+    setRouteDeliveries(deliveryQueries.flatMap((q) => q.data ?? []));
+  }, [
+    threadId,
+    canSellerManageRouteSubscriptions,
+    agreementIdsKey,
+    deliveryQueries,
+  ]);
+
+  const invalidateDeliveries = useInvalidateAgreementDeliveriesForThread();
+
+  useEffect(() => {
+    const tid = threadId.trim();
+    if (!canSellerManageRouteSubscriptions || tid.length < 4 || !agreementIdsKey) {
       return () => {};
     }
 
-    const agreementIds = agreementIdsKey.split("|").filter((id) => id.length >= 8);
-    let cancelled = false;
-
-    const loadDeliveries = () => {
-      void Promise.all(
-        agreementIds.map((aid) => fetchAgreementRouteDeliveries(tid, aid)),
-      )
-        .then((groups) => {
-          if (cancelled) return;
-          setRouteDeliveries(groups.flat());
-        })
-        .catch(() => {
-          if (cancelled) return;
-          setRouteDeliveries([]);
-        });
-    };
-
-    loadDeliveries();
     const unsub = subscribeRouteDeliveriesRefresh((p) => {
       if (p.threadId !== tid) return;
-      loadDeliveries();
+      invalidateDeliveries(tid);
     });
 
     return () => {
-      cancelled = true;
       unsub();
     };
-  }, [threadId, canSellerManageRouteSubscriptions, agreementIdsKey]);
+  }, [
+    threadId,
+    canSellerManageRouteSubscriptions,
+    agreementIdsKey,
+    invalidateDeliveries,
+  ]);
 
   useEffect(() => {
     const tid = threadId.trim();

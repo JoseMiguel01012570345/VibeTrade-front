@@ -31,6 +31,8 @@ import type { CarrierTelemetryUpdatedPayload } from "@features/chat/Dtos/realtim
 import { subscribeCarrierTelemetryUpdated } from "@features/chat/logic/realtime/chatRealtime";
 import type { RouteStopDeliveryStatusApi } from "@features/chat/Dtos/route-sheet/routeLogisticsApiTypes";
 import { fetchAgreementRouteDeliveries, fetchLatestCarrierTelemetryForRouteSheet } from "@features/chat/api/routeLogisticsApi";
+import { queryClient } from "@shared/lib/queryClient";
+import { queryKeys } from "@shared/lib/queryKeys";
 import {
   bestTelemetryPayloadForCarrier,
   carrierAvatarPinIcon,
@@ -175,12 +177,25 @@ export function RouteSheetLiveTrackingModal({
     void (async () => {
       try {
         const [telRows, deliveries, subs] = await Promise.all([
-          fetchLatestCarrierTelemetryForRouteSheet({
-            threadId,
-            agreementId,
-            routeSheetId: routeSheet.id,
-          }).catch(() => []),
-          fetchAgreementRouteDeliveries(threadId, agreementId).catch(() => []),
+          queryClient
+            .fetchQuery({
+              queryKey: queryKeys.carrierTelemetry(tid, aid, rsid),
+              queryFn: () =>
+                fetchLatestCarrierTelemetryForRouteSheet({
+                  threadId,
+                  agreementId,
+                  routeSheetId: routeSheet.id,
+                }),
+              staleTime: 5_000,
+            })
+            .catch(() => []),
+          queryClient
+            .fetchQuery({
+              queryKey: queryKeys.agreementRouteDeliveries(tid, aid),
+              queryFn: () => fetchAgreementRouteDeliveries(threadId, agreementId),
+              staleTime: 15_000,
+            })
+            .catch(() => []),
           fetchThreadRouteTramoSubscriptions(threadId).catch(() => []),
         ]);
         if (cancelled) return;
@@ -261,10 +276,19 @@ export function RouteSheetLiveTrackingModal({
 
     async function pollOnce(): Promise<void> {
       try {
-        const telRows = await fetchLatestCarrierTelemetryForRouteSheet({
-          threadId,
-          agreementId,
-          routeSheetId: routeSheet.id,
+        const telRows = await queryClient.fetchQuery({
+          queryKey: queryKeys.carrierTelemetry(
+            threadId.trim(),
+            agreementId.trim(),
+            routeSheet.id.trim(),
+          ),
+          queryFn: () =>
+            fetchLatestCarrierTelemetryForRouteSheet({
+              threadId,
+              agreementId,
+              routeSheetId: routeSheet.id,
+            }),
+          staleTime: 5_000,
         });
         if (cancelled) return;
 

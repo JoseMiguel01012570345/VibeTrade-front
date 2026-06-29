@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Loader2, UserCheck, X } from "lucide-react";
 import { cn } from "@shared/lib/cn";
-import { resolvePlatformUserByPhone } from "@features/profile/api/contactsApi";
-import { fetchPublishedTransportServicesForUser, type PublishedTransportServiceDto } from "@features/market/api/publishedTransportServicesApi";
+import { useResolveUserByPhoneMutation } from "@features/profile/hooks/useContacts";
+import { usePublishedTransportServicesQuery } from "@features/market/hooks/usePublishedTransportServicesQuery";
 import { summarizeTransportServiceForInvite } from "@features/market/logic/publishedTransportServicesMapper";
 import {
   fieldError,
@@ -54,15 +54,20 @@ export function RouteSheetTransportistaPhoneField({
   lockedDisplayName,
 }: Props) {
   const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
   const [pickedLabel, setPickedLabel] = useState<string | null>(null);
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerBusy, setPickerBusy] = useState(false);
   const [pickerUserId, setPickerUserId] = useState<string | null>(null);
   const [pickerPhoneLine, setPickerPhoneLine] = useState<string | null>(null);
-  const [services, setServices] = useState<PublishedTransportServiceDto[]>([]);
   const [selectedSvcId, setSelectedSvcId] = useState<string | null>(null);
+  const resolveMutation = useResolveUserByPhoneMutation();
+  const servicesQuery = usePublishedTransportServicesQuery(
+    pickerUserId ?? undefined,
+    pickerOpen && !!pickerUserId,
+  );
+  const services = servicesQuery.data ?? [];
+  const pickerBusy = servicesQuery.isLoading || servicesQuery.isFetching;
+  const searchBusy = resolveMutation.isPending;
 
   const v = value?.trim();
   const svcSummary = transportInvitedServiceSummary?.trim();
@@ -71,44 +76,41 @@ export function RouteSheetTransportistaPhoneField({
     if (!v) setPickedLabel(null);
   }, [v]);
 
+  useEffect(() => {
+    if (!pickerOpen || services.length === 0) return;
+    setSelectedSvcId((prev) => prev ?? services[0]!.id);
+  }, [pickerOpen, services]);
+
+  useEffect(() => {
+    if (!pickerOpen || !servicesQuery.error) return;
+    const msg =
+      servicesQuery.error instanceof Error
+        ? servicesQuery.error.message
+        : "No se pudieron cargar los servicios del transportista.";
+    toast.error(msg);
+  }, [pickerOpen, servicesQuery.error]);
+
   async function onSearch() {
     const raw = draft.trim();
     if (!raw) {
       toast.error("IngresÃ¡ un nÃºmero de telÃ©fono.");
       return;
     }
-    setBusy(true);
     try {
-      const u = await resolvePlatformUserByPhone(raw);
+      const u = await resolveMutation.mutateAsync(raw);
       const line = phoneLineFromResolved(u.phoneDisplay, u.phoneDigits, raw);
       setPickerUserId(u.userId);
       setPickerPhoneLine(line);
       setPickedLabel(u.displayName?.trim() || "Usuario en la plataforma");
       setDraft("");
-      setPickerOpen(true);
-      setPickerBusy(true);
-      setServices([]);
       setSelectedSvcId(null);
-      try {
-        const list = await fetchPublishedTransportServicesForUser(u.userId);
-        setServices(list);
-        if (list.length > 0) setSelectedSvcId(list[0]!.id);
-      } catch {
-        toast.error(
-          "No se pudieron cargar los servicios publicados de ese usuario.",
-        );
-        setServices([]);
-      } finally {
-        setPickerBusy(false);
-      }
+      setPickerOpen(true);
     } catch (e) {
       toast.error(
         e instanceof Error && e.message
           ? e.message
           : "Ese nÃºmero no estÃ¡ registrado en la plataforma.",
       );
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -116,7 +118,6 @@ export function RouteSheetTransportistaPhoneField({
     setPickerOpen(false);
     setPickerUserId(null);
     setPickerPhoneLine(null);
-    setServices([]);
     setSelectedSvcId(null);
   }
 
@@ -237,16 +238,16 @@ export function RouteSheetTransportistaPhoneField({
               placeholder="Ej. +54 9 11 1234-5678"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              disabled={busy || phoneLocked}
+              disabled={searchBusy || phoneLocked}
               aria-invalid={!!error}
             />
             <button
               type="button"
               className="vt-btn vt-btn-primary inline-flex shrink-0 items-center justify-center gap-2"
-              disabled={busy || phoneLocked}
+              disabled={searchBusy || phoneLocked}
               onClick={() => void onSearch()}
             >
-              {busy ? (
+              {searchBusy ? (
                 <Loader2 className="animate-spin" size={16} aria-hidden />
               ) : (
                 <UserCheck size={16} aria-hidden />

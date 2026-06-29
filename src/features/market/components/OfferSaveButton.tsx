@@ -1,13 +1,12 @@
-import { useState } from "react";
 import { Bookmark } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@shared/lib/cn";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import {
-  deleteSavedOffer,
-  postSavedOffer,
-} from "@features/profile/api/savedOffersApi";
+  useSaveOfferMutation,
+  useUnsaveOfferMutation,
+} from "@features/profile/hooks/useSavedOfferMutations";
 import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
 
 type Props = Readonly<{
@@ -27,7 +26,8 @@ export function OfferSaveButton({
   const setSavedOffersFromIds = useAppStore((s) => s.setSavedOffersFromIds);
   const offer = useMarketStore((s) => s.offers[offerId]);
   const stores = useMarketStore((s) => s.stores);
-  const [busy, setBusy] = useState(false);
+  const saveMutation = useSaveOfferMutation();
+  const unsaveMutation = useUnsaveOfferMutation();
 
   const isEmergentId = offerId.startsWith("emo_");
   /** Hoja de ruta publicada: guardar el id `emo_*` de la publicación, no el producto/servicio base del hilo. */
@@ -46,6 +46,8 @@ export function OfferSaveButton({
     !!store.ownerUserId &&
     store.ownerUserId === me.id;
 
+  const busy = saveMutation.isPending || unsaveMutation.isPending;
+
   if (isOwnOffer) return null;
   if (isEmergentId && !offer) return null;
   if (offer?.isEmergentRoutePublication && !emoPublicationId) {
@@ -60,17 +62,14 @@ export function OfferSaveButton({
       return;
     }
     if (busy) return;
-    setBusy(true);
     try {
       const ids = saved
-        ? await deleteSavedOffer(productIdForApi)
-        : await postSavedOffer(productIdForApi);
+        ? await unsaveMutation.mutateAsync(productIdForApi)
+        : await saveMutation.mutateAsync(productIdForApi);
       setSavedOffersFromIds(ids);
       toast.success(saved ? "Quitada de guardados" : "Guardada en tu perfil");
     } catch (err) {
       toast.error(errorToUserMessage(err));
-    } finally {
-      setBusy(false);
     }
   }
 

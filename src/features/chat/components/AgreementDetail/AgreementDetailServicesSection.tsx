@@ -13,10 +13,11 @@ import { normalizeAgreementServices, serviceScopedExtraFields } from '@features/
 import { findStoreService } from '@features/market/logic/storeCatalogTypes'
 import { ServiceItemPreview } from '../modals/serviceConfig/ServiceItemPreview'
 import type { AgreementServicePaymentApi } from '@features/chat/Dtos/agreement/agreementServiceEvidenceApiTypes';
-import { decideServiceEvidence } from '@features/chat/api/agreementServiceEvidenceApi';import {
-  getPaymentGatewayConfig,
-  listSavedCards,
-} from '@features/payments'
+import { useDecideServiceEvidenceMutation } from '@features/chat/hooks/useAgreementEvidenceMutations';
+import {
+  fetchPaymentGatewayConfigCached,
+  fetchSavedCardsCached,
+} from '@features/payments/hooks/usePaymentGatewayQueries';
 import {
   agrDetailBlock,
   agrDetailH,
@@ -140,6 +141,7 @@ function ServicePaymentRow({
   setSellerPayoutModal: Dispatch<SetStateAction<SellerPayoutModalState>>
   refreshServicePays: () => Promise<unknown>
 }) {
+  const decideMutation = useDecideServiceEvidenceMutation(threadId, agreementId)
   const ev = p.evidence
   const evStatus = (ev?.status ?? '').trim().toLowerCase()
   const released = p.status === 'released'
@@ -240,13 +242,22 @@ function ServicePaymentRow({
               type="button"
               className="vt-btn vt-btn-sm inline-flex items-center gap-1.5"
               onClick={() =>
-                void decidePaymentEvidence(
-                  threadId,
-                  agreementId,
-                  p.id,
-                  'accept',
-                  refreshServicePays,
-                )
+                void decideMutation
+                  .mutateAsync({
+                    threadId,
+                    agreementId,
+                    paymentId: p.id,
+                    decision: 'accept',
+                  })
+                  .then(() => {
+                    toast.success('Evidencia aceptada.')
+                    return refreshServicePays()
+                  })
+                  .catch((e) =>
+                    toast.error(
+                      (e as Error)?.message ?? 'No se pudo aceptar.',
+                    ),
+                  )
               }
             >
               <BadgeCheck size={14} aria-hidden />
@@ -256,13 +267,22 @@ function ServicePaymentRow({
               type="button"
               className="vt-btn vt-btn-sm vt-btn-ghost inline-flex items-center gap-1.5 border border-[var(--border)] px-3 py-1.5"
               onClick={() =>
-                void decidePaymentEvidence(
-                  threadId,
-                  agreementId,
-                  p.id,
-                  'reject',
-                  refreshServicePays,
-                )
+                void decideMutation
+                  .mutateAsync({
+                    threadId,
+                    agreementId,
+                    paymentId: p.id,
+                    decision: 'reject',
+                  })
+                  .then(() => {
+                    toast.success('Evidencia rechazada.')
+                    return refreshServicePays()
+                  })
+                  .catch((e) =>
+                    toast.error(
+                      (e as Error)?.message ?? 'No se pudo rechazar.',
+                    ),
+                  )
               }
             >
               <XCircle size={14} aria-hidden />
@@ -288,13 +308,13 @@ function openSellerPayoutModal(
   })
   void (async () => {
     try {
-      const cfg = await getPaymentGatewayConfig()
+      const cfg = await fetchPaymentGatewayConfigCached()
       if (!cfg.enabled) {
         setSellerPayoutModal(null)
         toast.error('Los pagos no están disponibles ahora.')
         return
       }
-      const cards = await listSavedCards()
+      const cards = await fetchSavedCardsCached()
       setSellerPayoutModal((m) =>
         m?.pay.id === pay.id
           ? {
@@ -314,30 +334,3 @@ function openSellerPayoutModal(
   })()
 }
 
-async function decidePaymentEvidence(
-  threadId: string,
-  agreementId: string,
-  paymentId: string,
-  decision: 'accept' | 'reject',
-  refresh: () => Promise<unknown>,
-) {
-  try {
-    await decideServiceEvidence({
-      threadId,
-      agreementId,
-      paymentId,
-      decision,
-    })
-    toast.success(
-      decision === 'accept' ? 'Evidencia aceptada.' : 'Evidencia rechazada.',
-    )
-    await refresh()
-  } catch (e) {
-    toast.error(
-      (e as Error)?.message ??
-        (decision === 'accept'
-          ? 'No se pudo aceptar.'
-          : 'No se pudo rechazar.'),
-    )
-  }
-}

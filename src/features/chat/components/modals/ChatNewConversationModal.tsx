@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Loader2, Users } from "lucide-react";
@@ -12,10 +12,10 @@ import {
 import { VtMultiSelect } from "@shared/components/ui/VtMultiSelect";
 import type { VtSelectOption } from "@shared/components/ui/VtSelect";
 import {
-  fetchContacts,
-  resolvePlatformUserByPhone,
-  type UserContact,
-} from "@features/profile/api/contactsApi";
+  useContacts,
+  useResolveUserByPhoneMutation,
+} from "@features/profile/hooks/useContacts";
+import type { UserContact } from "@features/profile/api/contactsApi";
 import { createSocialGroupChatThread } from "@features/chat/api/chatApi";
 import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
@@ -35,40 +35,27 @@ function contactLabel(c: UserContact): string {
 export function ChatNewConversationModal({ open, onClose }: Props) {
   const nav = useNavigate();
   const onThreadCreated = useMarketStore((s) => s.onThreadCreatedFromServer);
-  const [loading, setLoading] = useState(false);
-  const [contacts, setContacts] = useState<UserContact[]>([]);
+  const contactsQuery = useContacts({ enabled: open });
+  const resolveMutation = useResolveUserByPhoneMutation();
   const [phoneSearch, setPhoneSearch] = useState("");
-  const [resolveBusy, setResolveBusy] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [resolvedExtras, setResolvedExtras] = useState<UserContact[]>([]);
   const [createBusy, setCreateBusy] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const list = await fetchContacts();
-      setContacts(list);
-    } catch (e) {
-      toast.error(errorToUserMessage(e, "No se pudieron cargar los contactos."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    void load();
-  }, [open, load]);
+  const contacts = contactsQuery.data ?? [];
+  const loading = contactsQuery.isLoading;
 
   useEffect(() => {
     if (!open) {
       setPhoneSearch("");
       setSelectedIds([]);
+      setResolvedExtras([]);
     }
   }, [open]);
 
   const multiselectOptions: VtSelectOption[] = useMemo(() => {
     const m = new Map(
-      contacts.map((c) => [
+      [...contacts, ...resolvedExtras].map((c) => [
         c.userId,
         { value: c.userId, label: contactLabel(c) } satisfies VtSelectOption,
       ]),
@@ -79,7 +66,7 @@ export function ChatNewConversationModal({ open, onClose }: Props) {
       }
     }
     return [...m.values()];
-  }, [contacts, selectedIds]);
+  }, [contacts, resolvedExtras, selectedIds]);
 
   async function addResolvedFromSearch() {
     const raw = phoneSearch.trim();
@@ -87,17 +74,16 @@ export function ChatNewConversationModal({ open, onClose }: Props) {
       toast.error("Ingresá un número para buscar.");
       return;
     }
-    setResolveBusy(true);
     try {
-      const u = await resolvePlatformUserByPhone(raw);
-      setContacts((prev) => {
+      const u = await resolveMutation.mutateAsync(raw);
+      const row: UserContact = {
+        userId: u.userId,
+        displayName: u.displayName,
+        phoneDisplay: u.phoneDisplay,
+        phoneDigits: u.phoneDigits,
+      };
+      setResolvedExtras((prev) => {
         const rest = prev.filter((x) => x.userId !== u.userId);
-        const row: UserContact = {
-          userId: u.userId,
-          displayName: u.displayName,
-          phoneDisplay: u.phoneDisplay,
-          phoneDigits: u.phoneDigits,
-        };
         return [row, ...rest];
       });
       setSelectedIds((prev) =>
@@ -114,8 +100,6 @@ export function ChatNewConversationModal({ open, onClose }: Props) {
           "No encontramos un usuario con ese número en VibeTrade.",
         ),
       );
-    } finally {
-      setResolveBusy(false);
     }
   }
 
@@ -177,7 +161,7 @@ export function ChatNewConversationModal({ open, onClose }: Props) {
                 placeholder="+54 …"
                 value={phoneSearch}
                 onChange={(e) => setPhoneSearch(e.target.value)}
-                disabled={resolveBusy}
+                disabled={resolveMutation.isPending}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -188,10 +172,10 @@ export function ChatNewConversationModal({ open, onClose }: Props) {
               <button
                 type="button"
                 className="vt-btn vt-btn-primary inline-flex shrink-0 items-center justify-center gap-2"
-                disabled={resolveBusy}
+                disabled={resolveMutation.isPending}
                 onClick={() => void addResolvedFromSearch()}
               >
-                {resolveBusy ? (
+                {resolveMutation.isPending ? (
                   <Loader2 className="animate-spin" size={16} aria-hidden />
                 ) : null}
                 Añadir si existe

@@ -2,13 +2,19 @@ import type { Dispatch, SetStateAction } from 'react'
 import toast from 'react-hot-toast'
 import { BadgeCheck, Loader2, Pencil, Upload, XCircle } from 'lucide-react'
 import type { ServiceEvidenceAttachmentApi } from '@features/chat/Dtos/agreement/agreementServiceEvidenceApiTypes';
-import { decideServiceEvidence, upsertServiceEvidence } from '@features/chat/api/agreementServiceEvidenceApi';import { uploadMedia, mediaApiUrl } from '@shared/services/media/mediaClient'
+import {
+  useDecideServiceEvidenceMutation,
+  useUpsertServiceEvidenceMutation,
+} from '@features/chat/hooks/useAgreementEvidenceMutations'
+import { uploadMedia, mediaApiUrl } from '@shared/services/media/mediaClient'
 import { EvidenceAttachmentsList } from '../shared/EvidenceAttachmentsList'
 import {
   fmtAgreementMoneyMinor,
   normalizeEvidenceForCompare,
 } from './agreementDetailPresentation'
-import type { EvidenceModalState } from '@features/chat/Dtos/agreement/agreementDetailUiTypes';type Props = {
+import type { EvidenceModalState } from '@features/chat/Dtos/agreement/agreementDetailUiTypes'
+
+type Props = {
   threadId: string
   agreementId: string
   modal: NonNullable<EvidenceModalState>
@@ -27,6 +33,8 @@ export function AgreementServiceEvidenceModal({
   onUpdate,
   onRefresh,
 }: Props) {
+  const upsertMutation = useUpsertServiceEvidenceMutation(threadId, agreementId)
+  const decideMutation = useDecideServiceEvidenceMutation(threadId, agreementId)
   const evStatus = (modal.pay.evidence?.status ?? '').trim().toLowerCase()
   const buyerCanDecide = !sellerCanEdit && evStatus === 'submitted'
 
@@ -184,6 +192,7 @@ export function AgreementServiceEvidenceModal({
               onUpdate={onUpdate}
               onClose={onClose}
               onRefresh={onRefresh}
+              upsertEvidence={upsertMutation.mutateAsync}
             />
           ) : buyerCanDecide ? (
             <>
@@ -199,6 +208,7 @@ export function AgreementServiceEvidenceModal({
                     onUpdate,
                     onClose,
                     onRefresh,
+                    decide: decideMutation.mutateAsync,
                   })
                 }
               >
@@ -216,6 +226,7 @@ export function AgreementServiceEvidenceModal({
                     onUpdate,
                     onClose,
                     onRefresh,
+                    decide: decideMutation.mutateAsync,
                   })
                 }
               >
@@ -236,6 +247,7 @@ function SellerEvidenceActions({
   onUpdate,
   onClose,
   onRefresh,
+  upsertEvidence,
 }: {
   threadId: string
   agreementId: string
@@ -243,6 +255,7 @@ function SellerEvidenceActions({
   onUpdate: Dispatch<SetStateAction<EvidenceModalState>>
   onClose: () => void
   onRefresh: () => Promise<unknown>
+  upsertEvidence: ReturnType<typeof useUpsertServiceEvidenceMutation>['mutateAsync']
 }) {
   const original = modal.pay.evidence
   const a0 = normalizeEvidenceForCompare(
@@ -269,6 +282,7 @@ function SellerEvidenceActions({
             onUpdate,
             onClose,
             onRefresh,
+            upsert: upsertEvidence,
           })
         }
       >
@@ -288,6 +302,7 @@ function SellerEvidenceActions({
             onUpdate,
             onClose,
             onRefresh,
+            upsert: upsertEvidence,
           })
         }
       >
@@ -308,10 +323,19 @@ async function saveEvidence(
     onUpdate: Dispatch<SetStateAction<EvidenceModalState>>
     onClose: () => void
     onRefresh: () => Promise<unknown>
+    upsert: ReturnType<typeof useUpsertServiceEvidenceMutation>['mutateAsync']
   },
 ) {
-  const { threadId, agreementId, modal, noChanges, onUpdate, onClose, onRefresh } =
-    ctx
+  const {
+    threadId,
+    agreementId,
+    modal,
+    noChanges,
+    onUpdate,
+    onClose,
+    onRefresh,
+    upsert,
+  } = ctx
   if (noChanges) {
     toast.error(
       submit ? 'No hay cambios para enviar.' : 'No hay cambios para guardar.',
@@ -338,7 +362,7 @@ async function saveEvidence(
   }
   onUpdate((m) => (m ? { ...m, busy: true } : m))
   try {
-    await upsertServiceEvidence({
+    await upsert({
       threadId,
       agreementId,
       paymentId: modal.pay.id,
@@ -370,12 +394,14 @@ async function decideEvidence(
     onUpdate: Dispatch<SetStateAction<EvidenceModalState>>
     onClose: () => void
     onRefresh: () => Promise<unknown>
+    decide: ReturnType<typeof useDecideServiceEvidenceMutation>['mutateAsync']
   },
 ) {
-  const { threadId, agreementId, modal, onUpdate, onClose, onRefresh } = ctx
+  const { threadId, agreementId, modal, onUpdate, onClose, onRefresh, decide } =
+    ctx
   onUpdate((m) => (m ? { ...m, busy: true } : m))
   try {
-    await decideServiceEvidence({
+    await decide({
       threadId,
       agreementId,
       paymentId: modal.pay.id,

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { fetchAgreementRouteDeliveries } from "@features/chat/api/routeLogisticsApi";
+import { queryClient } from "@shared/lib/queryClient";
+import { queryKeys } from "@shared/lib/queryKeys";
 import type { RouteStopDeliveryStatusApi } from "@features/chat/Dtos/route-sheet/routeLogisticsApiTypes";
 import type { CarrierTelemetryTarget } from "@features/chat/Dtos/realtime/carrierTelemetryTypes";
 import { subscribeRouteDeliveriesRefresh } from "@features/chat/logic/realtime/chatRealtime";
@@ -145,7 +147,11 @@ export function useCarrierThreadGeolocationAndTelemetry(args: {
         for (const c of accepted) {
           let rows: RouteStopDeliveryStatusApi[];
           try {
-            rows = await fetchAgreementRouteDeliveries(tid, c.id.trim());
+            rows = await queryClient.fetchQuery({
+              queryKey: queryKeys.agreementRouteDeliveries(tid, c.id.trim()),
+              queryFn: () => fetchAgreementRouteDeliveries(tid, c.id.trim()),
+              staleTime: 15_000,
+            });
           } catch {
             continue;
           }

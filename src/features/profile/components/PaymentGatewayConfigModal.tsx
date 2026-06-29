@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 import { CreditCard, X } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 import {
-  createSetupIntent,
-  getPaymentGatewayConfig,
-  listSavedCards,
-  type SavedCard,
-} from "@features/payments";
+  useCreateSetupIntentMutation,
+  usePaymentGatewayConfig,
+  useSavedCards,
+} from "@features/payments/hooks/usePaymentGatewayQueries";
 
 type Props = {
   open: boolean;
@@ -16,46 +15,18 @@ type Props = {
 };
 
 export function PaymentGatewayConfigModal({ open, onClose }: Props) {
-  const [loading, setLoading] = useState(false);
-  const [enabled, setEnabled] = useState(false);
-  const [simulatedMode, setSimulatedMode] = useState(true);
-  const [cards, setCards] = useState<SavedCard[]>([]);
-  const [cardsLoading, setCardsLoading] = useState(false);
-  const [setupBusy, setSetupBusy] = useState(false);
+  const configQuery = usePaymentGatewayConfig(open);
+  const config = configQuery.data;
+  const enabled = config?.enabled ?? false;
+  const simulatedMode = config?.simulatedMode ?? true;
+  const cardsQuery = useSavedCards({ enabled: open && enabled });
+  const setupMutation = useCreateSetupIntentMutation();
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  const reloadCards = async () => {
-    setCardsLoading(true);
-    try {
-      setCards(await listSavedCards());
-    } finally {
-      setCardsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    setLoading(true);
-    void (async () => {
-      try {
-        const cfg = await getPaymentGatewayConfig();
-        setEnabled(cfg.enabled);
-        setSimulatedMode(cfg.simulatedMode ?? true);
-        if (cfg.enabled) {
-          await reloadCards();
-        } else {
-          setCards([]);
-        }
-      } catch {
-        setEnabled(false);
-        setSimulatedMode(true);
-        setCards([]);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [open]);
+  const loading = configQuery.isLoading;
+  const cards = cardsQuery.data ?? [];
+  const cardsLoading = cardsQuery.isLoading || cardsQuery.isFetching;
 
   useEffect(() => {
     if (!open) return;
@@ -150,27 +121,23 @@ export function PaymentGatewayConfigModal({ open, onClose }: Props) {
                   <button
                     type="button"
                     className="vt-btn"
-                    disabled={setupBusy}
+                    disabled={setupMutation.isPending}
                     onClick={async () => {
                       if (!enabled) {
                         toast.error("Pagos no están activos en el servidor.");
                         return;
                       }
-                      setSetupBusy(true);
                       try {
-                        await createSetupIntent();
+                        await setupMutation.mutateAsync();
                         toast.success("Tarjeta demo activada.");
-                        await reloadCards();
                       } catch (e) {
                         toast.error(
                           (e as Error)?.message ?? "No se pudo activar la tarjeta demo.",
                         );
-                      } finally {
-                        setSetupBusy(false);
                       }
                     }}
                   >
-                    {setupBusy ? "Activando…" : "Activar tarjeta demo"}
+                    {setupMutation.isPending ? "Activando…" : "Activar tarjeta demo"}
                   </button>
                 </div>
               </div>

@@ -3,7 +3,7 @@ export {
   useStoreCatalogMeta,
   useStorePageDetail,
   reloadStoreDetailToStore,
-  storeCatalogMetaQueryKey,
   storeDetailQueryKey,
 } from './useStorePageDetail'
+export { catalogCategoriesQueryKey } from '@features/catalog/hooks/useCatalogCategories'
 export { useStoreDetail } from './useStoreDetail'

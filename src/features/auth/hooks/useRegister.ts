@@ -2,53 +2,60 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import type { SignInCountry } from '../Dtos/signInCountry'
-import { fetchSignInCountries } from '@shared/services/http/fetchSignInCountries'
-import { register } from '../api/credentialsAuth'
 import {
   isValidEmail,
   isValidPassword,
   isValidUsername,
 } from '../logic/credentialsValidation'
+import { useSignInCountries } from './useSignInCountries'
+import { useRegisterMutation } from './useRegisterMutation'
 
 export function useRegister() {
   const nav = useNavigate()
-  const [countries, setCountries] = useState<SignInCountry[]>([])
+  const countriesQuery = useSignInCountries()
+  const registerMutation = useRegisterMutation()
   const [country, setCountry] = useState<SignInCountry | null>(null)
-  const [countriesStatus, setCountriesStatus] = useState<'loading' | 'ok' | 'error'>('loading')
   const [number, setNumber] = useState('')
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [busy, setBusy] = useState(false)
 
-  const loadCountries = useCallback(async () => {
-    setCountriesStatus('loading')
-    try {
-      const list = await fetchSignInCountries()
-      if (list.length === 0) {
-        setCountriesStatus('error')
-        toast.error('No hay países disponibles para registro.')
-        return
-      }
-      setCountries(list)
-      setCountry(list[0])
-      setCountriesStatus('ok')
-    } catch {
-      setCountriesStatus('error')
-      toast.error('No se pudieron cargar los países.')
-    }
-  }, [])
+  const countries = countriesQuery.data ?? []
 
   useEffect(() => {
-    void loadCountries()
-  }, [loadCountries])
+    if (countries.length === 0) return
+    setCountry((prev) => prev ?? countries[0] ?? null)
+  }, [countries])
+
+  useEffect(() => {
+    if (countriesQuery.isError) {
+      toast.error('No se pudieron cargar los países.')
+    } else if (
+      countriesQuery.isSuccess &&
+      countries.length === 0
+    ) {
+      toast.error('No hay países disponibles para registro.')
+    }
+  }, [countriesQuery.isError, countriesQuery.isSuccess, countries.length])
+
+  const countriesStatus = countriesQuery.isLoading
+    ? ('loading' as const)
+    : countriesQuery.isError || countries.length === 0
+      ? ('error' as const)
+      : ('ok' as const)
+
+  const loadCountries = useCallback(async () => {
+    await countriesQuery.refetch()
+  }, [countriesQuery])
 
   const phone = useMemo(() => {
     const digits = number.replace(/[^\d]/g, '')
     if (!country) return ''
     return `${country.dial} ${digits}`
   }, [country, number])
+
+  const busy = registerMutation.isPending
 
   const canSubmit =
     country != null &&
@@ -63,9 +70,13 @@ export function useRegister() {
   async function submit(e?: React.FormEvent) {
     e?.preventDefault()
     if (!canSubmit) return
-    setBusy(true)
     try {
-      const json = await register(password, email.trim(), username.trim(), phone)
+      const json = await registerMutation.mutateAsync({
+        password,
+        email: email.trim(),
+        username: username.trim(),
+        phone,
+      })
       nav('/onboarding/verify-phone', {
         state: {
           registrationId: json.registrationId,
@@ -78,8 +89,6 @@ export function useRegister() {
     } catch (err) {
       const payload = (err as { payload?: { message?: string } }).payload
       toast.error(payload?.message ?? 'No se pudo registrar')
-    } finally {
-      setBusy(false)
     }
   }
 

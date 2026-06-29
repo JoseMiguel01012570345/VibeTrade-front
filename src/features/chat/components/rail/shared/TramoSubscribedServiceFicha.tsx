@@ -1,10 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import type { RouteOfferTramoAssignment } from "@features/market/logic/store/marketStoreTypes";
-import { fetchPublicOfferCard } from "@features/market/api/marketPersistence";
 import { offerAndStoreToPublishedTransportServiceDto } from "@features/market/logic/offerCardToPublishedTransportService";
 import type { PublishedTransportServiceDto } from "@features/market/api/publishedTransportServicesApi";
+import { usePublicOfferCardQuery } from "@features/market/hooks/usePublicOfferCardQuery";
 import { TransportServiceFichaDetail } from "../../TransportServiceFichaDetail";
 
 type Props = {
@@ -24,39 +24,22 @@ export function TramoSubscribedServiceFicha({
   showCarrierLine = true,
 }: Props) {
   const storeServiceId = assignment.storeServiceId?.trim();
-  const [state, setState] = useState<LoadState>(() =>
-    storeServiceId ? { kind: "loading" } : { kind: "idle" },
-  );
+  const cardQuery = usePublicOfferCardQuery(storeServiceId, {
+    enabled: !!storeServiceId,
+  });
 
-  useEffect(() => {
-    if (!storeServiceId) {
-      setState({ kind: "idle" });
-      return;
-    }
-    let cancelled = false;
-    setState({ kind: "loading" });
-    void fetchPublicOfferCard(storeServiceId)
-      .then((card) => {
-        if (cancelled) return;
-        if (!card?.offer?.id) {
-          setState({ kind: "error" });
-          return;
-        }
-        setState({
-          kind: "ok",
-          dto: offerAndStoreToPublishedTransportServiceDto(
-            card.offer,
-            card.store,
-          ),
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setState({ kind: "error" });
-      });
-    return () => {
-      cancelled = true;
+  const state: LoadState = useMemo(() => {
+    if (!storeServiceId) return { kind: "idle" };
+    if (cardQuery.isLoading || cardQuery.isFetching) return { kind: "loading" };
+    if (cardQuery.isError || !cardQuery.data?.offer?.id) return { kind: "error" };
+    return {
+      kind: "ok",
+      dto: offerAndStoreToPublishedTransportServiceDto(
+        cardQuery.data.offer,
+        cardQuery.data.store,
+      ),
     };
-  }, [storeServiceId]);
+  }, [storeServiceId, cardQuery.isLoading, cardQuery.isFetching, cardQuery.isError, cardQuery.data]);
 
   const sectionTitle = showCarrierLine
     ? "Ficha del servicio (suscripción al tramo)"

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useMarketStore } from '@features/market/logic/store/useMarketStore'
-import { listAgreementServicePayments } from '@features/chat/api/agreementServiceEvidenceApi'
 import type {
   AgreementServicePaymentApi,
 } from '@features/chat/Dtos/agreement/agreementServiceEvidenceApiTypes'
@@ -9,15 +8,17 @@ import type {
   EvidenceModalState,
   SellerPayoutModalState,
 } from '@features/chat/Dtos/agreement/agreementDetailUiTypes'
+import {
+  useAgreementServicePaymentsQuery,
+  useInvalidateAgreementServicePayments,
+} from './useAgreementServicePaymentsQuery'
 
 export function useAgreementDetailServicePayments(
   threadId: string,
   agreementId: string,
 ) {
-  const [servicePays, setServicePays] = useState<AgreementServicePaymentApi[]>(
-    [],
-  )
-  const [servicePaysBusy, setServicePaysBusy] = useState(false)
+  const paymentsQuery = useAgreementServicePaymentsQuery(threadId, agreementId)
+  const invalidate = useInvalidateAgreementServicePayments()
   const [evidenceModal, setEvidenceModal] = useState<EvidenceModalState>(null)
   const [sellerPayoutModal, setSellerPayoutModal] =
     useState<SellerPayoutModalState>(null)
@@ -27,28 +28,6 @@ export function useAgreementDetailServicePayments(
     return msgs && msgs.length > 0 ? msgs[msgs.length - 1] : undefined
   })
   const lastEvidenceRefreshMsgIdRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    setServicePaysBusy(true)
-    void (async () => {
-      try {
-        const list = await listAgreementServicePayments(threadId, agreementId)
-        if (!cancelled) setServicePays(list)
-      } catch (e) {
-        if (!cancelled)
-          toast.error(
-            (e as Error)?.message ??
-              'No se pudieron cargar pagos de servicios.',
-          )
-      } finally {
-        if (!cancelled) setServicePaysBusy(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [threadId, agreementId])
 
   useEffect(() => {
     if (!lastMsg) return
@@ -63,25 +42,26 @@ export function useAgreementDetailServicePayments(
       return
     }
     lastEvidenceRefreshMsgIdRef.current = lastMsg.id
-    void (async () => {
-      try {
-        const list = await listAgreementServicePayments(threadId, agreementId)
-        setServicePays(list)
-      } catch {
-        /* no-op */
-      }
-    })()
-  }, [lastMsg, threadId, agreementId])
+    invalidate(threadId, agreementId)
+  }, [lastMsg, threadId, agreementId, invalidate])
+
+  useEffect(() => {
+    if (paymentsQuery.isError) {
+      toast.error(
+        (paymentsQuery.error as Error)?.message ??
+          'No se pudieron cargar pagos de servicios.',
+      )
+    }
+  }, [paymentsQuery.isError, paymentsQuery.error])
 
   const refreshServicePays = async () => {
-    const list = await listAgreementServicePayments(threadId, agreementId)
-    setServicePays(list)
-    return list
+    const result = await paymentsQuery.refetch()
+    return result.data ?? []
   }
 
   return {
-    servicePays,
-    servicePaysBusy,
+    servicePays: (paymentsQuery.data ?? []) as AgreementServicePaymentApi[],
+    servicePaysBusy: paymentsQuery.isLoading || paymentsQuery.isFetching,
     evidenceModal,
     setEvidenceModal,
     sellerPayoutModal,

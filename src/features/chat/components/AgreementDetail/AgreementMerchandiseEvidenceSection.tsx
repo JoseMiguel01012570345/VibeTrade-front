@@ -5,7 +5,15 @@ import { cn } from "@shared/lib/cn";
 import { uploadMedia, mediaApiUrl } from "@shared/services/media/mediaClient";
 import { EvidenceAttachmentsList } from "../shared/EvidenceAttachmentsList";
 import type { AgreementMerchandisePaymentApi, MerchandiseEvidenceAttachmentApi } from "@features/chat/Dtos/agreement/agreementMerchandiseEvidenceApiTypes";
-import { decideMerchandiseEvidence, listAgreementMerchandisePayments, ROUTE_NOT_DELIVERED_FOR_MERCH_EVIDENCE_ES, upsertMerchandiseEvidence } from "@features/chat/api/agreementMerchandiseEvidenceApi";
+import { ROUTE_NOT_DELIVERED_FOR_MERCH_EVIDENCE_ES } from "@features/chat/api/agreementMerchandiseEvidenceApi";
+import {
+  useDecideMerchandiseEvidenceMutation,
+  useUpsertMerchandiseEvidenceMutation,
+} from "@features/chat/hooks/useAgreementEvidenceMutations";
+import {
+  useAgreementMerchandisePaymentsQuery,
+  useInvalidateAgreementMerchandisePayments,
+} from "@features/chat/hooks/useAgreementMerchandisePaymentsQuery";
 import {
   minorToMajor,
   currencyMinorDecimals,
@@ -62,8 +70,18 @@ export function AgreementMerchandiseEvidenceSection(props: {
     lastSystemMessageText,
   } = props;
 
-  const [pays, setPays] = useState<AgreementMerchandisePaymentApi[]>([]);
-  const [busy, setBusy] = useState(false);
+  const paymentsQuery = useAgreementMerchandisePaymentsQuery(threadId, agreementId);
+  const decideMerchMutation = useDecideMerchandiseEvidenceMutation(
+    threadId,
+    agreementId,
+  );
+  const upsertMerchMutation = useUpsertMerchandiseEvidenceMutation(
+    threadId,
+    agreementId,
+  );
+  const invalidateMerchPayments = useInvalidateAgreementMerchandisePayments();
+  const pays = paymentsQuery.data ?? [];
+  const busy = paymentsQuery.isLoading || paymentsQuery.isFetching;
   const [modal, setModal] = useState<{
     pay: AgreementMerchandisePaymentApi;
     text: string;
@@ -80,22 +98,17 @@ export function AgreementMerchandiseEvidenceSection(props: {
     (routeSheetEstado ?? "").trim().toLowerCase() === "entregada";
 
   async function reload() {
-    setBusy(true);
-    try {
-      const list = await listAgreementMerchandisePayments(threadId, agreementId);
-      setPays(list);
-    } catch (e) {
-      toast.error(
-        (e as Error)?.message ?? "No se pudieron cargar pagos de mercancía.",
-      );
-    } finally {
-      setBusy(false);
-    }
+    await paymentsQuery.refetch();
   }
 
   useEffect(() => {
-    void reload();
-  }, [threadId, agreementId]);
+    if (paymentsQuery.isError) {
+      toast.error(
+        (paymentsQuery.error as Error)?.message ??
+          "No se pudieron cargar pagos de mercancía.",
+      );
+    }
+  }, [paymentsQuery.isError, paymentsQuery.error]);
 
   useEffect(() => {
     if (!lastSystemMessageId) return;
@@ -104,8 +117,8 @@ export function AgreementMerchandiseEvidenceSection(props: {
     if (!t.includes("evidencia") && !t.includes("entregada") && !t.includes("compra completada"))
       return;
     lastRefreshRef.current = lastSystemMessageId;
-    void reload();
-  }, [lastSystemMessageId, lastSystemMessageText]);
+    invalidateMerchPayments(threadId, agreementId);
+  }, [lastSystemMessageId, lastSystemMessageText, threadId, agreementId, invalidateMerchPayments]);
 
   if (pays.length === 0 && !busy) return null;
 
@@ -195,7 +208,7 @@ export function AgreementMerchandiseEvidenceSection(props: {
                           onClick={() =>
                             void (async () => {
                               try {
-                                await decideMerchandiseEvidence({
+                                await decideMerchMutation.mutateAsync({
                                   threadId,
                                   agreementId,
                                   paymentId: p.id,
@@ -221,7 +234,7 @@ export function AgreementMerchandiseEvidenceSection(props: {
                           onClick={() =>
                             void (async () => {
                               try {
-                                await decideMerchandiseEvidence({
+                                await decideMerchMutation.mutateAsync({
                                   threadId,
                                   agreementId,
                                   paymentId: p.id,
@@ -367,7 +380,7 @@ export function AgreementMerchandiseEvidenceSection(props: {
                       void (async () => {
                         setModal((m) => (m ? { ...m, saving: true } : m));
                         try {
-                          await upsertMerchandiseEvidence({
+                          await upsertMerchMutation.mutateAsync({
                             threadId,
                             agreementId,
                             paymentId: modal.pay.id,
@@ -407,7 +420,7 @@ export function AgreementMerchandiseEvidenceSection(props: {
                       void (async () => {
                         setModal((m) => (m ? { ...m, saving: true } : m));
                         try {
-                          await upsertMerchandiseEvidence({
+                          await upsertMerchMutation.mutateAsync({
                             threadId,
                             agreementId,
                             paymentId: modal.pay.id,

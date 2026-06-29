@@ -1,36 +1,21 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { useMarketStore } from '@features/market/logic/store/useMarketStore'
 import { offerFromStoreCatalogs } from '@features/market/logic/offerFromCatalog'
-import { fetchPublicOfferCard } from '@features/market/api/marketPersistence'
+import {
+  applyPublicOfferCardToStore,
+  mergePublicOfferCardIntoStore,
+} from '@features/market/logic/publicOfferCardStoreSync'
 import {
   mergeRouteOfferPublicFromEmergentCard,
   routeOfferPublicFromEmergentCardOffer,
 } from '@features/market/logic/routeOfferPublicFromEmergentCard'
+import { usePublicOfferCardQuery } from './usePublicOfferCardQuery'
 
 function hasOfferInStore(offerId: string): boolean {
   const st = useMarketStore.getState()
   if (st.offers[offerId]) return true
   return !!offerFromStoreCatalogs(offerId, st.storeCatalogs)
-}
-
-function applyPublicOfferCardToStore(r: NonNullable<Awaited<ReturnType<typeof fetchPublicOfferCard>>>) {
-  const storeKey = r.store.id?.trim() || r.offer.storeId
-  useMarketStore.setState((s) => {
-    const nextStores = { ...s.stores }
-    if (storeKey) {
-      nextStores[storeKey] = {
-        ...s.stores[storeKey],
-        ...r.store,
-        id: storeKey,
-      }
-    }
-    return {
-      ...s,
-      offers: { ...s.offers, [r.offer.id]: r.offer },
-      stores: nextStores,
-    }
-  })
 }
 
 /** Carga ficha pública de oferta y sincroniza Zustand. */
@@ -50,9 +35,19 @@ export function useOfferPublicCard(
     [offerId, storeCatalogs],
   )
 
-  const [publicCardLoadDone, setPublicCardLoadDone] = useState(() =>
-    !offerId ? true : hasOfferInStore(offerId),
-  )
+  const needsFetch = !!offerId && !offer && !offerFromCatalog
+  const cardQuery = usePublicOfferCardQuery(offerId, { enabled: needsFetch })
+
+  const revalidateEmergent =
+    !!options?.revalidateEmergent &&
+    !!offerId &&
+    !!(offer ?? offerFromCatalog)?.isEmergentRoutePublication &&
+    !options?.isGuest &&
+    !!options?.sessionReady
+
+  const revalidateQuery = usePublicOfferCardQuery(offerId, {
+    enabled: revalidateEmergent,
+  })
 
   useLayoutEffect(() => {
     if (!offerId || offer || !offerFromCatalog) return
@@ -66,28 +61,23 @@ export function useOfferPublicCard(
   }, [offerId, offer, offerFromCatalog])
 
   useEffect(() => {
-    if (!offerId) {
-      setPublicCardLoadDone(false)
-      return
+    if (!cardQuery.data) return
+    applyPublicOfferCardToStore(cardQuery.data)
+  }, [cardQuery.data])
+
+  useEffect(() => {
+    if (cardQuery.isError) {
+      const err = cardQuery.error
+      toast.error(
+        err instanceof Error ? err.message : 'No se pudo cargar la ficha.',
+      )
     }
-    if (offer || offerFromCatalog) {
-      setPublicCardLoadDone(true)
-      return
-    }
-    setPublicCardLoadDone(false)
-    void fetchPublicOfferCard(offerId)
-      .then((r) => {
-        if (r) applyPublicOfferCardToStore(r)
-      })
-      .catch((err) => {
-        const msg =
-          err instanceof Error ? err.message : 'No se pudo cargar la ficha.'
-        toast.error(msg)
-      })
-      .finally(() => {
-        setPublicCardLoadDone(true)
-      })
-  }, [offerId, offer, offerFromCatalog])
+  }, [cardQuery.isError, cardQuery.error])
+
+  useEffect(() => {
+    if (!revalidateQuery.data) return
+    mergePublicOfferCardIntoStore(revalidateQuery.data)
+  }, [revalidateQuery.data])
 
   const threadCatalogId = useMemo(
     () =>
@@ -116,48 +106,12 @@ export function useOfferPublicCard(
     })
   }, [threadCatalogId, resolvedOffer])
 
-  useEffect(() => {
-    if (!options?.revalidateEmergent) return
-    if (!offerId || !resolvedOffer?.isEmergentRoutePublication) return
-    if (options.isGuest || !options.sessionReady) return
-    let cancelled = false
-    void fetchPublicOfferCard(offerId)
-      .then((r) => {
-        if (cancelled || !r) return
-        const storeKey = r.store.id?.trim() || r.offer.storeId
-        useMarketStore.setState((s) => {
-          const prevOf = s.offers[r.offer.id] ?? r.offer
-          const nextStores = { ...s.stores }
-          if (storeKey) {
-            nextStores[storeKey] = {
-              ...s.stores[storeKey],
-              ...r.store,
-              id: storeKey,
-            }
-          }
-          return {
-            ...s,
-            offers: {
-              ...s.offers,
-              [r.offer.id]: { ...prevOf, ...r.offer },
-            },
-            stores: nextStores,
-          }
-        })
-      })
-      .catch(() => {
-        /* feed puede estar desactualizado; no bloquear UI */
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [
-    offerId,
-    resolvedOffer?.isEmergentRoutePublication,
-    options?.revalidateEmergent,
-    options?.isGuest,
-    options?.sessionReady,
-  ])
+  const publicCardLoadDone =
+    !offerId ||
+    hasOfferInStore(offerId) ||
+    (!needsFetch && !cardQuery.isFetching) ||
+    cardQuery.isSuccess ||
+    cardQuery.isError
 
   return {
     offer,

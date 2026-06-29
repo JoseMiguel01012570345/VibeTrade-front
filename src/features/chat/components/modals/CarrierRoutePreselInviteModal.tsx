@@ -5,10 +5,10 @@ import toast from "react-hot-toast";
 import { X } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 import {
-  fetchRouteSheetPreselPreview,
   postCarrierRespondPreselInvite,
 } from "@features/chat/api/chatApi";
-import type { RouteSheet, RouteStop } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
+import { useRouteSheetPreselPreviewQuery } from "@features/chat/hooks/useChatThreadQueries";
+import type { RouteStop } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
 import { formatRouteEstimadoDisplay } from "@features/chat/logic/route-sheet/routeSheetDateTime";
 import { formatKmEs } from "@features/market/logic/map/routeLegMetrics";
 import { VibeMapTileLayer } from "@features/home/components/EmergentRouteFeedMap";
@@ -112,29 +112,21 @@ export function CarrierRoutePreselInviteModal({
   onClose,
   onAccepted,
 }: Props) {
-  const [sheet, setSheet] = useState<RouteSheet | null>(null);
-  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const previewQuery = useRouteSheetPreselPreviewQuery(
+    threadId,
+    routeSheetId,
+    open,
+  );
+  const sheet = previewQuery.data ?? null;
+  const loadErr = previewQuery.isError
+    ? "No se pudieron cargar los datos."
+    : null;
   const [busy, setBusy] = useState<"accept" | "reject" | null>(null);
   const [scope, setScope] = useState<"all" | string>("all");
 
   useEffect(() => {
     if (!open) return;
     setScope("all");
-    setLoadErr(null);
-    setSheet(null);
-    let cancelled = false;
-    void (async () => {
-      try {
-        const sh = await fetchRouteSheetPreselPreview(threadId, routeSheetId);
-        if (cancelled) return;
-        setSheet(sh);
-      } catch {
-        if (!cancelled) setLoadErr("No se pudieron cargar los datos.");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, [open, threadId, routeSheetId]);
 
   const mapEmergentLegs = useMemo(

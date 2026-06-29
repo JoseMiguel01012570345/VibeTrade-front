@@ -80,6 +80,7 @@ import {
 } from "@features/chat/logic/messages/sendPurchaseInterestIntro";
 import { ConfirmModal } from "@shared/components/ui/ConfirmModal";
 import { useOfferPublicCard } from "../hooks/useOfferPublicCard";
+import { useEmergentRouteTramoSubscriptionsQuery } from "../hooks/useEmergentRouteTramoSubscriptionsQuery";
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -200,6 +201,18 @@ export function OfferPage() {
     [resolvedOffer?.id],
   );
 
+  const emergentSubsQuery = useEmergentRouteTramoSubscriptionsQuery(
+    emergentPublicationId ?? undefined,
+    {
+      enabled:
+        sessionReady &&
+        me.id !== "guest" &&
+        !!emergentPublicationId &&
+        !!threadCatalogId &&
+        !!routeOffer?.routeSheetId,
+    },
+  );
+
   const stopSummaryForModal = useMemo(() => {
     const t = routeOffer?.tramos.find((x) => x.stopId === chosenStopId);
     if (!t) return chosenStopId || "—";
@@ -251,25 +264,13 @@ export function OfferPage() {
 
   /** Persistencia servidor: recuperar suscripciones del transportista sin depender del hilo en memoria (p. ej. tras F5). */
   useEffect(() => {
-    if (!sessionReady || me.id === "guest") return;
-    if (!emergentPublicationId || !threadCatalogId || !routeOffer?.routeSheetId)
-      return;
-    let cancelled = false;
-    void fetchEmergentMyRouteTramoSubscriptions(emergentPublicationId).then(
-      (items) => {
-        if (cancelled || !items?.length) return;
-        hydrateRouteOfferCarrierSubscriptions(threadCatalogId, items, me.id);
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
+    const items = emergentSubsQuery.data;
+    if (!items?.length || !threadCatalogId) return;
+    hydrateRouteOfferCarrierSubscriptions(threadCatalogId, items, me.id);
   }, [
-    emergentPublicationId,
+    emergentSubsQuery.data,
     threadCatalogId,
-    routeOffer?.routeSheetId,
     me.id,
-    sessionReady,
     hydrateRouteOfferCarrierSubscriptions,
   ]);
 
