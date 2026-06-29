@@ -1,7 +1,7 @@
-﻿import {
+import {
   mapBackdropLayerAboveChatRail,
   modalShellNarrow,
-} from '../../model/formModalStyles';
+} from '@shared/styles/modals/formModalStyles';
 
 type Props = {
   readonly open: boolean;
@@ -60,11 +60,8 @@ export function TrustRiskEditConfirmModal({
   );
 }
 
-/** Puntos que restan a la tienda en algunos escenarios demo (transportistas; coherencia con backend). */
-export const SELLER_TRUST_PENALTY_ON_EDIT = 3;
-
-/** Por cada integrante del chat (comprador, vendedor, transportistas) al salir con acuerdo aceptado. */
-export const CHAT_PARTY_EXIT_TRUST_PER_MEMBER = 1;
-
-/** Solo si hay tramos confirmados y alguna hoja implicada no estÃ¡ Â«entregadaÂ» (coherente con API). */
-export const CARRIER_ROUTE_EXIT_TRUST_PENALTY = 3;
+export {
+  CARRIER_ROUTE_EXIT_TRUST_PENALTY,
+  CHAT_PARTY_EXIT_TRUST_PER_MEMBER,
+  SELLER_TRUST_PENALTY_ON_EDIT,
+} from "@features/chat/logic/trust/trustPenaltyConstants";

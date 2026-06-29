@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { RouteTramoFormInput } from "@features/chat/model/routeSheetTypes";
+import type { RouteTramoFormInput } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
 import {
   isRouteEstimadoTimeDisabled,
   routeEntregaDateBounds,
   routeRecogidaDateBounds,
-} from "@features/chat/model/routeTramoEstimadoPickerConstraints";
+} from "@features/chat/logic/route-sheet/routeTramoEstimadoPickerConstraints";
 
 function tramo(partial: Partial<RouteTramoFormInput>): RouteTramoFormInput {
   return {

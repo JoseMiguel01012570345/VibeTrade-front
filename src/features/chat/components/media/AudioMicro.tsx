@@ -1,4 +1,4 @@
-﻿import {
+import {
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -17,16 +17,16 @@ import {
 import {
   claimChatVoicePlayback,
   releaseChatVoicePlayback,
-} from '../../model/voicePlaybackCoordinator';
-import { finiteDuration, formatTime } from "./audioHelpers";
+} from '@features/chat/logic/voice/voicePlaybackCoordinator';
+import { finiteDuration, formatTime } from "@features/chat/logic/media/audioHelpers";
 import {
   computeWaveformPeaksFromUrl,
   uniformWaveformPeaks,
-} from "./waveformPeaks";
+} from "@features/chat/logic/media/waveformPeaks";
 import {
-  type VoiceMicroPalette,
   readAudioMicroPalette,
-} from '../../model/voiceUiColors';
+} from '@features/chat/logic/voice/voiceUiColors';
+import type { VoiceMicroPalette } from '@features/chat/Dtos/composer/voiceUiTypes';
 
 const WAVE_BARS = 76;
 

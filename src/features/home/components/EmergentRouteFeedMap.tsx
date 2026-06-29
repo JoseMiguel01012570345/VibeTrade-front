@@ -1,15 +1,14 @@
 import { useEffect, useMemo } from "react";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
-import L from "leaflet";
 import {
   emergentMapIslandMarkers,
   emergentMapRouteSegmentColors,
   emergentMapRouteSegments,
-} from "@features/market/model/map/emergentRouteMapLegs";
+} from "@features/market/logic/map/emergentRouteMapLegs";
 import {
   routeMapFinishWaypointIcon,
   storeMapPinIcon,
-} from "@features/market/model/map/storeMapPinIcon";
+} from "@features/market/logic/map/storeMapPinIcon";
 import { cn } from "@shared/lib/cn";
 import type {
   EmergentRouteFeedMapProps,
@@ -17,20 +16,11 @@ import type {
 } from "../Dtos/emergentRouteFeedMapTypes";
 import { LeafletRoadSnappedRoute } from "./LeafletRoadSnappedRoute";
 import "leaflet/dist/leaflet.css";
+import { routeWaypointIcon } from "../logic/map/routeWaypointIcon";
 import "../styles/emergentRouteMapMarkers.css";
 
 /** Evita que los paneles de Leaflet (z-index altos) compitan con el chrome fijo (p. ej. barra de confianza z-50). */
 const embedRootClass = "relative isolate z-0 min-h-0";
-
-function routeWaypointIcon(label: string, fillColor: string) {
-  const w = Math.max(28, 16 + label.length * 9);
-  return L.divIcon({
-    className: "emergent-route-legend",
-    html: `<div class="er-mark" style="background:${fillColor}">${label}</div>`,
-    iconSize: [w, 28],
-    iconAnchor: [w / 2, 14],
-  });
-}
 
 /** Misma capa OSM y atribución que el resto de mapas de la app (rutas, tiendas). */
 export function VibeMapTileLayer({

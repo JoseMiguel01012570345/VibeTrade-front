@@ -8,19 +8,12 @@ import {
   XCircle,
 } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
-import {
-  normalizeAgreementServices,
-  serviceScopedExtraFields,
-  type TradeAgreement,
-} from '@features/chat/model/tradeAgreementTypes'
-import type { StoreCatalog } from '@features/market/model/storeCatalogTypes'
-import { findStoreService } from '@features/market/model/storeCatalogTypes'
+import type { TradeAgreement } from '@features/chat/Dtos/agreement/tradeAgreementTypes';
+import { normalizeAgreementServices, serviceScopedExtraFields } from '@features/chat/logic/agreement/tradeAgreementTypes';import type { StoreCatalog } from '@features/market/logic/storeCatalogTypes'
+import { findStoreService } from '@features/market/logic/storeCatalogTypes'
 import { ServiceItemPreview } from '../modals/serviceConfig/ServiceItemPreview'
-import {
-  decideServiceEvidence,
-  type AgreementServicePaymentApi,
-} from '@features/chat/api/agreementServiceEvidenceApi'
-import {
+import type { AgreementServicePaymentApi } from '@features/chat/Dtos/agreement/agreementServiceEvidenceApiTypes';
+import { decideServiceEvidence } from '@features/chat/api/agreementServiceEvidenceApi';import {
   getPaymentGatewayConfig,
   listSavedCards,
 } from '@features/payments'
@@ -31,17 +24,12 @@ import {
   agrDetailRow,
   agrDetailSub,
   agrDetailValue,
-} from '../../model/formModalStyles'
+} from '@shared/styles/modals/formModalStyles'
 import {
   ExtraFieldClauseCards,
   fmtAgreementMoneyMinor,
 } from './agreementDetailPresentation'
-import type {
-  EvidenceModalState,
-  SellerPayoutModalState,
-} from '@features/chat/hooks/useAgreementDetailServicePayments'
-
-type Props = {
+import type { EvidenceModalState, SellerPayoutModalState } from '@features/chat/Dtos/agreement/agreementDetailUiTypes';type Props = {
   agreement: TradeAgreement
   threadId: string
   isActingSeller: boolean

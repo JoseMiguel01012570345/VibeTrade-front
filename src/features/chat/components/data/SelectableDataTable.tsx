@@ -8,13 +8,7 @@ import {
   TableHeadCell,
   TableRow,
 } from "flowbite-react";
-
-export type SelectableColumnDef<T> = {
-  id: string;
-  header: ReactNode;
-  cell: (row: T) => ReactNode;
-  className?: string;
-};
+import type { SelectableColumnDef } from "@features/chat/Dtos/shared/selectableDataTableTypes";
 
 /** Tabla con columna inicial de selección (Flowbite Checkbox + tabla). */
 export function SelectableDataTable<T>(props: {

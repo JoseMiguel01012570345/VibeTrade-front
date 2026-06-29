@@ -9,7 +9,7 @@ import {
   type CatalogPublishedFilter,
   type PriceSort,
   type VitrinaListMode,
-} from "../model/storePageTypes";
+} from "../logic/storePageTypes";
 
 export function VitrinaFiltersCard({
   vitrinaListMode,

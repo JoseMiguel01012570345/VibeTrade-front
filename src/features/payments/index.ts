@@ -1,3 +1,3 @@
-﻿export * from "./Dtos";
-export * from "./model/paymentIntentKind";
+export * from "./Dtos";
+export * from "./logic/paymentIntentKind";
 export * from "./api/paymentGatewayApi";

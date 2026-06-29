@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { useAppStore } from '@features/auth/model/useAppStore'
+import { useAppStore } from '@features/auth/logic/useAppStore'
 import { patchProfile } from '@features/auth/api/patchProfile'
-import { formatPhoneForDisplay } from '@features/auth/model/formatPhoneForDisplay'
+import { formatPhoneForDisplay } from '@features/auth/logic/formatPhoneForDisplay'
 
 /** Estado y acciones de la sección «account» del perfil. */
 export function useProfileAccount() {

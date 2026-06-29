@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { Bell, ChevronLeft, ChevronRight, ExternalLink, History, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useAppStore } from "@features/auth/model/useAppStore"
+import { useAppStore } from "@features/auth/logic/useAppStore"
 import type { NotificationItem } from "@features/notifications/Dtos/notificationItem"
 import { cn } from "@shared/lib/cn"
 import { fetchChatNotifications, markChatNotificationsRead } from "@features/chat/api/chatApi"
@@ -14,8 +14,8 @@ import {
   isDesktopNotificationSupported,
   requestDesktopNotificationPermission,
   setDesktopNotificationsEnabledPreference,
-} from "@features/notifications/model/desktopNotifications"
-import { notificationDeepLink } from "@features/notifications/model/notificationRoutes"
+} from "@features/notifications/logic/desktopNotifications"
+import { notificationDeepLink } from "@features/notifications/logic/notificationRoutes"
 import { VtDateField } from "@shared/components/ui/VtDateField"
 import { VtTimeField } from "@shared/components/ui/VtTimeField"
 import { useNotifications, mapServerNotification } from '@features/notifications'

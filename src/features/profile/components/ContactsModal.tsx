@@ -9,39 +9,17 @@ import {
   modalShellWide,
   modalSub,
 } from "@shared/styles/modals/formModalStyles";
-import { profileSectionPath } from "@features/profile/model/profilePaths";
+import { profileSectionPath } from "@features/profile/logic/profilePaths";
 import {
   addContactByPhone,
   fetchContacts,
   removeContact,
   type UserContact,
 } from "@features/profile/api/contactsApi";
-
-function contactPhoneLabel(c: UserContact): string {
-  const d = c.phoneDisplay?.trim();
-  if (d) return d;
-  const digits = c.phoneDigits?.trim();
-  if (digits) return `+${digits}`;
-  return "—";
-}
-
-function formatContactAddedAt(iso: string | undefined): string {
-  if (!iso?.trim()) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  // Fecha en español y hora 12 h con AM/PM (no formato 24 h).
-  const datePart = new Intl.DateTimeFormat("es", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(d);
-  const timePart = new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(d);
-  return `${datePart}, ${timePart}`;
-}
+import {
+  contactPhoneLabel,
+  formatContactAddedAt,
+} from "@features/profile/logic/contactsDisplay";
 
 type Props = Readonly<{
   open: boolean;

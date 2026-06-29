@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAppStore } from '@features/auth/model/useAppStore'
+import { useAppStore } from '@features/auth/logic/useAppStore'
 import { useChatListPage } from '../hooks/useChatListPage'
 import { useChatListRows } from '../hooks/useChatListRows'
 import { useChatLeaveFlow } from '../hooks/useChatLeaveFlow'

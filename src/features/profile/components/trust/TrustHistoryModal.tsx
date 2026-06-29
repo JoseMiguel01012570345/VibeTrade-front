@@ -3,17 +3,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 import type { TrustHistoryEntry } from "@features/profile/Dtos/trustLedgerTypes";
-
-function fmtWhen(ts: number) {
-  return new Date(ts).toLocaleString([], {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { fmtTrustHistoryWhen } from "@features/profile/logic/trustHistoryFormat";
 
 type Props = {
   open: boolean;
@@ -95,7 +85,7 @@ export function TrustHistoryModal({
                       className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]"
                       dateTime={new Date(e.at).toISOString()}
                     >
-                      {fmtWhen(e.at)}
+                      {fmtTrustHistoryWhen(e.at)}
                     </time>
                     <span
                       className={cn(

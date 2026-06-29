@@ -8,7 +8,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { cn } from "@shared/lib/cn";
-import type { StoreCatalog, StoreProduct, StoreService } from "@features/market/model/storeCatalogTypes";
+import type { StoreCatalog, StoreProduct, StoreService } from "@features/market/logic/storeCatalogTypes";
 
 export function OwnerCatalogProductList({
   cat,

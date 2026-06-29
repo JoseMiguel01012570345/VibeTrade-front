@@ -1,3 +1,4 @@
+import type { RoutesRailTitlesBundle } from "@features/chat/logic/rail/routesRailDetailOrchestration";
 import {
   RoutesRailCarrierAckSection,
   RoutesRailLiveMapButton,
@@ -5,14 +6,11 @@ import {
   RoutesRailMetaBadges,
   RoutesRailPublishStrip,
   RoutesRailToolbarTop,
-  type RoutesRailTitlesBundle,
 } from "./RoutesRailDetailSections";
 import type { RoutesRailSheetDetailProps } from "./routesRailSheetDetailTypes";
-import type { RouteStop } from "@features/chat/model/routeSheetTypes";
-import {
-  computeRailLegModel,
-  type RailLegModel,
-} from "./routesRailLegModel";
+import type { RouteStop } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
+import type { RailLegModel } from "@features/chat/Dtos/rail/routesRailTypes";
+import { computeRailLegModel } from "@features/chat/logic/rail/routesRailLegModel";
 import { RoutesRailSheetLegRow } from "./RoutesRailSheetLegRow";
 
 export type RoutesRailSheetDetailShellMergedProps =

@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   routePathsAwaitUnconfirmedCarriers,
   shouldWarnUnconfirmedRouteCarriers,
-} from "@features/chat/model/chatPaymentUtils";
-import type { AgreementRoutePathApi } from "@features/chat/api/agreementCheckoutApi";
-import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
-import { emptyMerchandiseLine } from "@features/chat/model/tradeAgreementTypes";
+} from "@features/chat/logic/payments/chatPaymentUtils";
+import type { AgreementRoutePathApi } from "@features/chat/Dtos/agreement/agreementCheckoutApiTypes";
+import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import { emptyMerchandiseLine } from "@features/chat/logic/agreement/tradeAgreementTypes";
 
 function path(partial: Partial<AgreementRoutePathApi>): AgreementRoutePathApi {
   return {

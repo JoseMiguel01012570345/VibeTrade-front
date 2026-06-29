@@ -6,4 +6,4 @@ export { useAgreementDetailServicePayments } from "../../hooks/useAgreementDetai
 export type {
   EvidenceModalState,
   SellerPayoutModalState,
-} from "../../hooks/useAgreementDetailServicePayments";
+} from "@features/chat/Dtos/agreement/agreementDetailUiTypes";

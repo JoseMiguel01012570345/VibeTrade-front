@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom'
 import { ChatPaymentModalBody } from './ChatPaymentModalBody'
 import { useChatPaymentModal } from '@features/chat/hooks/useChatPaymentModal'
-import type { ChatPaymentModalProps } from './types'
+import type { ChatPaymentModalProps } from '@features/chat/Dtos/payments/chatPaymentModalTypes'
 
 export function ChatPaymentModalInner({
   open,

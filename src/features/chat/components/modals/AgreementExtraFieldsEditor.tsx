@@ -14,12 +14,9 @@ import {
 } from "@shared/services/media/mediaClient";
 import { cn } from "@shared/lib/cn";
 import { ModalFormField as Field } from "./ModalFormField";
-import {
-  emptyTradeAgreementExtraField,
-  type TradeAgreementExtraFieldDraft,
-  type TradeAgreementExtraFieldScope,
-} from "@features/chat/model/tradeAgreementTypes";
-import { fieldLabel, fieldRoot } from '../../model/formModalStyles';
+import type { TradeAgreementExtraFieldDraft, TradeAgreementExtraFieldScope } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import { emptyTradeAgreementExtraField } from "@features/chat/logic/agreement/tradeAgreementTypes";
+import { fieldLabel, fieldRoot } from '@shared/styles/modals/formModalStyles';
 
 const VALUE_KIND_OPTIONS: VtSelectOption[] = [
   { value: "text", label: "Texto" },

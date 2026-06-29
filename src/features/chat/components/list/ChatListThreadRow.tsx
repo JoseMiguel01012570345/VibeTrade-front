@@ -1,15 +1,15 @@
 import { Link } from 'react-router-dom'
 import { HelpCircle, LogOut } from 'lucide-react'
 import { cn } from '@shared/lib/cn'
-import type { Thread } from '@features/market/model/store/useMarketStore'
+import type { Thread } from '@features/market/logic/store/useMarketStore'
 import {
   buyerFirstNameForThread,
   resolveSellerUserId,
-} from '@features/chat/model/chatParticipantLabels'
+} from '@features/chat/logic/participants/chatParticipantLabels'
 import {
   fmtChatListShortTime,
   PREMATURE_EXIT_TOOLTIP,
-} from '@features/chat/model/chatListUtils'
+} from '@features/chat/logic/thread/chatListUtils'
 
 type Props = {
   th: Thread

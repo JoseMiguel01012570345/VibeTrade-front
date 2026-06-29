@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { cn } from "@shared/lib/cn";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
-import type { RouteOfferPublicState } from "@features/market/model/store/marketStoreTypes";
-import type { Offer, StoreBadge } from "@features/market/model/store/useMarketStore";
-import { useAppStore } from "@features/auth/model/useAppStore";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import type { RouteOfferPublicState } from "@features/market/logic/store/marketStoreTypes";
+import type { Offer, StoreBadge } from "@features/market/logic/store/useMarketStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { OfferSaveButton } from "@features/market/components/OfferSaveButton";
 import { ExternalLink, Heart, MessageCircle } from "lucide-react";
 import { websiteUrlDisplayLabel } from "@shared/lib/websiteUrl";
@@ -13,16 +13,16 @@ import { toggleOfferLike } from "@features/market/api/offerEngagementApi";
 import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
-} from "@features/market/api/toolPlaceholder";
-import { offerDescriptionPreview } from "../model/homeTextUtils";
+} from "@features/market/logic/toolPlaceholder";
+import { offerDescriptionPreview } from "../logic/homeTextUtils";
 import { getSessionToken } from "@shared/services/http/sessionToken";
-import { buildEmergentMapLegs } from "@features/market/model/map/emergentRouteMapLegs";
+import { buildEmergentMapLegs } from "@features/market/logic/map/emergentRouteMapLegs";
 import { EmergentRouteFeedMap } from "./EmergentRouteFeedMap";
-import { userHasTransportService } from "@features/market/model/transportEligibility";
+import { userHasTransportService } from "@features/market/logic/transportEligibility";
 import {
   ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
   routeOfferPublicBlockedForBuyerWithAgreement,
-} from "@features/chat/model/routeSheetOfferGuards";
+} from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
 
 export function OfferCardsChunk({
   items,

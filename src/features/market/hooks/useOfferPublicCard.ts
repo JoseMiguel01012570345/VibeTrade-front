@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { useMarketStore } from '@features/market/model/store/useMarketStore'
-import { offerFromStoreCatalogs } from '@features/market/api/offerFromCatalog'
+import { useMarketStore } from '@features/market/logic/store/useMarketStore'
+import { offerFromStoreCatalogs } from '@features/market/logic/offerFromCatalog'
 import { fetchPublicOfferCard } from '@features/market/api/marketPersistence'
 import {
   mergeRouteOfferPublicFromEmergentCard,
   routeOfferPublicFromEmergentCardOffer,
-} from '@features/market/api/routeOfferPublicFromEmergentCard'
+} from '@features/market/logic/routeOfferPublicFromEmergentCard'
 
 function hasOfferInStore(offerId: string): boolean {
   const st = useMarketStore.getState()

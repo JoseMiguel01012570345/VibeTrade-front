@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAppStore } from '@features/auth/model/useAppStore'
-import { useMarketStore } from '@features/market/model/store/useMarketStore'
-import { mergeMissingChatListThreadsFromServer } from '@features/chat/model/mergeMissingChatListThreadsFromServer'
+import { useAppStore } from '@features/auth/logic/useAppStore'
+import { useMarketStore } from '@features/market/logic/store/useMarketStore'
+import { mergeMissingChatListThreadsFromServer } from '@features/chat/logic/thread/mergeMissingChatListThreadsFromServer'
 
 /** Lista de hilos: sincroniza con servidor al montar. */
 export function useChatListPage() {

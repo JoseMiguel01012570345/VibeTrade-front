@@ -5,23 +5,20 @@ import {
   type VtSelectOption,
 } from "@shared/components/ui/VtSelect";
 import { cn } from "@shared/lib/cn";
-import { parseDecimal } from "@features/chat/model/tradeAgreementValidation";
-import { onBackdropPointerClose } from '../../../model/modalClose';
+import { parseDecimal } from "@features/chat/logic/agreement/tradeAgreementValidation";
+import { onBackdropPointerClose } from '@shared/lib/modals/modalClose';
 import {
   monthsInScheduleAndVigencia,
   daysForServiceMonthInSchedule,
-} from "@features/chat/model/serviceScheduleMonthDayConstraints";
-import { monthsOverlappingVigenciaInYear } from "@features/chat/model/serviceVigenciaDates";
-import type {
-  ServicePaymentRecurrence,
-  ServiceScheduleState,
-} from "@features/chat/model/tradeAgreementTypes";
+} from "@features/chat/logic/agreement/serviceScheduleMonthDayConstraints";
+import { monthsOverlappingVigenciaInYear } from "@features/chat/logic/agreement/serviceVigenciaDates";
+import type { ServicePaymentRecurrence, ServiceScheduleState } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
 import {
   coerceServiceSchedule,
   DEFAULT_RECURRENCE_MONEDA,
   emptyServicePaymentRecurrence,
-} from "@features/chat/model/tradeAgreementTypes";
-import { modalShellWide } from '../../../model/formModalStyles';
+} from "@features/chat/logic/agreement/tradeAgreementTypes";
+import { modalShellWide } from '@shared/styles/modals/formModalStyles';
 
 const MES = [
   { n: 1, l: "Ene" },

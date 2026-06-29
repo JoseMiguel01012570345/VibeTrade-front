@@ -5,8 +5,8 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { useAppStore } from "@features/auth/model/useAppStore";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { ProfileStoresSection } from "../components/ProfileStoresSection";
 import { reelTitlesById } from "@features/reels/api/reelsBootstrapState";
 import { useProfileVisitor } from "../hooks/useProfileVisitor";
@@ -15,12 +15,12 @@ import {
   isProfileSection,
   profileSectionPath,
   type ProfileSection,
-} from "@features/profile/model/profilePaths";
+} from "@features/profile/logic/profilePaths";
 import {
   resolveIsMe,
   resolveProfileUserId,
   shouldRedirectProfileTab,
-} from "../model/profileAccountLogic";
+} from "../logic/profileAccountLogic";
 import { ProfileAccountPage } from "./ProfileAccountPage";
 import { ProfileSavedPage } from "./ProfileSavedPage";
 import { ProfileReelsPage } from "./ProfileReelsPage";

@@ -1,22 +1,14 @@
 import { useMemo } from 'react'
-import type { Thread } from '@features/market/model/store/useMarketStore'
-import { useMarketStore } from '@features/market/model/store/useMarketStore'
-import { useAppStore } from '@features/auth/model/useAppStore'
-import { chatThreadHeaderTitle } from '@features/chat/model/chatParticipantLabels'
-import { messagePreviewLine } from '@features/chat/model/chatAttachments'
+import type { ChatListRow } from '@features/chat/Dtos/thread/chatListTypes'
+import { useMarketStore } from '@features/market/logic/store/useMarketStore'
+import { useAppStore } from '@features/auth/logic/useAppStore'
+import { chatThreadHeaderTitle } from '@features/chat/logic/participants/chatParticipantLabels'
+import { messagePreviewLine } from '@features/chat/logic/messages/chatAttachments'
 import {
   lastMessage,
   normalizeChatListFilterText,
   threadLastActivity,
-} from '@features/chat/model/chatListUtils'
-
-export type ChatListRow = {
-  th: Thread
-  offerTitle: string
-  preview: string
-  at: number
-  listTitle: string
-}
+} from '@features/chat/logic/thread/chatListUtils'
 
 export function useChatListRows(nameFilterQuery: string) {
   const me = useAppStore((s) => s.me)

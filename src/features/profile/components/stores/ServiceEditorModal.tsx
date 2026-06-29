@@ -13,12 +13,12 @@ import {
 import {
   catalogMonedasList,
   type StoreService,
-} from "@features/market/model/storeCatalogTypes";
+} from "@features/market/logic/storeCatalogTypes";
 import {
   PROFILE_DESC_MIN,
   PROFILE_TITLE_MIN,
   validateServiceForm,
-} from "../../model/profileStoreFormValidation";
+} from "../../logic/profileStoreFormValidation";
 import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
 import {
   checkRow,
@@ -31,7 +31,7 @@ import {
 } from "@shared/styles/modals/formModalStyles";
 import { cn } from "@shared/lib/cn";
 import { VtSelect } from "@shared/components/ui/VtSelect";
-import { formServiceQualifiesAsTransport } from "@features/market/model/transportEligibility";
+import { formServiceQualifiesAsTransport } from "@features/market/logic/transportEligibility";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import {
   fixSplitLines,
@@ -40,7 +40,7 @@ import {
   revokeIfBlob,
   serviceCatalogImagePhotoUrlsFromSlots,
   type ProductPhotoSlot,
-} from "./helpers";
+} from "@features/profile/logic/stores/catalogMediaHelpers";
 
 type Props = Readonly<{
   open: boolean;

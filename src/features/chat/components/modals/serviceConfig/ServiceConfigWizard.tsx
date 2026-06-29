@@ -3,21 +3,20 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import toast from 'react-hot-toast'
 import { cn } from "@shared/lib/cn"
 import { VtSelect } from "@shared/components/ui/VtSelect"
-import type { StoreCatalog } from "@features/market/model/storeCatalogTypes"
+import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes"
 import {
   catalogMonedasList,
   mergeMonedaPrecioIntoMonedas,
   mergeServiceItemWithStoreService,
   serviceItemAcceptedMonedas,
   sortCatalogItemsByContextId,
-} from "@features/market/model/storeCatalogTypes"
-import type { ServiceItem } from "@features/chat/model/tradeAgreementTypes"
-import { validateVigenciaRange } from "@features/chat/model/serviceVigenciaDates"
+} from "@features/market/logic/storeCatalogTypes"
+import type { ServiceItem } from "@features/chat/Dtos/agreement/tradeAgreementTypes";import { validateVigenciaRange } from "@features/chat/logic/agreement/serviceVigenciaDates"
 import {
   collectCondicionesExtrasErrors,
   condicionesExtrasRowErrors,
   validateServiceWizardAdvance,
-} from "@features/chat/model/tradeAgreementValidation"
+} from "@features/chat/logic/agreement/tradeAgreementValidation"
 import {
   clampServiceScheduleToVigencia,
   coerceServiceSchedule,
@@ -25,7 +24,7 @@ import {
   normalizeServicePaymentRecurrence,
   monedasFromRecurrenciaPagos,
   DEFAULT_RECURRENCE_MONEDA,
-} from "@features/chat/model/tradeAgreementTypes"
+} from "@features/chat/logic/agreement/tradeAgreementTypes"
 import { ModalFormField as Field } from '../ModalFormField'
 import {
   fieldLabel,
@@ -33,9 +32,9 @@ import {
   modalFormBody,
   modalShellWide,
   modalSub,
-} from '../../../model/formModalStyles'
-import { onBackdropPointerClose } from '../../../model/modalClose'
-import { formatPaymentSummary, formatScheduleSummary } from './serviceItemFormat'
+} from '@shared/styles/modals/formModalStyles'
+import { onBackdropPointerClose } from '@shared/lib/modals/modalClose'
+import { formatPaymentSummary, formatScheduleSummary } from '@features/chat/logic/agreement/serviceItemFormat'
 import { ServiceScheduleReadView } from './ServiceScheduleReadView'
 import { ServicePaymentRecurrenceModal } from './ServicePaymentRecurrenceModal'
 import { ServiceScheduleFlowModal } from './ServiceScheduleFlowModal'

@@ -11,15 +11,15 @@ import { cn } from "@shared/lib/cn";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
 import { StoreLocationMiniMap } from "@features/market/components/StoreLocationMiniMap";
-import type { StoreCatalog } from "@features/market/model/storeCatalogTypes";
-import type { StoreBadge } from "@features/market/model/store/useMarketStore";
+import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes";
+import type { StoreBadge } from "@features/market/logic/store/useMarketStore";
 import { ChevronLeft, ChevronRight, ExternalLink, Store } from "lucide-react";
 import { websiteUrlDisplayLabel } from "@shared/lib/websiteUrl";
 import {
   isValidStoreLocation,
   storeCategoriesLabel,
   storeDescriptionSnippet,
-} from "../model/homeTextUtils";
+} from "../logic/homeTextUtils";
 
 /** Carril de tiendas sugeridas: horizontal (flechas) o vertical (sidebar en home). */
 export function RecommendedStoresRow({

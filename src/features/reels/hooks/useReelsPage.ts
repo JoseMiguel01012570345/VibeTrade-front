@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { useAppStore } from '@features/auth/model/useAppStore'
+import { useAppStore } from '@features/auth/logic/useAppStore'
 import {
   getReelsInitialComments,
   getReelsInitialLikeCounts,
   getReelsItems,
 } from '../api/reelsBootstrap'
-import { reelLikeReducer } from '../model/reelLikes'
+import { reelLikeReducer } from '../logic/reelLikes'
 import type { ReelComment } from '../Dtos/reelComment'
 
 function uid(prefix: string) {

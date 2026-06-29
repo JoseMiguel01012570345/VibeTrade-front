@@ -4,11 +4,11 @@ import { fetchCatalogCategories } from '@features/catalog/api/fetchCatalogCatego
 import { fetchCurrencies } from '@features/market/api/fetchCurrencies'
 import { fetchStoreDetail, storeDetailQueryKey } from '@features/market/api/fetchStoreDetail'
 import { useStoreDetail } from '@features/market/hooks/useStoreDetail'
-import { useAppStore } from '@features/auth/model/useAppStore'
+import { useAppStore } from '@features/auth/logic/useAppStore'
 import { setMarketHydrating } from '@features/market/api/marketPersistence'
-import { mergeStoreCatalogWithLocalExtras } from '@features/market/model/storeCatalogTypes'
+import { mergeStoreCatalogWithLocalExtras } from '@features/market/logic/storeCatalogTypes'
 import type { StoreDetailOwner } from '@features/market/api/fetchStoreDetail'
-import { useMarketStore } from '@features/market/model/store/useMarketStore'
+import { useMarketStore } from '@features/market/logic/store/useMarketStore'
 export const storeCatalogMetaQueryKey = ['store-catalog-meta'] as const
 
 export function useStoreCatalogMeta() {

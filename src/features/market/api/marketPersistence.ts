@@ -1,5 +1,5 @@
-import { useAppStore } from "@features/auth/model/useAppStore";
-import type { StoreProduct, StoreService } from "@features/market/model/storeCatalogTypes";
+import { useAppStore } from "@features/auth/logic/useAppStore";
+import type { StoreProduct, StoreService } from "@features/market/logic/storeCatalogTypes";
 import { apiFetch } from "@shared/services/http/apiClient";
 import {
   apiErrorTextToUserMessage,
@@ -10,8 +10,8 @@ import type {
   Offer,
   QAItem,
   StoreBadge,
-} from "@features/market/model/store/marketStoreTypes";
-import { storeProfileBodiesToPersist } from "./marketSerializable";
+} from "@features/market/logic/store/marketStoreTypes";
+import { storeProfileBodiesToPersist } from "../logic/marketSerializable";
 
 /** Reservado: antes coordinaba persistencia automática (deshabilitada). */
 export function setMarketHydrating(_value: boolean) {}

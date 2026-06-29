@@ -1,4 +1,4 @@
-import type { PAYMENT_INTENT_KIND_AGREEMENT_CHECKOUT } from "../model/paymentIntentKind";
+import type { PAYMENT_INTENT_KIND_AGREEMENT_CHECKOUT } from "../logic/paymentIntentKind";
 
 export type PaymentIntentServiceSelection = {
   serviceItemId: string;

@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAppStore } from "@features/auth/model/useAppStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
 
 export function SessionGate() {
   const isSessionActive = useAppStore((s) => s.isSessionActive);

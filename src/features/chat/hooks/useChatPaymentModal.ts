@@ -3,23 +3,12 @@ import { flushSync } from "react-dom";
 import toast from "react-hot-toast";
 import QRCode from "qrcode";
 import { useNavigate } from "react-router-dom";
-import {
-  executeAgreementCurrencyPayment,
-  fetchAgreementCheckoutBreakdown,
-  fetchAgreementPaymentStatuses,
-  fetchAgreementRoutePaths,
-  type AgreementCheckoutBreakdownApi,
-  type AgreementPaymentStatusApi,
-  type AgreementRoutePathApi,
-} from "@features/chat/api/agreementCheckoutApi";
-import {
-  fetchAgreementRouteDeliveries,
-  type RouteStopDeliveryStatusApi,
-} from "@features/chat/api/routeLogisticsApi";
-import {
-  listAgreementServicePayments,
-  type AgreementServicePaymentApi,
-} from "@features/chat/api/agreementServiceEvidenceApi";
+import type { AgreementCheckoutBreakdownApi, AgreementPaymentStatusApi, AgreementRoutePathApi } from "@features/chat/Dtos/agreement/agreementCheckoutApiTypes";
+import { executeAgreementCurrencyPayment, fetchAgreementCheckoutBreakdown, fetchAgreementPaymentStatuses, fetchAgreementRoutePaths } from "@features/chat/api/agreementCheckoutApi";
+import type { RouteStopDeliveryStatusApi } from "@features/chat/Dtos/route-sheet/routeLogisticsApiTypes";
+import { fetchAgreementRouteDeliveries } from "@features/chat/api/routeLogisticsApi";
+import type { AgreementServicePaymentApi } from "@features/chat/Dtos/agreement/agreementServiceEvidenceApiTypes";
+import { listAgreementServicePayments } from "@features/chat/api/agreementServiceEvidenceApi";
 import {
   getPaymentGatewayConfig,
   listSavedCards,
@@ -28,16 +17,16 @@ import {
 import {
   beginChatPaymentExecute,
   endChatPaymentExecute,
-} from "@features/chat/model/chatRealtime";
-import { useAppStore } from "@features/auth/model/useAppStore";
+} from "@features/chat/logic/realtime/chatRealtime";
+import { useAppStore } from "@features/auth/logic/useAppStore";
 import {
   agreementDeclaresMerchandise,
   agreementDeclaresService,
   normalizeAgreementServices,
   normalizeMerchandiseLine,
-} from "@features/chat/model/tradeAgreementTypes";
-import { PAYMENT_FEE_POLICY_URL } from "@features/payments/model/paymentFeePolicyLinks";
-import type { ChatPaymentModalProps } from "../components/ChatPayment/types";
+} from "@features/chat/logic/agreement/tradeAgreementTypes";
+import { PAYMENT_FEE_POLICY_URL } from "@features/payments/logic/paymentFeePolicyLinks";
+import type { ChatPaymentModalProps } from "@features/chat/Dtos/payments/chatPaymentModalTypes";
 import {
   computeAllSlotsPaid,
   currencyPaid,
@@ -47,11 +36,11 @@ import {
   recurrenceSlotKey,
   sameStringArray,
   shouldWarnUnconfirmedRouteCarriers,
-} from "../model/chatPaymentUtils";
+} from "@features/chat/logic/payments/chatPaymentUtils";
 import {
   downloadPaymentCheckoutInformePdf,
-} from "@features/chat/model/paymentCheckoutPdfDownload";
-import { collectAgreementInformePreviewEntries } from "@features/chat/model/tradeAgreementPdfText";
+} from "@features/chat/logic/payments/paymentCheckoutPdfDownload";
+import { collectAgreementInformePreviewEntries } from "@features/chat/logic/agreement/tradeAgreementPdfText";
 import type { VtSelectOption } from "@shared/components/ui/VtSelect";
 
 export function useChatPaymentModal({

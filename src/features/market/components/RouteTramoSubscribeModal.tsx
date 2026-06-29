@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Truck, X } from "lucide-react";
 import { cn } from "@shared/lib/cn";
-import type { UserTransportServiceOption } from "@features/market/model/transportEligibility";
+import type { UserTransportServiceOption } from "@features/market/logic/transportEligibility";
 
 type Props = {
   open: boolean;

@@ -1,4 +1,4 @@
-﻿import {
+import {
   type MutableRefObject,
   useCallback,
   useLayoutEffect,
@@ -6,8 +6,8 @@
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { createChatVoiceRecorderSession } from '../model/chatWavesurferRecorder';
-import { ensureMicPermission } from '../model/voiceRecording';
+import { createChatVoiceRecorderSession } from '@features/chat/logic/voice/chatWavesurferRecorder';
+import { ensureMicPermission } from '@features/chat/logic/voice/voiceRecording';
 
 function revokeBlob(url: string) {
   if (url.startsWith("blob:")) URL.revokeObjectURL(url);

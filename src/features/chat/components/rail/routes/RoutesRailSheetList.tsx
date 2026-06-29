@@ -1,11 +1,11 @@
 import { ChevronRight } from "lucide-react";
 import { Badge } from "flowbite-react";
-import type { RouteOfferPublicState } from "@features/market/model/store/marketStoreTypes";
-import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
-import { routeStatusLabel } from "@features/chat/model/routeSheetTypes";
-import { sheetPreviewContactLine } from "@features/chat/model/routeSheetOfferGuards";
+import type { RouteOfferPublicState } from "@features/market/logic/store/marketStoreTypes";
+import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
+import { routeStatusLabel } from "@features/chat/logic/route-sheet/routeSheetTypes";
+import { sheetPreviewContactLine } from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
 import { railItemClass } from "../layout/chatRailStyles";
-import { routesRailSheetListEmptyText } from "./routesRailSheetStrings";
+import { routesRailSheetListEmptyText } from "@features/chat/logic/rail/routesRailSheetStrings";
 
 type Props = {
   routeSheets: RouteSheet[];

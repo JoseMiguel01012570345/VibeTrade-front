@@ -2,10 +2,10 @@ import { useMemo, useRef, useState } from 'react'
 import { Heart, Send, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { cn } from "@shared/lib/cn"
-import type { Offer, StoreBadge } from "@features/market/model/store/marketStoreTypes"
-import { useAppStore } from "@features/auth/model/useAppStore"
+import type { Offer, StoreBadge } from "@features/market/logic/store/marketStoreTypes"
+import { useAppStore } from "@features/auth/logic/useAppStore"
 import type { User } from "@features/auth/Dtos/userTypes"
-import { useMarketStore } from "@features/market/model/store/useMarketStore"
+import { useMarketStore } from "@features/market/logic/store/useMarketStore"
 import { toggleOfferQaCommentLike } from "@features/market/api/offerEngagementApi"
 import { getSessionToken } from "@shared/services/http/sessionToken"
 import { errorToUserMessage } from "@shared/services/http/apiErrorMessage"
@@ -13,15 +13,8 @@ import {
   normalizeOfferComments,
   resolveOfferCommentAuthorLabel,
   type OfferCommentNorm,
-} from "../model/offerComments";
-
-function timeAgo(ts: number) {
-  const s = Math.floor((Date.now() - ts) / 1000)
-  if (s < 60) return 'ahora'
-  if (s < 3600) return `hace ${Math.floor(s / 60)} min`
-  if (s < 86400) return `hace ${Math.floor(s / 3600)} h`
-  return `hace ${Math.floor(s / 86400)} d`
-}
+} from "../logic/offerComments";
+import { timeAgo } from "../logic/relativeTime";
 
 function TrustChip({ score, title }: { score: number; title: string }) {
   return (

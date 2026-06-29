@@ -3,14 +3,15 @@ import type {
   RouteOfferPublicState,
   RouteOfferTramoAssignment,
   RouteOfferTramoPublic,
-} from "@features/market/model/store/marketStoreTypes"
-import { routeStatusLabel, type RouteSheetStatus } from "@features/chat/model/routeSheetTypes"
-import { formatRouteEstimadoDisplay } from "@features/chat/model/routeSheetDateTime"
-
-function trustHue(score: number): number {
-  const t = Math.max(0, Math.min(100, score)) / 100
-  return t * 120
-}
+} from "@features/market/logic/store/marketStoreTypes"
+import type { RouteSheetStatus } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
+import { routeStatusLabel } from "@features/chat/logic/route-sheet/routeSheetTypes";
+import {
+  buildRouteTramoPublicDetailRows,
+  tramoLine,
+  tramoPhoneLine,
+  trustHue,
+} from "@features/market/logic/routeOfferPreviewDisplay";
 
 function MicroTrustBar({ score }: { score: number }) {
   return (
@@ -60,48 +61,8 @@ function AssignmentBlock({ a }: { a: RouteOfferTramoAssignment }) {
   )
 }
 
-function tramoPhoneLine(telefonoHoja: string | undefined, telefonoAsignacion: string | undefined): string | null {
-  const h = telefonoHoja?.trim()
-  const a = telefonoAsignacion?.trim()
-  if (h) return h
-  if (a) return a
-  return null
-}
-
-function tramoLine(origen: string, destino: string): string {
-  const o = origen.trim()
-  const d = destino.trim()
-  if (o || d) return `${o || '…'} → ${d || '…'}`
-  return 'Tramo sin datos'
-}
-
 function TramoPublicDetails({ t, compact }: { t: RouteOfferTramoPublic; compact: boolean }) {
-  const rows: { label: string; value: string }[] = []
-  if (t.cargaEnTramo?.trim()) rows.push({ label: 'Carga en el tramo', value: t.cargaEnTramo.trim() })
-  if (t.tipoMercanciaCarga?.trim())
-    rows.push({ label: 'Tipo mercancía (carga)', value: t.tipoMercanciaCarga.trim() })
-  if (t.tipoMercanciaDescarga?.trim())
-    rows.push({ label: 'Tipo mercancía (descarga)', value: t.tipoMercanciaDescarga.trim() })
-  if (t.tipoVehiculoRequerido?.trim())
-    rows.push({ label: 'Vehículo requerido (hoja)', value: t.tipoVehiculoRequerido.trim() })
-  if (t.tiempoRecogidaEstimado?.trim() || t.tiempoEntregaEstimado?.trim()) {
-    rows.push({
-      label: 'Ventana estimada (recogida → entrega)',
-      value: [
-        formatRouteEstimadoDisplay(t.tiempoRecogidaEstimado),
-        formatRouteEstimadoDisplay(t.tiempoEntregaEstimado),
-      ]
-        .filter(Boolean)
-        .join(' → '),
-    })
-  }
-  if (t.precioTransportista?.trim())
-    rows.push({ label: 'Tarifa transportista (demo)', value: t.precioTransportista.trim() })
-  if (t.monedaPago?.trim())
-    rows.push({ label: 'Moneda de pago (tramo)', value: t.monedaPago.trim() })
-  if (t.notas?.trim()) rows.push({ label: 'Notas del tramo', value: t.notas.trim() })
-  if (t.requisitosEspeciales?.trim())
-    rows.push({ label: 'Requisitos / especiales', value: t.requisitosEspeciales.trim() })
+  const rows = buildRouteTramoPublicDetailRows(t)
 
   if (rows.length === 0) return null
 

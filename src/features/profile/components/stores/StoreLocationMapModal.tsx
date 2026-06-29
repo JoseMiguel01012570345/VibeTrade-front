@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { MapContainer, Marker, useMapEvents } from "react-leaflet";
-import type { StoreLocationPoint } from "@features/market/model/store/marketStoreTypes";
-import { storeMapPinIcon } from "@features/market/model/map/storeMapPinIcon";
+import type { StoreLocationPoint } from "@features/market/logic/store/marketStoreTypes";
+import { storeMapPinIcon } from "@features/market/logic/map/storeMapPinIcon";
 import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
 import { modalShellWide } from "@shared/styles/modals/formModalStyles";
 import { VibeMapTileLayer } from "@features/home/components/EmergentRouteFeedMap";
+import {
+  STORE_LOCATION_MAP_DEFAULT_CENTER,
+  STORE_LOCATION_MAP_ZOOM,
+} from "@features/profile/logic/storeMapDefaults";
 import "leaflet/dist/leaflet.css";
-
-const DEFAULT_CENTER: [number, number] = [22.526838, -81.128701];
-const ZOOM = 14;
 
 function MapClickHandler({
   onPick,
@@ -45,7 +46,7 @@ export function StoreLocationMapModal({
 
   const center = useMemo((): [number, number] => {
     if (pos) return [pos.lat, pos.lng];
-    return DEFAULT_CENTER;
+    return STORE_LOCATION_MAP_DEFAULT_CENTER;
   }, [pos]);
 
   if (!open) return null;
@@ -70,7 +71,7 @@ export function StoreLocationMapModal({
         <div className="store-map-modal-frame overflow-hidden rounded-xl border border-[var(--border)] bg-[#e2e8f0] [&_.leaflet-control-attribution]:text-[10px]">
           <MapContainer
             center={center}
-            zoom={ZOOM}
+            zoom={STORE_LOCATION_MAP_ZOOM}
             className="h-[min(52vh,360px)] w-full"
             scrollWheelZoom
             attributionControl

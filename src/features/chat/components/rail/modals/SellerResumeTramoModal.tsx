@@ -3,7 +3,7 @@ import { Button, Spinner } from "flowbite-react";
 import toast from "react-hot-toast";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 import { postSellerResumeTramoFromIdle } from "@features/chat/api/routeLogisticsApi";
-import type { SellerResumeTramoModalState } from "../shared/routesRailSheetModalTypes";
+import type { SellerResumeTramoModalState } from "@features/chat/Dtos/rail/routesRailTypes";
 
 type Props = {
   modal: SellerResumeTramoModalState | null;

@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react'
 import type { SocialNetworkId } from '@features/auth/Dtos/userTypes'
-import { formatPhoneForDisplay } from '@features/auth/model/formatPhoneForDisplay'
+import { formatPhoneForDisplay } from '@features/auth/logic/formatPhoneForDisplay'
 import { StoreTrustMini } from '@features/profile/components/trust/StoreTrustMini'
 import { TrustBar } from '../components/trust/TrustBar'
 import { ThemeToggle } from '@app/widgets/ThemeToggle'
@@ -30,7 +30,7 @@ import { ImageLightbox } from '@shared/components/media/ImageLightbox'
 import { ContactsModal } from '../components/ContactsModal'
 import { PaymentGatewayConfigModal } from '../components/PaymentGatewayConfigModal'
 import { UserAvatarBadge } from '../components/account/UserAvatarBadge'
-import { PROFILE_SOCIAL_META } from '../components/account/profileSocialMeta'
+import { PROFILE_SOCIAL_META } from '@features/profile/logic/profileSocialMeta'
 import { useProfileAccountSection } from '../hooks/useProfileAccountSection'
 import type { ProfileVisitorPublic } from '../Dtos/profileVisitorPublic'
 

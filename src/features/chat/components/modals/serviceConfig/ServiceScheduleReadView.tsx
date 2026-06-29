@@ -1,6 +1,5 @@
 import { cn } from "@shared/lib/cn"
-import type { ServiceScheduleState } from "@features/chat/model/tradeAgreementTypes"
-import { coerceServiceSchedule } from "@features/chat/model/tradeAgreementTypes"
+import type { ServiceScheduleState } from "@features/chat/Dtos/agreement/tradeAgreementTypes";import { coerceServiceSchedule } from "@features/chat/logic/agreement/tradeAgreementTypes"
 
 const MES = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'] as const
 

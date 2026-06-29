@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
-import type { ChatPaymentModalProps } from './types'
+import type { ChatPaymentModalProps } from '@features/chat/Dtos/payments/chatPaymentModalTypes'
 
 const ChatPaymentModalInner = lazy(() =>
   import('./ChatPaymentModalInner').then((m) => ({

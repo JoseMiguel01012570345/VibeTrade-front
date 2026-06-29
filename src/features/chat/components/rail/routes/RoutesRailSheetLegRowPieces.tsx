@@ -4,14 +4,15 @@ import { cn } from "@shared/lib/cn";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 import {
   routeStopDeliveryStateLabelEs,
-} from "@features/chat/model/routeLogisticsLabels";
-import { formatRouteEstimadoDisplay } from "@features/chat/model/routeSheetDateTime";
-import { effectiveTramoContactPhone } from "@features/chat/model/routeSheetOfferGuards";
-import { tramoResumenLinea, type RouteStop } from "@features/chat/model/routeSheetTypes";
-import { formatKmEs } from "@features/market/model/map/routeLegMetrics";
+} from "@features/chat/logic/route-sheet/routeLogisticsLabels";
+import { formatRouteEstimadoDisplay } from "@features/chat/logic/route-sheet/routeSheetDateTime";
+import { effectiveTramoContactPhone } from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
+import type { RouteStop } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
+import { tramoResumenLinea } from "@features/chat/logic/route-sheet/routeSheetTypes";
+import { formatKmEs } from "@features/market/logic/map/routeLegMetrics";
 import { TramoSubscribedServiceFicha } from "../shared/TramoSubscribedServiceFicha";
-import type { RailLegModel } from "./routesRailLegModel";
-import { railSellerToggleStopTitle } from "./routesRailSheetStrings";
+import type { RailLegModel } from "@features/chat/Dtos/rail/routesRailTypes";
+import { railSellerToggleStopTitle } from "@features/chat/logic/rail/routesRailSheetStrings";
 
 export function LegStopHeaderToggle(props: {
   p: RouteStop;

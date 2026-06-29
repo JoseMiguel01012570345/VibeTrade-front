@@ -2,26 +2,24 @@ import { useEffect, useMemo, useState } from "react";
 import { FileDown, Loader2, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@shared/lib/cn";
-import type { Message, ReplyQuote } from "@features/market/model/store/useMarketStore";
-import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
+import type { Message, ReplyQuote } from "@features/market/logic/store/useMarketStore";
+import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
 import { AgreementBubble } from "./AgreementBubble";
 import { AudioMicro } from "./AudioMicro";
 import { ChatReplyQuotes } from "./ChatReplyQuotes";
 import { DocGrid, DocRow } from "./DocRow";
 import { hhmm } from "./MsgMeta";
 import { ImageGrid } from "./ImageGrid";
-import { ytThread } from "./chatMediaThreadStyles";
+import { ytThread } from "@features/chat/styles/chatMediaThreadStyles";
 import type { PaymentFeeReceiptPayload } from "@features/payments/Dtos/paymentFeeReceiptTypes";
-import { downloadPaymentFeeReceiptPdf } from "@features/chat/model/paymentCheckoutPdfDownload";
+import { downloadPaymentFeeReceiptPdf } from "@features/chat/logic/payments/paymentCheckoutPdfDownload";
 import {
   minorToMajor,
   paymentFeeLabels,
   currencyMinorDecimals,
-} from "@features/payments/model/paymentFeePolicy";
-import {
-  fetchLinkPreview,
-  type LinkPreviewResult,
-} from "@features/chat/api/chatApi";
+} from "@features/payments/logic/paymentFeePolicy";
+import type { LinkPreviewResult } from "@features/chat/Dtos/thread/chatApiTypes";
+import { fetchLinkPreview } from "@features/chat/api/chatApi";
 
 function firstHttpUrl(text: string): string | null {
   const m = text.match(/https?:\/\/[^\s<>'")\]]+/i);

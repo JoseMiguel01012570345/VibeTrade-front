@@ -16,11 +16,11 @@ export {
   appendHomeBulksFromApiBag,
   shouldFetchRecommendationBag,
   shouldMergePendingBag,
-} from './model/homeFeedMerge'
-export { isValidStoreLocation } from './model/homeTextUtils'
+} from './logic/homeFeedMerge'
+export { isValidStoreLocation } from './logic/homeTextUtils'
+export type { HomeFeedSegment } from './Dtos/homeFeedTypes'
 export type {
-  HomeFeedSegment,
   EmergentRouteFeedMapProps,
   PointLocationFeedMapProps,
-  LeafletRoadSnappedRouteProps,
-} from './Dtos'
+} from './Dtos/emergentRouteFeedMapTypes'
+export type { LeafletRoadSnappedRouteProps } from './Dtos/leafletRoadSnappedRouteTypes'

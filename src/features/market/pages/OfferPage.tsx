@@ -21,8 +21,8 @@ import {
 } from "@features/market/styles/storePageStyles";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { ImageLightbox } from "@shared/components/media/ImageLightbox";
-import { useAppStore } from "@features/auth/model/useAppStore";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { RouteTramoSubscribeModal } from "../components/RouteTramoSubscribeModal";
 import { OfferSaveButton } from "../components/OfferSaveButton";
 import { OfferCommentsSection } from "../components/OfferCommentsSection";
@@ -31,42 +31,42 @@ import {
   ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
   routeOfferPublicBlockedForBuyerWithAgreement,
   tramoNotifyLineFromOffer,
-} from "@features/chat/model/routeSheetOfferGuards";
+} from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
 import {
   listUserTransportServices,
   userActsAsCarrierOnTransportOffer,
   userHasTransportService,
-} from "@features/market/model/transportEligibility";
+} from "@features/market/logic/transportEligibility";
 import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
-} from "@features/market/api/toolPlaceholder";
+} from "@features/market/logic/toolPlaceholder";
 import { trackRecommendationInteraction } from "@features/home/api/recommendationsApi";
 import {
   joinOfferChannel,
   leaveOfferChannel,
   subscribeRouteTramoSubscriptionsChanged,
-} from "@features/chat/model/chatRealtime";
+} from "@features/chat/logic/realtime/chatRealtime";
 
 import { fetchStoreDetail } from "@features/market/api/fetchStoreDetail";
-import { mergeStoreCatalogWithLocalExtras } from "@features/market/model/storeCatalogTypes";
+import { mergeStoreCatalogWithLocalExtras } from "@features/market/logic/storeCatalogTypes";
 import { toggleOfferLike } from "@features/market/api/offerEngagementApi";
-import { emergentRoutePublicationUserDescription } from "@features/market/api/emergentRouteOfferDisplay";
+import { emergentRoutePublicationUserDescription } from "@features/market/logic/emergentRouteOfferDisplay";
 import {
   buildEmergentMapLegs,
   tramoMapSubrouteHint,
-} from "@features/market/model/map/emergentRouteMapLegs";
+} from "@features/market/logic/map/emergentRouteMapLegs";
 import { useLegKmForEmergentLegs } from "@features/market/hooks/useEmergentRouteLegKm";
 import {
   formatKmEs,
   formatPrecioPorKmEs,
-} from "@features/market/model/map/routeLegMetrics";
+} from "@features/market/logic/map/routeLegMetrics";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 import { EmergentRouteFeedMap } from "@features/home";
 import {
   isOfferPublishedForBuyerChat,
   NOT_PUBLISHED_TOAST_ES,
-} from "@features/market/api/offerPublishedForBuyerChat";
+} from "@features/market/logic/offerPublishedForBuyerChat";
 import {
   fetchEmergentCarrierSubscriptionStatus,
   fetchEmergentMyRouteTramoSubscriptions,
@@ -77,7 +77,7 @@ import {
   catalogItemKind,
   collectOfferPublishedPhotoUrls,
   sendPurchaseInterestIntro,
-} from "@features/chat/model/sendPurchaseInterestIntro";
+} from "@features/chat/logic/messages/sendPurchaseInterestIntro";
 import { ConfirmModal } from "@shared/components/ui/ConfirmModal";
 import { useOfferPublicCard } from "../hooks/useOfferPublicCard";
 

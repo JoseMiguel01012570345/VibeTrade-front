@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MessageCircle, Send, ThumbsUp, X } from 'lucide-react'
 import { cn } from "@shared/lib/cn"
-import { countPositiveRatings } from '../model/reelRating'
+import { countPositiveRatings } from '../logic/reelRating'
 import type { ReelComment } from '../Dtos/reelComment'
 
 type Props = {
@@ -14,13 +14,7 @@ type Props = {
   viewerId: string
 }
 
-function timeAgo(ts: number) {
-  const s = Math.floor((Date.now() - ts) / 1000)
-  if (s < 60) return 'ahora'
-  if (s < 3600) return `hace ${Math.floor(s / 60)} min`
-  if (s < 86400) return `hace ${Math.floor(s / 3600)} h`
-  return `hace ${Math.floor(s / 86400)} d`
-}
+import { timeAgo } from '../logic/relativeTime'
 
 const cmtLikeBtn =
   'flex h-[38px] w-[38px] shrink-0 cursor-pointer items-center justify-center rounded-full border border-[color-mix(in_oklab,var(--text)_18%,transparent)] bg-[color-mix(in_oklab,var(--surface)_88%,transparent)] p-0 text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--surface)_70%,transparent)] hover:text-[var(--text)]'

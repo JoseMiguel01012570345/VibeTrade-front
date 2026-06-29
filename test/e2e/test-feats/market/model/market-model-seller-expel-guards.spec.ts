@@ -35,7 +35,7 @@ import {
   prepareSubscribersPanelForExpel,
   subscribersPanel,
 } from "../../../Resources/route-sheet-ui-helpers";
-import { SELLER_EXPEL_REQUIRES_PAUSE_ES } from "../../../../../src/features/chat/model/routeSheetOfferGuards";
+import { SELLER_EXPEL_REQUIRES_PAUSE_ES } from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
 
 test.describe("seller expel guards — UI", () => {
   test.describe.configure({ mode: "serial", timeout: 480_000 });

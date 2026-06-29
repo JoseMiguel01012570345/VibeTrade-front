@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { Lock, Mail, Phone, User } from 'lucide-react'
 import { CountrySelect } from '../components/CountrySelect'
-import { sanitizeUsernameInput } from '@features/auth/model/credentialsValidation'
+import { sanitizeUsernameInput } from '@features/auth/logic/credentialsValidation'
 import { PasswordInput } from '../components/PasswordInput'
 import { useRegister } from '../hooks/useRegister'
 

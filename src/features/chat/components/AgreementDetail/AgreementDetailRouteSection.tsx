@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@shared/lib/cn'
 import { VtSelect, type VtSelectOption } from '@shared/components/ui/VtSelect'
-import type { RouteSheet } from '@features/chat/model/routeSheetTypes'
-import type { TradeAgreement } from '@features/chat/model/tradeAgreementTypes'
-import { agreementHasMerchandiseForRouteLink } from '@features/chat/model/tradeAgreementValidation'
+import type { RouteSheet } from '@features/chat/Dtos/route-sheet/routeSheetTypes';import type { TradeAgreement } from '@features/chat/Dtos/agreement/tradeAgreementTypes';import { agreementHasMerchandiseForRouteLink } from '@features/chat/logic/agreement/tradeAgreementValidation'
 import {
   agrDetailBlock,
   agrDetailH,
@@ -14,7 +12,7 @@ import {
   fieldLabel,
   linkRutaRow,
   linkRutaSelect,
-} from '../../model/formModalStyles'
+} from '@shared/styles/modals/formModalStyles'
 
 type Props = {
   agreement: TradeAgreement

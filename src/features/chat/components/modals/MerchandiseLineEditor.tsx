@@ -17,15 +17,15 @@ import {
   lineGrid,
   merchLineHead,
   merchLineWrap,
-} from '../../model/formModalStyles'
-import type { StoreCatalog, StoreProduct } from "@features/market/model/storeCatalogTypes"
+} from '@shared/styles/modals/formModalStyles'
+import type { StoreCatalog, StoreProduct } from "@features/market/logic/storeCatalogTypes"
 import {
   findStoreProduct,
   mergeMerchandiseLineWithStoreProduct,
   sortCatalogItemsByContextId,
-} from "@features/market/model/storeCatalogTypes"
-import { emptyMerchandiseLine, normalizeMerchandiseLine, type MerchandiseLine } from "@features/chat/model/tradeAgreementTypes"
-import { ModalFormField as Field } from './ModalFormField'
+} from "@features/market/logic/storeCatalogTypes"
+import type { MerchandiseLine } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import { emptyMerchandiseLine, normalizeMerchandiseLine } from "@features/chat/logic/agreement/tradeAgreementTypes";import { ModalFormField as Field } from './ModalFormField'
 
 function MerchPreviewRow({
   label,

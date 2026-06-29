@@ -1,6 +1,6 @@
-﻿import { useEffect, useRef, useState } from 'react'
-import { onBackdropPointerClose } from '../../../model/modalClose'
-import { modalShellNarrow } from '../../../model/formModalStyles'
+import { useEffect, useRef, useState } from 'react'
+import { onBackdropPointerClose } from '@shared/lib/modals/modalClose'
+import { modalShellNarrow } from '@shared/styles/modals/formModalStyles'
 
 type Props = {
   open: boolean

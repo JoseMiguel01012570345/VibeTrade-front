@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   agreementRouteLinkFrozen,
   agreementRouteLinkFrozenAfterPayment,
-} from "@features/chat/model/tradeAgreementTypes";
-import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
+} from "@features/chat/logic/agreement/tradeAgreementTypes";
+import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
 
 function ag(
   partial: Partial<TradeAgreement> & Pick<TradeAgreement, "id">,

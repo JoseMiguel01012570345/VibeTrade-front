@@ -8,9 +8,9 @@ import {
   Store,
   Trash2,
 } from "lucide-react";
-import type { StoreBadge } from "@features/market/model/store/marketStoreTypes";
+import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
-import type { StoreCatalog } from "@features/market/model/storeCatalogTypes";
+import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes";
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
 
 type Props = Readonly<{

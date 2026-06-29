@@ -1,21 +1,11 @@
 import { cn } from '@shared/lib/cn'
 import { ProtectedMediaImg } from '@shared/components/media/ProtectedMediaImg'
-import {
-  normalizeMerchandiseLine,
-  type MerchandiseLine,
-  type MerchandiseSectionMeta,
-  type TradeAgreementExtraFieldDraft,
-} from '@features/chat/model/tradeAgreementTypes'
-import type {
+import type { MerchandiseLine, TradeAgreementExtraFieldDraft } from '@features/chat/Dtos/agreement/tradeAgreementTypes';
+import { normalizeMerchandiseLine } from '@features/chat/logic/agreement/tradeAgreementTypes';import type {
   StoreCatalog,
   StoreProduct,
-} from '@features/market/model/storeCatalogTypes'
-import { findStoreProduct } from '@features/market/model/storeCatalogTypes'
-import type { ServiceEvidenceAttachmentApi } from '@features/chat/api/agreementServiceEvidenceApi'
-import {
-  minorToMajor,
-  currencyMinorDecimals,
-} from '@features/payments/model/paymentFeePolicy'
+} from '@features/market/logic/storeCatalogTypes'
+import { findStoreProduct } from '@features/market/logic/storeCatalogTypes'
 import {
   agrDetailBlock,
   agrDetailCard,
@@ -25,7 +15,13 @@ import {
   agrDetailRow,
   agrDetailSub,
   agrDetailValue,
-} from '../../model/formModalStyles'
+} from '@shared/styles/modals/formModalStyles'
+
+export {
+  fmtAgreementMoneyMinor,
+  legacyMerchandiseMetaHasContent,
+  normalizeEvidenceForCompare,
+} from '@features/chat/logic/agreement/agreementDetailFormatters'
 
 export function AgreementDetailRow({
   label,
@@ -41,46 +37,6 @@ export function AgreementDetailRow({
       <div className={agrDetailValue}>{value}</div>
     </div>
   )
-}
-
-export function fmtAgreementMoneyMinor(
-  amountMinor: number,
-  currencyLower: string,
-): string {
-  const cur = currencyLower.trim().toLowerCase()
-  const pow = currencyMinorDecimals(cur)
-  const maj = minorToMajor(amountMinor, cur)
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: cur.toUpperCase(),
-      maximumFractionDigits: pow,
-    }).format(maj)
-  } catch {
-    return `${maj.toFixed(pow)} ${cur.toUpperCase()}`
-  }
-}
-
-export function normalizeEvidenceForCompare(
-  text: string,
-  atts: ServiceEvidenceAttachmentApi[],
-): { text: string; attsKey: string } {
-  const t = (text ?? '').trim()
-  const key = (atts ?? [])
-    .map((a) => ({
-      url: (a.url ?? '').trim(),
-      fileName: (a.fileName ?? '').trim(),
-      kind: (a.kind ?? '').trim(),
-    }))
-    .sort((a, b) =>
-      `${a.url}|${a.fileName}|${a.kind}`.localeCompare(
-        `${b.url}|${b.fileName}|${b.kind}`,
-        'es',
-      ),
-    )
-    .map((a) => `${a.url}|${a.fileName}|${a.kind}`)
-    .join(';;')
-  return { text: t, attsKey: key }
 }
 
 export function ExtraFieldClauseCards({
@@ -127,13 +83,6 @@ export function ExtraFieldClauseCards({
       ))}
     </>
   )
-}
-
-export function legacyMerchandiseMetaHasContent(
-  m?: MerchandiseSectionMeta,
-): boolean {
-  if (!m) return false
-  return Object.values(m).some((v) => (v ?? '').trim() !== '')
 }
 
 function FichaProductoExcerpt({ p }: { p: StoreProduct }) {

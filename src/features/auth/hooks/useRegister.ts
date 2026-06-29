@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import type { Country } from '../components/countries'
+import type { SignInCountry } from '../Dtos/signInCountry'
 import { fetchSignInCountries } from '@shared/services/http/fetchSignInCountries'
 import { register } from '../api/credentialsAuth'
 import {
   isValidEmail,
   isValidPassword,
   isValidUsername,
-} from '../model/credentialsValidation'
+} from '../logic/credentialsValidation'
 
 export function useRegister() {
   const nav = useNavigate()
-  const [countries, setCountries] = useState<Country[]>([])
-  const [country, setCountry] = useState<Country | null>(null)
+  const [countries, setCountries] = useState<SignInCountry[]>([])
+  const [country, setCountry] = useState<SignInCountry | null>(null)
   const [countriesStatus, setCountriesStatus] = useState<'loading' | 'ok' | 'error'>('loading')
   const [number, setNumber] = useState('')
   const [username, setUsername] = useState('')

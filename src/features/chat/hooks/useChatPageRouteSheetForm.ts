@@ -1,16 +1,15 @@
 import { useMemo } from 'react'
-import type { Thread } from '@features/market/model/store/useMarketStore'
-import { useMarketStore } from '@features/market/model/store/useMarketStore'
-import { type RouteSheet } from '@features/chat/model/routeSheetTypes'
-import { routeSheetAllowsCarrierContactEditWhenPaid } from '@features/chat/model/routeSheetOfferGuards'
-import type { RouteOfferPublicState } from '@features/market/model/store/marketStoreTypes'
+import type { Thread } from '@features/market/logic/store/useMarketStore'
+import { useMarketStore } from '@features/market/logic/store/useMarketStore'
+import { type RouteSheet } from '@features/chat/Dtos/route-sheet/routeSheetTypes';import { routeSheetAllowsCarrierContactEditWhenPaid } from '@features/chat/logic/route-sheet/routeSheetOfferGuards'
+import type { RouteOfferPublicState } from '@features/market/logic/store/marketStoreTypes'
 import {
   routeOfferPublicFromEmergentCardOffer,
   routeOfferPublicFromThreadRouteSheet,
-} from '@features/market/api/routeOfferPublicFromEmergentCard'
-import { rebuildRouteOfferAssignmentsFromThreadItems } from '@features/chat/model/routeOfferSubscriptionMerge'
-import { resolveRouteOfferPublicForSheet } from '@features/chat/model/routeSheetOfferGuards'
-import { resolveRouteLegPaymentCurrencyForThread } from '@features/chat/model/merchandiseRouteCurrency'
+} from '@features/market/logic/routeOfferPublicFromEmergentCard'
+import { rebuildRouteOfferAssignmentsFromThreadItems } from '@features/chat/logic/route-sheet/routeOfferSubscriptionMerge'
+import { resolveRouteOfferPublicForSheet } from '@features/chat/logic/route-sheet/routeSheetOfferGuards'
+import { resolveRouteLegPaymentCurrencyForThread } from '@features/chat/logic/agreement/merchandiseRouteCurrency'
 
 export function useChatPageRouteSheetForm(
   thread: Thread | undefined,

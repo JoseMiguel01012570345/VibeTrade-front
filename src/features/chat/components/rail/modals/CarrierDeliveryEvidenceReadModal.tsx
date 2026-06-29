@@ -7,7 +7,7 @@ import {
 } from "flowbite-react";
 import { cn } from "@shared/lib/cn";
 import { RouteLegEvidenceAttachmentsList } from "../shared/routeLegEvidence";
-import type { ServiceEvidenceAttachmentApi } from "@features/chat/api/agreementServiceEvidenceApi";
+import type { ServiceEvidenceAttachmentApi } from "@features/chat/Dtos/agreement/agreementServiceEvidenceApiTypes";
 
 export function CarrierDeliveryEvidenceReadModal(props: {
   open: boolean;

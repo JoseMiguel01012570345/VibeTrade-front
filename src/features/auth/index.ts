@@ -13,22 +13,26 @@ export { OtpInput } from './components/OtpInput'
 export { CountrySelect } from './components/CountrySelect'
 export { useLogin } from './hooks/useLogin'
 export { useRegister } from './hooks/useRegister'
-export { restoreAuthSession } from './model/restoreAuthSession'
-export { formatPhoneForDisplay } from './model/formatPhoneForDisplay'
+export { restoreAuthSession } from './logic/restoreAuthSession'
+export { formatPhoneForDisplay } from './logic/formatPhoneForDisplay'
 export {
   isValidEmail,
   isValidPassword,
   sanitizeUsernameInput,
-} from './model/credentialsValidation'
+} from './logic/credentialsValidation'
+export type { SignInCountry } from './Dtos/signInCountry'
 export type {
-  SignInCountry,
-  User,
   SocialNetworkId,
   ProfileSocialLinks,
+  User,
+} from './Dtos/userTypes'
+export type {
   SessionUserJson,
   AuthSessionJson,
-  PublicUserProfile,
+} from './Dtos/sessionUserTypes'
+export type { PublicUserProfile } from './Dtos/publicProfileTypes'
+export type {
   AuthErrorPayload,
   PatchProfileBody,
-  OnboardingMode,
-} from './Dtos'
+} from './Dtos/authApiTypes'
+export type { OnboardingMode } from './Dtos/onboardingTypes'

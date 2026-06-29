@@ -5,9 +5,9 @@ import type {
   MarketState,
   Offer,
   StoreBadge,
-} from "@features/market/model/store/useMarketStore";
-import { useAppStore } from "@features/auth/model/useAppStore";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
+} from "@features/market/logic/store/useMarketStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import type { RecommendationBatch } from "@app/bootstrap/bootstrapTypes";
 import { useHomeFeedLoader } from "../hooks/useHomeFeed";
 import {
@@ -15,7 +15,7 @@ import {
   appendHomeBulksFromApiBag,
   shouldFetchRecommendationBag,
   shouldMergePendingBag,
-} from "../model/homeFeedMerge";
+} from "../logic/homeFeedMerge";
 import { Store as StoreLucideIcon, X } from "lucide-react";
 import { FeedLoadingSpinner } from "../components/FeedLoadingSpinner";
 import { OfferCardsChunk } from "../components/OfferCardsChunk";

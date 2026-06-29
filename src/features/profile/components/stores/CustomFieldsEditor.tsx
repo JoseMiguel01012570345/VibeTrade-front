@@ -6,17 +6,17 @@ import {
   ProtectedMediaImg,
 } from "@shared/components/media/ProtectedMediaImg";
 import { cn } from "@shared/lib/cn";
-import type { StoreCustomField } from "@features/market/model/storeCatalogTypes";
+import type { StoreCustomField } from "@features/market/logic/storeCatalogTypes";
 import {
   PROFILE_DESC_MIN,
   PROFILE_TITLE_MIN,
-} from "../../model/profileStoreFormValidation";
+} from "../../logic/profileStoreFormValidation";
 import {
   fieldLabel,
   fieldRootWithInvalid,
   textareaMin,
 } from "@shared/styles/modals/formModalStyles";
-import { fileToKind, newAttachmentId, revokeIfBlob } from "./helpers";
+import { fileToKind, newAttachmentId, revokeIfBlob } from "@features/profile/logic/stores/catalogMediaHelpers";
 import {
   isProtectedMediaUrl,
   mediaApiUrl,

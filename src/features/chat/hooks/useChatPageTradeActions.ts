@@ -1,28 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import type { RouteOfferPublicState } from '@features/market/model/store/marketStoreTypes'
-import type { Thread } from '@features/market/model/store/marketStoreTypes'
-import { routeSheetHasPendingCarrierAck } from '@features/market/model/store/marketSliceHelpers'
+import type { RouteOfferPublicState } from '@features/market/logic/store/marketStoreTypes'
+import type { Thread } from '@features/market/logic/store/marketStoreTypes'
+import { routeSheetHasPendingCarrierAck } from '@features/market/logic/store/marketSliceHelpers'
 import {
   threadHasAcceptedAgreement,
   useMarketStore,
-} from '@features/market/model/store/useMarketStore'
-import type { RouteSheet } from '@features/chat/model/routeSheetTypes'
-import type { TradeAgreement } from '@features/chat/model/tradeAgreementTypes'
-import { tradeAgreementToDraft } from '@features/chat/model/tradeAgreementTypes'
+} from '@features/market/logic/store/useMarketStore'
+import type { RouteSheet } from '@features/chat/Dtos/route-sheet/routeSheetTypes';import type { TradeAgreement } from '@features/chat/Dtos/agreement/tradeAgreementTypes';import { tradeAgreementToDraft } from '@features/chat/logic/agreement/tradeAgreementTypes'
 import {
   agreementDeleteBlockedByRouteSheetInvariant,
   resolveRouteOfferPublicForSheet,
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
   routeSheetStructuralEditBlockedByPaid,
-} from '@features/chat/model/routeSheetOfferGuards'
-import { threadCanCreateRouteSheet } from '@features/chat/model/routeSheetCreationGate'
+} from '@features/chat/logic/route-sheet/routeSheetOfferGuards'
+import { threadCanCreateRouteSheet } from '@features/chat/logic/route-sheet/routeSheetCreationGate'
 import { fetchThreadHasUnpaidRouteSheets } from '@features/chat/api/chatApi'
-import type {
-  RouteSheetFormPayload,
-  RouteSheetSubmitResult,
-} from '../components/modals/RouteSheetFormModal'
-import { useChatPageRouteSheetForm } from './useChatPageRouteSheetForm'
+import type { RouteSheetFormPayload, RouteSheetSubmitResult } from '@features/chat/Dtos/route-sheet/routeSheetFormModalTypes';import { useChatPageRouteSheetForm } from './useChatPageRouteSheetForm'
 
 type Params = {
   thread: Thread | undefined

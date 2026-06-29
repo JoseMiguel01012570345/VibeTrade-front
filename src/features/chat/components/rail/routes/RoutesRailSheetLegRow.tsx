@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
-import type { RouteSheet, RouteStop } from "@features/chat/model/routeSheetTypes";
-import type { RailLegModel } from "./routesRailLegModel";
+import type { RouteSheet, RouteStop } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
+import type { RailLegModel } from "@features/chat/Dtos/rail/routesRailTypes";
 import {
   railLegLoadCarrierEvidenceEditor,
   railLegOpenCedeOwnershipModal,
@@ -8,7 +8,7 @@ import {
   railLegOpenSellerResumeTramoModal,
   railLegOpenSellerEvidenceRead,
   railLegSellerDecideEvidence,
-} from "./routesRailLegHandlers";
+} from "@features/chat/logic/rail/routesRailLegHandlers";
 import { useRailRoutesDispatch } from "../bus/RailRoutesBusContext";
 import {
   LegContactAssignmentBlock,

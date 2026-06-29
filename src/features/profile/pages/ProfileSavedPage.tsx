@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom'
 import { cn } from '@shared/lib/cn'
-import type { Offer, StoreBadge, RouteOfferPublicState } from '@features/market/model/store/marketStoreTypes'
+import type { Offer, StoreBadge, RouteOfferPublicState } from '@features/market/logic/store/marketStoreTypes'
 import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
-} from '@features/market/api/toolPlaceholder'
-import { buildEmergentMapLegs } from '@features/market/model/map/emergentRouteMapLegs'
+} from '@features/market/logic/toolPlaceholder'
+import { buildEmergentMapLegs } from '@features/market/logic/map/emergentRouteMapLegs'
 import { EmergentRouteFeedMap } from '@features/home'
 import { ProtectedMediaImg } from '@shared/components/media/ProtectedMediaImg'
 

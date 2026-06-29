@@ -1,18 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
-import {
-  fetchAgreementRouteDeliveries,
-  type RouteStopDeliveryStatusApi,
-} from "@features/chat/api/routeLogisticsApi";
-import { subscribeRouteDeliveriesRefresh } from "@features/chat/model/chatRealtime";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
+import { fetchAgreementRouteDeliveries } from "@features/chat/api/routeLogisticsApi";
+import type { RouteStopDeliveryStatusApi } from "@features/chat/Dtos/route-sheet/routeLogisticsApiTypes";
+import type { CarrierTelemetryTarget } from "@features/chat/Dtos/realtime/carrierTelemetryTypes";
+import { subscribeRouteDeliveriesRefresh } from "@features/chat/logic/realtime/chatRealtime";
 import { getSessionToken } from "@shared/services/http/sessionToken";
-
-export type CarrierTelemetryTarget = {
-  agreementId: string;
-  routeSheetId: string;
-  routeStopId: string;
-};
 
 /** Lectura inicial para disparar el diálogo de permisos del navegador (best-effort). */
 export function primeBrowserGeolocationForTelemetry(): void {

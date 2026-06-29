@@ -1,27 +1,19 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Loader2, UserCheck, X } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 import { resolvePlatformUserByPhone } from "@features/profile/api/contactsApi";
-import {
-  fetchPublishedTransportServicesForUser,
-  summarizeTransportServiceForInvite,
-  type PublishedTransportServiceDto,
-} from "@features/market/api/publishedTransportServicesApi";
+import { fetchPublishedTransportServicesForUser, type PublishedTransportServiceDto } from "@features/market/api/publishedTransportServicesApi";
+import { summarizeTransportServiceForInvite } from "@features/market/logic/publishedTransportServicesMapper";
 import {
   fieldError,
   fieldLabel,
   fieldRootWithInvalid,
   mapBackdropLayerAboveChatRail,
   modalFormBody,
-} from '../../model/formModalStyles';
+} from '@shared/styles/modals/formModalStyles';
 import { TransportServiceFichaDetail } from "../TransportServiceFichaDetail";
-
-export type RouteTransportistaPick = {
-  telefonoTransportista?: string;
-  transportInvitedStoreServiceId?: string;
-  transportInvitedServiceSummary?: string;
-};
+import type { RouteTransportistaPick } from "@features/chat/Dtos/route-sheet/routeTransportistaPickTypes";
 
 type Props = {
   tramoIndex: number;

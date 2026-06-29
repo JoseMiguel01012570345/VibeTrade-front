@@ -1,4 +1,4 @@
-import { MAX_REASONABLE_PRICE } from "@features/market/api/parseProductPrice";
+import { MAX_REASONABLE_PRICE } from "@features/market/logic/parseProductPrice";
 
 export function PriceRangeMinMaxControls({
   priceSliderMax,

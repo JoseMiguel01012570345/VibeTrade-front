@@ -4,7 +4,7 @@ import type {
   RegisterResponseJson,
 } from '../Dtos/authApiTypes'
 import type { AuthSessionJson } from '../Dtos/sessionUserTypes'
-import { parseAuthError } from '../model/authErrors'
+import { parseAuthError } from '../logic/authErrors'
 
 export async function login(email: string, password: string) {
   const res = await apiFetch('/api/v1/auth/login', {

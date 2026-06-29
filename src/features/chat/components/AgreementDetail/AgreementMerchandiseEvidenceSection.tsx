@@ -4,25 +4,19 @@ import { BadgeCheck, FileText, Loader2, Pencil, Upload, XCircle } from "lucide-r
 import { cn } from "@shared/lib/cn";
 import { uploadMedia, mediaApiUrl } from "@shared/services/media/mediaClient";
 import { EvidenceAttachmentsList } from "../shared/EvidenceAttachmentsList";
-import {
-  decideMerchandiseEvidence,
-  listAgreementMerchandisePayments,
-  ROUTE_NOT_DELIVERED_FOR_MERCH_EVIDENCE_ES,
-  upsertMerchandiseEvidence,
-  type AgreementMerchandisePaymentApi,
-  type MerchandiseEvidenceAttachmentApi,
-} from "@features/chat/api/agreementMerchandiseEvidenceApi";
+import type { AgreementMerchandisePaymentApi, MerchandiseEvidenceAttachmentApi } from "@features/chat/Dtos/agreement/agreementMerchandiseEvidenceApiTypes";
+import { decideMerchandiseEvidence, listAgreementMerchandisePayments, ROUTE_NOT_DELIVERED_FOR_MERCH_EVIDENCE_ES, upsertMerchandiseEvidence } from "@features/chat/api/agreementMerchandiseEvidenceApi";
 import {
   minorToMajor,
   currencyMinorDecimals,
-} from "@features/payments/model/paymentFeePolicy";
-import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
+} from "@features/payments/logic/paymentFeePolicy";
+import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
 import {
   agrDetailBlock,
   agrDetailH,
   agrDetailHint,
   fieldLabel,
-} from '../../model/formModalStyles';
+} from '@shared/styles/modals/formModalStyles';
 
 function fmtMoneyMinor(amountMinor: number, currencyLower?: string): string {
   const cur = (currencyLower ?? "usd").trim().toLowerCase() || "usd";

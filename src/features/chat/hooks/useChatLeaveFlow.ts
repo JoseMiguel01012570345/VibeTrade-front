@@ -1,24 +1,24 @@
 import { useCallback, useState } from 'react'
 import toast from 'react-hot-toast'
-import { useAppStore } from '@features/auth/model/useAppStore'
-import type { Thread } from '@features/market/model/store/useMarketStore'
+import { useAppStore } from '@features/auth/logic/useAppStore'
+import type { Thread } from '@features/market/logic/store/useMarketStore'
 import {
   threadAcceptedAgreementsAllLiquidated,
   threadHasAcceptedAgreement,
   useMarketStore,
-} from '@features/market/model/store/useMarketStore'
+} from '@features/market/logic/store/useMarketStore'
 import {
   resolveBuyerUserId,
   resolveSellerUserId,
-} from '@features/chat/model/chatParticipantLabels'
-import { viewerIsConfirmedRouteCarrierOnThread } from '@features/chat/model/routeSheetOfferGuards'
-import { notifyChatParticipantsUserLeft } from '@features/chat/model/chatRealtime'
+} from '@features/chat/logic/participants/chatParticipantLabels'
+import { viewerIsConfirmedRouteCarrierOnThread } from '@features/chat/logic/route-sheet/routeSheetOfferGuards'
+import { notifyChatParticipantsUserLeft } from '@features/chat/logic/realtime/chatRealtime'
 import {
   fetchChatThread,
   postCarrierWithdrawFromThread,
   postPartySoftLeaveChatThread,
 } from '@features/chat/api/chatApi'
-import { counterpartyAlreadyRecordedPartyExit } from '@features/chat/model/threadPeerPartyExit'
+import { counterpartyAlreadyRecordedPartyExit } from '@features/chat/logic/party-exit/threadPeerPartyExit'
 import { getSessionToken } from '@shared/services/http/sessionToken'
 import { errorToUserMessage } from '@shared/services/http/apiErrorMessage'
 import { VtHttpError } from '@shared/services/http/VtHttpError'
@@ -28,17 +28,11 @@ import {
   postStoreTrustAdjust,
   trustHistoryItemFromApi,
 } from '@features/profile/api/trustLedgerApi'
+import type { LeaveRefundSuggestion } from '@features/chat/Dtos/thread/chatLeaveFlowTypes'
 import {
   CARRIER_ROUTE_EXIT_TRUST_PENALTY,
   CHAT_PARTY_EXIT_TRUST_PER_MEMBER,
-} from '../components/modals/TrustRiskEditConfirmModal'
-
-export type LeaveRefundSuggestion = {
-  threadId: string
-  agreementId: string
-  routeSheetId: string
-  routeStopId: string
-}
+} from '@features/chat/logic/trust/trustPenaltyConstants'
 
 export function useChatLeaveFlow() {
   const me = useAppStore((s) => s.me)

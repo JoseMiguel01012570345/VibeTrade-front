@@ -9,10 +9,10 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { useAppStore } from "@features/auth/model/useAppStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
 import { cn } from "@shared/lib/cn";
-import type { Message } from "@features/market/model/store/marketStoreTypes";
-import type { Thread } from "@features/market/model/store/useMarketStore";
+import type { Message } from "@features/market/logic/store/marketStoreTypes";
+import type { Thread } from "@features/market/logic/store/useMarketStore";
 import {
   buyerFirstNameForThread,
   chatBubbleHeaderLabel,
@@ -20,14 +20,14 @@ import {
   resolveBuyerUserId,
   resolveSellerUserId,
   threadIsSocialLike,
-} from "@features/chat/model/chatParticipantLabels";
-import { normalizeThreadMessages } from "@features/chat/model/chatMerge";
+} from "@features/chat/logic/participants/chatParticipantLabels";
+import { normalizeThreadMessages } from "@features/chat/logic/thread/chatMerge";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import {
   deliveryStateForMineMessage,
-  MessageBody,
   MsgMeta,
-} from "../media/ChatMedia";
+} from "../media/MsgMeta";
+import { MessageBody } from "../media/MessageBody";
 
 /** Avatar + enlace de la columna lateral: mensajes del comprador no usan la tienda. */
 function messageBubbleAvatarColumn(

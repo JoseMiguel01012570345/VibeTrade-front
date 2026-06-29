@@ -6,14 +6,14 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button, Spinner } from "flowbite-react";
-import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
+import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
 import {
   carrierEvidenceModalIsDirty,
   saveCarrierEvidenceDraft,
   submitCarrierEvidenceFromModal,
   uploadFilesForCarrierEvidenceModal,
-} from "./carrierDeliveryEvidenceEditHandlers";
-import type { CarrierEvEditModalState } from "../shared/routesRailSheetModalTypes";
+} from "@features/chat/logic/rail/carrier-evidence/carrierDeliveryEvidenceEditHandlers";
+import type { CarrierEvEditModalState } from "@features/chat/Dtos/rail/routesRailTypes";
 import { RouteLegEvidenceAttachmentsList } from "../shared/routeLegEvidence";
 
 type Props = {

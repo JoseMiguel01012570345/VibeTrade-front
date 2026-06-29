@@ -1,4 +1,4 @@
-import type { MarketState } from "../model/store/marketStoreTypes";
+import type { MarketState } from "../logic/store/marketStoreTypes";
 
 /** Forma del mercado en bootstrap / GET workspace (snapshot completo). */
 export type MarketSerializableSlice = Pick<

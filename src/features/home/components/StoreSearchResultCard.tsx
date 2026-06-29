@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { ExternalLink, MapPin, Package, Store, Wrench } from "lucide-react";
 import { websiteUrlDisplayLabel } from "@shared/lib/websiteUrl";
-import type { StoreBadge } from "@features/market/model/store/marketStoreTypes";
+import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
+import { fmtKm } from "@features/home/logic/formatDistance";
 
 type Props = Readonly<{
   store: StoreBadge;
@@ -11,12 +12,6 @@ type Props = Readonly<{
   publishedServices: number;
   distanceKm?: number | null;
 }>;
-
-function fmtKm(v: number): string {
-  if (v < 1) return `${Math.round(v * 1000)} m`;
-  if (v < 10) return `${v.toFixed(1)} km`;
-  return `${Math.round(v)} km`;
-}
 
 export function StoreSearchResultCard({
   store: s,

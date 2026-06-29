@@ -1,6 +1,6 @@
 import toast from "react-hot-toast";
-import { useAppStore } from "@features/auth/model/useAppStore";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import type { ReelComment } from "@features/reels/Dtos/reelComment";
 import type { ReelsBootstrapPayload } from "@features/reels/Dtos/reelsBootstrapPayload";
 import { apiFetch } from "@shared/services/http/apiClient";
@@ -12,10 +12,10 @@ import {
   RECOMMENDATION_API_TAKE,
   RECOMMENDATION_BULK_OFFER_COUNT,
   splitRecommendationBatchIntoHomeBulks,
-} from "@features/home/model/homeFeedMerge";
-import { getOrCreateGuestId } from "@features/auth/model/guestId";
-import { syncChatNotificationsFromServer } from "@features/notifications/api/notificationsApi";
-import { startChatRealtime } from "@features/chat/model/chatRealtime";
+} from "@features/home/logic/homeFeedMerge";
+import { getOrCreateGuestId } from "@features/auth/logic/guestId";
+import { syncChatNotificationsFromServer } from "@features/notifications/logic/notificationsSync";
+import { startChatRealtime } from "@features/chat/logic/realtime/chatRealtime";
 import { postAckPendingDeliveryOnLogin } from "@features/chat/api/chatApi";
 
 function normalizeReelsCovers(items: ReelsBootstrapPayload["items"]) {

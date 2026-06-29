@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAppStore } from '@features/auth/model/useAppStore'
+import { useAppStore } from '@features/auth/logic/useAppStore'
 import {
   fetchNotificationsFromServer,
   syncChatNotificationsFromServer,
-} from '../api/notificationsApi'
+} from '../logic/notificationsSync'
 
 export const notificationsQueryKey = ['notifications'] as const
 

@@ -1,7 +1,7 @@
 import type { MouseEvent } from 'react'
 import { GitBranch } from 'lucide-react'
 import { cn } from "@shared/lib/cn"
-import type { ReplyQuote } from "@features/market/model/store/useMarketStore"
+import type { ReplyQuote } from "@features/market/logic/store/useMarketStore"
 
 export function ChatReplyQuotes({
   quotes,

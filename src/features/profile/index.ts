@@ -22,4 +22,5 @@ export type {
   TrustAdjustResponseApi,
   TrustHistoryItemApi,
   UserContact,
+  OwnerStoreFormValues,
 } from './Dtos'

@@ -4,13 +4,13 @@ import { useShallow } from "zustand/react/shallow";
 import type {
   StoreBadge,
   ThreadChatCarrier,
-} from "@features/market/model/store/useMarketStore";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
+} from "@features/market/logic/store/useMarketStore";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { cn } from "@shared/lib/cn";
-import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
-import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
-import { resolveRouteOfferPublicForThread } from "@features/chat/model/routeSheetOfferGuards";
-import { buildChatParticipants } from '../../../model/chatParticipants';
+import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
+import { resolveRouteOfferPublicForThread } from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
+import { buildChatParticipants } from '@features/chat/logic/participants/chatParticipants';
 import {
   RAIL_BODY,
   RAIL_ROOT,

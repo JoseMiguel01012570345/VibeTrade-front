@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { fetchCatalogCategories } from "@features/catalog/api/fetchCatalogCategories";
 import { cn } from "@shared/lib/cn";
-import { onBackdropPointerClose } from '../../model/modalClose';
+import { onBackdropPointerClose } from '@shared/lib/modals/modalClose';
 import {
   checkRow,
   detailsBlock,
@@ -12,14 +12,10 @@ import {
   modalShellWide,
   modalSub,
   scopeRow,
-} from '../../model/formModalStyles';
+} from '@shared/styles/modals/formModalStyles';
 import { MerchandiseLineEditor } from "./MerchandiseLineEditor";
 import { ModalFormField as Field } from "./ModalFormField";
-import type {
-  MerchandiseLine,
-  TradeAgreementDraft,
-  TradeAgreementExtraFieldDraft,
-} from "@features/chat/model/tradeAgreementTypes";
+import type { MerchandiseLine, TradeAgreementDraft, TradeAgreementExtraFieldDraft } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
 import {
   defaultAgreementDraft,
   emptyMerchandiseLine,
@@ -29,22 +25,22 @@ import {
   merchandiseScopedExtraFields,
   rebuildExtraFieldsFromSections,
   serviceScopedExtraFields,
-} from "@features/chat/model/tradeAgreementTypes";
-import type { TradeAgreementFormErrors } from "@features/chat/model/tradeAgreementValidation";
+} from "@features/chat/logic/agreement/tradeAgreementTypes";
+import type { TradeAgreementFormErrors } from "@features/chat/Dtos/agreement/tradeAgreementValidationTypes";
 import {
   hasValidationErrors,
   validateTradeAgreementDraft,
   validationErrorCount,
-} from "@features/chat/model/tradeAgreementValidation";
-import type { StoreCatalog } from "@features/market/model/storeCatalogTypes";
+} from "@features/chat/logic/agreement/tradeAgreementValidation";
+import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes";
 import {
   mergeMerchandiseLineWithStoreProduct,
   mergeServiceItemWithStoreService,
-} from "@features/market/model/storeCatalogTypes";
+} from "@features/market/logic/storeCatalogTypes";
 import { AgreementExtraFieldsEditor } from "./AgreementExtraFieldsEditor";
 import { ServiceConfigWizard } from "./serviceConfig/ServiceConfigWizard";
 import { ServiceItemPreview } from "./serviceConfig/ServiceItemPreview";
-import { serviceItemSummaryLine } from "./serviceConfig/serviceItemFormat";
+import { serviceItemSummaryLine } from "@features/chat/logic/agreement/serviceItemFormat";
 
 function localExtraFieldErrors(
   slice: TradeAgreementExtraFieldDraft[],

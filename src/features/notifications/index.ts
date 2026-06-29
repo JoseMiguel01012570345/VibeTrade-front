@@ -1,9 +1,11 @@
 export { NotificationsPage } from './pages/NotificationsPage'
 export { useNotifications } from './hooks/useNotifications'
+export { mapServerNotification } from './logic/mapServerNotification'
 export {
-  mapServerNotification,
+  fetchNotificationsFromServer,
   syncChatNotificationsFromServer,
-} from './api/notificationsApi'
-export type { NotificationItem, NotificationRouteMeta, OfferNotificationKind } from './Dtos'
-export { notifyDesktopIfUnfocused } from './model/desktopNotifications'
-export { notificationDeepLink } from './model/notificationRoutes'
+} from './logic/notificationsSync'
+export type { NotificationItem, NotificationRouteMeta } from './Dtos/notificationItem'
+export type { OfferNotificationKind } from './Dtos/offerNotificationKind'
+export { notifyDesktopIfUnfocused } from './logic/desktopNotifications'
+export { notificationDeepLink } from './logic/notificationRoutes'

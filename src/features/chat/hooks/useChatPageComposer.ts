@@ -7,18 +7,14 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { Thread } from '@features/market/model/store/useMarketStore'
-import { useMarketStore } from '@features/market/model/store/useMarketStore'
-import { normalizeThreadMessages } from '@features/chat/model/chatMerge'
+import type { Thread } from '@features/market/logic/store/useMarketStore'
+import { useMarketStore } from '@features/market/logic/store/useMarketStore'
+import { normalizeThreadMessages } from '@features/chat/logic/thread/chatMerge'
 import {
   formatFileSize,
   inferDocKind,
-} from '@features/chat/model/chatAttachments'
-import {
-  type PendingDoc,
-  type PendingImg,
-} from '../components/composer/ChatComposerSection'
-import { useChatVoiceRecorder } from './useChatVoiceRecorder'
+} from '@features/chat/logic/messages/chatAttachments'
+import { type PendingDoc, type PendingImg } from '@features/chat/Dtos/composer/chatComposerTypes';import { useChatVoiceRecorder } from './useChatVoiceRecorder'
 
 function revokeBlob(url: string) {
   if (url.startsWith('blob:')) URL.revokeObjectURL(url)

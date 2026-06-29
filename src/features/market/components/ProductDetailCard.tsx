@@ -4,12 +4,12 @@ import { Heart, MessageCircle, Package, Truck } from "lucide-react";
 import {
   catalogMonedasList,
   type StoreProduct,
-} from "@features/market/model/storeCatalogTypes";
+} from "@features/market/logic/storeCatalogTypes";
 import {
   ProtectedMediaAnchor,
   ProtectedMediaImg,
 } from "@shared/components/media/ProtectedMediaImg";
-import { ImageLightbox } from "@features/chat/components/media/ImageLightbox";
+import { ImageLightbox } from "@shared/components/media/ImageLightbox";
 
 export function ProductDetailCard({ p }: { p: StoreProduct }) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);

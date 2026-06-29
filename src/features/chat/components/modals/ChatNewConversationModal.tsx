@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Loader2, Users } from "lucide-react";
-import { onBackdropPointerClose } from '../../model/modalClose';
+import { onBackdropPointerClose } from '@shared/lib/modals/modalClose';
 import {
   fieldLabel,
   modalFormBody,
   modalShellWide,
   modalSub,
-} from '../../model/formModalStyles';
+} from '@shared/styles/modals/formModalStyles';
 import { VtMultiSelect } from "@shared/components/ui/VtMultiSelect";
 import type { VtSelectOption } from "@shared/components/ui/VtSelect";
 import {
@@ -18,7 +18,7 @@ import {
 } from "@features/profile/api/contactsApi";
 import { createSocialGroupChatThread } from "@features/chat/api/chatApi";
 import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 
 type Props = Readonly<{
   open: boolean;

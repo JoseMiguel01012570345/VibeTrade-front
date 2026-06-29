@@ -1,4 +1,4 @@
-import type { StoreCustomAttachment } from '@features/market/model/storeCatalogTypes'
+import type { StoreCustomAttachment } from '@features/market/logic/storeCatalogTypes'
 
 export type ProductPhotoSlot = {
   id: string

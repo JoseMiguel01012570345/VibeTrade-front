@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import { useAppStore } from "@features/auth/model/useAppStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
 import { ArrowLeft, LayoutGrid, RefreshCw } from "lucide-react";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import {
   catalogMonedasList,
   emptyStoreProductInput,
   emptyStoreServiceInput,
-} from "@features/market/model/storeCatalogTypes";
+} from "@features/market/logic/storeCatalogTypes";
 import {
   deleteStoreProductApi,
   deleteStoreServiceApi,
@@ -32,7 +32,7 @@ import {
   MAX_REASONABLE_PRICE,
   maxPriceFromProducts,
   maxPriceFromServices,
-} from "@features/market/api/parseProductPrice";
+} from "@features/market/logic/parseProductPrice";
 import { ProductDetailCard } from "../components/ProductDetailCard";
 import { ProductFiltersCard } from "../components/ProductFiltersCard";
 import { ServiceDetailCard } from "../components/ServiceDetailCard";
@@ -46,7 +46,7 @@ import {
   collectCurrencyCodesForFilterOptions,
   filterProductsBySectionText,
   filterServicesBySectionText,
-} from "../model/storePageCatalogFilters";
+} from "../logic/storePageCatalogFilters";
 import { backRowBtnClass } from "../styles/storePageStyles";
 import type {
   CatalogPublishedFilter,
@@ -55,8 +55,8 @@ import type {
   StoreScreen,
   StoreSectionFilters,
   VitrinaListMode,
-} from "../model/storePageTypes";
-import { emptyStoreSectionFilters } from "../model/storePageTypes";
+} from "../logic/storePageTypes";
+import { emptyStoreSectionFilters } from "../logic/storePageTypes";
 import {
   clampStoreSectionPriceRange,
   formatCatalogJoinedLabel,
@@ -64,7 +64,7 @@ import {
   screenFromPathname,
   storeScreenHeaderTitle,
   uniqueSorted,
-} from "../model/storePageUtils";
+} from "../logic/storePageUtils";
 
 const EMPTY_CATEGORY_HINTS: string[] = [];
 const EMPTY_CURRENCY_HINTS: string[] = [];

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Maximize2 } from "lucide-react";
-import type { StoreLocationPoint } from "@features/market/model/store/marketStoreTypes";
+import type { StoreLocationPoint } from "@features/market/logic/store/marketStoreTypes";
 import { PointLocationFeedMap } from "@features/home/components/EmergentRouteFeedMap";
 
 type Props = Readonly<{

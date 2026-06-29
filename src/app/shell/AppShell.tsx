@@ -9,12 +9,12 @@ import {
   User,
 } from "lucide-react";
 import { cn } from "@shared/lib/cn";
-import { useAppStore } from "@features/auth/model/useAppStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
 import { NotificationsBell } from "../widgets/NotificationsBell";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { AuthEntryModal } from "@features/auth";
 import { ThemeToggle } from "../widgets/ThemeToggle";
-import { syncChatNotificationsFromServer } from "@features/notifications/api/notificationsApi";
+import { syncChatNotificationsFromServer } from "@features/notifications/logic/notificationsSync";
 
 const tabs = [
   { to: "/home", label: "Home", icon: Home },

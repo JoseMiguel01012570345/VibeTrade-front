@@ -2,17 +2,17 @@ import { CreditCard, FileDown, Loader2 } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 import {
   agreementDeclaresMerchandise,
-} from "@features/chat/model/tradeAgreementTypes";
-import { paymentFeeLabels, minorToMajor } from "@features/payments/model/paymentFeePolicy";
-import { PAYMENT_FEE_POLICY_URL } from "@features/payments/model/paymentFeePolicyLinks";
+} from "@features/chat/logic/agreement/tradeAgreementTypes";
+import { paymentFeeLabels, minorToMajor } from "@features/payments/logic/paymentFeePolicy";
+import { PAYMENT_FEE_POLICY_URL } from "@features/payments/logic/paymentFeePolicyLinks";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { VtSelect } from "@shared/components/ui/VtSelect";
 import { VtMultiSelect } from "@shared/components/ui/VtMultiSelect";
-import { recurrenceSlotKey } from "@features/chat/model/chatPaymentUtils";
+import { recurrenceSlotKey } from "@features/chat/logic/payments/chatPaymentUtils";
 import { RoutePaymentCarrierWarningModal } from "./RoutePaymentCarrierWarningModal";
 import {
   sanitizePaymentInformeLabel,
-} from "@features/chat/model/paymentCheckoutPdfDownload";
+} from "@features/chat/logic/payments/paymentCheckoutPdfDownload";
 import type { UseChatPaymentModalReturn } from "@features/chat/hooks/useChatPaymentModal";
 
 type ChatPaymentModalBodyProps = {

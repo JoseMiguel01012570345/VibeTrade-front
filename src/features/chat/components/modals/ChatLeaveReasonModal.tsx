@@ -1,5 +1,5 @@
-﻿import { useState } from "react";
-import { modalShellNarrow } from '../../model/formModalStyles';
+import { useState } from "react";
+import { modalShellNarrow } from '@shared/styles/modals/formModalStyles';
 
 type Props = {
   open: boolean;

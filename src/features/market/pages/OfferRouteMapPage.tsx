@@ -2,10 +2,10 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
-import { buildEmergentMapLegs } from "@features/market/model/map/emergentRouteMapLegs";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
+import { buildEmergentMapLegs } from "@features/market/logic/map/emergentRouteMapLegs";
 import { EmergentRouteFeedMap } from "@features/home/components/EmergentRouteFeedMap";
-import { offerFromStoreCatalogs } from "@features/market/api/offerFromCatalog";
+import { offerFromStoreCatalogs } from "@features/market/logic/offerFromCatalog";
 import { fetchPublicOfferCard } from "@features/market/api/marketPersistence";
 
 /**

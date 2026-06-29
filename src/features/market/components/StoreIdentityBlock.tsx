@@ -7,20 +7,20 @@ import {
   ExternalLink,
   ScrollText,
 } from "lucide-react";
-import type { StoreBadge } from "@features/market/model/store/marketStoreTypes";
-import type { StoreCatalog } from "@features/market/model/storeCatalogTypes";
+import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
+import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
-import { ImageLightbox } from "@features/chat/components/media/ImageLightbox";
+import { ImageLightbox } from "@shared/components/media/ImageLightbox";
 import { StoreLocationPreview } from "./StoreLocationPreview";
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
 import { TrustHistoryModal } from "@features/profile/components/trust/TrustHistoryModal";
-import { useAppStore } from "@features/auth/model/useAppStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
 import { EMPTY_TRUST_LEDGER_ENTRIES } from "@features/profile/Dtos/trustLedgerTypes";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 import { fetchStoreTrustHistory } from "@features/profile/api/trustLedgerApi";
 import type { StoreDetailOwner } from "@features/market/api/fetchStoreDetail";
 import { websiteUrlDisplayLabel } from "@shared/lib/websiteUrl";
-import { profileSectionPath } from "@features/profile/model/profilePaths";
+import { profileSectionPath } from "@features/profile/logic/profilePaths";
 
 export function StoreIdentityBlock({
   store,

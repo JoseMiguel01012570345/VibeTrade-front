@@ -1,4 +1,4 @@
-﻿import { modalShellNarrow } from '../../model/formModalStyles';
+import { modalShellNarrow } from '@shared/styles/modals/formModalStyles';
 
 type Props = {
   open: boolean;

@@ -1,8 +1,8 @@
 import { CalendarClock, ClipboardList, CreditCard, Scale, ShieldAlert } from 'lucide-react'
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg"
-import { agrDetailLink } from '../../../model/formModalStyles'
-import { monedasFromRecurrenciaPagos, type ServiceItem, type TradeAgreementExtraFieldDraft } from "@features/chat/model/tradeAgreementTypes"
-import { formatPaymentSummary } from './serviceItemFormat'
+import { agrDetailLink } from '@shared/styles/modals/formModalStyles'
+import type { ServiceItem, TradeAgreementExtraFieldDraft } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import { monedasFromRecurrenciaPagos } from "@features/chat/logic/agreement/tradeAgreementTypes";import { formatPaymentSummary } from '@features/chat/logic/agreement/serviceItemFormat'
 import { ServiceScheduleReadView } from './ServiceScheduleReadView'
 
 const MES = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'] as const

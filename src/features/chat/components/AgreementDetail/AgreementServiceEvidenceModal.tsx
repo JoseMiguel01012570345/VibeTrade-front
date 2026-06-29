@@ -1,20 +1,14 @@
 import type { Dispatch, SetStateAction } from 'react'
 import toast from 'react-hot-toast'
 import { BadgeCheck, Loader2, Pencil, Upload, XCircle } from 'lucide-react'
-import {
-  decideServiceEvidence,
-  upsertServiceEvidence,
-  type ServiceEvidenceAttachmentApi,
-} from '@features/chat/api/agreementServiceEvidenceApi'
-import { uploadMedia, mediaApiUrl } from '@shared/services/media/mediaClient'
+import type { ServiceEvidenceAttachmentApi } from '@features/chat/Dtos/agreement/agreementServiceEvidenceApiTypes';
+import { decideServiceEvidence, upsertServiceEvidence } from '@features/chat/api/agreementServiceEvidenceApi';import { uploadMedia, mediaApiUrl } from '@shared/services/media/mediaClient'
 import { EvidenceAttachmentsList } from '../shared/EvidenceAttachmentsList'
 import {
   fmtAgreementMoneyMinor,
   normalizeEvidenceForCompare,
 } from './agreementDetailPresentation'
-import type { EvidenceModalState } from '@features/chat/hooks/useAgreementDetailServicePayments'
-
-type Props = {
+import type { EvidenceModalState } from '@features/chat/Dtos/agreement/agreementDetailUiTypes';type Props = {
   threadId: string
   agreementId: string
   modal: NonNullable<EvidenceModalState>

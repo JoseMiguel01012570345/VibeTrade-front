@@ -1,10 +1,6 @@
 import { Link } from "react-router-dom";
 import { ExternalLink, Package, Store, Wrench } from "lucide-react";
-import type { Offer } from "@features/market/model/store/useMarketStore";
-import type {
-  CatalogOfferPreview,
-  CatalogSearchItem,
-} from "@features/catalog/Dtos/catalogSearchTypes";
+import type { CatalogSearchItem } from "@features/catalog/Dtos/catalogSearchTypes";
 import { websiteUrlDisplayLabel } from "@shared/lib/websiteUrl";
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
@@ -12,62 +8,19 @@ import { cn } from "@shared/lib/cn";
 import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
-} from "@features/market/api/toolPlaceholder";
-import { buildEmergentMapLegs } from "@features/market/model/map/emergentRouteMapLegs";
+} from "@features/market/logic/toolPlaceholder";
+import { buildEmergentMapLegs } from "@features/market/logic/map/emergentRouteMapLegs";
 import { EmergentRouteFeedMap } from "@features/home/components/EmergentRouteFeedMap";
+import { fmtKm } from "@features/home/logic/formatDistance";
+import {
+  emergentOfferForMap,
+  offerSubtitle,
+  offerTitle,
+} from "@features/catalog/logic/catalogOfferCardDisplay";
 
 type Props = Readonly<{
   item: CatalogSearchItem;
 }>;
-
-function fmtKm(v: number): string {
-  if (v < 1) return `${Math.round(v * 1000)} m`;
-  if (v < 10) return `${v.toFixed(1)} km`;
-  return `${Math.round(v)} km`;
-}
-
-function offerTitle(offer: CatalogOfferPreview): string {
-  if (offer.kind === "emergent")
-    return offer.name?.trim() || offer.category || "Hoja de ruta";
-  if (offer.kind === "product")
-    return offer.name?.trim() || offer.category || "Producto";
-  return offer.tipoServicio?.trim() || offer.category || "Servicio";
-}
-
-function offerSubtitle(offer: CatalogOfferPreview): string | null {
-  if (offer.kind === "emergent") {
-    const bits = [offer.category].filter(Boolean);
-    return bits.length ? bits.join(" · ") : "Publicación de hoja de ruta";
-  }
-  if (offer.kind === "product") {
-    const priceText =
-      offer.price && offer.currency
-        ? `${offer.price} ${offer.currency}`
-        : offer.price || null;
-    const currencyText =
-      !priceText && offer.currency ? `Moneda: ${offer.currency}` : null;
-    const bits = [offer.category, priceText ?? currencyText].filter(Boolean);
-    return bits.length ? bits.join(" · ") : null;
-  }
-  const bits = [offer.category].filter(Boolean);
-  return bits.length ? bits.join(" · ") : null;
-}
-
-function emergentOfferForMap(
-  preview: CatalogOfferPreview,
-  storeId: string,
-): Offer {
-  return {
-    id: preview.id,
-    storeId,
-    title: preview.name?.trim() || "Hoja de ruta",
-    price: preview.price?.trim() || "—",
-    tags: ["Hoja de ruta (publicada)"],
-    imageUrl: preview.photoUrls?.[0]?.trim() || "",
-    isEmergentRoutePublication: true,
-    emergentRouteParadas: preview.emergentRouteParadas,
-  };
-}
 
 export function CatalogOfferSearchCard({ item }: Props) {
   const { store: s, offer, distanceKm } = item;

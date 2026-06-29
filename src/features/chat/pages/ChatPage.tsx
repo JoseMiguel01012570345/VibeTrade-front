@@ -14,10 +14,10 @@ import {
 import { cn } from "@shared/lib/cn";
 import toast from "react-hot-toast";
 import { useShallow } from "zustand/react/shallow";
-import { useAppStore } from "@features/auth/model/useAppStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
 import {
   useMarketStore,
-} from "@features/market/model/store/useMarketStore";
+} from "@features/market/logic/store/useMarketStore";
 import {
   ChatComposerSection,
 } from "../components/composer/ChatComposerSection";
@@ -30,36 +30,32 @@ import {
   viewerIsConfirmedRouteCarrierOnThread,
   resolveRouteOfferPublicForThread,
   tramoNotifyLineFromOffer,
-} from "@features/chat/model/routeSheetOfferGuards";
-import { userHasTransportService } from "@features/market/model/transportEligibility";
+} from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
+import { userHasTransportService } from "@features/market/logic/transportEligibility";
 import { fetchStoreDetail } from "@features/market/api/fetchStoreDetail";
-import { mergeStoreCatalogWithLocalExtras } from "@features/market/model/storeCatalogTypes";
-import {
-  fetchSocialThreadMembers,
-  patchChatMessageStatus,
-  patchSocialGroupTitle,
-  type ChatThreadMemberDto,
-} from "@features/chat/api/chatApi";
+import { mergeStoreCatalogWithLocalExtras } from "@features/market/logic/storeCatalogTypes";
+import type { ChatThreadMemberDto } from "@features/chat/Dtos/thread/chatApiTypes";
+import { fetchSocialThreadMembers, patchChatMessageStatus, patchSocialGroupTitle } from "@features/chat/api/chatApi";
 import {
   disconnectFromChatThread,
   joinChatThread,
-} from "@features/chat/model/chatRealtime";
+} from "@features/chat/logic/realtime/chatRealtime";
 import {
   fetchPublicProfile,
   mergePublicProfileIntoAppStore,
   wasPublicProfileHydrated,
-} from "@features/auth/model/publicProfile";
-import { VT_SOCIAL_PLACEHOLDER_OFFER_ID } from "@features/chat/model/chatThreadDtoFallbacks";
+} from "@features/auth/logic/publicProfile";
+import { VT_SOCIAL_PLACEHOLDER_OFFER_ID } from "@features/chat/logic/thread/chatThreadDtoFallbacks";
 import {
   mergeBuyerLabelFromThreadDto,
   mergeSocialThreadMembersIntoProfileStore,
-} from "@features/chat/model/chatSenderLabels";
-import { resolveBuyerUserId } from "@features/chat/model/chatParticipantLabels";
+} from "@features/chat/logic/participants/chatSenderLabels";
+import { resolveBuyerUserId } from "@features/chat/logic/participants/chatParticipantLabels";
 import {
   isBuyerExpelledFromThread,
   isSellerExpelledFromThread,
-} from "@features/chat/model/threadPartyExpelled";
-import { getThreadPeerPartyExit } from "@features/chat/model/threadPeerPartyExit";
+} from "@features/chat/logic/party-exit/threadPartyExpelled";
+import { getThreadPeerPartyExit } from "@features/chat/logic/party-exit/threadPeerPartyExit";
 import { useMinWidth961 } from "../hooks/useMinWidth961";
 import { useBuyerForRail } from "../hooks/useBuyerForRail";
 import { useChatPeerProfileHydration } from "../hooks/useChatPeerProfileHydration";
@@ -70,13 +66,13 @@ import { useChatPageComposer } from "../hooks/useChatPageComposer";
 import { useChatPageTradeActions } from "../hooks/useChatPageTradeActions";
 import { ChatPageModals } from "../components/page/ChatPageModals";
 import { useCarrierThreadGeolocationAndTelemetry } from "../hooks/useCarrierThreadGeolocationAndTelemetry";
-import { incomingMessageSupportsDeliveryAck } from "../model/chatDeliveryAck";
+import { incomingMessageSupportsDeliveryAck } from "@features/chat/logic/realtime/chatDeliveryAck";
 import { CarrierBlockedChatView } from "../components/layout/CarrierBlockedChatView";
 import { ChatJumpToBottomFab } from "../components/layout/ChatJumpToBottomFab";
 import { ChatPageHeader } from "../components/layout/ChatPageHeader";
 import { ChatTradeMobileActionsSheet } from "../components/layout/ChatTradeMobileActionsSheet";
 import { ChatSocialOverlays } from "../components/social/ChatSocialOverlays";
-import "./chat.css";
+import "../styles/chat.css";
 
 export function ChatPage() {
   const { threadId } = useParams();

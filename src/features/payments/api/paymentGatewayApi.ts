@@ -6,7 +6,7 @@ import type {
   PaymentGatewayConfig,
   SavedCard,
 } from "../Dtos";
-import { friendlyPaymentGatewayError } from "../model/paymentGatewayErrors";
+import { friendlyPaymentGatewayError } from "../logic/paymentGatewayErrors";
 
 export async function getPaymentGatewayConfig(): Promise<PaymentGatewayConfig> {
   const res = await apiFetch("/api/v1/payments/gateway/config");

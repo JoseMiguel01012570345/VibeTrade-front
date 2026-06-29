@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { CountrySelect } from '../components/CountrySelect'
-import type { Country } from '../components/countries'
+import type { SignInCountry } from '../Dtos/signInCountry'
 import { apiFetch } from "@shared/services/http/apiClient"
 import { fetchSignInCountries } from "@shared/services/http/fetchSignInCountries"
 import type { OnboardingMode } from '../Dtos/onboardingTypes'
@@ -17,8 +17,8 @@ export function PhoneEntryPage() {
   const loc = useLocation()
   const mode = (loc.state as PhoneLocationState | null)?.mode ?? 'register'
 
-  const [countries, setCountries] = useState<Country[]>([])
-  const [country, setCountry] = useState<Country | null>(null)
+  const [countries, setCountries] = useState<SignInCountry[]>([])
+  const [country, setCountry] = useState<SignInCountry | null>(null)
   const [countriesStatus, setCountriesStatus] = useState<
     'loading' | 'ok' | 'error'
   >('loading')

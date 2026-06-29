@@ -1,10 +1,3 @@
-import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
-import {
-  statusPillNo,
-  statusPillOk,
-  statusPillPending,
-} from '../../../model/formModalStyles';
-
 export const RAIL_ROOT =
   "vt-chat-rail flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)] max-[960px]:rounded-b-none max-[960px]:border-b-0 max-[960px]:shadow-none";
 
@@ -19,34 +12,4 @@ export const TAB_ON =
 
 export const railItemClass =
   "relative w-full cursor-pointer rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_60%,transparent)] py-2.5 pl-2.5 pr-7 text-left hover:border-[color-mix(in_oklab,var(--primary)_40%,var(--border))]";
-
-export function contractStatusLabel(s: TradeAgreement["status"]) {
-  switch (s) {
-    case "pending_buyer":
-      return "Pendiente";
-    case "accepted":
-      return "Aceptado";
-    case "rejected":
-      return "Rechazado";
-    case "deleted":
-      return "Eliminado";
-    default:
-      return s;
-  }
-}
-
-export function contractStatusClass(s: TradeAgreement["status"]) {
-  switch (s) {
-    case "pending_buyer":
-      return statusPillPending;
-    case "accepted":
-      return statusPillOk;
-    case "rejected":
-      return statusPillNo;
-    case "deleted":
-      return statusPillNo;
-    default:
-      return "";
-  }
-}
 

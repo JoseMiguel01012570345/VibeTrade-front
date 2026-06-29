@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import { useAppStore } from "@features/auth/model/useAppStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
 import {
   mergePersistedChatMessages,
   mapChatMessageDtoToMessage,
-} from "@features/chat/model/chatMerge";
+} from "@features/chat/logic/thread/chatMerge";
 import {
   fetchChatMessages,
   fetchChatThread,
@@ -11,29 +11,27 @@ import {
   fetchThreadRouteTramoSubscriptions,
   fetchThreadTradeAgreements,
 } from "@features/chat/api/chatApi";
-import { mapTradeAgreementApiToTradeAgreement } from "@features/chat/model/tradeAgreementApiMapper";
+import { mapTradeAgreementApiToTradeAgreement } from "@features/chat/logic/agreement/tradeAgreementApiMapper";
 import {
   mergeBuyerLabelFromThreadDto,
   mergeChatSenderLabelsIntoProfileStore,
-} from "@features/chat/model/chatSenderLabels";
+} from "@features/chat/logic/participants/chatSenderLabels";
 import {
   minimalOfferStoreFromChatThreadDto,
   VT_SOCIAL_PLACEHOLDER_OFFER_ID,
-} from "@features/chat/model/chatThreadDtoFallbacks";
+} from "@features/chat/logic/thread/chatThreadDtoFallbacks";
 import { fetchPublicOfferCard } from "@features/market/api/marketPersistence";
 import {
   buildPurchaseThreadMessages,
   buildPurchaseThreadSystemOnly,
   syncOwnQaIntoMessages,
-} from "@features/market/model/store/marketStoreHelpers";
-import { mergedRouteOfferPublicAfterChatThreadHydration } from "@features/market/api/routeOfferPublicFromEmergentCard";
-import { applyViewerRouteTramoSubscriptions } from "@features/chat/model/routeOfferSubscriptionMerge";
-import {
-  routeSheetEditAcksRecordFromSheets,
-  type RouteSheet,
-} from "@features/chat/model/routeSheetTypes";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
-import { partyExpelledFieldsFromDto } from "@features/chat/model/threadPartyExpelled";
+} from "@features/market/logic/store/marketStoreHelpers";
+import { mergedRouteOfferPublicAfterChatThreadHydration } from "@features/market/logic/routeOfferPublicFromEmergentCard";
+import { applyViewerRouteTramoSubscriptions } from "@features/chat/logic/route-sheet/routeOfferSubscriptionMerge";
+import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
+import { routeSheetEditAcksRecordFromSheets } from "@features/chat/logic/route-sheet/routeSheetTypes";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
+import { partyExpelledFieldsFromDto } from "@features/chat/logic/party-exit/threadPartyExpelled";
 
 type Params = {
   threadId: string | undefined;

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Bookmark } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@shared/lib/cn";
-import { useAppStore } from "@features/auth/model/useAppStore";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import {
   deleteSavedOffer,
   postSavedOffer,

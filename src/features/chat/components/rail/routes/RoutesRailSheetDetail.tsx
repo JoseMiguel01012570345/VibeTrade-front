@@ -2,21 +2,21 @@ import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import type { RoutesRailSheetDetailProps } from "./routesRailSheetDetailTypes";
-import { composeRoutesRailDetailShellMerged } from "./routesRailSheetDetailComposer";
+import { composeRoutesRailDetailShellMerged } from "@features/chat/logic/rail/routesRailSheetDetailComposer";
 import { RoutesRailSheetDetailShell } from "./RoutesRailSheetDetailShell";
 import { RouteSheetActionConfirmModal } from "./RouteSheetActionConfirmModal";
 import {
   buildRoutesRailUnpublishConfirmMessage,
   runRoutesRailDeleteConfirmation,
   runRoutesRailPublishToggle,
-} from "./RoutesRailDetailSections";
-import { railBuildDeleteSheetConfirmMessage } from "./routesRailSheetStrings";
+} from "@features/chat/logic/rail/routesRailDetailOrchestration";
+import { railBuildDeleteSheetConfirmMessage } from "@features/chat/logic/rail/routesRailSheetStrings";
 
 export type {
   CedeOwnershipModalState,
   CarrierEvEditModalState,
   CarrierEvReadModalState,
-} from "../shared/routesRailSheetModalTypes";
+} from "@features/chat/Dtos/rail/routesRailTypes";
 export type { RoutesRailSheetDetailProps } from "./routesRailSheetDetailTypes";
 
 type PendingConfirm = "delete" | "unpublish";

@@ -4,11 +4,9 @@ import { AlertTriangle, BadgeCheck, CreditCard, Loader2, XCircle } from 'lucide-
 import { useNavigate } from 'react-router-dom'
 import { VtSelect } from '@shared/components/ui/VtSelect'
 import { recordSellerServicePayout } from '@features/chat/api/agreementServiceEvidenceApi'
-import { PAYMENT_FEE_POLICY_URL } from '@features/payments/model/paymentFeePolicyLinks'
+import { PAYMENT_FEE_POLICY_URL } from '@features/payments/logic/paymentFeePolicyLinks'
 import { fmtAgreementMoneyMinor } from './agreementDetailPresentation'
-import type { SellerPayoutModalState } from '@features/chat/hooks/useAgreementDetailServicePayments'
-
-type Props = {
+import type { SellerPayoutModalState } from '@features/chat/Dtos/agreement/agreementDetailUiTypes';type Props = {
   threadId: string
   agreementId: string
   modal: NonNullable<SellerPayoutModalState>

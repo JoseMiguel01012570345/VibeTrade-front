@@ -2,14 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Button, Spinner } from "flowbite-react";
-import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
+import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
 import { postRouteSheetNotifyPreselected } from "@features/chat/api/chatApi";
 import { FlowbiteChatModal } from "../layout/FlowbiteChatModal";
-import {
-  type SelectableColumnDef,
-  SelectableDataTable,
-} from "../data/SelectableDataTable";
-import { fetchPublicProfile } from "@features/auth/model/publicProfile";
+import type { SelectableColumnDef } from "@features/chat/Dtos/shared/selectableDataTableTypes";
+import { SelectableDataTable } from "../data/SelectableDataTable";
+import { fetchPublicProfile } from "@features/auth/logic/publicProfile";
 
 type Props = Readonly<{
   routeSheet: RouteSheet;

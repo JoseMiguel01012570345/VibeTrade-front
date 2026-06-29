@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import { Button, Spinner } from "flowbite-react";
 import { getSessionToken } from "@shared/services/http/sessionToken";
-import type { CedeOwnershipModalState } from "../shared/routesRailSheetModalTypes";
-import { submitCedeCarrierOwnership } from "./cedeCarrierOwnershipModalSubmit";
+import type { CedeOwnershipModalState } from "@features/chat/Dtos/rail/routesRailTypes";
+import { submitCedeCarrierOwnership } from "@features/chat/logic/rail/carrier-evidence/cedeCarrierOwnershipModalSubmit";
 
 type Props = {
   modal: CedeOwnershipModalState | null;

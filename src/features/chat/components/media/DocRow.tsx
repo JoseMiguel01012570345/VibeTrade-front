@@ -8,7 +8,7 @@ import {
 import toast from 'react-hot-toast'
 import { Download, FileText, Loader2 } from 'lucide-react'
 import { cn } from "@shared/lib/cn"
-import { downloadDocumentFile } from './documentDownload'
+import { downloadDocumentFile } from '@features/chat/logic/media/documentDownload'
 
 function DocIcon({ kind }: { kind: 'pdf' | 'doc' | 'other' }) {
   if (kind === 'pdf')

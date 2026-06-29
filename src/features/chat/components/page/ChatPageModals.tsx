@@ -1,15 +1,8 @@
-import type { RouteOfferPublicState } from '@features/market/model/store/marketStoreTypes'
-import type { TradeAgreement } from '@features/chat/model/tradeAgreementTypes'
-import type { RouteSheet } from '@features/chat/model/routeSheetTypes'
-import type {
-  RouteSheetFormPayload,
-  RouteSheetSubmitResult,
-} from '../modals/RouteSheetFormModal'
-import type { StoreCatalog } from '@features/market/model/storeCatalogTypes'
-import type { TradeAgreementDraft } from '@features/chat/model/tradeAgreementTypes'
-import { ImageLightbox } from '../media/ChatMedia'
+import type { RouteOfferPublicState } from '@features/market/logic/store/marketStoreTypes'
+import type { TradeAgreement } from '@features/chat/Dtos/agreement/tradeAgreementTypes';import type { RouteSheet } from '@features/chat/Dtos/route-sheet/routeSheetTypes';import type { RouteSheetFormPayload, RouteSheetSubmitResult } from '@features/chat/Dtos/route-sheet/routeSheetFormModalTypes';import type { StoreCatalog } from '@features/market/logic/storeCatalogTypes'
+import type { TradeAgreementDraft } from '@features/chat/Dtos/agreement/tradeAgreementTypes';import { ImageLightbox } from '@shared/components/media/ImageLightbox'
 import { AgreementDeleteRouteSheetsModal } from '../modals/AgreementDeleteRouteSheetsModal'
-import { ChatPaymentModal } from '../ChatPayment'
+import { ChatPaymentModal } from '../ChatPayment/ChatPaymentModal'
 import { TrustRiskEditConfirmModal } from '../modals/TrustRiskEditConfirmModal'
 import { TradeAgreementFormModal } from '../modals/TradeAgreementFormModal'
 import { RouteSheetFormModal } from '../modals/RouteSheetFormModal'

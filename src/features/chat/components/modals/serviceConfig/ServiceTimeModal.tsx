@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { VtDateField } from "@shared/components/ui/VtDateField"
-import { validateVigenciaRange } from "@features/chat/model/serviceVigenciaDates"
-import { onBackdropPointerClose } from '../../../model/modalClose'
-import { modalShellNarrow } from '../../../model/formModalStyles'
+import { validateVigenciaRange } from "@features/chat/logic/agreement/serviceVigenciaDates"
+import { onBackdropPointerClose } from '@shared/lib/modals/modalClose'
+import { modalShellNarrow } from '@shared/styles/modals/formModalStyles'
 
 type Props = {
   open: boolean

@@ -1,18 +1,18 @@
 import { type ChangeEvent, useId, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Loader2, Upload, X } from "lucide-react";
-import type { MerchandiseCondition } from "@features/chat/model/tradeAgreementTypes";
+import type { MerchandiseCondition } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
 import {
   catalogMonedasList,
   mergeMonedaPrecioIntoMonedas,
   type StoreProduct,
-} from "@features/market/model/storeCatalogTypes";
+} from "@features/market/logic/storeCatalogTypes";
 import {
   PROFILE_DESC_MIN,
   PROFILE_LINE_MIN,
   PROFILE_TITLE_MIN,
   validateProductForm,
-} from "../../model/profileStoreFormValidation";
+} from "../../logic/profileStoreFormValidation";
 import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
 import {
   fieldLabel,
@@ -39,7 +39,7 @@ import {
   productPhotoSlotsFromUrls,
   revokeIfBlob,
   type ProductPhotoSlot,
-} from "./helpers";
+} from "@features/profile/logic/stores/catalogMediaHelpers";
 
 type Props = Readonly<{
   open: boolean;

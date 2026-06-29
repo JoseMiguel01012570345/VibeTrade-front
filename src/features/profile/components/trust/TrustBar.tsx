@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useAppStore } from "@features/auth/model/useAppStore"
+import { useAppStore } from "@features/auth/logic/useAppStore"
 import { cn } from "@shared/lib/cn"
-
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n))
-}
+import { trustBarValueToPct } from "@features/profile/logic/trustScoreUtils"
 
 function useFluidPct(target: number) {
   const [v, setV] = useState(target)
@@ -51,19 +48,11 @@ export function TrustBar() {
     }
   }, [me.trustScore, threshold])
 
-  const pctTarget = useMemo(() => {
-    const min = -50
-    const max = 100
-    return ((clamp(me.trustScore, min, max) - min) / (max - min)) * 100
-  }, [me.trustScore])
+  const pctTarget = useMemo(() => trustBarValueToPct(me.trustScore), [me.trustScore])
 
   const pct = useFluidPct(pctTarget)
 
-  const thresholdPct = useMemo(() => {
-    const min = -50
-    const max = 100
-    return ((clamp(threshold, min, max) - min) / (max - min)) * 100
-  }, [threshold])
+  const thresholdPct = useMemo(() => trustBarValueToPct(threshold), [threshold])
 
   const locked = me.trustScore < threshold
 

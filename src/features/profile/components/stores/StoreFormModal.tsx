@@ -3,13 +3,13 @@ import toast from "react-hot-toast";
 import type {
   OwnerStoreFormValues,
   StoreLocationPoint,
-} from "@features/market/model/store/marketStoreTypes";
+} from "@features/market/logic/store/marketStoreTypes";
 import { MapPin, X } from "lucide-react";
 import {
   PROFILE_DESC_MIN,
   PROFILE_TITLE_MIN,
   validateOwnerStoreForm,
-} from "../../model/profileStoreFormValidation";
+} from "../../logic/profileStoreFormValidation";
 import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
 import {
   checkRow,

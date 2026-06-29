@@ -1,28 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { useAppStore } from "@features/auth/model/useAppStore";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
-import type { RouteOfferPublicState } from "@features/market/model/store/marketStoreTypes";
-import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
-import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
+import { useAppStore } from "@features/auth/logic/useAppStore";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
+import type { RouteOfferPublicState } from "@features/market/logic/store/marketStoreTypes";
+import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
 import {
   resolveRouteOfferPublicForThread,
-} from "@features/chat/model/routeSheetOfferGuards";
-import { routeOfferPublicFromThreadRouteSheet } from "@features/market/api/routeOfferPublicFromEmergentCard";
-import { routeSheetHasPendingCarrierAck } from "@features/market/model/store/marketSliceHelpers";
+} from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
+import { routeOfferPublicFromThreadRouteSheet } from "@features/market/logic/routeOfferPublicFromEmergentCard";
+import { routeSheetHasPendingCarrierAck } from "@features/market/logic/store/marketSliceHelpers";
 import {
   routeSheetStructuralEditBlockedByPaid,
-} from "@features/chat/model/routeSheetOfferGuards";
-import {
-  fetchAgreementRouteDeliveries,
-  getCedeCarrierOwnership,
-  type RouteStopDeliveryStatusApi,
-} from "@features/chat/api/routeLogisticsApi";
-import {
-  fetchThreadRouteTramoSubscriptions,
-  type RouteTramoSubscriptionItemApi,
-} from "@features/chat/api/chatApi";
-import { subscribeRouteDeliveriesRefresh } from "@features/chat/model/chatRealtime";
+} from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
+import type { RouteStopDeliveryStatusApi } from "@features/chat/Dtos/route-sheet/routeLogisticsApiTypes";
+import { fetchAgreementRouteDeliveries, getCedeCarrierOwnership } from "@features/chat/api/routeLogisticsApi";
+import type { RouteTramoSubscriptionItemApi } from "@features/chat/Dtos/thread/chatApiTypes";
+import { fetchThreadRouteTramoSubscriptions } from "@features/chat/api/chatApi";
+import { subscribeRouteDeliveriesRefresh } from "@features/chat/logic/realtime/chatRealtime";
 import { RouteSheetLiveTrackingModal } from "../../modals/RouteSheetLiveTrackingModal";
 import { InviteModal } from "../../modals/InviteModal";
 import type {
@@ -31,7 +26,7 @@ import type {
   CedeOwnershipModalState,
   SellerPauseTramoModalState,
   SellerResumeTramoModalState,
-} from "../shared/routesRailSheetModalTypes";
+} from "@features/chat/Dtos/rail/routesRailTypes";
 import { RoutesRailSheetDetail } from "./RoutesRailSheetDetail";
 import { RoutesRailSheetList } from "./RoutesRailSheetList";
 import { RoutesRailEntryActions } from "./RoutesRailEntryActions";
@@ -43,7 +38,7 @@ import { RailCarrierEvidenceReadModal } from "../modals/RailCarrierEvidenceReadM
 import {
   createRailRoutesBusService,
   registerRailRoutesBus,
-} from "@features/chat/model/railRoutesBusRegistry";
+} from "@features/chat/logic/rail/railRoutesBusRegistry";
 
 type Props = {
   bodyClassName: string;

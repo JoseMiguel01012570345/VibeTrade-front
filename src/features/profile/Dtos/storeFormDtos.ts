@@ -1,7 +1,7 @@
 import type {
   StoreProduct,
   StoreService,
-} from '@features/market/model/storeCatalogTypes'
+} from '@features/market/logic/storeCatalogTypes'
 
 export type ProductFormSnapshot = Omit<StoreProduct, 'id' | 'storeId'>
 

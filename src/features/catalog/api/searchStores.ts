@@ -4,7 +4,7 @@ import type {
   CatalogSearchPageResult,
   StoreSearchParams,
 } from "../Dtos/catalogSearchTypes";
-import { parseCatalogItem } from "../model/catalogSearchParsing";
+import { parseCatalogItem } from "../logic/catalogSearchParsing";
 import { apiFetch } from "@shared/services/http/apiClient";
 import { apiErrorTextToUserMessage, defaultUnexpectedErrorMessage } from "@shared/services/http/apiErrorMessage";
 

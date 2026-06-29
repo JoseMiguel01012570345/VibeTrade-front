@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchPublicProfile } from '@features/auth/model/publicProfile'
+import { fetchPublicProfile } from '@features/auth/logic/publicProfile'
 
 export function publicProfileQueryKey(userId: string) {
   return ['public-profile', userId] as const

@@ -1,23 +1,18 @@
 import toast from "react-hot-toast";
 import { Download } from "lucide-react";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { cn } from "@shared/lib/cn";
-import {
-  agreementDeclaresMerchandise,
-  agreementDeclaresService,
-  legacyCombinedExtraFields,
-  merchandiseScopedExtraFields,
-  type TradeAgreement,
-} from "@features/chat/model/tradeAgreementTypes";
-import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
+import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import { agreementDeclaresMerchandise, agreementDeclaresService, legacyCombinedExtraFields, merchandiseScopedExtraFields } from "@features/chat/logic/agreement/tradeAgreementTypes";
+import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
 import { AgreementMerchandiseEvidenceSection } from "./AgreementMerchandiseEvidenceSection";
-import { downloadTradeAgreementPdf } from "@features/chat/model/tradeAgreementPdfDownload";
+import { downloadTradeAgreementPdf } from "@features/chat/logic/agreement/tradeAgreementPdfDownload";
 import {
   agrDetailBlock,
   agrDetailH,
   agrDetailHint,
   agrDetailRoot,
-} from '../../model/formModalStyles';
+} from '@shared/styles/modals/formModalStyles';
 import {
   AgreementDetailRow,
   ExtraFieldClauseCards,
@@ -83,7 +78,7 @@ export function AgreementDetailView({
     <div className={agrDetailRoot}>
       <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <AgreementDetailRow label="Título" value={a.title} />
+          <AgreementDetailRow label="Tï¿½tulo" value={a.title} />
         </div>
         <button
           type="button"
@@ -141,7 +136,7 @@ export function AgreementDetailView({
 
       {showMerch && merchandiseScopedExtraFields(a.extraFields).length ? (
         <div className={agrDetailBlock}>
-          <div className={agrDetailH}>Otras cláusulas (mercancía)</div>
+          <div className={agrDetailH}>Otras clï¿½usulas (mercancï¿½a)</div>
           <ExtraFieldClauseCards
             fields={merchandiseScopedExtraFields(a.extraFields)}
           />
@@ -151,11 +146,11 @@ export function AgreementDetailView({
       {showMerch && legacyMerchandiseMetaHasContent(m) ? (
         <div className={agrDetailBlock}>
           <div className={agrDetailH}>
-            Mercancías · condiciones generales (acuerdo anterior)
+            Mercancï¿½as ï¿½ condiciones generales (acuerdo anterior)
           </div>
           <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
             Estos datos eran comunes a todo el bloque; en acuerdos nuevos van por
-            cada ítem.
+            cada ï¿½tem.
           </p>
           <AgreementDetailRow label="Moneda" value={m!.moneda} />
           <AgreementDetailRow label="Tipo de embalaje" value={m!.tipoEmbalaje} />
@@ -164,10 +159,10 @@ export function AgreementDetailView({
             value={m!.devolucionesDesc}
           />
           <AgreementDetailRow
-            label="Quién paga envío de devolución"
+            label="Quiï¿½n paga envï¿½o de devoluciï¿½n"
             value={m!.devolucionQuienPaga}
           />
-          <AgreementDetailRow label="Plazos (devolución)" value={m!.devolucionPlazos} />
+          <AgreementDetailRow label="Plazos (devoluciï¿½n)" value={m!.devolucionPlazos} />
           <AgreementDetailRow
             label="Regulaciones, aduanas, restricciones, permisos"
             value={m!.regulaciones}
@@ -192,11 +187,11 @@ export function AgreementDetailView({
       {legacyCombinedExtraFields(a.extraFields).length ? (
         <div className={agrDetailBlock}>
           <div className={agrDetailH}>
-            Campos adicionales conjuntos (histórico)
+            Campos adicionales conjuntos (histï¿½rico)
           </div>
           <p className={cn("vt-muted", agrDetailHint, "mb-2 text-[13px]")}>
-            Pactados cuando el bloque mercancía y el de servicios compartían una
-            sola lista de cláusulas extra.
+            Pactados cuando el bloque mercancï¿½a y el de servicios compartï¿½an una
+            sola lista de clï¿½usulas extra.
           </p>
           <ExtraFieldClauseCards
             fields={legacyCombinedExtraFields(a.extraFields)}

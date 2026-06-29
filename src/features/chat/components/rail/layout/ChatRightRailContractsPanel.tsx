@@ -1,16 +1,12 @@
 import toast from 'react-hot-toast'
 import { ChevronRight, Copy, ExternalLink, MapPin, Trash2 } from 'lucide-react'
-import {
-  agreementRouteLinkFrozen,
-  type TradeAgreement,
-} from "@features/chat/model/tradeAgreementTypes"
-import type { RouteSheet } from "@features/chat/model/routeSheetTypes"
-import { AgreementDetailView } from "../../AgreementDetail";
+import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import { agreementRouteLinkFrozen } from "@features/chat/logic/agreement/tradeAgreementTypes";import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";import { AgreementDetailView } from "../../AgreementDetail";
 import {
   contractStatusClass,
   contractStatusLabel,
-  railItemClass,
-} from './chatRailStyles'
+} from "@features/chat/logic/labels/contractStatusLabels";
+import { railItemClass } from './chatRailStyles'
 
 type Props = {
   bodyClassName: string

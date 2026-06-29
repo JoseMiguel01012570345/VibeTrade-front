@@ -1,4 +1,4 @@
-import type { EmergentMapLeg } from "@features/market/model/map/emergentRouteMapLegs";
+import type { EmergentMapLeg } from "@features/market/logic/map/emergentRouteMapLegs";
 
 export type EmergentRouteFeedMapProps = Readonly<{
   legs: EmergentMapLeg[];

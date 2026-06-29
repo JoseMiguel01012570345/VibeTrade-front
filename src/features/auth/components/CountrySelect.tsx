@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, Search } from 'lucide-react'
 import { cn } from "@shared/lib/cn"
-import type { Country } from './countries'
+import type { SignInCountry } from '../Dtos/signInCountry'
 
 export function CountrySelect({
   countries,
   value,
   onChange,
 }: {
-  countries: Country[]
-  value: Country
-  onChange: (c: Country) => void
+  countries: SignInCountry[]
+  value: SignInCountry
+  onChange: (c: SignInCountry) => void
 }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')

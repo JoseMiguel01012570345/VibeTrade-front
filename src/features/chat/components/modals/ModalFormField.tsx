@@ -1,6 +1,6 @@
-﻿import { type HTMLAttributes, type ReactNode } from 'react'
+import { type HTMLAttributes, type ReactNode } from 'react'
 import { cn } from "@shared/lib/cn"
-import { fieldError, fieldLabel, fieldRootWithInvalid, textareaMin } from '../../model/formModalStyles'
+import { fieldError, fieldLabel, fieldRootWithInvalid, textareaMin } from '@shared/styles/modals/formModalStyles'
 
 type Props = {
   label: ReactNode

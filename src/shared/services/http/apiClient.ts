@@ -1,3 +1,4 @@
+import axios, { type AxiosResponseHeaders, type RawAxiosResponseHeaders } from "axios";
 import { getSessionToken, isSessionActiveInStorage } from "./sessionToken";
 
 function requestPathname(input: string): string {
@@ -12,6 +13,31 @@ function requestPathname(input: string): string {
   return withoutQuery.startsWith("/") ? withoutQuery : `/${withoutQuery}`;
 }
 
+function headersToRecord(headers: Headers): Record<string, string> {
+  const out: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    out[key] = value;
+  });
+  return out;
+}
+
+function axiosHeadersToFetchHeaders(
+  headers: RawAxiosResponseHeaders | AxiosResponseHeaders,
+): Headers {
+  const out = new Headers();
+  if (headers && typeof headers === "object") {
+    for (const [key, value] of Object.entries(headers)) {
+      if (value == null || key === "set-cookie") continue;
+      if (Array.isArray(value)) {
+        for (const v of value) out.append(key, String(v));
+      } else {
+        out.set(key, String(value));
+      }
+    }
+  }
+  return out;
+}
+
 /**
  * En desarrollo (`import.meta.env.DEV`), las rutas que empiezan por `/api` usan URL relativa
  * para que el proxy de Vite (`vite.config.ts` → `localhost:5110`) reciba la petición.
@@ -20,7 +46,10 @@ function requestPathname(input: string): string {
  *
  * Para forzar la base absoluta en dev (p. ej. API en otro host), definí `VITE_FORCE_API_BASE=true`.
  */
-export function apiFetch(input: string, init?: RequestInit): Promise<Response> {
+export async function apiFetch(
+  input: string,
+  init?: RequestInit,
+): Promise<Response> {
   const apiBase = (
     import.meta.env.VITE_API_BASE_URL as string | undefined
   )?.trim();
@@ -69,17 +98,40 @@ export function apiFetch(input: string, init?: RequestInit): Promise<Response> {
   if (attachBearer) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-  // Never set Content-Type for FormData: the runtime must send multipart boundary.
+
   const body = init?.body;
   const isFormData =
     typeof FormData !== "undefined" && body instanceof FormData;
   if (body != null && !isFormData && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
+  if (init?.cache === "no-store") {
+    headers.set("Cache-Control", "no-store");
+    headers.set("Pragma", "no-cache");
+  }
 
   const url =
     base && !/^https?:\/\//i.test(input)
       ? `${base}${input.startsWith("/") ? "" : "/"}${input}`
       : input;
-  return fetch(url, { ...init, headers });
+
+  const axiosRes = await axios.request<ArrayBuffer>({
+    url,
+    method: method as "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS",
+    headers: headersToRecord(headers),
+    data: body ?? undefined,
+    signal: init?.signal ?? undefined,
+    responseType: "arraybuffer",
+    validateStatus: () => true,
+    transformRequest:
+      isFormData
+        ? [(data) => data]
+        : undefined,
+  });
+
+  return new Response(axiosRes.data, {
+    status: axiosRes.status,
+    statusText: axiosRes.statusText,
+    headers: axiosHeadersToFetchHeaders(axiosRes.headers),
+  });
 }

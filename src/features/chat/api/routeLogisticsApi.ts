@@ -1,14 +1,11 @@
 import { apiFetch } from "@shared/services/http/apiClient";
-import type { ServiceEvidenceAttachmentApi } from "./agreementServiceEvidenceApi";
-
-export type RouteStopDeliveryStatusApi = {
-  routeSheetId: string;
-  routeStopId: string;
-  state: string;
-  currentOwnerUserId?: string | null;
-  lastTelemetryProgressFraction?: number | null;
-  proximityNotifiedAtUtc?: string | null;
-};
+import type { ServiceEvidenceAttachmentApi } from "@features/chat/Dtos/agreement/agreementServiceEvidenceApiTypes";
+import type {
+  CarrierDeliveryEvidenceApi,
+  CarrierOwnershipCedeResultApi,
+  CarrierTelemetryLatestPointApi,
+  RouteStopDeliveryStatusApi,
+} from "@features/chat/Dtos/route-sheet/routeLogisticsApiTypes";
 
 export async function fetchAgreementRouteDeliveries(
   threadId: string,
@@ -23,18 +20,6 @@ export async function fetchAgreementRouteDeliveries(
   }
   return (await res.json()) as RouteStopDeliveryStatusApi[];
 }
-
-export type CarrierTelemetryLatestPointApi = {
-  routeSheetId: string;
-  routeStopId: string;
-  carrierUserId: string;
-  lat: number;
-  lng: number;
-  progressFraction?: number | null;
-  offRoute: boolean;
-  reportedAtUtc: string;
-  speedKmh?: number | null;
-};
 
 /** Última telemetría persistida por tramo (titular actual), para inicializar el mapa. */
 export async function fetchLatestCarrierTelemetryForRouteSheet(args: {
@@ -84,12 +69,6 @@ export async function postCarrierTelemetry(args: {
     throw new Error(t || `HTTP ${res.status}`);
   }
 }
-
-export type CarrierOwnershipCedeResultApi = {
-  ok: boolean;
-  errorCode?: string | null;
-  message?: string | null;
-};
 
 function parseCedeOwnershipErrorBody(raw: string): string | undefined {
   const t = raw.trim();
@@ -152,22 +131,6 @@ export async function getCedeCarrierOwnership(args: {
     return { ok: false, errorCode: null, message: null };
   }
 }
-
-export type CarrierDeliveryEvidenceApi = {
-  id: string;
-  carrierUserId: string;
-  text: string;
-  attachments: ServiceEvidenceAttachmentApi[];
-  lastSubmittedText: string;
-  lastSubmittedAttachments: ServiceEvidenceAttachmentApi[];
-  lastSubmittedAtUtc?: string | null;
-  status: string;
-  createdAtUtc: string;
-  updatedAtUtc: string;
-  decidedAtUtc?: string | null;
-  decidedByUserId?: string | null;
-  deadlineAtUtc?: string | null;
-};
 
 export async function fetchCarrierDeliveryEvidence(args: {
   threadId: string;

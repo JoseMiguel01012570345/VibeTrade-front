@@ -15,11 +15,11 @@ import { VtTimeField } from "@shared/components/ui/VtTimeField";
 import {
   nominatimReverse,
   nominatimSearch,
-} from "@features/market/model/map/nominatimGeocode";
+} from "@features/market/logic/map/nominatimGeocode";
 import {
   routeMapNumberedWaypointIcon,
   storeMapPinIcon,
-} from "@features/market/model/map/storeMapPinIcon";
+} from "@features/market/logic/map/storeMapPinIcon";
 import "leaflet/dist/leaflet.css";
 import "@features/home/styles/emergentRouteMapMarkers.css";
 import { ModalFormField as Field } from "./ModalFormField";
@@ -34,7 +34,7 @@ import {
   parseRouteLatLngInputPair,
   tiempoRecogidaChainedFromPrevEntrega,
   tramosToLimpios,
-} from '../../model/routeSheetTramoFormUtils';
+} from '@features/chat/logic/route-sheet/routeSheetTramoFormUtils';
 import {
   agrDetailSub,
   detailsBlock,
@@ -53,27 +53,21 @@ import {
   rutaTramoHead,
   rutaTramoRemoveBtn,
   rutaTramosBlock,
-} from '../../model/formModalStyles';
+} from '@shared/styles/modals/formModalStyles';
 import { ExternalLink, MapPin, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import {
-  routeSheetLegacyHead,
-  routeStopsToFormInputs,
-  type RouteSheet,
-  type RouteSheetCreatePayload,
-  type RouteStop,
-  type RouteTramoFormInput,
-} from "@features/chat/model/routeSheetTypes";
-import type { RouteSheetFormErrors } from "@features/chat/model/routeSheetValidation";
+import type { RouteSheet, RouteSheetCreatePayload, RouteStop, RouteTramoFormInput } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
+import { routeSheetLegacyHead, routeStopsToFormInputs } from "@features/chat/logic/route-sheet/routeSheetTypes";
+import type { RouteSheetFormErrors } from "@features/chat/Dtos/route-sheet/routeSheetValidationTypes";
 import {
   getRouteSheetFormErrors,
   hasRouteSheetFormErrors,
   normalizeRouteSheetParadas,
   routeSheetFormErrorCount,
   validateRouteCoordPair,
-} from "@features/chat/model/routeSheetValidation";
-import type { RouteOfferPublicState } from "@features/market/model/store/marketStoreTypes";
-import { paymentCurrencyVtOptions } from "@features/chat/model/routeSheetMonedaOptions";
+} from "@features/chat/logic/route-sheet/routeSheetValidation";
+import type { RouteOfferPublicState } from "@features/market/logic/store/marketStoreTypes";
+import { paymentCurrencyVtOptions } from "@features/chat/logic/route-sheet/routeSheetMonedaOptions";
 import { fetchCurrencies } from "@features/market/api/fetchCurrencies";
 import { VibeMapTileLayer } from "@features/home/components/EmergentRouteFeedMap";
 import { LeafletRoadSnappedRoute } from "@features/home/components/LeafletRoadSnappedRoute";
@@ -82,12 +76,12 @@ import { RouteSheetTransportistaPhoneField } from "./RouteSheetTransportistaPhon
 import {
   joinRouteEstimadoStored,
   splitRouteEstimadoStored,
-} from "@features/chat/model/routeSheetDateTime";
+} from "@features/chat/logic/route-sheet/routeSheetDateTime";
 import {
   isRouteEstimadoTimeDisabled,
   routeEntregaDateBounds,
   routeRecogidaDateBounds,
-} from "@features/chat/model/routeTramoEstimadoPickerConstraints";
+} from "@features/chat/logic/route-sheet/routeTramoEstimadoPickerConstraints";
 import {
   activeAssignmentOnFormTramo,
   confirmedAssignmentOnFormTramo,
@@ -95,20 +89,18 @@ import {
   normRoutePhoneKey,
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
   ROUTE_SHEET_PAID_CARRIER_CONTACT_ONLY_ES,
-} from "@features/chat/model/routeSheetOfferGuards";
+} from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
 import {
   applyRouteLegPaymentCurrencyToParadas,
   ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES,
-} from "@features/chat/model/merchandiseRouteCurrency";
+} from "@features/chat/logic/agreement/merchandiseRouteCurrency";
+import type {
+  RouteSheetFormPayload,
+  RouteSheetSubmitResult,
+} from "@features/chat/Dtos/route-sheet/routeSheetFormModalTypes";
 
 /** Por encima del modal y de los `VtSelect` con listPortal z-[400]. */
 const ROUTE_SHEET_DT_POPOVER_Z = "z-[500]";
-
-export type RouteSheetFormPayload = RouteSheetCreatePayload;
-
-export type RouteSheetSubmitResult =
-  | { ok: false }
-  | { ok: true; routeSheetId: string };
 
 type Props = {
   open: boolean;

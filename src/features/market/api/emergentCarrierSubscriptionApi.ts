@@ -1,5 +1,5 @@
 import { apiFetch } from "@shared/services/http/apiClient";
-import type { RouteTramoSubscriptionItemApi } from "@features/chat/api/chatApi";
+import type { RouteTramoSubscriptionItemApi } from "@features/chat/Dtos/thread/chatApiTypes";
 
 export type { EmergentCarrierSubscriptionResponse } from "../Dtos/emergentCarrierSubscriptionApiTypes";
 import type { EmergentCarrierSubscriptionResponse } from "../Dtos/emergentCarrierSubscriptionApiTypes";

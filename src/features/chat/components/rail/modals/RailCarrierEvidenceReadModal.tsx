@@ -1,15 +1,15 @@
-﻿import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { Button } from "flowbite-react";
 import { getSessionToken } from "@shared/services/http/sessionToken";
-import { carrierDeliveryEvidenceStatusLabelEs } from "@features/chat/model/routeLogisticsLabels";
-import type { CarrierEvReadModalState } from "../shared/routesRailSheetModalTypes";
+import { carrierDeliveryEvidenceStatusLabelEs } from "@features/chat/logic/route-sheet/routeLogisticsLabels";
+import type { CarrierEvReadModalState } from "@features/chat/Dtos/rail/routesRailTypes";
 import { CarrierDeliveryEvidenceReadModal } from "./CarrierDeliveryEvidenceReadModal";
 import {
   railCarrierEvidenceAccept,
   railCarrierEvidenceReject,
   railCarrierReadModalSellerFooterVisible,
-} from "./railCarrierEvidenceReadHandlers";
+} from "@features/chat/logic/rail/carrier-evidence/railCarrierEvidenceReadHandlers";
 
 type Props = {
   modal: CarrierEvReadModalState | null;

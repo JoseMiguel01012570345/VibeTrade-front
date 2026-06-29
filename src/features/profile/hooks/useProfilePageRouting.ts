@@ -1,9 +1,9 @@
 import { useEffect, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useAppStore } from '@features/auth/model/useAppStore'
-import { useMarketStore } from '@features/market/model/store/useMarketStore'
-import { profileSectionPath, type ProfileSection, isProfileSection } from '@features/profile/model/profilePaths'
-import { resolveIsMe, resolveProfileUserId, shouldOpenPaymentCardsModal } from '../model/profileAccountLogic'
+import { useAppStore } from '@features/auth/logic/useAppStore'
+import { useMarketStore } from '@features/market/logic/store/useMarketStore'
+import { profileSectionPath, type ProfileSection, isProfileSection } from '@features/profile/logic/profilePaths'
+import { resolveIsMe, resolveProfileUserId, shouldOpenPaymentCardsModal } from '../logic/profileAccountLogic'
 import { useProfileVisitor } from './useProfileVisitor'
 import { useState } from 'react'
 

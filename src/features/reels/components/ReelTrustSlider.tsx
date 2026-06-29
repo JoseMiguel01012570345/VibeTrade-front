@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import clsx from 'clsx'
-import { trustValueToHue } from '../model/reelRating'
+import { trustValueToHue } from '../logic/reelRating'
 
 type Props = {
   /** Promedio de valoraciones (-1…1); define color del indicador y posición del punto */

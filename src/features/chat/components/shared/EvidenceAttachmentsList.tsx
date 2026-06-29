@@ -4,13 +4,7 @@ import {
   ProtectedMediaImg,
 } from "@shared/components/media/ProtectedMediaImg";
 import { mediaApiUrl } from "@shared/services/media/mediaClient";
-
-export type EvidenceAttachmentItem = {
-  id: string;
-  url: string;
-  fileName: string;
-  kind: string;
-};
+import type { EvidenceAttachmentItem } from "@features/chat/Dtos/shared/evidenceAttachmentTypes";
 
 function resolveAttachmentUrl(att: EvidenceAttachmentItem): string {
   const url = (att.url ?? "").trim();

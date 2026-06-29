@@ -1,5 +1,5 @@
-import type { Offer, StoreBadge } from "@features/market/model/store/marketStoreTypes"
-import type { MarketSerializableSlice } from '@features/market/api/marketSerializable'
+import type { Offer, StoreBadge } from "@features/market/logic/store/marketStoreTypes"
+import type { MarketSerializableSlice } from '@features/market/logic/marketSerializable'
 import type { ReelsBootstrapPayload } from '@features/reels/Dtos/reelsBootstrapPayload'
 
 export type RecommendationBatch = {

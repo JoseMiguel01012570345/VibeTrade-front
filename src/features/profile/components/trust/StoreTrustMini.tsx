@@ -1,11 +1,9 @@
 import { ShieldCheck } from "lucide-react";
 import { cn } from "@shared/lib/cn";
-
-const TRUST_MAX = 100;
-
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
+import {
+  TRUST_STORE_MAX,
+  trustStoreScoreToPct,
+} from "@features/profile/logic/trustScoreUtils";
 
 export function StoreTrustMini({
   score,
@@ -18,7 +16,7 @@ export function StoreTrustMini({
   ariaLabel?: string;
 }>) {
   const safe = Number.isFinite(score) ? score : 0;
-  const pct = (clamp(safe, 0, TRUST_MAX) / TRUST_MAX) * 100;
+  const pct = trustStoreScoreToPct(safe);
 
   return (
     <div
@@ -30,7 +28,7 @@ export function StoreTrustMini({
           <ShieldCheck size={12} aria-hidden /> Confianza
         </div>
         <div className="text-[11px] font-black tabular-nums text-[var(--text)]">
-          {Math.round(safe)}/{TRUST_MAX}
+          {Math.round(safe)}/{TRUST_STORE_MAX}
         </div>
       </div>
       <div className="mt-1 h-2 overflow-hidden rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))]">

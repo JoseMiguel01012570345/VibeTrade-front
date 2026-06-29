@@ -2,14 +2,14 @@ import { useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { Trash2 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
-import { useMarketStore } from "@features/market/model/store/useMarketStore"
+import { useMarketStore } from "@features/market/logic/store/useMarketStore"
 import {
   agreementDeleteBlockedByRouteSheetInvariant,
   routeSheetHasConfirmedCarriersOnOffer,
   sheetPreviewContactLine,
-} from "@features/chat/model/routeSheetOfferGuards"
-import { routeStatusLabel } from "@features/chat/model/routeSheetTypes"
-import { mapBackdropLayerAboveChatRail, modalShellWide } from '../../model/formModalStyles'
+} from "@features/chat/logic/route-sheet/routeSheetOfferGuards"
+import { routeStatusLabel } from "@features/chat/logic/route-sheet/routeSheetTypes"
+import { mapBackdropLayerAboveChatRail, modalShellWide } from '@shared/styles/modals/formModalStyles'
 
 type Props = Readonly<{
   open: boolean

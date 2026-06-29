@@ -4,43 +4,28 @@ import toast from "react-hot-toast";
 import type {
   RouteOfferPublicState,
   RouteOfferTramoAssignment,
-} from "@features/market/model/store/marketStoreTypes";
+} from "@features/market/logic/store/marketStoreTypes";
 import { ConfirmModal } from "@shared/components/ui/ConfirmModal";
 import { cn } from "@shared/lib/cn";
-import type { RouteSheetPayload } from "@features/chat/model/routeSheetTypes";
-import {
-  fetchThreadRouteSheets,
-  fetchThreadRouteTramoSubscriptions,
-  postAcceptRouteTramoSubscriptions,
-  postRejectRouteTramoSubscriptions,
-  postSellerExpelCarrier,
-  type RouteTramoSubscriptionItemApi,
-} from "@features/chat/api/chatApi";
+import type { RouteSheetPayload } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
+import type { RouteTramoSubscriptionItemApi } from "@features/chat/Dtos/thread/chatApiTypes";
+import { fetchThreadRouteSheets, fetchThreadRouteTramoSubscriptions, postAcceptRouteTramoSubscriptions, postRejectRouteTramoSubscriptions, postSellerExpelCarrier } from "@features/chat/api/chatApi";
 import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
-import {
-  buildRouteSheetsMetaForGrouping,
-  collectRouteOfferSubscribersForThreadSheets,
-  groupSubscribersByRouteSheetThenTramo,
-  subscribersFromApiRouteTramoItems,
-  type RouteOfferTramoSubscriberGroup,
-  type RouteOfferSubscriberSummary,
-  type RouteSheetSubscriberSection,
-} from "@features/chat/model/routeOfferSubscribers";
+import type { RouteOfferTramoSubscriberGroup, RouteOfferSubscriberSummary, RouteSheetSubscriberSection } from "@features/chat/Dtos/route-sheet/routeOfferSubscribersTypes";
+import { buildRouteSheetsMetaForGrouping, collectRouteOfferSubscribersForThreadSheets, groupSubscribersByRouteSheetThenTramo, subscribersFromApiRouteTramoItems } from "@features/chat/logic/route-sheet/routeOfferSubscribers";
 import {
   SELLER_EXPEL_REQUIRES_PAUSE_ES,
   sellerExpelBlockedForCarrier,
   sellerExpelBlockedForStop,
-} from "@features/chat/model/routeSheetOfferGuards";
-import {
-  fetchAgreementRouteDeliveries,
-  type RouteStopDeliveryStatusApi,
-} from "@features/chat/api/routeLogisticsApi";
+} from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
+import type { RouteStopDeliveryStatusApi } from "@features/chat/Dtos/route-sheet/routeLogisticsApiTypes";
+import { fetchAgreementRouteDeliveries } from "@features/chat/api/routeLogisticsApi";
 import {
   subscribeRouteDeliveriesRefresh,
   subscribeRouteTramoSubscriptionsChanged,
-} from "@features/chat/model/chatRealtime";
-import { onBackdropPointerClose } from '../model/modalClose';
-import { modalShellWide, modalSub } from '../model/formModalStyles';
+} from "@features/chat/logic/realtime/chatRealtime";
+import { onBackdropPointerClose } from '@shared/lib/modals/modalClose';
+import { modalShellWide, modalSub } from '@shared/styles/modals/formModalStyles';
 import { railItemClass } from "./rail/layout/chatRailStyles";
 import { TramoSubscribedServiceFicha } from "./rail/shared/TramoSubscribedServiceFicha";
 

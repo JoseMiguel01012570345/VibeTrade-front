@@ -1,0 +1,71 @@
+import type { StoreBadge } from "@features/market/logic/store/useMarketStore"
+
+import type { ThreadChatCarrier } from "@features/market/logic/store/marketStoreTypes"
+import type {
+  ChatParticipant,
+} from "@features/chat/Dtos/thread/chatParticipantTypes";
+
+/** Integrantes del hilo: comprador, vendedor (perfil: `ownerUserId` de la tienda si existe, si no `store.id`) y transportistas. */
+export function buildChatParticipants(
+  buyer: { id: string; name: string; trustScore: number; avatarUrl?: string },
+  seller: StoreBadge,
+  carriers?: ThreadChatCarrier[],
+  opts?: { excludeBuyer?: boolean; excludeSeller?: boolean },
+): ChatParticipant[] {
+  const buyerId = buyer.id.trim()
+  const sellerId = (seller.ownerUserId ?? seller.id).trim()
+  const seen = new Set<string>()
+  const out: ChatParticipant[] = []
+
+  if (!opts?.excludeBuyer) {
+    const buyerHref =
+      buyerId.startsWith('vt-thread-buyer:') ? '#' : `/profile/${buyer.id}`
+    out.push({
+      id: buyer.id,
+      name: buyer.name,
+      role: 'buyer',
+      roleLabel: 'Comprador',
+      trustScore: buyer.trustScore,
+      avatarUrl: buyer.avatarUrl,
+      href: buyerHref,
+    })
+    seen.add(buyerId)
+  }
+
+  if (!opts?.excludeSeller && !seen.has(sellerId)) {
+    out.push({
+      id: seller.ownerUserId ?? seller.id,
+      name: seller.name,
+      role: 'seller',
+      roleLabel: 'Vendedor',
+      trustScore: seller.trustScore,
+      verified: seller.verified,
+      avatarUrl: seller.avatarUrl,
+      href: `/store/${seller.id}/vitrina`,
+    })
+    seen.add(sellerId)
+  }
+
+  if (carriers?.length) {
+    for (const c of carriers) {
+      const cid = (c.id ?? '').trim()
+      if (!cid || seen.has(cid)) continue
+      if (cid === buyerId || cid === sellerId) continue
+      seen.add(cid)
+      out.push({
+        id: c.id,
+        name: c.name,
+        role: 'carrier',
+        roleLabel: 'Transportista',
+        trustScore: c.trustScore,
+        avatarUrl: c.avatarUrl,
+        phone: c.phone,
+        detail: [c.tramoLabel.trim(), c.vehicleLabel?.trim()]
+          .filter(Boolean)
+          .join(' · '),
+        href: `/profile/${c.id}`,
+      })
+    }
+  }
+  return out
+}

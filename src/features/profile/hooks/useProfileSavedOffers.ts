@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
-import type { Offer } from '@features/market/model/store/marketStoreTypes'
-import { useAppStore } from '@features/auth/model/useAppStore'
-import { useMarketStore } from '@features/market/model/store/useMarketStore'
+import type { Offer } from '@features/market/logic/store/marketStoreTypes'
+import { useAppStore } from '@features/auth/logic/useAppStore'
+import { useMarketStore } from '@features/market/logic/store/useMarketStore'
 import { fetchPublicOfferCard } from '@features/market/api/marketPersistence'
 
 export function useProfileSavedOffers(active: boolean) {

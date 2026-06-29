@@ -1,0 +1,673 @@
+import type { ChatDeliveryStatus, Message } from "@features/market/logic/store/marketStoreTypes";
+import {
+  collectReplyQuotes,
+  threadIsActionLocked,
+  uid,
+} from "@features/market/logic/store/marketStoreHelpers";
+import type { MarketSliceGet, MarketSliceSet } from "@features/market/logic/store/marketSliceTypes";
+import type { MarketState } from "@features/market/logic/store/marketStoreTypes";
+import { getSessionToken } from "@shared/services/http/sessionToken";
+import type { ChatMessageDto } from "@features/chat/Dtos/thread/chatApiTypes";
+import { postChatMessage, postChatTextMessage } from "@features/chat/api/chatApi";
+import {
+  buildPostDocumentsBundleBody,
+  buildPostImageBody,
+  buildPostSingleDocumentBody,
+  buildPostVoiceBody,
+} from "@features/chat/logic/realtime/chatMessagePayloadContract";
+import {
+  mapChatMessageDtoToMessage,
+  normalizeThreadMessages,
+  preferHigherDeliveryStatus,
+  upsertMessageMergeDelivery,
+} from "@features/chat/logic/thread/chatMerge";
+import { mediaApiUrl, uploadMediaBlob } from "@shared/services/media/mediaClient";
+import { useAppStore } from "@features/auth/logic/useAppStore";
+import { mergeChatSenderLabelsIntoProfileStore } from "@features/chat/logic/participants/chatSenderLabels";
+import { rehydrateCthThreadInStoreForIncomingMessage } from "@features/chat/logic/thread/rehydrateCthThreadInStoreForIncomingMessage";
+import { markPartyExpelledOnThread } from "@features/chat/logic/party-exit/threadPartyExpelled";
+
+async function blobUrlToMediaApiUrl(
+  blobUrl: string,
+  fileName: string,
+  mimeHint?: string,
+): Promise<string> {
+  const blob = await fetch(blobUrl).then((r) => r.blob());
+  const uploaded = await uploadMediaBlob(
+    blob,
+    fileName,
+    mimeHint || blob.type,
+  );
+  return mediaApiUrl(uploaded.id);
+}
+
+/**
+ * Convive con MediaRecorder según dispositivo (p. ej. Samsung: audio/mp4 opus).
+ * Subir todo como `.webm` + `audio/webm` corrompe el objeto y Chrome no decodifica / <audio> falla.
+ */
+function voiceBlobFileNameAndMime(blob: Blob): { fileName: string; mime: string } {
+  const raw = (blob.type ?? "").trim();
+  const t = raw.toLowerCase();
+
+  if (!t || t === "application/octet-stream") {
+    return { fileName: "voice.webm", mime: "audio/webm" };
+  }
+  if (t.includes("webm")) {
+    return { fileName: "voice.webm", mime: raw };
+  }
+  if (t.includes("mp4") || t.includes("m4a") || t.includes("mpeg4")) {
+    return { fileName: "voice.m4a", mime: raw || "audio/mp4" };
+  }
+  if (t.includes("aac")) {
+    return { fileName: "voice.aac", mime: raw };
+  }
+  if (t.includes("ogg")) {
+    return { fileName: "voice.ogg", mime: raw || "audio/ogg" };
+  }
+  if (t.includes("mpeg") || t.includes("mp3")) {
+    return { fileName: "voice.mp3", mime: raw || "audio/mpeg" };
+  }
+  if (t.includes("3gpp") || t.includes("3gp")) {
+    return { fileName: "voice.3gp", mime: raw };
+  }
+
+  return { fileName: "voice.audio", mime: raw };
+}
+
+async function blobUrlToUploadedVoice(blobUrl: string): Promise<string> {
+  const blob = await fetch(blobUrl).then((r) => r.blob());
+  const { fileName, mime } = voiceBlobFileNameAndMime(blob);
+  const uploaded = await uploadMediaBlob(blob, fileName, mime);
+  return mediaApiUrl(uploaded.id);
+}
+
+const threadContractsRefreshAfterMessageTimer = new Map<
+  string,
+  ReturnType<typeof setTimeout>
+>();
+
+/**
+ * Un mensaje vía SignalR (p. ej. aviso de sistema al editar un acuerdo) no actualiza
+ * `thread.contracts` por sí solo; el comprador seguía viendo título/estado viejos en la
+ * burbuja hasta un refetch. Tras un breve debounce, alineamos contratos con GET.
+ */
+function scheduleThreadContractsSyncAfterMessage(
+  get: MarketSliceGet,
+  threadId: string,
+) {
+  if (!threadId.startsWith("cth_") || !getSessionToken()) return;
+  const prev = threadContractsRefreshAfterMessageTimer.get(threadId);
+  if (prev !== undefined) clearTimeout(prev);
+  threadContractsRefreshAfterMessageTimer.set(
+    threadId,
+    setTimeout(() => {
+      threadContractsRefreshAfterMessageTimer.delete(threadId);
+      void get().refreshThreadTradeAgreements(threadId);
+    }, 300),
+  );
+}
+
+export function createChatMessagesSlice(
+  set: MarketSliceSet,
+  get: MarketSliceGet,
+): Pick<
+  MarketState,
+  | "onChatMessageFromServer"
+  | "onParticipantLeftFromServer"
+  | "onChatMessageStatusFromServer"
+  | "sendText"
+  | "sendAudio"
+  | "sendDocument"
+  | "sendImages"
+  | "sendDocsBundle"
+> {
+  return {
+    onParticipantLeftFromServer: (threadId, userId, displayName) => {
+      const text = `${displayName} salió del chat`;
+      const m: Message = {
+        id: `sys_leave_${uid("m")}`,
+        from: "system",
+        type: "text",
+        text,
+        at: Date.now(),
+      };
+      const leftId = userId?.trim() ?? "";
+      set((s) => {
+        const t = s.threads[threadId];
+        if (!t) return s;
+        const carriers = t.chatCarriers ?? [];
+        const wasCarrier =
+          leftId.length > 0 && carriers.some((c) => c.id === leftId);
+        const cc = wasCarrier
+          ? carriers.filter((c) => c.id !== leftId)
+          : carriers;
+        const chatCarriers =
+          wasCarrier && cc.length !== carriers.length ? cc : t.chatCarriers;
+        const expelled = markPartyExpelledOnThread(t, leftId, new Date().toISOString());
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...t,
+              ...expelled,
+              ...(chatCarriers !== t.chatCarriers ? { chatCarriers } : {}),
+              messages: normalizeThreadMessages([...t.messages, m]),
+            },
+          },
+        };
+      });
+    },
+
+    onChatMessageFromServer: (threadId, dto: ChatMessageDto) => {
+      mergeChatSenderLabelsIntoProfileStore([dto]);
+      const meId = useAppStore.getState().me.id;
+      const t0 = get().threads[threadId];
+      if (!t0 && threadId.startsWith("cth_")) {
+        void rehydrateCthThreadInStoreForIncomingMessage(threadId).then((ok) => {
+          if (ok) {
+            scheduleThreadContractsSyncAfterMessage(get, threadId);
+          }
+        });
+        return;
+      }
+      const m = mapChatMessageDtoToMessage(dto, meId);
+      set((s) => {
+        const t = s.threads[threadId];
+        if (!t) return s;
+        let messages = t.messages;
+        if (dto.senderUserId === meId) {
+          const pendIdx = messages.findIndex(
+            (x) =>
+              x.id.startsWith("pend_") && x.type === "text" && x.from === "me",
+          );
+          if (pendIdx >= 0) {
+            messages = messages.filter((_, i) => i !== pendIdx);
+          }
+        }
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: {
+              ...t,
+              messages: upsertMessageMergeDelivery(messages, m),
+            },
+          },
+        };
+      });
+      scheduleThreadContractsSyncAfterMessage(get, threadId);
+    },
+
+    onChatMessageStatusFromServer: (threadId, messageId, statusStr, _updatedAtUtc) => {
+      const status = statusStr as ChatDeliveryStatus;
+      set((s) => {
+        const t = s.threads[threadId];
+        if (!t) return s;
+        const messages = t.messages.map((msg) => {
+          if (msg.id !== messageId || msg.from !== "me") return msg;
+          if (
+            msg.type === "text" ||
+            msg.type === "image" ||
+            msg.type === "audio" ||
+            msg.type === "doc" ||
+            msg.type === "docs" ||
+            msg.type === "agreement"
+          ) {
+            const prevSt = "chatStatus" in msg ? msg.chatStatus : undefined;
+            const mergedStatus =
+              preferHigherDeliveryStatus(prevSt, status) ?? status;
+            const read = mergedStatus === "read";
+            return { ...msg, chatStatus: mergedStatus, read };
+          }
+          return msg;
+        });
+        return {
+          ...s,
+          threads: { ...s.threads, [threadId]: { ...t, messages } },
+        };
+      });
+    },
+
+    sendText: (threadId, text, replyToIds) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      const th = get().threads[threadId];
+      if (!th || threadIsActionLocked(th)) return;
+
+      if (threadId.startsWith("cth_")) {
+        const pendingId = `pend_${uid("m")}`;
+        set((s) => {
+          const t = s.threads[threadId];
+          if (!t || threadIsActionLocked(t)) return s;
+          const replyQuotes = collectReplyQuotes(t, replyToIds);
+          const pending: Message = {
+            id: pendingId,
+            from: "me",
+            type: "text",
+            text: trimmed,
+            at: Date.now(),
+            read: false,
+            chatStatus: "pending",
+            ...(replyQuotes && replyQuotes.length ? { replyQuotes } : {}),
+          };
+          return {
+            ...s,
+            threads: {
+              ...s.threads,
+              [threadId]: { ...t, messages: [...t.messages, pending] },
+            },
+          };
+        });
+        void (async () => {
+          try {
+            const dto = await postChatTextMessage(threadId, trimmed, {
+              replyToIds: replyToIds?.filter(Boolean),
+            });
+            mergeChatSenderLabelsIntoProfileStore([dto]);
+            const meId = useAppStore.getState().me.id;
+            const m = mapChatMessageDtoToMessage(dto, meId);
+            set((s) => {
+              const t = s.threads[threadId];
+              if (!t) return s;
+              const withoutPending = t.messages.filter(
+                (x) => x.id !== pendingId,
+              );
+              return {
+                ...s,
+                threads: {
+                  ...s.threads,
+                  [threadId]: {
+                    ...t,
+                    messages: upsertMessageMergeDelivery(withoutPending, m),
+                  },
+                },
+              };
+            });
+          } catch (e) {
+            console.error(e);
+            set((s) => {
+              const t = s.threads[threadId];
+              if (!t) return s;
+              const messages = t.messages.map((x) =>
+                x.id === pendingId && x.type === "text"
+                  ? { ...x, chatStatus: "error" as const }
+                  : x,
+              );
+              return {
+                ...s,
+                threads: { ...s.threads, [threadId]: { ...t, messages } },
+              };
+            });
+          }
+        })();
+        return;
+      }
+
+      set((s) => {
+        const t = s.threads[threadId];
+        if (!t || threadIsActionLocked(t)) return s;
+        const replyQuotes = collectReplyQuotes(t, replyToIds);
+        const m: Message = {
+          id: uid("m"),
+          from: "me",
+          type: "text",
+          text: trimmed,
+          at: Date.now(),
+          read: false,
+          ...(replyQuotes && replyQuotes.length ? { replyQuotes } : {}),
+        };
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...t, messages: [...t.messages, m] },
+          },
+        };
+      });
+    },
+
+    sendAudio: (threadId, payload, options) => {
+      const th = get().threads[threadId];
+      if (!th || threadIsActionLocked(th)) return;
+
+      if (threadId.startsWith("cth_")) {
+        void (async () => {
+          try {
+            const url = await blobUrlToUploadedVoice(payload.url);
+            const dto = await postChatMessage(
+              threadId,
+              buildPostVoiceBody(
+                url,
+                payload.seconds,
+                options?.replyToIds,
+              ),
+            );
+            mergeChatSenderLabelsIntoProfileStore([dto]);
+            const meId = useAppStore.getState().me.id;
+            const m = mapChatMessageDtoToMessage(dto, meId);
+            set((s) => {
+              const t = s.threads[threadId];
+              if (!t) return s;
+              return {
+                ...s,
+                threads: {
+                  ...s.threads,
+                  [threadId]: {
+                    ...t,
+                    messages: upsertMessageMergeDelivery(t.messages, m),
+                  },
+                },
+              };
+            });
+          } catch (e) {
+            console.error(e);
+          }
+        })();
+        return;
+      }
+
+      set((s) => {
+        const h = s.threads[threadId];
+        if (!h || threadIsActionLocked(h)) return s;
+        const replyQuotes = collectReplyQuotes(h, options?.replyToIds);
+        const m: Message = {
+          id: uid("m"),
+          from: "me",
+          type: "audio",
+          url: payload.url,
+          seconds: Math.max(1, Math.round(payload.seconds)),
+          at: Date.now(),
+          read: false,
+          ...(replyQuotes && replyQuotes.length ? { replyQuotes } : {}),
+        };
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...h, messages: [...h.messages, m] },
+          },
+        };
+      });
+    },
+
+    sendDocument: (threadId, payload, options) => {
+      const th = get().threads[threadId];
+      if (!th || threadIsActionLocked(th)) return;
+
+      if (threadId.startsWith("cth_")) {
+        void (async () => {
+          try {
+            const url = await blobUrlToMediaApiUrl(
+              payload.url,
+              payload.name,
+              "application/octet-stream",
+            );
+            const dto = await postChatMessage(
+              threadId,
+              buildPostSingleDocumentBody(
+                {
+                  name: payload.name,
+                  size: payload.size,
+                  kind: payload.kind,
+                  url,
+                },
+                {
+                  caption: options?.caption,
+                  replyToIds: options?.replyToIds,
+                },
+              ),
+            );
+            mergeChatSenderLabelsIntoProfileStore([dto]);
+            const meId = useAppStore.getState().me.id;
+            const m = mapChatMessageDtoToMessage(dto, meId);
+            set((s) => {
+              const t = s.threads[threadId];
+              if (!t) return s;
+              return {
+                ...s,
+                threads: {
+                  ...s.threads,
+                  [threadId]: {
+                    ...t,
+                    messages: upsertMessageMergeDelivery(t.messages, m),
+                  },
+                },
+              };
+            });
+          } catch (e) {
+            console.error(e);
+          }
+        })();
+        return;
+      }
+
+      set((s) => {
+        const h = s.threads[threadId];
+        if (!h || threadIsActionLocked(h)) return s;
+        const replyQuotes = collectReplyQuotes(h, options?.replyToIds);
+        const cap = options?.caption?.trim();
+        const m: Message = {
+          id: uid("m"),
+          from: "me",
+          type: "doc",
+          name: payload.name,
+          size: payload.size,
+          kind: payload.kind,
+          url: payload.url,
+          at: Date.now(),
+          read: false,
+          ...(cap ? { caption: cap } : {}),
+          ...(replyQuotes && replyQuotes.length ? { replyQuotes } : {}),
+        };
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...h, messages: [...h.messages, m] },
+          },
+        };
+      });
+    },
+
+    sendImages: (threadId, images, options) => {
+      if (!images.length) return;
+      const th = get().threads[threadId];
+      if (!th || threadIsActionLocked(th)) return;
+
+      if (threadId.startsWith("cth_")) {
+        void (async () => {
+          try {
+            const uploaded: { url: string }[] = [];
+            for (let i = 0; i < images.length; i++) {
+              const u = await blobUrlToMediaApiUrl(
+                images[i].url,
+                `photo_${i}.jpg`,
+                "image/jpeg",
+              );
+              uploaded.push({ url: u });
+            }
+            let embeddedAudio: { url: string; seconds: number } | undefined;
+            if (options?.embeddedAudio) {
+              const au = await blobUrlToUploadedVoice(options.embeddedAudio.url);
+              embeddedAudio = {
+                url: au,
+                seconds: Math.max(
+                  1,
+                  Math.round(options.embeddedAudio.seconds),
+                ),
+              };
+            }
+            const dto = await postChatMessage(
+              threadId,
+              buildPostImageBody(uploaded, {
+                caption: options?.caption,
+                embeddedAudio,
+                replyToIds: options?.replyToIds,
+              }),
+            );
+            mergeChatSenderLabelsIntoProfileStore([dto]);
+            const meId = useAppStore.getState().me.id;
+            const m = mapChatMessageDtoToMessage(dto, meId);
+            set((s) => {
+              const t = s.threads[threadId];
+              if (!t) return s;
+              return {
+                ...s,
+                threads: {
+                  ...s.threads,
+                  [threadId]: {
+                    ...t,
+                    messages: upsertMessageMergeDelivery(t.messages, m),
+                  },
+                },
+              };
+            });
+          } catch (e) {
+            console.error(e);
+          }
+        })();
+        return;
+      }
+
+      set((s) => {
+        const h = s.threads[threadId];
+        if (!h || threadIsActionLocked(h)) return s;
+        const replyQuotes = collectReplyQuotes(h, options?.replyToIds);
+        const cap = options?.caption?.trim();
+        const audio = options?.embeddedAudio;
+        const m: Message = {
+          id: uid("m"),
+          from: "me",
+          type: "image",
+          images,
+          at: Date.now(),
+          read: false,
+          ...(cap ? { caption: cap } : {}),
+          ...(audio
+            ? {
+                embeddedAudio: {
+                  url: audio.url,
+                  seconds: Math.max(1, Math.round(audio.seconds)),
+                },
+              }
+            : {}),
+          ...(replyQuotes && replyQuotes.length ? { replyQuotes } : {}),
+        };
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...h, messages: [...h.messages, m] },
+          },
+        };
+      });
+    },
+
+    sendDocsBundle: (threadId, payload, options) => {
+      if (!payload.documents.length) return;
+      const th = get().threads[threadId];
+      if (!th || threadIsActionLocked(th)) return;
+
+      if (threadId.startsWith("cth_")) {
+        void (async () => {
+          try {
+            const documents: {
+              name: string;
+              size: string;
+              kind: "pdf" | "doc" | "other";
+              url?: string;
+            }[] = [];
+            for (const d of payload.documents) {
+              const u = await blobUrlToMediaApiUrl(
+                d.url ?? "",
+                d.name,
+                "application/octet-stream",
+              );
+              documents.push({
+                name: d.name,
+                size: d.size,
+                kind: d.kind,
+                url: u,
+              });
+            }
+            let embeddedAudio: { url: string; seconds: number } | undefined;
+            if (payload.embeddedAudio) {
+              const au = await blobUrlToUploadedVoice(payload.embeddedAudio.url);
+              embeddedAudio = {
+                url: au,
+                seconds: Math.max(1, Math.round(payload.embeddedAudio.seconds)),
+              };
+            }
+            const dto = await postChatMessage(
+              threadId,
+              buildPostDocumentsBundleBody(documents, {
+                caption: options?.caption,
+                embeddedAudio,
+                replyToIds: options?.replyToIds,
+              }),
+            );
+            mergeChatSenderLabelsIntoProfileStore([dto]);
+            const meId = useAppStore.getState().me.id;
+            const m = mapChatMessageDtoToMessage(dto, meId);
+            set((s) => {
+              const t = s.threads[threadId];
+              if (!t) return s;
+              return {
+                ...s,
+                threads: {
+                  ...s.threads,
+                  [threadId]: {
+                    ...t,
+                    messages: upsertMessageMergeDelivery(t.messages, m),
+                  },
+                },
+              };
+            });
+          } catch (e) {
+            console.error(e);
+          }
+        })();
+        return;
+      }
+
+      set((s) => {
+        const h = s.threads[threadId];
+        if (!h || threadIsActionLocked(h)) return s;
+        const replyQuotes = collectReplyQuotes(h, options?.replyToIds);
+        const cap = options?.caption?.trim();
+        const audio = payload.embeddedAudio;
+        const m: Message = {
+          id: uid("m"),
+          from: "me",
+          type: "docs",
+          documents: payload.documents.map((d) => ({
+            name: d.name,
+            size: d.size,
+            kind: d.kind,
+            url: d.url,
+          })),
+          at: Date.now(),
+          read: false,
+          ...(cap ? { caption: cap } : {}),
+          ...(audio
+            ? {
+                embeddedAudio: {
+                  url: audio.url,
+                  seconds: Math.max(1, Math.round(audio.seconds)),
+                },
+              }
+            : {}),
+          ...(replyQuotes && replyQuotes.length ? { replyQuotes } : {}),
+        };
+        return {
+          ...s,
+          threads: {
+            ...s.threads,
+            [threadId]: { ...h, messages: [...h.messages, m] },
+          },
+        };
+      });
+    },
+  };
+}

@@ -1,8 +1,8 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
-import { useAppStore } from "@features/auth/model/useAppStore";
-import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { UploadBlockingOverlay } from "@shared/components/ui/UploadBlockingOverlay";
 import { fetchStoreDetail } from "@features/market/api/fetchStoreDetail";
 import {
@@ -16,14 +16,14 @@ import type { VtSelectOption } from "@shared/components/ui/VtSelect";
 import { OwnerStoreCard } from "./stores/OwnerStoreCard";
 import { VisitorStoreSummaryCard } from "./stores/VisitorStoreSummaryCard";
 import { StoreFormModal } from "./stores/StoreFormModal";
-import { ownerStoreToFormValues, revokeIfBlob } from "./stores/helpers";
+import { ownerStoreToFormValues, revokeIfBlob } from "@features/profile/logic/stores/catalogMediaHelpers";
 import { ConfirmDeleteModal } from "@shared/components/ui/ConfirmDeleteModal";
 import { ScrollToTopFab } from "@shared/components/ui/ScrollToTopFab";
 import {
   matchesCategoryFilter,
   matchesNameQuery,
-} from "@features/market/api/nameCategoryFilter";
-import { mergeStoreCatalogWithLocalExtras } from "@features/market/model/storeCatalogTypes";
+} from "@features/market/logic/nameCategoryFilter";
+import { mergeStoreCatalogWithLocalExtras } from "@features/market/logic/storeCatalogTypes";
 
 export function ProfileStoresSection({
   ownerUserId,

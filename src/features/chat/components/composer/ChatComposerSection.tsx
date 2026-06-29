@@ -15,11 +15,12 @@ import {
   Square,
   X,
 } from "lucide-react";
-import { useAppStore } from "@features/auth/model/useAppStore";
+import { useAppStore } from "@features/auth/logic/useAppStore";
 import { cn } from "@shared/lib/cn";
-import type { Thread } from "@features/market/model/store/useMarketStore";
-import { replySelectionAuthorLabel } from "@features/chat/model/chatParticipantLabels";
-import { messagePreviewLine } from '../../model/chatAttachments';
+import type { Thread } from "@features/market/logic/store/useMarketStore";
+import { replySelectionAuthorLabel } from "@features/chat/logic/participants/chatParticipantLabels";
+import { messagePreviewLine } from '@features/chat/logic/messages/chatAttachments';
+import type { PendingDoc, PendingImg } from '@features/chat/Dtos/composer/chatComposerTypes';
 
 function formatVoiceDur(sec: number) {
   const s = Math.max(0, Math.floor(sec));
@@ -27,15 +28,6 @@ function formatVoiceDur(sec: number) {
   const r = s % 60;
   return `${m}:${String(r).padStart(2, "0")}`;
 }
-
-export type PendingImg = { id: string; url: string };
-export type PendingDoc = {
-  id: string;
-  url: string;
-  name: string;
-  size: string;
-  kind: "pdf" | "doc" | "other";
-};
 
 type Me = { id: string; name: string; trustScore: number };
 
@@ -508,3 +500,5 @@ export function ChatComposerSection({
     </div>
   );
 }
+
+export type { PendingImg, PendingDoc } from "@features/chat/Dtos/composer/chatComposerTypes";

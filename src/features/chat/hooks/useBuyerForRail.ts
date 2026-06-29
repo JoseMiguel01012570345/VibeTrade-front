@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import type { Thread } from "@features/market/model/store/marketStoreTypes";
-import { resolveBuyerUserId } from "@features/chat/model/chatParticipantLabels";
+import type { Thread } from "@features/market/logic/store/marketStoreTypes";
+import { resolveBuyerUserId } from "@features/chat/logic/participants/chatParticipantLabels";
 
 type Me = {
   id: string;

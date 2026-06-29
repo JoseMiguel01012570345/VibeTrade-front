@@ -1,28 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
-import { useMarketStore } from '@features/market/model/store/useMarketStore'
-import {
-  listAgreementServicePayments,
-  type AgreementServicePaymentApi,
-  type ServiceEvidenceAttachmentApi,
-} from '@features/chat/api/agreementServiceEvidenceApi'
-import type { SavedCard } from '@features/payments'
-
-export type EvidenceModalState = {
-  pay: AgreementServicePaymentApi
-  text: string
-  attachments: ServiceEvidenceAttachmentApi[]
-  busy: boolean
-  uploading: boolean
-} | null
-
-export type SellerPayoutModalState = {
-  pay: AgreementServicePaymentApi
-  cards: SavedCard[]
-  selectedCardId: string
-  loadingCards: boolean
-  busy: boolean
-} | null
+import { useMarketStore } from '@features/market/logic/store/useMarketStore'
+import { listAgreementServicePayments } from '@features/chat/api/agreementServiceEvidenceApi'
+import type {
+  AgreementServicePaymentApi,
+} from '@features/chat/Dtos/agreement/agreementServiceEvidenceApiTypes'
+import type {
+  EvidenceModalState,
+  SellerPayoutModalState,
+} from '@features/chat/Dtos/agreement/agreementDetailUiTypes'
 
 export function useAgreementDetailServicePayments(
   threadId: string,

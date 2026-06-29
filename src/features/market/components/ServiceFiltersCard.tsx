@@ -5,7 +5,7 @@ import {
   CATALOG_PUBLISHED_FILTER_OPTIONS,
   type CatalogPublishedFilter,
   type PriceSort,
-} from "../model/storePageTypes";
+} from "../logic/storePageTypes";
 
 export function ServiceFiltersCard({
   serviceNameQ,
