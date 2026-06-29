@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { OtpInput } from './OtpInput'
-import { DevCodeBanner } from './DevCodeBanner'
+import { OtpInput } from '../components/OtpInput'
+import { DevCodeBanner } from '../components/DevCodeBanner'
 import { verifyRegistrationEmail } from '@features/auth/api/credentialsAuth'
 import { applyAuthSession } from '@features/auth/api/applyAuthSession'
 

@@ -5,7 +5,7 @@ import {
   fetchMediaObjectUrl,
   getCachedMediaObjectUrl,
   isProtectedMediaUrl,
-} from "@/utils/media/mediaClient"
+} from "@shared/services/media/mediaClient"
 
 type ImgProps = Readonly<{
   src: string | undefined

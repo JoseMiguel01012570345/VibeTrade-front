@@ -1,39 +1,39 @@
 import { useEffect } from "react";
-import { useAppStore } from "@app/store/useAppStore";
+import { useAppStore } from "@features/auth/store/useAppStore";
 import {
   mergePersistedChatMessages,
   mapChatMessageDtoToMessage,
-} from "@/utils/chat/chatMerge";
+} from "@features/chat/model/chatMerge";
 import {
   fetchChatMessages,
   fetchChatThread,
   fetchThreadRouteSheets,
   fetchThreadRouteTramoSubscriptions,
   fetchThreadTradeAgreements,
-} from "@/utils/chat/chatApi";
-import { mapTradeAgreementApiToTradeAgreement } from "@/utils/chat/tradeAgreementApiMapper";
+} from "@features/chat/api/chatApi";
+import { mapTradeAgreementApiToTradeAgreement } from "@features/chat/model/tradeAgreementApiMapper";
 import {
   mergeBuyerLabelFromThreadDto,
   mergeChatSenderLabelsIntoProfileStore,
-} from "@/utils/chat/chatSenderLabels";
+} from "@features/chat/model/chatSenderLabels";
 import {
   minimalOfferStoreFromChatThreadDto,
   VT_SOCIAL_PLACEHOLDER_OFFER_ID,
-} from "@/utils/chat/chatThreadDtoFallbacks";
-import { fetchPublicOfferCard } from "@/utils/market/marketPersistence";
+} from "@features/chat/model/chatThreadDtoFallbacks";
+import { fetchPublicOfferCard } from "@features/market/api/marketPersistence";
 import {
   buildPurchaseThreadMessages,
   buildPurchaseThreadSystemOnly,
   syncOwnQaIntoMessages,
-} from "@app/store/marketStoreHelpers";
-import { mergedRouteOfferPublicAfterChatThreadHydration } from "@/utils/market/routeOfferPublicFromEmergentCard";
-import { applyViewerRouteTramoSubscriptions } from "@features/market/model/routeOfferSubscriptionMerge";
+} from "@features/market/model/store/marketStoreHelpers";
+import { mergedRouteOfferPublicAfterChatThreadHydration } from "@features/market/api/routeOfferPublicFromEmergentCard";
+import { applyViewerRouteTramoSubscriptions } from "@features/chat/model/routeOfferSubscriptionMerge";
 import {
   routeSheetEditAcksRecordFromSheets,
   type RouteSheet,
-} from "@features/market/model/routeSheetTypes";
-import { useMarketStore } from "@app/store/useMarketStore";
-import { partyExpelledFieldsFromDto } from "@/utils/chat/threadPartyExpelled";
+} from "@features/chat/model/routeSheetTypes";
+import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import { partyExpelledFieldsFromDto } from "@features/chat/model/threadPartyExpelled";
 
 type Params = {
   threadId: string | undefined;

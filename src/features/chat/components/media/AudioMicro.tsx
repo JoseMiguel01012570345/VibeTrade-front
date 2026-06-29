@@ -1,4 +1,4 @@
-import {
+﻿import {
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -13,11 +13,11 @@ import {
   fetchMediaObjectUrl,
   getCachedMediaObjectUrl,
   isProtectedMediaUrl,
-} from "@/utils/media/mediaClient";
+} from "@shared/services/media/mediaClient";
 import {
   claimChatVoicePlayback,
   releaseChatVoicePlayback,
-} from "../../lib/voicePlaybackCoordinator";
+} from '../../model/voicePlaybackCoordinator';
 import { finiteDuration, formatTime } from "./audioHelpers";
 import {
   computeWaveformPeaksFromUrl,
@@ -26,7 +26,7 @@ import {
 import {
   type VoiceMicroPalette,
   readAudioMicroPalette,
-} from "../../lib/voiceUiColors";
+} from '../../model/voiceUiColors';
 
 const WAVE_BARS = 76;
 
@@ -52,7 +52,7 @@ export function AudioMicro({
   const [playing, setPlaying] = useState(false);
   const [cur, setCur] = useState(0);
   const [dur, setDur] = useState(() => finiteDuration(seconds, seconds));
-  /** `/api/v1/media/…` necesita Bearer: mismo patrón que imágenes (fetch → blob URL). */
+  /** `/api/v1/media/â€¦` necesita Bearer: mismo patrÃ³n que imÃ¡genes (fetch â†’ blob URL). */
   const [playbackSrc, setPlaybackSrc] = useState(() => {
     if (!url) return "";
     if (!isProtectedMediaUrl(url)) return url;
@@ -390,7 +390,7 @@ export function AudioMicro({
           ref={waveWrapRef}
           role="slider"
           tabIndex={0}
-          aria-label="Posición en el audio"
+          aria-label="PosiciÃ³n en el audio"
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(pct)}

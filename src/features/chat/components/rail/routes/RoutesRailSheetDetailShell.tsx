@@ -8,7 +8,7 @@ import {
   type RoutesRailTitlesBundle,
 } from "./RoutesRailDetailSections";
 import type { RoutesRailSheetDetailProps } from "./routesRailSheetDetailTypes";
-import type { RouteStop } from "@features/market/model/routeSheetTypes";
+import type { RouteStop } from "@features/chat/model/routeSheetTypes";
 import {
   computeRailLegModel,
   type RailLegModel,
@@ -41,7 +41,7 @@ export function RoutesRailSheetDetailShell(
   // Vista (HTML + CSS)
   return (
     <div className="text-[13px]">
-      <RoutesRailDetailToolbarPublishStripe
+      <RoutesRailDetailToolbarPublishPayment
         p={p}
         titlesBundle={titlesBundle}
       />
@@ -63,7 +63,7 @@ export function RoutesRailSheetDetailShell(
   );
 }
 
-function RoutesRailDetailToolbarPublishStripe(props: {
+function RoutesRailDetailToolbarPublishPayment(props: {
   p: RoutesRailSheetDetailShellMergedProps;
   titlesBundle: RoutesRailTitlesBundle;
 }) {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { postCarrierTelemetry } from "@/utils/chat/routeLogisticsApi";
+import { postCarrierTelemetry } from "@features/chat/api/routeLogisticsApi";
 
 type Args = {
   enabled: boolean;

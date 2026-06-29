@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { onBackdropPointerClose } from '../../../lib/modalClose'
-import { modalShellNarrow } from '../../../styles/formModalStyles'
+﻿import { useEffect, useRef, useState } from 'react'
+import { onBackdropPointerClose } from '../../../model/modalClose'
+import { modalShellNarrow } from '../../../model/formModalStyles'
 
 type Props = {
   open: boolean
@@ -17,7 +17,7 @@ export function StringListModal({
   items: initial,
   onSave,
   onClose,
-  placeholder = 'Una línea por ítem',
+  placeholder = 'Una lÃ­nea por Ã­tem',
 }: Props) {
   const [text, setText] = useState('')
   const wasOpenRef = useRef(false)

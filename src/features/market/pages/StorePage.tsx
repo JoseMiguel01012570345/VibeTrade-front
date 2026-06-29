@@ -1,56 +1,53 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import { useAppStore } from "@app/store/useAppStore";
+import { useAppStore } from "@features/auth/store/useAppStore";
 import { ArrowLeft, LayoutGrid, RefreshCw } from "lucide-react";
-import { useMarketStore } from "@app/store/useMarketStore";
+import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import {
   catalogMonedasList,
   emptyStoreProductInput,
   emptyStoreServiceInput,
-  mergeStoreCatalogWithLocalExtras,
 } from "@features/market/model/storeCatalogTypes";
-import {
-  fetchStoreDetail,
-  type StoreDetailOwner,
-} from "@/utils/market/fetchStoreDetail";
 import {
   deleteStoreProductApi,
   deleteStoreServiceApi,
   putStoreProduct,
   putStoreService,
-  setMarketHydrating,
-} from "@/utils/market/marketPersistence";
-import { fetchCatalogCategories } from "@/utils/market/fetchCatalogCategories";
-import { fetchCurrencies } from "@/utils/market/fetchCurrencies";
+} from "@features/market/api/marketPersistence";
+import {
+  useStoreCatalogMeta,
+  useStorePageDetail,
+  reloadStoreDetailToStore,
+} from "../hooks/useStorePageDetail";
 import { ConfirmDeleteModal } from "@shared/components/ui/ConfirmDeleteModal";
 import { ScrollToTopFab } from "@shared/components/ui/ScrollToTopFab";
-import { ProductEditorModal } from "@features/profile/stores/ProductEditorModal";
-import { ServiceEditorModal } from "@features/profile/stores/ServiceEditorModal";
+import { ProductEditorModal } from "@features/profile/components/stores/ProductEditorModal";
+import { ServiceEditorModal } from "@features/profile/components/stores/ServiceEditorModal";
 import {
   OwnerCatalogProductList,
   OwnerCatalogServiceList,
-} from "./StoreOwnerCatalogLists";
+} from "../components/StoreOwnerCatalogLists";
 import {
   MAX_REASONABLE_PRICE,
   maxPriceFromProducts,
   maxPriceFromServices,
-} from "@/utils/market/parseProductPrice";
-import { ProductDetailCard } from "./ProductDetailCard";
-import { ProductFiltersCard } from "./ProductFiltersCard";
-import { ServiceDetailCard } from "./ServiceDetailCard";
-import { ServiceFiltersCard } from "./ServiceFiltersCard";
-import { StoreCatalogHubTile } from "./StoreCatalogHubTile";
-import { StoreIdentityBlock } from "./StoreIdentityBlock";
-import { VitrinaFiltersCard } from "./VitrinaFiltersCard";
+} from "@features/market/api/parseProductPrice";
+import { ProductDetailCard } from "../components/ProductDetailCard";
+import { ProductFiltersCard } from "../components/ProductFiltersCard";
+import { ServiceDetailCard } from "../components/ServiceDetailCard";
+import { ServiceFiltersCard } from "../components/ServiceFiltersCard";
+import { StoreCatalogHubTile } from "../components/StoreCatalogHubTile";
+import { StoreIdentityBlock } from "../components/StoreIdentityBlock";
+import { VitrinaFiltersCard } from "../components/VitrinaFiltersCard";
 import {
   applyProductPriceRangeAndSort,
   applyServicePriceRangeAndSort,
   collectCurrencyCodesForFilterOptions,
   filterProductsBySectionText,
   filterServicesBySectionText,
-} from "./storePageCatalogFilters";
-import { backRowBtnClass } from "./storePageStyles";
+} from "../model/storePageCatalogFilters";
+import { backRowBtnClass } from "../styles/storePageStyles";
 import type {
   CatalogPublishedFilter,
   PriceSort,
@@ -58,8 +55,8 @@ import type {
   StoreScreen,
   StoreSectionFilters,
   VitrinaListMode,
-} from "./storePageTypes";
-import { emptyStoreSectionFilters } from "./storePageTypes";
+} from "../model/storePageTypes";
+import { emptyStoreSectionFilters } from "../model/storePageTypes";
 import {
   clampStoreSectionPriceRange,
   formatCatalogJoinedLabel,
@@ -67,7 +64,7 @@ import {
   screenFromPathname,
   storeScreenHeaderTitle,
   uniqueSorted,
-} from "./storePageUtils";
+} from "../model/storePageUtils";
 
 const EMPTY_CATEGORY_HINTS: string[] = [];
 const EMPTY_CURRENCY_HINTS: string[] = [];
@@ -142,10 +139,18 @@ export function StorePage() {
       [section]: { ...s[section], ...patch },
     }));
   }
-  const [detailStatus, setDetailStatus] = useState<
-    "loading" | "ready" | "error"
-  >("loading");
   const [loadNonce, setLoadNonce] = useState(0);
+  const { catalogCategories: metaCategories, catalogCurrencies: metaCurrencies } =
+    useStoreCatalogMeta();
+  const catalogCategories =
+    metaCategories.length > 0 ? metaCategories : undefined;
+  const catalogCurrencies =
+    metaCurrencies.length > 0 ? metaCurrencies : undefined;
+  const { detailStatus, detailOwnerProfile } = useStorePageDetail(
+    storeId,
+    me.id,
+    loadNonce,
+  );
   const [productCtx, setProductCtx] = useState<{ productId?: string } | null>(
     null,
   );
@@ -159,47 +164,11 @@ export function StorePage() {
   >(null);
   const [catalogDeleteBusy, setCatalogDeleteBusy] = useState(false);
   const [catalogReloadBusy, setCatalogReloadBusy] = useState(false);
-  const [catalogCategories, setCatalogCategories] = useState<string[]>();
-  const [catalogCurrencies, setCatalogCurrencies] = useState<string[]>();
-  /** Dueño persistido (API detalle) para enlace en vitrina. */
-  const [detailOwnerProfile, setDetailOwnerProfile] =
-    useState<StoreDetailOwner | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const cats = await fetchCatalogCategories();
-        if (!cancelled && cats.length > 0) setCatalogCategories(cats);
-      } catch {
-        /* keep default */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const cur = await fetchCurrencies();
-        if (!cancelled && cur.length > 0) setCatalogCurrencies(cur);
-      } catch {
-        /* keep default; los modales añaden CUP igualmente */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     setProductCtx(null);
     setServiceCtx(null);
     setCatalogDeleteTarget(null);
-    setDetailOwnerProfile(null);
     setFiltersBySection({
       vitrina: emptyStoreSectionFilters(),
       products: emptyStoreSectionFilters(),
@@ -232,65 +201,6 @@ export function StorePage() {
     () => (storeId ? screenFromPathname(pathname, storeId) : "catalog"),
     [pathname, storeId],
   );
-
-  useEffect(() => {
-    if (!storeId) return;
-    let cancelled = false;
-    setDetailStatus("loading");
-    void (async () => {
-      try {
-        const data = await fetchStoreDetail(storeId, { userId: me.id });
-        if (cancelled) return;
-        setMarketHydrating(true);
-        try {
-          useMarketStore.setState((s) => ({
-            stores: { ...s.stores, [storeId]: data.store },
-            storeCatalogs: {
-              ...s.storeCatalogs,
-              [storeId]: mergeStoreCatalogWithLocalExtras(
-                s.storeCatalogs[storeId],
-                data.catalog,
-              ),
-            },
-          }));
-        } finally {
-          setMarketHydrating(false);
-        }
-        setDetailOwnerProfile(data.owner ?? null);
-        if (data.owner) {
-          const o = data.owner;
-          const nm = o.name?.trim() ?? "";
-          useAppStore.setState((s) => ({
-            profileDisplayNames: {
-              ...s.profileDisplayNames,
-              [o.id]: nm || s.profileDisplayNames[o.id] || "",
-            },
-            profileTrustScores: {
-              ...s.profileTrustScores,
-              [o.id]: o.trustScore,
-            },
-            ...(o.avatarUrl?.trim()
-              ? {
-                  profileAvatarUrls: {
-                    ...s.profileAvatarUrls,
-                    [o.id]: o.avatarUrl.trim(),
-                  },
-                }
-              : {}),
-          }));
-        }
-        setDetailStatus("ready");
-      } catch {
-        if (!cancelled) {
-          setDetailStatus("error");
-          setDetailOwnerProfile(null);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [storeId, me.id, loadNonce]);
 
   const publishedProducts = useMemo(
     () => (catalog?.products ?? []).filter((p) => p.published),
@@ -756,18 +666,7 @@ export function StorePage() {
     if (!storeId) return;
     setCatalogReloadBusy(true);
     try {
-      const data = await fetchStoreDetail(sid, { userId: me.id });
-      useMarketStore.setState((s) => ({
-        ...s,
-        stores: { ...s.stores, [sid]: data.store },
-        storeCatalogs: {
-          ...s.storeCatalogs,
-          [sid]: mergeStoreCatalogWithLocalExtras(
-            s.storeCatalogs[sid],
-            data.catalog,
-          ),
-        },
-      }));
+      await reloadStoreDetailToStore(sid, me.id);
       toast.success("Datos de la tienda actualizados");
     } catch {
       toast.error("No se pudieron actualizar los datos de la tienda");

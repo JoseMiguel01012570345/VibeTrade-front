@@ -1,8 +1,8 @@
-import { apiFetch } from "@shared/services/http/apiClient"
-import { isProtectedMediaUrl } from "@/utils/media/mediaClient"
-import { getSharedAudioContext } from '../../lib/sharedAudioContext'
+﻿import { apiFetch } from "@shared/services/http/apiClient"
+import { isProtectedMediaUrl } from "@shared/services/media/mediaClient"
+import { getSharedAudioContext } from '../../model/sharedAudioContext'
 
-/** Altura uniforme antes de decodificar (evita saltos de layout; no es un “falso” dibujo único). */
+/** Altura uniforme antes de decodificar (evita saltos de layout; no es un â€œfalsoâ€ dibujo Ãºnico). */
 export const WAVE_PEAK_UNIFORM = 0.12
 
 export function uniformWaveformPeaks(n: number): number[] {
@@ -11,7 +11,7 @@ export function uniformWaveformPeaks(n: number): number[] {
 
 /**
  * Picos reales del audio (envolvente por segmento), normalizados ~[0,1].
- * Misma URL → misma forma; cada clip es distinto.
+ * Misma URL â†’ misma forma; cada clip es distinto.
  */
 async function fetchAudioArrayBuffer(url: string): Promise<ArrayBuffer> {
   if (isProtectedMediaUrl(url)) {

@@ -1,9 +1,9 @@
-import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
+import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
 import {
   statusPillNo,
   statusPillOk,
   statusPillPending,
-} from "../../../styles/formModalStyles";
+} from '../../../model/formModalStyles';
 
 export const RAIL_ROOT =
   "vt-chat-rail flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)] max-[960px]:rounded-b-none max-[960px]:border-b-0 max-[960px]:shadow-none";

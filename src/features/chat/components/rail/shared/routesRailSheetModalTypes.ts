@@ -1,5 +1,5 @@
-import type { CarrierDeliveryEvidenceApi } from "@/utils/chat/routeLogisticsApi";
-import type { ServiceEvidenceAttachmentApi } from "@/utils/chat/agreementServiceEvidenceApi";
+import type { CarrierDeliveryEvidenceApi } from "@features/chat/api/routeLogisticsApi";
+import type { ServiceEvidenceAttachmentApi } from "@features/chat/api/agreementServiceEvidenceApi";
 
 export type CedeOwnershipModalState = {
   agreementId: string;

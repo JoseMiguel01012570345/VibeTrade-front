@@ -2,9 +2,9 @@ import toast from "react-hot-toast";
 import {
   decideCarrierDeliveryEvidence,
   fetchCarrierDeliveryEvidence,
-} from "@/utils/chat/routeLogisticsApi";
-import type { RouteStop } from "@features/market/model/routeSheetTypes";
-import type { RouteSheet } from "@features/market/model/routeSheetTypes";
+} from "@features/chat/api/routeLogisticsApi";
+import type { RouteStop } from "@features/chat/model/routeSheetTypes";
+import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
 import type { RailRoutesCommand } from "../bus/railRoutesCommands";
 import type { RailLegModel } from "./routesRailLegModel";
 

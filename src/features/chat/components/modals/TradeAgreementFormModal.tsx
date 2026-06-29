@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { fetchCatalogCategories } from "@/utils/market/fetchCatalogCategories";
+import { fetchCatalogCategories } from "@features/catalog/api/fetchCatalogCategories";
 import { cn } from "@shared/lib/cn";
-import { onBackdropPointerClose } from "../../lib/modalClose";
+import { onBackdropPointerClose } from '../../model/modalClose';
 import {
   checkRow,
   detailsBlock,
@@ -12,14 +12,14 @@ import {
   modalShellWide,
   modalSub,
   scopeRow,
-} from "../../styles/formModalStyles";
+} from '../../model/formModalStyles';
 import { MerchandiseLineEditor } from "./MerchandiseLineEditor";
 import { ModalFormField as Field } from "./ModalFormField";
 import type {
   MerchandiseLine,
   TradeAgreementDraft,
   TradeAgreementExtraFieldDraft,
-} from "@features/market/model/tradeAgreementTypes";
+} from "@features/chat/model/tradeAgreementTypes";
 import {
   defaultAgreementDraft,
   emptyMerchandiseLine,
@@ -29,13 +29,13 @@ import {
   merchandiseScopedExtraFields,
   rebuildExtraFieldsFromSections,
   serviceScopedExtraFields,
-} from "@features/market/model/tradeAgreementTypes";
-import type { TradeAgreementFormErrors } from "@features/market/model/tradeAgreementValidation";
+} from "@features/chat/model/tradeAgreementTypes";
+import type { TradeAgreementFormErrors } from "@features/chat/model/tradeAgreementValidation";
 import {
   hasValidationErrors,
   validateTradeAgreementDraft,
   validationErrorCount,
-} from "@features/market/model/tradeAgreementValidation";
+} from "@features/chat/model/tradeAgreementValidation";
 import type { StoreCatalog } from "@features/market/model/storeCatalogTypes";
 import {
   mergeMerchandiseLineWithStoreProduct,

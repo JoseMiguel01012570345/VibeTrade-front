@@ -1,9 +1,9 @@
 import toast from "react-hot-toast";
 import type { NavigateFunction } from "react-router-dom";
-import { postRouteSheetEditCarrierResponse } from "@/utils/chat/chatApi";
+import { postRouteSheetEditCarrierResponse } from "@features/chat/api/chatApi";
 import { getSessionToken } from "@shared/services/http/sessionToken";
-import type { RouteOfferPublicState } from "@app/store/marketStoreTypes";
-import type { RouteStopDeliveryStatusApi } from "@/utils/chat/routeLogisticsApi";
+import type { RouteOfferPublicState } from "@features/market/model/store/marketStoreTypes";
+import type { RouteStopDeliveryStatusApi } from "@features/chat/api/routeLogisticsApi";
 
 export async function railFlowCarrierAcceptAck(args: {
   threadId: string;

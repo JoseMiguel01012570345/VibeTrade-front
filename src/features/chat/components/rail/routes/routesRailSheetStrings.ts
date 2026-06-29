@@ -1,12 +1,12 @@
-import { confirmedCarrierIdsOnOffer } from "@app/store/marketSliceHelpers";
-import type { RouteOfferPublicState } from "@app/store/marketStoreTypes";
-import type { RouteSheet } from "@features/market/model/routeSheetTypes";
+import { confirmedCarrierIdsOnOffer } from "@features/market/model/store/marketSliceHelpers";
+import type { RouteOfferPublicState } from "@features/market/model/store/marketStoreTypes";
+import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
 import {
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
   ROUTE_SHEET_PAID_CARRIER_CONTACT_ONLY_ES,
   ROUTE_SHEET_PUBLISH_BLOCKED_DELIVERED_ES,
   routeSheetPublishBlockedWhenDelivered,
-} from "@features/market/model/routeSheetOfferGuards";
+} from "@features/chat/model/routeSheetOfferGuards";
 import { SELLER_TRUST_PENALTY_ON_EDIT } from "../../modals/TrustRiskEditConfirmModal";
 
 export function routesRailSheetListEmptyText(isActingSeller: boolean): string {

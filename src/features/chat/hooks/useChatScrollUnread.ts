@@ -5,9 +5,9 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Thread } from "@app/store/marketStoreTypes";
-import { normalizeThreadMessages } from "@/utils/chat/chatMerge";
-import { CHAT_SCROLL_BOTTOM_PX } from "../constants/chatScroll";
+import type { Thread } from "@features/market/model/store/marketStoreTypes";
+import { normalizeThreadMessages } from "@features/chat/model/chatMerge";
+import { CHAT_SCROLL_BOTTOM_PX } from '../model/chatScroll';
 
 export function useChatScrollUnread(thread: Thread | undefined, threadId: string | undefined) {
   const listRef = useRef<HTMLDivElement | null>(null);

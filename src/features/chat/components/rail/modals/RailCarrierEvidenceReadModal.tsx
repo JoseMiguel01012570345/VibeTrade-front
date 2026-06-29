@@ -1,8 +1,8 @@
-import type { Dispatch, SetStateAction } from "react";
+﻿import type { Dispatch, SetStateAction } from "react";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import { Button } from "flowbite-react";
 import { getSessionToken } from "@shared/services/http/sessionToken";
-import { carrierDeliveryEvidenceStatusLabelEs } from "@/utils/chat/routeLogisticsLabels";
+import { carrierDeliveryEvidenceStatusLabelEs } from "@features/chat/model/routeLogisticsLabels";
 import type { CarrierEvReadModalState } from "../shared/routesRailSheetModalTypes";
 import { CarrierDeliveryEvidenceReadModal } from "./CarrierDeliveryEvidenceReadModal";
 import {

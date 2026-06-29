@@ -15,13 +15,13 @@ import { VtTimeField } from "@shared/components/ui/VtTimeField";
 import {
   nominatimReverse,
   nominatimSearch,
-} from "@/utils/map/nominatimGeocode";
+} from "@features/market/model/map/nominatimGeocode";
 import {
   routeMapNumberedWaypointIcon,
   storeMapPinIcon,
-} from "@/utils/map/storeMapPinIcon";
+} from "@features/market/model/map/storeMapPinIcon";
 import "leaflet/dist/leaflet.css";
-import "../../../home/emergentRouteMapMarkers.css";
+import "@features/home/styles/emergentRouteMapMarkers.css";
 import { ModalFormField as Field } from "./ModalFormField";
 import {
   buildDestinoMapPriorContext,
@@ -34,7 +34,7 @@ import {
   parseRouteLatLngInputPair,
   tiempoRecogidaChainedFromPrevEntrega,
   tramosToLimpios,
-} from "../../lib/routeSheetTramoFormUtils";
+} from '../../model/routeSheetTramoFormUtils';
 import {
   agrDetailSub,
   detailsBlock,
@@ -53,7 +53,7 @@ import {
   rutaTramoHead,
   rutaTramoRemoveBtn,
   rutaTramosBlock,
-} from "../../styles/formModalStyles";
+} from '../../model/formModalStyles';
 import { ExternalLink, MapPin, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
@@ -63,31 +63,31 @@ import {
   type RouteSheetCreatePayload,
   type RouteStop,
   type RouteTramoFormInput,
-} from "@features/market/model/routeSheetTypes";
-import type { RouteSheetFormErrors } from "@features/market/model/routeSheetValidation";
+} from "@features/chat/model/routeSheetTypes";
+import type { RouteSheetFormErrors } from "@features/chat/model/routeSheetValidation";
 import {
   getRouteSheetFormErrors,
   hasRouteSheetFormErrors,
   normalizeRouteSheetParadas,
   routeSheetFormErrorCount,
   validateRouteCoordPair,
-} from "@features/market/model/routeSheetValidation";
-import type { RouteOfferPublicState } from "@app/store/marketStoreTypes";
-import { paymentCurrencyVtOptions } from "@features/market/model/routeSheetMonedaOptions";
-import { fetchCurrencies } from "@/utils/market/fetchCurrencies";
-import { VibeMapTileLayer } from "@features/home/EmergentRouteFeedMap";
-import { LeafletRoadSnappedRoute } from "@features/home/LeafletRoadSnappedRoute";
+} from "@features/chat/model/routeSheetValidation";
+import type { RouteOfferPublicState } from "@features/market/model/store/marketStoreTypes";
+import { paymentCurrencyVtOptions } from "@features/chat/model/routeSheetMonedaOptions";
+import { fetchCurrencies } from "@features/market/api/fetchCurrencies";
+import { VibeMapTileLayer } from "@features/home/components/EmergentRouteFeedMap";
+import { LeafletRoadSnappedRoute } from "@features/home/components/LeafletRoadSnappedRoute";
 import { VtSelect } from "@shared/components/ui/VtSelect";
 import { RouteSheetTransportistaPhoneField } from "./RouteSheetTransportistaPhoneField";
 import {
   joinRouteEstimadoStored,
   splitRouteEstimadoStored,
-} from "@features/market/model/routeSheetDateTime";
+} from "@features/chat/model/routeSheetDateTime";
 import {
   isRouteEstimadoTimeDisabled,
   routeEntregaDateBounds,
   routeRecogidaDateBounds,
-} from "@features/market/model/routeTramoEstimadoPickerConstraints";
+} from "@features/chat/model/routeTramoEstimadoPickerConstraints";
 import {
   activeAssignmentOnFormTramo,
   confirmedAssignmentOnFormTramo,
@@ -95,11 +95,11 @@ import {
   normRoutePhoneKey,
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,
   ROUTE_SHEET_PAID_CARRIER_CONTACT_ONLY_ES,
-} from "@features/market/model/routeSheetOfferGuards";
+} from "@features/chat/model/routeSheetOfferGuards";
 import {
   applyRouteLegPaymentCurrencyToParadas,
   ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES,
-} from "@features/market/model/merchandiseRouteCurrency";
+} from "@features/chat/model/merchandiseRouteCurrency";
 
 /** Por encima del modal y de los `VtSelect` con listPortal z-[400]. */
 const ROUTE_SHEET_DT_POPOVER_Z = "z-[500]";

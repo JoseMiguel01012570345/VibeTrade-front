@@ -15,14 +15,14 @@ import toast from "react-hot-toast";
 import type {
   RouteOfferPublicState,
   RouteSheetEditAckState,
-} from "@app/store/marketStoreTypes";
-import { ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES, ROUTE_SHEET_PUBLISH_BLOCKED_DELIVERED_ES, routeSheetPublishBlockedWhenDelivered } from "@features/market/model/routeSheetOfferGuards";
+} from "@features/market/model/store/marketStoreTypes";
+import { ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES, ROUTE_SHEET_PUBLISH_BLOCKED_DELIVERED_ES, routeSheetPublishBlockedWhenDelivered } from "@features/chat/model/routeSheetOfferGuards";
 import {
   routeStatusLabel,
   type RouteSheet,
-} from "@features/market/model/routeSheetTypes";
-import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
-import type { RouteStopDeliveryStatusApi } from "@/utils/chat/routeLogisticsApi";
+} from "@features/chat/model/routeSheetTypes";
+import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
+import type { RouteStopDeliveryStatusApi } from "@features/chat/api/routeLogisticsApi";
 import {
   railDetailDeleteTitle,
   railDetailPublishTitle,

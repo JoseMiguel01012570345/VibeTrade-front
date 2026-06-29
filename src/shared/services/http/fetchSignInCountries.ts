@@ -1,4 +1,4 @@
-import type { SignInCountry } from "@/types/signInCountry";
+import type { SignInCountry } from '@features/auth/Dtos/signInCountry'
 import { apiFetch } from "./apiClient";
 
 export async function fetchSignInCountries(): Promise<SignInCountry[]> {

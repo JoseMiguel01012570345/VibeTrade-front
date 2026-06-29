@@ -3,10 +3,10 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { Bell, ChevronLeft, ChevronRight, ExternalLink, History, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useAppStore } from "@app/store/useAppStore"
-import type { NotificationItem } from "@app/store/useAppStore"
+import { useAppStore } from "@features/auth/store/useAppStore"
+import type { NotificationItem } from "@features/auth/store/useAppStore"
 import { cn } from "@shared/lib/cn"
-import { fetchChatNotifications, markChatNotificationsRead } from "@/utils/chat/chatApi"
+import { fetchChatNotifications, markChatNotificationsRead } from "@features/chat/api/chatApi"
 import {
   DESKTOP_NOTIFICATIONS_PREF_STORAGE_KEY,
   getDesktopNotificationPermission,
@@ -14,14 +14,11 @@ import {
   isDesktopNotificationSupported,
   requestDesktopNotificationPermission,
   setDesktopNotificationsEnabledPreference,
-} from "@/utils/notifications/desktopNotifications"
-import { notificationDeepLink } from "@/utils/notifications/notificationRoutes"
+} from "@features/notifications/model/desktopNotifications"
+import { notificationDeepLink } from "@features/notifications/model/notificationRoutes"
 import { VtDateField } from "@shared/components/ui/VtDateField"
 import { VtTimeField } from "@shared/components/ui/VtTimeField"
-import {
-  mapServerNotification,
-  syncChatNotificationsFromServer,
-} from "@/utils/notifications/notificationsSync"
+import { useNotifications, mapServerNotification } from '@features/notifications'
 
 /** Chat primero salvo avisos explícitos de comentario en ficha → oferta + ancla a comentarios. */
 function notificationHref(n: {
@@ -72,10 +69,8 @@ function localDateAndTimeToMs(dateIso: string, timeHm: string): number | null {
 const NOTIF_PAGE_SIZE = 8
 
 export function NotificationsBell() {
-  const items = useAppStore((s) => s.notifications)
-  const markAllRead = useAppStore((s) => s.markAllRead)
+  const { items, unread, markAllRead, syncFromServer } = useNotifications()
   const clearAllNotifications = useAppStore((s) => s.clearAllNotifications)
-  const unread = useMemo(() => items.filter((x) => !x.read).length, [items])
 
   const [open, setOpen] = useState(false)
   const [historyFiltersOpen, setHistoryFiltersOpen] = useState(false)
@@ -148,7 +143,7 @@ export function NotificationsBell() {
     if (!open) return
     void (async () => {
       try {
-        await syncChatNotificationsFromServer()
+        await syncFromServer()
       } catch {
         /* ignore */
       }
@@ -164,7 +159,7 @@ export function NotificationsBell() {
   useEffect(() => {
     if (!open) return
     const onFocus = () => {
-      void syncChatNotificationsFromServer()
+      void syncFromServer()
     }
     globalThis.addEventListener?.('focus', onFocus)
     return () => globalThis.removeEventListener?.('focus', onFocus)
@@ -275,7 +270,7 @@ export function NotificationsBell() {
         title="Notificaciones"
         onClick={() => {
           void (async () => {
-            await syncChatNotificationsFromServer()
+            await syncFromServer()
             setOpen(true)
           })()
         }}

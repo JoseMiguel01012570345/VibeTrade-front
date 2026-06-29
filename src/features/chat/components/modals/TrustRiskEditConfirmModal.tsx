@@ -1,7 +1,7 @@
-import {
+﻿import {
   mapBackdropLayerAboveChatRail,
   modalShellNarrow,
-} from "../../styles/formModalStyles";
+} from '../../model/formModalStyles';
 
 type Props = {
   readonly open: boolean;
@@ -9,7 +9,7 @@ type Props = {
   readonly onConfirm: () => void;
 };
 
-/** Aviso al editar hoja de ruta: otros riesgos de edición visible para contrapartes. */
+/** Aviso al editar hoja de ruta: otros riesgos de ediciÃ³n visible para contrapartes. */
 export function TrustRiskEditConfirmModal({
   open,
   onClose,
@@ -26,7 +26,7 @@ export function TrustRiskEditConfirmModal({
     >
       <div className={modalShellNarrow}>
         <div id="trust-risk-edit-title" className="vt-modal-title">
-          ¿Continuar con la edición?
+          Â¿Continuar con la ediciÃ³n?
         </div>
         <p className="vt-muted mb-4 text-[13px] leading-snug text-[var(--text)]">
           Al modificar esta{" "}
@@ -39,7 +39,7 @@ export function TrustRiskEditConfirmModal({
           transportistas u otras contrapartes.
         </p>
         <p className="vt-muted mb-0 text-[12px] leading-snug">
-          Podés cancelar y no se aplicará ningún cambio ni penalización.
+          PodÃ©s cancelar y no se aplicarÃ¡ ningÃºn cambio ni penalizaciÃ³n.
         </p>
         <div className="vt-modal-actions mt-5">
           <button type="button" className="vt-btn" onClick={onClose}>
@@ -66,5 +66,5 @@ export const SELLER_TRUST_PENALTY_ON_EDIT = 3;
 /** Por cada integrante del chat (comprador, vendedor, transportistas) al salir con acuerdo aceptado. */
 export const CHAT_PARTY_EXIT_TRUST_PER_MEMBER = 1;
 
-/** Solo si hay tramos confirmados y alguna hoja implicada no está «entregada» (coherente con API). */
+/** Solo si hay tramos confirmados y alguna hoja implicada no estÃ¡ Â«entregadaÂ» (coherente con API). */
 export const CARRIER_ROUTE_EXIT_TRUST_PENALTY = 3;

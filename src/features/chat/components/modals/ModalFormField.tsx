@@ -1,6 +1,6 @@
-import { type HTMLAttributes, type ReactNode } from 'react'
+﻿import { type HTMLAttributes, type ReactNode } from 'react'
 import { cn } from "@shared/lib/cn"
-import { fieldError, fieldLabel, fieldRootWithInvalid, textareaMin } from '../../styles/formModalStyles'
+import { fieldError, fieldLabel, fieldRootWithInvalid, textareaMin } from '../../model/formModalStyles'
 
 type Props = {
   label: ReactNode
@@ -13,7 +13,7 @@ type Props = {
   rows?: number
   inputMode?: HTMLAttributes<HTMLInputElement>['inputMode']
   readOnly?: boolean
-  /** id de &lt;datalist&gt; con sugerencias (p. ej. categorías del API). */
+  /** id de &lt;datalist&gt; con sugerencias (p. ej. categorÃ­as del API). */
   list?: string
 }
 

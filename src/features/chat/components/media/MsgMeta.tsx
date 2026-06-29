@@ -3,7 +3,7 @@ import { cn } from "@shared/lib/cn";
 import type {
   ChatDeliveryStatus,
   Message,
-} from "@app/store/marketStoreTypes";
+} from "@features/market/model/store/marketStoreTypes";
 
 export function hhmm(ts: number) {
   const d = new Date(ts);

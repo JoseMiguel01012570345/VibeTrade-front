@@ -1,11 +1,11 @@
 import type {
   RouteOfferPublicState,
   RouteSheetEditAckState,
-} from "@app/store/marketStoreTypes";
-import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
-import type { RouteSheet } from "@features/market/model/routeSheetTypes";
-import type { RouteTramoSubscriptionItemApi } from "@/utils/chat/chatApi";
-import type { RouteStopDeliveryStatusApi } from "@/utils/chat/routeLogisticsApi";
+} from "@features/market/model/store/marketStoreTypes";
+import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
+import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
+import type { RouteTramoSubscriptionItemApi } from "@features/chat/api/chatApi";
+import type { RouteStopDeliveryStatusApi } from "@features/chat/api/routeLogisticsApi";
 
 export type RoutesRailSheetDetailProps = {
   selRoute: RouteSheet;

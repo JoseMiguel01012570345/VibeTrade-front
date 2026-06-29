@@ -1,26 +1,27 @@
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { AppShell } from "@app/shell/AppShell";
 import { SessionGate } from "@app/layouts/SessionGate";
-import { ChatListPage } from "@features/chat/ChatListPage";
-import { ChatPage } from "@features/chat/ChatPage";
-import { RoutePreselInvitePage } from "@features/chat/RoutePreselInvitePage";
-import { HomePage } from "@features/home/HomePage";
-import { NotificationsPage } from "@features/notifications/NotificationsPage";
-import { OfferPage } from "@features/market/pages/OfferPage";
-import { OfferRouteMapPage } from "@features/market/pages/OfferRouteMapPage";
-import { ProfilePage } from "@features/profile/ProfilePage";
-import { ReelsPage } from "@features/reels/ReelsPage";
-import { StoreLocationMapPage } from "@features/market/pages/StoreLocationMapPage";
-import { StorePage } from "@features/market/pages/StorePage";
-import { OnboardingWelcomePage } from "@features/auth/pages/OnboardingWelcomePage";
-import { LoginPage } from "@features/auth/pages/LoginPage";
-import { RegisterPage } from "@features/auth/pages/RegisterPage";
-import { RegisterVerifyPhonePage } from "@features/auth/pages/RegisterVerifyPhonePage";
-import { RegisterVerifyEmailPage } from "@features/auth/pages/RegisterVerifyEmailPage";
-import { ForgotPasswordPage } from "@features/auth/pages/ForgotPasswordPage";
-import { ConfirmPasswordResetPage } from "@features/auth/pages/ConfirmPasswordResetPage";
-import { CatalogSearchPage } from "@features/catalog/pages/CatalogSearchPage";
-import { StoresSearchPage } from "@features/catalog/pages/StoresSearchPage";
+import { ChatListPage, ChatPage, RoutePreselInvitePage } from "@features/chat";
+import { HomePage } from "@features/home";
+import { NotificationsPage } from "@features/notifications";
+import {
+  OfferPage,
+  OfferRouteMapPage,
+  StoreLocationMapPage,
+  StorePage,
+} from "@features/market";
+import { ProfileComposerPage } from "@features/profile";
+import { ReelsPage } from "@features/reels";
+import {
+  ConfirmPasswordResetPage,
+  ForgotPasswordPage,
+  LoginPage,
+  OnboardingWelcomePage,
+  RegisterPage,
+  RegisterVerifyEmailPage,
+  RegisterVerifyPhonePage,
+} from "@features/auth";
+import { CatalogSearchPage, StoresSearchPage } from "@features/catalog";
 
 function RootRedirect() {
   return <Navigate to="/home" replace />;
@@ -70,7 +71,7 @@ export function AppRoutes() {
           <Route path="/reels" element={<ReelsPage />} />
 
           <Route path="/profile/:userId" element={<ProfileDefaultRedirect />} />
-          <Route path="/profile/:userId/:section" element={<ProfilePage />} />
+          <Route path="/profile/:userId/:section" element={<ProfileComposerPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
 
           <Route path="*" element={<Navigate to="/home" replace />} />

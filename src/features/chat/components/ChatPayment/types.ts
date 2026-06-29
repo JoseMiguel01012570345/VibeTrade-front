@@ -1,5 +1,5 @@
-import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
-import type { RouteSheet } from "@features/market/model/routeSheetTypes";
+import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
+import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
 
 export type ChatPaymentModalProps = {
   open: boolean;

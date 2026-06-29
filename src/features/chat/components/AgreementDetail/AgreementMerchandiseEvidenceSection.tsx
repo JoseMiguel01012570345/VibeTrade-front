@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { BadgeCheck, FileText, Loader2, Pencil, Upload, XCircle } from "lucide-react";
 import { cn } from "@shared/lib/cn";
-import { uploadMedia, mediaApiUrl } from "@/utils/media/mediaClient";
+import { uploadMedia, mediaApiUrl } from "@shared/services/media/mediaClient";
 import { EvidenceAttachmentsList } from "../shared/EvidenceAttachmentsList";
 import {
   decideMerchandiseEvidence,
@@ -11,22 +11,22 @@ import {
   upsertMerchandiseEvidence,
   type AgreementMerchandisePaymentApi,
   type MerchandiseEvidenceAttachmentApi,
-} from "@/utils/chat/agreementMerchandiseEvidenceApi";
+} from "@features/chat/api/agreementMerchandiseEvidenceApi";
 import {
   minorToMajor,
-  stripeMinorDecimals,
-} from "@features/market/model/paymentFeePolicy";
-import type { RouteSheet } from "@features/market/model/routeSheetTypes";
+  currencyMinorDecimals,
+} from "@features/payments/model/paymentFeePolicy";
+import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
 import {
   agrDetailBlock,
   agrDetailH,
   agrDetailHint,
   fieldLabel,
-} from "../../styles/formModalStyles";
+} from '../../model/formModalStyles';
 
 function fmtMoneyMinor(amountMinor: number, currencyLower?: string): string {
   const cur = (currencyLower ?? "usd").trim().toLowerCase() || "usd";
-  const pow = stripeMinorDecimals(cur);
+  const pow = currencyMinorDecimals(cur);
   const maj = minorToMajor(amountMinor, cur);
   try {
     return new Intl.NumberFormat(undefined, {

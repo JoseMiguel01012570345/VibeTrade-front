@@ -3,8 +3,8 @@ import { ChevronRight, Copy, ExternalLink, MapPin, Trash2 } from 'lucide-react'
 import {
   agreementRouteLinkFrozen,
   type TradeAgreement,
-} from "@features/market/model/tradeAgreementTypes"
-import type { RouteSheet } from "@features/market/model/routeSheetTypes"
+} from "@features/chat/model/tradeAgreementTypes"
+import type { RouteSheet } from "@features/chat/model/routeSheetTypes"
 import { AgreementDetailView } from "../../AgreementDetail";
 import {
   contractStatusClass,

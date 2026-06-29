@@ -1,35 +1,11 @@
-import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
 import { Lock, Mail } from 'lucide-react'
-import { login } from '@features/auth/api/credentialsAuth'
-import { applyAuthSession } from '@features/auth/api/applyAuthSession'
-import { isValidEmail } from '@features/auth/lib/credentialsValidation'
-import { PasswordInput } from './PasswordInput'
+import { useLogin } from '../hooks/useLogin'
+import { PasswordInput } from '../components/PasswordInput'
 
 export function LoginPage() {
   const nav = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!isValidEmail(email) || !password) {
-      toast.error('Completa email y contraseña')
-      return
-    }
-    setBusy(true)
-    try {
-      const json = await login(email.trim(), password)
-      await applyAuthSession(json, nav, { successMessage: 'Sesión iniciada' })
-    } catch (err) {
-      const payload = (err as { payload?: { message?: string } }).payload
-      toast.error(payload?.message ?? 'Email o contraseña incorrectos')
-    } finally {
-      setBusy(false)
-    }
-  }
+  const { email, setEmail, password, setPassword, busy, submit } = useLogin()
 
   return (
     <div className="container vt-page">

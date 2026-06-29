@@ -4,9 +4,9 @@ import {
   routeStopTramoDeliveredByEvidence,
   routeStopTramoSubscribeBlocked,
   routeStopTramoSubscribeBlockedOnSheet,
-} from "@features/market/model/routeSheetOfferGuards";
-import type { RouteSheet } from "@features/market/model/routeSheetTypes";
-import type { RouteStopDeliveryStatusApi } from "@/utils/chat/routeLogisticsApi";
+} from "@features/chat/model/routeSheetOfferGuards";
+import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
+import type { RouteStopDeliveryStatusApi } from "@features/chat/api/routeLogisticsApi";
 
 function sheet(partial: Partial<RouteSheet> & Pick<RouteSheet, "id">): RouteSheet {
   return {

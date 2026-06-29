@@ -1,7 +1,7 @@
 import toast from "react-hot-toast";
-import type { ServiceEvidenceAttachmentApi } from "@/utils/chat/agreementServiceEvidenceApi";
-import { upsertCarrierDeliveryEvidence } from "@/utils/chat/routeLogisticsApi";
-import { uploadMedia, mediaApiUrl } from "@/utils/media/mediaClient";
+import type { ServiceEvidenceAttachmentApi } from "@features/chat/api/agreementServiceEvidenceApi";
+import { upsertCarrierDeliveryEvidence } from "@features/chat/api/routeLogisticsApi";
+import { uploadMedia, mediaApiUrl } from "@shared/services/media/mediaClient";
 import {
   normalizeCarrierEvidenceForCompare,
 } from "../shared/routeLegEvidence";

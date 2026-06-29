@@ -1,4 +1,4 @@
-import { useAppStore } from "@app/store/useAppStore";
+import { useAppStore } from "@features/auth/store/useAppStore";
 import { apiFetch } from "@shared/services/http/apiClient";
 import {
   apiErrorTextToUserMessage,

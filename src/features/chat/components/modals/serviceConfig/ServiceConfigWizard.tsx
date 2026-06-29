@@ -11,13 +11,13 @@ import {
   serviceItemAcceptedMonedas,
   sortCatalogItemsByContextId,
 } from "@features/market/model/storeCatalogTypes"
-import type { ServiceItem } from "@features/market/model/tradeAgreementTypes"
-import { validateVigenciaRange } from "@features/market/model/serviceVigenciaDates"
+import type { ServiceItem } from "@features/chat/model/tradeAgreementTypes"
+import { validateVigenciaRange } from "@features/chat/model/serviceVigenciaDates"
 import {
   collectCondicionesExtrasErrors,
   condicionesExtrasRowErrors,
   validateServiceWizardAdvance,
-} from "@features/market/model/tradeAgreementValidation"
+} from "@features/chat/model/tradeAgreementValidation"
 import {
   clampServiceScheduleToVigencia,
   coerceServiceSchedule,
@@ -25,7 +25,7 @@ import {
   normalizeServicePaymentRecurrence,
   monedasFromRecurrenciaPagos,
   DEFAULT_RECURRENCE_MONEDA,
-} from "@features/market/model/tradeAgreementTypes"
+} from "@features/chat/model/tradeAgreementTypes"
 import { ModalFormField as Field } from '../ModalFormField'
 import {
   fieldLabel,
@@ -33,8 +33,8 @@ import {
   modalFormBody,
   modalShellWide,
   modalSub,
-} from '../../../styles/formModalStyles'
-import { onBackdropPointerClose } from '../../../lib/modalClose'
+} from '../../../model/formModalStyles'
+import { onBackdropPointerClose } from '../../../model/modalClose'
 import { formatPaymentSummary, formatScheduleSummary } from './serviceItemFormat'
 import { ServiceScheduleReadView } from './ServiceScheduleReadView'
 import { ServicePaymentRecurrenceModal } from './ServicePaymentRecurrenceModal'

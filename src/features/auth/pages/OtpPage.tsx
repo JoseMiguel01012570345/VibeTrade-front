@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { cn } from "@shared/lib/cn"
-import { useAppStore } from "@app/store/useAppStore"
-import { OtpInput } from "./OtpInput"
+import { useAppStore } from "@features/auth/store/useAppStore"
+import { OtpInput } from "../components/OtpInput"
 import { apiFetch } from "@shared/services/http/apiClient"
 import { setSessionToken } from "@shared/services/http/sessionToken"
-import { stopChatRealtime } from "@/utils/chat/chatRealtime"
-import { bootstrapWebApp } from "@/utils/bootstrap/bootstrapWebApp"
+import { stopChatRealtime } from "@features/chat/model/chatRealtime"
+import { bootstrapWebApp } from "@app/bootstrap/bootstrapWebApp"
 import { userFromSessionJson, type SessionUserJson } from "@features/auth/api/sessionUser"
 import type { OnboardingMode } from './OnboardingWelcomePage'
 

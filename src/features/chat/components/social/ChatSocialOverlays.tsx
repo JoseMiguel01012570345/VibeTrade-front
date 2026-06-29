@@ -1,6 +1,6 @@
 import { Loader2, PencilLine, Users, X } from "lucide-react";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
-import type { ChatThreadMemberDto } from "@/utils/chat/chatApi";
+import type { ChatThreadMemberDto } from "@features/chat/api/chatApi";
 
 type Me = { id: string };
 

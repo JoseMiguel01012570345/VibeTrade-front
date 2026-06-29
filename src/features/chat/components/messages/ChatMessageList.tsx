@@ -9,10 +9,10 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { useAppStore } from "@app/store/useAppStore";
+import { useAppStore } from "@features/auth/store/useAppStore";
 import { cn } from "@shared/lib/cn";
-import type { Message } from "@app/store/marketStoreTypes";
-import type { Thread } from "@app/store/useMarketStore";
+import type { Message } from "@features/market/model/store/marketStoreTypes";
+import type { Thread } from "@features/market/model/store/useMarketStore";
 import {
   buyerFirstNameForThread,
   chatBubbleHeaderLabel,
@@ -20,8 +20,8 @@ import {
   resolveBuyerUserId,
   resolveSellerUserId,
   threadIsSocialLike,
-} from "@/utils/chat/chatParticipantLabels";
-import { normalizeThreadMessages } from "@/utils/chat/chatMerge";
+} from "@features/chat/model/chatParticipantLabels";
+import { normalizeThreadMessages } from "@features/chat/model/chatMerge";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import {
   deliveryStateForMineMessage,

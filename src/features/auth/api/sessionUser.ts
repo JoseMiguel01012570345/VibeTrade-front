@@ -1,4 +1,4 @@
-import type { User } from "@app/store/useAppStore";
+import type { User } from "@features/auth/store/useAppStore";
 
 export type SessionUserJson = {
   id: string;

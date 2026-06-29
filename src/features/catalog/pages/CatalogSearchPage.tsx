@@ -9,17 +9,16 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { VtMultiSelect } from "@shared/components/ui/VtMultiSelect";
 import type { VtSelectOption } from "@shared/components/ui/VtSelect";
-import { fetchCatalogCategories } from "@/utils/market/fetchCatalogCategories";
+import { useCatalogCategories, useCatalogSearch } from '@features/catalog'
 import {
-  searchCatalog,
   fetchCatalogAutocomplete,
   type CatalogSearchKind,
   type CatalogSearchItem,
-} from "@/utils/market/searchStores";
+} from '@features/catalog/api/searchStores';
 import { VtAutocompleteInput } from "@shared/components/ui/VtAutocompleteInput";
-import { StoreSearchResultCard } from "@features/home/StoreSearchResultCard";
-import { CatalogOfferSearchCard } from "./CatalogOfferSearchCard";
-import { backRowBtnClass } from "@features/market/pages/storePageStyles";
+import { StoreSearchResultCard } from "@features/home/components/StoreSearchResultCard";
+import { CatalogOfferSearchCard } from "../components/CatalogOfferSearchCard";
+import { backRowBtnClass } from "@features/market/styles/storePageStyles";
 
 type LocationState = { initialQuery?: string } | null;
 
@@ -84,7 +83,8 @@ export function CatalogSearchPage() {
   const [trustMin, setTrustMin] = useState("");
   const [appliedTrustMin, setAppliedTrustMin] = useState("");
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
-  const [catOptions, setCatOptions] = useState<string[]>([]);
+  const { data: catOptions = [] } = useCatalogCategories();
+  const catalogSearch = useCatalogSearch();
   const [visible, setVisible] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(
     "idle",
@@ -182,21 +182,6 @@ export function CatalogSearchPage() {
   }, [pendingRestoreScrollY, status]);
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const list = await fetchCatalogCategories();
-        if (!cancelled) setCatOptions(list);
-      } catch {
-        if (!cancelled) setCatOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
     if (!didRestore) return;
     const save = () => {
       saveSearchState({
@@ -273,21 +258,16 @@ export function CatalogSearchPage() {
 
         const offset = Math.max(0, nextPageIndex) * PAGE_SIZE;
         const trustText = (trustMinOverride ?? appliedTrustMin).trim();
-        const trustNum = Number(trustText);
-        const { items, hasMore: more } = await searchCatalog({
-          name: storeNameQ.trim() || undefined,
-          category:
-            storeCategories.length > 0 ? storeCategories.join(",") : undefined,
+        const { items, hasMore: more } = await catalogSearch.mutateAsync({
+          storeNameQ,
+          storeCategories,
           kinds,
-          trustMin:
-            trustText !== "" && Number.isFinite(trustNum)
-              ? trustNum
-              : undefined,
-          lat,
-          lng,
-          km: kmArg,
-          limit: PAGE_SIZE,
+          km: kmArg != null ? km : "",
+          trustMin: trustText,
+          geo:
+            lat != null && lng != null ? { lat, lng } : null,
           offset,
+          limit: PAGE_SIZE,
         });
         setResults(items);
         setHasMore(more);
@@ -313,6 +293,7 @@ export function CatalogSearchPage() {
       geo,
       appliedTrustMin,
       setSearchParams,
+      catalogSearch,
     ],
   );
 

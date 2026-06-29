@@ -1,9 +1,9 @@
 import { ChevronRight } from "lucide-react";
 import { Badge } from "flowbite-react";
-import type { RouteOfferPublicState } from "@app/store/marketStoreTypes";
-import type { RouteSheet } from "@features/market/model/routeSheetTypes";
-import { routeStatusLabel } from "@features/market/model/routeSheetTypes";
-import { sheetPreviewContactLine } from "@features/market/model/routeSheetOfferGuards";
+import type { RouteOfferPublicState } from "@features/market/model/store/marketStoreTypes";
+import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
+import { routeStatusLabel } from "@features/chat/model/routeSheetTypes";
+import { sheetPreviewContactLine } from "@features/chat/model/routeSheetOfferGuards";
 import { railItemClass } from "../layout/chatRailStyles";
 import { routesRailSheetListEmptyText } from "./routesRailSheetStrings";
 

@@ -1,4 +1,4 @@
-import { modalShellNarrow } from "../../styles/formModalStyles";
+﻿import { modalShellNarrow } from '../../model/formModalStyles';
 
 type Props = {
   open: boolean;
@@ -28,7 +28,7 @@ export function PeerPartyExitedInfoModal({
         </div>
         <p className="vt-muted mb-3 text-[13px] leading-snug text-[var(--text)]">
           <span className="font-semibold text-[var(--text)]">{roleLabel}</span>{" "}
-          salió de este chat con un acuerdo ya aceptado.
+          saliÃ³ de este chat con un acuerdo ya aceptado.
         </p>
         <p className="mb-1 text-[12px] font-medium uppercase tracking-wide text-[var(--muted)]">
           Motivo indicado
@@ -38,7 +38,7 @@ export function PeerPartyExitedInfoModal({
         </p>
         <p className="vt-muted mt-4 mb-0 text-[12px] leading-snug">
           El hilo sigue disponible para vos; la otra parte ya fue dada de baja de
-          este hilo (no lo verá en la lista y no tendrá acceso a este mismo hilo).
+          este hilo (no lo verÃ¡ en la lista y no tendrÃ¡ acceso a este mismo hilo).
         </p>
         <div className="vt-modal-actions mt-5">
           <button

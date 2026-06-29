@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { modalShellNarrow } from "../../styles/formModalStyles";
+﻿import { useState } from "react";
+import { modalShellNarrow } from '../../model/formModalStyles';
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  /** Si retorna false, el modal permanece abierto (motivo vacío o error). */
+  /** Si retorna false, el modal permanece abierto (motivo vacÃ­o o error). */
   onConfirm: (reason: string) => void | Promise<boolean | void>;
   busy?: boolean;
   emptyReasonError?: string | null;
@@ -33,8 +33,8 @@ export function ChatLeaveReasonModal({
           Motivo de salida
         </div>
         <p className="vt-muted mb-3 text-[13px] leading-snug text-[var(--text)]">
-          Indica el motivo de tu salida. Los demás participantes podrán ver que abandonaste la
-          conversación.
+          Indica el motivo de tu salida. Los demÃ¡s participantes podrÃ¡n ver que abandonaste la
+          conversaciÃ³n.
         </p>
         <label
           className="mb-1 block text-[11px] font-extrabold text-[var(--text)]"
@@ -48,7 +48,7 @@ export function ChatLeaveReasonModal({
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           disabled={busy}
-          placeholder="Ej.: cambio de planes, acuerdo cumplido…"
+          placeholder="Ej.: cambio de planes, acuerdo cumplidoâ€¦"
         />
         {emptyReasonError ?
           <p className="mt-2 text-[12px] font-semibold text-[var(--bad)]">{emptyReasonError}</p>

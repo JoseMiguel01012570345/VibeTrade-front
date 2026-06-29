@@ -1,20 +1,20 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Loader2, UserCheck, X } from "lucide-react";
 import { cn } from "@shared/lib/cn";
-import { resolvePlatformUserByPhone } from "@/utils/contacts/contactsApi";
+import { resolvePlatformUserByPhone } from "@features/profile/api/contactsApi";
 import {
   fetchPublishedTransportServicesForUser,
   summarizeTransportServiceForInvite,
   type PublishedTransportServiceDto,
-} from "@/utils/market/publishedTransportServicesApi";
+} from "@features/market/api/publishedTransportServicesApi";
 import {
   fieldError,
   fieldLabel,
   fieldRootWithInvalid,
   mapBackdropLayerAboveChatRail,
   modalFormBody,
-} from "../../styles/formModalStyles";
+} from '../../model/formModalStyles';
 import { TransportServiceFichaDetail } from "../TransportServiceFichaDetail";
 
 export type RouteTransportistaPick = {
@@ -30,9 +30,9 @@ type Props = {
   transportInvitedServiceSummary?: string;
   onChange: (pick: RouteTransportistaPick) => void;
   error?: string;
-  /** Suscripción aceptada: no se puede quitar ni reemplazar el contacto desde el formulario. */
+  /** SuscripciÃ³n aceptada: no se puede quitar ni reemplazar el contacto desde el formulario. */
   phoneLocked?: boolean;
-  /** Nombre del transportista confirmado (oferta pública). */
+  /** Nombre del transportista confirmado (oferta pÃºblica). */
   lockedDisplayName?: string;
 };
 
@@ -49,7 +49,7 @@ function phoneLineFromResolved(
 }
 
 /**
- * Misma idea que en Contactos: se ingresa un número y, si hay cuenta, se elige el teléfono del perfil
+ * Misma idea que en Contactos: se ingresa un nÃºmero y, si hay cuenta, se elige el telÃ©fono del perfil
  * y un servicio de transporte publicado (ficha).
  */
 export function RouteSheetTransportistaPhoneField({
@@ -82,7 +82,7 @@ export function RouteSheetTransportistaPhoneField({
   async function onSearch() {
     const raw = draft.trim();
     if (!raw) {
-      toast.error("Ingresá un número de teléfono.");
+      toast.error("IngresÃ¡ un nÃºmero de telÃ©fono.");
       return;
     }
     setBusy(true);
@@ -113,7 +113,7 @@ export function RouteSheetTransportistaPhoneField({
       toast.error(
         e instanceof Error && e.message
           ? e.message
-          : "Ese número no está registrado en la plataforma.",
+          : "Ese nÃºmero no estÃ¡ registrado en la plataforma.",
       );
     } finally {
       setBusy(false);
@@ -156,7 +156,7 @@ export function RouteSheetTransportistaPhoneField({
         transportInvitedServiceSummary: undefined,
       });
       toast.success(
-        "Listo: se usará el número del perfil (sin ficha de servicio)",
+        "Listo: se usarÃ¡ el nÃºmero del perfil (sin ficha de servicio)",
       );
     }
     closePicker();
@@ -170,12 +170,12 @@ export function RouteSheetTransportistaPhoneField({
     <>
       <label className={fieldRootWithInvalid(!!error)}>
         <span className={fieldLabel}>
-          Teléfono del transportista (este tramo)
+          TelÃ©fono del transportista (este tramo)
         </span>
         <p className="vt-muted mb-2 text-[11px] leading-snug">
           {phoneLocked
-            ? "Este tramo ya tiene un transportista confirmado en la oferta. El contacto no se puede quitar ni cambiar acá."
-            : "Buscá por número como en Contactos: la cuenta tiene que existir en VibeTrade. Luego elige una ficha de servicio publicada (transporte)."}
+            ? "Este tramo ya tiene un transportista confirmado en la oferta. El contacto no se puede quitar ni cambiar acÃ¡."
+            : "BuscÃ¡ por nÃºmero como en Contactos: la cuenta tiene que existir en VibeTrade. Luego elige una ficha de servicio publicada (transporte)."}
         </p>
         {phoneLocked && v ? (
           <div className="rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-3 py-2.5">
@@ -296,7 +296,7 @@ export function RouteSheetTransportistaPhoneField({
                   Elegir servicio de transporte
                 </h2>
                 <p className="vt-muted mt-0.5 text-[12px] leading-snug">
-                  {pickedLabel ? `${pickedLabel} · ` : ""}
+                  {pickedLabel ? `${pickedLabel} Â· ` : ""}
                   {pickerPhoneLine ? (
                     <span className="font-mono">{pickerPhoneLine}</span>
                   ) : null}
@@ -320,14 +320,14 @@ export function RouteSheetTransportistaPhoneField({
             >
               {pickerBusy ? (
                 <p className="text-[var(--muted)]">
-                  Cargando fichas publicadas…
+                  Cargando fichas publicadasâ€¦
                 </p>
               ) : services.length === 0 ? (
                 <div className="space-y-3">
                   <p className="text-sm">
                     Este usuario no tiene servicios de transporte publicados en
-                    una tienda con transporte habilitado. Podés continuar solo
-                    con el teléfono del perfil. 
+                    una tienda con transporte habilitado. PodÃ©s continuar solo
+                    con el telÃ©fono del perfil. 
                   </p>
                   <div className="flex flex-wrap justify-end gap-2">
                     <button
@@ -342,7 +342,7 @@ export function RouteSheetTransportistaPhoneField({
                       className="vt-btn vt-btn-primary"
                       onClick={confirmPicker}
                     >
-                      Usar solo el teléfono
+                      Usar solo el telÃ©fono
                     </button>
                   </div>
                 </div>
@@ -373,7 +373,7 @@ export function RouteSheetTransportistaPhoneField({
                               <div className="vt-muted truncate text-[11px]">
                                 {(s.category ?? "").trim()}
                                 {(s.storeName ?? "").trim()
-                                  ? ` · ${(s.storeName ?? "").trim()}`
+                                  ? ` Â· ${(s.storeName ?? "").trim()}`
                                   : ""}
                               </div>
                             </button>

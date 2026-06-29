@@ -3,23 +3,23 @@ import toast from "react-hot-toast";
 import { VtSelect, type VtSelectOption } from "@shared/components/ui/VtSelect";
 import { VtTimeField } from "@shared/components/ui/VtTimeField";
 import { cn } from "@shared/lib/cn";
-import { onBackdropPointerClose } from "../../../lib/modalClose";
-import type { ServiceScheduleState } from "@features/market/model/tradeAgreementTypes";
+import { onBackdropPointerClose } from '../../../model/modalClose';
+import type { ServiceScheduleState } from "@features/chat/model/tradeAgreementTypes";
 import {
   coerceServiceSchedule,
   daysInCalendarMonth,
   defaultWeekdayCalendarDaysInMonth,
-} from "@features/market/model/tradeAgreementTypes";
+} from "@features/chat/model/tradeAgreementTypes";
 import {
   monthsInScheduleAndVigencia,
   daysForServiceMonthInSchedule,
-} from "@features/market/model/serviceScheduleMonthDayConstraints";
+} from "@features/chat/model/serviceScheduleMonthDayConstraints";
 import {
   calendarDaysInMonthWithinVigencia,
   monthsOverlappingVigenciaInYear,
   yearsTouchingVigencia,
-} from "@features/market/model/serviceVigenciaDates";
-import { modalShellWide } from "../../../styles/formModalStyles";
+} from "@features/chat/model/serviceVigenciaDates";
+import { modalShellWide } from '../../../model/formModalStyles';
 
 const STEP_TITLES = [
   "Meses",

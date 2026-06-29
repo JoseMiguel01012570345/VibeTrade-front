@@ -15,11 +15,11 @@ import {
   Square,
   X,
 } from "lucide-react";
-import { useAppStore } from "@app/store/useAppStore";
+import { useAppStore } from "@features/auth/store/useAppStore";
 import { cn } from "@shared/lib/cn";
-import type { Thread } from "@app/store/useMarketStore";
-import { replySelectionAuthorLabel } from "@/utils/chat/chatParticipantLabels";
-import { messagePreviewLine } from "../../lib/chatAttachments";
+import type { Thread } from "@features/market/model/store/useMarketStore";
+import { replySelectionAuthorLabel } from "@features/chat/model/chatParticipantLabels";
+import { messagePreviewLine } from '../../model/chatAttachments';
 
 function formatVoiceDur(sec: number) {
   const s = Math.max(0, Math.floor(sec));

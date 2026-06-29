@@ -2,11 +2,11 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
-import { useMarketStore } from "@app/store/useMarketStore";
-import { buildEmergentMapLegs } from "@/utils/map/emergentRouteMapLegs";
-import { EmergentRouteFeedMap } from "@features/home/EmergentRouteFeedMap";
-import { offerFromStoreCatalogs } from "@/utils/market/offerFromCatalog";
-import { fetchPublicOfferCard } from "@/utils/market/marketPersistence";
+import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import { buildEmergentMapLegs } from "@features/market/model/map/emergentRouteMapLegs";
+import { EmergentRouteFeedMap } from "@features/home/components/EmergentRouteFeedMap";
+import { offerFromStoreCatalogs } from "@features/market/api/offerFromCatalog";
+import { fetchPublicOfferCard } from "@features/market/api/marketPersistence";
 
 /**
  * Vista solo mapa (tramos arrastrables / zoom) para publicaciones emergentes de hoja de ruta.

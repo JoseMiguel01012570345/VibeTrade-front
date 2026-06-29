@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
-import { useAppStore } from "@app/store/useAppStore";
-import { useMarketStore } from "@app/store/useMarketStore";
+import { useAppStore } from "@features/auth/store/useAppStore";
+import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import { mergeStoreCatalogWithLocalExtras } from "@features/market/model/storeCatalogTypes";
-import { fetchStoreDetail } from "@/utils/market/fetchStoreDetail";
-import { setMarketHydrating } from "@/utils/market/marketPersistence";
-import { PointLocationFeedMap } from "@features/home/EmergentRouteFeedMap";
-import { isValidStoreLocation } from "@features/home/homeTextUtils";
+import { fetchStoreDetail } from "@features/market/api/fetchStoreDetail";
+import { setMarketHydrating } from "@features/market/api/marketPersistence";
+import { PointLocationFeedMap } from "@features/home/components/EmergentRouteFeedMap";
+import { isValidStoreLocation } from "@features/home/model/homeTextUtils";
 
 /**
  * Vista solo mapa (Leaflet OSM, zoom y arrastre) para la ubicación de una tienda — misma base que rutas y feed.

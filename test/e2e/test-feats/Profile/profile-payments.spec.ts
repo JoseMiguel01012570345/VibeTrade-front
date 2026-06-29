@@ -6,7 +6,7 @@ test.describe("PaymentGatewayConfigModal E2E", () => {
   test.skip(!isE2EReady(), e2eSkipReason);
 
   test("shows loading then card list or empty state", async ({ page }) => {
-    await page.goto("/profile/me/account?stripeCards=1");
+    await page.goto("/profile/me/account?paymentCards=1");
     const dialog = page.getByRole("dialog", { name: /pagos \(demo\)/i });
     await expect(dialog).toBeVisible({ timeout: 20_000 });
     await expect(
@@ -17,7 +17,7 @@ test.describe("PaymentGatewayConfigModal E2E", () => {
   });
 
   test("calls onClose on Escape", async ({ page }) => {
-    await page.goto("/profile/me/account?stripeCards=1");
+    await page.goto("/profile/me/account?paymentCards=1");
     await expect(
       page.getByRole("dialog", { name: /pagos \(demo\)/i }),
     ).toBeVisible({ timeout: 15_000 });
@@ -28,7 +28,7 @@ test.describe("PaymentGatewayConfigModal E2E", () => {
   });
 
   test("create setup intent when adding a card", async ({ page }) => {
-    await page.goto("/profile/me/account?stripeCards=1");
+    await page.goto("/profile/me/account?paymentCards=1");
     const dialog = page.getByRole("dialog", { name: /pagos \(demo\)/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
     const addBtn = dialog.getByRole("button", {
@@ -37,7 +37,7 @@ test.describe("PaymentGatewayConfigModal E2E", () => {
     if (await addBtn.isVisible().catch(() => false)) {
       await addBtn.click();
       await expect(
-        dialog.getByText(/stripe|tarjeta|número/i).first(),
+        dialog.getByText(/PaymentGateway|tarjeta|número/i).first(),
       ).toBeVisible({ timeout: 20_000 });
     }
   });

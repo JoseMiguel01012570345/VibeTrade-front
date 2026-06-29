@@ -1,91 +1,32 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Lock, Mail, Phone, User } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { CountrySelect } from './CountrySelect'
-import type { Country } from './countries'
-import { fetchSignInCountries } from '@shared/services/http/fetchSignInCountries'
-import { register } from '@features/auth/api/credentialsAuth'
-import {
-  isValidEmail,
-  isValidPassword,
-  isValidUsername,
-  sanitizeUsernameInput,
-} from '@features/auth/lib/credentialsValidation'
-import { PasswordInput } from './PasswordInput'
+import { CountrySelect } from '../components/CountrySelect'
+import { sanitizeUsernameInput } from '@features/auth/model/credentialsValidation'
+import { PasswordInput } from '../components/PasswordInput'
+import { useRegister } from '../hooks/useRegister'
 
 export function RegisterPage() {
   const nav = useNavigate()
-  const [countries, setCountries] = useState<Country[]>([])
-  const [country, setCountry] = useState<Country | null>(null)
-  const [countriesStatus, setCountriesStatus] = useState<'loading' | 'ok' | 'error'>('loading')
-  const [number, setNumber] = useState('')
-  const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const loadCountries = useCallback(async () => {
-    setCountriesStatus('loading')
-    try {
-      const list = await fetchSignInCountries()
-      if (list.length === 0) {
-        setCountriesStatus('error')
-        toast.error('No hay países disponibles para registro.')
-        return
-      }
-      setCountries(list)
-      setCountry(list[0])
-      setCountriesStatus('ok')
-    } catch {
-      setCountriesStatus('error')
-      toast.error('No se pudieron cargar los países.')
-    }
-  }, [])
-
-  useEffect(() => {
-    void loadCountries()
-  }, [loadCountries])
-
-  const phone = useMemo(() => {
-    const digits = number.replace(/[^\d]/g, '')
-    if (!country) return ''
-    return `${country.dial} ${digits}`
-  }, [country, number])
-
-  const canSubmit =
-    country != null &&
-    number.replace(/[^\d]/g, '').length >= 7 &&
-    isValidUsername(username) &&
-    isValidEmail(email) &&
-    isValidPassword(password) &&
-    password === confirmPassword &&
-    !busy &&
-    countriesStatus === 'ok'
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!canSubmit) return
-    setBusy(true)
-    try {
-      const json = await register(password, email.trim(), username.trim(), phone)
-      nav('/onboarding/verify-phone', {
-        state: {
-          registrationId: json.registrationId,
-          phone,
-          email: email.trim(),
-          codeLength: json.codeLength,
-          devHint: json.devMockCode ?? undefined,
-        },
-      })
-    } catch (err) {
-      const payload = (err as { payload?: { error?: string; message?: string } }).payload
-      toast.error(payload?.message ?? 'No se pudo iniciar el registro')
-    } finally {
-      setBusy(false)
-    }
-  }
+  const {
+    countries,
+    country,
+    setCountry,
+    countriesStatus,
+    number,
+    setNumber,
+    username,
+    setUsername,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    confirmPassword,
+    setConfirmPassword,
+    busy,
+    canSubmit,
+    submit,
+    loadCountries,
+  } = useRegister()
 
   return (
     <div className="container vt-page">
@@ -98,26 +39,55 @@ export function RegisterPage() {
           >
             ← Volver a opciones
           </button>
-          <h1 className="vt-h1">Crear tu cuenta</h1>
-          <div className="vt-muted">
-            Ingresá tu nombre de usuario, contraseña, email y teléfono. Luego verificaremos tu número y email.
-          </div>
+          <h1 className="vt-h1">Crear cuenta</h1>
+          <div className="vt-muted">Teléfono, usuario, email y contraseña.</div>
         </div>
 
         <form className="vt-card vt-card-pad bg-[var(--surface)]" onSubmit={(e) => void submit(e)}>
           <div className="flex flex-col gap-3">
+            {countriesStatus === 'error' ? (
+              <button type="button" className="vt-btn" onClick={() => void loadCountries()}>
+                Reintentar cargar países
+              </button>
+            ) : null}
+
             <label className="flex flex-col gap-2">
               <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
-                <User size={14} /> Nombre de usuario
+                <Phone size={14} /> Teléfono
+              </span>
+              <div className="flex gap-2">
+                {country ? (
+                  <CountrySelect
+                    countries={countries}
+                    value={country}
+                    onChange={setCountry}
+                  />
+                ) : (
+                  <div className="vt-input min-w-[8rem] opacity-60">País…</div>
+                )}
+                <input
+                  className="vt-input min-w-0 flex-1"
+                  inputMode="tel"
+                  value={number}
+                  onChange={(e) => setNumber(e.target.value.slice(0, 20))}
+                  disabled={countriesStatus !== 'ok' || busy}
+                />
+              </div>
+            </label>
+
+            <label className="flex flex-col gap-2">
+              <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+                <User size={14} /> Usuario
               </span>
               <input
                 className="vt-input"
                 value={username}
                 onChange={(e) => setUsername(sanitizeUsernameInput(e.target.value))}
-                autoComplete="username"
                 maxLength={32}
+                disabled={busy}
               />
             </label>
+
             <label className="flex flex-col gap-2">
               <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                 <Mail size={14} /> Email
@@ -128,61 +98,40 @@ export function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value.slice(0, 120))}
                 autoComplete="email"
-                maxLength={120}
+                disabled={busy}
               />
             </label>
+
             <label className="flex flex-col gap-2">
               <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
                 <Lock size={14} /> Contraseña
               </span>
-              <PasswordInput
-                value={password}
-                onChange={setPassword}
-                autoComplete="new-password"
-              />
+              <PasswordInput value={password} onChange={setPassword} autoComplete="new-password" />
             </label>
+
             <label className="flex flex-col gap-2">
-              <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
-                <Lock size={14} /> Confirmar contraseña
-              </span>
+              <span className="text-xs font-black text-[var(--muted)]">Confirmar contraseña</span>
               <PasswordInput
                 value={confirmPassword}
                 onChange={setConfirmPassword}
                 autoComplete="new-password"
               />
             </label>
-            <div>
-              <div className="mb-1.5 text-xs font-extrabold text-[var(--muted)]">País</div>
-              {countriesStatus === 'loading' ? (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm text-[var(--muted)]">
-                  Cargando países…
-                </div>
-              ) : countriesStatus === 'error' ? (
-                <div className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-3">
-                  <div className="text-sm text-[var(--muted)]">No se pudo obtener la lista de países.</div>
-                  <button type="button" className="vt-btn vt-btn-ghost vt-btn-sm self-start" onClick={() => void loadCountries()}>
-                    Reintentar
-                  </button>
-                </div>
-              ) : country ? (
-                <CountrySelect countries={countries} value={country} onChange={setCountry} />
-              ) : null}
-            </div>
-            <label className="flex flex-col gap-2">
-              <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
-                <Phone size={14} /> Teléfono
-              </span>
-              <input
-                className="vt-input"
-                inputMode="tel"
-                value={number}
-                onChange={(e) => setNumber(e.target.value.replace(/[^\d\s-]/g, ''))}
-                autoComplete="tel-national"
-              />
-            </label>
-            <button type="submit" className="vt-btn vt-btn-primary w-full px-3 py-3" disabled={!canSubmit}>
-              {busy ? 'Enviando…' : 'Continuar'}
+
+            <button
+              type="submit"
+              className="vt-btn vt-btn-primary w-full px-3 py-3"
+              disabled={!canSubmit}
+            >
+              {busy ? 'Registrando…' : 'Continuar'}
             </button>
+
+            <Link
+              to="/onboarding/login"
+              className="text-center text-sm font-extrabold text-[var(--primary)] underline-offset-2 hover:underline"
+            >
+              ¿Ya tienes cuenta? Inicia sesión
+            </Link>
           </div>
         </form>
       </div>

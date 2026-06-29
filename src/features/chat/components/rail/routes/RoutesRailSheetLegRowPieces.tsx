@@ -4,11 +4,11 @@ import { cn } from "@shared/lib/cn";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 import {
   routeStopDeliveryStateLabelEs,
-} from "@/utils/chat/routeLogisticsLabels";
-import { formatRouteEstimadoDisplay } from "@features/market/model/routeSheetDateTime";
-import { effectiveTramoContactPhone } from "@features/market/model/routeSheetOfferGuards";
-import { tramoResumenLinea, type RouteStop } from "@features/market/model/routeSheetTypes";
-import { formatKmEs } from "@/utils/map/routeLegMetrics";
+} from "@features/chat/model/routeLogisticsLabels";
+import { formatRouteEstimadoDisplay } from "@features/chat/model/routeSheetDateTime";
+import { effectiveTramoContactPhone } from "@features/chat/model/routeSheetOfferGuards";
+import { tramoResumenLinea, type RouteStop } from "@features/chat/model/routeSheetTypes";
+import { formatKmEs } from "@features/market/model/map/routeLegMetrics";
 import { TramoSubscribedServiceFicha } from "../shared/TramoSubscribedServiceFicha";
 import type { RailLegModel } from "./routesRailLegModel";
 import { railSellerToggleStopTitle } from "./routesRailSheetStrings";

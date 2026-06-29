@@ -3,7 +3,7 @@ import {
   ProtectedMediaAnchor,
   ProtectedMediaImg,
 } from "@shared/components/media/ProtectedMediaImg";
-import { mediaApiUrl } from "@/utils/media/mediaClient";
+import { mediaApiUrl } from "@shared/services/media/mediaClient";
 
 export type EvidenceAttachmentItem = {
   id: string;

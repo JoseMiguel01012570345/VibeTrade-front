@@ -38,7 +38,7 @@ import {
   expectInformeCurrencyBlocks,
   expectPaymentModalChrome,
   expectPaymentCardConfigLink,
-  expectStripeAviso,
+  expectProcessorFeeAviso,
   clickPayCurrency,
   openCardConfigFromPaymentModal,
   openChatPaymentModal,
@@ -159,7 +159,7 @@ test.describe("chat agreement checkout (UI)", () => {
       await enableServiceForPayment(buyerPage, dualServiceName);
       await expectPaymentCardConfigLink(buyerPage);
       await expectInformeCurrencyBlocks(buyerPage, ["USD"]);
-      await expectStripeAviso(buyerPage, "USD");
+      await expectProcessorFeeAviso(buyerPage, "USD");
 
       const { buffer } = await downloadPaymentInformePdf(buyerPage);
       assertInformePdfContent(buffer, {
@@ -272,7 +272,7 @@ test.describe("chat agreement checkout (UI)", () => {
       await ensureBuyerDemoCard(buyerPage, threadId);
       test.skip(
         !(await buyerHasPayCard(buyerPage, threadId)),
-        "Buyer needs a saved Stripe card to execute payments",
+        "Buyer needs a saved PaymentGateway card to execute payments",
       );
 
       await openChatPaymentModal(buyerPage);
@@ -315,7 +315,7 @@ test.describe("chat agreement checkout (UI)", () => {
       await ensureBuyerDemoCard(buyerPage, threadId);
       test.skip(
         !(await buyerHasPayCard(buyerPage, threadId)),
-        "Buyer needs a saved Stripe card to execute payments",
+        "Buyer needs a saved PaymentGateway card to execute payments",
       );
 
       await openChatPaymentModal(buyerPage);
@@ -423,7 +423,7 @@ test.describe("chat agreement checkout (UI)", () => {
       await ensureBuyerDemoCard(buyerPage, threadId);
       test.skip(
         !(await buyerHasPayCard(buyerPage, threadId)),
-        "Buyer needs a saved Stripe card to execute payments",
+        "Buyer needs a saved PaymentGateway card to execute payments",
       );
 
       await openChatPaymentModal(buyerPage);

@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { Button, Spinner } from "flowbite-react";
 import toast from "react-hot-toast";
 import { getSessionToken } from "@shared/services/http/sessionToken";
-import { postSellerResumeTramoFromIdle } from "@/utils/chat/routeLogisticsApi";
+import { postSellerResumeTramoFromIdle } from "@features/chat/api/routeLogisticsApi";
 import type { SellerResumeTramoModalState } from "../shared/routesRailSheetModalTypes";
 
 type Props = {

@@ -1,6 +1,6 @@
-import { useAppStore } from "@app/store/useAppStore";
-import { bootstrapWebApp } from "@/utils/bootstrap/bootstrapWebApp"
-import { stopChatRealtime } from "@/utils/chat/chatRealtime"
+import { useAppStore } from "@features/auth/store/useAppStore";
+import { bootstrapWebApp } from "@app/bootstrap/bootstrapWebApp"
+import { stopChatRealtime } from "@features/chat/model/chatRealtime"
 import { apiFetch } from "@shared/services/http/apiClient"
 import { setSessionToken } from "@shared/services/http/sessionToken"
 

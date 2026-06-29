@@ -4,10 +4,10 @@ import { expect } from "@playwright/test";
 import { openChatThread } from "./chat-helpers";
 import {
   E2E_DEMO_CARD_LAST4,
-  buyerHasStripeCardViaPage,
-  ensureStripeCustomerViaPage,
-  listStripeCardsViaPage,
-} from "./e2e-stripe-customer";
+  buyerHasSavedCardViaPage,
+  ensurePaymentAccountViaPage,
+  listSavedCardsViaPage,
+} from "./e2e-payment-gateway-customer";
 import {
   acceptPreselInviteAsCarrier,
   resolveRouteSheetIdByTitulo,
@@ -18,7 +18,7 @@ import {
   openRoutesRail,
   sendCarrierInvites,
 } from "./route-sheet-ui-helpers";
-const STRIPE_PRICING_PAGE_URL = "https://stripe.com/pricing";
+const PAYMENT_FEE_POLICY_URL = "";
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173";
 
@@ -39,14 +39,13 @@ export async function openChatPaymentModal(page: Page): Promise<void> {
 
 export async function expectPaymentModalChrome(page: Page): Promise<void> {
   const modal = paymentModal(page);
-  const stripeLink = modal.getByRole("link", {
-    name: /precios \/ políticas stripe/i,
-  });
-  await expect(stripeLink).toBeVisible();
-  await expect(stripeLink).toHaveAttribute("href", STRIPE_PRICING_PAGE_URL);
-  await expect(
-    modal.getByRole("img", { name: /código qr a precios stripe/i }),
-  ).toBeVisible({ timeout: 15_000 });
+  if (PAYMENT_FEE_POLICY_URL.length > 0) {
+    const policyLink = modal.getByRole("link", {
+      name: /precios \/ políticas de tarifas/i,
+    });
+    await expect(policyLink).toBeVisible();
+    await expect(policyLink).toHaveAttribute("href", PAYMENT_FEE_POLICY_URL);
+  }
   await expect(
     modal.getByRole("button", { name: /seleccionar acuerdo/i }),
   ).toBeVisible();
@@ -408,7 +407,7 @@ export async function expectInformeCurrencyBlocks(
   await expect(blocks).toHaveCount(currencies.length);
 }
 
-export async function expectStripeAviso(
+export async function expectProcessorFeeAviso(
   page: Page,
   currency: string,
 ): Promise<void> {
@@ -421,7 +420,7 @@ export async function expectStripeAviso(
   const note = block.locator('[role="note"]');
   await expect(note).toContainText(/aviso:/i);
   await expect(note).toContainText(/climate/i);
-  await expect(note).toContainText(/stripe estimado/i);
+  await expect(note).toContainText(/procesador estimado/i);
   await expect(note).toContainText(/no se suma/i);
 }
 
@@ -483,7 +482,7 @@ export function assertInformePdfContent(
   expected: {
     agreementTitle?: string;
     currencies?: string[];
-    stripePricing?: boolean;
+    paymentFeePolicy?: boolean;
   },
 ): void {
   const text = buffer.toString("latin1");
@@ -496,8 +495,8 @@ export function assertInformePdfContent(
   for (const cur of expected.currencies ?? []) {
     expect(text).toMatch(new RegExp(`Moneda ${cur}`, "i"));
   }
-  if (expected.stripePricing !== false) {
-    expect(text).toContain("stripe.com/pricing");
+  if (expected.paymentFeePolicy === true) {
+    expect(text).toMatch(/pol[ií]ticas de tarifas/i);
   }
 }
 
@@ -560,18 +559,18 @@ export async function openCardConfigFromPaymentModal(
   ).toBeVisible({ timeout: 15_000 });
 }
 
-/** Ensures buyer has at least one saved card via profile UI when Stripe is enabled. */
+/** Ensures buyer has at least one saved card via profile UI when payments are enabled. */
 export async function ensureBuyerDemoCard(
   page: Page,
   threadId?: string,
 ): Promise<boolean> {
-  await ensureStripeCustomerViaPage(page);
-  if (await buyerHasStripeCardViaPage(page, BASE_URL)) {
+  await ensurePaymentAccountViaPage(page);
+  if (await buyerHasSavedCardViaPage(page, BASE_URL)) {
     if (threadId) await openChatThread(page, threadId);
     return true;
   }
 
-  await page.goto(`${BASE_URL}/profile/me/account?stripeCards=1`, {
+  await page.goto(`${BASE_URL}/profile/me/account?paymentCards=1`, {
     waitUntil: "domcontentloaded",
   });
   const dialog = page.getByRole("dialog", { name: /pagos \(demo\)/i });
@@ -596,7 +595,7 @@ export async function ensureBuyerDemoCard(
   }
 
   const addBtn = dialog.getByRole("button", {
-    name: /crear nueva tarjeta|agregar tarjeta/i,
+    name: /activar tarjeta demo|crear nueva tarjeta|agregar tarjeta/i,
   });
   if (!(await addBtn.isVisible().catch(() => false))) {
     if (threadId) await openChatThread(page, threadId);
@@ -604,7 +603,19 @@ export async function ensureBuyerDemoCard(
   }
   await addBtn.click();
 
-  const filled = await fillStripePaymentElement(page);
+  const cardVisible = await dialog
+    .getByText(
+      new RegExp(`\\*\\*\\*|terminada en|${E2E_DEMO_CARD_LAST4}|visa`, "i"),
+    )
+    .first()
+    .isVisible({ timeout: 15_000 })
+    .catch(() => false);
+  if (cardVisible) {
+    if (threadId) await openChatThread(page, threadId);
+    return true;
+  }
+
+  const filled = await fillDemoPaymentElement(page);
   if (!filled) {
     if (threadId) await openChatThread(page, threadId);
     return false;
@@ -627,7 +638,7 @@ export async function ensureBuyerDemoCard(
   return false;
 }
 
-async function fillStripePaymentElement(page: Page): Promise<boolean> {
+async function fillDemoPaymentElement(page: Page): Promise<boolean> {
   const tryMultiIframe = async (): Promise<boolean> => {
     const numberFrame = page.frameLocator('iframe[title*="Secure card number" i]');
     const numberInput = numberFrame.locator('input[name="cardnumber"], input').first();
@@ -644,7 +655,7 @@ async function fillStripePaymentElement(page: Page): Promise<boolean> {
 
   const tryPaymentElementFrame = async (): Promise<boolean> => {
     const frame = page
-      .frameLocator('iframe[src*="js.stripe.com"]')
+      .frameLocator('iframe[src*="js.PaymentGateway.com"]')
       .first();
     const number = frame.locator('[name="number"]');
     if (!(await number.isVisible({ timeout: 5_000 }).catch(() => false))) {
@@ -657,8 +668,8 @@ async function fillStripePaymentElement(page: Page): Promise<boolean> {
   };
 
   const tryPrivateElementFields = async (): Promise<boolean> => {
-    const frame = page.locator("div.__PrivateStripeElement iframe").first();
-    const fl = page.frameLocator("div.__PrivateStripeElement iframe").first();
+    const frame = page.locator("div.__PrivatePaymentGatewayElement iframe").first();
+    const fl = page.frameLocator("div.__PrivatePaymentGatewayElement iframe").first();
     if (!(await frame.isVisible({ timeout: 5_000 }).catch(() => false))) {
       return false;
     }
@@ -669,7 +680,7 @@ async function fillStripePaymentElement(page: Page): Promise<boolean> {
   };
 
   const tryLegacyFrame = async (): Promise<boolean> => {
-    const frame = page.frameLocator('iframe[name^="__privateStripeFrame"]').first();
+    const frame = page.frameLocator('iframe[name^="__privatePaymentGatewayFrame"]').first();
     const number = frame.locator('[name="number"]');
     if (!(await number.isVisible({ timeout: 5_000 }).catch(() => false))) {
       return false;
@@ -695,8 +706,8 @@ export async function buyerHasPayCard(
   page: Page,
   threadId: string,
 ): Promise<boolean> {
-  await ensureStripeCustomerViaPage(page);
-  const cards = await listStripeCardsViaPage(page, BASE_URL);
+  await ensurePaymentAccountViaPage(page);
+  const cards = await listSavedCardsViaPage(page, BASE_URL);
   if (cards.length > 0) return true;
 
   await openChatThread(page, threadId);

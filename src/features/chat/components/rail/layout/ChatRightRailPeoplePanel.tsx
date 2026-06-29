@@ -1,7 +1,7 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { BadgeCheck, ChevronRight } from "lucide-react";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
-import type { ChatParticipant } from "../../../lib/chatParticipants";
+import type { ChatParticipant } from '../../../model/chatParticipants';
 
 type Props = {
   bodyClassName: string;

@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { RouteSheet, RouteStop } from "@features/market/model/routeSheetTypes";
+import type { RouteSheet, RouteStop } from "@features/chat/model/routeSheetTypes";
 import type { RailLegModel } from "./routesRailLegModel";
 import {
   railLegLoadCarrierEvidenceEditor,

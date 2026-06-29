@@ -6,7 +6,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button, Spinner } from "flowbite-react";
-import type { RouteSheet } from "@features/market/model/routeSheetTypes";
+import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
 import {
   carrierEvidenceModalIsDirty,
   saveCarrierEvidenceDraft,

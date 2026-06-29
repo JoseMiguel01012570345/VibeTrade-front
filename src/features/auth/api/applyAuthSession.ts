@@ -1,9 +1,9 @@
 import toast from "react-hot-toast";
 import type { NavigateFunction } from "react-router-dom";
-import { useAppStore } from "@app/store/useAppStore";
+import { useAppStore } from "@features/auth/store/useAppStore";
 import { setSessionToken } from "@shared/services/http/sessionToken";
-import { stopChatRealtime } from "@/utils/chat/chatRealtime";
-import { bootstrapWebApp } from "@/utils/bootstrap/bootstrapWebApp";
+import { stopChatRealtime } from "@features/chat/model/chatRealtime";
+import { bootstrapWebApp } from "@app/bootstrap/bootstrapWebApp";
 import {
   userFromSessionJson,
   type SessionUserJson,

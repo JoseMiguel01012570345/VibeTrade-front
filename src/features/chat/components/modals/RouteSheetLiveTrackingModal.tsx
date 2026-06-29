@@ -3,39 +3,39 @@ import L from "leaflet";
 import { MapContainer, Marker, useMap } from "react-leaflet";
 import { X } from "lucide-react";
 import { cn } from "@shared/lib/cn";
-import type { RouteOfferTramoPublic } from "@app/store/marketStoreTypes";
-import type { RouteSheet, RouteStop } from "@features/market/model/routeSheetTypes";
-import { VibeMapTileLayer } from "@features/home/EmergentRouteFeedMap";
-import { LeafletRoadSnappedRoute } from "@features/home/LeafletRoadSnappedRoute";
+import type { RouteOfferTramoPublic } from "@features/market/model/store/marketStoreTypes";
+import type { RouteSheet, RouteStop } from "@features/chat/model/routeSheetTypes";
+import { VibeMapTileLayer } from "@features/home/components/EmergentRouteFeedMap";
+import { LeafletRoadSnappedRoute } from "@features/home/components/LeafletRoadSnappedRoute";
 import {
   emergentMapLegsFromRouteStops,
   emergentMapRouteSegmentColors,
   emergentMapRouteSegments,
   ROUTE_ISLAND_LINE_COLORS,
-} from "@/utils/map/emergentRouteMapLegs";
-import { useAppStore } from "@app/store/useAppStore";
-import { useMarketStore } from "@app/store/useMarketStore";
-import { fetchThreadRouteTramoSubscriptions } from "@/utils/chat/chatApi";
+} from "@features/market/model/map/emergentRouteMapLegs";
+import { useAppStore } from "@features/auth/store/useAppStore";
+import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import { fetchThreadRouteTramoSubscriptions } from "@features/chat/api/chatApi";
 import {
   routeMapFinishWaypointIcon,
   routeMapNumberedWaypointIcon,
-} from "@/utils/map/storeMapPinIcon";
+} from "@features/market/model/map/storeMapPinIcon";
 import {
   mapBackdropLayerAboveChatRail,
   modalShellWide,
   modalSub,
-} from "../../styles/formModalStyles";
-import "../../../home/emergentRouteMapMarkers.css";
+} from '../../model/formModalStyles';
+import "@features/home/styles/emergentRouteMapMarkers.css";
 import "leaflet/dist/leaflet.css";
 import {
   subscribeCarrierTelemetryUpdated,
   type CarrierTelemetryUpdatedPayload,
-} from "@/utils/chat/chatRealtime";
+} from "@features/chat/model/chatRealtime";
 import {
   fetchAgreementRouteDeliveries,
   fetchLatestCarrierTelemetryForRouteSheet,
   type RouteStopDeliveryStatusApi,
-} from "@/utils/chat/routeLogisticsApi";
+} from "@features/chat/api/routeLogisticsApi";
 
 /** Tramos donde el titular sigue involucrado en la cadena (no cerrados). */
 const TRACKING_OWNER_STATES = new Set([

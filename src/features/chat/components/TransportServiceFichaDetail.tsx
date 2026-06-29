@@ -1,4 +1,4 @@
-import type { PublishedTransportServiceDto } from "@/utils/market/publishedTransportServicesApi"
+import type { PublishedTransportServiceDto } from "@features/market/api/publishedTransportServicesApi"
 
 type Props = { s: PublishedTransportServiceDto }
 

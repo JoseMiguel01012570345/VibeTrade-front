@@ -1,4 +1,4 @@
-import {
+﻿import {
   type MutableRefObject,
   useCallback,
   useLayoutEffect,
@@ -6,8 +6,8 @@ import {
   useState,
 } from "react";
 import toast from "react-hot-toast";
-import { createChatVoiceRecorderSession } from "../lib/chatWavesurferRecorder";
-import { ensureMicPermission } from "../lib/voiceRecording";
+import { createChatVoiceRecorderSession } from '../model/chatWavesurferRecorder';
+import { ensureMicPermission } from '../model/voiceRecording';
 
 function revokeBlob(url: string) {
   if (url.startsWith("blob:")) URL.revokeObjectURL(url);
@@ -60,7 +60,7 @@ export function useChatVoiceRecorder({
     const ok = await ensureMicPermission();
     if (!ok) {
       toast.error(
-        "No se pudo acceder al micrófono. Permite el permiso y usa HTTPS o localhost.",
+        "No se pudo acceder al micrÃ³fono. Permite el permiso y usa HTTPS o localhost.",
       );
       return;
     }
@@ -89,7 +89,7 @@ export function useChatVoiceRecorder({
       },
       onStartFailed: () => {
         if (!cancelled) {
-          toast.error("No se pudo acceder al micrófono");
+          toast.error("No se pudo acceder al micrÃ³fono");
           setRecording(false);
           setRecordSecs(0);
         }
@@ -98,7 +98,7 @@ export function useChatVoiceRecorder({
         if (cancelled) return;
         if (blob.size < 32) {
           toast.error(
-            "No se grabó audio útil. Mantené pulsado un poco más el micrófono.",
+            "No se grabÃ³ audio Ãºtil. MantenÃ© pulsado un poco mÃ¡s el micrÃ³fono.",
           );
           setRecording(false);
           setRecordSecs(0);
@@ -124,7 +124,7 @@ export function useChatVoiceRecorder({
             if (prev) revokeBlob(prev.url);
             return { url, seconds };
           });
-          toast.success("Nota de voz añadida al envío");
+          toast.success("Nota de voz aÃ±adida al envÃ­o");
         }
         setRecording(false);
         setRecordSecs(0);

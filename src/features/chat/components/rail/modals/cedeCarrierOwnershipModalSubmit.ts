@@ -1,5 +1,5 @@
 import toast from "react-hot-toast";
-import { postCedeCarrierOwnership } from "@/utils/chat/routeLogisticsApi";
+import { postCedeCarrierOwnership } from "@features/chat/api/routeLogisticsApi";
 import type { CedeOwnershipModalState } from "../shared/routesRailSheetModalTypes";
 
 export async function submitCedeCarrierOwnership(args: {

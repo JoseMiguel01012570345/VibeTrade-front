@@ -4,13 +4,13 @@ import {
   statusPillNo,
   statusPillOk,
   statusPillPending,
-} from "../../styles/formModalStyles";
+} from '../../model/formModalStyles';
 import {
   agreementDeclaresMerchandise,
   agreementDeclaresService,
   type TradeAgreement,
-} from "@features/market/model/tradeAgreementTypes";
-import { hasMerchandise } from "@features/market/model/tradeAgreementValidation";
+} from "@features/chat/model/tradeAgreementTypes";
+import { hasMerchandise } from "@features/chat/model/tradeAgreementValidation";
 
 export function AgreementBubble({
   title,

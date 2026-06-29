@@ -4,10 +4,10 @@ import toast from "react-hot-toast";
 import type {
   RouteOfferPublicState,
   RouteOfferTramoAssignment,
-} from "@app/store/marketStoreTypes";
+} from "@features/market/model/store/marketStoreTypes";
 import { ConfirmModal } from "@shared/components/ui/ConfirmModal";
 import { cn } from "@shared/lib/cn";
-import type { RouteSheetPayload } from "@features/market/model/routeSheetTypes";
+import type { RouteSheetPayload } from "@features/chat/model/routeSheetTypes";
 import {
   fetchThreadRouteSheets,
   fetchThreadRouteTramoSubscriptions,
@@ -15,7 +15,7 @@ import {
   postRejectRouteTramoSubscriptions,
   postSellerExpelCarrier,
   type RouteTramoSubscriptionItemApi,
-} from "@/utils/chat/chatApi";
+} from "@features/chat/api/chatApi";
 import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
 import {
   buildRouteSheetsMetaForGrouping,
@@ -25,22 +25,22 @@ import {
   type RouteOfferTramoSubscriberGroup,
   type RouteOfferSubscriberSummary,
   type RouteSheetSubscriberSection,
-} from "@features/market/model/routeOfferSubscribers";
+} from "@features/chat/model/routeOfferSubscribers";
 import {
   SELLER_EXPEL_REQUIRES_PAUSE_ES,
   sellerExpelBlockedForCarrier,
   sellerExpelBlockedForStop,
-} from "@features/market/model/routeSheetOfferGuards";
+} from "@features/chat/model/routeSheetOfferGuards";
 import {
   fetchAgreementRouteDeliveries,
   type RouteStopDeliveryStatusApi,
-} from "@/utils/chat/routeLogisticsApi";
+} from "@features/chat/api/routeLogisticsApi";
 import {
   subscribeRouteDeliveriesRefresh,
   subscribeRouteTramoSubscriptionsChanged,
-} from "@/utils/chat/chatRealtime";
-import { onBackdropPointerClose } from "../lib/modalClose";
-import { modalShellWide, modalSub } from "../styles/formModalStyles";
+} from "@features/chat/model/chatRealtime";
+import { onBackdropPointerClose } from '../model/modalClose';
+import { modalShellWide, modalSub } from '../model/formModalStyles';
 import { railItemClass } from "./rail/layout/chatRailStyles";
 import { TramoSubscribedServiceFicha } from "./rail/shared/TramoSubscribedServiceFicha";
 

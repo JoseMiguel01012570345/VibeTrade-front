@@ -1,5 +1,4 @@
-import { useAppStore } from "@app/store/useAppStore";
-import { getSessionToken } from "./sessionToken";
+import { getSessionToken, isSessionActiveInStorage } from "./sessionToken";
 
 function requestPathname(input: string): string {
   const withoutQuery = input.split("?")[0] ?? input;
@@ -63,7 +62,7 @@ export function apiFetch(input: string, init?: RequestInit): Promise<Response> {
    */
   const attachBearer =
     !!token &&
-    (useAppStore.getState().isSessionActive ||
+    (isSessionActiveInStorage() ||
       path === "/api/v1/auth/session" ||
       path === "/api/v1/auth/logout" ||
       attachBearerForPendingSession);

@@ -1,29 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Subject } from "rxjs";
 import { useShallow } from "zustand/react/shallow";
-import { useAppStore } from "@app/store/useAppStore";
-import { useMarketStore } from "@app/store/useMarketStore";
-import type { RouteOfferPublicState } from "@app/store/marketStoreTypes";
-import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
-import type { RouteSheet } from "@features/market/model/routeSheetTypes";
+import { useAppStore } from "@features/auth/store/useAppStore";
+import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import type { RouteOfferPublicState } from "@features/market/model/store/marketStoreTypes";
+import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
+import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
 import {
   resolveRouteOfferPublicForThread,
-} from "@features/market/model/routeSheetOfferGuards";
-import { routeOfferPublicFromThreadRouteSheet } from "@/utils/market/routeOfferPublicFromEmergentCard";
-import { routeSheetHasPendingCarrierAck } from "@app/store/marketSliceHelpers";
+} from "@features/chat/model/routeSheetOfferGuards";
+import { routeOfferPublicFromThreadRouteSheet } from "@features/market/api/routeOfferPublicFromEmergentCard";
+import { routeSheetHasPendingCarrierAck } from "@features/market/model/store/marketSliceHelpers";
 import {
   routeSheetStructuralEditBlockedByPaid,
-} from "@features/market/model/routeSheetOfferGuards";
+} from "@features/chat/model/routeSheetOfferGuards";
 import {
   fetchAgreementRouteDeliveries,
   getCedeCarrierOwnership,
   type RouteStopDeliveryStatusApi,
-} from "@/utils/chat/routeLogisticsApi";
+} from "@features/chat/api/routeLogisticsApi";
 import {
   fetchThreadRouteTramoSubscriptions,
   type RouteTramoSubscriptionItemApi,
-} from "@/utils/chat/chatApi";
-import { subscribeRouteDeliveriesRefresh } from "@/utils/chat/chatRealtime";
+} from "@features/chat/api/chatApi";
+import { subscribeRouteDeliveriesRefresh } from "@features/chat/model/chatRealtime";
 import { RouteSheetLiveTrackingModal } from "../../modals/RouteSheetLiveTrackingModal";
 import { InviteModal } from "../../modals/InviteModal";
 import type {
@@ -41,8 +40,10 @@ import { SellerPauseTramoModal } from "../modals/SellerPauseTramoModal";
 import { SellerResumeTramoModal } from "../modals/SellerResumeTramoModal";
 import { CarrierDeliveryEvidenceEditModal } from "../modals/CarrierDeliveryEvidenceEditModal";
 import { RailCarrierEvidenceReadModal } from "../modals/RailCarrierEvidenceReadModal";
-import type { RailRoutesCommand } from "../bus/railRoutesCommands";
-import { RailRoutesBusProvider } from "../bus/RailRoutesBusContext";
+import {
+  createRailRoutesBusService,
+  registerRailRoutesBus,
+} from "@features/chat/model/railRoutesBusRegistry";
 
 type Props = {
   bodyClassName: string;
@@ -362,10 +363,7 @@ export function ChatRightRailRoutesPanel({
     return routeSheets[0].id;
   }, [routeSheets, selRoute, routeOfferResolved?.routeSheetId]);
 
-  const railRoutesCommand$ = useMemo(
-    () => new Subject<RailRoutesCommand>(),
-    [],
-  );
+  const railRoutesBus = useMemo(() => createRailRoutesBusService(), []);
 
   const railRoutesHandlersRef = useRef({
     setLogisticsBusyKey,
@@ -389,7 +387,8 @@ export function ChatRightRailRoutesPanel({
   };
 
   useEffect(() => {
-    const sub = railRoutesCommand$.subscribe((cmd) => {
+    const unregister = registerRailRoutesBus(railRoutesBus);
+    const sub = railRoutesBus.commands$.subscribe((cmd) => {
       const h = railRoutesHandlersRef.current;
       switch (cmd.type) {
         case "logisticsBusyKey":
@@ -422,8 +421,12 @@ export function ChatRightRailRoutesPanel({
         }
       }
     });
-    return () => sub.unsubscribe();
-  }, [railRoutesCommand$, threadId]);
+    return () => {
+      sub.unsubscribe();
+      unregister();
+      railRoutesBus.dispose();
+    };
+  }, [railRoutesBus, threadId]);
 
   function openLiveMapAllStops(): void {
     setLiveFocusStopId(null);
@@ -449,7 +452,6 @@ export function ChatRightRailRoutesPanel({
 
   return (
     <div className={bodyClassName}>
-      <RailRoutesBusProvider subject={railRoutesCommand$}>
         <RoutesRailEntryActions
           isActingSeller={isActingSeller}
           onOpenNewRouteSheet={onOpenNewRouteSheet}
@@ -569,7 +571,6 @@ export function ChatRightRailRoutesPanel({
             onClose={() => setInviteRouteSheet(null)}
           />
         ) : null}
-      </RailRoutesBusProvider>
     </div>
   );
 }

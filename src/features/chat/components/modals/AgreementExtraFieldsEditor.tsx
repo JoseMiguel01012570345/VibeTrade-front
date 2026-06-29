@@ -11,15 +11,15 @@ import {
   mediaApiUrl,
   releaseMediaObjectUrl,
   uploadMedia,
-} from "@/utils/media/mediaClient";
+} from "@shared/services/media/mediaClient";
 import { cn } from "@shared/lib/cn";
 import { ModalFormField as Field } from "./ModalFormField";
 import {
   emptyTradeAgreementExtraField,
   type TradeAgreementExtraFieldDraft,
   type TradeAgreementExtraFieldScope,
-} from "@features/market/model/tradeAgreementTypes";
-import { fieldLabel, fieldRoot } from "../../styles/formModalStyles";
+} from "@features/chat/model/tradeAgreementTypes";
+import { fieldLabel, fieldRoot } from '../../model/formModalStyles';
 
 const VALUE_KIND_OPTIONS: VtSelectOption[] = [
   { value: "text", label: "Texto" },

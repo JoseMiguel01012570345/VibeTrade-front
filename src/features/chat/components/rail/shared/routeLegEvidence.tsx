@@ -1,4 +1,4 @@
-import type { ServiceEvidenceAttachmentApi } from "@/utils/chat/agreementServiceEvidenceApi";
+import type { ServiceEvidenceAttachmentApi } from "@features/chat/api/agreementServiceEvidenceApi";
 import { EvidenceAttachmentsList } from "../../shared/EvidenceAttachmentsList";
 
 export function normalizeCarrierEvidenceForCompare(

@@ -5,23 +5,23 @@ import {
   type VtSelectOption,
 } from "@shared/components/ui/VtSelect";
 import { cn } from "@shared/lib/cn";
-import { parseDecimal } from "@features/market/model/tradeAgreementValidation";
-import { onBackdropPointerClose } from "../../../lib/modalClose";
+import { parseDecimal } from "@features/chat/model/tradeAgreementValidation";
+import { onBackdropPointerClose } from '../../../model/modalClose';
 import {
   monthsInScheduleAndVigencia,
   daysForServiceMonthInSchedule,
-} from "@features/market/model/serviceScheduleMonthDayConstraints";
-import { monthsOverlappingVigenciaInYear } from "@features/market/model/serviceVigenciaDates";
+} from "@features/chat/model/serviceScheduleMonthDayConstraints";
+import { monthsOverlappingVigenciaInYear } from "@features/chat/model/serviceVigenciaDates";
 import type {
   ServicePaymentRecurrence,
   ServiceScheduleState,
-} from "@features/market/model/tradeAgreementTypes";
+} from "@features/chat/model/tradeAgreementTypes";
 import {
   coerceServiceSchedule,
   DEFAULT_RECURRENCE_MONEDA,
   emptyServicePaymentRecurrence,
-} from "@features/market/model/tradeAgreementTypes";
-import { modalShellWide } from "../../../styles/formModalStyles";
+} from "@features/chat/model/tradeAgreementTypes";
+import { modalShellWide } from '../../../model/formModalStyles';
 
 const MES = [
   { n: 1, l: "Ene" },

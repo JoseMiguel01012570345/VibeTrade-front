@@ -7,18 +7,18 @@ import { cn } from "@shared/lib/cn";
 import {
   fetchRouteSheetPreselPreview,
   postCarrierRespondPreselInvite,
-} from "@/utils/chat/chatApi";
-import type { RouteSheet, RouteStop } from "@features/market/model/routeSheetTypes";
-import { formatRouteEstimadoDisplay } from "@features/market/model/routeSheetDateTime";
-import { formatKmEs } from "@/utils/map/routeLegMetrics";
-import { VibeMapTileLayer } from "@features/home/EmergentRouteFeedMap";
-import { LeafletRoadSnappedRoute } from "@features/home/LeafletRoadSnappedRoute";
+} from "@features/chat/api/chatApi";
+import type { RouteSheet, RouteStop } from "@features/chat/model/routeSheetTypes";
+import { formatRouteEstimadoDisplay } from "@features/chat/model/routeSheetDateTime";
+import { formatKmEs } from "@features/market/model/map/routeLegMetrics";
+import { VibeMapTileLayer } from "@features/home/components/EmergentRouteFeedMap";
+import { LeafletRoadSnappedRoute } from "@features/home/components/LeafletRoadSnappedRoute";
 import {
   emergentMapLegsFromRouteStops,
   emergentMapRouteSegmentColors,
   emergentMapRouteSegments,
-} from "@/utils/map/emergentRouteMapLegs";
-import { routeMapNumberedWaypointIcon } from "@/utils/map/storeMapPinIcon";
+} from "@features/market/model/map/emergentRouteMapLegs";
+import { routeMapNumberedWaypointIcon } from "@features/market/model/map/storeMapPinIcon";
 import {
   mapBackdropLayerAboveChatRail,
   modalFormBody,
@@ -27,8 +27,8 @@ import {
   rutaTramoCard,
   rutaTramoGrid,
   rutaTramoHead,
-} from "../../styles/formModalStyles";
-import "../../../home/emergentRouteMapMarkers.css";
+} from '../../model/formModalStyles';
+import "@features/home/styles/emergentRouteMapMarkers.css";
 import "leaflet/dist/leaflet.css";
 
 function coordPair(

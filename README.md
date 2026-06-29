@@ -2,6 +2,18 @@
 
 React + TypeScript + Vite app.
 
+## Arquitectura (Feature-Sliced Design)
+
+- **`src/features/<Feature>/`** — código de dominio por funcionalidad (`pages/`, `components/`, `api/`, `model/`, `hooks/`, `index.ts` barrel).
+- **`src/shared/`** — infra transversal: HTTP (`apiClient`, `sessionToken`), UI primitiva (`VtSelect`, `ConfirmModal`), media, tema, `cn`.
+- **`src/app/`** — shell, router, bootstrap.
+- **Estado global por feature:**
+  - `features/auth/store/` — sesión, usuario, tema, notificaciones locales
+  - `features/market/model/store/` — catálogo, ofertas, feed, compositor Zustand (incl. slice de tiendas del dueño)
+  - `features/chat/store/` — threads, mensajes, hojas de ruta
+
+**Estado:** Zustand (sesión/UI global) + TanStack Query (servidor) + RxJS (UI intra-feature compleja, p. ej. rail de chat).
+
 - **E2E (Playwright):** specs en `test/e2e/test-feats/` — flujos reales en navegador + API.
 - **Unit (Vitest):** `npm run test:unit` / `npm run test:run` (cuando haya specs bajo `src/`).
 

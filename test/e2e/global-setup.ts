@@ -17,9 +17,9 @@ import {
 } from "./Resources/e2e-ui-store";
 import {
   E2E_DEMO_CARD_LAST4,
-  ensureStripeCustomerViaFetch,
-  listStripeCardsViaFetch,
-} from "./Resources/e2e-stripe-customer";
+  ensurePaymentAccountViaFetch,
+  listSavedCardsViaFetch,
+} from "./Resources/e2e-payment-gateway-customer";
 import {
   e2eAuthDir,
   e2eScenarioFile,
@@ -152,24 +152,24 @@ export default async function globalSetup(): Promise<void> {
       logisticsAgreementCursor: rsProvisioned ? 0 : priorLogisticsCursor,
     });
 
-    const stripeCustomerOk = await ensureStripeCustomerViaFetch(
+    const paymentAccountOk = await ensurePaymentAccountViaFetch(
       buyer.sessionToken,
       baseURL,
     );
-    if (stripeCustomerOk) {
-      const cards = await listStripeCardsViaFetch(buyer.sessionToken, baseURL);
+    if (paymentAccountOk) {
+      const cards = await listSavedCardsViaFetch(buyer.sessionToken, baseURL);
       if (cards.length > 0) {
         console.log(
           `[e2e] Buyer payment card ready (${cards[0]?.brand ?? "card"} •••• ${cards[0]?.last4 ?? E2E_DEMO_CARD_LAST4}).`,
         );
       } else {
         console.warn(
-          "[e2e] Buyer Stripe customer exists but payment-methods returned no cards; rebuild/restart API with VIBETRADE_SKIP_PAYMENT_INTENTS=true.",
+          "[e2e] Buyer PaymentGateway customer exists but payment-methods returned no cards; rebuild/restart API with VIBETRADE_SKIP_PAYMENT_INTENTS=true.",
         );
       }
     } else {
       console.warn(
-        "[e2e] Buyer Stripe customer setup failed; payment E2E tests may skip.",
+        "[e2e] Buyer PaymentGateway customer setup failed; payment E2E tests may skip.",
       );
     }
 

@@ -1,11 +1,11 @@
 import type {
   RouteOfferPublicState,
   RouteOfferTramoPublic,
-} from "@app/store/marketStoreTypes";
-import type { RouteTramoSubscriptionItemApi } from "@/utils/chat/chatApi";
-import type { RouteStopDeliveryStatusApi } from "@/utils/chat/routeLogisticsApi";
-import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
-import type { RouteSheet, RouteStop } from "@features/market/model/routeSheetTypes";
+} from "@features/market/model/store/marketStoreTypes";
+import type { RouteTramoSubscriptionItemApi } from "@features/chat/api/chatApi";
+import type { RouteStopDeliveryStatusApi } from "@features/chat/api/routeLogisticsApi";
+import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
+import type { RouteSheet, RouteStop } from "@features/chat/model/routeSheetTypes";
 import { confirmedCarrierUidForOfferStop } from "./routesRailSheetDetailFlows";
 
 export type RailLegResumeCandidate = {

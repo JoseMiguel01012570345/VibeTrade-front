@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { CountrySelect } from './CountrySelect'
-import type { Country } from './countries'
+import { CountrySelect } from '../components/CountrySelect'
+import type { Country } from '../components/countries'
 import { apiFetch } from "@shared/services/http/apiClient"
 import { fetchSignInCountries } from "@shared/services/http/fetchSignInCountries"
 import type { OnboardingMode } from './OnboardingWelcomePage'

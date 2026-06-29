@@ -1,8 +1,8 @@
 import { ArrowLeft, BadgeCheck, FileText, Loader2, MoreVertical, PanelRight } from "lucide-react";
 import type { NavigateFunction } from "react-router-dom";
 import { cn } from "@shared/lib/cn";
-import type { Thread } from "@app/store/marketStoreTypes";
-import { chatThreadHeaderTitle } from "@/utils/chat/chatParticipantLabels";
+import type { Thread } from "@features/market/model/store/marketStoreTypes";
+import { chatThreadHeaderTitle } from "@features/chat/model/chatParticipantLabels";
 
 type Me = { id: string; name: string };
 

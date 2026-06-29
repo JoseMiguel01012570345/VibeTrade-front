@@ -1,23 +1,23 @@
 import { useCallback } from "react";
-import { useAppStore } from "@app/store/useAppStore";
-import { useMarketStore } from "@app/store/useMarketStore";
+import { useAppStore } from "@features/auth/store/useAppStore";
+import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import {
   mergePersistedChatMessages,
   mapChatMessageDtoToMessage,
-} from "@/utils/chat/chatMerge";
+} from "@features/chat/model/chatMerge";
 import {
   fetchChatMessages,
   fetchThreadRouteSheets,
   fetchThreadRouteTramoSubscriptions,
-} from "@/utils/chat/chatApi";
-import type { RouteTramoSubscriptionItemApi } from "@/utils/chat/chatApi";
-import { mergeChatSenderLabelsIntoProfileStore } from "@/utils/chat/chatSenderLabels";
-import { mergedRouteOfferPublicAfterChatThreadHydration } from "@/utils/market/routeOfferPublicFromEmergentCard";
-import { applyViewerRouteTramoSubscriptions } from "@features/market/model/routeOfferSubscriptionMerge";
+} from "@features/chat/api/chatApi";
+import type { RouteTramoSubscriptionItemApi } from "@features/chat/api/chatApi";
+import { mergeChatSenderLabelsIntoProfileStore } from "@features/chat/model/chatSenderLabels";
+import { mergedRouteOfferPublicAfterChatThreadHydration } from "@features/market/api/routeOfferPublicFromEmergentCard";
+import { applyViewerRouteTramoSubscriptions } from "@features/chat/model/routeOfferSubscriptionMerge";
 import {
   routeSheetEditAcksRecordFromSheets,
   type RouteSheet,
-} from "@features/market/model/routeSheetTypes";
+} from "@features/chat/model/routeSheetTypes";
 
 type Params = {
   threadId: string | undefined;

@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { e2eApiUrl } from "./e2e-api-base";
-import { listStripeCardsViaFetch } from "./e2e-stripe-customer";
+import { listSavedCardsViaFetch } from "./e2e-payment-gateway-customer";
 
 export type E2ERouteStopDelivery = {
   routeSheetId: string;
@@ -885,7 +885,7 @@ export async function payRouteStopsViaBuyerApi(
   },
 ): Promise<{ status: number; text: string }> {
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  const cards = await listStripeCardsViaFetch(buyerToken);
+  const cards = await listSavedCardsViaFetch(buyerToken);
   const paymentMethodId =
     cards.find((c) => (c.id ?? "").trim().length > 0)?.id ??
     `pm_test_skip_${Date.now()}`;
@@ -945,7 +945,7 @@ export async function payMerchandiseLinesViaBuyerApi(
     return { status: 400, text: "no merchandise lines on agreement" };
   }
 
-  const cards = await listStripeCardsViaFetch(buyerToken);
+  const cards = await listSavedCardsViaFetch(buyerToken);
   const paymentMethodId =
     cards.find((c) => (c.id ?? "").trim().length > 0)?.id ??
     `pm_test_skip_${Date.now()}`;

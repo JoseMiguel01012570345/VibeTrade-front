@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
-import type { RouteOfferTramoAssignment } from "@app/store/marketStoreTypes";
-import { fetchPublicOfferCard } from "@/utils/market/marketPersistence";
-import { offerAndStoreToPublishedTransportServiceDto } from "@/utils/market/offerCardToPublishedTransportService";
-import type { PublishedTransportServiceDto } from "@/utils/market/publishedTransportServicesApi";
+import type { RouteOfferTramoAssignment } from "@features/market/model/store/marketStoreTypes";
+import { fetchPublicOfferCard } from "@features/market/api/marketPersistence";
+import { offerAndStoreToPublishedTransportServiceDto } from "@features/market/api/offerCardToPublishedTransportService";
+import type { PublishedTransportServiceDto } from "@features/market/api/publishedTransportServicesApi";
 import { TransportServiceFichaDetail } from "../../TransportServiceFichaDetail";
 
 type Props = {

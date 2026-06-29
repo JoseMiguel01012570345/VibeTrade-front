@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -19,72 +18,68 @@ import { cn } from "@shared/lib/cn";
 import {
   offerHeroChromeBtnClass,
   offerHeroSaveBtnChromeClass,
-} from "@features/market/pages/storePageStyles";
+} from "@features/market/styles/storePageStyles";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
-import { ImageLightbox } from "@features/chat/components/media/ImageLightbox";
-import { useAppStore } from "@app/store/useAppStore";
-import { useMarketStore } from "@app/store/useMarketStore";
-import { RouteTramoSubscribeModal } from "./RouteTramoSubscribeModal";
-import { OfferSaveButton } from "./OfferSaveButton";
-import { OfferCommentsSection } from "./OfferCommentsSection";
+import { ImageLightbox } from "@shared/components/media/ImageLightbox";
+import { useAppStore } from "@features/auth/store/useAppStore";
+import { useMarketStore } from "@features/market/model/store/useMarketStore";
+import { RouteTramoSubscribeModal } from "../components/RouteTramoSubscribeModal";
+import { OfferSaveButton } from "../components/OfferSaveButton";
+import { OfferCommentsSection } from "../components/OfferCommentsSection";
 import {
   confirmedStopIdsForCarrier,
   ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
   routeOfferPublicBlockedForBuyerWithAgreement,
   tramoNotifyLineFromOffer,
-} from "@features/market/model/routeSheetOfferGuards";
+} from "@features/chat/model/routeSheetOfferGuards";
 import {
   listUserTransportServices,
   userActsAsCarrierOnTransportOffer,
   userHasTransportService,
-} from "@/utils/user/transportEligibility";
+} from "@features/market/model/transportEligibility";
 import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
-} from "@/utils/market/toolPlaceholder";
-import { trackRecommendationInteraction } from "@/utils/recommendations/recommendationsApi";
+} from "@features/market/api/toolPlaceholder";
+import { trackRecommendationInteraction } from "@features/home/api/recommendationsApi";
 import {
   joinOfferChannel,
   leaveOfferChannel,
   subscribeRouteTramoSubscriptionsChanged,
-} from "@/utils/chat/chatRealtime";
-import { offerFromStoreCatalogs } from "@/utils/market/offerFromCatalog";
-import { fetchPublicOfferCard } from "@/utils/market/marketPersistence";
-import {
-  mergeRouteOfferPublicFromEmergentCard,
-  routeOfferPublicFromEmergentCardOffer,
-} from "@/utils/market/routeOfferPublicFromEmergentCard";
-import { fetchStoreDetail } from "@/utils/market/fetchStoreDetail";
+} from "@features/chat/model/chatRealtime";
+
+import { fetchStoreDetail } from "@features/market/api/fetchStoreDetail";
 import { mergeStoreCatalogWithLocalExtras } from "@features/market/model/storeCatalogTypes";
-import { toggleOfferLike } from "@/utils/market/offerEngagementApi";
-import { emergentRoutePublicationUserDescription } from "@/utils/market/emergentRouteOfferDisplay";
+import { toggleOfferLike } from "@features/market/api/offerEngagementApi";
+import { emergentRoutePublicationUserDescription } from "@features/market/api/emergentRouteOfferDisplay";
 import {
   buildEmergentMapLegs,
   tramoMapSubrouteHint,
-} from "@/utils/map/emergentRouteMapLegs";
-import { useLegKmForEmergentLegs } from "@shared/hooks/useEmergentRouteLegKm";
+} from "@features/market/model/map/emergentRouteMapLegs";
+import { useLegKmForEmergentLegs } from "@features/market/hooks/useEmergentRouteLegKm";
 import {
   formatKmEs,
   formatPrecioPorKmEs,
-} from "@/utils/map/routeLegMetrics";
+} from "@features/market/model/map/routeLegMetrics";
 import { getSessionToken } from "@shared/services/http/sessionToken";
-import { EmergentRouteFeedMap } from "@features/home/EmergentRouteFeedMap";
+import { EmergentRouteFeedMap } from "@features/home";
 import {
   isOfferPublishedForBuyerChat,
   NOT_PUBLISHED_TOAST_ES,
-} from "@/utils/market/offerPublishedForBuyerChat";
+} from "@features/market/api/offerPublishedForBuyerChat";
 import {
   fetchEmergentCarrierSubscriptionStatus,
   fetchEmergentMyRouteTramoSubscriptions,
   postEmergentTramoSubscriptionRequest,
-} from "@/utils/emergentOffers/emergentCarrierSubscriptionApi";
-import { fetchThreadRouteTramoSubscriptions } from "@/utils/chat/chatApi";
+} from "@features/market/api/emergentCarrierSubscriptionApi";
+import { fetchThreadRouteTramoSubscriptions } from "@features/chat/api/chatApi";
 import {
   catalogItemKind,
   collectOfferPublishedPhotoUrls,
   sendPurchaseInterestIntro,
-} from "@/utils/chat/sendPurchaseInterestIntro";
+} from "@features/chat/model/sendPurchaseInterestIntro";
 import { ConfirmModal } from "@shared/components/ui/ConfirmModal";
+import { useOfferPublicCard } from "../hooks/useOfferPublicCard";
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -105,35 +100,20 @@ export function OfferPage() {
   const isSessionActive = useAppStore((s) => s.isSessionActive);
   const openAuthModal = useAppStore((s) => s.openAuthModal);
   const sessionReady = isSessionActive || !!getSessionToken();
-  const offer = useMarketStore((s) =>
-    offerId ? s.offers[offerId] : undefined,
-  );
   const stores = useMarketStore((s) => s.stores);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
   const [comprarChatConfirmOpen, setComprarChatConfirmOpen] = useState(false);
   const [comprarChatBusy, setComprarChatBusy] = useState(false);
-  const [publicCardLoadDone, setPublicCardLoadDone] = useState(() => {
-    if (!offerId) return true;
-    const st = useMarketStore.getState();
-    if (st.offers[offerId]) return true;
-    if (offerFromStoreCatalogs(offerId, st.storeCatalogs)) return true;
-    return false;
+
+  const {
+    resolvedOffer,
+    threadCatalogId,
+    publicCardLoadDone,
+  } = useOfferPublicCard(offerId, {
+    revalidateEmergent: true,
+    sessionReady,
+    isGuest: me.id === "guest",
   });
-
-  const offerFromCatalog = useMemo(
-    () =>
-      offerId ? offerFromStoreCatalogs(offerId, storeCatalogs) : undefined,
-    [offerId, storeCatalogs],
-  );
-  const resolvedOffer = offer ?? offerFromCatalog;
-
-  const threadCatalogId = useMemo(
-    () =>
-      (offer?.emergentBaseOfferId?.trim() ??
-        offerFromCatalog?.emergentBaseOfferId?.trim() ??
-        offerId) as string | undefined,
-    [offer, offerFromCatalog, offerId],
-  );
   const routeOffer = useMarketStore((s) =>
     threadCatalogId ? s.routeOfferPublic[threadCatalogId] : undefined,
   );
@@ -201,112 +181,6 @@ export function OfferPage() {
       setComprarChatBusy(false);
     }
   }, [resolvedOffer, storeCatalogs, me.id, ensureThreadForOffer, nav]);
-
-  useLayoutEffect(() => {
-    if (!offerId || offer || !offerFromCatalog) return;
-    useMarketStore.setState((s) => {
-      if (s.offers[offerId]) return s;
-      return {
-        ...s,
-        offers: { ...s.offers, [offerId]: offerFromCatalog },
-      };
-    });
-  }, [offerId, offer, offerFromCatalog]);
-
-  useEffect(() => {
-    if (!offerId) {
-      setPublicCardLoadDone(false);
-      return;
-    }
-    if (offer || offerFromCatalog) {
-      setPublicCardLoadDone(true);
-      return;
-    }
-    setPublicCardLoadDone(false);
-    void fetchPublicOfferCard(offerId)
-      .then((r) => {
-        if (r) {
-          const storeKey = r.store.id?.trim() || r.offer.storeId;
-          useMarketStore.setState((s) => {
-            const nextStores = { ...s.stores };
-            if (storeKey) {
-              nextStores[storeKey] = {
-                ...s.stores[storeKey],
-                ...r.store,
-                id: storeKey,
-              };
-            }
-            return {
-              ...s,
-              offers: { ...s.offers, [r.offer.id]: r.offer },
-              stores: nextStores,
-            };
-          });
-        }
-      })
-      .catch((err) => {
-        const msg =
-          err instanceof Error ? err.message : "No se pudo cargar la ficha.";
-        toast.error(msg);
-      })
-      .finally(() => {
-        setPublicCardLoadDone(true);
-      });
-  }, [offerId, offer, offerFromCatalog]);
-
-  useLayoutEffect(() => {
-    if (!threadCatalogId || !resolvedOffer?.isEmergentRoutePublication) return;
-    const built = routeOfferPublicFromEmergentCardOffer(resolvedOffer);
-    if (!built) return;
-    useMarketStore.setState((s) => {
-      const prev = s.routeOfferPublic[threadCatalogId];
-      const merged = mergeRouteOfferPublicFromEmergentCard(prev, built);
-      return {
-        ...s,
-        routeOfferPublic: {
-          ...s.routeOfferPublic,
-          [threadCatalogId]: merged,
-        },
-      };
-    });
-  }, [threadCatalogId, resolvedOffer]);
-
-  /** Ficha emergente: revalidar en servidor al abrir, el feed puede dejar <c>emergentThreadId</c> en un cth_ archivado. */
-  useEffect(() => {
-    if (!offerId || !resolvedOffer?.isEmergentRoutePublication) return;
-    if (me.id === "guest" || !sessionReady) return;
-    let cancelled = false;
-    void fetchPublicOfferCard(offerId)
-      .then((r) => {
-        if (cancelled || !r) return;
-        const storeKey = r.store.id?.trim() || r.offer.storeId;
-        useMarketStore.setState((s) => {
-          const prevOf = s.offers[r.offer.id] ?? r.offer;
-          const nextStores = { ...s.stores };
-          if (storeKey) {
-            nextStores[storeKey] = {
-              ...s.stores[storeKey],
-              ...r.store,
-              id: storeKey,
-            };
-          }
-          return {
-            ...s,
-            offers: {
-              ...s.offers,
-              [r.offer.id]: { ...prevOf, ...r.offer },
-            },
-            stores: nextStores,
-          };
-        });
-      })
-      .catch(() => {
-        /* sin red: el usuario puede forzar con F5 */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [offerId, resolvedOffer?.isEmergentRoutePublication, me.id, sessionReady]);
 
   const openTramos = useMemo(
     () => routeOffer?.tramos.filter((t) => !t.assignment) ?? [],

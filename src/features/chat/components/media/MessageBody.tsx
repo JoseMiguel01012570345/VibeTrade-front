@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { FileDown, Loader2, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@shared/lib/cn";
-import type { Message, ReplyQuote } from "@app/store/useMarketStore";
-import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
+import type { Message, ReplyQuote } from "@features/market/model/store/useMarketStore";
+import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
 import { AgreementBubble } from "./AgreementBubble";
 import { AudioMicro } from "./AudioMicro";
 import { ChatReplyQuotes } from "./ChatReplyQuotes";
@@ -11,17 +11,17 @@ import { DocGrid, DocRow } from "./DocRow";
 import { hhmm } from "./MsgMeta";
 import { ImageGrid } from "./ImageGrid";
 import { ytThread } from "./chatMediaThreadStyles";
-import type { PaymentFeeReceiptPayload } from "@features/market/model/paymentFeeReceiptTypes";
-import { downloadPaymentFeeReceiptPdf } from "@features/chat/utils/paymentCheckoutPdfDownload";
+import type { PaymentFeeReceiptPayload } from "@features/payments/Dtos/paymentFeeReceiptTypes";
+import { downloadPaymentFeeReceiptPdf } from "@features/chat/model/paymentCheckoutPdfDownload";
 import {
   minorToMajor,
   paymentFeeLabels,
-  stripeMinorDecimals,
-} from "@features/market/model/paymentFeePolicy";
+  currencyMinorDecimals,
+} from "@features/payments/model/paymentFeePolicy";
 import {
   fetchLinkPreview,
   type LinkPreviewResult,
-} from "@/utils/chat/chatApi";
+} from "@features/chat/api/chatApi";
 
 function firstHttpUrl(text: string): string | null {
   const m = text.match(/https?:\/\/[^\s<>'")\]]+/i);
@@ -132,7 +132,7 @@ function LinkPreviewCard({ url }: { url: string }) {
 
 function fmtReceiptMinor(amountMinor: number, curLower: string): string {
   const maj = minorToMajor(amountMinor, curLower);
-  const frac = stripeMinorDecimals(curLower);
+  const frac = currencyMinorDecimals(curLower);
   try {
     return new Intl.NumberFormat("es-AR", {
       style: "currency",
@@ -179,9 +179,9 @@ function PaymentFeeReceiptBubble({ receipt }: { receipt: PaymentFeeReceiptPayloa
           <span className="font-semibold tabular-nums">{fmtReceiptMinor(receipt.climateMinor, cur)}</span>
         </div>
         <div className="flex justify-between gap-2">
-          <span className="text-[var(--muted)]">Tarifa Stripe liquidación (referencia)</span>
+          <span className="text-[var(--muted)]">tarifa de procesador liquidación (referencia)</span>
           <span className="font-semibold tabular-nums">
-            {fmtReceiptMinor(receipt.stripeFeeMinorActual, cur)}
+            {fmtReceiptMinor(receipt.processorFeeMinorActual, cur)}
           </span>
         </div>
         <div className="border-t border-[color-mix(in_oklab,var(--border)_85%,transparent)] pt-1.5 flex justify-between gap-2">
@@ -192,10 +192,10 @@ function PaymentFeeReceiptBubble({ receipt }: { receipt: PaymentFeeReceiptPayloa
         </div>
       </div>
       <p className="text-[11px] leading-snug text-[var(--muted)]">
-        Tarifa Stripe estimada antes del pago (referencia):{" "}
-        {fmtReceiptMinor(receipt.stripeFeeMinorEstimated, cur)}. Políticas Stripe:{" "}
+        tarifa de procesador estimada antes del pago (referencia):{" "}
+        {fmtReceiptMinor(receipt.processorFeeMinorEstimated, cur)}. Políticas de tarifas:{" "}
         <a
-          href={receipt.stripePricingUrl}
+          href={receipt.paymentFeePolicyUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="font-bold text-[var(--primary)] underline"

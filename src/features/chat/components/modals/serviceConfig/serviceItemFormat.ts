@@ -1,5 +1,5 @@
-import type { ServiceItem, ServiceScheduleState } from "@features/market/model/tradeAgreementTypes"
-import { coerceServiceSchedule } from "@features/market/model/tradeAgreementTypes"
+import type { ServiceItem, ServiceScheduleState } from "@features/chat/model/tradeAgreementTypes"
+import { coerceServiceSchedule } from "@features/chat/model/tradeAgreementTypes"
 
 const MES = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'] as const
 

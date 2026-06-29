@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Button, Spinner } from "flowbite-react";
-import type { RouteSheet } from "@features/market/model/routeSheetTypes";
-import { postRouteSheetNotifyPreselected } from "@/utils/chat/chatApi";
+import type { RouteSheet } from "@features/chat/model/routeSheetTypes";
+import { postRouteSheetNotifyPreselected } from "@features/chat/api/chatApi";
 import { FlowbiteChatModal } from "../layout/FlowbiteChatModal";
 import {
   type SelectableColumnDef,

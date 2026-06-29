@@ -1,7 +1,7 @@
-import { useAppStore } from "@app/store/useAppStore"
+import { useAppStore } from "@features/auth/store/useAppStore"
 import { apiFetch } from "@shared/services/http/apiClient"
 import { getSessionToken, setSessionToken } from "@shared/services/http/sessionToken"
-import { stopChatRealtime } from "@/utils/chat/chatRealtime"
+import { stopChatRealtime } from "@features/chat/model/chatRealtime"
 import { userFromSessionJson, type SessionUserJson } from './sessionUser'
 
 /** Si hay token guardado, hidrata `me` y la bandera de sesión desde el backend. */

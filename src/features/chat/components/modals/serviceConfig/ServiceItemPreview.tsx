@@ -1,7 +1,7 @@
 import { CalendarClock, ClipboardList, CreditCard, Scale, ShieldAlert } from 'lucide-react'
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg"
-import { agrDetailLink } from '../../../styles/formModalStyles'
-import { monedasFromRecurrenciaPagos, type ServiceItem, type TradeAgreementExtraFieldDraft } from "@features/market/model/tradeAgreementTypes"
+import { agrDetailLink } from '../../../model/formModalStyles'
+import { monedasFromRecurrenciaPagos, type ServiceItem, type TradeAgreementExtraFieldDraft } from "@features/chat/model/tradeAgreementTypes"
 import { formatPaymentSummary } from './serviceItemFormat'
 import { ServiceScheduleReadView } from './ServiceScheduleReadView'
 

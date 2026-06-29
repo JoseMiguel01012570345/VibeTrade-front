@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Lock, Mail } from 'lucide-react'
 import { forgotPassword } from '@features/auth/api/credentialsAuth'
-import { isValidEmail, isValidPassword } from '@features/auth/lib/credentialsValidation'
+import { isValidEmail, isValidPassword } from '@features/auth/model/credentialsValidation'
 
 export function ForgotPasswordPage() {
   const nav = useNavigate()

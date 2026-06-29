@@ -2,23 +2,23 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Loader2, Users } from "lucide-react";
-import { onBackdropPointerClose } from "../../lib/modalClose";
+import { onBackdropPointerClose } from '../../model/modalClose';
 import {
   fieldLabel,
   modalFormBody,
   modalShellWide,
   modalSub,
-} from "../../styles/formModalStyles";
+} from '../../model/formModalStyles';
 import { VtMultiSelect } from "@shared/components/ui/VtMultiSelect";
 import type { VtSelectOption } from "@shared/components/ui/VtSelect";
 import {
   fetchContacts,
   resolvePlatformUserByPhone,
   type UserContact,
-} from "@/utils/contacts/contactsApi";
-import { createSocialGroupChatThread } from "@/utils/chat/chatApi";
+} from "@features/profile/api/contactsApi";
+import { createSocialGroupChatThread } from "@features/chat/api/chatApi";
 import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
-import { useMarketStore } from "@app/store/useMarketStore";
+import { useMarketStore } from "@features/market/model/store/useMarketStore";
 
 type Props = Readonly<{
   open: boolean;

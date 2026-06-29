@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { useMarketStore } from "@app/store/useMarketStore";
+import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import {
   fetchAgreementRouteDeliveries,
   type RouteStopDeliveryStatusApi,
-} from "@/utils/chat/routeLogisticsApi";
-import { subscribeRouteDeliveriesRefresh } from "@/utils/chat/chatRealtime";
+} from "@features/chat/api/routeLogisticsApi";
+import { subscribeRouteDeliveriesRefresh } from "@features/chat/model/chatRealtime";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 
 export type CarrierTelemetryTarget = {

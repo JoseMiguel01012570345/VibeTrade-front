@@ -53,5 +53,22 @@ module.exports = {
         ],
       },
     },
+    {
+      files: ['src/features/**/*.{ts,tsx}'],
+      excludedFiles: ['src/features/**/index.ts'],
+      rules: {
+        'no-restricted-imports': [
+          'warn',
+          {
+            paths: [
+              {
+                name: '@features/chat/components/media/ImageLightbox',
+                message: 'Use @shared/components/media/ImageLightbox.',
+              },
+            ],
+          },
+        ],
+      },
+    },
   ],
 }

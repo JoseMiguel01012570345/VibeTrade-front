@@ -2,8 +2,8 @@ import toast from "react-hot-toast";
 import {
   decideCarrierDeliveryEvidence,
   fetchCarrierDeliveryEvidence,
-} from "@/utils/chat/routeLogisticsApi";
-import type { CarrierDeliveryEvidenceApi } from "@/utils/chat/routeLogisticsApi";
+} from "@features/chat/api/routeLogisticsApi";
+import type { CarrierDeliveryEvidenceApi } from "@features/chat/api/routeLogisticsApi";
 import type { CarrierEvReadModalState } from "../shared/routesRailSheetModalTypes";
 
 export async function railCarrierEvidenceAccept(args: {

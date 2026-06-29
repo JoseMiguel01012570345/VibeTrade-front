@@ -28,11 +28,11 @@ test.describe("profile /account E2E", () => {
     ).toBeVisible();
   });
 
-  test("stripeCards query opens payment modal", async ({ page }) => {
-    await page.goto("/profile/me/account?stripeCards=1");
+  test("paymentCards query opens payment modal", async ({ page }) => {
+    await page.goto("/profile/me/account?paymentCards=1");
     await expect(
       page.getByRole("dialog", { name: /pagos \(demo\)/i }),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(page).not.toHaveURL(/stripeCards=1/);
+    await expect(page).not.toHaveURL(/paymentCards=1/);
   });
 });

@@ -4,8 +4,8 @@ import {
   threadCanCreateRouteSheet,
   threadRouteSheetCreationBlocked,
   threadRouteSheetSlotCount,
-} from "@features/market/model/routeSheetCreationGate";
-import type { TradeAgreement } from "@features/market/model/tradeAgreementTypes";
+} from "@features/chat/model/routeSheetCreationGate";
+import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";
 
 function agr(partial: Partial<TradeAgreement> & Pick<TradeAgreement, "id">): TradeAgreement {
   return {
