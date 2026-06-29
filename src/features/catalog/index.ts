@@ -13,4 +13,4 @@ export type {
   CatalogSearchParams,
   CatalogCategoriesJson,
   CurrenciesJson,
-} from './Dtos'
+} from './Dtos/catalogSearchTypes'

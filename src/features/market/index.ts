@@ -12,13 +12,71 @@ export {
   offerHeroSaveBtnChromeClass,
 } from './styles/storePageStyles'
 export type {
-  MerchandiseCondition,
-  StoreCatalog,
+  StoreLocationPoint,
+  StoreBadge,
+  EmergentRouteParadaSnapshot,
+  QAItem,
+  Offer,
+  RouteOfferTramoAssignment,
+  RouteOfferTramoPublic,
+  RouteOfferPublicState,
+} from './Dtos/marketTypes'
+export type { MerchandiseCondition } from './Dtos/merchandiseCondition'
+export type {
+  OfferQaAuthorSnapshot,
+  OfferQaComment,
+  OfferQaCommentApiFields,
+  OfferQaCommentEnriched,
+} from './Dtos/offerQaTypes'
+export type {
+  StoreCustomAttachment,
+  StoreCustomField,
   StoreProduct,
   StoreService,
+  StoreCatalog,
+} from './Dtos/storeCatalogTypes'
+export type {
+  StoreScreen,
+  StoreFilterSection,
+  PriceSort,
+  VitrinaListMode,
+  CatalogPublishedFilter,
+  StoreSectionFilters,
+} from './Dtos/storePageTypes'
+export type { OfferCommentNorm } from './Dtos/offerCommentsTypes'
+export type { UserTransportServiceOption } from './Dtos/transportEligibilityTypes'
+export type {
+  EmergentMapLeg,
+  EmergentMapWaypoint,
+  EmergentMapIslandMarker,
+} from './Dtos/emergentRouteMapLegsTypes'
+export type { TramoRoadKmHint } from './Dtos/emergentRouteLegKmTypes'
+export type {
+  PostOfferInquiryBody,
+  PostOfferInquiryResponse,
+  PublicOfferCardResponse,
+} from './Dtos/marketPersistenceTypes'
+export type { MarketSerializableSlice } from './Dtos/marketSerializableTypes'
+export type {
+  StoreDetailOwner,
   StoreDetailResponse,
-  OfferCommentNorm,
-} from './Dtos'
+} from './Dtos/fetchStoreDetailTypes'
+export type { EmergentCarrierSubscriptionResponse } from './Dtos/emergentCarrierSubscriptionApiTypes'
+export type { PublishedTransportServiceDto } from './Dtos/publishedTransportServicesApiTypes'
+export type { ToggleLikeResult } from './Dtos/offerEngagementApiTypes'
+export type { ServicePriceSource } from './Dtos/parseProductPriceTypes'
+export type {
+  ProductSectionFilterFields,
+  ServiceSectionFilterFields,
+  PriceRangeSortOpts,
+} from './Dtos/storePageCatalogFiltersTypes'
+export type { AffectedRouteSheetStopDetail } from './Dtos/marketSliceHelpersTypes'
+export type {
+  StoreProductInput,
+  StoreServiceInput,
+  RecommendationStoreStripAnchor,
+  RecommendationHomeBulk,
+} from './Dtos/marketFeedTypes'
 export { useStoreDetail } from './hooks/useStoreDetail'
 export {
   useStoreCatalogMeta,

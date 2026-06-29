@@ -2,10 +2,10 @@ import { apiFetch } from "@shared/services/http/apiClient";
 import type {
   CreatePaymentIntentBody,
   CreatePaymentIntentResult,
-  CreateSetupIntentResult,
-  PaymentGatewayConfig,
-  SavedCard,
-} from "../Dtos";
+} from "../Dtos/createPaymentIntent";
+import type { CreateSetupIntentResult } from "../Dtos/createSetupIntent";
+import type { PaymentGatewayConfig } from "../Dtos/paymentGatewayConfig";
+import type { SavedCard } from "../Dtos/savedCard";
 import { friendlyPaymentGatewayError } from "../logic/paymentGatewayErrors";
 
 export async function getPaymentGatewayConfig(): Promise<PaymentGatewayConfig> {

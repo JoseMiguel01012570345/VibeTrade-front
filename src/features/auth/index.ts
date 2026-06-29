@@ -1,13 +1,11 @@
-export {
-  AuthEntryModal,
-  OnboardingWelcomePage,
-  LoginPage,
-  RegisterPage,
-  RegisterVerifyPhonePage,
-  RegisterVerifyEmailPage,
-  ForgotPasswordPage,
-  ConfirmPasswordResetPage,
-} from './pages/exports'
+export { AuthEntryModal } from './components/AuthEntryModal'
+export { OnboardingWelcomePage } from './pages/OnboardingWelcomePage'
+export { LoginPage } from './pages/LoginPage'
+export { RegisterPage } from './pages/RegisterPage'
+export { RegisterVerifyPhonePage } from './pages/RegisterVerifyPhonePage'
+export { RegisterVerifyEmailPage } from './pages/RegisterVerifyEmailPage'
+export { ForgotPasswordPage } from './pages/ForgotPasswordPage'
+export { ConfirmPasswordResetPage } from './pages/ConfirmPasswordResetPage'
 export { PasswordInput } from './components/PasswordInput'
 export { OtpInput } from './components/OtpInput'
 export { CountrySelect } from './components/CountrySelect'

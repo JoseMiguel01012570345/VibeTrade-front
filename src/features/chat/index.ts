@@ -11,6 +11,10 @@ export { useChatPageTradeActions } from './hooks/useChatPageTradeActions'
 export { useChatPaymentModal } from './hooks/useChatPaymentModal'
 export type { UseChatPaymentModalReturn } from './hooks/useChatPaymentModal'
 export { useAgreementDetailServicePayments } from './hooks/useAgreementDetailServicePayments'
+export { AgreementDetailView } from './components/AgreementDetail/AgreementDetailView'
+export { AgreementDetailServicesSection } from './components/AgreementDetail/AgreementDetailServicesSection'
+export { AgreementServiceEvidenceModal } from './components/AgreementDetail/AgreementServiceEvidenceModal'
+export { AgreementSellerPayoutModal } from './components/AgreementDetail/AgreementSellerPayoutModal'
 export type {
   EvidenceModalState,
   SellerPayoutModalState,
@@ -21,7 +25,15 @@ export * from './api/agreementCheckoutApi'
 export * from './api/agreementServiceEvidenceApi'
 export * from './api/agreementMerchandiseEvidenceApi'
 export * from './Dtos'
-export * from './logic'
+export * from './logic/thread/chatMerge'
+export * from './logic/realtime/chatRealtime'
+export * from './logic/participants/chatSenderLabels'
+export * from './logic/participants/chatParticipantLabels'
+export * from './logic/thread/chatInboundUi'
+export * from './logic/party-exit/threadPartyExpelled'
+export * from './logic/agreement/tradeAgreementApiMapper'
+export * from './logic/thread/getOpenChatThreadIdFromLocation'
+export * from './logic/thread/chatScroll'
 export { SELLER_TRUST_PENALTY_ON_EDIT, CHAT_PARTY_EXIT_TRUST_PER_MEMBER } from './logic/trust/trustPenaltyConstants'
 export {
   ROUTE_SHEET_LOCKED_BY_PAID_AGREEMENT_ES,

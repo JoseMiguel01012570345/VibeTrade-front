@@ -14,13 +14,14 @@ export { usePublicProfile, publicProfileQueryKey } from './hooks/usePublicProfil
 export { useProfileVisitor } from './hooks/useProfileVisitor'
 export { useProfilePageRouting } from './hooks/useProfilePageRouting'
 export type {
-  PlatformUserByPhone,
-  ProductFormSnapshot,
-  ProductPhotoSlot,
-  ProfileVisitorPublic,
-  ServiceFormSnapshot,
   TrustAdjustResponseApi,
   TrustHistoryItemApi,
-  UserContact,
-  OwnerStoreFormValues,
-} from './Dtos'
+} from './Dtos/trustLedgerDtos'
+export type { PlatformUserByPhone, UserContact } from './Dtos/contactsDtos'
+export type {
+  ProductFormSnapshot,
+  ServiceFormSnapshot,
+} from './Dtos/storeFormDtos'
+export type { ProductPhotoSlot } from './Dtos/productPhotoSlot'
+export type { ProfileVisitorPublic } from './Dtos/profileVisitorPublic'
+export type { OwnerStoreFormValues } from './Dtos/ownerStoreFormTypes'
