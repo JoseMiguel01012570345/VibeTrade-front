@@ -1,4 +1,4 @@
-import { useAppStore } from "@features/auth/store/useAppStore"
+import { useAppStore } from "@features/auth/model/useAppStore"
 import { useMarketStore } from "@features/market/model/store/useMarketStore"
 import type { ChatMessageDto } from '@features/chat/api/chatApi'
 import type { ChatUnifiedMessagePayloadDto } from './chatMessagePayloadContract'

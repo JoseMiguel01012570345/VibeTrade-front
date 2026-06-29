@@ -10,11 +10,11 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { VtMultiSelect } from "@shared/components/ui/VtMultiSelect";
 import type { VtSelectOption } from "@shared/components/ui/VtSelect";
 import { useCatalogCategories, useCatalogSearch } from '@features/catalog'
-import {
-  fetchCatalogAutocomplete,
-  type CatalogSearchKind,
-  type CatalogSearchItem,
-} from '@features/catalog/api/searchStores';
+import { fetchCatalogAutocomplete } from '@features/catalog/api/searchStores';
+import type {
+  CatalogSearchKind,
+  CatalogSearchItem,
+} from '@features/catalog/Dtos/catalogSearchTypes';
 import { VtAutocompleteInput } from "@shared/components/ui/VtAutocompleteInput";
 import { StoreSearchResultCard } from "@features/home/components/StoreSearchResultCard";
 import { CatalogOfferSearchCard } from "../components/CatalogOfferSearchCard";

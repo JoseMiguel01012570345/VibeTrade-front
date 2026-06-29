@@ -1,4 +1,4 @@
-import type { SocialNetworkId } from "@features/auth/store/useAppStore";
+import type { SocialNetworkId } from "@features/auth/Dtos/userTypes";
 import type { ProfileSection } from "@features/profile/model/profilePaths";
 
 export function isValidEmail(value: string): boolean {

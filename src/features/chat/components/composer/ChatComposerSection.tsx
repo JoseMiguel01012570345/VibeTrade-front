@@ -15,7 +15,7 @@ import {
   Square,
   X,
 } from "lucide-react";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { cn } from "@shared/lib/cn";
 import type { Thread } from "@features/market/model/store/useMarketStore";
 import { replySelectionAuthorLabel } from "@features/chat/model/chatParticipantLabels";

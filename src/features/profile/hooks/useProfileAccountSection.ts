@@ -6,16 +6,12 @@ import {
 } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import {
-  type SocialNetworkId,
-  useAppStore,
-} from '@features/auth/store/useAppStore'
-import {
-  patchProfile,
-  patchProfileAvatar,
-} from '@features/auth/api/patchProfile'
-import { userFromSessionJson } from '@features/auth/api/sessionUser'
-import { logoutWebApp } from '@features/auth/api/logoutWebApp'
+import { useAppStore } from '@features/auth/model/useAppStore'
+import type { SocialNetworkId } from '@features/auth/Dtos/userTypes'
+import { patchProfile } from '@features/auth/api/patchProfile'
+import { patchProfileAvatar } from '@features/auth/model/patchProfileActions'
+import { userFromSessionJson } from '@features/auth/model/sessionUser'
+import { logoutWebApp } from '@features/auth/model/logoutWebApp'
 import { mediaApiUrl, uploadMedia } from '@shared/services/media/mediaClient'
 import { isValidEmail, shouldOpenPaymentCardsModal } from '../model/profileAccountLogic'
 import { revokeBlobUrlLocal } from '../model/revokeBlobUrlLocal'

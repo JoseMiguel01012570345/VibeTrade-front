@@ -1,4 +1,4 @@
-import { useAppStore } from "@features/auth/store/useAppStore"
+import { useAppStore } from "@features/auth/model/useAppStore"
 import type {
   ChatMessageDto,
   ChatThreadDto,

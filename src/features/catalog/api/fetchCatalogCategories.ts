@@ -1,8 +1,8 @@
 import { apiFetch } from "@shared/services/http/apiClient";
 
-export type CatalogCategoriesJson = {
-  categories: string[];
-};
+import type { CatalogCategoriesJson } from "../Dtos/catalogSearchTypes";
+
+export type { CatalogCategoriesJson } from "../Dtos/catalogSearchTypes";
 
 /** GET /api/v1/market/catalog-categories */
 export async function fetchCatalogCategories(): Promise<string[]> {

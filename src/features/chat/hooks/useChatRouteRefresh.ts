@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import {
   mergePersistedChatMessages,

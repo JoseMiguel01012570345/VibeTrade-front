@@ -1,7 +1,7 @@
 import { apiFetch } from "@shared/services/http/apiClient";
 
-export type { CurrenciesJson } from "@features/catalog/Dtos/currenciesTypes";
-import type { CurrenciesJson } from "@features/catalog/Dtos/currenciesTypes";
+export type { CurrenciesJson } from "@features/catalog/Dtos/catalogSearchTypes";
+import type { CurrenciesJson } from "@features/catalog/Dtos/catalogSearchTypes";
 
 /** GET /api/v1/market/currencies — códigos de moneda permitidos (p. ej. USD, EUR, CUP). */
 export async function fetchCurrencies(): Promise<string[]> {

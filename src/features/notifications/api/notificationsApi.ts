@@ -1,4 +1,4 @@
-import { useAppStore } from '@features/auth/store/useAppStore'
+import { useAppStore } from '@features/auth/model/useAppStore'
 import { fetchChatNotifications } from '@features/chat/api/chatApi'
 import { getSessionToken } from '@shared/services/http/sessionToken'
 import type { NotificationItem } from '../Dtos/notificationItem'

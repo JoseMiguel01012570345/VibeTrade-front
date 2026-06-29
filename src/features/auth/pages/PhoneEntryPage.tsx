@@ -6,7 +6,7 @@ import { CountrySelect } from '../components/CountrySelect'
 import type { Country } from '../components/countries'
 import { apiFetch } from "@shared/services/http/apiClient"
 import { fetchSignInCountries } from "@shared/services/http/fetchSignInCountries"
-import type { OnboardingMode } from './OnboardingWelcomePage'
+import type { OnboardingMode } from '../Dtos/onboardingTypes'
 
 type PhoneLocationState = {
   mode?: OnboardingMode

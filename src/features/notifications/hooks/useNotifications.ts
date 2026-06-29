@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAppStore } from '@features/auth/store/useAppStore'
+import { useAppStore } from '@features/auth/model/useAppStore'
 import {
   fetchNotificationsFromServer,
   syncChatNotificationsFromServer,

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { useAppStore } from '@features/auth/store/useAppStore'
+import { useAppStore } from '@features/auth/model/useAppStore'
 import {
   getReelsInitialComments,
   getReelsInitialLikeCounts,

@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { login } from '../api/credentialsAuth'
-import { applyAuthSession } from '../api/applyAuthSession'
-import { isValidEmail } from '../lib/credentialsValidation'
+import { applyAuthSession } from '../model/applyAuthSession'
+import { isValidEmail } from '../model/credentialsValidation'
 
 export function useLogin() {
   const nav = useNavigate()

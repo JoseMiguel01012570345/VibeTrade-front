@@ -34,7 +34,7 @@ import {
   assignedCarrierUserIdsOnOffer,
   buildRouteSheetEditSystemMessage,
 } from '@features/market/model/store/marketSliceHelpers'
-import { useAppStore } from '@features/auth/store/useAppStore'
+import { useAppStore } from '@features/auth/model/useAppStore'
 import { SELLER_TRUST_PENALTY_ON_EDIT } from "@features/chat"
 import type { MarketSliceGet, MarketSliceSet } from '@features/market/model/store/marketSliceTypes'
 import {

@@ -63,7 +63,7 @@ import {
 } from "@features/chat/model/threadPeerPartyExit"
 import { partyExpelledFieldsFromDto, markPartyExpelledOnThread } from "@features/chat/model/threadPartyExpelled"
 import { isOfferPublishedForBuyerChat } from "@features/market/api/offerPublishedForBuyerChat"
-import { useAppStore } from '@features/auth/store/useAppStore'
+import { useAppStore } from '@features/auth/model/useAppStore'
 import {
   minimalOfferStoreFromChatThreadDto,
   VT_SOCIAL_PLACEHOLDER_OFFER_ID,

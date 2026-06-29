@@ -1,5 +1,5 @@
 import toast from "react-hot-toast";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import type { ReelComment } from "@features/reels/Dtos/reelComment";
 import type { ReelsBootstrapPayload } from "@features/reels/Dtos/reelsBootstrapPayload";
@@ -13,7 +13,7 @@ import {
   RECOMMENDATION_BULK_OFFER_COUNT,
   splitRecommendationBatchIntoHomeBulks,
 } from "@features/home/model/homeFeedMerge";
-import { getOrCreateGuestId } from "@features/auth/api/guestId";
+import { getOrCreateGuestId } from "@features/auth/model/guestId";
 import { syncChatNotificationsFromServer } from "@features/notifications/api/notificationsApi";
 import { startChatRealtime } from "@features/chat/model/chatRealtime";
 import { postAckPendingDeliveryOnLogin } from "@features/chat/api/chatApi";

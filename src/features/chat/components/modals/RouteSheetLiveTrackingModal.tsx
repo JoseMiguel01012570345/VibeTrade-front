@@ -13,7 +13,7 @@ import {
   emergentMapRouteSegments,
   ROUTE_ISLAND_LINE_COLORS,
 } from "@features/market/model/map/emergentRouteMapLegs";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import { fetchThreadRouteTramoSubscriptions } from "@features/chat/api/chatApi";
 import {

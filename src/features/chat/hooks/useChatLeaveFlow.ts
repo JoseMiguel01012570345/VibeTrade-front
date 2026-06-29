@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import toast from 'react-hot-toast'
-import { useAppStore } from '@features/auth/store/useAppStore'
+import { useAppStore } from '@features/auth/model/useAppStore'
 import type { Thread } from '@features/market/model/store/useMarketStore'
 import {
   threadAcceptedAgreementsAllLiquidated,

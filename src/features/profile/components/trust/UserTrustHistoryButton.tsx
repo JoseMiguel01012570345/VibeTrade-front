@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ScrollText } from "lucide-react";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { EMPTY_TRUST_LEDGER_ENTRIES } from "@features/profile/Dtos/trustLedgerTypes";
 import { TrustHistoryModal } from "@features/profile/components/trust/TrustHistoryModal";
 import { cn } from "@shared/lib/cn";

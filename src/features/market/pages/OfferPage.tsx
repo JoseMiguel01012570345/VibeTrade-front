@@ -21,7 +21,7 @@ import {
 } from "@features/market/styles/storePageStyles";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { ImageLightbox } from "@shared/components/media/ImageLightbox";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import { RouteTramoSubscribeModal } from "../components/RouteTramoSubscribeModal";
 import { OfferSaveButton } from "../components/OfferSaveButton";

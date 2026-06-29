@@ -1,8 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { LogIn, UserPlus } from 'lucide-react'
 
-export type OnboardingMode = 'login' | 'register'
-
 export function OnboardingWelcomePage() {
   const nav = useNavigate()
 

@@ -9,7 +9,7 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { cn } from "@shared/lib/cn";
 import type { Message } from "@features/market/model/store/marketStoreTypes";
 import type { Thread } from "@features/market/model/store/useMarketStore";

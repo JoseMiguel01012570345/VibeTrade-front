@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import {
   mergePersistedChatMessages,
   mapChatMessageDtoToMessage,

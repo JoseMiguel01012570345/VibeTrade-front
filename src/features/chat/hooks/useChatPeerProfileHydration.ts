@@ -1,11 +1,11 @@
 import { useEffect } from "react";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import type { Thread } from "@features/market/model/store/marketStoreTypes";
 import {
   fetchPublicProfile,
   mergePublicProfileIntoAppStore,
   wasPublicProfileHydrated,
-} from "@features/auth/api/fetchPublicProfile";
+} from "@features/auth/model/publicProfile";
 import { resolveBuyerUserId } from "@features/chat/model/chatParticipantLabels";
 
 export function useChatPeerProfileHydration(

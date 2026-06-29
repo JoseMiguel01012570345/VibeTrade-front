@@ -1,7 +1,7 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import { UploadBlockingOverlay } from "@shared/components/ui/UploadBlockingOverlay";
 import { fetchStoreDetail } from "@features/market/api/fetchStoreDetail";

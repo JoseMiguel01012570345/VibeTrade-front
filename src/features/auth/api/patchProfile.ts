@@ -1,15 +1,9 @@
-import { apiFetch } from "@shared/services/http/apiClient"
-import type { SessionUserJson } from './sessionUser'
-
-export type PatchProfileBody = {
-  name?: string
-  username?: string
-  email?: string
-  instagram?: string
-  telegram?: string
-  xAccount?: string
-  avatarUrl?: string
-}
+import { apiFetch } from '@shared/services/http/apiClient'
+import type {
+  PatchProfileBody,
+  PatchProfileResponseJson,
+} from '../Dtos/authApiTypes'
+import type { SessionUserJson } from '../Dtos/sessionUserTypes'
 
 export async function patchProfile(body: PatchProfileBody): Promise<SessionUserJson> {
   const res = await apiFetch('/api/v1/auth/profile', {
@@ -20,10 +14,6 @@ export async function patchProfile(body: PatchProfileBody): Promise<SessionUserJ
     const t = await res.text().catch(() => '')
     throw new Error(t || `PATCH profile ${res.status}`)
   }
-  const json = (await res.json()) as { user: SessionUserJson }
+  const json = (await res.json()) as PatchProfileResponseJson
   return json.user
-}
-
-export async function patchProfileAvatar(avatarUrl: string): Promise<SessionUserJson> {
-  return patchProfile({ avatarUrl })
 }

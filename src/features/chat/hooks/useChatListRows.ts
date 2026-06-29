@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { Thread } from '@features/market/model/store/useMarketStore'
 import { useMarketStore } from '@features/market/model/store/useMarketStore'
-import { useAppStore } from '@features/auth/store/useAppStore'
+import { useAppStore } from '@features/auth/model/useAppStore'
 import { chatThreadHeaderTitle } from '@features/chat/model/chatParticipantLabels'
 import { messagePreviewLine } from '@features/chat/model/chatAttachments'
 import {

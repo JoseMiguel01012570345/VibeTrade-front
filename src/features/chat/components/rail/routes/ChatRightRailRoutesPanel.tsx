@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import type { RouteOfferPublicState } from "@features/market/model/store/marketStoreTypes";
 import type { TradeAgreement } from "@features/chat/model/tradeAgreementTypes";

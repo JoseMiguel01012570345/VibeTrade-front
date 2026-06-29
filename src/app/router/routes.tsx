@@ -21,7 +21,7 @@ import {
   RegisterVerifyEmailPage,
   RegisterVerifyPhonePage,
 } from "@features/auth";
-import { CatalogSearchPage, StoresSearchPage } from "@features/catalog";
+import { CatalogSearchPage } from "@features/catalog";
 
 function RootRedirect() {
   return <Navigate to="/home" replace />;
@@ -53,7 +53,7 @@ export function AppRoutes() {
 
           <Route path="/home" element={<HomePage />} />
           <Route path="/search" element={<CatalogSearchPage />} />
-          <Route path="/stores" element={<StoresSearchPage />} />
+          <Route path="/stores" element={<Navigate to="/search" replace />} />
           <Route path="/offer/:offerId/mapa" element={<OfferRouteMapPage />} />
           <Route path="/offer/:offerId" element={<OfferPage />} />
           <Route path="/store/:storeId/mapa" element={<StoreLocationMapPage />} />

@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom'
-import { useAppStore } from '@features/auth/store/useAppStore'
+import { useAppStore } from '@features/auth/model/useAppStore'
 import { useMarketStore } from '@features/market/model/store/useMarketStore'
 
 /** Estado de ruta del hilo activo (hidratación en ChatPage vía useHydratePersistedChatThread). */

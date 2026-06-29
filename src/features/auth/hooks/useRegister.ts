@@ -8,7 +8,7 @@ import {
   isValidEmail,
   isValidPassword,
   isValidUsername,
-} from '../lib/credentialsValidation'
+} from '../model/credentialsValidation'
 
 export function useRegister() {
   const nav = useNavigate()

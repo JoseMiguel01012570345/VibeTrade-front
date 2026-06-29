@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useAppStore } from "@features/auth/store/useAppStore"
+import { useAppStore } from "@features/auth/model/useAppStore"
 import { cn } from "@shared/lib/cn"
 
 function clamp(n: number, min: number, max: number) {

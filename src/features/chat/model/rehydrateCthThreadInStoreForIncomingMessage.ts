@@ -1,6 +1,6 @@
 import type { RouteSheetPayload } from "@features/chat/model/routeSheetTypes";
 import type { Offer, Thread } from "@features/market/model/store/marketStoreTypes";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import {
   buildPurchaseThreadSystemOnly,

@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { Bell, ChevronLeft, ChevronRight, ExternalLink, History, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useAppStore } from "@features/auth/store/useAppStore"
-import type { NotificationItem } from "@features/auth/store/useAppStore"
+import { useAppStore } from "@features/auth/model/useAppStore"
+import type { NotificationItem } from "@features/notifications/Dtos/notificationItem"
 import { cn } from "@shared/lib/cn"
 import { fetchChatNotifications, markChatNotificationsRead } from "@features/chat/api/chatApi"
 import {
@@ -67,6 +67,419 @@ function localDateAndTimeToMs(dateIso: string, timeHm: string): number | null {
 }
 
 const NOTIF_PAGE_SIZE = 8
+
+const hintClass = 'mt-1.5 text-[11px] font-extrabold text-[var(--primary)]'
+
+function formatBadgeText(unread: number): string {
+  if (unread > 99) return '99+'
+  return String(unread)
+}
+
+function historyToggleLabel(open: boolean): string {
+  if (open) return 'Ocultar filtros'
+  return 'Historial por fechas'
+}
+
+function applyFilterButtonLabel(loading: boolean): string {
+  if (loading) return 'Buscando…'
+  return 'Aplicar filtro'
+}
+
+function desktopToggleAriaLabel(enabled: boolean): string {
+  if (enabled) return 'Desactivar avisos fuera del navegador'
+  return 'Activar avisos fuera del navegador'
+}
+
+function clearNotificationsTitle(
+  historyFiltered: NotificationItem[] | null,
+): string | undefined {
+  if (historyFiltered !== null) {
+    return 'Vuelve a “avisos recientes” para limpiar la bandeja en esta vista.'
+  }
+  return undefined
+}
+
+function historyCountWord(count: number): string {
+  if (count === 1) return 'notificación'
+  return 'notificaciones'
+}
+
+function historyPaginationSuffix(pageCount: number): string {
+  if (pageCount > 1) return ' (usa Anterior / Siguiente abajo)'
+  return ''
+}
+
+function emptyNotificationsMessage(
+  historyFiltered: NotificationItem[] | null,
+): string {
+  if (historyFiltered !== null) {
+    return 'No hay notificaciones en este rango de fechas.'
+  }
+  return 'Aún no hay notificaciones.'
+}
+
+function ViewRecentNotificationsButton({
+  onClick,
+}: Readonly<{ onClick: () => void }>) {
+  return (
+    <button
+      type="button"
+      className="text-xs font-extrabold text-[var(--primary)] underline-offset-2 hover:underline"
+      onClick={onClick}
+    >
+      Ver avisos recientes
+    </button>
+  )
+}
+
+function HistoryFiltersPanel({
+  historyFromDate,
+  historyFromTime,
+  historyToDate,
+  historyToTime,
+  historyLoading,
+  historyError,
+  onFromDateChange,
+  onFromTimeChange,
+  onToDateChange,
+  onToTimeChange,
+  onApply,
+}: Readonly<{
+  historyFromDate: string
+  historyFromTime: string
+  historyToDate: string
+  historyToTime: string
+  historyLoading: boolean
+  historyError: string | null
+  onFromDateChange: (value: string) => void
+  onFromTimeChange: (value: string) => void
+  onToDateChange: (value: string) => void
+  onToTimeChange: (value: string) => void
+  onApply: () => void
+}>) {
+  return (
+    <div
+      className="mt-3 w-full min-w-0 rounded-[12px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3 sm:p-4"
+      role="search"
+      aria-label="Filtro de notificaciones por rango de fechas"
+    >
+      <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
+        Rango (hora local)
+      </div>
+      <div className="grid w-full min-w-0 grid-cols-1 gap-4">
+        <div className="min-w-0">
+          <div className="text-[12px] font-extrabold text-[var(--text)]">Desde</div>
+          <div className="mt-1.5 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+            <div className="w-full min-w-0">
+              <VtDateField
+                value={historyFromDate}
+                onChange={onFromDateChange}
+                disabled={historyLoading}
+                className="w-full min-w-0"
+                buttonClassName="w-full min-w-0 justify-between gap-2"
+                placeholder="Fecha inicio"
+                aria-label="Fecha de inicio"
+              />
+            </div>
+            <div className="w-full min-w-0">
+              <VtTimeField
+                value={historyFromTime}
+                onChange={onFromTimeChange}
+                disabled={historyLoading}
+                className="w-full min-w-0"
+                buttonClassName="w-full min-w-0 justify-between gap-2"
+                placeholder="Hora"
+                aria-label="Hora de inicio"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="min-w-0">
+          <div className="text-[12px] font-extrabold text-[var(--text)]">Hasta</div>
+          <div className="mt-1.5 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+            <div className="w-full min-w-0">
+              <VtDateField
+                value={historyToDate}
+                onChange={onToDateChange}
+                disabled={historyLoading}
+                className="w-full min-w-0"
+                buttonClassName="w-full min-w-0 justify-between gap-2"
+                placeholder="Fecha fin"
+                aria-label="Fecha de fin"
+              />
+            </div>
+            <div className="w-full min-w-0">
+              <VtTimeField
+                value={historyToTime}
+                onChange={onToTimeChange}
+                disabled={historyLoading}
+                className="w-full min-w-0"
+                buttonClassName="w-full min-w-0 justify-between gap-2"
+                placeholder="Hora"
+                aria-label="Hora de fin"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="vt-btn vt-btn-primary text-xs font-extrabold"
+          onClick={onApply}
+          disabled={historyLoading}
+        >
+          {applyFilterButtonLabel(historyLoading)}
+        </button>
+      </div>
+      {historyError && (
+        <p className="mb-0 mt-2 text-[12px] font-semibold text-[var(--bad)]">{historyError}</p>
+      )}
+    </div>
+  )
+}
+
+function HistoryRangeSummary({
+  count,
+  pageCount,
+}: Readonly<{ count: number; pageCount: number }>) {
+  return (
+    <p className="mb-0 mt-2 text-[11px] text-[var(--muted)]">
+      {count} {historyCountWord(count)} en el rango elegido
+      {historyPaginationSuffix(pageCount)}.
+    </p>
+  )
+}
+
+function DesktopNotificationHints({
+  permission,
+  effectiveOn,
+}: Readonly<{ permission: NotificationPermission; effectiveOn: boolean }>) {
+  if (permission === 'denied') {
+    return (
+      <p className="mt-2 text-xs font-semibold text-[var(--bad)]">
+        Permiso denegado: habilitá notificaciones para este sitio en el navegador.
+      </p>
+    )
+  }
+  if (permission === 'default' && !effectiveOn) {
+    return (
+      <p className="mt-2 text-xs text-[var(--muted)]">
+        Activá el interruptor para que el navegador pida permiso.
+      </p>
+    )
+  }
+  return null
+}
+
+function DesktopNotificationToggle({
+  enabled,
+  onToggle,
+}: Readonly<{ enabled: boolean; onToggle: () => void }>) {
+  let trackClass = 'bg-[color-mix(in_oklab,var(--muted)_32%,var(--border))]'
+  let thumbClass = 'left-0.5'
+  if (enabled) {
+    trackClass = 'bg-[var(--primary)]'
+    thumbClass = 'left-[calc(100%-0.125rem-1.25rem)]'
+  }
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      aria-label={desktopToggleAriaLabel(enabled)}
+      className={cn(
+        'relative mt-0.5 h-7 w-11 shrink-0 overflow-hidden rounded-full border border-transparent transition-colors',
+        trackClass,
+      )}
+      onClick={onToggle}
+    >
+      <span
+        className={cn(
+          'pointer-events-none absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white shadow-sm ring-1 ring-black/5 transition-[left] duration-200',
+          thumbClass,
+        )}
+        aria-hidden
+      />
+    </button>
+  )
+}
+
+function NotificationsRangeLabel({
+  label,
+  pageCount,
+  pageIndex,
+}: Readonly<{
+  label: { from: number; to: number; total: number }
+  pageCount: number
+  pageIndex: number
+}>) {
+  if (pageCount <= 1) return null
+  return (
+    <p className="m-0 text-center text-[11px] text-[var(--muted)]" aria-live="polite">
+      {label.from}–{label.to} de {label.total} · Página {pageIndex + 1} de {pageCount}
+    </p>
+  )
+}
+
+function NotificationKindHint({ n }: Readonly<{ n: NotificationItem }>) {
+  if (n.kind === 'route_tramo_subscribe') {
+    return <div className={hintClass}>Ver suscriptor en el chat →</div>
+  }
+  if (n.kind === 'route_tramo_subscribe_accepted') {
+    return (
+      <div className="mt-1.5 flex flex-col gap-1">
+        <div className={hintClass}>Abrir chat de la operación →</div>
+        {n.storeServiceId && (
+          <Link
+            to={`/offer/${encodeURIComponent(n.storeServiceId)}`}
+            className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[var(--primary)] no-underline hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Ver ficha del servicio <ExternalLink size={12} aria-hidden />
+          </Link>
+        )}
+      </div>
+    )
+  }
+  if (n.kind === 'route_tramo_subscribe_rejected') {
+    return <div className={hintClass}>Ver oferta de ruta →</div>
+  }
+  if (n.kind === 'route_tramo_seller_expelled' && n.offerId) {
+    return <div className={hintClass}>Ver ficha o chat →</div>
+  }
+  if (n.kind === 'route_tramo_seller_expelled' && n.threadId) {
+    return <div className={hintClass}>Abrir chat →</div>
+  }
+  if (n.kind === 'route_sheet_presel' && n.threadId) {
+    return <div className={hintClass}>Ver invitación (mapa y datos) →</div>
+  }
+  if (n.kind === 'route_sheet_presel_decl' && n.threadId) {
+    return <div className={hintClass}>Abrir chat de la operación →</div>
+  }
+  if (n.kind === 'route_ownership_granted' && n.threadId) {
+    return <div className={hintClass}>Abrir Rutas en el chat →</div>
+  }
+  if (n.kind === 'store_trust_penalty' && n.threadId) {
+    return <div className={hintClass}>Abrir chat de la operación →</div>
+  }
+  if (n.kind === 'store_trust_penalty' && n.offerId) {
+    return <div className={hintClass}>Ver ficha →</div>
+  }
+  if (
+    n.kind === 'offer_comment' ||
+    n.kind === 'offer_like' ||
+    n.kind === 'qa_comment_like' ||
+    (!n.threadId && n.offerId)
+  ) {
+    return <div className={hintClass}>Ver oferta y comentarios →</div>
+  }
+  if (n.threadId) {
+    return <div className={hintClass}>Abrir chat →</div>
+  }
+  return null
+}
+
+function NotificationRow({
+  n,
+  onClose,
+}: Readonly<{ n: NotificationItem; onClose: () => void }>) {
+  const wrapClass = cn(
+    'grid grid-cols-[32px_1fr] gap-2.5 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-3 py-2.5',
+    !n.read &&
+      'border-[color-mix(in_oklab,var(--primary)_20%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))]',
+  )
+  const content = (
+    <>
+      <div className="grid h-8 w-8 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+        <Bell size={16} />
+      </div>
+      <div>
+        <div className="font-black tracking-[-0.02em]">{n.title}</div>
+        <div className="vt-muted whitespace-pre-wrap break-words">{n.body}</div>
+        <div className="mt-1.5 text-xs text-[var(--muted)]">{fmt(n.createdAt)}</div>
+        <NotificationKindHint n={n} />
+      </div>
+    </>
+  )
+  const href = notificationHref(n)
+  if (href) {
+    return (
+      <Link
+        to={href}
+        className={cn(wrapClass, 'text-left no-underline text-[var(--text)]')}
+        onClick={onClose}
+      >
+        {content}
+      </Link>
+    )
+  }
+  return <div className={wrapClass}>{content}</div>
+}
+
+function NotificationsList({
+  items,
+  historyFiltered,
+  onClose,
+}: Readonly<{
+  items: NotificationItem[]
+  historyFiltered: NotificationItem[] | null
+  onClose: () => void
+}>) {
+  if (items.length === 0) {
+    return (
+      <div className="vt-muted">{emptyNotificationsMessage(historyFiltered)}</div>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-2.5">
+      {items.map((n) => (
+        <NotificationRow key={n.id} n={n} onClose={onClose} />
+      ))}
+    </div>
+  )
+}
+
+function NotificationsPagination({
+  pageIndex,
+  pageCount,
+  onPrevious,
+  onNext,
+}: Readonly<{
+  pageIndex: number
+  pageCount: number
+  onPrevious: () => void
+  onNext: () => void
+}>) {
+  return (
+    <div className="mt-2 flex shrink-0 items-center justify-center gap-2 border-t border-[color-mix(in_oklab,var(--border)_70%,transparent)] pt-3 pb-1">
+      <button
+        type="button"
+        className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[var(--text)] disabled:pointer-events-none disabled:opacity-35"
+        aria-label="Página anterior"
+        disabled={pageIndex < 1}
+        onClick={onPrevious}
+      >
+        <ChevronLeft size={16} aria-hidden />
+        <span className="text-[11px] font-extrabold">Anterior</span>
+      </button>
+      <span className="min-w-[5.5rem] text-center text-[12px] font-extrabold text-[var(--muted)]">
+        {pageIndex + 1} / {pageCount}
+      </span>
+      <button
+        type="button"
+        className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[var(--text)] disabled:pointer-events-none disabled:opacity-35"
+        aria-label="Página siguiente"
+        disabled={pageIndex >= pageCount - 1}
+        onClick={onNext}
+      >
+        <span className="text-[11px] font-extrabold">Siguiente</span>
+        <ChevronRight size={16} aria-hidden />
+      </button>
+    </div>
+  )
+}
 
 export function NotificationsBell() {
   const { items, unread, markAllRead, syncFromServer } = useNotifications()
@@ -175,9 +588,9 @@ export function NotificationsBell() {
     return () => w.removeEventListener('keydown', onKey)
   }, [open])
 
-  const badgeText = unread > 99 ? '99+' : String(unread)
+  const badgeText = formatBadgeText(unread)
 
-  const displayItems = historyFiltered !== null ? historyFiltered : items
+  const displayItems = historyFiltered ?? items
 
   const notifPageCount = Math.max(1, Math.ceil(displayItems.length / NOTIF_PAGE_SIZE))
   const notifPageSafe = Math.min(notifPage, notifPageCount - 1)
@@ -334,109 +747,39 @@ export function NotificationsBell() {
                     }}
                   >
                     <History size={14} aria-hidden />
-                    {historyFiltersOpen ? 'Ocultar filtros' : 'Historial por fechas'}
+                    {historyToggleLabel(historyFiltersOpen)}
                   </button>
-                  {historyFiltered !== null ? (
-                    <button
-                      type="button"
-                      className="text-xs font-extrabold text-[var(--primary)] underline-offset-2 hover:underline"
+                  {historyFiltered !== null && (
+                    <ViewRecentNotificationsButton
                       onClick={() => {
                         setNotifPage(0)
                         setHistoryFiltered(null)
                         setHistoryError(null)
                       }}
-                    >
-                      Ver avisos recientes
-                    </button>
-                  ) : null}
+                    />
+                  )}
                 </div>
-                {historyFiltersOpen ? (
-                  <div
-                    className="mt-3 w-full min-w-0 rounded-[12px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3 sm:p-4"
-                    role="search"
-                    aria-label="Filtro de notificaciones por rango de fechas"
-                  >
-                    <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
-                      Rango (hora local)
-                    </div>
-                    <div className="grid w-full min-w-0 grid-cols-1 gap-4">
-                      <div className="min-w-0">
-                        <div className="text-[12px] font-extrabold text-[var(--text)]">Desde</div>
-                        <div className="mt-1.5 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-                          <div className="w-full min-w-0">
-                            <VtDateField
-                              value={historyFromDate}
-                              onChange={setHistoryFromDate}
-                              disabled={historyLoading}
-                              className="w-full min-w-0"
-                              buttonClassName="w-full min-w-0 justify-between gap-2"
-                              placeholder="Fecha inicio"
-                              aria-label="Fecha de inicio"
-                            />
-                          </div>
-                          <div className="w-full min-w-0">
-                            <VtTimeField
-                              value={historyFromTime}
-                              onChange={setHistoryFromTime}
-                              disabled={historyLoading}
-                              className="w-full min-w-0"
-                              buttonClassName="w-full min-w-0 justify-between gap-2"
-                              placeholder="Hora"
-                              aria-label="Hora de inicio"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-[12px] font-extrabold text-[var(--text)]">Hasta</div>
-                        <div className="mt-1.5 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-                          <div className="w-full min-w-0">
-                            <VtDateField
-                              value={historyToDate}
-                              onChange={setHistoryToDate}
-                              disabled={historyLoading}
-                              className="w-full min-w-0"
-                              buttonClassName="w-full min-w-0 justify-between gap-2"
-                              placeholder="Fecha fin"
-                              aria-label="Fecha de fin"
-                            />
-                          </div>
-                          <div className="w-full min-w-0">
-                            <VtTimeField
-                              value={historyToTime}
-                              onChange={setHistoryToTime}
-                              disabled={historyLoading}
-                              className="w-full min-w-0"
-                              buttonClassName="w-full min-w-0 justify-between gap-2"
-                              placeholder="Hora"
-                              aria-label="Hora de fin"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        className="vt-btn vt-btn-primary text-xs font-extrabold"
-                        onClick={() => void applyHistoryFilter()}
-                        disabled={historyLoading}
-                      >
-                        {historyLoading ? 'Buscando…' : 'Aplicar filtro'}
-                      </button>
-                    </div>
-                    {historyError ? (
-                      <p className="mb-0 mt-2 text-[12px] font-semibold text-[var(--bad)]">{historyError}</p>
-                    ) : null}
-                  </div>
-                ) : null}
-                {historyFiltered !== null ? (
-                  <p className="mb-0 mt-2 text-[11px] text-[var(--muted)]">
-                    {displayItems.length} notificación
-                    {displayItems.length === 1 ? '' : 'es'} en el rango elegido
-                    {notifPageCount > 1 ? ' (usa Anterior / Siguiente abajo)' : ''}.
-                  </p>
-                ) : null}
+                {historyFiltersOpen && (
+                  <HistoryFiltersPanel
+                    historyFromDate={historyFromDate}
+                    historyFromTime={historyFromTime}
+                    historyToDate={historyToDate}
+                    historyToTime={historyToTime}
+                    historyLoading={historyLoading}
+                    historyError={historyError}
+                    onFromDateChange={setHistoryFromDate}
+                    onFromTimeChange={setHistoryFromTime}
+                    onToDateChange={setHistoryToDate}
+                    onToTimeChange={setHistoryToTime}
+                    onApply={() => void applyHistoryFilter()}
+                  />
+                )}
+                {historyFiltered !== null && (
+                  <HistoryRangeSummary
+                    count={displayItems.length}
+                    pageCount={notifPageCount}
+                  />
+                )}
               </div>
               <button
                 type="button"
@@ -463,44 +806,15 @@ export function NotificationsBell() {
                       Cuando cambies de pestaña o minimices, el sistema puede mostrar avisos por mensajes y
                       alertas (mientras esta pestaña está al frente no duplicamos el aviso).
                     </p>
-                    {desktopNotifPerm === 'denied' ? (
-                      <p className="mt-2 text-xs font-semibold text-[var(--bad)]">
-                        Permiso denegado: habilitá notificaciones para este sitio en el navegador.
-                      </p>
-                    ) : null}
-                    {desktopNotifPerm === 'default' && !desktopEffectiveOn ? (
-                      <p className="mt-2 text-xs text-[var(--muted)]">
-                        Activá el interruptor para que el navegador pida permiso.
-                      </p>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={desktopEffectiveOn}
-                    aria-label={
-                      desktopEffectiveOn
-                        ? 'Desactivar avisos fuera del navegador'
-                        : 'Activar avisos fuera del navegador'
-                    }
-                    className={cn(
-                      'relative mt-0.5 h-7 w-11 shrink-0 overflow-hidden rounded-full border border-transparent transition-colors',
-                      desktopEffectiveOn
-                        ? 'bg-[var(--primary)]'
-                        : 'bg-[color-mix(in_oklab,var(--muted)_32%,var(--border))]',
-                    )}
-                    onClick={() => void toggleDesktopNotifications()}
-                  >
-                    <span
-                      className={cn(
-                        'pointer-events-none absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-white shadow-sm ring-1 ring-black/5 transition-[left] duration-200',
-                        desktopEffectiveOn
-                          ? 'left-[calc(100%-0.125rem-1.25rem)]'
-                          : 'left-0.5',
-                      )}
-                      aria-hidden
+                    <DesktopNotificationHints
+                      permission={desktopNotifPerm}
+                      effectiveOn={desktopEffectiveOn}
                     />
-                  </button>
+                  </div>
+                  <DesktopNotificationToggle
+                    enabled={desktopEffectiveOn}
+                    onToggle={() => void toggleDesktopNotifications()}
+                  />
                 </div>
               </div>
             )}
@@ -514,11 +828,7 @@ export function NotificationsBell() {
                   'hover:bg-[color-mix(in_oklab,var(--bad)_12%,var(--surface))] disabled:pointer-events-none disabled:opacity-40',
                 )}
                 disabled={items.length === 0 || historyFiltered !== null}
-                title={
-                  historyFiltered !== null
-                    ? 'Vuelve a “avisos recientes” para limpiar la bandeja en esta vista.'
-                    : undefined
-                }
+                title={clearNotificationsTitle(historyFiltered)}
                 aria-label="Limpiar todas las notificaciones"
                 onClick={handleClearAll}
               >
@@ -528,147 +838,28 @@ export function NotificationsBell() {
             </div>
 
             <div ref={filteredListAnchorRef} className="mt-3 flex flex-col gap-2 scroll-mt-3">
-              {notifRangeLabel && notifPageCount > 1 ? (
-                <p className="m-0 text-center text-[11px] text-[var(--muted)]" aria-live="polite">
-                  {notifRangeLabel.from}–{notifRangeLabel.to} de {notifRangeLabel.total} · Página {notifPageSafe + 1} de {notifPageCount}
-                </p>
-              ) : null}
-              <div className="pr-1">
-              {displayItems.length === 0 ? (
-                <div className="vt-muted">
-                  {historyFiltered !== null
-                    ? 'No hay notificaciones en este rango de fechas.'
-                    : 'Aún no hay notificaciones.'}
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2.5">
-                  {pagedNotifItems.map((n) => {
-                    const wrapClass = cn(
-                      'grid grid-cols-[32px_1fr] gap-2.5 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-3 py-2.5',
-                      !n.read &&
-                        'border-[color-mix(in_oklab,var(--primary)_20%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))]',
-                    )
-                    const inner = (
-                      <>
-                        <div className="grid h-8 w-8 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-                          <Bell size={16} />
-                        </div>
-                        <div>
-                          <div className="font-black tracking-[-0.02em]">{n.title}</div>
-                          <div className="vt-muted whitespace-pre-wrap break-words">{n.body}</div>
-                          <div className="mt-1.5 text-xs text-[var(--muted)]">{fmt(n.createdAt)}</div>
-                  {n.kind === 'route_tramo_subscribe' ? (
-                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
-                      Ver suscriptor en el chat →
-                    </div>
-                  ) : n.kind === 'route_tramo_subscribe_accepted' ? (
-                    <div className="mt-1.5 flex flex-col gap-1">
-                      <div className="text-[11px] font-extrabold text-[var(--primary)]">
-                        Abrir chat de la operación →
-                      </div>
-                      {n.storeServiceId ? (
-                        <Link
-                          to={`/offer/${encodeURIComponent(n.storeServiceId)}`}
-                          className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[var(--primary)] no-underline hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Ver ficha del servicio <ExternalLink size={12} aria-hidden />
-                        </Link>
-                      ) : null}
-                    </div>
-                  ) : n.kind === 'route_tramo_subscribe_rejected' ? (
-                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
-                      Ver oferta de ruta →
-                    </div>
-                  ) : n.kind === 'route_tramo_seller_expelled' && n.offerId ? (
-                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
-                      Ver ficha o chat →
-                    </div>
-                  ) : n.kind === 'route_tramo_seller_expelled' && n.threadId ? (
-                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
-                      Abrir chat →
-                    </div>
-                  ) : n.kind === 'route_sheet_presel' && n.threadId ? (
-                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
-                      Ver invitación (mapa y datos) →
-                    </div>
-                  ) : n.kind === 'route_sheet_presel_decl' && n.threadId ? (
-                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
-                      Abrir chat de la operación →
-                    </div>
-                  ) : n.kind === 'route_ownership_granted' && n.threadId ? (
-                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
-                      Abrir Rutas en el chat →
-                    </div>
-                  ) : n.kind === 'store_trust_penalty' && n.threadId ? (
-                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
-                      Abrir chat de la operación →
-                    </div>
-                  ) : n.kind === 'store_trust_penalty' && n.offerId ? (
-                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
-                      Ver ficha →
-                    </div>
-                  ) : n.kind === 'offer_comment' ||
-                    n.kind === 'offer_like' ||
-                    n.kind === 'qa_comment_like' ||
-                    (!n.threadId && n.offerId) ? (
-                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
-                      Ver oferta y comentarios →
-                    </div>
-                  ) : n.threadId ? (
-                    <div className="mt-1.5 text-[11px] font-extrabold text-[var(--primary)]">
-                      Abrir chat →
-                    </div>
-                  ) : null}
-                        </div>
-                      </>
-                    )
-                    const href = notificationHref(n)
-                    return href ? (
-                      <Link
-                        key={n.id}
-                        to={href}
-                        className={cn(wrapClass, 'text-left no-underline text-[var(--text)]')}
-                        onClick={() => setOpen(false)}
-                      >
-                        {inner}
-                      </Link>
-                    ) : (
-                      <div key={n.id} className={wrapClass}>
-                        {inner}
-                      </div>
-                    )
-                  })}
-                </div>
+              {notifRangeLabel && (
+                <NotificationsRangeLabel
+                  label={notifRangeLabel}
+                  pageCount={notifPageCount}
+                  pageIndex={notifPageSafe}
+                />
               )}
+              <div className="pr-1">
+                <NotificationsList
+                  items={pagedNotifItems}
+                  historyFiltered={historyFiltered}
+                  onClose={() => setOpen(false)}
+                />
               </div>
-              {displayItems.length > 0 && notifPageCount > 1 ? (
-                <div className="mt-2 flex shrink-0 items-center justify-center gap-2 border-t border-[color-mix(in_oklab,var(--border)_70%,transparent)] pt-3 pb-1">
-                  <button
-                    type="button"
-                    className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[var(--text)] disabled:pointer-events-none disabled:opacity-35"
-                    aria-label="Página anterior"
-                    disabled={notifPageSafe < 1}
-                    onClick={() => setNotifPage((p) => Math.max(0, p - 1))}
-                  >
-                    <ChevronLeft size={16} aria-hidden />
-                    <span className="text-[11px] font-extrabold">Anterior</span>
-                  </button>
-                  <span className="min-w-[5.5rem] text-center text-[12px] font-extrabold text-[var(--muted)]">
-                    {notifPageSafe + 1} / {notifPageCount}
-                  </span>
-                  <button
-                    type="button"
-                    className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[var(--text)] disabled:pointer-events-none disabled:opacity-35"
-                    aria-label="Página siguiente"
-                    disabled={notifPageSafe >= notifPageCount - 1}
-                    onClick={() => setNotifPage((p) => Math.min(notifPageCount - 1, p + 1))}
-                  >
-                    <span className="text-[11px] font-extrabold">Siguiente</span>
-                    <ChevronRight size={16} aria-hidden />
-                  </button>
-                </div>
-              ) : null}
+              {displayItems.length > 0 && notifPageCount > 1 && (
+                <NotificationsPagination
+                  pageIndex={notifPageSafe}
+                  pageCount={notifPageCount}
+                  onPrevious={() => setNotifPage((p) => Math.max(0, p - 1))}
+                  onNext={() => setNotifPage((p) => Math.min(notifPageCount - 1, p + 1))}
+                />
+              )}
             </div>
           </div>
         </div>,
@@ -677,4 +868,3 @@ export function NotificationsBell() {
     </>
   )
 }
-

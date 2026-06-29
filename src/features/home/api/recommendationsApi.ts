@@ -5,8 +5,8 @@ import {
 } from "@shared/services/http/apiErrorMessage";
 import type { Offer, StoreBadge } from "@features/market/model/store/marketStoreTypes";
 import type { RecommendationBatch } from "@app/bootstrap/bootstrapTypes";
-import { useAppStore } from "@features/auth/store/useAppStore";
-import { getOrCreateGuestId } from "@features/auth/api/guestId";
+import { useAppStore } from "@features/auth/model/useAppStore";
+import { getOrCreateGuestId } from "@features/auth/model/guestId";
 
 function isPlainRecord(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null && !Array.isArray(x);

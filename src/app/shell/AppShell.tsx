@@ -9,7 +9,7 @@ import {
   User,
 } from "lucide-react";
 import { cn } from "@shared/lib/cn";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { NotificationsBell } from "../widgets/NotificationsBell";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { AuthEntryModal } from "@features/auth";

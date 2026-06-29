@@ -5,7 +5,7 @@ import {
   trustHistoryItemFromApi,
 } from "@features/profile/api/trustLedgerApi";
 import type { MarketState } from "./marketStoreTypes";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { createChatMessagesSlice } from "@features/chat/store/marketSliceChatMessages";
 import { createOffersThreadsSlice } from "@features/chat/store/marketSliceOffersThreads";
 import { createOwnerStoresSlice } from "./marketSliceOwnerStores";

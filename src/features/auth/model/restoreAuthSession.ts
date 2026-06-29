@@ -1,8 +1,8 @@
-import { useAppStore } from "@features/auth/store/useAppStore"
-import { apiFetch } from "@shared/services/http/apiClient"
-import { getSessionToken, setSessionToken } from "@shared/services/http/sessionToken"
-import { stopChatRealtime } from "@features/chat/model/chatRealtime"
-import { userFromSessionJson, type SessionUserJson } from './sessionUser'
+import { useAppStore } from '@features/auth/model/useAppStore'
+import { getSessionToken, setSessionToken } from '@shared/services/http/sessionToken'
+import { stopChatRealtime } from '@features/chat/model/chatRealtime'
+import { fetchAuthSession } from '../api/authSession'
+import { userFromSessionJson } from './sessionUser'
 
 /** Si hay token guardado, hidrata `me` y la bandera de sesión desde el backend. */
 export async function restoreAuthSession(): Promise<void> {
@@ -12,8 +12,8 @@ export async function restoreAuthSession(): Promise<void> {
     return
   }
 
-  const res = await apiFetch('/api/v1/auth/session')
-  if (!res.ok) {
+  const json = await fetchAuthSession()
+  if (!json) {
     setSessionToken(null)
     stopChatRealtime()
     useAppStore.getState().setSessionActive(false)
@@ -21,7 +21,6 @@ export async function restoreAuthSession(): Promise<void> {
     return
   }
 
-  const json = (await res.json()) as { user: SessionUserJson }
   useAppStore.getState().applySessionUser(userFromSessionJson(json.user))
   useAppStore.getState().setSessionActive(true)
 }

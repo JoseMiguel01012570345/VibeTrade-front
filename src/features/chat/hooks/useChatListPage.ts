@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAppStore } from '@features/auth/store/useAppStore'
+import { useAppStore } from '@features/auth/model/useAppStore'
 import { useMarketStore } from '@features/market/model/store/useMarketStore'
 import { mergeMissingChatListThreadsFromServer } from '@features/chat/model/mergeMissingChatListThreadsFromServer'
 

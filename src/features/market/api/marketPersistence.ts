@@ -1,4 +1,4 @@
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import type { StoreProduct, StoreService } from "@features/market/model/storeCatalogTypes";
 import { apiFetch } from "@shared/services/http/apiClient";
 import {

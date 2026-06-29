@@ -13,29 +13,11 @@ import {
 } from "@features/profile/api/trustLedgerApi"
 import type { TrustHistoryEntry } from '@features/profile/Dtos/trustLedgerTypes'
 import type { NotificationItem } from '@features/notifications/Dtos/notificationItem'
-
-export type { TrustHistoryEntry } from '@features/profile/Dtos/trustLedgerTypes'
-export type { NotificationItem } from '@features/notifications/Dtos/notificationItem'
-
-export type SocialNetworkId = 'instagram' | 'telegram' | 'x'
-
-/** Enlaces de perfil guardados por el usuario. */
-export type ProfileSocialLinks = Partial<Record<SocialNetworkId, string>>
-
-/** Perfil global sin rol operativo: comprador/vendedor/transportista solo en el contexto de cada chat. */
-export type User = {
-  id: string
-  name: string
-  username?: string
-  email: string
-  phone: string
-  avatarUrl?: string
-  trustScore: number
-  /** Cuentas persistidas en servidor (tambiÃ©n reflejadas en `profileSocialLinks`). */
-  instagram?: string
-  telegram?: string
-  xAccount?: string
-}
+import type {
+  ProfileSocialLinks,
+  SocialNetworkId,
+  User,
+} from '../Dtos/userTypes'
 
 const guestMe: User = {
   id: 'guest',

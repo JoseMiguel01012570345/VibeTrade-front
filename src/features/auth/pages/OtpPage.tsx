@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { cn } from "@shared/lib/cn"
-import { useAppStore } from "@features/auth/store/useAppStore"
+import { useAppStore } from "@features/auth/model/useAppStore"
 import { OtpInput } from "../components/OtpInput"
 import { apiFetch } from "@shared/services/http/apiClient"
 import { setSessionToken } from "@shared/services/http/sessionToken"
 import { stopChatRealtime } from "@features/chat/model/chatRealtime"
 import { bootstrapWebApp } from "@app/bootstrap/bootstrapWebApp"
-import { userFromSessionJson, type SessionUserJson } from "@features/auth/api/sessionUser"
-import type { OnboardingMode } from './OnboardingWelcomePage'
+import { userFromSessionJson } from '../model/sessionUser'
+import type { AuthSessionJson } from '../Dtos/sessionUserTypes'
+import type { OnboardingMode } from '../Dtos/onboardingTypes'
 
 function fmt(n: number) {
   const s = String(n).padStart(2, '0')
@@ -85,7 +86,7 @@ export function OtpPage() {
         window.setTimeout(() => setErr(false), 450)
         return
       }
-      const json = (await res.json()) as { sessionToken: string; user: SessionUserJson }
+      const json = (await res.json()) as AuthSessionJson
       setSessionToken(json.sessionToken)
       stopChatRealtime()
       applySessionUser(userFromSessionJson(json.user))

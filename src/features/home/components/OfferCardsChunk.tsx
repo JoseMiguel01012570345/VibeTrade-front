@@ -4,7 +4,7 @@ import { cn } from "@shared/lib/cn";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import type { RouteOfferPublicState } from "@features/market/model/store/marketStoreTypes";
 import type { Offer, StoreBadge } from "@features/market/model/store/useMarketStore";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import { OfferSaveButton } from "@features/market/components/OfferSaveButton";
 import { ExternalLink, Heart, MessageCircle } from "lucide-react";

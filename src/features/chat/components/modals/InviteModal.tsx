@@ -9,7 +9,7 @@ import {
   type SelectableColumnDef,
   SelectableDataTable,
 } from "../data/SelectableDataTable";
-import { fetchPublicProfile } from "@features/auth/api/fetchPublicProfile";
+import { fetchPublicProfile } from "@features/auth/model/publicProfile";
 
 type Props = Readonly<{
   routeSheet: RouteSheet;

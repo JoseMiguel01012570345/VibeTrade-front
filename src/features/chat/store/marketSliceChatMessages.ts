@@ -22,7 +22,7 @@ import {
   upsertMessageMergeDelivery,
 } from "@features/chat/model/chatMerge";
 import { mediaApiUrl, uploadMediaBlob } from "@shared/services/media/mediaClient";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { mergeChatSenderLabelsIntoProfileStore } from "@features/chat/model/chatSenderLabels";
 import { rehydrateCthThreadInStoreForIncomingMessage } from "@features/chat/model/rehydrateCthThreadInStoreForIncomingMessage";
 import { markPartyExpelledOnThread } from "@features/chat/model/threadPartyExpelled";

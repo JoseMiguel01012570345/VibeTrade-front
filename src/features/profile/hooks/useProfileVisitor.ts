@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { usePublicProfile } from './usePublicProfile'
-import { useAppStore } from '@features/auth/store/useAppStore'
+import { useAppStore } from '@features/auth/model/useAppStore'
 
 /** Perfil público de un visitante (no es el usuario de sesión). */
 export function useProfileVisitor(profileUserId: string | undefined, isMe: boolean) {

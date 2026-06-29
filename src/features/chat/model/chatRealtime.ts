@@ -1,7 +1,7 @@
 import { createElement as h } from "react";
 import * as signalR from "@microsoft/signalr";
 import toast from "react-hot-toast";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import { notifyDesktopIfUnfocused } from "@features/notifications/model/desktopNotifications";
 import { notificationDeepLink } from "@features/notifications/model/notificationRoutes";

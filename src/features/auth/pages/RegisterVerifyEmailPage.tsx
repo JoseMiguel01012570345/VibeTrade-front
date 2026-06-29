@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import { OtpInput } from '../components/OtpInput'
 import { DevCodeBanner } from '../components/DevCodeBanner'
 import { verifyRegistrationEmail } from '@features/auth/api/credentialsAuth'
-import { applyAuthSession } from '@features/auth/api/applyAuthSession'
+import { applyAuthSession } from '../model/applyAuthSession'
 
 type LocationState = {
   registrationId?: string

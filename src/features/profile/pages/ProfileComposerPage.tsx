@@ -5,7 +5,7 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import { ProfileStoresSection } from "../components/ProfileStoresSection";
 import { reelTitlesById } from "@features/reels/api/reelsBootstrapState";

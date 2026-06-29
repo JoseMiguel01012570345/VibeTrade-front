@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { ArrowLeft, LayoutGrid, RefreshCw } from "lucide-react";
 import { useMarketStore } from "@features/market/model/store/useMarketStore";
 import {

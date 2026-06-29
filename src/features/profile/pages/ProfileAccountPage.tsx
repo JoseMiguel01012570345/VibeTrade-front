@@ -12,8 +12,8 @@ import {
   User,
   Users,
 } from 'lucide-react'
-import type { SocialNetworkId } from '@features/auth/store/useAppStore'
-import { formatPhoneForDisplay } from '@features/auth/lib/formatPhoneForDisplay'
+import type { SocialNetworkId } from '@features/auth/Dtos/userTypes'
+import { formatPhoneForDisplay } from '@features/auth/model/formatPhoneForDisplay'
 import { StoreTrustMini } from '@features/profile/components/trust/StoreTrustMini'
 import { TrustBar } from '../components/trust/TrustBar'
 import { ThemeToggle } from '@app/widgets/ThemeToggle'

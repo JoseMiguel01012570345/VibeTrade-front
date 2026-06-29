@@ -1,19 +1,8 @@
 import { useMutation } from '@tanstack/react-query'
-import {
-  searchCatalog,
-  type CatalogSearchKind,
-} from '../api/searchStores'
+import { searchCatalog } from '../api/searchStores'
+import type { CatalogSearchParams } from '../Dtos/catalogSearchTypes'
 
-export type CatalogSearchParams = {
-  storeNameQ: string
-  storeCategories: string[]
-  kinds: CatalogSearchKind[]
-  km: string
-  trustMin: string
-  geo: { lat: number; lng: number } | null
-  offset: number
-  limit: number
-}
+export type { CatalogSearchParams } from '../Dtos/catalogSearchTypes'
 
 export function useCatalogSearch() {
   return useMutation({

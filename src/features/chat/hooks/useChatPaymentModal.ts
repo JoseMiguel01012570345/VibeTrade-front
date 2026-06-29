@@ -29,7 +29,7 @@ import {
   beginChatPaymentExecute,
   endChatPaymentExecute,
 } from "@features/chat/model/chatRealtime";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import {
   agreementDeclaresMerchandise,
   agreementDeclaresService,

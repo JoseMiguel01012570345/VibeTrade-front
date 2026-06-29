@@ -14,7 +14,7 @@ import {
 import { cn } from "@shared/lib/cn";
 import toast from "react-hot-toast";
 import { useShallow } from "zustand/react/shallow";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import {
   useMarketStore,
 } from "@features/market/model/store/useMarketStore";
@@ -48,7 +48,7 @@ import {
   fetchPublicProfile,
   mergePublicProfileIntoAppStore,
   wasPublicProfileHydrated,
-} from "@features/auth/api/fetchPublicProfile";
+} from "@features/auth/model/publicProfile";
 import { VT_SOCIAL_PLACEHOLDER_OFFER_ID } from "@features/chat/model/chatThreadDtoFallbacks";
 import {
   mergeBuyerLabelFromThreadDto,

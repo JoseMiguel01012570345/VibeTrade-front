@@ -1,4 +1,4 @@
-import type { SocialNetworkId } from '@features/auth/store/useAppStore'
+import type { SocialNetworkId } from '@features/auth/Dtos/userTypes'
 
 export const PROFILE_SOCIAL_META: Record<
   SocialNetworkId,

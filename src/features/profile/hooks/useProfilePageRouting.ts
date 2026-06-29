@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useAppStore } from '@features/auth/store/useAppStore'
+import { useAppStore } from '@features/auth/model/useAppStore'
 import { useMarketStore } from '@features/market/model/store/useMarketStore'
 import { profileSectionPath, type ProfileSection, isProfileSection } from '@features/profile/model/profilePaths'
 import { resolveIsMe, resolveProfileUserId, shouldOpenPaymentCardsModal } from '../model/profileAccountLogic'

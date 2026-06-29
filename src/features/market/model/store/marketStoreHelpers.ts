@@ -3,7 +3,7 @@ import { normalizeThreadMessages } from "@features/chat/model/chatMerge"
 import { quoteAuthorForMessage } from "@features/chat/model/chatParticipantLabels"
 import { normalizeOfferComments } from "@features/market/model/offerComments"
 import type { Message, Offer, ReplyQuote, Thread } from './marketStoreTypes'
-import { useAppStore } from '@features/auth/store/useAppStore'
+import { useAppStore } from '@features/auth/model/useAppStore'
 
 export function uid(prefix: string): string {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`

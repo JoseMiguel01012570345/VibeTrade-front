@@ -3,7 +3,8 @@ import { Heart, Send, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { cn } from "@shared/lib/cn"
 import type { Offer, StoreBadge } from "@features/market/model/store/marketStoreTypes"
-import { useAppStore, type User } from "@features/auth/store/useAppStore"
+import { useAppStore } from "@features/auth/model/useAppStore"
+import type { User } from "@features/auth/Dtos/userTypes"
 import { useMarketStore } from "@features/market/model/store/useMarketStore"
 import { toggleOfferQaCommentLike } from "@features/market/api/offerEngagementApi"
 import { getSessionToken } from "@shared/services/http/sessionToken"

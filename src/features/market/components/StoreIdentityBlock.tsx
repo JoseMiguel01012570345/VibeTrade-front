@@ -14,7 +14,7 @@ import { ImageLightbox } from "@features/chat/components/media/ImageLightbox";
 import { StoreLocationPreview } from "./StoreLocationPreview";
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
 import { TrustHistoryModal } from "@features/profile/components/trust/TrustHistoryModal";
-import { useAppStore } from "@features/auth/store/useAppStore";
+import { useAppStore } from "@features/auth/model/useAppStore";
 import { EMPTY_TRUST_LEDGER_ENTRIES } from "@features/profile/Dtos/trustLedgerTypes";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 import { fetchStoreTrustHistory } from "@features/profile/api/trustLedgerApi";

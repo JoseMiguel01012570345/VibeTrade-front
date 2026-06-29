@@ -4,7 +4,7 @@ import type { Offer } from "@features/market/model/store/useMarketStore";
 import type {
   CatalogOfferPreview,
   CatalogSearchItem,
-} from "@features/catalog/api/searchStores";
+} from "@features/catalog/Dtos/catalogSearchTypes";
 import { websiteUrlDisplayLabel } from "@shared/lib/websiteUrl";
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
