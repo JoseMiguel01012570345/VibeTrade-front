@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
-import { waitForChatReady } from "./chat-helpers";
+import { reloadChatThread, waitForChatReady } from "./chat-helpers";
 
 const FORM_DIALOG_TEXT = /nueva hoja de rutas|editar hoja de rutas/i;
 
@@ -38,23 +38,81 @@ export async function dismissPeerPartyExitModalIfOpen(page: Page): Promise<void>
   }
 }
 
+async function ensureChatRailVisible(page: Page): Promise<void> {
+  const railTab = page
+    .getByRole("button", { name: /^rutas$|^contratos$|^integrantes$/i })
+    .first();
+  if (await railTab.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    return;
+  }
+  const panelBtn = page.getByRole("button", { name: /^panel$/i });
+  if (await panelBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await panelBtn.click();
+    await expect(railTab).toBeVisible({ timeout: 15_000 });
+  }
+}
+
+async function waitForChatRailTabs(page: Page): Promise<void> {
+  await ensureChatRailVisible(page);
+  await expect(page.getByText(/cargando chat/i)).toBeHidden({ timeout: 45_000 });
+  await expect(
+    page
+      .getByRole("button", { name: /^rutas$|^contratos$|^integrantes$/i })
+      .first(),
+  ).toBeVisible({ timeout: 30_000 });
+}
+
+async function reloadChatThreadIfKnown(page: Page): Promise<void> {
+  const threadId = page.url().match(/\/chat\/(cth_[^/?#]+)/)?.[1];
+  if (threadId) {
+    await reloadChatThread(page);
+  } else {
+    await page.waitForTimeout(500);
+  }
+}
+
 export async function waitForThreadContractsLoaded(page: Page): Promise<void> {
   await waitForChatReady(page);
   await dismissPeerPartyExitModalIfOpen(page);
+
   const contractsTab = page.getByRole("button", { name: /^contratos$/i });
-  await expect(contractsTab).toBeVisible({ timeout: 45_000 });
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await dismissPeerPartyExitModalIfOpen(page);
+    await ensureChatRailVisible(page);
+    if (await contractsTab.isVisible({ timeout: 8_000 }).catch(() => false)) {
+      break;
+    }
+    if (attempt < 3) {
+      await reloadChatThreadIfKnown(page);
+      await dismissPeerPartyExitModalIfOpen(page);
+      continue;
+    }
+    await waitForChatRailTabs(page);
+    await expect(contractsTab).toBeVisible({ timeout: 15_000 });
+  }
+
   for (let attempt = 0; attempt < 5; attempt++) {
     await dismissPeerPartyExitModalIfOpen(page);
     try {
-      await contractsTab.click({ timeout: 5_000 });
+      await contractsTab.click({ timeout: 8_000 });
       break;
     } catch {
-      if (attempt === 4) throw new Error("Could not open Contratos tab");
+      if (attempt === 4) {
+        await reloadChatThreadIfKnown(page);
+        await dismissPeerPartyExitModalIfOpen(page);
+        await waitForChatRailTabs(page);
+        await contractsTab.click({ timeout: 15_000 });
+        break;
+      }
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(400);
     }
   }
+
   await expect(
     page.getByText(/aceptado|accepted/i).first(),
-  ).toBeVisible({ timeout: 15_000 });
+  ).toBeVisible({ timeout: 20_000 });
 }
 
 /** Opens the Rutas tab in the right rail. */
@@ -829,10 +887,14 @@ export async function linkRouteSheetToAgreementViaUI(
  * Handles the native window.confirm() dialog by accepting it.
  */
 export async function publishRouteSheetViaUI(page: Page): Promise<void> {
-  const alreadyPublished = page.getByRole("button", {
+  const hideBtn = page.getByRole("button", {
     name: /ocultar de la plataforma/i,
   });
-  if (await alreadyPublished.isVisible({ timeout: 2_000 }).catch(() => false)) {
+  const publishedBadge = page.getByText(/\ben plataforma\b/i).first();
+  if (await hideBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    return;
+  }
+  if (await publishedBadge.isVisible({ timeout: 1_000 }).catch(() => false)) {
     return;
   }
   const publishBtn = page.getByRole("button", {
@@ -840,18 +902,25 @@ export async function publishRouteSheetViaUI(page: Page): Promise<void> {
   });
   await expect(publishBtn).toBeVisible({ timeout: 5_000 });
   await expect(publishBtn).toBeEnabled({ timeout: 3_000 });
-  const persistWait = page.waitForResponse(
-    (res) =>
-      res.request().method() === "PUT" &&
-      res.url().includes("/route-sheets/"),
-    { timeout: 30_000 },
-  );
-  page.once("dialog", (d) => void d.accept());
-  await publishBtn.click();
-  await persistWait.catch(() => null);
-  await expect(
-    page.getByRole("button", { name: /ocultar de la plataforma/i }),
-  ).toBeVisible({ timeout: 15_000 });
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const persistWait = page.waitForResponse(
+      (res) =>
+        res.request().method() === "PUT" &&
+        res.url().includes("/route-sheets/"),
+      { timeout: 45_000 },
+    );
+    page.once("dialog", (d) => void d.accept());
+    await publishBtn.click();
+    await persistWait.catch(() => null);
+    if (await hideBtn.isVisible({ timeout: 20_000 }).catch(() => false)) {
+      return;
+    }
+    if (await publishedBadge.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      return;
+    }
+  }
+  await expect(hideBtn).toBeVisible({ timeout: 15_000 });
 }
 
 /** Tras entrega total: republicar desde UI muestra aviso y no persiste publicación. */

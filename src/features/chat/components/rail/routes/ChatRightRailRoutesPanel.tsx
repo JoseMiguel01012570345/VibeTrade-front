@@ -424,7 +424,6 @@ export function ChatRightRailRoutesPanel({
     return () => {
       sub.unsubscribe();
       unregister();
-      railRoutesBus.dispose();
     };
   }, [railRoutesBus, threadId]);
 

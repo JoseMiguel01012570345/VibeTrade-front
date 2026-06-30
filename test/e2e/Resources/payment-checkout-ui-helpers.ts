@@ -5,6 +5,7 @@ import { openChatThread } from "./chat-helpers";
 import {
   E2E_DEMO_CARD_LAST4,
   buyerHasSavedCardViaPage,
+  ensureBuyerPaymentReady,
   ensurePaymentAccountViaPage,
   listSavedCardsViaPage,
 } from "./e2e-payment-gateway-customer";
@@ -428,7 +429,7 @@ export async function confirmInformeCheckbox(page: Page): Promise<void> {
   await waitForInformeReady(page);
   const modal = paymentModal(page);
   const checkbox = modal.getByRole("checkbox", {
-    name: /confirmé el desglose/i,
+    name: /confirmo el desglose/i,
   });
   await expect(checkbox).toBeVisible({ timeout: 15_000 });
   await checkbox.check();
@@ -564,6 +565,14 @@ export async function ensureBuyerDemoCard(
   page: Page,
   threadId?: string,
 ): Promise<boolean> {
+  const token = await page
+    .evaluate(() => sessionStorage.getItem("vt_session_token") ?? "")
+    .catch(() => "");
+  if (token.trim() && (await ensureBuyerPaymentReady(token))) {
+    if (threadId) await openChatThread(page, threadId);
+    return true;
+  }
+
   await ensurePaymentAccountViaPage(page);
   if (await buyerHasSavedCardViaPage(page, BASE_URL)) {
     if (threadId) await openChatThread(page, threadId);

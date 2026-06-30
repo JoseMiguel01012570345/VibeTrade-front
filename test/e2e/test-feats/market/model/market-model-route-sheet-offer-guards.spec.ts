@@ -36,9 +36,10 @@ import {
 import {
   clickEditRouteSheet,
   ensureRouteSheetDetailOpen,
+  expelFromTramoButton,
   kickCarrierFromTramo,
   openRoutesRail,
-  openSubscribersPanel,
+  prepareSubscribersPanelForExpel,
   waitForRouteSheetForm,
 } from "../../../Resources/route-sheet-ui-helpers";
 import { reloadChatThread } from "../../../Resources/chat-helpers";
@@ -189,8 +190,15 @@ test.describe("route sheet offer guards — paid edit UI", () => {
     await openLogisticsRouteSheet(sellerPage, route.routeSheetTitulo);
     await sellerPauseTramoViaUI(sellerPage, "Pausa OG-04", 0);
     await ensureRouteSheetDetailOpen(sellerPage, route.routeSheetTitulo);
-    await openSubscribersPanel(sellerPage);
-    await kickCarrierFromTramo(sellerPage, 0, route.routeSheetTitulo);
+    await prepareSubscribersPanelForExpel(
+      sellerPage,
+      1,
+      route.routeSheetTitulo,
+    );
+    await expect(expelFromTramoButton(sellerPage)).toBeEnabled({
+      timeout: 15_000,
+    });
+    await kickCarrierFromTramo(sellerPage, 1, route.routeSheetTitulo);
     await reloadChatThread(sellerPage);
     await ensureRouteSheetDetailOpen(sellerPage, route.routeSheetTitulo);
     await expect(

@@ -1,8 +1,10 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { e2eApiUrl, getE2EAppBaseUrl } from "./e2e-api-base";
-import { listSavedCardsViaFetch } from "./e2e-payment-gateway-customer";
-import { ensureBuyerDemoCard } from "./payment-checkout-ui-helpers";
+import {
+  ensureBuyerPaymentReady,
+  resolveBuyerPaymentMethodId,
+} from "./e2e-payment-gateway-customer";
 
 export type E2ERouteStopDelivery = {
   routeSheetId: string;
@@ -885,11 +887,8 @@ export async function payRouteStopsViaBuyerApi(
     routeStopIds: string[];
   },
 ): Promise<{ status: number; text: string }> {
-  await page.goto("/", { waitUntil: "domcontentloaded" });
-  const cards = await listSavedCardsViaFetch(buyerToken);
-  const paymentMethodId =
-    cards.find((c) => (c.id ?? "").trim().length > 0)?.id ??
-    `pm_test_skip_${Date.now()}`;
+  await page.goto(getE2EAppBaseUrl(), { waitUntil: "domcontentloaded" });
+  const paymentMethodId = await resolveBuyerPaymentMethodId(buyerToken);
   const res = await e2eAuthorizedFetch(
     page,
     buyerToken,
@@ -918,7 +917,6 @@ export async function payMerchandiseLinesViaBuyerApi(
   },
 ): Promise<{ status: number; text: string }> {
   await page.goto(getE2EAppBaseUrl(), { waitUntil: "domcontentloaded" });
-  await ensureBuyerDemoCard(page);
   const agRes = await e2eAuthorizedFetch(
     page,
     buyerToken,
@@ -947,12 +945,8 @@ export async function payMerchandiseLinesViaBuyerApi(
     return { status: 400, text: "no merchandise lines on agreement" };
   }
 
-  await ensureBuyerDemoCard(page);
-  const cards = await listSavedCardsViaFetch(buyerToken);
-  const paymentMethodId = cards.find((c) => (c.id ?? "").trim().length > 0)?.id;
-  if (!paymentMethodId) {
-    return { status: 400, text: "buyer has no saved payment method" };
-  }
+  await ensureBuyerPaymentReady(buyerToken);
+  const paymentMethodId = await resolveBuyerPaymentMethodId(buyerToken);
   const res = await e2eAuthorizedFetch(
     page,
     buyerToken,

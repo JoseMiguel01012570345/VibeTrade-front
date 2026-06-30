@@ -125,7 +125,21 @@ export async function sellerEmitMerchandiseAgreement(
     await fillMerchandiseBuyerFields(page, 1);
   }
 
-  await dialog.getByRole("button", { name: /^emitir acuerdo$/i }).click();
+  const emitBtn = dialog.getByRole("button", { name: /^emitir acuerdo$/i });
+  await expect(emitBtn).toBeEnabled({ timeout: 20_000 });
+  const emitResponse = page.waitForResponse(
+    (res) =>
+      res.request().method() === "POST" &&
+      /\/trade-agreements(?:\?|$)/.test(res.url()),
+    { timeout: 45_000 },
+  );
+  await emitBtn.click();
+  const res = await emitResponse.catch(() => null);
+  if (res && res.status() >= 400) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`emitTradeAgreement failed (${res.status()}): ${body}`);
+  }
+  await expect(dialog).toBeHidden({ timeout: 45_000 });
 
   await expect(page.getByText(opts.title).first()).toBeVisible({
     timeout: 25_000,
@@ -816,5 +830,13 @@ export async function openSellerPage(
   const page = await ctx.newPage();
   await openChatThread(page, threadId);
   await dismissPeerPartyExitModalIfOpen(page);
+  await expect(page.getByText(/cargando chat/i)).toBeHidden({
+    timeout: 45_000,
+  });
+  await expect(
+    page
+      .getByRole("button", { name: /^rutas$|^contratos$|^integrantes$/i })
+      .first(),
+  ).toBeVisible({ timeout: 30_000 });
   return page;
 }

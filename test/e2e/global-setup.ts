@@ -154,19 +154,22 @@ export default async function globalSetup(): Promise<void> {
 
     const paymentAccountOk = await ensureBuyerPaymentReady(buyer.sessionToken);
     if (paymentAccountOk) {
-      const cards = await listSavedCardsViaFetch(buyer.sessionToken, baseURL);
+      const cards = await listSavedCardsViaFetch(
+        buyer.sessionToken,
+        getE2EApiBaseUrl(),
+      );
       if (cards.length > 0) {
         console.log(
           `[e2e] Buyer payment card ready (${cards[0]?.brand ?? "card"} •••• ${cards[0]?.last4 ?? E2E_DEMO_CARD_LAST4}).`,
         );
       } else {
         console.warn(
-          "[e2e] Buyer PaymentGateway customer exists but payment-methods returned no cards; rebuild/restart API with VIBETRADE_SKIP_PAYMENT_INTENTS=true.",
+          "[e2e] Buyer payment account exists but payment-methods returned no cards.",
         );
       }
     } else {
       console.warn(
-        "[e2e] Buyer PaymentGateway customer setup failed; payment E2E tests may skip.",
+        "[e2e] Buyer simulated payment account setup failed; payment E2E tests may skip.",
       );
     }
 

@@ -2,6 +2,8 @@ import type { Page } from "@playwright/test";
 import { getE2EApiBaseUrl, getE2EAppBaseUrl } from "./e2e-api-base";
 
 export const E2E_DEMO_CARD_LAST4 = "4242";
+/** Matches <see cref="SimulatedPaymentGateway.DemoPaymentMethodId"/> on the API. */
+export const E2E_SIM_DEMO_PAYMENT_METHOD_ID = "sim_pm_demo";
 
 export type E2ESavedCard = {
   id: string;
@@ -38,22 +40,44 @@ export async function ensurePaymentAccountViaFetch(
   }
 }
 
-/** Ensures buyer has at least one saved demo card (retries app proxy + direct API). */
+/**
+ * Ensures the buyer has a simulated payment account and at least one demo card.
+ * GET payment-methods auto-provisions `sim_acc_*` on the API; POST setup-intents is a fallback.
+ */
 export async function ensureBuyerPaymentReady(
   sessionToken: string,
 ): Promise<boolean> {
-  const origins = [getE2EAppBaseUrl(), getE2EApiBaseUrl()];
-  for (const origin of origins) {
-    for (let attempt = 0; attempt < 4; attempt++) {
-      await ensurePaymentAccountViaFetch(sessionToken, origin);
-      const cards = await listSavedCardsViaFetch(sessionToken, origin);
+  const token = sessionToken.trim();
+  if (!token) return false;
+
+  const origins = [getE2EApiBaseUrl(), getE2EAppBaseUrl()];
+  for (let attempt = 0; attempt < 6; attempt++) {
+    for (const origin of origins) {
+      const cards = await listSavedCardsViaFetch(token, origin);
       if (cards.some((c) => (c.id ?? "").trim().length > 0)) {
         return true;
       }
-      await sleep(1_500);
+      await ensurePaymentAccountViaFetch(token, origin);
+      const afterSetup = await listSavedCardsViaFetch(token, origin);
+      if (afterSetup.some((c) => (c.id ?? "").trim().length > 0)) {
+        return true;
+      }
     }
+    await sleep(1_000);
   }
   return false;
+}
+
+/** Resolves `sim_pm_demo` or the first saved card after provisioning. */
+export async function resolveBuyerPaymentMethodId(
+  sessionToken: string,
+): Promise<string> {
+  await ensureBuyerPaymentReady(sessionToken);
+  const cards = await listSavedCardsViaFetch(sessionToken);
+  return (
+    cards.find((c) => (c.id ?? "").trim().length > 0)?.id ??
+    E2E_SIM_DEMO_PAYMENT_METHOD_ID
+  );
 }
 
 export async function listSavedCardsViaFetch(
@@ -126,6 +150,12 @@ export async function buyerHasSavedCardViaPage(
   page: Page,
   baseURL = getE2EAppBaseUrl(),
 ): Promise<boolean> {
+  const token = await page
+    .evaluate(() => sessionStorage.getItem("vt_session_token") ?? "")
+    .catch(() => "");
+  if (token.trim()) {
+    return ensureBuyerPaymentReady(token);
+  }
   await ensurePaymentAccountViaPage(page, baseURL);
   const cards = await listSavedCardsViaPage(page, baseURL);
   return cards.some((c: E2ESavedCard) => (c.id ?? "").trim().length > 0);

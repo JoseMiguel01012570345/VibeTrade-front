@@ -8,8 +8,14 @@ import {
 import { logisticsFlowState } from "./e2e-logistics-env";
 import { ensureCarrierLegReadyForCede } from "./e2e-logistics-api";
 
+function routesRailAside(page: Page) {
+  return page.getByRole("complementary", {
+    name: /contratos, rutas e integrantes/i,
+  });
+}
+
 function routeLeg(page: Page, tramoIndex = 0) {
-  return page.getByRole("listitem").nth(tramoIndex);
+  return routesRailAside(page).getByRole("listitem").nth(tramoIndex);
 }
 
 function logisticsPanel(page: Page, tramoIndex = 0) {
@@ -272,11 +278,16 @@ export async function sellerPauseTramoViaUI(
   tramoIndex = 0,
 ): Promise<void> {
   const panel = logisticsPanel(page, tramoIndex);
-  await panel.getByRole("button", { name: /pausar tramo/i }).click();
+  const pauseBtn = panel.getByRole("button", { name: /pausar tramo/i });
+  await expect(pauseBtn).toBeVisible({ timeout: 15_000 });
+  await pauseBtn.scrollIntoViewIfNeeded();
+  await expect(pauseBtn).toBeEnabled({ timeout: 15_000 });
+  await pauseBtn.click();
   const modal = page
     .getByRole("dialog")
-    .filter({ hasText: /pausar tramo/i });
-  await expect(modal).toBeVisible({ timeout: 10_000 });
+    .filter({ hasText: /pausar tramo/i })
+    .last();
+  await expect(modal).toBeVisible({ timeout: 15_000 });
   await modal.locator("textarea").first().fill(reason);
   await modal.getByRole("button", { name: /confirmar pausa/i }).click();
   await expect(
