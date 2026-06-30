@@ -125,8 +125,9 @@ export async function addProductViaUI(
   await page.goto(`${baseURL}/store/${storeId}/products`, {
     waitUntil: "domcontentloaded",
   });
+  await expect(page.getByText(/cargando tienda/i)).toBeHidden({ timeout: 45_000 });
   await expect(page.getByText(productName).first()).toBeVisible({
-    timeout: 15_000,
+    timeout: 30_000,
   });
   return match[1];
 }

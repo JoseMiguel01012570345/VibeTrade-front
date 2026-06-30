@@ -65,10 +65,8 @@ test.describe("route sheet validation — UI", () => {
     await clickNewRouteSheet(sellerPage);
     await waitForRouteSheetForm(sellerPage);
 
-    await fillRouteSheetBasicFields(
-      sellerPage,
-      `RV-01 Desconectado ${Date.now()}`,
-    );
+    const tituloRv01 = `RV-01 Desconectado ${Date.now()}`;
+    await fillRouteSheetBasicFields(sellerPage, tituloRv01);
     await deleteTramoAt(sellerPage, 1);
 
     await fillTramoFields(sellerPage, 0, {
@@ -112,12 +110,8 @@ test.describe("route sheet validation — UI", () => {
 
     await saveRouteSheet(sellerPage);
     await expect(
-      sellerPage
-        .getByText(/hoja de ruta creada|hoja de ruta actualizada/i)
-        .first(),
-    ).toBeVisible({
-      timeout: 15_000,
-    });
+      sellerPage.getByRole("button", { name: new RegExp(tituloRv01) }).first(),
+    ).toBeVisible({ timeout: 15_000 });
 
     await sellerPage.close();
   });
@@ -173,9 +167,9 @@ test.describe("route sheet validation — UI", () => {
     });
 
     await saveRouteSheet(sellerPage);
-    await expect(sellerPage.getByText(/hoja de ruta creada/i)).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(
+      sellerPage.getByRole("button", { name: new RegExp(titulo) }).first(),
+    ).toBeVisible({ timeout: 15_000 });
 
     await sellerPage.close();
   });
