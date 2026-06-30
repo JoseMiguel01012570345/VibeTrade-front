@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { waitForChatReady } from "./chat-helpers";
 
@@ -6,6 +6,15 @@ const FORM_DIALOG_TEXT = /nueva hoja de rutas|editar hoja de rutas/i;
 
 export function formDialog(page: Page) {
   return page.locator('[role="dialog"]').filter({ hasText: FORM_DIALOG_TEXT });
+}
+
+async function clickCalendarDay(cal: Locator, day: string): Promise<void> {
+  const btn = cal
+    .locator(".grid-cols-7 button:not([disabled])")
+    .filter({ hasText: new RegExp(`^${day}$`) })
+    .first();
+  await expect(btn).toBeVisible({ timeout: 5_000 });
+  await btn.evaluate((el) => (el as HTMLButtonElement).click());
 }
 
 /**
@@ -287,11 +296,7 @@ export async function fillTramoFields(
   const recCal = page.getByRole("dialog", { name: "Calendario" });
   await expect(recCal).toBeVisible({ timeout: 5_000 });
   const recDay = opts.recogidaDate.split("-")[2]?.replace(/^0/, "") ?? "1";
-  await recCal
-    .locator(".grid-cols-7 button:not([disabled])")
-    .filter({ hasText: new RegExp(`^${recDay}$`) })
-    .first()
-    .click();
+  await clickCalendarDay(recCal, recDay);
   await expect(recCal).toBeHidden({ timeout: 5_000 });
 
   await form
@@ -309,11 +314,7 @@ export async function fillTramoFields(
   const entCal = page.getByRole("dialog", { name: "Calendario" });
   await expect(entCal).toBeVisible({ timeout: 5_000 });
   const entDay = opts.entregaDate.split("-")[2]?.replace(/^0/, "") ?? "2";
-  await entCal
-    .locator(".grid-cols-7 button:not([disabled])")
-    .filter({ hasText: new RegExp(`^${entDay}$`) })
-    .first()
-    .click();
+  await clickCalendarDay(entCal, entDay);
   await expect(entCal).toBeHidden({ timeout: 5_000 });
 
   await form

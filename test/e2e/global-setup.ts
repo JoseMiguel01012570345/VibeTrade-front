@@ -17,7 +17,7 @@ import {
 } from "./Resources/e2e-ui-store";
 import {
   E2E_DEMO_CARD_LAST4,
-  ensurePaymentAccountViaFetch,
+  ensureBuyerPaymentReady,
   listSavedCardsViaFetch,
 } from "./Resources/e2e-payment-gateway-customer";
 import {
@@ -152,10 +152,7 @@ export default async function globalSetup(): Promise<void> {
       logisticsAgreementCursor: rsProvisioned ? 0 : priorLogisticsCursor,
     });
 
-    const paymentAccountOk = await ensurePaymentAccountViaFetch(
-      buyer.sessionToken,
-      baseURL,
-    );
+    const paymentAccountOk = await ensureBuyerPaymentReady(buyer.sessionToken);
     if (paymentAccountOk) {
       const cards = await listSavedCardsViaFetch(buyer.sessionToken, baseURL);
       if (cards.length > 0) {

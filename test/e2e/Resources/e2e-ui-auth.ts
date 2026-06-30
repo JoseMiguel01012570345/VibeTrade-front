@@ -122,12 +122,19 @@ async function fillRegisterForm(
   username: string,
   phoneDigits: string,
 ): Promise<void> {
-  await page.getByLabel(/^nombre de usuario$/i).fill(username);
-  await page.getByLabel(/^email$/i).fill(email);
-  await page.locator('input[autocomplete="new-password"]').first().fill(password);
-  await page.locator('input[autocomplete="new-password"]').nth(1).fill(password);
-  await page.getByLabel(/^teléfono$/i).fill(phoneDigits);
-  await page.getByRole("button", { name: /^continuar$/i }).click();
+  await expect(page.getByRole("heading", { name: /crear cuenta/i })).toBeVisible({
+    timeout: 15_000,
+  });
+
+  const form = page.locator("form").first();
+  const phoneInput = form.locator('input[inputmode="tel"]');
+  await expect(phoneInput).toBeEnabled({ timeout: 30_000 });
+  await phoneInput.fill(phoneDigits);
+  await form.locator("label").filter({ hasText: "Usuario" }).locator("input").fill(username);
+  await form.locator('input[type="email"]').fill(email);
+  await form.locator('input[autocomplete="new-password"]').first().fill(password);
+  await form.locator('input[autocomplete="new-password"]').nth(1).fill(password);
+  await form.getByRole("button", { name: /^continuar$/i }).click();
   await expect(page).toHaveURL(/\/onboarding\/verify-phone/, { timeout: 20_000 });
 }
 
@@ -225,6 +232,19 @@ export async function registerUserViaUI(
   };
 }
 
+async function fillLoginForm(
+  page: Page,
+  email: string,
+  password: string,
+): Promise<void> {
+  await expect(page.getByRole("heading", { name: /iniciar sesión/i })).toBeVisible({
+    timeout: 15_000,
+  });
+  const form = page.locator("form").first();
+  await form.locator('input[type="email"]').fill(email);
+  await form.locator('input[autocomplete="current-password"]').fill(password);
+}
+
 export async function loginUserViaUI(
   page: Page,
   baseURL: string,
@@ -235,8 +255,7 @@ export async function loginUserViaUI(
   await page.getByRole("button", { name: /ya tengo cuenta/i }).click();
   await expect(page).toHaveURL(/\/onboarding\/login/);
 
-  await page.getByLabel(/^email$/i).fill(email);
-  await page.locator('input[autocomplete="current-password"]').fill(password);
+  await fillLoginForm(page, email, password);
   await page.getByRole("button", { name: /iniciar sesión/i }).click();
   await expect(page).toHaveURL(/\/home/, { timeout: 45_000 });
 

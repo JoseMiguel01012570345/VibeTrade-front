@@ -18,6 +18,8 @@ function authHeaders(sessionToken?: string): Record<string, string> {
   return headers;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 /** Creates simulated payment account via POST setup-intents. */
 export async function ensurePaymentAccountViaFetch(
   sessionToken: string,
@@ -34,6 +36,24 @@ export async function ensurePaymentAccountViaFetch(
   } catch {
     return false;
   }
+}
+
+/** Ensures buyer has at least one saved demo card (retries app proxy + direct API). */
+export async function ensureBuyerPaymentReady(
+  sessionToken: string,
+): Promise<boolean> {
+  const origins = [getE2EAppBaseUrl(), getE2EApiBaseUrl()];
+  for (const origin of origins) {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await ensurePaymentAccountViaFetch(sessionToken, origin);
+      const cards = await listSavedCardsViaFetch(sessionToken, origin);
+      if (cards.some((c) => (c.id ?? "").trim().length > 0)) {
+        return true;
+      }
+      await sleep(1_500);
+    }
+  }
+  return false;
 }
 
 export async function listSavedCardsViaFetch(

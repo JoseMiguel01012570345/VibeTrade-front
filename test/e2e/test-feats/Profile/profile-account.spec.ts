@@ -31,7 +31,7 @@ test.describe("profile /account E2E", () => {
   test("paymentCards query opens payment modal", async ({ page }) => {
     await page.goto("/profile/me/account?paymentCards=1");
     await expect(
-      page.getByRole("dialog", { name: /pagos \(demo\)/i }),
+      page.getByRole("dialog", { name: /pagos \(simulado\)/i }),
     ).toBeVisible({ timeout: 15_000 });
     await expect(page).not.toHaveURL(/paymentCards=1/);
   });

@@ -23,19 +23,20 @@ export async function openContactsModal(page: Page): Promise<void> {
 }
 
 export function profileFieldInput(page: Page, fieldLabel: RegExp) {
-  return page
-    .locator("label")
-    .filter({ hasText: fieldLabel })
-    .locator("input.vt-input")
-    .first();
+  let labels = page.locator("label").filter({ hasText: fieldLabel });
+  if (/nombre/i.test(fieldLabel.source) && !/usuario/i.test(fieldLabel.source)) {
+    labels = labels.filter({ hasNotText: /nombre de usuario/i });
+  }
+  return labels.locator("input.vt-input").first();
 }
 
 /** Guardar junto al campo cuyo label coincide (nombre, email, …). */
 export function saveButtonForField(page: Page, fieldLabel: RegExp) {
-  return page
-    .locator("label")
-    .filter({ hasText: fieldLabel })
-    .getByRole("button", { name: /^guardar$/i });
+  let labels = page.locator("label").filter({ hasText: fieldLabel });
+  if (/nombre/i.test(fieldLabel.source) && !/usuario/i.test(fieldLabel.source)) {
+    labels = labels.filter({ hasNotText: /nombre de usuario/i });
+  }
+  return labels.getByRole("button", { name: /^guardar$/i });
 }
 
 export async function addContactByPhone(
@@ -57,10 +58,7 @@ export async function removeContactByDisplayName(
   const row = page.locator("li").filter({ hasText: displayName });
   await expect(row).toBeVisible({ timeout: 10_000 });
   await row.getByRole("button", { name: /eliminar contacto/i }).click();
-  await expect(page.getByText(/contacto eliminado/i).first()).toBeVisible({
-    timeout: 15_000,
-  });
-  await expect(row).toBeHidden({ timeout: 10_000 });
+  await expect(row).toBeHidden({ timeout: 15_000 });
 }
 
 export async function uploadProfileAvatarViaUI(

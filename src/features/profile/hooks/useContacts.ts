@@ -5,8 +5,8 @@ import {
   removeContact,
   resolvePlatformUserByPhone,
 } from '../api/contactsApi'
+import type { UserContact } from '../Dtos/contactsDtos'
 import { queryKeys } from '@shared/lib/queryKeys'
-
 export function useContacts(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.contacts,
@@ -30,7 +30,20 @@ export function useRemoveContactMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: removeContact,
-    onSuccess: () => {
+    onMutate: async (contactUserId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.contacts })
+      const previous = queryClient.getQueryData<UserContact[]>(queryKeys.contacts)
+      queryClient.setQueryData<UserContact[]>(queryKeys.contacts, (old) =>
+        (old ?? []).filter((c) => c.userId !== contactUserId),
+      )
+      return { previous }
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.previous) {
+        queryClient.setQueryData(queryKeys.contacts, ctx.previous)
+      }
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.contacts })
     },
   })

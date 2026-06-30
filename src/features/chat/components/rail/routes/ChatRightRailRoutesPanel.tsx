@@ -148,9 +148,6 @@ export function ChatRightRailRoutesPanel({
 
   const [liveMapOpen, setLiveMapOpen] = useState(false);
   const [liveFocusStopId, setLiveFocusStopId] = useState<string | null>(null);
-  const [deliveriesByAgreement, setDeliveriesByAgreement] = useState<
-    Record<string, RouteStopDeliveryStatusApi[]>
-  >({});
   const [cedeOwnershipByAgreement, setCedeOwnershipByAgreement] =
     useState<Record<string, Record<string, boolean>>>();
   const [routeTramoSubscriptions, setRouteTramoSubscriptions] = useState<
@@ -205,18 +202,17 @@ export function ChatRightRailRoutesPanel({
     })),
   });
 
-  useEffect(() => {
-    if (deliveryAgreementIds.length === 0) {
-      setDeliveriesByAgreement({});
-      return;
-    }
-    if (deliveryQueries.some((q) => q.isLoading)) return;
+  const deliverySnapshotKey = deliveryQueries
+    .map((q, i) => `${deliveryAgreementIds[i] ?? ""}:${q.status}:${q.dataUpdatedAt}`)
+    .join("\0");
+
+  const deliveriesByAgreement = useMemo(() => {
     const next: Record<string, RouteStopDeliveryStatusApi[]> = {};
     deliveryAgreementIds.forEach((id, i) => {
       next[id] = deliveryQueries[i]?.data ?? [];
     });
-    setDeliveriesByAgreement(next);
-  }, [deliveryAgreementIds, deliveryQueries]);
+    return next;
+  }, [deliveryAgreementIds, deliverySnapshotKey]);
 
   function agreementForSheet(routeSheetId: string): TradeAgreement | null {
     const rsid = routeSheetId.trim();

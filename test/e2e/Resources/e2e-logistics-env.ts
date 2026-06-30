@@ -161,11 +161,11 @@ export async function payAllRoutePathsAsBuyer(
   agreementTitle: string,
   routeSheetTitulo: string,
 ): Promise<void> {
+  await ensureBuyerDemoCard(page);
   await prepareBuyerRouteCheckout(page, agreementTitle, routeSheetTitulo);
   await selectAllRoutePathsForPayment(page);
   await waitForInformeReady(page);
   await confirmInformeCheckbox(page);
-  await ensureBuyerDemoCard(page);
   await clickPayCurrency(page, "USD");
   await expect(
     page

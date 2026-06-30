@@ -7,11 +7,11 @@ test.describe("PaymentGatewayConfigModal E2E", () => {
 
   test("shows loading then card list or empty state", async ({ page }) => {
     await page.goto("/profile/me/account?paymentCards=1");
-    const dialog = page.getByRole("dialog", { name: /pagos \(demo\)/i });
+    const dialog = page.getByRole("dialog", { name: /pagos \(simulado\)/i });
     await expect(dialog).toBeVisible({ timeout: 20_000 });
     await expect(
       dialog
-        .getByText(/tarjetas|no hay tarjetas|agregar/i)
+        .getByText(/tarjetas|no hay tarjetas|activar tarjeta/i)
         .first(),
     ).toBeVisible({ timeout: 30_000 });
   });
@@ -19,20 +19,20 @@ test.describe("PaymentGatewayConfigModal E2E", () => {
   test("calls onClose on Escape", async ({ page }) => {
     await page.goto("/profile/me/account?paymentCards=1");
     await expect(
-      page.getByRole("dialog", { name: /pagos \(demo\)/i }),
+      page.getByRole("dialog", { name: /pagos \(simulado\)/i }),
     ).toBeVisible({ timeout: 15_000 });
     await page.keyboard.press("Escape");
     await expect(
-      page.getByRole("dialog", { name: /pagos \(demo\)/i }),
+      page.getByRole("dialog", { name: /pagos \(simulado\)/i }),
     ).toBeHidden({ timeout: 10_000 });
   });
 
   test("create setup intent when adding a card", async ({ page }) => {
     await page.goto("/profile/me/account?paymentCards=1");
-    const dialog = page.getByRole("dialog", { name: /pagos \(demo\)/i });
+    const dialog = page.getByRole("dialog", { name: /pagos \(simulado\)/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
     const addBtn = dialog.getByRole("button", {
-      name: /crear nueva tarjeta|agregar tarjeta/i,
+      name: /activar tarjeta demo/i,
     });
     if (await addBtn.isVisible().catch(() => false)) {
       await addBtn.click();

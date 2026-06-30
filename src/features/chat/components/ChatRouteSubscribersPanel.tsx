@@ -19,7 +19,6 @@ import {
   sellerExpelBlockedForCarrier,
   sellerExpelBlockedForStop,
 } from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
-import type { RouteStopDeliveryStatusApi } from "@features/chat/Dtos/route-sheet/routeLogisticsApiTypes";
 import { fetchAgreementRouteDeliveries } from "@features/chat/api/routeLogisticsApi";
 import { useInvalidateAgreementDeliveriesForThread } from "@features/chat/hooks/useAgreementEvidenceMutations";
 import { queryKeys } from "@shared/lib/queryKeys";
@@ -119,9 +118,6 @@ export function ChatRouteSubscribersPanel({
   const [expelScope, setExpelScope] = useState<"stop" | "all" | null>(null);
   const [expelReason, setExpelReason] = useState("");
   const [expelBusy, setExpelBusy] = useState(false);
-  const [routeDeliveries, setRouteDeliveries] = useState<
-    RouteStopDeliveryStatusApi[]
-  >([]);
   const expelTitleId = useId();
 
   const routeSheetsMeta = useMemo(
@@ -219,20 +215,24 @@ export function ChatRouteSubscribersPanel({
     })),
   });
 
-  useEffect(() => {
-    const tid = threadId.trim();
-    if (!canSellerManageRouteSubscriptions || tid.length < 4 || !agreementIdsKey) {
-      setRouteDeliveries([]);
-      return;
-    }
+  const deliverySnapshotKey = deliveryQueries
+    .map((q, i) => `${deliveryAgreementIds[i] ?? ""}:${q.status}:${q.dataUpdatedAt}`)
+    .join("\0");
 
-    if (deliveryQueries.some((q) => q.isLoading)) return;
-    setRouteDeliveries(deliveryQueries.flatMap((q) => q.data ?? []));
+  const routeDeliveries = useMemo(() => {
+    if (
+      !canSellerManageRouteSubscriptions ||
+      threadId.trim().length < 4 ||
+      !agreementIdsKey
+    ) {
+      return [];
+    }
+    return deliveryQueries.flatMap((q) => q.data ?? []);
   }, [
-    threadId,
     canSellerManageRouteSubscriptions,
+    threadId,
     agreementIdsKey,
-    deliveryQueries,
+    deliverySnapshotKey,
   ]);
 
   const invalidateDeliveries = useInvalidateAgreementDeliveriesForThread();
