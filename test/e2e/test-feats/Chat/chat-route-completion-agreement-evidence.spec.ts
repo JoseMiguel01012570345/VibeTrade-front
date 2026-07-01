@@ -239,7 +239,10 @@ test.describe("chat route completion — agreement merchandise evidence", () => 
 
     const carrierAfterPod = await fetchUserTrustScore(trustPage, carrierUserId);
     await expect
-      .poll(async () => fetchStoreTrustScore(trustPage, carrierStoreId))
+      .poll(async () => fetchStoreTrustScore(trustPage, carrierStoreId), {
+        timeout: 60_000,
+        intervals: [2_000],
+      })
       .toBe(carrierStoreBefore + CARRIER_TRAMO_BONUS);
     const carrierStoreAfterPod = await fetchStoreTrustScore(
       trustPage,

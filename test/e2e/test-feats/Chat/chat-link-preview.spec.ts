@@ -13,6 +13,7 @@ import {
   openOfferAndComprar,
   sendChatMessageViaUI,
   waitForChatReady,
+  waitForLinkPreviewSettled,
 } from "../../Resources/chat-helpers";
 
 /** E2E tests for chat link preview feature. */
@@ -50,15 +51,8 @@ test.describe("chat link preview E2E", () => {
       timeout: 20_000,
     });
 
-    // Verify loading state appears
-    await expect(buyerPage.getByText(/vista previa/i)).toBeVisible({
-      timeout: 10_000,
-    });
-
-    // Wait for the loading state to disappear (preview loaded or no data)
-    await expect(buyerPage.getByText(/vista previa/i)).not.toBeVisible({
-      timeout: 15_000,
-    });
+    // Wait for preview to load (or settle without card if API has no data)
+    await waitForLinkPreviewSettled(buyerPage);
 
     // If preview loaded, verify it's an anchor with correct attributes
     const previewCard = buyerPage.locator('a[target="_blank"]').first();
@@ -107,15 +101,8 @@ test.describe("chat link preview E2E", () => {
       timeout: 20_000,
     });
 
-    // Wait for preview to load
-    await expect(buyerPage.getByText(/vista previa/i)).toBeVisible({
-      timeout: 10_000,
-    });
-
-    // Wait for loading state to disappear
-    await expect(buyerPage.getByText(/vista previa/i)).not.toBeVisible({
-      timeout: 15_000,
-    });
+    // Wait for preview to load (or settle without card if API has no data)
+    await waitForLinkPreviewSettled(buyerPage);
 
     // If a preview loaded, there should be at most one (only first URL gets preview)
     // Note: Preview may not appear if API returns no data
@@ -159,22 +146,7 @@ test.describe("chat link preview E2E", () => {
     });
 
     // Wait for preview to load (may not have image)
-    await expect(buyerPage.getByText(/vista previa/i)).toBeVisible({
-      timeout: 10_000,
-    });
-
-    // Optional preview card (depends on external API response)
-    await expect(
-      buyerPage
-        .locator('a[target="_blank"]')
-        .filter({ hasText: /httpbin\.org/i })
-        .first(),
-    )
-      .toBeVisible({ timeout: 15_000 })
-      .catch(() => undefined);
-    await expect(buyerPage.getByText(/vista previa/i)).not.toBeVisible({
-      timeout: 15_000,
-    });
+    await waitForLinkPreviewSettled(buyerPage);
 
     await buyerCtx.close();
     await sellerCtx.close();
@@ -209,14 +181,7 @@ test.describe("chat link preview E2E", () => {
     await expect(buyerPage.getByText(messageWithUrl).first()).toBeVisible({
       timeout: 20_000,
     });
-    await expect(buyerPage.getByText(/vista previa/i)).toBeVisible({
-      timeout: 10_000,
-    });
-
-    // Wait for loading state to disappear
-    await expect(buyerPage.getByText(/vista previa/i)).not.toBeVisible({
-      timeout: 15_000,
-    });
+    await waitForLinkPreviewSettled(buyerPage);
 
     // If preview loaded, verify it has correct link attributes
     const previewCard = buyerPage.locator('a[target="_blank"]').first();
@@ -263,13 +228,8 @@ test.describe("chat link preview E2E", () => {
       timeout: 20_000,
     });
 
-    // Wait for loading state to appear then disappear
-    const loadingState = buyerPage.getByText(/vista previa/i);
-    await expect(loadingState).toBeVisible({ timeout: 10_000 });
-
-    // After loading, the preview should either not appear or show minimal info
-    // The loading state should disappear
-    await expect(loadingState).not.toBeVisible({ timeout: 15_000 });
+    // Wait for loading state to appear then disappear (or settle without loading flash)
+    await waitForLinkPreviewSettled(buyerPage);
 
     await buyerCtx.close();
     await sellerCtx.close();

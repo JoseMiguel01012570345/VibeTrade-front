@@ -11,28 +11,72 @@ export async function waitForAgreementBubble(
 }
 
 export async function openOfferAndComprar(page: Page, offerId: string) {
-  await page.goto(`/offer/${offerId}`, {
-    waitUntil: "domcontentloaded",
-    timeout: 45_000,
-  });
-  const comprar = page.getByRole("button", {
-    name: /comprar.*chat/i,
-  });
-  await expect(comprar).toBeVisible({ timeout: 30_000 });
-  await comprar.click();
-  const confirm = page.getByRole("button", {
-    name: /sí, abrir chat|confirmar|abrir chat|continuar/i,
-  });
-  await expect(confirm).toBeVisible({ timeout: 15_000 });
-  await confirm.click();
-  await expect(page).toHaveURL(/\/chat\/cth_/, { timeout: 45_000 });
-  return page.url().match(/\/chat\/(cth_[^/?#]+)/)?.[1] ?? "";
+  const tryOffer = async (id: string): Promise<string> => {
+    await page.goto(`/offer/${id}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 45_000,
+    });
+    const notFound = page.getByText(/oferta no encontrada/i);
+    if (await notFound.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      return "";
+    }
+    const comprar = page.getByRole("button", {
+      name: /comprar.*chat/i,
+    });
+    await expect(comprar).toBeVisible({ timeout: 30_000 });
+    await comprar.click();
+    const confirm = page.getByRole("button", {
+      name: /sí, abrir chat|confirmar|abrir chat|continuar/i,
+    });
+    await expect(confirm).toBeVisible({ timeout: 15_000 });
+    await confirm.click();
+    await expect(page).toHaveURL(/\/chat\/cth_/, { timeout: 45_000 });
+    return page.url().match(/\/chat\/(cth_[^/?#]+)/)?.[1] ?? "";
+  };
+
+  let threadId = await tryOffer(offerId);
+  if (!threadId) {
+    const { getE2EOfferId } = await import("./env");
+    const fallback = getE2EOfferId();
+    if (fallback && fallback !== offerId) {
+      threadId = await tryOffer(fallback);
+    }
+  }
+  expect(threadId.length).toBeGreaterThan(2);
+  return threadId;
+}
+
+export async function waitForLinkPreviewSettled(page: Page): Promise<void> {
+  const loading = page.getByText(/vista previa/i);
+  const card = page.locator('a[target="_blank"]').first();
+  const sawLoading = await loading.isVisible({ timeout: 8_000 }).catch(() => false);
+  if (sawLoading) {
+    await expect(loading).not.toBeVisible({ timeout: 25_000 });
+    return;
+  }
+  await card.isVisible({ timeout: 25_000 }).catch(() => undefined);
 }
 
 export async function waitForChatThread(page: Page) {
-  await expect(page.locator("[data-chat-message-row]").first()).toBeVisible({
-    timeout: 20_000,
-  });
+  await expect
+    .poll(
+      async () => {
+        const candidates = [
+          page.locator("[data-chat-message-row]").first(),
+          page.locator("[data-chat-agreement]").first(),
+          page.getByRole("textbox", { name: /escribe un mensaje/i }),
+          page
+            .getByRole("button", { name: /^contratos$|^rutas$|^integrantes$/i })
+            .first(),
+        ];
+        for (const loc of candidates) {
+          if (await loc.isVisible().catch(() => false)) return true;
+        }
+        return false;
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
 }
 
 export async function waitForChatReady(page: Page): Promise<void> {
@@ -62,11 +106,27 @@ export async function openRailContracts(page: Page) {
 }
 
 export async function openChatThread(page: Page, threadId: string): Promise<void> {
-  await page.goto(`/chat/${threadId}`, {
-    waitUntil: "domcontentloaded",
-    timeout: 45_000,
-  });
-  await waitForChatReady(page);
+  const tid = threadId.trim();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.goto(`/chat/${tid}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 45_000,
+    });
+    const loginBtn = page.getByRole("button", { name: /iniciar sesión/i });
+    if (await loginBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      throw new Error("E2E session not active — chat redirected to login");
+    }
+    try {
+      await waitForChatReady(page);
+      return;
+    } catch (err) {
+      if (attempt === 0) {
+        await page.waitForTimeout(1_000);
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 export async function openChatPeoplePanel(page: Page): Promise<void> {
@@ -108,7 +168,16 @@ export async function leaveChatFromListUI(
     .click();
   const dialog = page.getByRole("dialog", { name: /salir del chat/i });
   await expect(dialog).toBeVisible({ timeout: 10_000 });
-  await dialog.getByRole("button", { name: /sí, salir/i }).click();
+  await dialog.locator(".vt-modal-actions .vt-btn-primary").click();
+  const reasonModal = page
+    .getByRole("dialog")
+    .filter({ has: page.locator("#chat-leave-reason-title") });
+  if (await reasonModal.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await reasonModal.locator("#chat-leave-reason-ta").fill("E2E salida voluntaria");
+    await reasonModal
+      .getByRole("button", { name: /confirmar salida/i })
+      .click();
+  }
   await expect(dialog).toBeHidden({ timeout: 15_000 });
 }
 

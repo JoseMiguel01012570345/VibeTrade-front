@@ -234,6 +234,8 @@ export async function setupPaidRouteLogisticsScenario(
       tramos: [TRAMO_OPTS],
       carrierPhone,
     });
+    await reloadChatThread(sellerPage);
+    await openRoutesRail(sellerPage);
   } else {
     await clickNewRouteSheet(sellerPage);
     await waitForRouteSheetForm(sellerPage);
@@ -246,10 +248,11 @@ export async function setupPaidRouteLogisticsScenario(
     const phone2 = opts.carrier2Phone ?? carrierPhone;
     await searchCarrierPhone(sellerPage, 1, phone2);
     await saveRouteSheet(sellerPage);
+    await reloadChatThread(sellerPage);
+    await openRoutesRail(sellerPage);
   }
 
   await openRailContracts(sellerPage);
-  await openContractByAgreementTitle(sellerPage, agreementTitle);
   if (!opts.skipLink) {
     await expect
       .poll(
@@ -266,10 +269,31 @@ export async function setupPaidRouteLogisticsScenario(
             return false;
           }
         },
-        { timeout: 45_000 },
+        { timeout: 60_000 },
       )
       .toBe(true);
-    await linkRouteSheetToAgreementViaUI(sellerPage, titulo);
+    const routeSheetId = await resolveRouteSheetIdByTitulo(
+      sellerPage,
+      threadId,
+      seller.sessionToken,
+      titulo,
+    );
+    const { linkAgreementToRouteSheetViaApi } = await import(
+      "./e2e-logistics-api"
+    );
+    await linkAgreementToRouteSheetViaApi(
+      sellerPage,
+      seller.sessionToken,
+      threadId,
+      agreementId,
+      routeSheetId,
+    );
+    await reloadChatThread(sellerPage);
+    await openRailContracts(sellerPage);
+    await openContractByAgreementTitle(sellerPage, agreementTitle);
+    await expect(
+      sellerPage.getByText(/vinculada ahora a:/i).first(),
+    ).toContainText(titulo, { timeout: 15_000 });
   }
 
   if (opts.publish !== false) {

@@ -74,6 +74,7 @@ test.describe("chat agreement checkout (UI)", () => {
   let eurProductName: string;
 
   test.beforeAll(async ({ browser }) => {
+    test.setTimeout(180_000);
     const seller = getE2ESellerSession()!;
     const scenario = getE2EScenario()!;
     const ctx = await browser.newContext();
@@ -600,6 +601,7 @@ test.describe("chat agreement checkout (UI)", () => {
         {
           carrierSessionToken: scenario.carrierSessionToken!,
           confirmSecondCarrier: false,
+          confirmCarriersOnStops: false,
         },
       );
 

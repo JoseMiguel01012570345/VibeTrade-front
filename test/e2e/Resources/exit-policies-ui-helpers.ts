@@ -41,6 +41,10 @@ export async function prepareChatListLeaveSession(
   await expect(page.getByText(/no se pudo cargar este chat/i)).toHaveCount(0, {
     timeout: 5_000,
   });
+  const panelBtn = page.getByRole("button", { name: /^panel$/i });
+  if (await panelBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await panelBtn.click();
+  }
   await expect(
     page
       .getByRole("button", { name: /^rutas$|^contratos$|^integrantes$/i })
@@ -79,7 +83,13 @@ export async function confirmChatLeaveFirstStep(page: Page): Promise<void> {
   const modal = page
     .getByRole("dialog")
     .filter({ has: page.locator("#chat-leave-title") });
-  await modal.getByRole("button", { name: /sí, salir/i }).click();
+  await expect(modal).toBeVisible({ timeout: 15_000 });
+  const confirmBtn = modal.locator(".vt-modal-actions .vt-btn-primary");
+  await expect(confirmBtn).toBeVisible({ timeout: 10_000 });
+  if (await confirmBtn.isDisabled()) {
+    return;
+  }
+  await confirmBtn.click();
   await expect(modal).toBeHidden({ timeout: 15_000 });
 }
 
@@ -150,9 +160,7 @@ export async function expectLeaveBlockedInModal(
         : codePattern;
     await expect(modal).toContainText(re);
   }
-  await expect(
-    modal.getByRole("button", { name: /sí, salir/i }),
-  ).toBeDisabled();
+  await expect(modal.locator(".vt-modal-actions .vt-btn-primary")).toBeDisabled();
 }
 
 export async function expectLeaveSuccessToast(

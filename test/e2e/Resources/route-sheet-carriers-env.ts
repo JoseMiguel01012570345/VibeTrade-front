@@ -18,6 +18,7 @@ import {
   publishRouteSheetViaUI,
   linkRouteSheetToAgreementViaUI,
   openContractByAgreementIndex,
+  openFirstUnlinkedContract,
   openNotificationsPanel,
   getNotificationItem,
 } from "./route-sheet-ui-helpers";
@@ -110,29 +111,39 @@ export async function resolveRouteSheetIdByTitulo(
   sessionToken: string,
   titulo: string,
 ): Promise<string> {
-  const id = await page.evaluate(
-    async ([tid, token, title]: [string, string, string]) => {
-      const res = await fetch(
-        `/api/v1/chat/threads/${encodeURIComponent(tid)}/route-sheets`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      if (!res.ok) return "";
-      const json = (await res.json()) as unknown;
-      const sheets = Array.isArray(json)
-        ? json
-        : ((json as { items?: unknown[] })?.items ?? []);
-      for (const raw of sheets) {
-        const sheet = raw as { id?: string; titulo?: string; payload?: { titulo?: string } };
-        const sheetTitle = (sheet.titulo ?? sheet.payload?.titulo ?? "").trim();
-        if (sheetTitle === title && sheet.id?.trim()) return sheet.id.trim();
-      }
-      return "";
-    },
-    [threadId, sessionToken, titulo] as [string, string, string],
-  );
-  if (!id) {
-    throw new Error(`Route sheet id not found for titulo «${titulo}»`);
-  }
+  let id = "";
+  await expect
+    .poll(
+      async () => {
+        id = await page.evaluate(
+          async ([tid, token, title]: [string, string, string]) => {
+            const res = await fetch(
+              `/api/v1/chat/threads/${encodeURIComponent(tid)}/route-sheets`,
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+            if (!res.ok) return "";
+            const json = (await res.json()) as unknown;
+            const sheets = Array.isArray(json)
+              ? json
+              : ((json as { items?: unknown[] })?.items ?? []);
+            for (const raw of sheets) {
+              const sheet = raw as {
+                id?: string;
+                titulo?: string;
+                payload?: { titulo?: string };
+              };
+              const sheetTitle = (sheet.titulo ?? sheet.payload?.titulo ?? "").trim();
+              if (sheetTitle === title && sheet.id?.trim()) return sheet.id.trim();
+            }
+            return "";
+          },
+          [threadId, sessionToken, titulo] as [string, string, string],
+        );
+        return id.length > 2;
+      },
+      { timeout: 45_000 },
+    )
+    .toBe(true);
   return id;
 }
 
@@ -311,7 +322,7 @@ export async function createAndPublishRouteSheet(
   await saveRouteSheet(sellerPage);
 
   await openRailContracts(sellerPage);
-  await openContractByAgreementIndex(sellerPage, agreementIndex);
+  await openFirstUnlinkedContract(sellerPage);
   await linkRouteSheetToAgreementViaUI(sellerPage, titulo);
 
   await openRoutesRail(sellerPage);

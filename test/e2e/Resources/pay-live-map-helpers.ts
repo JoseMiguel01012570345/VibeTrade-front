@@ -2,7 +2,7 @@ import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { openSellerPage } from "./agreement-ui-helpers";
 import { getE2EScenario, getE2ESellerSession, getE2ESession } from "./chat-env";
-import { openChatThread, openRailContracts, waitForChatReady } from "./chat-helpers";
+import { openChatThread, openRailContracts, reloadChatThread, waitForChatReady } from "./chat-helpers";
 import {
   ensureCarrierLegReadyForCede,
   fetchAgreementTitleById,
@@ -199,23 +199,31 @@ export async function setupFlexibleRouteScenario(
     await searchCarrierPhone(sellerPage, i, t.carrierPhone);
   }
   await saveRouteSheet(sellerPage);
+  await reloadChatThread(sellerPage);
+  await openRoutesRail(sellerPage);
 
   await openRailContracts(sellerPage);
-  await openContractByAgreementTitle(sellerPage, agreementTitle);
-  await linkRouteSheetToAgreementViaUI(sellerPage, titulo);
-
-  await openRoutesRail(sellerPage);
-  await openRouteSheetDetail(sellerPage, titulo);
-  await publishRouteSheetViaUI(sellerPage);
-  await clickInviteCarriers(sellerPage);
-  await sendCarrierInvites(sellerPage);
-
   const routeSheetId = await resolveRouteSheetIdByTitulo(
     sellerPage,
     threadId,
     seller.sessionToken,
     titulo,
   );
+  const { linkAgreementToRouteSheetViaApi } = await import("./e2e-logistics-api");
+  await linkAgreementToRouteSheetViaApi(
+    sellerPage,
+    seller.sessionToken,
+    threadId,
+    agreementId,
+    routeSheetId,
+  );
+  await reloadChatThread(sellerPage);
+
+  await openRoutesRail(sellerPage);
+  await openRouteSheetDetail(sellerPage, titulo);
+  await publishRouteSheetViaUI(sellerPage);
+  await clickInviteCarriers(sellerPage);
+  await sendCarrierInvites(sellerPage);
 
   const uniquePhones = [...new Set(tramos.map((t) => t.carrierPhone.trim()))];
   for (const phone of uniquePhones) {

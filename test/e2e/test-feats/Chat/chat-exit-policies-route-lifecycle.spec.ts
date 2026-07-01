@@ -49,6 +49,7 @@ import {
 } from "../../Resources/e2e-logistics-api";
 import {
   clickEditRouteSheet,
+  closeSubscribersPanelIfOpen,
   ensureRouteSheetDetailOpen,
   kickCarrierFromTramo,
   openRouteSheetDetail,
@@ -57,6 +58,7 @@ import {
   openTramoInSubscribersPanel,
   subscribersPanel,
   subscribeCarrierToOffer,
+  subscribeCarrierToOfferViaApi,
   waitForRouteSheetForm,
 } from "../../Resources/route-sheet-ui-helpers";
 
@@ -256,7 +258,18 @@ test.describe("chat exit policies — route lifecycle", () => {
     }, scenario.carrier2SessionToken!);
     const carrier2Page = await carrier2Ctx.newPage();
     await carrier2Page.goto(offerUrl, { waitUntil: "domcontentloaded" });
-    await subscribeCarrierToOffer(carrier2Page);
+    const serviceId = scenario.carrier2ServiceId?.trim();
+    if (serviceId) {
+      await subscribeCarrierToOfferViaApi(
+        carrier2Page,
+        scenario.carrier2SessionToken!,
+        offerUrl,
+        route.stopIds[0]!,
+        serviceId,
+      );
+    } else {
+      await subscribeCarrierToOffer(carrier2Page);
+    }
     await carrier2Ctx.close();
 
     const sellerPage = await openSellerPage(
@@ -370,6 +383,8 @@ test.describe("chat exit policies — route lifecycle", () => {
     await ensureRouteSheetDetailOpen(sellerPage, route.routeSheetTitulo);
     await openSubscribersPanel(sellerPage);
     await kickCarrierFromTramo(sellerPage, 1, route.routeSheetTitulo);
+    await closeSubscribersPanelIfOpen(sellerPage);
+    await ensureRouteSheetDetailOpen(sellerPage, route.routeSheetTitulo);
     await clickEditRouteSheet(sellerPage);
     await waitForRouteSheetForm(sellerPage);
     await expectRouteSheetTramoFieldStates(sellerPage, 0, {

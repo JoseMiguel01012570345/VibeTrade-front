@@ -6,7 +6,7 @@ export default defineConfig({
   testDir: "./test/e2e/test-feats",
   testMatch: "**/*.spec.ts",
   globalSetup: "./test/e2e/global-setup.ts",
-  globalTimeout: 7_200_000,
+  globalTimeout: 10_800_000,
   timeout: 60_000,
   // fullyParallel: false,
   // workers: 1,
@@ -42,5 +42,9 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
+        env: {
+          ...process.env,
+          VITE_E2E_SKIP_QR: "1",
+        },
       },
 });

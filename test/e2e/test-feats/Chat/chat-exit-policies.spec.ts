@@ -215,6 +215,9 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
         waitUntil: "domcontentloaded",
       });
       await payHeldMerchandiseAgreement(buyerPage);
+      await expect(buyerPage.getByText(/cargando chat/i)).toBeHidden({
+        timeout: 45_000,
+      });
       await openChatLeaveFlow(buyerPage, s.threadId);
       await confirmChatLeaveFirstStep(buyerPage);
       await fillChatLeaveReasonModal(buyerPage, "Motivo held B05");
@@ -318,8 +321,15 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
         route.threadId,
         "Motivo E2E S03",
       );
-      const after = await fetchStoreTrustScore(sellerList, storeId);
-      expect(after).toBe(before - PARTY_EXIT_TRUST_PER_MEMBER * 3);
+      await expectLeaveSuccessToast(
+        sellerList,
+        /confianza de tu tienda|−9|−3|se ajustó/i,
+      );
+      await expect
+        .poll(async () => fetchStoreTrustScore(sellerList, storeId), {
+          timeout: 45_000,
+        })
+        .toBe(before - PARTY_EXIT_TRUST_PER_MEMBER * 3);
       await sellerList.context().close();
     });
 
@@ -380,8 +390,12 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
         s.threadId,
         "Motivo E2E S04 held",
       );
-      const after = await fetchStoreTrustScore(sellerList, storeId);
-      expect(after).toBe(before - SELLER_HELD_EXIT_PENALTY);
+      await expect
+        .poll(async () => fetchStoreTrustScore(sellerList, storeId), {
+          timeout: 45_000,
+          intervals: [1_000, 2_000],
+        })
+        .toBe(before - SELLER_HELD_EXIT_PENALTY);
       await sellerList.context().close();
     });
 
@@ -416,8 +430,12 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
         s.threadId,
         "Motivo E2E S05 held",
       );
-      const after = await fetchStoreTrustScore(sellerList, storeId);
-      expect(after).toBe(before - SELLER_HELD_EXIT_PENALTY);
+      await expect
+        .poll(async () => fetchStoreTrustScore(sellerList, storeId), {
+          timeout: 45_000,
+          intervals: [1_000, 2_000],
+        })
+        .toBe(before - SELLER_HELD_EXIT_PENALTY);
       await sellerList.context().close();
     });
 

@@ -44,6 +44,7 @@ test.describe("chat route logistics — cede & pause (UI + API)", () => {
   test.skip(!hasCarrierSession(), carrierSkipReason);
 
   test("L-5: cede ownership notifies target carrier", async ({ browser }) => {
+    test.setTimeout(600_000);
     test.skip(!hasCarrier2Session(), carrier2SkipReason);
 
     const scenario = getE2EScenario()!;

@@ -357,7 +357,7 @@ export async function openChatLeaveModalFromList(
 
 export async function confirmChatLeave(page: Page): Promise<void> {
   const modal = page.getByRole("dialog").filter({ has: page.locator("#chat-leave-title") });
-  await modal.getByRole("button", { name: /sí, salir/i }).click();
+  await modal.locator(".vt-modal-actions .vt-btn-primary").click();
 }
 
 export type TelemetrySpy = {

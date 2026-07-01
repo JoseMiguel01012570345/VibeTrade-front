@@ -308,7 +308,20 @@ async function provisionCarrierScenario(
   const storeName = `Transportista E2E ${suffix}`;
   const serviceType = `Servicio de Transporte E2E ${suffix}`;
 
-  const carrier = await registerUserViaUI(page, url);
+  let carrier: Awaited<ReturnType<typeof registerUserViaUI>> | null = null;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      carrier = await registerUserViaUI(page, url);
+      break;
+    } catch (err) {
+      lastErr = err;
+      await page.waitForTimeout(2_000 * (attempt + 1));
+    }
+  }
+  if (!carrier) {
+    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+  }
   if (!carrier.userId) {
     throw new Error("carrier user id missing after UI registration");
   }

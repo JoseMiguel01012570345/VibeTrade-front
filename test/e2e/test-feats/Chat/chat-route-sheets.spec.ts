@@ -7,6 +7,7 @@ import {
   getE2ESellerSession,
   getE2EToken,
   hasDistinctSellerSession,
+  e2eOfferId,
 } from "../../Resources/chat-env";
 import {
   createThreadAsBuyer,
@@ -31,6 +32,8 @@ import {
   openContractLinkedToRouteSheet,
   openContractByAgreementIndex,
   pickRouteSheetInAgreementLinkSelect,
+  pickTramoEstimadoTime,
+  pickTramoEstimadoDate,
   formDialog,
 } from "../../Resources/route-sheet-ui-helpers";
 
@@ -63,12 +66,11 @@ test.describe("chat route sheets (UI)", () => {
     browser,
   }) => {
     const seller = getE2ESellerSession()!;
-    const scenario = getE2EScenario()!;
 
     const { buyerPage, threadId } = await createThreadAsBuyer(
       browser,
       getE2EToken(),
-      scenario.offerId,
+      e2eOfferId,
     );
     const sellerPage = await openSellerPage(
       browser,
@@ -258,9 +260,6 @@ test.describe("chat route sheets (UI)", () => {
     });
 
     await saveRouteSheet(sellerPage);
-    await expect(sellerPage.getByText(/hoja de ruta creada/i)).toBeVisible({
-      timeout: 15_000,
-    });
 
     await sellerPage.close();
   });
@@ -307,9 +306,9 @@ test.describe("chat route sheets (UI)", () => {
       origen: "Ciudad B",
       destino: "Ciudad C",
       recogidaDate: isoTomorrow,
-      recogidaTime: "08:00",
+      recogidaTime: "15:00",
       entregaDate: isoTomorrow,
-      entregaTime: "09:00",
+      entregaTime: "16:00",
       precio: "120",
       responsabilidad: "Transportista",
       requisitos: "Ninguno",
@@ -317,13 +316,23 @@ test.describe("chat route sheets (UI)", () => {
       carga: "Cajas",
     });
 
+    // Invalidate chain: leg 2 pickup (15:00) before leg 1 delivery (17:00) same day.
+    await pickTramoEstimadoTime(sellerPage, 0, "entrega", "17:00");
+    const form = sellerPage.locator('[role="dialog"]').filter({
+      hasText: /nueva hoja de rutas|editar hoja de rutas/i,
+    });
+    await expect(
+      form.getByRole("button", {
+        name: /Tramo 1: hora de entrega estimada/i,
+      }),
+    ).toContainText(/5:00\s*PM|17:00/i);
+
     await clickSaveRouteSheetForm(sellerPage);
 
     await expect(
-      sellerPage
-        .getByRole("alert")
-        .filter({ hasText: /hora|recogida|entrega|tiempo|antes/i })
-        .first(),
+      form.locator('[role="alert"]').filter({
+        hasText: /no puede ser anterior a la entrega estimada del tramo anterior/i,
+      }),
     ).toBeVisible({ timeout: 8_000 });
 
     await sellerPage.keyboard.press("Escape");

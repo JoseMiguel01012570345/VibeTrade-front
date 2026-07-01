@@ -118,6 +118,26 @@ export async function fetchAgreementTitleById(
   return title;
 }
 
+export async function linkAgreementToRouteSheetViaApi(
+  page: Page,
+  token: string,
+  threadId: string,
+  agreementId: string,
+  routeSheetId: string,
+): Promise<void> {
+  const res = await e2eAuthorizedFetch(
+    page,
+    token,
+    `/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements/${encodeURIComponent(agreementId)}/route-link`,
+    { method: "PATCH", body: { routeSheetId } },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `linkAgreementToRouteSheetViaApi failed (${res.status}): ${res.text}`,
+    );
+  }
+}
+
 export async function fetchRouteDeliveries(
   page: Page,
   token: string,

@@ -23,6 +23,7 @@ import {
   readChatHeaderTitle,
   readIntegrantesCount,
   expectParticipantRoleVisible,
+  waitForChatReady,
   waitForChatThread,
 } from "../../Resources/chat-helpers";
 
@@ -83,6 +84,7 @@ test.describe("chat participants leave and header title", () => {
   test("integrantes hides buyer or seller after they leave the thread", async ({
     browser,
   }) => {
+    test.setTimeout(120_000);
     const buyerCtx = await browser.newContext();
     const sellerCtx = await browser.newContext();
     await injectSession(buyerCtx, e2eToken);
@@ -95,7 +97,8 @@ test.describe("chat participants leave and header title", () => {
       const threadId = await openOfferAndComprar(buyerPage, e2eOfferId);
       await waitForChatThread(buyerPage);
       await openChatThread(sellerPage, threadId);
-      await waitForChatThread(sellerPage);
+      await waitForChatReady(sellerPage);
+      await waitForChatReady(buyerPage);
 
       await openChatPeoplePanel(buyerPage);
       await expect.poll(() => readIntegrantesCount(buyerPage)).toBe(2);

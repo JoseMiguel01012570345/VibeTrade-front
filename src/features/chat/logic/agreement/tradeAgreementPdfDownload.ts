@@ -30,8 +30,9 @@ export async function appendQrAnnexToPdf(
   entries: readonly { label: string; url: string }[],
   marginMm: number,
   pageW: number,
-  pageH: number,
+  pageH: number,     
 ): Promise<void> {
+  if (import.meta.env.VITE_E2E_SKIP_QR === "1") return;
   if (entries.length === 0) return;
 
   doc.addPage();

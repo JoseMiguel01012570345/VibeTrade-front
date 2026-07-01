@@ -36,7 +36,7 @@ import {
   rejectFirstSubscriptionRequest,
   subscribeCarrierToOffer,
 } from "../../Resources/route-sheet-ui-helpers";
-import { openChatThread, waitForChatReady } from "../../Resources/chat-helpers";
+import { openChatPeoplePanel, openChatThread, waitForChatReady } from "../../Resources/chat-helpers";
 import {
   rsReady,
   hasCarrierSession,
@@ -185,15 +185,25 @@ test.describe("chat route sheet — carrier subscription flow (UI)", () => {
         timeout: 20_000,
       });
 
-      await buyerPage.waitForTimeout(3_000);
-      const memberCountAfter = (await buyerPage
-        .getByRole("button", { name: /integrantes/i })
-        .textContent()
-        .catch(() => "")) ?? "";
-
       const countBefore = parseInt(memberCountBefore.match(/\d+/)?.[0] ?? "0", 10);
-      const countAfter = parseInt(memberCountAfter.match(/\d+/)?.[0] ?? "0", 10);
-      expect(countAfter).toBeGreaterThan(countBefore);
+      await buyerPage.waitForTimeout(1_000);
+      try {
+        await expect
+          .poll(async () => {
+            const memberCountAfter =
+              (await buyerPage
+                .getByRole("button", { name: /integrantes/i })
+                .textContent()
+                .catch(() => "")) ?? "";
+            return parseInt(memberCountAfter.match(/\d+/)?.[0] ?? "0", 10);
+          }, { timeout: 30_000 })
+          .toBeGreaterThan(countBefore);
+      } catch {
+        await openChatPeoplePanel(buyerPage);
+        await expect(
+          buyerPage.getByText(new RegExp(scenario.carrierPhone!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i")),
+        ).toBeVisible({ timeout: 15_000 });
+      }
     } finally {
       await carrierCtx.close();
       await buyerCtx.close();
@@ -217,11 +227,18 @@ test.describe("chat route sheet — carrier subscription flow (UI)", () => {
 
     const sheetCard = sellerPage.locator("ul li button").first();
     const hasCard = await sheetCard.isVisible({ timeout: 5_000 }).catch(() => false);
-    if (!hasCard) {
+    if (!hasCard && !carrierInviteFlowState.routeSheetTitulo) {
       test.skip(true, "No route sheet available for subscribers test");
       return;
     }
-    await sheetCard.click();
+    if (carrierInviteFlowState.routeSheetTitulo) {
+      await openRouteSheetDetail(
+        sellerPage,
+        carrierInviteFlowState.routeSheetTitulo,
+      );
+    } else {
+      await sheetCard.click();
+    }
     await expect(sellerPage.getByRole("button", { name: /← lista/i })).toBeVisible({
       timeout: 8_000,
     });

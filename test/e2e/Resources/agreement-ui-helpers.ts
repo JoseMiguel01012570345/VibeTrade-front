@@ -14,6 +14,11 @@ export async function injectE2ESession(
   target: Page | BrowserContext,
   token: string,
 ): Promise<void> {
+  await target.addInitScript(() => {
+    HTMLCanvasElement.prototype.toDataURL = function toDataURL() {
+      return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    };
+  });
   await target.addInitScript((t: string) => {
     sessionStorage.setItem("vt_session_active", "1");
     sessionStorage.setItem("vt_session_token", t);
@@ -808,7 +813,12 @@ export async function createThreadAsBuyer(
   buyerToken: string,
   offerId: string,
 ): Promise<{ buyerPage: Page; threadId: string }> {
-  const buyerContext = await browser.newContext();
+  const buyerContext = await browser.newContext({ acceptDownloads: true });
+  await buyerContext.addInitScript(() => {
+    HTMLCanvasElement.prototype.toDataURL = function toDataURL() {
+      return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    };
+  });
   await buyerContext.addInitScript((t: string) => {
     sessionStorage.setItem("vt_session_active", "1");
     sessionStorage.setItem("vt_session_token", t);
@@ -825,7 +835,7 @@ export async function openSellerPage(
   sellerToken: string,
   threadId: string,
 ): Promise<Page> {
-  const ctx = await browser.newContext();
+  const ctx = await browser.newContext({ acceptDownloads: true });
   await injectE2ESession(ctx, sellerToken);
   const page = await ctx.newPage();
   await openChatThread(page, threadId);

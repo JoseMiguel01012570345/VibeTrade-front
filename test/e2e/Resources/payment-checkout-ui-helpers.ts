@@ -13,6 +13,11 @@ import {
   acceptPreselInviteAsCarrier,
   resolveRouteSheetIdByTitulo,
 } from "./route-sheet-carriers-env";
+import { getE2EScenario } from "./chat-env";
+import {
+  ensureCarrierConfirmedOnSheetStops,
+  fetchRouteSheetStopIds,
+} from "./e2e-logistics-api";
 import {
   clickInviteCarriers,
   openRouteSheetDetail,
@@ -463,19 +468,105 @@ export async function downloadPaymentInformePdf(
   page: Page,
 ): Promise<{ download: Download; buffer: Buffer }> {
   const modal = paymentModal(page);
+  await waitForPaymentModalIdle(page);
+  await waitForInformeReady(page);
+  await confirmInformeCheckbox(page);
   const btn = modal.getByRole("button", {
     name: /descargar pdf informe/i,
   });
-  await expect(btn).toBeEnabled({ timeout: 10_000 });
-  const [download] = await Promise.all([
-    page.waitForEvent("download", { timeout: 30_000 }),
-    btn.click(),
-  ]);
-  expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
-  const path = await download.path();
-  expect(path).toBeTruthy();
-  const buffer = fs.readFileSync(path!);
-  return { download, buffer };
+  await expect(btn).toBeEnabled({ timeout: 30_000 });
+
+  await page.evaluate(() => {
+    HTMLCanvasElement.prototype.toDataURL = function toDataURL() {
+      return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    };
+  });
+
+  await page.evaluate(() => {
+    const w = window as Window & {
+      __vtE2ePdfBuffer?: Promise<ArrayBuffer>;
+      __vtE2ePdfResolve?: (buf: ArrayBuffer) => void;
+      __vtE2ePdfReject?: (err: unknown) => void;
+      __vtE2ePdfRestore?: () => void;
+    };
+    w.__vtE2ePdfBuffer = new Promise<ArrayBuffer>((resolve, reject) => {
+      w.__vtE2ePdfResolve = resolve;
+      w.__vtE2ePdfReject = reject;
+    });
+    const capture = (blob: Blob) => {
+      if (blob.size > 100) {
+        void blob.arrayBuffer().then((ab) => w.__vtE2ePdfResolve?.(ab));
+      }
+    };
+    const OrigBlob = window.Blob;
+    window.Blob = function BlobParts(
+      parts?: BlobPart[],
+      options?: BlobPropertyBag,
+    ) {
+      const blob = new OrigBlob(parts, options);
+      const type = options?.type ?? "";
+      const bigPart =
+        parts?.[0] instanceof ArrayBuffer
+          ? (parts[0] as ArrayBuffer).byteLength > 400
+          : false;
+      if (type.includes("pdf") || bigPart) {
+        capture(blob);
+      }
+      return blob;
+    } as typeof Blob;
+    const origCreateObjectURL = URL.createObjectURL.bind(URL);
+    URL.createObjectURL = ((blob: Blob) => {
+      capture(blob);
+      return origCreateObjectURL(blob);
+    }) as typeof URL.createObjectURL;
+    const origClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      const href = this.href ?? "";
+      if (this.download && href.startsWith("blob:")) {
+        void fetch(href)
+          .then((r) => r.blob())
+          .then(capture)
+          .catch((err) => w.__vtE2ePdfReject?.(err));
+      }
+      return origClick.call(this);
+    };
+    w.__vtE2ePdfRestore = () => {
+      window.Blob = OrigBlob;
+      URL.createObjectURL = origCreateObjectURL;
+      HTMLAnchorElement.prototype.click = origClick;
+    };
+  });
+
+  const downloadPromise = page
+    .waitForEvent("download", { timeout: 90_000 })
+    .catch(() => null);
+  await btn.scrollIntoViewIfNeeded();
+  await btn.click();
+
+  const download = await downloadPromise;
+  if (download) {
+    expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
+    const path = await download.path();
+    expect(path).toBeTruthy();
+    const buffer = fs.readFileSync(path!);
+    return { download, buffer };
+  }
+
+  const arrayBuffer = await page.evaluate(async () => {
+    const w = window as Window & { __vtE2ePdfBuffer?: Promise<ArrayBuffer> };
+    const buf = await Promise.race([
+      w.__vtE2ePdfBuffer,
+      new Promise<ArrayBuffer>((_, reject) =>
+        setTimeout(() => reject(new Error("PDF blob capture timeout")), 90_000),
+      ),
+    ]);
+    (w as { __vtE2ePdfRestore?: () => void }).__vtE2ePdfRestore?.();
+    return buf;
+  });
+  const buffer = Buffer.from(arrayBuffer);
+  expect(buffer.length).toBeGreaterThan(500);
+  expect(buffer.toString("latin1")).toContain("Informe de pago");
+  return { download: download as Download, buffer };
 }
 
 export function assertInformePdfContent(
@@ -742,10 +833,20 @@ export async function inviteAndConfirmRouteCarriersForCheckout(
     carrierSessionToken: string;
     carrier2SessionToken?: string;
     confirmSecondCarrier?: boolean;
+    /** When false, presel accept only — no seller confirm on tramos (checkout blocked tests). */
+    confirmCarriersOnStops?: boolean;
   },
 ): Promise<void> {
+  const { reloadChatThread } = await import("./chat-helpers");
+  await reloadChatThread(sellerPage);
   await openRoutesRail(sellerPage);
-  await openRouteSheetDetail(sellerPage, routeTitulo);
+  const detailBack = sellerPage.getByRole("button", { name: /← lista/i });
+  const onDetail =
+    (await detailBack.isVisible({ timeout: 2_000 }).catch(() => false)) &&
+    (await sellerPage.getByText(routeTitulo).first().isVisible({ timeout: 2_000 }).catch(() => false));
+  if (!onDetail) {
+    await openRouteSheetDetail(sellerPage, routeTitulo);
+  }
   await clickInviteCarriers(sellerPage);
   await sendCarrierInvites(sellerPage);
   const routeSheetId = await resolveRouteSheetIdByTitulo(
@@ -772,7 +873,75 @@ export async function inviteAndConfirmRouteCarriersForCheckout(
   }
 
   await acceptAsCarrier(opts.carrierSessionToken);
-  if (opts.confirmSecondCarrier !== false && opts.carrier2SessionToken) {
+  const acceptedSecond =
+    opts.confirmSecondCarrier !== false && !!opts.carrier2SessionToken;
+  if (acceptedSecond && opts.carrier2SessionToken) {
     await acceptAsCarrier(opts.carrier2SessionToken);
+  }
+
+  if (opts.confirmCarriersOnStops === false) {
+    return;
+  }
+
+  const scenario = getE2EScenario()!;
+  const stopIds = await fetchRouteSheetStopIds(
+    sellerPage,
+    sellerToken,
+    threadId,
+    routeSheetId,
+  );
+  const stop0 = stopIds[0];
+  const stop1 = stopIds[1];
+  const token1 = scenario.carrierSessionToken?.trim() ?? "";
+  const token2 = scenario.carrier2SessionToken?.trim() ?? "";
+  const primaryToken = opts.carrierSessionToken.trim();
+
+  async function confirmOnStop(
+    carrierUserId: string | undefined,
+    stopId: string | undefined,
+  ): Promise<void> {
+    if (!carrierUserId || !stopId) return;
+    await ensureCarrierConfirmedOnSheetStops(sellerPage, sellerToken, {
+      threadId,
+      routeSheetId,
+      carrierUserId,
+      stopIds: [stopId],
+    });
+  }
+
+  if (primaryToken === token1) {
+    await confirmOnStop(scenario.carrierUserId, stop0);
+  } else if (primaryToken === token2) {
+    await confirmOnStop(scenario.carrier2UserId, stop1).catch(async () => {
+      const { openSubscribersPanel, subscribersPanel } = await import(
+        "./route-sheet-ui-helpers"
+      );
+      await openSubscribersPanel(sellerPage);
+      const panel = subscribersPanel(sellerPage);
+      await panel
+        .getByRole("button", { name: /^tramo 2\b/i })
+        .first()
+        .click()
+        .catch(() => null);
+      const acceptBtn = panel
+        .getByRole("button", { name: /aceptar en este tramo/i })
+        .first();
+      if (await acceptBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await acceptBtn.click();
+        const confirmModal = sellerPage
+          .getByRole("dialog")
+          .filter({ hasText: /confirmar transportista/i });
+        await confirmModal
+          .getByRole("button", { name: /sí, confirmar/i })
+          .click()
+          .catch(() => null);
+      }
+    });
+  }
+
+  if (acceptedSecond && opts.carrier2SessionToken?.trim() === token2) {
+    await confirmOnStop(scenario.carrier2UserId, stop1).catch(() => null);
+  } else if (acceptedSecond && opts.carrier2SessionToken?.trim() === token1) {
+    await confirmOnStop(scenario.carrierUserId, stop0);
   }
 }

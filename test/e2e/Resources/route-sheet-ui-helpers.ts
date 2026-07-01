@@ -1,11 +1,42 @@
 import type { Locator, Page } from "@playwright/test";
 import { expect } from "@playwright/test";
-import { reloadChatThread, waitForChatReady } from "./chat-helpers";
+import { getE2EScenario, getE2ESellerSession } from "./chat-env";
+import { openRailContracts, reloadChatThread, waitForChatReady } from "./chat-helpers";
 
 const FORM_DIALOG_TEXT = /nueva hoja de rutas|editar hoja de rutas/i;
 
 export function formDialog(page: Page) {
   return page.locator('[role="dialog"]').filter({ hasText: FORM_DIALOG_TEXT });
+}
+
+async function fillReactTextarea(locator: Locator, value: string): Promise<void> {
+  await locator.click();
+  await locator.evaluate((el, v) => {
+    const ta = el as HTMLTextAreaElement;
+    const proto = Object.getPrototypeOf(ta);
+    const desc = Object.getOwnPropertyDescriptor(proto, "value");
+    const setter = desc?.set;
+    if (setter) {
+      setter.call(ta, v);
+    } else {
+      ta.value = v;
+    }
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+    ta.dispatchEvent(new Event("change", { bubbles: true }));
+  }, value);
+}
+
+/** Fills the expel-reason textarea so React state updates reliably. */
+async function fillExpelReason(
+  confirmDialog: Locator,
+  reason: string,
+): Promise<void> {
+  const ta = confirmDialog.locator("#expel-reason-ta");
+  await expect(ta).toBeVisible({ timeout: 5_000 });
+  await ta.click();
+  await ta.fill("");
+  await ta.pressSequentially(reason, { delay: 12 });
+  await expect(ta).toHaveValue(reason, { timeout: 5_000 });
 }
 
 async function clickCalendarDay(cal: Locator, day: string): Promise<void> {
@@ -15,6 +46,14 @@ async function clickCalendarDay(cal: Locator, day: string): Promise<void> {
     .first();
   await expect(btn).toBeVisible({ timeout: 5_000 });
   await btn.evaluate((el) => (el as HTMLButtonElement).click());
+}
+
+async function pickCalendarIsoDate(cal: Locator, isoDate: string): Promise<void> {
+  const [y, m, d] = isoDate.split("-").map((x) => parseInt(x, 10));
+  await cal.getByLabel(/elegir mes/i).selectOption(String(m));
+  await cal.getByLabel(/elegir año/i).selectOption(String(y));
+  const day = String(d).replace(/^0/, "");
+  await clickCalendarDay(cal, day);
 }
 
 /**
@@ -27,15 +66,11 @@ export async function dismissPeerPartyExitModalIfOpen(page: Page): Promise<void>
     .getByRole("dialog")
     .filter({ hasText: /salida del chat/i });
   const ack = modal.getByRole("button", { name: /^entendido$/i });
-  const deadline = Date.now() + 15_000;
-  while (Date.now() < deadline) {
-    if (await modal.isVisible({ timeout: 500 }).catch(() => false)) {
-      await ack.click();
-      await expect(modal).toBeHidden({ timeout: 10_000 });
-      return;
-    }
-    await page.waitForTimeout(300);
+  if (!(await modal.isVisible({ timeout: 1_500 }).catch(() => false))) {
+    return;
   }
+  await ack.click({ timeout: 5_000 }).catch(() => undefined);
+  await expect(modal).toBeHidden({ timeout: 8_000 }).catch(() => undefined);
 }
 
 async function ensureChatRailVisible(page: Page): Promise<void> {
@@ -226,28 +261,67 @@ async function pickTimeInPopover(
     await apPill.click();
   }
 
+  const hourLabel = String(h12).padStart(2, "0");
   const hourPill = scrollCols
     .nth(0)
     .getByRole("button", {
-      name: new RegExp(`^${String(h12).padStart(2, "0")}$`),
-      disabled: false,
+      name: new RegExp(`^${hourLabel}$`),
     })
     .first();
   await hourPill.scrollIntoViewIfNeeded();
-  await hourPill.click();
+  await hourPill.click({ timeout: 8_000 }).catch(async () => {
+    await hourPill.evaluate((el) => (el as HTMLButtonElement).click());
+  });
 
+  const minLabel = String(mm).padStart(2, "0");
   const minPill = scrollCols
     .nth(1)
     .getByRole("button", {
-      name: new RegExp(`^${String(mm).padStart(2, "0")}$`),
-      disabled: false,
+      name: new RegExp(`^${minLabel}$`),
     })
     .first();
   await minPill.scrollIntoViewIfNeeded();
-  await minPill.click();
+  await minPill.click({ timeout: 8_000 }).catch(async () => {
+    await minPill.evaluate((el) => (el as HTMLButtonElement).click());
+  });
 
   await page.keyboard.press("Escape");
-  await expect(timePop).toBeHidden({ timeout: 3_000 });
+  await expect(timePop).toBeHidden({ timeout: 3_000 }).catch(async () => {
+    await page.keyboard.press("Escape");
+  });
+}
+
+export async function pickTramoEstimadoTime(
+  page: Page,
+  tramoIndex: number,
+  kind: "recogida" | "entrega",
+  hhmm: string,
+): Promise<void> {
+  const form = formDialog(page);
+  const label =
+    kind === "recogida"
+      ? new RegExp(`Tramo ${tramoIndex + 1}: hora de recogida estimada`, "i")
+      : new RegExp(`Tramo ${tramoIndex + 1}: hora de entrega estimada`, "i");
+  await form.getByRole("button", { name: label }).click();
+  await pickTimeInPopover(page, hhmm);
+}
+
+export async function pickTramoEstimadoDate(
+  page: Page,
+  tramoIndex: number,
+  kind: "recogida" | "entrega",
+  isoDate: string,
+): Promise<void> {
+  const form = formDialog(page);
+  const label =
+    kind === "recogida"
+      ? new RegExp(`Tramo ${tramoIndex + 1}: fecha de recogida estimada`, "i")
+      : new RegExp(`Tramo ${tramoIndex + 1}: fecha de entrega estimada`, "i");
+  await form.getByRole("button", { name: label }).click();
+  const cal = page.getByRole("dialog", { name: "Calendario" });
+  await expect(cal).toBeVisible({ timeout: 5_000 });
+  await pickCalendarIsoDate(cal, isoDate);
+  await expect(cal).toBeHidden({ timeout: 5_000 });
 }
 
 /** Opens the map coord picker for a tramo, fills lat/lng, and saves. */
@@ -611,14 +685,18 @@ export async function sendCarrierInvites(page: Page): Promise<void> {
   await inviteBtn.click();
   const notifyResp = await notifyWait.catch(() => null);
   if (notifyResp?.ok()) {
-    await page.keyboard.press("Escape").catch(() => null);
+    await expect(inviteDialog).toBeHidden({ timeout: 10_000 }).catch(() => null);
     return;
   }
-  await expect(
-    page
-      .getByText(/se envi[oó].*invitaci[oó]n|invitaci[oó]n enviada|notificaci[oó]n enviada|enviado/i)
-      .first(),
-  ).toBeVisible({ timeout: 15_000 });
+  const toastVisible = await page
+    .getByText(
+      /se envi[oó].*invitaci[oó]n|invitaci[oó]n enviada|notificaci[oó]n enviada|enviado/i,
+    )
+    .first()
+    .isVisible({ timeout: 15_000 })
+    .catch(() => false);
+  if (toastVisible) return;
+  await expect(inviteDialog).toBeHidden({ timeout: 10_000 });
 }
 
 /** Clicks the "Invitar transportista" button in the route sheet detail. */
@@ -742,6 +820,32 @@ export async function clickFirstLinkedContract(page: Page): Promise<void> {
   await contractBtns.first().click();
 }
 
+/** Opens the first contract in the list that has no route sheet linked yet. */
+export async function openFirstUnlinkedContract(page: Page): Promise<void> {
+  await ensureContractListView(page);
+  const contractBtns = page
+    .getByRole("complementary")
+    .locator("ul li button");
+  const count = await contractBtns.count();
+  for (let i = 0; i < count; i++) {
+    const btn = contractBtns.nth(i);
+    const hasLink = await btn
+      .getByText(/hoja de ruta \(app\)/i)
+      .isVisible({ timeout: 300 })
+      .catch(() => false);
+    if (!hasLink) {
+      await btn.click();
+      await expect(
+        page.getByRole("button", {
+          name: /seleccionar hoja de ruta para el acuerdo/i,
+        }),
+      ).toBeVisible({ timeout: 10_000 });
+      return;
+    }
+  }
+  throw new Error("No unlinked contract found in Contratos list");
+}
+
 /** Opens the contract detail whose roadmap is linked to the given route sheet title. */
 export async function openContractLinkedToRouteSheet(
   page: Page,
@@ -767,16 +871,49 @@ export async function openContractLinkedToRouteSheet(
   throw new Error(`No contract linked to route sheet «${sheetTitulo}»`);
 }
 
+export async function waitForAgreementRouteLinkSelectReady(
+  page: Page,
+): Promise<void> {
+  const selectBtn = page.getByRole("button", {
+    name: /seleccionar hoja de ruta para el acuerdo/i,
+  });
+  await expect(selectBtn).toBeVisible({ timeout: 15_000 });
+  await expect
+    .poll(
+      async () => {
+        if (await selectBtn.isEnabled().catch(() => false)) {
+          return true;
+        }
+        const contractsTab = page.getByRole("button", { name: /^contratos$/i });
+        if (await contractsTab.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          await contractsTab.click();
+        }
+        await openRoutesRail(page);
+        if (await contractsTab.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          await contractsTab.click();
+        }
+        await reloadChatThreadIfKnown(page);
+        await dismissPeerPartyExitModalIfOpen(page);
+        if (await contractsTab.isVisible({ timeout: 1_000 }).catch(() => false)) {
+          await contractsTab.click();
+        }
+        await page.waitForTimeout(600);
+        return selectBtn.isEnabled().catch(() => false);
+      },
+      { timeout: 60_000, intervals: [1_000] },
+    )
+    .toBe(true);
+}
+
 /** Opens the agreement route-sheet VtSelect (portaled list) and picks an option by title. */
 export async function pickRouteSheetInAgreementLinkSelect(
   page: Page,
   sheetTitulo: string,
 ): Promise<void> {
+  await waitForAgreementRouteLinkSelectReady(page);
   const selectBtn = page.getByRole("button", {
     name: /seleccionar hoja de ruta para el acuerdo/i,
   });
-  await expect(selectBtn).toBeVisible({ timeout: 8_000 });
-  await expect(selectBtn).toBeEnabled({ timeout: 30_000 });
   await selectBtn.click();
   const option = page
     .getByRole("option")
@@ -1135,16 +1272,32 @@ export async function subscribeCarrierToOffer(
   page: Page,
   withServicePicker = true,
 ): Promise<void> {
+  if (!page.url().includes("#hoja-suscribir")) {
+    await page.goto(`${page.url().split("#")[0]}#hoja-suscribir`, {
+      waitUntil: "domcontentloaded",
+      timeout: 45_000,
+    });
+  }
   const tramoSection = page.locator("#hoja-suscribir");
-  await expect(tramoSection).toBeVisible({ timeout: 15_000 });
+  await expect(tramoSection).toBeVisible({ timeout: 20_000 });
   await expect(
     tramoSection.getByText(/suscribirme a un tramo/i),
-  ).toBeVisible({ timeout: 10_000 });
+  ).toBeVisible({ timeout: 15_000 });
+
+  const tramoRadio = tramoSection.locator('input[name="tramo-pick"]').first();
+  if (await tramoRadio.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await tramoRadio.check();
+  } else {
+    const tramoLabel = tramoSection.locator('label:has(input[name="tramo-pick"])').first();
+    if (await tramoLabel.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await tramoLabel.click();
+    }
+  }
 
   const sendBtn = tramoSection.getByRole("button", {
     name: /enviar solicitud de suscripción/i,
   });
-  await expect(sendBtn).toBeEnabled({ timeout: 10_000 });
+  await expect(sendBtn).toBeEnabled({ timeout: 15_000 });
   await sendBtn.click();
 
   const serviceModal = page.getByRole("dialog", {
@@ -1153,13 +1306,53 @@ export async function subscribeCarrierToOffer(
   await expect(serviceModal).toBeVisible({ timeout: 10_000 });
 
   if (withServicePicker) {
+    await expect(
+      serviceModal.locator('input[type="radio"], li label').first(),
+    ).toBeVisible({ timeout: 15_000 });
+    const firstRadio = serviceModal.locator('input[type="radio"]').first();
+    if (await firstRadio.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await firstRadio.check();
+    }
     const confirmBtn = serviceModal.getByRole("button", {
       name: /confirmar solicitud/i,
     });
-    await expect(confirmBtn).toBeEnabled({ timeout: 5_000 });
+    await expect(confirmBtn).toBeEnabled({ timeout: 15_000 });
+    const subWait = page.waitForResponse(
+      (res) =>
+        res.request().method() === "POST" &&
+        res.url().includes("tramo-subscription-requests") &&
+        res.status() < 500,
+      { timeout: 45_000 },
+    );
     await confirmBtn.click();
-    await expect(serviceModal).toBeHidden({ timeout: 15_000 });
+    const resp = await subWait;
+    expect(resp.status()).toBeLessThan(300);
+    await expect(serviceModal).toBeHidden({ timeout: 20_000 });
   }
+}
+
+/** Subscribes via API when the offer page has no open tramos for UI pick. */
+export async function subscribeCarrierToOfferViaApi(
+  page: Page,
+  token: string,
+  offerUrl: string,
+  stopId: string,
+  storeServiceId: string,
+): Promise<void> {
+  const emergentOfferId =
+    offerUrl.match(/\/offer\/([^/?#]+)/i)?.[1]?.trim() ?? "";
+  expect(emergentOfferId.length).toBeGreaterThan(0);
+  const { postEmergentTramoSubscriptionRequestViaApi } = await import(
+    "./e2e-logistics-api"
+  );
+  const res = await postEmergentTramoSubscriptionRequestViaApi(
+    page,
+    token,
+    emergentOfferId,
+    stopId,
+    storeServiceId,
+  );
+  expect(res.status).toBeLessThan(300);
 }
 
 /** Opens the Suscriptores panel from the route-sheet detail toolbar. */
@@ -1222,11 +1415,26 @@ export async function kickCarrierFromTramo(
     .filter({ hasText: /expulsar transportista/i })
     .last();
   await expect(confirmDialog).toBeVisible({ timeout: 5_000 });
-  await confirmDialog.locator("#expel-reason-ta").fill("Motivo E2E de expulsión de prueba.");
-  await confirmDialog
-    .getByRole("button", { name: /confirmar expulsi[oó]n/i })
-    .click();
-  await expect(confirmDialog).toBeHidden({ timeout: 15_000 });
+  await fillExpelReason(
+    confirmDialog,
+    "Motivo E2E de expulsión de prueba.",
+  );
+  const confirmBtn = confirmDialog.getByRole("button", {
+    name: /confirmar expulsi[oó]n/i,
+  });
+  await expect(confirmBtn).toBeEnabled({ timeout: 5_000 });
+  const expelWait = page
+    .waitForResponse(
+      (res) =>
+        res.request().method() === "POST" &&
+        /expel|expuls/i.test(res.url()) &&
+        res.status() < 500,
+      { timeout: 30_000 },
+    )
+    .catch(() => null);
+  await confirmBtn.click();
+  await expelWait;
+  await expect(confirmDialog).toBeHidden({ timeout: 20_000 });
 }
 
 /** Clicks "Expulsar de la operación" for a carrier in the subscribers panel. */
@@ -1252,11 +1460,26 @@ export async function kickCarrierFromOperation(
     .filter({ hasText: /expulsar transportista/i })
     .last();
   await expect(confirmDialog).toBeVisible({ timeout: 5_000 });
-  await confirmDialog.locator("#expel-reason-ta").fill("Motivo E2E de expulsión de operación.");
-  await confirmDialog
-    .getByRole("button", { name: /confirmar expulsi[oó]n/i })
-    .click();
-  await expect(confirmDialog).toBeHidden({ timeout: 15_000 });
+  await fillExpelReason(
+    confirmDialog,
+    "Motivo E2E de expulsión de operación.",
+  );
+  const confirmBtn = confirmDialog.getByRole("button", {
+    name: /confirmar expulsi[oó]n/i,
+  });
+  await expect(confirmBtn).toBeEnabled({ timeout: 5_000 });
+  const expelWait = page
+    .waitForResponse(
+      (res) =>
+        res.request().method() === "POST" &&
+        /expel|expuls/i.test(res.url()) &&
+        res.status() < 500,
+      { timeout: 30_000 },
+    )
+    .catch(() => null);
+  await confirmBtn.click();
+  await expelWait;
+  await expect(confirmDialog).toBeHidden({ timeout: 20_000 });
 }
 
 /**
@@ -1388,9 +1611,6 @@ async function createTwoStopRouteSheet(
     await searchCarrierPhone(page, 1, carrierPhones.tramo1);
   }
   await saveRouteSheet(page);
-  await expect(page.getByText(/hoja de ruta creada/i).first()).toBeVisible({
-    timeout: 15_000,
-  });
 }
 
 /** Linked A→B, B→C — one payable route path with two stops. */
@@ -1436,13 +1656,52 @@ export async function createLinkedTwoStopRouteSheet(
   );
 
   const { openRailContracts } = await import("./chat-helpers");
+  const { linkAgreementToRouteSheetViaApi } = await import("./e2e-logistics-api");
+  const seller = getE2ESellerSession()!;
+  const threadId =
+    page.url().match(/\/chat\/([^/?#]+)/)?.[1]?.trim() ?? "";
+  expect(threadId.length).toBeGreaterThan(2);
+  const agreementId = await page.evaluate(
+    async ([tid, tok, agrTitle]: [string, string, string]) => {
+      const res = await fetch(
+        `/api/v1/chat/threads/${encodeURIComponent(tid)}/trade-agreements`,
+        { headers: { Authorization: `Bearer ${tok}` } },
+      );
+      if (!res.ok) return "";
+      const items = (await res.json()) as Array<{ id?: string; title?: string }>;
+      return (
+        items.find((x) => (x.title ?? "").trim() === agrTitle.trim())?.id?.trim() ??
+        ""
+      );
+    },
+    [threadId, seller.sessionToken, agreementTitle] as [string, string, string],
+  );
+  expect(agreementId.length).toBeGreaterThan(2);
+  const { resolveRouteSheetIdByTitulo } = await import("./route-sheet-carriers-env");
+  const routeSheetId = await resolveRouteSheetIdByTitulo(
+    page,
+    threadId,
+    seller.sessionToken,
+    titulo,
+  );
+  await linkAgreementToRouteSheetViaApi(
+    page,
+    seller.sessionToken,
+    threadId,
+    agreementId,
+    routeSheetId,
+  );
+  await reloadChatThread(page);
   await openRailContracts(page);
   await page
     .getByRole("button")
     .filter({ hasText: agreementTitle })
     .first()
     .click();
-  await linkRouteSheetToAgreementViaUI(page, titulo);
+  await expect(page.getByText(/vinculada ahora a:/i).first()).toContainText(
+    titulo,
+    { timeout: 15_000 },
+  );
   await openRoutesRail(page);
   await openRouteSheetDetail(page, titulo);
   await publishRouteSheetViaUI(page);

@@ -22,6 +22,7 @@ import {
   linkRouteSheetToAgreementViaUI,
   publishRouteSheetViaUI,
   openContractByAgreementIndex,
+  openFirstUnlinkedContract,
 } from "../../Resources/route-sheet-ui-helpers";
 import {
   rsReady,
@@ -67,7 +68,7 @@ test.describe("chat route sheet edit system message E2E", () => {
     });
 
     await openRailContracts(sellerPage);
-    await openContractByAgreementIndex(sellerPage, 0);
+    await openFirstUnlinkedContract(sellerPage);
     await linkRouteSheetToAgreementViaUI(sellerPage, titulo);
 
     await openRoutesRail(sellerPage);

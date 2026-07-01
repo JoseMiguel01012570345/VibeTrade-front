@@ -40,7 +40,7 @@ import {
 } from "../../Resources/pay-live-map-helpers";
 import { openSellerPage } from "../../Resources/agreement-ui-helpers";
 import { getE2ESellerSession } from "../../Resources/chat-env";
-import { openChatThread, waitForChatReady } from "../../Resources/chat-helpers";
+import { openChatThread, reloadChatThread, waitForChatReady } from "../../Resources/chat-helpers";
 import { payAllRoutePathsAsBuyer } from "../../Resources/e2e-logistics-env";
 
 test.describe("chat route logistics — deliveries UI per tramo", () => {
@@ -233,21 +233,35 @@ test.describe("chat route logistics — deliveries UI per tramo", () => {
     );
     await buyerCtx.close();
 
-    const deadline = Date.now() + 90_000;
-    let sawPaidState = false;
-    while (Date.now() < deadline && !sawPaidState) {
+    const stop0 = s.stopIds[0]!;
+    const paidStates = ["paid", "awaiting_carrier_for_handoff", "in_transit"] as const;
+    let sawPaid = false;
+    for (const state of paidStates) {
       try {
-        await expectLegEstado(
+        await waitForDeliveryState(
           sellerPage,
-          /esperando transportista|handoff|cobrado/i,
-          0,
+          seller.sessionToken,
+          s.threadId,
+          s.agreementId,
+          stop0,
+          state,
+          90_000,
         );
-        sawPaidState = true;
+        sawPaid = true;
+        break;
       } catch {
-        await sellerPage.waitForTimeout(2_000);
+        /* try next state */
       }
     }
-    expect(sawPaidState).toBe(true);
+    expect(sawPaid).toBe(true);
+
+    await reloadChatThread(sellerPage);
+    await openLogisticsRouteSheet(sellerPage, s.routeSheetTitulo);
+    await expectLegEstado(
+      sellerPage,
+      /esperando transportista|handoff|cobrado|pagado|en tránsito|transito/i,
+      0,
+    );
 
     await sellerPage.context().close();
   });
