@@ -21,7 +21,6 @@ import {
   takeNextAgreementIndex,
 } from "../../Resources/e2e-logistics-env";
 import {
-  fetchAgreementTitleById,
   fetchRouteDeliveries,
 } from "../../Resources/e2e-logistics-api";
 import {
@@ -45,7 +44,7 @@ import {
   saveRouteSheet,
   linkRouteSheetToAgreementViaUI,
   publishRouteSheetViaUI,
-  openContractByAgreementTitle,
+  openContractByAgreementIndex,
   waitForThreadContractsLoaded,
   searchCarrierPhone,
 } from "../../Resources/route-sheet-ui-helpers";
@@ -85,27 +84,23 @@ test.describe("chat route logistics — multi sheet", () => {
     await deleteTramoAt(sellerPage, 1);
     await fillTramoFields(sellerPage, 0, TRAMO_OPTS);
     await searchCarrierPhone(sellerPage, 0, scenario.carrierPhone!);
-    await saveRouteSheet(sellerPage);
+    const savedSheet2Id = await saveRouteSheet(sellerPage);
     await openRailContracts(sellerPage);
     const agr2Index = takeNextAgreementIndex();
     const agr2Id = scenario.routeSheetAgreementIds![agr2Index]!;
-    const agr2Title = await fetchAgreementTitleById(
-      sellerPage,
-      seller.sessionToken,
-      s1.threadId,
-      agr2Id,
-    );
-    await openContractByAgreementTitle(sellerPage, agr2Title);
-    await linkRouteSheetToAgreementViaUI(sellerPage, titulo2);
+    await openContractByAgreementIndex(sellerPage, agr2Index);
+    await linkRouteSheetToAgreementViaUI(sellerPage, titulo2, agr2Id);
     await openRoutesRail(sellerPage);
     await openRouteSheetDetail(sellerPage, titulo2);
     await publishRouteSheetViaUI(sellerPage);
-    const sheet2Id = await resolveRouteSheetIdByTitulo(
-      sellerPage,
-      s1.threadId,
-      seller.sessionToken,
-      titulo2,
-    );
+    const sheet2Id =
+      savedSheet2Id ??
+      (await resolveRouteSheetIdByTitulo(
+        sellerPage,
+        s1.threadId,
+        seller.sessionToken,
+        titulo2,
+      ));
     await sellerPage.context().close();
 
     const carrierPage = await openCarrierPage(

@@ -105,16 +105,39 @@ export const carrierInviteFlowState = {
   publishedRouteSheetTitulo: "",
 };
 
+const routeSheetIdCache = new Map<string, string>();
+
+export function cacheRouteSheetId(
+  threadId: string,
+  titulo: string,
+  routeSheetId: string,
+): void {
+  const id = routeSheetId.trim();
+  const title = titulo.trim();
+  if (id.length > 2 && title.length > 0) {
+    routeSheetIdCache.set(`${threadId.trim()}:${title}`, id);
+  }
+}
+
 export async function resolveRouteSheetIdByTitulo(
   page: Page,
   threadId: string,
   sessionToken: string,
   titulo: string,
 ): Promise<string> {
+  const cacheKey = `${threadId.trim()}:${titulo.trim()}`;
+  const cached = routeSheetIdCache.get(cacheKey);
+  if (cached && cached.length > 2) {
+    return cached;
+  }
+  const { reloadChatThread } = await import("./chat-helpers");
   let id = "";
   await expect
     .poll(
       async () => {
+        if (!id) {
+          await reloadChatThread(page).catch(() => null);
+        }
         id = await page.evaluate(
           async ([tid, token, title]: [string, string, string]) => {
             const res = await fetch(
@@ -141,9 +164,10 @@ export async function resolveRouteSheetIdByTitulo(
         );
         return id.length > 2;
       },
-      { timeout: 45_000 },
+      { timeout: 120_000, intervals: [1_000, 2_000, 3_000] },
     )
     .toBe(true);
+  cacheRouteSheetId(threadId, titulo, id);
   return id;
 }
 
@@ -156,18 +180,27 @@ export async function setupRouteSheetWithCarrier(
     titulo: string;
     tramos: TramoOpts[];
     carrierPhone: string;
+    skipMapCoords?: boolean;
   },
-): Promise<void> {
+): Promise<string | undefined> {
   await clickNewRouteSheet(page);
   await waitForRouteSheetForm(page);
   await fillRouteSheetBasicFields(page, opts.titulo);
   await deleteTramoAt(page, 1);
   for (let i = 0; i < opts.tramos.length; i++) {
     if (i > 0) await insertTramoAfter(page, i - 1);
-    await fillTramoFields(page, i, opts.tramos[i]!);
+    await fillTramoFields(page, i, {
+      ...opts.tramos[i]!,
+      skipMapCoords: opts.skipMapCoords ?? true,
+    });
     await searchCarrierPhone(page, i, opts.carrierPhone);
   }
-  await saveRouteSheet(page);
+  const savedId = await saveRouteSheet(page);
+  const threadId = page.url().match(/\/chat\/([^/?#]+)/)?.[1]?.trim() ?? "";
+  if (savedId && threadId) {
+    cacheRouteSheetId(threadId, opts.titulo, savedId);
+  }
+  return savedId;
 }
 
 /** Carrier accepts a presel invite and lands on the chat thread. */

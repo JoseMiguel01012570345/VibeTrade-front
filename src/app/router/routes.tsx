@@ -22,6 +22,21 @@ import {
   RegisterVerifyPhonePage,
 } from "@features/auth";
 import { CatalogSearchPage } from "@features/catalog";
+import {
+  CartPage,
+  CheckoutPage,
+  OrderReceiptPage,
+  OrderTrackingPage,
+  PurchaseHistoryPage,
+} from "@features/orders";
+import {
+  AffiliateDashboardPage,
+  DebtsAdminPage,
+  WarehousePortalPage,
+} from "@features/finance";
+import { MensualidadPage } from "@features/trust";
+import { UsersAdminPage } from "@features/users";
+import { StatisticsPage } from "@features/statistics";
 
 function RootRedirect() {
   return <Navigate to="/home" replace />;
@@ -61,6 +76,19 @@ export function AppRoutes() {
           <Route path="/store/:storeId/vitrina" element={<StorePage />} />
           <Route path="/store/:storeId/products" element={<StorePage />} />
           <Route path="/store/:storeId/services" element={<StorePage />} />
+
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/pedido/:publicNumber" element={<OrderReceiptPage />} />
+          <Route path="/rastreo/:publicNumber" element={<OrderTrackingPage />} />
+          <Route path="/mis-compras" element={<PurchaseHistoryPage />} />
+
+          <Route path="/finanzas/deudas" element={<DebtsAdminPage />} />
+          <Route path="/afiliado" element={<AffiliateDashboardPage />} />
+          <Route path="/almacen/:storeId/pedidos" element={<WarehousePortalPage />} />
+          <Route path="/mensualidad" element={<MensualidadPage />} />
+          <Route path="/admin/usuarios" element={<UsersAdminPage />} />
+          <Route path="/estadisticas" element={<StatisticsPage />} />
 
           <Route path="/chat" element={<ChatListPage />} />
           <Route

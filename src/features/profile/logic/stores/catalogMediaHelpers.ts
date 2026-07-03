@@ -84,5 +84,6 @@ export function ownerStoreToFormValues(
     transportIncluded: b.transportIncluded,
     location: b.location,
     websiteUrl: b.websiteUrl,
+    pricePerKm: b.pricePerKm,
   };
 }

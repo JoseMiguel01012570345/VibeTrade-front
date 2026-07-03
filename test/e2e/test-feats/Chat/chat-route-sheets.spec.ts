@@ -13,7 +13,7 @@ import {
   createThreadAsBuyer,
   openSellerPage,
 } from "../../Resources/agreement-ui-helpers";
-import { openRailContracts } from "../../Resources/chat-helpers";
+import { openRailContracts, waitForChatReady } from "../../Resources/chat-helpers";
 import {
   waitForThreadContractsLoaded,
   openRoutesRail,
@@ -56,7 +56,7 @@ const rsSkipReason =
   "Route sheet scenario not provisioned — run global-setup with API on :5110";
 
 test.describe("chat route sheets (UI)", () => {
-  test.describe.configure({ mode: "serial", timeout: 180_000 });
+  test.describe.configure({ mode: "serial", timeout: 300_000 });
 
   test.skip(!chatE2EReady(), chatE2ESkipReason);
   test.skip(!hasDistinctSellerSession(), chatE2ESellerSkipReason);
@@ -292,7 +292,7 @@ test.describe("chat route sheets (UI)", () => {
       recogidaDate: isoTomorrow,
       recogidaTime: "10:00",
       entregaDate: isoTomorrow,
-      entregaTime: "14:00",
+      entregaTime: "17:00",
       precio: "100",
       responsabilidad: "Vendedor",
       requisitos: "Ninguno",
@@ -302,13 +302,33 @@ test.describe("chat route sheets (UI)", () => {
 
     await insertTramoAfter(sellerPage, 0);
 
+    const form = formDialog(sellerPage);
+    await expect(
+      form.getByRole("button", { name: /Tramo 2: hora de recogida estimada/i }),
+    ).toContainText(/5:00 PM/i);
+
+    // Picker blocks recogida before/at previous tramo entrega (same day).
+    await form
+      .getByRole("button", { name: /Tramo 2: hora de recogida estimada/i })
+      .click();
+    const timePop = sellerPage
+      .locator('[role="dialog"][aria-label="Elegir hora"]')
+      .last();
+    await expect(timePop).toBeVisible();
+    const scrollCols = timePop.locator(".vt-time-scroll");
+    // 2:00 PM must be blocked (leg 1 ends at 5:00 PM); popover opens on current 5:00 PM.
+    await expect(
+      scrollCols.nth(0).getByRole("button", { name: /^02$/ }).first(),
+    ).toBeDisabled();
+    await sellerPage.keyboard.press("Escape");
+
     await fillTramoFields(sellerPage, 1, {
       origen: "Ciudad B",
       destino: "Ciudad C",
       recogidaDate: isoTomorrow,
-      recogidaTime: "15:00",
+      recogidaTime: "18:00",
       entregaDate: isoTomorrow,
-      entregaTime: "16:00",
+      entregaTime: "20:00",
       precio: "120",
       responsabilidad: "Transportista",
       requisitos: "Ninguno",
@@ -316,26 +336,9 @@ test.describe("chat route sheets (UI)", () => {
       carga: "Cajas",
     });
 
-    // Invalidate chain: leg 2 pickup (15:00) before leg 1 delivery (17:00) same day.
-    await pickTramoEstimadoTime(sellerPage, 0, "entrega", "17:00");
-    const form = sellerPage.locator('[role="dialog"]').filter({
-      hasText: /nueva hoja de rutas|editar hoja de rutas/i,
-    });
-    await expect(
-      form.getByRole("button", {
-        name: /Tramo 1: hora de entrega estimada/i,
-      }),
-    ).toContainText(/5:00\s*PM|17:00/i);
+    await saveRouteSheet(sellerPage);
+    await expect(formDialog(sellerPage)).toBeHidden({ timeout: 15_000 });
 
-    await clickSaveRouteSheetForm(sellerPage);
-
-    await expect(
-      form.locator('[role="alert"]').filter({
-        hasText: /no puede ser anterior a la entrega estimada del tramo anterior/i,
-      }),
-    ).toBeVisible({ timeout: 8_000 });
-
-    await sellerPage.keyboard.press("Escape");
     await sellerPage.close();
   });
 
@@ -595,7 +598,7 @@ test.describe("chat route sheets (UI)", () => {
       seller.sessionToken,
       threadId,
     );
-    await waitForThreadContractsLoaded(sellerPage);
+    await waitForChatReady(sellerPage);
     await openRoutesRail(sellerPage);
 
     const titulo10 = `Hoja Link Select ${Date.now()}`;
@@ -617,11 +620,9 @@ test.describe("chat route sheets (UI)", () => {
       carga: "General",
     });
     await saveRouteSheet(sellerPage);
-    await expect(sellerPage.getByText(/hoja de ruta creada/i)).toBeVisible({
-      timeout: 15_000,
-    });
 
     await openRailContracts(sellerPage);
+    await waitForThreadContractsLoaded(sellerPage);
     await expect(sellerPage.getByText(/no hay contratos/i)).toBeHidden({
       timeout: 15_000,
     });

@@ -1,20 +1,25 @@
 import { useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
+  AlertTriangle,
   Home,
   LogIn,
   MessageCircle,
   PlaySquare,
   Search,
+  ShoppingCart,
   User,
 } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 import { useAppStore } from "@features/auth/logic/useAppStore";
+import { useCartStore } from "@features/orders";
 import { NotificationsBell } from "../widgets/NotificationsBell";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { AuthEntryModal } from "@features/auth";
 import { ThemeToggle } from "../widgets/ThemeToggle";
 import { syncChatNotificationsFromServer } from "@features/notifications/logic/notificationsSync";
+import { useTrustGate } from "@features/trust";
+import { AnalyticsTracker } from "@features/analytics";
 
 const tabs = [
   { to: "/home", label: "Home", icon: Home },
@@ -66,9 +71,23 @@ export function AppShell() {
   const shellNotificationsOverlay =
     showNotificationsBell && isSessionActive && !isOnboarding && !isHome;
   const me = useAppStore((s) => s.me);
+  const trustThreshold = useAppStore((s) => s.trustThreshold);
+  const showTrustBanner =
+    isSessionActive &&
+    !isOnboarding &&
+    pathname !== "/mensualidad" &&
+    trustThreshold > 0 &&
+    me.trustScore < trustThreshold;
   const authOpen = useAppStore((s) => s.authModalOpen);
   const openAuthModal = useAppStore((s) => s.openAuthModal);
   const closeAuthModal = useAppStore((s) => s.closeAuthModal);
+
+  // Sincroniza puntaje/umbral de confianza desde el backend para el gate de interacciones (wiki cap. 08/10).
+  useTrustGate();
+
+  const cartCount = useCartStore((s) =>
+    s.items.reduce((n, i) => n + i.quantity, 0),
+  );
 
   useEffect(() => {
     if (!isSessionActive) return;
@@ -89,6 +108,21 @@ export function AppShell() {
 
   return (
     <div className="vt-app flex min-h-screen flex-col">
+      <AnalyticsTracker />
+      {showTrustBanner ? (
+        <button
+          type="button"
+          onClick={() => navigate("/mensualidad")}
+          className="flex w-full items-center justify-center gap-2 bg-[color-mix(in_oklab,var(--bad)_16%,var(--surface))] px-3 py-2 text-center text-[13px] font-semibold text-[var(--bad)]"
+          aria-label="Tu confianza está por debajo del umbral. Regularizar la mensualidad"
+        >
+          <AlertTriangle size={16} aria-hidden />
+          <span>
+            Tu confianza está por debajo del umbral. Regulariza tu mensualidad
+            para reactivar tu cuenta.
+          </span>
+        </button>
+      ) : null}
       {showStickyShellHeader ? (
         <div className="sticky top-0 z-50 overflow-visible bg-[color-mix(in_oklab,var(--bg)_65%,transparent)] pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-[10px]">
           <div className="container pb-2.5">
@@ -177,6 +211,20 @@ export function AppShell() {
       >
         <Outlet />
       </main>
+
+      {!isOnboarding && !hideBottomNav && cartCount > 0 ? (
+        <button
+          type="button"
+          onClick={() => navigate("/cart")}
+          aria-label={`Carrito (${cartCount})`}
+          className="fixed bottom-[96px] right-4 z-[61] grid h-12 w-12 place-items-center rounded-full border border-[var(--border)] bg-[var(--primary)] text-white shadow-lg transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+        >
+          <ShoppingCart size={20} aria-hidden />
+          <span className="absolute -right-1 -top-1 grid min-h-[20px] min-w-[20px] place-items-center rounded-full border-2 border-[var(--surface)] bg-[var(--bad)] px-1 text-[11px] font-black tabular-nums text-white">
+            {cartCount > 99 ? "99+" : cartCount}
+          </span>
+        </button>
+      ) : null}
 
       {!isOnboarding && !hideBottomNav && (
         <nav className="fixed bottom-0 left-0 right-0 z-[60] border-t border-[var(--border)] bg-[var(--surface)]">

@@ -12,6 +12,8 @@ export type User = {
   phone: string
   avatarUrl?: string
   trustScore: number
+  /** Roles efectivos de plataforma (superadmin/admin/almacen/afiliado). Vacío para invitados. */
+  roles?: string[]
   /** Cuentas persistidas en servidor (también reflejadas en `profileSocialLinks`). */
   instagram?: string
   telegram?: string

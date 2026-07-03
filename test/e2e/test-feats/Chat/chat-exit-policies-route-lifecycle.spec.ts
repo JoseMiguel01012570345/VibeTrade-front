@@ -483,7 +483,19 @@ test.describe("chat exit policies — route lifecycle", () => {
       waitUntil: "domcontentloaded",
     });
     await expectOpenTramosCountOnOfferPage(carrierPage, 1);
-    await subscribeCarrierToOffer(carrierPage);
+    const serviceId = scenario.carrierServiceId?.trim();
+    const openStopId = route.stopIds[1] ?? route.stopIds[route.stopIds.length - 1];
+    if (serviceId && openStopId) {
+      await subscribeCarrierToOfferViaApi(
+        carrierPage,
+        scenario.carrierSessionToken!,
+        offerUrl,
+        openStopId,
+        serviceId,
+      );
+    } else {
+      await subscribeCarrierToOffer(carrierPage);
+    }
     await carrierPage.reload({ waitUntil: "domcontentloaded" });
     await expectOpenTramosCountOnOfferPage(carrierPage, 0);
     await carrierCtx.close();

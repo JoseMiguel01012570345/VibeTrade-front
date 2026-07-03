@@ -316,6 +316,7 @@ test.describe("chat route sheet — carrier subscription flow (UI)", () => {
     });
 
     await openRouteSheetDetail(sellerPage, tituloMulti);
+    await publishRouteSheetViaUI(sellerPage);
     await clickInviteCarriers(sellerPage);
     await sendCarrierInvites(sellerPage);
     carrierInviteFlowState.multiRouteSheetTitulo = tituloMulti;
@@ -338,8 +339,9 @@ test.describe("chat route sheet — carrier subscription flow (UI)", () => {
       carrierInviteFlowState.multiRouteSheetId,
     );
 
-    // Seller is still on the route sheet detail after sending invites.
-    await openSubscribersPanel(sellerPage);
+    // Seller may have left route detail after carrier accepted the invite.
+    await openRouteSheetDetail(sellerPage, tituloMulti);
+    await openSubscribersPanel(sellerPage, tituloMulti);
     await kickCarrierFromTramo(sellerPage, 2, tituloMulti);
 
     await carrierPage.goto(`/chat/${threadId}`, {
@@ -375,7 +377,7 @@ test.describe("chat route sheet — carrier subscription flow (UI)", () => {
     await waitForThreadContractsLoaded(sellerPage);
     await openRoutesRail(sellerPage);
     await openRouteSheetDetail(sellerPage, carrierInviteFlowState.multiRouteSheetTitulo);
-    await openSubscribersPanel(sellerPage);
+    await openSubscribersPanel(sellerPage, carrierInviteFlowState.multiRouteSheetTitulo);
 
     const panel = subscribersPanel(sellerPage);
     await openTramoInSubscribersPanel(

@@ -66,6 +66,8 @@ type AppState = {
   openAuthModal: () => void
   closeAuthModal: () => void
   setTrustScore: (score: number) => void
+  /** Sincroniza puntaje y umbral desde el backend (`GET /api/v1/me/trust-status`). */
+  setTrustGate: (score: number, threshold: number) => void
   /** Resta puntos a un usuario por id (perfil local / demo); si coincide con `me`, actualiza la barra propia. */
   applyTrustPenalty: (
     userId: string,
@@ -175,6 +177,21 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     })
   },
+
+  setTrustGate: (score, threshold) =>
+    set((s) => {
+      const id = s.me.id
+      const profileTrustScores =
+        id && id !== 'guest'
+          ? { ...s.profileTrustScores, [id]: score }
+          : s.profileTrustScores
+      return {
+        trustThreshold: threshold,
+        me: { ...s.me, trustScore: score },
+        lastThresholdState: score < threshold ? 'below' : 'above',
+        profileTrustScores,
+      }
+    }),
 
   appendUserTrustLedger: (userId, delta, balanceAfter, reason) => {
     if (!userId || userId === 'guest' || delta === 0) return

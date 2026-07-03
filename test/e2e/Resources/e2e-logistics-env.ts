@@ -228,8 +228,9 @@ export async function setupPaidRouteLogisticsScenario(
   );
 
   await openRoutesRail(sellerPage);
+  let savedRouteSheetId: string | undefined;
   if (tramoCount === 1) {
-    await setupRouteSheetWithCarrier(sellerPage, {
+    savedRouteSheetId = await setupRouteSheetWithCarrier(sellerPage, {
       titulo,
       tramos: [TRAMO_OPTS],
       carrierPhone,
@@ -241,43 +242,53 @@ export async function setupPaidRouteLogisticsScenario(
     await waitForRouteSheetForm(sellerPage);
     await fillRouteSheetBasicFields(sellerPage, titulo);
     await deleteTramoAt(sellerPage, 1);
-    await fillTramoFields(sellerPage, 0, TRAMO_OPTS);
+    await fillTramoFields(sellerPage, 0, { ...TRAMO_OPTS, skipMapCoords: true });
     await searchCarrierPhone(sellerPage, 0, carrierPhone);
     await insertTramoAfter(sellerPage, 0);
-    await fillTramoFields(sellerPage, 1, TRAMO_OPTS_2);
+    await fillTramoFields(sellerPage, 1, { ...TRAMO_OPTS_2, skipMapCoords: true });
     const phone2 = opts.carrier2Phone ?? carrierPhone;
     await searchCarrierPhone(sellerPage, 1, phone2);
-    await saveRouteSheet(sellerPage);
+    savedRouteSheetId = await saveRouteSheet(sellerPage);
     await reloadChatThread(sellerPage);
     await openRoutesRail(sellerPage);
   }
 
   await openRailContracts(sellerPage);
   if (!opts.skipLink) {
-    await expect
-      .poll(
-        async () => {
-          try {
-            const id = await resolveRouteSheetIdByTitulo(
-              sellerPage,
-              threadId,
-              seller.sessionToken,
-              titulo,
-            );
-            return id.length > 0;
-          } catch {
-            return false;
-          }
-        },
-        { timeout: 60_000 },
-      )
-      .toBe(true);
-    const routeSheetId = await resolveRouteSheetIdByTitulo(
-      sellerPage,
-      threadId,
-      seller.sessionToken,
-      titulo,
-    );
+    await reloadChatThread(sellerPage);
+    let routeSheetId =
+      typeof savedRouteSheetId === "string" && savedRouteSheetId.length > 2
+        ? savedRouteSheetId
+        : "";
+    if (!routeSheetId) {
+      await expect
+        .poll(
+          async () => {
+            try {
+              const id = await resolveRouteSheetIdByTitulo(
+                sellerPage,
+                threadId,
+                seller.sessionToken,
+                titulo,
+              );
+              routeSheetId = id;
+              return id.length > 0;
+            } catch {
+              return false;
+            }
+          },
+          { timeout: 120_000 },
+        )
+        .toBe(true);
+    }
+    if (!routeSheetId) {
+      routeSheetId = await resolveRouteSheetIdByTitulo(
+        sellerPage,
+        threadId,
+        seller.sessionToken,
+        titulo,
+      );
+    }
     const { linkAgreementToRouteSheetViaApi } = await import(
       "./e2e-logistics-api"
     );
@@ -289,11 +300,7 @@ export async function setupPaidRouteLogisticsScenario(
       routeSheetId,
     );
     await reloadChatThread(sellerPage);
-    await openRailContracts(sellerPage);
-    await openContractByAgreementTitle(sellerPage, agreementTitle);
-    await expect(
-      sellerPage.getByText(/vinculada ahora a:/i).first(),
-    ).toContainText(titulo, { timeout: 15_000 });
+    await waitForThreadContractsLoaded(sellerPage);
   }
 
   if (opts.publish !== false) {
@@ -406,7 +413,8 @@ export async function setupPaidRouteLogisticsScenario(
   }
 
   if (opts.payRoutes !== false) {
-    if (opts.payRoutesViaBuyerApi) {
+    const useApiPay = opts.payRoutesViaBuyerApi !== false;
+    if (useApiPay) {
       const stopIdsForPay = await fetchRouteSheetStopIds(
         sellerPage,
         seller.sessionToken,

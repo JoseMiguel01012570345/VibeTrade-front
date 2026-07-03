@@ -29,6 +29,7 @@ import {
   enableServiceForPayment,
   ensureBuyerDemoCard,
   openChatPaymentModal,
+  pickServiceRecurrences,
   setAllMerchandiseLines,
 } from "./payment-checkout-ui-helpers";
 import {
@@ -40,6 +41,7 @@ import {
   insertTramoAfter,
   kickCarrierFromTramo,
   linkRouteSheetToAgreementViaUI,
+  openContractByAgreementIndex,
   openContractByAgreementTitle,
   openLinkedRouteSheetFromContractDetail,
   openRoutesRail,
@@ -257,10 +259,12 @@ export async function payHeldServiceAgreement(
   page: Page,
   threadId: string,
   serviceNamePart: string,
+  agreementId?: string,
 ): Promise<void> {
   await ensureBuyerDemoCard(page, threadId);
   await openChatPaymentModal(page);
   await enableServiceForPayment(page, serviceNamePart);
+  await pickServiceRecurrences(page, [/usd|único|unico|mensual|pago/i], serviceNamePart);
   await confirmInformeCheckbox(page);
   await clickPayCurrency(page, "USD");
   await expect(
@@ -268,10 +272,47 @@ export async function payHeldServiceAgreement(
       .getByText(/pago exitoso|pagos completados|todo cobrado|recibo de pago/i)
       .first(),
   ).toBeVisible({ timeout: 60_000 });
+  if (agreementId?.trim()) {
+    const token =
+      (await page.evaluate(() =>
+        sessionStorage.getItem("vt_session_token"),
+      )) ?? "";
+    await expect
+      .poll(
+        async () => {
+          const held = await page.evaluate(
+            async ([tid, aid, tok]: [string, string, string]) => {
+              const res = await fetch(
+                `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/service-payments`,
+                { headers: { Authorization: `Bearer ${tok}` } },
+              );
+              if (!res.ok) return 0;
+              const rows = (await res.json()) as Array<{ status?: string }>;
+              return rows.filter((r) => r.status === "held").length;
+            },
+            [threadId, agreementId.trim(), token] as [string, string, string],
+          );
+          return held;
+        },
+        { timeout: 45_000, intervals: [1_000, 2_000] },
+      )
+      .toBeGreaterThan(0);
+  }
 }
 
-export async function payHeldMerchandiseAgreement(page: Page): Promise<void> {
+export async function payHeldMerchandiseAgreement(
+  page: Page,
+  threadId?: string,
+  agreementTitle?: string,
+  agreementId?: string,
+): Promise<void> {
+  const { selectAgreementInPaymentModal } = await import(
+    "./payment-checkout-ui-helpers"
+  );
   await openChatPaymentModal(page);
+  if (agreementTitle?.trim()) {
+    await selectAgreementInPaymentModal(page, agreementTitle);
+  }
   await setAllMerchandiseLines(page, true);
   await confirmInformeCheckbox(page);
   await clickPayCurrency(page, "USD");
@@ -280,6 +321,34 @@ export async function payHeldMerchandiseAgreement(page: Page): Promise<void> {
       .getByText(/pago exitoso|pagos completados|todo cobrado|recibo de pago/i)
       .first(),
   ).toBeVisible({ timeout: 60_000 });
+  if (agreementId?.trim() && threadId?.trim()) {
+    const token =
+      (await page.evaluate(() =>
+        sessionStorage.getItem("vt_session_token"),
+      )) ?? "";
+    await expect
+      .poll(
+        async () => {
+          const held = await page.evaluate(
+            async ([tid, aid, tok]: [string, string, string]) => {
+              const res = await fetch(
+                `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments`,
+                { headers: { Authorization: `Bearer ${tok}` } },
+              );
+              if (!res.ok) return 0;
+              const rows = (await res.json()) as Array<{ status?: string }>;
+              return rows.filter(
+                (r) => (r.status ?? "").trim().toLowerCase() === "held",
+              ).length;
+            },
+            [threadId, agreementId.trim(), token] as [string, string, string],
+          );
+          return held;
+        },
+        { timeout: 45_000, intervals: [1_000, 2_000] },
+      )
+      .toBeGreaterThan(0);
+  }
 }
 
 export async function submitServiceEvidencePendingViaUI(
@@ -466,15 +535,15 @@ export async function setupPublishedRouteTwoTramosCarrierOnFirstOnly(
   await waitForRouteSheetForm(sellerPage);
   await fillRouteSheetBasicFields(sellerPage, titulo);
   await deleteTramoAt(sellerPage, 1);
-  await fillTramoFields(sellerPage, 0, TRAMO_OPTS);
+  await fillTramoFields(sellerPage, 0, { ...TRAMO_OPTS, skipMapCoords: true });
   await searchCarrierPhone(sellerPage, 0, carrierPhone);
   await insertTramoAfter(sellerPage, 0);
-  await fillTramoFields(sellerPage, 1, TRAMO_OPTS_2);
+  await fillTramoFields(sellerPage, 1, { ...TRAMO_OPTS_2, skipMapCoords: true });
   await saveRouteSheet(sellerPage);
 
   await openRailContracts(sellerPage);
-  await openContractByAgreementTitle(sellerPage, agreementTitle);
-  await linkRouteSheetToAgreementViaUI(sellerPage, titulo);
+  await openContractByAgreementIndex(sellerPage, agreementIndex);
+  await linkRouteSheetToAgreementViaUI(sellerPage, titulo, agreementId);
   await reloadChatThread(sellerPage);
   await waitForThreadContractsLoaded(sellerPage);
   await expect
@@ -495,7 +564,7 @@ export async function setupPublishedRouteTwoTramosCarrierOnFirstOnly(
       { timeout: 45_000 },
     )
     .toBe(true);
-  await openContractByAgreementTitle(sellerPage, agreementTitle);
+  await openContractByAgreementIndex(sellerPage, agreementIndex);
   await openLinkedRouteSheetFromContractDetail(sellerPage, titulo);
   await publishRouteSheetViaUI(sellerPage);
   await clickInviteCarriers(sellerPage);

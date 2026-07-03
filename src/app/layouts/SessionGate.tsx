@@ -6,11 +6,20 @@ export function SessionGate() {
   const { pathname } = useLocation();
 
   if (!isSessionActive) {
+    // `/cart` queda accesible para invitados; el resto de flujos con sesión se bloquean.
     const blocked =
       pathname.startsWith("/chat") ||
       pathname.startsWith("/reels") ||
       pathname.startsWith("/profile") ||
-      pathname.startsWith("/notifications");
+      pathname.startsWith("/notifications") ||
+      pathname.startsWith("/checkout") ||
+      pathname.startsWith("/mis-compras") ||
+      pathname.startsWith("/afiliado") ||
+      pathname.startsWith("/finanzas") ||
+      pathname.startsWith("/almacen") ||
+      pathname.startsWith("/mensualidad") ||
+      pathname.startsWith("/estadisticas") ||
+      pathname.startsWith("/admin");
     if (blocked) return <Navigate to="/home" replace />;
   }
   if (isSessionActive && pathname.startsWith("/onboarding")) {

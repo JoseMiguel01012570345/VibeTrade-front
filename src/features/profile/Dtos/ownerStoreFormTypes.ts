@@ -10,6 +10,8 @@ export type OwnerStoreFormValues = {
   location?: StoreLocationPoint;
   /** Opcional: URL del sitio (se normaliza a https al guardar). */
   websiteUrl?: string;
+  /** Opcional: tarifa de mensajería por km (checkout y tramos de la hoja de ruta). */
+  pricePerKm?: number;
 };
 
 /** Parcial permitido al actualizar tienda (incl. imagen de vitrina). */

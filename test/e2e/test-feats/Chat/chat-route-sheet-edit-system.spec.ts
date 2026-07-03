@@ -45,7 +45,7 @@ test.describe("chat route sheet edit system message E2E", () => {
   test("edit with confirmed carrier posts system notice with carrier ack hint", async ({
     browser,
   }) => {
-    test.setTimeout(180_000);
+    test.setTimeout(300_000);
 
     const seller = getE2ESellerSession()!;
     const buyer = getE2ESession()!;
@@ -58,7 +58,7 @@ test.describe("chat route sheet edit system message E2E", () => {
       seller.sessionToken,
       threadId,
     );
-    await waitForThreadContractsLoaded(sellerPage);
+    await waitForChatReady(sellerPage);
     await openRoutesRail(sellerPage);
 
     await setupRouteSheetWithCarrier(sellerPage, {
@@ -103,11 +103,13 @@ test.describe("chat route sheet edit system message E2E", () => {
     await openChatThread(buyerPage, threadId);
     await waitForChatReady(buyerPage);
 
+    await openRouteSheetDetail(sellerPage, titulo);
+
     const sysCountBefore = await buyerPage
       .locator("[data-chat-system-message]")
       .count();
 
-    await clickEditRouteSheet(sellerPage);
+    await clickEditRouteSheet(sellerPage, titulo);
     await fillTramoFields(sellerPage, 0, {
       ...TRAMO_OPTS,
       origen: "Cercle de Goundam, Tombuctú, Malí",

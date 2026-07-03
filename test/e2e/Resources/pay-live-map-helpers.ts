@@ -7,12 +7,12 @@ import {
   ensureCarrierLegReadyForCede,
   fetchAgreementTitleById,
   fetchRouteSheetStopIds,
+  payRouteStopsViaBuyerApi,
   waitForDeliveryOwner,
   waitForDeliveryState,
 } from "./e2e-logistics-api";
 import {
   logisticsFlowState,
-  payAllRoutePathsAsBuyer,
   takeNextAgreementIndex,
   type PaidLogisticsScenario,
 } from "./e2e-logistics-env";
@@ -195,20 +195,24 @@ export async function setupFlexibleRouteScenario(
       requisitos: t.requisitos ?? "Ninguno",
       tipoVehiculo: t.tipoVehiculo ?? "Camión",
       carga: t.carga ?? "Paquetes",
+      skipMapCoords: false,
     });
     await searchCarrierPhone(sellerPage, i, t.carrierPhone);
   }
-  await saveRouteSheet(sellerPage);
+  const savedId = await saveRouteSheet(sellerPage);
   await reloadChatThread(sellerPage);
   await openRoutesRail(sellerPage);
 
   await openRailContracts(sellerPage);
-  const routeSheetId = await resolveRouteSheetIdByTitulo(
-    sellerPage,
-    threadId,
-    seller.sessionToken,
-    titulo,
-  );
+  let routeSheetId = savedId ?? "";
+  if (!routeSheetId) {
+    routeSheetId = await resolveRouteSheetIdByTitulo(
+      sellerPage,
+      threadId,
+      seller.sessionToken,
+      titulo,
+    );
+  }
   const { linkAgreementToRouteSheetViaApi } = await import("./e2e-logistics-api");
   await linkAgreementToRouteSheetViaApi(
     sellerPage,
@@ -421,11 +425,22 @@ export async function assertPayWhileCarrierInChatShowsPinAndCede(
   const buyerPage = await buyerCtx.newPage();
   await openChatThread(buyerPage, scenario.threadId);
   await waitForChatReady(buyerPage);
-  await payAllRoutePathsAsBuyer(
+  const routePathIds =
+    scenario.stopIds.length > 1 ? [scenario.stopIds[0]!] : scenario.stopIds;
+  const payRes = await payRouteStopsViaBuyerApi(
     buyerPage,
-    scenario.agreementTitle,
-    scenario.routeSheetTitulo,
+    buyer.sessionToken,
+    {
+      threadId: scenario.threadId,
+      agreementId: scenario.agreementId,
+      routeStopIds: routePathIds,
+    },
   );
+  if (payRes.status >= 400) {
+    throw new Error(
+      `Buyer API route payment failed (${payRes.status}): ${payRes.text}`,
+    );
+  }
   await buyerCtx.close();
 
   await waitForDeliveryOwner(

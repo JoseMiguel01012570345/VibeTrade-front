@@ -30,6 +30,7 @@ import { ImageLightbox } from '@shared/components/media/ImageLightbox'
 import { ContactsModal } from '../components/ContactsModal'
 import { PaymentGatewayConfigModal } from '../components/PaymentGatewayConfigModal'
 import { UserAvatarBadge } from '../components/account/UserAvatarBadge'
+import { ProfileNavigationMenu } from '../components/account/ProfileNavigationMenu'
 import { PROFILE_SOCIAL_META } from '@features/profile/logic/profileSocialMeta'
 import { useProfileAccountSection } from '../hooks/useProfileAccountSection'
 import type { ProfileVisitorPublic } from '../Dtos/profileVisitorPublic'
@@ -91,6 +92,8 @@ export function ProfileAccountPage({
         aria-label="Subir foto de perfil"
         onChange={account.onProfileAvatarChange}
       />
+
+      <ProfileNavigationMenu isMe={isMe} />
 
       <div className="vt-card vt-card-pad">
         <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">

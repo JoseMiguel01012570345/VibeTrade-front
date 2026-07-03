@@ -118,7 +118,22 @@ test.describe("chat route sheet — public publication & social (UI)", () => {
         timeout: 45_000,
       });
 
-      const commentInput = buyerPage.getByPlaceholder(/escribe un comentario/i).first();
+      await buyerPage.locator("#offer-comments").scrollIntoViewIfNeeded();
+      await expect
+        .poll(
+          async () => {
+            const input = buyerPage.locator("#offer-comments input").first();
+            if (!(await input.isVisible().catch(() => false))) return false;
+            const ph = (await input.getAttribute("placeholder")) ?? "";
+            return /escribe un comentario/i.test(ph);
+          },
+          { timeout: 30_000 },
+        )
+        .toBe(true);
+      const commentInput = buyerPage
+        .locator("#offer-comments")
+        .getByPlaceholder(/escribe un comentario/i)
+        .first();
       await expect(commentInput).toBeVisible({ timeout: 10_000 });
       const commentText = `E2E comment route sheet ${Date.now()}`;
       await commentInput.fill(commentText);
@@ -139,11 +154,26 @@ test.describe("chat route sheet — public publication & social (UI)", () => {
         .locator('button[title="Me gusta"], button[title="Quitar me gusta"]')
         .first();
       await expect(likePublicationBtn).toBeVisible({ timeout: 10_000 });
-      const likeBefore = await likePublicationBtn.getAttribute("title");
-      await likePublicationBtn.click();
-      await buyerPage.waitForTimeout(1_000);
-      const likeAfter = await likePublicationBtn.getAttribute("title");
-      expect(likeAfter).not.toBe(likeBefore);
+      await expect
+        .poll(
+          async () => {
+            const before = await likePublicationBtn.getAttribute("title");
+            const likeWait = buyerPage.waitForResponse(
+              (res) =>
+                res.request().method() === "POST" &&
+                /\/likes\b|\/reactions\b|\/favorites\b/i.test(res.url()) &&
+                res.status() < 500,
+              { timeout: 8_000 },
+            );
+            await likePublicationBtn.click();
+            await likeWait.catch(() => null);
+            await buyerPage.waitForTimeout(500);
+            const after = await likePublicationBtn.getAttribute("title");
+            return after !== before;
+          },
+          { timeout: 30_000 },
+        )
+        .toBe(true);
 
       const saveBtn = buyerPage.getByRole("button", {
         name: /guardar oferta|quitar de guardados/i,

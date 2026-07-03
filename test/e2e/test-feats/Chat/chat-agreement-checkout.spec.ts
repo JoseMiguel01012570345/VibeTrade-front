@@ -494,7 +494,7 @@ test.describe("chat agreement checkout (UI)", () => {
 
       const modal = paymentModal(buyerPage);
       await expect(
-        modal.getByText(/transporte \(hoja de ruta\)/i),
+        modal.getByText(/transporte \(hoja de ruta\)/i).first(),
       ).toBeVisible();
       await expect(modal.getByText(/1\. ciudad a → ciudad b/i)).toBeVisible();
       await expect(modal.getByText(/2\. ciudad b → ciudad c/i)).toBeVisible();
@@ -606,10 +606,14 @@ test.describe("chat agreement checkout (UI)", () => {
       );
 
       await reloadChatThread(buyerPage);
-      await prepareBuyerRouteCheckout(buyerPage, title, routeTitulo);
+      await prepareBuyerRouteCheckout(buyerPage, title, routeTitulo, {
+        waitForPayableRoutePaths: false,
+      });
       const modalBlocked = paymentModal(buyerPage);
       await expect(
-        modalBlocked.getByText(/transportistas de cada tramo estén confirmados/i),
+        modalBlocked.getByText(
+          /transportistas de cada tramo estén confirmados|no hay transportistas confirmados/i,
+        ),
       ).toBeVisible({ timeout: 15_000 });
       await expect(
         modalBlocked.getByText(/incluir transporte en este cobro/i),

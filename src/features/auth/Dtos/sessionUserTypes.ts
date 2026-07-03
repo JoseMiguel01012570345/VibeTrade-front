@@ -6,6 +6,8 @@ export type SessionUserJson = {
   phone: string
   /** Ignorado: los roles operativos solo existen en el contexto del chat. */
   role?: string
+  /** Roles efectivos de plataforma (superadmin/admin/almacen/afiliado). */
+  roles?: string[]
   trustScore?: number
   avatarUrl?: string
   instagram?: string | null

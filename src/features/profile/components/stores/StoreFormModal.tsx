@@ -50,6 +50,9 @@ export function StoreFormModal({
     initial.location,
   );
   const [websiteUrl, setWebsiteUrl] = useState(initial.websiteUrl ?? "");
+  const [pricePerKm, setPricePerKm] = useState(
+    initial.pricePerKm != null ? String(initial.pricePerKm) : "",
+  );
   const [mapOpen, setMapOpen] = useState(false);
   const [showVal, setShowVal] = useState(false);
 
@@ -154,6 +157,22 @@ export function StoreFormModal({
             <span>Transporte incluido en las ofertas de esta tienda</span>
           </label>
           <label>
+            <span className={fieldLabel}>Tarifa de mensajería por km (opcional)</span>
+            <input
+              className="vt-input mt-1"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="0.01"
+              placeholder="0.00"
+              value={pricePerKm}
+              onChange={(e) => setPricePerKm(e.target.value)}
+            />
+            <span className="mt-1 block text-[11px] text-[var(--muted)]">
+              Se usa para calcular el costo de envío en el checkout y el precio por tramo de la hoja de ruta.
+            </span>
+          </label>
+          <label>
             <span className={fieldLabel}>Sitio web (opcional)</span>
             <input
               className="vt-input mt-1"
@@ -199,6 +218,7 @@ export function StoreFormModal({
             type="button"
             className="vt-btn vt-btn-primary"
             onClick={async () => {
+              const ppkParsed = Number.parseFloat(pricePerKm.replace(",", "."));
               const payload: OwnerStoreFormValues = {
                 name: name.trim(),
                 categories: categoriesDraft,
@@ -206,6 +226,8 @@ export function StoreFormModal({
                 transportIncluded: transport,
                 location,
                 websiteUrl: websiteUrl.trim() || undefined,
+                pricePerKm:
+                  Number.isFinite(ppkParsed) && ppkParsed >= 0 ? ppkParsed : undefined,
               };
               const err = validateOwnerStoreForm(payload);
               if (err) {

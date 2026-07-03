@@ -22,6 +22,10 @@ export type StoreBadge = {
   location?: StoreLocationPoint;
   /** Sitio web público (https), opcional. */
   websiteUrl?: string;
+  /** Tarifa de mensajería por km configurada por la tienda (checkout y tramos, wiki cap. 06). */
+  pricePerKm?: number;
+  /** Moneda ISO de `pricePerKm`. */
+  pricePerKmCurrencyCode?: string;
 };
 
 /** Parada en snapshot de publicación emergente; coords opcionales para Leaflet. */

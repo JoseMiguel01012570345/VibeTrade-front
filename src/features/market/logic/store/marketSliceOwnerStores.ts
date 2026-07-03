@@ -40,6 +40,7 @@ createOwnerStore: (ownerUserId, values) => {
     ...(pitch ? { pitch } : {}),
     ...(values.location ? { location: values.location } : {}),
     ...(web ? { websiteUrl: web } : {}),
+    ...(values.pricePerKm != null ? { pricePerKm: values.pricePerKm } : {}),
   }
   const catalog: StoreCatalog = {
     pitch: values.categoryPitch.trim(),
@@ -116,6 +117,14 @@ updateOwnerStore: (storeId, ownerUserId, patch) => {
       else {
         const { websiteUrl: _w, ...restW } = nextBadge
         nextBadge = restW as StoreBadge
+      }
+    }
+    if ('pricePerKm' in patch) {
+      if (patch.pricePerKm != null && patch.pricePerKm >= 0) {
+        nextBadge = { ...nextBadge, pricePerKm: patch.pricePerKm }
+      } else {
+        const { pricePerKm: _ppk, ...restPpk } = nextBadge
+        nextBadge = restPpk as StoreBadge
       }
     }
     return {

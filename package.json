@@ -33,6 +33,7 @@
     "react-hot-toast": "^2.6.0",
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^7.13.2",
+    "recharts": "^3.9.1",
     "rxjs": "^7.8.2",
     "wavesurfer.js": "^7.12.5",
     "zustand": "^5.0.12"

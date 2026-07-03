@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart, MessageCircle, Package, Truck } from "lucide-react";
+import { Heart, MessageCircle, Package, ShoppingCart, Truck } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   catalogMonedasList,
   type StoreProduct,
 } from "@features/market/logic/storeCatalogTypes";
+import { parseProductPriceNumber } from "@features/market/logic/parseProductPrice";
+import { useCartStore } from "@features/orders/logic/cartStore";
 import {
   ProtectedMediaAnchor,
   ProtectedMediaImg,
@@ -13,10 +16,24 @@ import { ImageLightbox } from "@shared/components/media/ImageLightbox";
 
 export function ProductDetailCard({ p }: { p: StoreProduct }) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const addToCart = useCartStore((s) => s.addItem);
   const monedasAceptadas = catalogMonedasList(p);
   const precioMoneda = p.monedaPrecio?.trim();
   const commentTotal = p.publicCommentCount ?? 0;
   const offerLikes = p.offerLikeCount ?? 0;
+
+  function handleAddToCart() {
+    addToCart({
+      productId: p.id,
+      storeId: p.storeId,
+      name: p.name,
+      unitPrice: parseProductPriceNumber(p.price) ?? 0,
+      currencyCode: precioMoneda || monedasAceptadas[0] || "",
+      quantity: 1,
+      photoUrl: p.photoUrls[0],
+    });
+    toast.success("Añadido al carrito");
+  }
   return (
     <div className="min-w-0 max-w-full overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
       <div className="grid min-w-0 min-[640px]:grid-cols-[160px_1fr]">
@@ -103,6 +120,13 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
               Moneda aceptada: {monedasAceptadas.join(" · ")}
             </div>
           ) : null}
+          <button
+            type="button"
+            className="vt-btn vt-btn-primary mt-3 inline-flex items-center gap-2"
+            onClick={handleAddToCart}
+          >
+            <ShoppingCart size={16} aria-hidden /> Añadir al carrito
+          </button>
           {p.photoUrls.length > 1 ? (
             <div className="mt-2">
               <div className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">

@@ -1,0 +1,1188 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: Chat\chat-route-sheet-carriers.spec.ts >> chat route sheet — carrier subscription flow (UI) >> C-1: Invite button creates notification to carrier; click opens route-info modal
+- Location: test\e2e\test-feats\Chat\chat-route-sheet-carriers.spec.ts:62:3
+
+# Error details
+
+```
+Test timeout of 300000ms exceeded.
+```
+
+# Page snapshot
+
+```yaml
+- main [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - button "Volver a la lista de chats" [ref=e12] [cursor=pointer]:
+              - img [ref=e13]
+            - generic [ref=e17]: user_775755 · Producto E2E mr3usbx8_g6232j
+          - button "Emitir acuerdo" [ref=e19] [cursor=pointer]:
+            - img [ref=e20]
+            - generic [ref=e23]: Emitir acuerdo
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - link "U" [ref=e27] [cursor=pointer]:
+              - /url: /profile/4e6ff44759914be685da8e95d8b9f7f6
+            - generic [ref=e28]:
+              - generic [ref=e29]:
+                - generic [ref=e30]: Comprador · user_775755
+                - generic [ref=e31]: +54 11 0000-0000
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e32]': "0"
+              - generic [ref=e35]: Hola, me interesa tu oferta (E2E setup)
+              - generic [ref=e37]: 02:46 PM
+          - generic [ref=e38]:
+            - link "T" [ref=e39] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e40]:
+              - generic [ref=e41]:
+                - generic [ref=e42]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e43]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e44]': "80"
+              - generic [ref=e45]:
+                - generic [ref=e46]:
+                  - img [ref=e47]
+                  - generic [ref=e50]: Acuerdo de compra
+                - generic [ref=e51]: E2E-RS-AGR-0-1783017986409
+                - generic [ref=e52]: Solo mercancías
+                - generic [ref=e54]: Aceptado · no revocable
+              - generic [ref=e55]:
+                - generic [ref=e56]: 02:46 PM
+                - generic "Entregado" [ref=e57]:
+                  - img [ref=e58]
+          - generic [ref=e62]:
+            - generic [ref=e65]: Acuerdo «E2E-RS-AGR-0-1783017986409» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e67]: 02:46 PM
+          - generic [ref=e68]:
+            - link "T" [ref=e69] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e70]:
+              - generic [ref=e71]:
+                - generic [ref=e72]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e73]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e74]': "80"
+              - generic [ref=e75]:
+                - generic [ref=e76]:
+                  - img [ref=e77]
+                  - generic [ref=e80]: Acuerdo de compra
+                - generic [ref=e81]: E2E-RS-AGR-1-1783017986803
+                - generic [ref=e82]: Solo mercancías
+                - generic [ref=e84]: Aceptado · no revocable
+              - generic [ref=e85]:
+                - generic [ref=e86]: 02:46 PM
+                - generic "Entregado" [ref=e87]:
+                  - img [ref=e88]
+          - generic [ref=e92]:
+            - generic [ref=e95]: Acuerdo «E2E-RS-AGR-1-1783017986803» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e97]: 02:46 PM
+          - generic [ref=e98]:
+            - link "T" [ref=e99] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e100]:
+              - generic [ref=e101]:
+                - generic [ref=e102]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e103]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e104]': "80"
+              - generic [ref=e105]:
+                - generic [ref=e106]:
+                  - img [ref=e107]
+                  - generic [ref=e110]: Acuerdo de compra
+                - generic [ref=e111]: E2E-RS-AGR-2-1783017987032
+                - generic [ref=e112]: Solo mercancías
+                - generic [ref=e114]: Aceptado · no revocable
+              - generic [ref=e115]:
+                - generic [ref=e116]: 02:46 PM
+                - generic "Entregado" [ref=e117]:
+                  - img [ref=e118]
+          - generic [ref=e122]:
+            - generic [ref=e125]: Acuerdo «E2E-RS-AGR-2-1783017987032» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e127]: 02:46 PM
+          - generic [ref=e128]:
+            - link "T" [ref=e129] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e130]:
+              - generic [ref=e131]:
+                - generic [ref=e132]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e133]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e134]': "80"
+              - generic [ref=e135]:
+                - generic [ref=e136]:
+                  - img [ref=e137]
+                  - generic [ref=e140]: Acuerdo de compra
+                - generic [ref=e141]: E2E-RS-AGR-3-1783017987208
+                - generic [ref=e142]: Solo mercancías
+                - generic [ref=e144]: Aceptado · no revocable
+              - generic [ref=e145]:
+                - generic [ref=e146]: 02:46 PM
+                - generic "Entregado" [ref=e147]:
+                  - img [ref=e148]
+          - generic [ref=e152]:
+            - generic [ref=e155]: Acuerdo «E2E-RS-AGR-3-1783017987208» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e157]: 02:46 PM
+          - generic [ref=e158]:
+            - link "T" [ref=e159] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e160]:
+              - generic [ref=e161]:
+                - generic [ref=e162]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e163]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e164]': "80"
+              - generic [ref=e165]:
+                - generic [ref=e166]:
+                  - img [ref=e167]
+                  - generic [ref=e170]: Acuerdo de compra
+                - generic [ref=e171]: E2E-RS-AGR-4-1783017987377
+                - generic [ref=e172]: Solo mercancías
+                - generic [ref=e174]: Aceptado · no revocable
+              - generic [ref=e175]:
+                - generic [ref=e176]: 02:46 PM
+                - generic "Entregado" [ref=e177]:
+                  - img [ref=e178]
+          - generic [ref=e182]:
+            - generic [ref=e185]: Acuerdo «E2E-RS-AGR-4-1783017987377» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e187]: 02:46 PM
+          - generic [ref=e188]:
+            - link "T" [ref=e189] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e190]:
+              - generic [ref=e191]:
+                - generic [ref=e192]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e193]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e194]': "80"
+              - generic [ref=e195]:
+                - generic [ref=e196]:
+                  - img [ref=e197]
+                  - generic [ref=e200]: Acuerdo de compra
+                - generic [ref=e201]: E2E-RS-AGR-5-1783017987521
+                - generic [ref=e202]: Solo mercancías
+                - generic [ref=e204]: Aceptado · no revocable
+              - generic [ref=e205]:
+                - generic [ref=e206]: 02:46 PM
+                - generic "Entregado" [ref=e207]:
+                  - img [ref=e208]
+          - generic [ref=e212]:
+            - generic [ref=e215]: Acuerdo «E2E-RS-AGR-5-1783017987521» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e217]: 02:46 PM
+          - generic [ref=e218]:
+            - link "T" [ref=e219] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e220]:
+              - generic [ref=e221]:
+                - generic [ref=e222]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e223]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e224]': "80"
+              - generic [ref=e225]:
+                - generic [ref=e226]:
+                  - img [ref=e227]
+                  - generic [ref=e230]: Acuerdo de compra
+                - generic [ref=e231]: E2E-RS-AGR-6-1783017987679
+                - generic [ref=e232]: Solo mercancías
+                - generic [ref=e234]: Aceptado · no revocable
+              - generic [ref=e235]:
+                - generic [ref=e236]: 02:46 PM
+                - generic "Entregado" [ref=e237]:
+                  - img [ref=e238]
+          - generic [ref=e242]:
+            - generic [ref=e245]: Acuerdo «E2E-RS-AGR-6-1783017987679» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e247]: 02:46 PM
+          - generic [ref=e248]:
+            - link "T" [ref=e249] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e250]:
+              - generic [ref=e251]:
+                - generic [ref=e252]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e253]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e254]': "80"
+              - generic [ref=e255]:
+                - generic [ref=e256]:
+                  - img [ref=e257]
+                  - generic [ref=e260]: Acuerdo de compra
+                - generic [ref=e261]: E2E-RS-AGR-7-1783017987843
+                - generic [ref=e262]: Solo mercancías
+                - generic [ref=e264]: Aceptado · no revocable
+              - generic [ref=e265]:
+                - generic [ref=e266]: 02:46 PM
+                - generic "Entregado" [ref=e267]:
+                  - img [ref=e268]
+          - generic [ref=e272]:
+            - generic [ref=e275]: Acuerdo «E2E-RS-AGR-7-1783017987843» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e277]: 02:46 PM
+          - generic [ref=e278]:
+            - link "T" [ref=e279] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e280]:
+              - generic [ref=e281]:
+                - generic [ref=e282]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e283]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e284]': "80"
+              - generic [ref=e285]:
+                - generic [ref=e286]:
+                  - img [ref=e287]
+                  - generic [ref=e290]: Acuerdo de compra
+                - generic [ref=e291]: E2E-RS-AGR-8-1783017987994
+                - generic [ref=e292]: Solo mercancías
+                - generic [ref=e294]: Aceptado · no revocable
+              - generic [ref=e295]:
+                - generic [ref=e296]: 02:46 PM
+                - generic "Entregado" [ref=e297]:
+                  - img [ref=e298]
+          - generic [ref=e302]:
+            - generic [ref=e305]: Acuerdo «E2E-RS-AGR-8-1783017987994» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e307]: 02:46 PM
+          - generic [ref=e308]:
+            - link "T" [ref=e309] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e310]:
+              - generic [ref=e311]:
+                - generic [ref=e312]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e313]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e314]': "80"
+              - generic [ref=e315]:
+                - generic [ref=e316]:
+                  - img [ref=e317]
+                  - generic [ref=e320]: Acuerdo de compra
+                - generic [ref=e321]: E2E-RS-AGR-9-1783017988146
+                - generic [ref=e322]: Solo mercancías
+                - generic [ref=e324]: Aceptado · no revocable
+              - generic [ref=e325]:
+                - generic [ref=e326]: 02:46 PM
+                - generic "Entregado" [ref=e327]:
+                  - img [ref=e328]
+          - generic [ref=e332]:
+            - generic [ref=e335]: Acuerdo «E2E-RS-AGR-9-1783017988146» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e337]: 02:46 PM
+          - generic [ref=e338]:
+            - link "T" [ref=e339] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e340]:
+              - generic [ref=e341]:
+                - generic [ref=e342]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e343]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e344]': "80"
+              - generic [ref=e345]:
+                - generic [ref=e346]:
+                  - img [ref=e347]
+                  - generic [ref=e350]: Acuerdo de compra
+                - generic [ref=e351]: E2E-RS-AGR-10-1783017988269
+                - generic [ref=e352]: Solo mercancías
+                - generic [ref=e354]: Aceptado · no revocable
+              - generic [ref=e355]:
+                - generic [ref=e356]: 02:46 PM
+                - generic "Entregado" [ref=e357]:
+                  - img [ref=e358]
+          - generic [ref=e362]:
+            - generic [ref=e365]: Acuerdo «E2E-RS-AGR-10-1783017988269» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e367]: 02:46 PM
+          - generic [ref=e368]:
+            - link "T" [ref=e369] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e370]:
+              - generic [ref=e371]:
+                - generic [ref=e372]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e373]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e374]': "80"
+              - generic [ref=e375]:
+                - generic [ref=e376]:
+                  - img [ref=e377]
+                  - generic [ref=e380]: Acuerdo de compra
+                - generic [ref=e381]: E2E-RS-AGR-11-1783017988379
+                - generic [ref=e382]: Solo mercancías
+                - generic [ref=e384]: Aceptado · no revocable
+              - generic [ref=e385]:
+                - generic [ref=e386]: 02:46 PM
+                - generic "Entregado" [ref=e387]:
+                  - img [ref=e388]
+          - generic [ref=e392]:
+            - generic [ref=e395]: Acuerdo «E2E-RS-AGR-11-1783017988379» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e397]: 02:46 PM
+          - generic [ref=e398]:
+            - link "T" [ref=e399] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e400]:
+              - generic [ref=e401]:
+                - generic [ref=e402]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e403]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e404]': "80"
+              - generic [ref=e405]:
+                - generic [ref=e406]:
+                  - img [ref=e407]
+                  - generic [ref=e410]: Acuerdo de compra
+                - generic [ref=e411]: E2E-RS-AGR-12-1783017988481
+                - generic [ref=e412]: Solo mercancías
+                - generic [ref=e414]: Aceptado · no revocable
+              - generic [ref=e415]:
+                - generic [ref=e416]: 02:46 PM
+                - generic "Entregado" [ref=e417]:
+                  - img [ref=e418]
+          - generic [ref=e422]:
+            - generic [ref=e425]: Acuerdo «E2E-RS-AGR-12-1783017988481» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e427]: 02:46 PM
+          - generic [ref=e428]:
+            - link "T" [ref=e429] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e430]:
+              - generic [ref=e431]:
+                - generic [ref=e432]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e433]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e434]': "80"
+              - generic [ref=e435]:
+                - generic [ref=e436]:
+                  - img [ref=e437]
+                  - generic [ref=e440]: Acuerdo de compra
+                - generic [ref=e441]: E2E-RS-AGR-13-1783017988582
+                - generic [ref=e442]: Solo mercancías
+                - generic [ref=e444]: Aceptado · no revocable
+              - generic [ref=e445]:
+                - generic [ref=e446]: 02:46 PM
+                - generic "Entregado" [ref=e447]:
+                  - img [ref=e448]
+          - generic [ref=e452]:
+            - generic [ref=e455]: Acuerdo «E2E-RS-AGR-13-1783017988582» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e457]: 02:46 PM
+          - generic [ref=e458]:
+            - link "T" [ref=e459] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e460]:
+              - generic [ref=e461]:
+                - generic [ref=e462]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e463]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e464]': "80"
+              - generic [ref=e465]:
+                - generic [ref=e466]:
+                  - img [ref=e467]
+                  - generic [ref=e470]: Acuerdo de compra
+                - generic [ref=e471]: E2E-RS-AGR-14-1783017988688
+                - generic [ref=e472]: Solo mercancías
+                - generic [ref=e474]: Aceptado · no revocable
+              - generic [ref=e475]:
+                - generic [ref=e476]: 02:46 PM
+                - generic "Entregado" [ref=e477]:
+                  - img [ref=e478]
+          - generic [ref=e482]:
+            - generic [ref=e485]: Acuerdo «E2E-RS-AGR-14-1783017988688» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e487]: 02:46 PM
+          - generic [ref=e488]:
+            - link "T" [ref=e489] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e490]:
+              - generic [ref=e491]:
+                - generic [ref=e492]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e493]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e494]': "80"
+              - generic [ref=e495]:
+                - generic [ref=e496]:
+                  - img [ref=e497]
+                  - generic [ref=e500]: Acuerdo de compra
+                - generic [ref=e501]: E2E-RS-AGR-15-1783017988794
+                - generic [ref=e502]: Solo mercancías
+                - generic [ref=e504]: Aceptado · no revocable
+              - generic [ref=e505]:
+                - generic [ref=e506]: 02:46 PM
+                - generic "Entregado" [ref=e507]:
+                  - img [ref=e508]
+          - generic [ref=e512]:
+            - generic [ref=e515]: Acuerdo «E2E-RS-AGR-15-1783017988794» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e517]: 02:46 PM
+          - generic [ref=e518]:
+            - link "T" [ref=e519] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e520]:
+              - generic [ref=e521]:
+                - generic [ref=e522]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e523]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e524]': "80"
+              - generic [ref=e525]:
+                - generic [ref=e526]:
+                  - img [ref=e527]
+                  - generic [ref=e530]: Acuerdo de compra
+                - generic [ref=e531]: E2E-RS-AGR-16-1783017988934
+                - generic [ref=e532]: Solo mercancías
+                - generic [ref=e534]: Aceptado · no revocable
+              - generic [ref=e535]:
+                - generic [ref=e536]: 02:46 PM
+                - generic "Entregado" [ref=e537]:
+                  - img [ref=e538]
+          - generic [ref=e542]:
+            - generic [ref=e545]: Acuerdo «E2E-RS-AGR-16-1783017988934» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e547]: 02:46 PM
+          - generic [ref=e548]:
+            - link "T" [ref=e549] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e550]:
+              - generic [ref=e551]:
+                - generic [ref=e552]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e553]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e554]': "80"
+              - generic [ref=e555]:
+                - generic [ref=e556]:
+                  - img [ref=e557]
+                  - generic [ref=e560]: Acuerdo de compra
+                - generic [ref=e561]: E2E-RS-AGR-17-1783017989051
+                - generic [ref=e562]: Solo mercancías
+                - generic [ref=e564]: Aceptado · no revocable
+              - generic [ref=e565]:
+                - generic [ref=e566]: 02:46 PM
+                - generic "Entregado" [ref=e567]:
+                  - img [ref=e568]
+          - generic [ref=e572]:
+            - generic [ref=e575]: Acuerdo «E2E-RS-AGR-17-1783017989051» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e577]: 02:46 PM
+          - generic [ref=e578]:
+            - link "T" [ref=e579] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e580]:
+              - generic [ref=e581]:
+                - generic [ref=e582]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e583]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e584]': "80"
+              - generic [ref=e585]:
+                - generic [ref=e586]:
+                  - img [ref=e587]
+                  - generic [ref=e590]: Acuerdo de compra
+                - generic [ref=e591]: E2E-RS-AGR-18-1783017989169
+                - generic [ref=e592]: Solo mercancías
+                - generic [ref=e594]: Aceptado · no revocable
+              - generic [ref=e595]:
+                - generic [ref=e596]: 02:46 PM
+                - generic "Entregado" [ref=e597]:
+                  - img [ref=e598]
+          - generic [ref=e602]:
+            - generic [ref=e605]: Acuerdo «E2E-RS-AGR-18-1783017989169» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e607]: 02:46 PM
+          - generic [ref=e608]:
+            - link "T" [ref=e609] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e610]:
+              - generic [ref=e611]:
+                - generic [ref=e612]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e613]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e614]': "80"
+              - generic [ref=e615]:
+                - generic [ref=e616]:
+                  - img [ref=e617]
+                  - generic [ref=e620]: Acuerdo de compra
+                - generic [ref=e621]: E2E-RS-AGR-19-1783017989279
+                - generic [ref=e622]: Solo mercancías
+                - generic [ref=e624]: Aceptado · no revocable
+              - generic [ref=e625]:
+                - generic [ref=e626]: 02:46 PM
+                - generic "Entregado" [ref=e627]:
+                  - img [ref=e628]
+          - generic [ref=e632]:
+            - generic [ref=e635]: Acuerdo «E2E-RS-AGR-19-1783017989279» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e637]: 02:46 PM
+          - generic [ref=e638]:
+            - link "T" [ref=e639] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e640]:
+              - generic [ref=e641]:
+                - generic [ref=e642]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e643]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e644]': "80"
+              - generic [ref=e645]:
+                - generic [ref=e646]:
+                  - img [ref=e647]
+                  - generic [ref=e650]: Acuerdo de compra
+                - generic [ref=e651]: E2E-RS-AGR-20-1783017989383
+                - generic [ref=e652]: Solo mercancías
+                - generic [ref=e654]: Aceptado · no revocable
+              - generic [ref=e655]:
+                - generic [ref=e656]: 02:46 PM
+                - generic "Entregado" [ref=e657]:
+                  - img [ref=e658]
+          - generic [ref=e662]:
+            - generic [ref=e665]: Acuerdo «E2E-RS-AGR-20-1783017989383» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e667]: 02:46 PM
+          - generic [ref=e668]:
+            - link "T" [ref=e669] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e670]:
+              - generic [ref=e671]:
+                - generic [ref=e672]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e673]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e674]': "80"
+              - generic [ref=e675]:
+                - generic [ref=e676]:
+                  - img [ref=e677]
+                  - generic [ref=e680]: Acuerdo de compra
+                - generic [ref=e681]: E2E-RS-AGR-21-1783017989492
+                - generic [ref=e682]: Solo mercancías
+                - generic [ref=e684]: Aceptado · no revocable
+              - generic [ref=e685]:
+                - generic [ref=e686]: 02:46 PM
+                - generic "Entregado" [ref=e687]:
+                  - img [ref=e688]
+          - generic [ref=e692]:
+            - generic [ref=e695]: Acuerdo «E2E-RS-AGR-21-1783017989492» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e697]: 02:46 PM
+          - generic [ref=e698]:
+            - link "T" [ref=e699] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e700]:
+              - generic [ref=e701]:
+                - generic [ref=e702]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e703]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e704]': "80"
+              - generic [ref=e705]:
+                - generic [ref=e706]:
+                  - img [ref=e707]
+                  - generic [ref=e710]: Acuerdo de compra
+                - generic [ref=e711]: E2E-RS-AGR-22-1783017989615
+                - generic [ref=e712]: Solo mercancías
+                - generic [ref=e714]: Aceptado · no revocable
+              - generic [ref=e715]:
+                - generic [ref=e716]: 02:46 PM
+                - generic "Entregado" [ref=e717]:
+                  - img [ref=e718]
+          - generic [ref=e722]:
+            - generic [ref=e725]: Acuerdo «E2E-RS-AGR-22-1783017989615» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e727]: 02:46 PM
+          - generic [ref=e728]:
+            - link "T" [ref=e729] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e730]:
+              - generic [ref=e731]:
+                - generic [ref=e732]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e733]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e734]': "80"
+              - generic [ref=e735]:
+                - generic [ref=e736]:
+                  - img [ref=e737]
+                  - generic [ref=e740]: Acuerdo de compra
+                - generic [ref=e741]: E2E-RS-AGR-23-1783017989718
+                - generic [ref=e742]: Solo mercancías
+                - generic [ref=e744]: Aceptado · no revocable
+              - generic [ref=e745]:
+                - generic [ref=e746]: 02:46 PM
+                - generic "Entregado" [ref=e747]:
+                  - img [ref=e748]
+          - generic [ref=e752]:
+            - generic [ref=e755]: Acuerdo «E2E-RS-AGR-23-1783017989718» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e757]: 02:46 PM
+          - generic [ref=e758]:
+            - link "T" [ref=e759] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e760]:
+              - generic [ref=e761]:
+                - generic [ref=e762]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e763]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e764]': "80"
+              - generic [ref=e765]:
+                - generic [ref=e766]:
+                  - img [ref=e767]
+                  - generic [ref=e770]: Acuerdo de compra
+                - generic [ref=e771]: E2E-RS-AGR-24-1783017989871
+                - generic [ref=e772]: Solo mercancías
+                - generic [ref=e774]: Aceptado · no revocable
+              - generic [ref=e775]:
+                - generic [ref=e776]: 02:46 PM
+                - generic "Entregado" [ref=e777]:
+                  - img [ref=e778]
+          - generic [ref=e782]:
+            - generic [ref=e785]: Acuerdo «E2E-RS-AGR-24-1783017989871» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e787]: 02:46 PM
+          - generic [ref=e788]:
+            - link "T" [ref=e789] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e790]:
+              - generic [ref=e791]:
+                - generic [ref=e792]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e793]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e794]': "80"
+              - generic [ref=e795]:
+                - generic [ref=e796]:
+                  - img [ref=e797]
+                  - generic [ref=e800]: Acuerdo de compra
+                - generic [ref=e801]: E2E-RS-AGR-25-1783017989992
+                - generic [ref=e802]: Solo mercancías
+                - generic [ref=e804]: Aceptado · no revocable
+              - generic [ref=e805]:
+                - generic [ref=e806]: 02:46 PM
+                - generic "Entregado" [ref=e807]:
+                  - img [ref=e808]
+          - generic [ref=e812]:
+            - generic [ref=e815]: Acuerdo «E2E-RS-AGR-25-1783017989992» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e817]: 02:46 PM
+          - generic [ref=e818]:
+            - link "T" [ref=e819] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e820]:
+              - generic [ref=e821]:
+                - generic [ref=e822]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e823]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e824]': "80"
+              - generic [ref=e825]:
+                - generic [ref=e826]:
+                  - img [ref=e827]
+                  - generic [ref=e830]: Acuerdo de compra
+                - generic [ref=e831]: E2E-RS-AGR-26-1783017990069
+                - generic [ref=e832]: Solo mercancías
+                - generic [ref=e834]: Aceptado · no revocable
+              - generic [ref=e835]:
+                - generic [ref=e836]: 02:46 PM
+                - generic "Entregado" [ref=e837]:
+                  - img [ref=e838]
+          - generic [ref=e842]:
+            - generic [ref=e845]: Acuerdo «E2E-RS-AGR-26-1783017990069» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e847]: 02:46 PM
+          - generic [ref=e848]:
+            - link "T" [ref=e849] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e850]:
+              - generic [ref=e851]:
+                - generic [ref=e852]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e853]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e854]': "80"
+              - generic [ref=e855]:
+                - generic [ref=e856]:
+                  - img [ref=e857]
+                  - generic [ref=e860]: Acuerdo de compra
+                - generic [ref=e861]: E2E-RS-AGR-27-1783017990164
+                - generic [ref=e862]: Solo mercancías
+                - generic [ref=e864]: Aceptado · no revocable
+              - generic [ref=e865]:
+                - generic [ref=e866]: 02:46 PM
+                - generic "Entregado" [ref=e867]:
+                  - img [ref=e868]
+          - generic [ref=e872]:
+            - generic [ref=e875]: Acuerdo «E2E-RS-AGR-27-1783017990164» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e877]: 02:46 PM
+          - generic [ref=e878]:
+            - link "T" [ref=e879] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e880]:
+              - generic [ref=e881]:
+                - generic [ref=e882]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e883]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e884]': "80"
+              - generic [ref=e885]:
+                - generic [ref=e886]:
+                  - img [ref=e887]
+                  - generic [ref=e890]: Acuerdo de compra
+                - generic [ref=e891]: E2E-RS-AGR-28-1783017990232
+                - generic [ref=e892]: Solo mercancías
+                - generic [ref=e894]: Aceptado · no revocable
+              - generic [ref=e895]:
+                - generic [ref=e896]: 02:46 PM
+                - generic "Entregado" [ref=e897]:
+                  - img [ref=e898]
+          - generic [ref=e902]:
+            - generic [ref=e905]: Acuerdo «E2E-RS-AGR-28-1783017990232» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e907]: 02:46 PM
+          - generic [ref=e908]:
+            - link "T" [ref=e909] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e910]:
+              - generic [ref=e911]:
+                - generic [ref=e912]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e913]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e914]': "80"
+              - generic [ref=e915]:
+                - generic [ref=e916]:
+                  - img [ref=e917]
+                  - generic [ref=e920]: Acuerdo de compra
+                - generic [ref=e921]: E2E-RS-AGR-29-1783017990300
+                - generic [ref=e922]: Solo mercancías
+                - generic [ref=e924]: Aceptado · no revocable
+              - generic [ref=e925]:
+                - generic [ref=e926]: 02:46 PM
+                - generic "Entregado" [ref=e927]:
+                  - img [ref=e928]
+          - generic [ref=e932]:
+            - generic [ref=e935]: Acuerdo «E2E-RS-AGR-29-1783017990300» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e937]: 02:46 PM
+          - generic [ref=e938]:
+            - link "T" [ref=e939] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e940]:
+              - generic [ref=e941]:
+                - generic [ref=e942]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e943]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e944]': "80"
+              - generic [ref=e945]:
+                - generic [ref=e946]:
+                  - img [ref=e947]
+                  - generic [ref=e950]: Acuerdo de compra
+                - generic [ref=e951]: E2E-RS-AGR-30-1783017990376
+                - generic [ref=e952]: Solo mercancías
+                - generic [ref=e954]: Aceptado · no revocable
+              - generic [ref=e955]:
+                - generic [ref=e956]: 02:46 PM
+                - generic "Entregado" [ref=e957]:
+                  - img [ref=e958]
+          - generic [ref=e962]:
+            - generic [ref=e965]: Acuerdo «E2E-RS-AGR-30-1783017990376» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e967]: 02:46 PM
+          - generic [ref=e968]:
+            - link "T" [ref=e969] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e970]:
+              - generic [ref=e971]:
+                - generic [ref=e972]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e973]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e974]': "80"
+              - generic [ref=e975]:
+                - generic [ref=e976]:
+                  - img [ref=e977]
+                  - generic [ref=e980]: Acuerdo de compra
+                - generic [ref=e981]: E2E-RS-AGR-31-1783017990439
+                - generic [ref=e982]: Solo mercancías
+                - generic [ref=e984]: Aceptado · no revocable
+              - generic [ref=e985]:
+                - generic [ref=e986]: 02:46 PM
+                - generic "Entregado" [ref=e987]:
+                  - img [ref=e988]
+          - generic [ref=e992]:
+            - generic [ref=e995]: Acuerdo «E2E-RS-AGR-31-1783017990439» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e997]: 02:46 PM
+          - generic [ref=e998]:
+            - link "T" [ref=e999] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1000]:
+              - generic [ref=e1001]:
+                - generic [ref=e1002]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1003]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1004]': "80"
+              - generic [ref=e1005]:
+                - generic [ref=e1006]:
+                  - img [ref=e1007]
+                  - generic [ref=e1010]: Acuerdo de compra
+                - generic [ref=e1011]: E2E-RS-AGR-32-1783017990511
+                - generic [ref=e1012]: Solo mercancías
+                - generic [ref=e1014]: Aceptado · no revocable
+              - generic [ref=e1015]:
+                - generic [ref=e1016]: 02:46 PM
+                - generic "Entregado" [ref=e1017]:
+                  - img [ref=e1018]
+          - generic [ref=e1022]:
+            - generic [ref=e1025]: Acuerdo «E2E-RS-AGR-32-1783017990511» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1027]: 02:46 PM
+          - generic [ref=e1028]:
+            - link "T" [ref=e1029] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1030]:
+              - generic [ref=e1031]:
+                - generic [ref=e1032]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1033]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1034]': "80"
+              - generic [ref=e1035]:
+                - generic [ref=e1036]:
+                  - img [ref=e1037]
+                  - generic [ref=e1040]: Acuerdo de compra
+                - generic [ref=e1041]: E2E-RS-AGR-33-1783017990584
+                - generic [ref=e1042]: Solo mercancías
+                - generic [ref=e1044]: Aceptado · no revocable
+              - generic [ref=e1045]:
+                - generic [ref=e1046]: 02:46 PM
+                - generic "Entregado" [ref=e1047]:
+                  - img [ref=e1048]
+          - generic [ref=e1052]:
+            - generic [ref=e1055]: Acuerdo «E2E-RS-AGR-33-1783017990584» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1057]: 02:46 PM
+          - generic [ref=e1058]:
+            - link "T" [ref=e1059] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1060]:
+              - generic [ref=e1061]:
+                - generic [ref=e1062]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1063]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1064]': "80"
+              - generic [ref=e1065]:
+                - generic [ref=e1066]:
+                  - img [ref=e1067]
+                  - generic [ref=e1070]: Acuerdo de compra
+                - generic [ref=e1071]: E2E-RS-AGR-34-1783017990672
+                - generic [ref=e1072]: Solo mercancías
+                - generic [ref=e1074]: Aceptado · no revocable
+              - generic [ref=e1075]:
+                - generic [ref=e1076]: 02:46 PM
+                - generic "Entregado" [ref=e1077]:
+                  - img [ref=e1078]
+          - generic [ref=e1082]:
+            - generic [ref=e1085]: Acuerdo «E2E-RS-AGR-34-1783017990672» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1087]: 02:46 PM
+          - generic [ref=e1088]:
+            - link "T" [ref=e1089] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1090]:
+              - generic [ref=e1091]:
+                - generic [ref=e1092]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1093]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1094]': "80"
+              - generic [ref=e1095]:
+                - generic [ref=e1096]:
+                  - img [ref=e1097]
+                  - generic [ref=e1100]: Acuerdo de compra
+                - generic [ref=e1101]: E2E-RS-AGR-35-1783017990769
+                - generic [ref=e1102]: Solo mercancías
+                - generic [ref=e1104]: Aceptado · no revocable
+              - generic [ref=e1105]:
+                - generic [ref=e1106]: 02:46 PM
+                - generic "Entregado" [ref=e1107]:
+                  - img [ref=e1108]
+          - generic [ref=e1112]:
+            - generic [ref=e1115]: Acuerdo «E2E-RS-AGR-35-1783017990769» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1117]: 02:46 PM
+          - generic [ref=e1118]:
+            - link "T" [ref=e1119] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1120]:
+              - generic [ref=e1121]:
+                - generic [ref=e1122]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1123]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1124]': "80"
+              - generic [ref=e1125]:
+                - generic [ref=e1126]:
+                  - img [ref=e1127]
+                  - generic [ref=e1130]: Acuerdo de compra
+                - generic [ref=e1131]: E2E-RS-AGR-36-1783017990840
+                - generic [ref=e1132]: Solo mercancías
+                - generic [ref=e1134]: Aceptado · no revocable
+              - generic [ref=e1135]:
+                - generic [ref=e1136]: 02:46 PM
+                - generic "Entregado" [ref=e1137]:
+                  - img [ref=e1138]
+          - generic [ref=e1142]:
+            - generic [ref=e1145]: Acuerdo «E2E-RS-AGR-36-1783017990840» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1147]: 02:46 PM
+          - generic [ref=e1148]:
+            - link "T" [ref=e1149] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1150]:
+              - generic [ref=e1151]:
+                - generic [ref=e1152]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1153]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1154]': "80"
+              - generic [ref=e1155]:
+                - generic [ref=e1156]:
+                  - img [ref=e1157]
+                  - generic [ref=e1160]: Acuerdo de compra
+                - generic [ref=e1161]: E2E-RS-AGR-37-1783017990908
+                - generic [ref=e1162]: Solo mercancías
+                - generic [ref=e1164]: Aceptado · no revocable
+              - generic [ref=e1165]:
+                - generic [ref=e1166]: 02:46 PM
+                - generic "Entregado" [ref=e1167]:
+                  - img [ref=e1168]
+          - generic [ref=e1172]:
+            - generic [ref=e1175]: Acuerdo «E2E-RS-AGR-37-1783017990908» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1177]: 02:46 PM
+          - generic [ref=e1178]:
+            - link "T" [ref=e1179] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1180]:
+              - generic [ref=e1181]:
+                - generic [ref=e1182]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1183]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1184]': "80"
+              - generic [ref=e1185]:
+                - generic [ref=e1186]:
+                  - img [ref=e1187]
+                  - generic [ref=e1190]: Acuerdo de compra
+                - generic [ref=e1191]: E2E-RS-AGR-38-1783017990983
+                - generic [ref=e1192]: Solo mercancías
+                - generic [ref=e1194]: Aceptado · no revocable
+              - generic [ref=e1195]:
+                - generic [ref=e1196]: 02:46 PM
+                - generic "Entregado" [ref=e1197]:
+                  - img [ref=e1198]
+          - generic [ref=e1202]:
+            - generic [ref=e1205]: Acuerdo «E2E-RS-AGR-38-1783017990983» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1207]: 02:46 PM
+          - generic [ref=e1208]:
+            - link "T" [ref=e1209] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1210]:
+              - generic [ref=e1211]:
+                - generic [ref=e1212]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1213]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1214]': "80"
+              - generic [ref=e1215]:
+                - generic [ref=e1216]:
+                  - img [ref=e1217]
+                  - generic [ref=e1220]: Acuerdo de compra
+                - generic [ref=e1221]: E2E-RS-AGR-39-1783017991055
+                - generic [ref=e1222]: Solo mercancías
+                - generic [ref=e1224]: Aceptado · no revocable
+              - generic [ref=e1225]:
+                - generic [ref=e1226]: 02:46 PM
+                - generic "Entregado" [ref=e1227]:
+                  - img [ref=e1228]
+          - generic [ref=e1232]:
+            - generic [ref=e1235]: Acuerdo «E2E-RS-AGR-39-1783017991055» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1237]: 02:46 PM
+          - generic [ref=e1238]:
+            - link "T" [ref=e1239] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1240]:
+              - generic [ref=e1241]:
+                - generic [ref=e1242]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1243]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1244]': "80"
+              - generic [ref=e1245]:
+                - generic [ref=e1246]:
+                  - img [ref=e1247]
+                  - generic [ref=e1250]: Acuerdo de compra
+                - generic [ref=e1251]: E2E-RS-AGR-40-1783017991128
+                - generic [ref=e1252]: Solo mercancías
+                - generic [ref=e1254]: Aceptado · no revocable
+              - generic [ref=e1255]:
+                - generic [ref=e1256]: 02:46 PM
+                - generic "Entregado" [ref=e1257]:
+                  - img [ref=e1258]
+          - generic [ref=e1262]:
+            - generic [ref=e1265]: Acuerdo «E2E-RS-AGR-40-1783017991128» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1267]: 02:46 PM
+          - generic [ref=e1268]:
+            - link "T" [ref=e1269] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1270]:
+              - generic [ref=e1271]:
+                - generic [ref=e1272]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1273]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1274]': "80"
+              - generic [ref=e1275]:
+                - generic [ref=e1276]:
+                  - img [ref=e1277]
+                  - generic [ref=e1280]: Acuerdo de compra
+                - generic [ref=e1281]: E2E-RS-AGR-41-1783017991215
+                - generic [ref=e1282]: Solo mercancías
+                - generic [ref=e1284]: Aceptado · no revocable
+              - generic [ref=e1285]:
+                - generic [ref=e1286]: 02:46 PM
+                - generic "Entregado" [ref=e1287]:
+                  - img [ref=e1288]
+          - generic [ref=e1292]:
+            - generic [ref=e1295]: Acuerdo «E2E-RS-AGR-41-1783017991215» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1297]: 02:46 PM
+          - generic [ref=e1298]:
+            - link "T" [ref=e1299] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1300]:
+              - generic [ref=e1301]:
+                - generic [ref=e1302]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1303]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1304]': "80"
+              - generic [ref=e1305]:
+                - generic [ref=e1306]:
+                  - img [ref=e1307]
+                  - generic [ref=e1310]: Acuerdo de compra
+                - generic [ref=e1311]: E2E-RS-AGR-42-1783017991299
+                - generic [ref=e1312]: Solo mercancías
+                - generic [ref=e1314]: Aceptado · no revocable
+              - generic [ref=e1315]:
+                - generic [ref=e1316]: 02:46 PM
+                - generic "Entregado" [ref=e1317]:
+                  - img [ref=e1318]
+          - generic [ref=e1322]:
+            - generic [ref=e1325]: Acuerdo «E2E-RS-AGR-42-1783017991299» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1327]: 02:46 PM
+          - generic [ref=e1328]:
+            - link "T" [ref=e1329] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1330]:
+              - generic [ref=e1331]:
+                - generic [ref=e1332]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1333]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1334]': "80"
+              - generic [ref=e1335]:
+                - generic [ref=e1336]:
+                  - img [ref=e1337]
+                  - generic [ref=e1340]: Acuerdo de compra
+                - generic [ref=e1341]: E2E-RS-AGR-43-1783017991371
+                - generic [ref=e1342]: Solo mercancías
+                - generic [ref=e1344]: Aceptado · no revocable
+              - generic [ref=e1345]:
+                - generic [ref=e1346]: 02:46 PM
+                - generic "Entregado" [ref=e1347]:
+                  - img [ref=e1348]
+          - generic [ref=e1352]:
+            - generic [ref=e1355]: Acuerdo «E2E-RS-AGR-43-1783017991371» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1357]: 02:46 PM
+          - generic [ref=e1358]:
+            - link "T" [ref=e1359] [cursor=pointer]:
+              - /url: /store/ust_970fb900f143c_1783017867176/vitrina
+            - generic [ref=e1360]:
+              - generic [ref=e1361]:
+                - generic [ref=e1362]: Tienda E2E mr3usbx8_g6232j
+                - generic [ref=e1363]: +53 604091297
+                - 'generic "Indicador de confianza. Helper: reputación basada en historial de acciones." [ref=e1364]': "80"
+              - generic [ref=e1365]:
+                - generic [ref=e1366]:
+                  - img [ref=e1367]
+                  - generic [ref=e1370]: Acuerdo de compra
+                - generic [ref=e1371]: E2E-RS-AGR-44-1783017991436
+                - generic [ref=e1372]: Solo mercancías
+                - generic [ref=e1374]: Aceptado · no revocable
+              - generic [ref=e1375]:
+                - generic [ref=e1376]: 02:46 PM
+                - generic "Entregado" [ref=e1377]:
+                  - img [ref=e1378]
+          - generic [ref=e1382]:
+            - generic [ref=e1385]: Acuerdo «E2E-RS-AGR-44-1783017991436» aceptado por ambas partes. El vendedor puede proponer una nueva versión editándolo; eso reabre la aceptación del comprador. Pueden coexistir otros contratos adicionales.
+            - generic [ref=e1387]: 02:46 PM
+        - generic [ref=e1390]:
+          - generic [ref=e1391]:
+            - generic "Adjuntar documentos" [ref=e1392] [cursor=pointer]:
+              - button "Adjuntar documentos" [ref=e1393]
+              - generic:
+                - img
+            - generic "Adjuntar imágenes" [ref=e1394] [cursor=pointer]:
+              - button "Adjuntar imágenes" [ref=e1395]
+              - generic:
+                - img
+          - generic [ref=e1396]:
+            - textbox "Escribe un mensaje…" [ref=e1397]
+            - button "Grabar nota de voz" [ref=e1399] [cursor=pointer]:
+              - img [ref=e1400]
+      - complementary "Contratos, rutas e integrantes del chat" [ref=e1404]:
+        - generic [ref=e1405]:
+          - button "Contratos" [ref=e1406] [cursor=pointer]:
+            - img [ref=e1407]
+            - text: Contratos
+          - button "Rutas" [ref=e1410] [cursor=pointer]:
+            - img [ref=e1411]
+            - text: Rutas
+          - button "Integrantes (2)" [ref=e1415] [cursor=pointer]:
+            - img [ref=e1416]
+            - text: Integrantes (2)
+        - generic [ref=e1421]:
+          - button "Nueva hoja de ruta" [ref=e1423]:
+            - img [ref=e1424]
+            - generic [ref=e1427]: Nueva hoja de ruta
+          - paragraph [ref=e1428]: Crea una hoja de ruta para planificar los tramos de transporte.
+    - dialog [ref=e1429]:
+      - generic [ref=e1430]:
+        - generic [ref=e1431]: Nueva hoja de rutas
+        - generic [ref=e1432]:
+          - text: Todos los campos son obligatorios. Indicá
+          - strong [ref=e1433]: fecha y hora
+          - text: "estimadas de recogida y de entrega con los selectores. El precio del tramo debe ser un número (monto). La moneda de pago se elige en cada tramo. Origen, destino y el mapa se sincronizan (dirección ↔ pin). El origen del tramo 2+ siempre coincide con el destino del tramo anterior y no se puede modificar. Podés insertar un tramo en cualquier punto: el nuevo tramo toma origen = fin del anterior."
+        - generic [ref=e1434]:
+          - generic [ref=e1435]:
+            - generic [ref=e1436]:
+              - generic [ref=e1437]: Título
+              - textbox "Título" [ref=e1438]: Hoja Invite Carrier 1783018152615
+            - generic [ref=e1439]:
+              - generic [ref=e1440]: Mercancías / bultos (resumen general)
+              - textbox "Mercancías / bultos (resumen general)" [ref=e1441]: Mercancía E2E de prueba
+          - generic [ref=e1442]:
+            - strong [ref=e1443]: Tramos del recorrido
+            - button "Añadir tramo al inicio" [ref=e1445]:
+              - img [ref=e1446]
+              - text: Añadir tramo al inicio
+            - generic [ref=e1447]:
+              - generic [ref=e1448]:
+                - generic [ref=e1449]:
+                  - generic [ref=e1450]: Tramo 1
+                  - button "Eliminar tramo" [disabled] [ref=e1451]:
+                    - img [ref=e1452]
+                    - generic [ref=e1455]: Eliminar tramo
+                - generic [ref=e1456]:
+                  - generic [ref=e1457]:
+                    - generic [ref=e1458]: Origen
+                    - textbox "Origen" [ref=e1459]:
+                      - /placeholder: Ubicación de origen
+                      - text: Ciudad A
+                  - generic [ref=e1460]:
+                    - generic [ref=e1461]: Destino
+                    - textbox "Destino" [ref=e1462]:
+                      - /placeholder: Ubicación de destino
+                      - text: Ciudad B
+                - generic [ref=e1463]:
+                  - button "Coordenadas origen (mapa)" [ref=e1464] [cursor=pointer]:
+                    - img [ref=e1465]
+                    - text: Coordenadas origen (mapa)
+                  - button "Coordenadas destino (mapa)" [ref=e1468] [cursor=pointer]:
+                    - img [ref=e1469]
+                    - text: Coordenadas destino (mapa)
+                - generic [ref=e1472]:
+                  - generic [ref=e1473]: Responsabilidad por daños por embalaje (este tramo)
+                  - textbox "Responsabilidad por daños por embalaje (este tramo)" [ref=e1474]:
+                    - /placeholder: Quién responde y en qué casos
+                    - text: Transportista
+                - generic [ref=e1475]:
+                  - generic [ref=e1476]: Requisitos especiales (este tramo)
+                  - textbox "Requisitos especiales (este tramo)" [ref=e1477]:
+                    - /placeholder: Frágil, refrigerado, ADR, etc.
+                    - text: Ninguno
+                - generic [ref=e1478]:
+                  - generic [ref=e1479]: Tipo de vehículo requerido (este tramo)
+                  - textbox "Tipo de vehículo requerido (este tramo)" [ref=e1480]:
+                    - /placeholder: Ej. camión baranda, refrigerado, sider
+                    - text: Camión
+              - generic [ref=e1481]:
+                - generic [ref=e1482]: TelÃ©fono del transportista (este tramo)
+                - paragraph [ref=e1483]: "BuscÃ¡ por nÃºmero como en Contactos: la cuenta tiene que existir en VibeTrade. Luego elige una ficha de servicio publicada (transporte)."
+                - generic [ref=e1484]:
+                  - generic [ref=e1485]:
+                    - generic [ref=e1486]: user_509865
+                    - generic [ref=e1487]: +53 187442914
+                    - generic [ref=e1488]:
+                      - generic [ref=e1489]: "Servicio:"
+                      - text: Servicio de Transporte E2E mr3uvllx_tefg79 · Servicios (Transportista E2E mr3uvllx_tefg79)
+                  - 'button "TelÃ©fono del transportista (este tramo) BuscÃ¡ por nÃºmero como en Contactos: la cuenta tiene que existir en VibeTrade. Luego elige una ficha de servicio publicada (transporte). user_509865 +53 187442914 Servicio: Servicio de Transporte E2E mr3uvllx_tefg79 · Servicios (Transportista E2E mr3uvllx_tefg79)" [ref=e1490] [cursor=pointer]': Quitar
+              - generic [ref=e1491]:
+                - generic [ref=e1492]:
+                  - generic [ref=e1493]:
+                    - generic [ref=e1494]: Recogida estimada
+                    - generic [ref=e1495]:
+                      - 'button "Tramo 1: fecha de recogida estimada" [ref=e1497] [cursor=pointer]':
+                        - generic [ref=e1498]: vie, 3 jul 2026
+                        - img [ref=e1499]
+                      - 'button "Tramo 1: hora de recogida estimada" [ref=e1502] [cursor=pointer]':
+                        - generic [ref=e1503]: 9:00 AM
+                        - img [ref=e1504]
+                  - generic [ref=e1507]:
+                    - generic [ref=e1508]: Entrega estimada
+                    - generic [ref=e1509]:
+                      - 'button "Tramo 1: fecha de entrega estimada" [ref=e1511] [cursor=pointer]':
+                        - generic [ref=e1512]: sáb, 4 jul 2026
+                        - img [ref=e1513]
+                      - 'button "Tramo 1: hora de entrega estimada" [ref=e1516] [cursor=pointer]':
+                        - generic [ref=e1517]: 5:00 PM
+                        - img [ref=e1518]
+                - generic [ref=e1521]:
+                  - generic [ref=e1522]: Precio desglosado (transportista, este tramo)
+                  - textbox "Precio desglosado (transportista, este tramo)" [ref=e1523]:
+                    - /placeholder: Monto numérico (ej. 150000 o 1500.50)
+                    - text: "150"
+                - generic [ref=e1524]:
+                  - generic [ref=e1525]: Moneda de pago (este tramo)
+                  - paragraph [ref=e1526]: USD
+                  - paragraph [ref=e1527]: Los tramos deben usar la misma moneda de pago que el resto del acuerdo vinculado.
+                - generic [ref=e1528]:
+                  - generic [ref=e1529]: Carga en este tramo
+                  - textbox "Carga en este tramo" [ref=e1530]:
+                    - /placeholder: Qué lleva el transportista en el tramo
+                    - text: Paquetes
+                - generic [ref=e1531]:
+                  - generic [ref=e1532]:
+                    - generic [ref=e1533]: Tipo de mercancía (carga)
+                    - textbox "Tipo de mercancía (carga)" [ref=e1534]: General
+                  - generic [ref=e1535]:
+                    - generic [ref=e1536]: Tipo de mercancía (descarga)
+                    - textbox "Tipo de mercancía (descarga)" [ref=e1537]: General
+                - generic [ref=e1538]:
+                  - generic [ref=e1539]: Notas del tramo
+                  - textbox "Notas del tramo" [ref=e1540]: Sin observaciones
+            - button "Añadir tramo al final" [ref=e1542]:
+              - img [ref=e1543]
+              - text: Añadir tramo al final
+          - generic [ref=e1545]:
+            - generic [ref=e1546]: Notas generales
+            - textbox "Notas generales" [ref=e1547]: Notas E2E de prueba
+        - generic [ref=e1548]:
+          - button "Cancelar" [ref=e1549] [cursor=pointer]
+          - button "Guardar hoja de ruta" [ref=e1550] [cursor=pointer]
+```

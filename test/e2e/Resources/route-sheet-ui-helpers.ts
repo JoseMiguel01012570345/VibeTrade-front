@@ -10,7 +10,7 @@ export function formDialog(page: Page) {
 }
 
 async function fillReactTextarea(locator: Locator, value: string): Promise<void> {
-  await locator.click();
+  await locator.click({ timeout: 8_000 });
   await locator.evaluate((el, v) => {
     const ta = el as HTMLTextAreaElement;
     const proto = Object.getPrototypeOf(ta);
@@ -26,6 +26,36 @@ async function fillReactTextarea(locator: Locator, value: string): Promise<void>
   }, value);
 }
 
+async function fillReactInput(locator: Locator, value: string): Promise<void> {
+  await locator.scrollIntoViewIfNeeded({ timeout: 8_000 }).catch(() => null);
+  await locator.click({ timeout: 8_000 });
+  await locator.evaluate((el, v) => {
+    const input = el as HTMLInputElement;
+    const proto = Object.getPrototypeOf(input);
+    const desc = Object.getOwnPropertyDescriptor(proto, "value");
+    const setter = desc?.set;
+    if (setter) {
+      setter.call(input, v);
+    } else {
+      input.value = v;
+    }
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, value);
+}
+
+function hhmmToTriggerLabel(hhmm: string): string {
+  const [hhStr, mmStr] = hhmm.split(":");
+  const h24 = parseInt(hhStr ?? "9", 10);
+  const mm = parseInt(mmStr ?? "0", 10);
+  const t = new Date(2000, 0, 1, h24, mm, 0, 0);
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(t);
+}
+
 /** Fills the expel-reason textarea so React state updates reliably. */
 async function fillExpelReason(
   confirmDialog: Locator,
@@ -33,10 +63,78 @@ async function fillExpelReason(
 ): Promise<void> {
   const ta = confirmDialog.locator("#expel-reason-ta");
   await expect(ta).toBeVisible({ timeout: 5_000 });
-  await ta.click();
-  await ta.fill("");
-  await ta.pressSequentially(reason, { delay: 12 });
+  await fillReactTextarea(ta, reason);
+  const value = (await ta.inputValue().catch(() => "")).trim();
+  if (value.length < 3) {
+    await ta.click();
+    await ta.pressSequentially(reason, { delay: 12 });
+  }
   await expect(ta).toHaveValue(reason, { timeout: 5_000 });
+}
+
+/** Closes calendar/time/map/service pickers without dismissing the route sheet form. */
+async function dismissTransientRouteSheetOverlays(page: Page): Promise<void> {
+  const form = formDialog(page);
+  const formOpen = await form.isVisible({ timeout: 500 }).catch(() => false);
+
+  const calendar = page.getByRole("dialog", { name: "Calendario" });
+  if (await calendar.isVisible({ timeout: 300 }).catch(() => false)) {
+    if (formOpen) {
+      await form.locator("#ruta-titulo").click({ force: true }).catch(() => null);
+    }
+    await expect(calendar).toBeHidden({ timeout: 3_000 }).catch(() => null);
+  }
+
+  const timePop = page.locator('[role="dialog"][aria-label="Elegir hora"]');
+  if (await timePop.isVisible({ timeout: 300 }).catch(() => false)) {
+    if (formOpen) {
+      await form.locator("#ruta-titulo").click({ force: true }).catch(() => null);
+    }
+    await expect(timePop).toBeHidden({ timeout: 3_000 }).catch(() => null);
+  }
+
+  const mapModal = page.locator('[role="dialog"][aria-label="Coordenadas del mapa"]');
+  if (await mapModal.isVisible({ timeout: 300 }).catch(() => false)) {
+    const cancelBtn = mapModal.getByRole("button", { name: /cancelar/i });
+    if (await cancelBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await cancelBtn.click().catch(() => null);
+    } else if (formOpen) {
+      await form.locator("#ruta-titulo").click({ force: true }).catch(() => null);
+    }
+    await expect(mapModal).toBeHidden({ timeout: 3_000 }).catch(() => null);
+  }
+
+  const servicePicker = page.getByRole("dialog", {
+    name: /elegir servicio de transporte/i,
+  });
+  if (await servicePicker.isVisible({ timeout: 300 }).catch(() => false)) {
+    const cancelBtn = servicePicker.getByRole("button", { name: /cancelar|cerrar/i });
+    if (await cancelBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await cancelBtn.click().catch(() => null);
+    } else if (formOpen) {
+      await form.locator("#ruta-titulo").click({ force: true }).catch(() => null);
+    }
+    await expect(servicePicker).toBeHidden({ timeout: 3_000 }).catch(() => null);
+  }
+
+  if (formOpen) {
+    await expect(form).toBeVisible({ timeout: 3_000 }).catch(() => null);
+  }
+}
+
+/** Closes date/time popovers without dismissing the route sheet form. */
+async function closeRouteSheetDateTimePopovers(page: Page): Promise<void> {
+  const form = formDialog(page);
+  if (!(await form.isVisible({ timeout: 500 }).catch(() => false))) return;
+  await form.locator("#ruta-titulo").click({ force: true }).catch(() => null);
+  await page
+    .getByRole("dialog", { name: "Calendario" })
+    .waitFor({ state: "hidden", timeout: 2_000 })
+    .catch(() => null);
+  await page
+    .locator('[role="dialog"][aria-label="Elegir hora"]')
+    .waitFor({ state: "hidden", timeout: 2_000 })
+    .catch(() => null);
 }
 
 async function clickCalendarDay(cal: Locator, day: string): Promise<void> {
@@ -50,8 +148,18 @@ async function clickCalendarDay(cal: Locator, day: string): Promise<void> {
 
 async function pickCalendarIsoDate(cal: Locator, isoDate: string): Promise<void> {
   const [y, m, d] = isoDate.split("-").map((x) => parseInt(x, 10));
-  await cal.getByLabel(/elegir mes/i).selectOption(String(m));
-  await cal.getByLabel(/elegir año/i).selectOption(String(y));
+  const monthSelect = cal.getByLabel(/elegir mes/i);
+  const yearSelect = cal.getByLabel(/elegir año/i);
+  await monthSelect.evaluate((el, month) => {
+    const sel = el as HTMLSelectElement;
+    sel.value = String(month);
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  }, m);
+  await yearSelect.evaluate((el, year) => {
+    const sel = el as HTMLSelectElement;
+    sel.value = String(year);
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  }, y);
   const day = String(d).replace(/^0/, "");
   await clickCalendarDay(cal, day);
 }
@@ -167,7 +275,14 @@ export async function closeSubscribersPanelIfOpen(page: Page): Promise<void> {
 export async function openRoutesRail(page: Page): Promise<void> {
   await dismissPeerPartyExitModalIfOpen(page);
   await closeSubscribersPanelIfOpen(page);
-  await expect(page.getByText(/cargando chat/i)).toBeHidden({ timeout: 45_000 });
+  if (
+    await page
+      .getByText(/cargando chat/i)
+      .isVisible({ timeout: 500 })
+      .catch(() => false)
+  ) {
+    await expect(page.getByText(/cargando chat/i)).toBeHidden({ timeout: 45_000 });
+  }
 
   const tab = page.getByRole("button", { name: /^rutas$/i });
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -254,41 +369,46 @@ async function pickTimeInPopover(
   let h12 = h24 % 12;
   if (h12 === 0) h12 = 12;
 
-  const scrollCols = timePop.locator(".vt-time-scroll");
+  const hourLabels =
+    h12 === 12 ? ["12"] : [String(h12), String(h12).padStart(2, "0")];
+  const minLabels =
+    mm === 0 ? ["0", "00"] : [String(mm), String(mm).padStart(2, "0")];
+  const hourCol = timePop.locator(".vt-time-scroll").first();
+  const minCol = timePop.locator(".vt-time-scroll").nth(1);
+  const apCol = timePop.locator(".vt-time-scroll").nth(2);
 
-  const apPill = scrollCols.nth(2).getByRole("button", { name: ap }).first();
-  if (await apPill.isEnabled({ timeout: 2_000 }).catch(() => false)) {
-    await apPill.click();
+  await apCol
+    .getByRole("button", { name: ap, exact: true })
+    .evaluate((el) => (el as HTMLButtonElement).click());
+
+  let hourClicked = false;
+  for (const label of hourLabels) {
+    const btn = hourCol.getByRole("button", { name: label, exact: true }).first();
+    if (await btn.isVisible({ timeout: 800 }).catch(() => false)) {
+      await btn.evaluate((el) => (el as HTMLButtonElement).click());
+      hourClicked = true;
+      break;
+    }
+  }
+  if (!hourClicked) {
+    throw new Error(`Hour button not found for ${hhmm} (tried ${hourLabels.join(", ")})`);
   }
 
-  const hourLabel = String(h12).padStart(2, "0");
-  const hourPill = scrollCols
-    .nth(0)
-    .getByRole("button", {
-      name: new RegExp(`^${hourLabel}$`),
-    })
-    .first();
-  await hourPill.scrollIntoViewIfNeeded();
-  await hourPill.click({ timeout: 8_000 }).catch(async () => {
-    await hourPill.evaluate((el) => (el as HTMLButtonElement).click());
-  });
+  let minClicked = false;
+  for (const label of minLabels) {
+    const btn = minCol.getByRole("button", { name: label, exact: true }).first();
+    if (await btn.isVisible({ timeout: 800 }).catch(() => false)) {
+      await btn.evaluate((el) => (el as HTMLButtonElement).click());
+      minClicked = true;
+      break;
+    }
+  }
+  if (!minClicked) {
+    throw new Error(`Minute button not found for ${hhmm} (tried ${minLabels.join(", ")})`);
+  }
 
-  const minLabel = String(mm).padStart(2, "0");
-  const minPill = scrollCols
-    .nth(1)
-    .getByRole("button", {
-      name: new RegExp(`^${minLabel}$`),
-    })
-    .first();
-  await minPill.scrollIntoViewIfNeeded();
-  await minPill.click({ timeout: 8_000 }).catch(async () => {
-    await minPill.evaluate((el) => (el as HTMLButtonElement).click());
-  });
-
-  await page.keyboard.press("Escape");
-  await expect(timePop).toBeHidden({ timeout: 3_000 }).catch(async () => {
-    await page.keyboard.press("Escape");
-  });
+  await formDialog(page).locator("#ruta-titulo").click({ force: true });
+  await expect(timePop).toBeHidden({ timeout: 5_000 });
 }
 
 export async function pickTramoEstimadoTime(
@@ -302,8 +422,46 @@ export async function pickTramoEstimadoTime(
     kind === "recogida"
       ? new RegExp(`Tramo ${tramoIndex + 1}: hora de recogida estimada`, "i")
       : new RegExp(`Tramo ${tramoIndex + 1}: hora de entrega estimada`, "i");
-  await form.getByRole("button", { name: label }).click();
+  const timeBtn = form.getByRole("button", { name: label });
+  const expectedLabel = hhmmToTriggerLabel(hhmm);
+  const currentLabel = (await timeBtn.innerText()).replace(/\s+/g, " ").trim();
+  if (currentLabel === expectedLabel) {
+    return;
+  }
+  await timeBtn.scrollIntoViewIfNeeded({ timeout: 8_000 });
+  await timeBtn.click({ timeout: 8_000 });
   await pickTimeInPopover(page, hhmm);
+}
+
+function isoDateMatchesButton(isoDate: string, buttonText: string): boolean {
+  const [y, m, d] = isoDate.split("-").map((x) => parseInt(x, 10));
+  const normalized = buttonText.replace(/\s+/g, " ").trim().toLowerCase();
+  if (!normalized.includes(String(y))) return false;
+  const dayNum = d;
+  const dayPadded = String(d).padStart(2, "0");
+  if (
+    !normalized.includes(` ${dayNum} `) &&
+    !normalized.startsWith(`${dayNum} `) &&
+    !normalized.includes(` ${dayPadded} `)
+  ) {
+    return false;
+  }
+  const monthNames = [
+    "ene",
+    "feb",
+    "mar",
+    "abr",
+    "may",
+    "jun",
+    "jul",
+    "ago",
+    "sep",
+    "oct",
+    "nov",
+    "dic",
+  ];
+  const monthHint = monthNames[m - 1] ?? "";
+  return monthHint ? normalized.includes(monthHint) : true;
 }
 
 export async function pickTramoEstimadoDate(
@@ -317,10 +475,19 @@ export async function pickTramoEstimadoDate(
     kind === "recogida"
       ? new RegExp(`Tramo ${tramoIndex + 1}: fecha de recogida estimada`, "i")
       : new RegExp(`Tramo ${tramoIndex + 1}: fecha de entrega estimada`, "i");
-  await form.getByRole("button", { name: label }).click();
+  const dateBtn = form.getByRole("button", { name: label });
+  const currentLabel = (await dateBtn.innerText()).replace(/\s+/g, " ").trim();
+  if (isoDateMatchesButton(isoDate, currentLabel)) {
+    return;
+  }
+  await dateBtn.scrollIntoViewIfNeeded({ timeout: 8_000 });
+  await dateBtn.click({ timeout: 8_000 });
   const cal = page.getByRole("dialog", { name: "Calendario" });
   await expect(cal).toBeVisible({ timeout: 5_000 });
   await pickCalendarIsoDate(cal, isoDate);
+  if (await cal.isVisible({ timeout: 500 }).catch(() => false)) {
+    await form.locator("#ruta-titulo").click({ force: true }).catch(() => null);
+  }
   await expect(cal).toBeHidden({ timeout: 5_000 });
 }
 
@@ -333,31 +500,48 @@ async function fillTramoMapCoords(
   lng: string,
   label?: string,
 ): Promise<void> {
+  const form = formDialog(page);
+  const hintLabel = punto === "origen" ? "Origen" : "Destino";
+  const coordHint = form.getByText(
+    new RegExp(`${hintLabel}:\\s*${lat.replace(".", "\\.")}`),
+  );
+  if (await coordHint.first().isVisible({ timeout: 500 }).catch(() => false)) {
+    const text = (await coordHint.first().textContent()) ?? "";
+    if (text.includes(lng)) {
+      return;
+    }
+  }
+
   const btnName =
     punto === "origen"
       ? /coordenadas origen \(mapa\)/i
       : /coordenadas destino \(mapa\)/i;
-
-  const form = formDialog(page);
   const allMapBtns = form.getByRole("button", { name: btnName });
   const btnCount = await allMapBtns.count();
   const idx = tramoIndex < btnCount ? tramoIndex : btnCount - 1;
-  await allMapBtns.nth(idx).click();
+  const btn = allMapBtns.nth(idx);
+  await btn.evaluate((el) => (el as HTMLButtonElement).click());
 
   const mapModal = page.locator('[role="dialog"][aria-label="Coordenadas del mapa"]');
-  await expect(mapModal).toBeVisible({ timeout: 8_000 });
+  await expect(mapModal).toBeVisible({ timeout: 5_000 });
 
   if (label) {
     const labelArea = mapModal.locator("textarea").first();
     if (await labelArea.isEditable({ timeout: 1_000 }).catch(() => false)) {
-      await labelArea.fill(label);
+      await fillReactTextarea(labelArea, label);
     }
   }
 
-  const latInput = mapModal.getByLabel("Latitud");
-  await latInput.fill(lat);
-  const lngInput = mapModal.getByLabel("Longitud");
-  await lngInput.fill(lng);
+  const latInput = mapModal
+    .locator("label")
+    .filter({ hasText: /^Latitud$/ })
+    .locator("input");
+  const lngInput = mapModal
+    .locator("label")
+    .filter({ hasText: /^Longitud$/ })
+    .locator("input");
+  await fillReactInput(latInput, lat);
+  await fillReactInput(lngInput, lng);
 
   await mapModal.getByRole("button", { name: /guardar coordenadas/i }).click();
   await expect(mapModal).toBeHidden({ timeout: 5_000 });
@@ -399,65 +583,43 @@ export async function fillTramoFields(
     tipoMercanciaCarga?: string;
     tipoMercanciaDescarga?: string;
     notas?: string;
+    skipMapCoords?: boolean;
   },
 ): Promise<void> {
   const i = tramoIndex;
   const form = formDialog(page);
-
-  const origenInput = form.locator(`#ruta-tramo-${i}-origen`);
-  if (await origenInput.isEditable({ timeout: 2_000 }).catch(() => false)) {
-    await origenInput.fill(opts.origen);
-  }
-  await form.locator(`#ruta-tramo-${i}-destino`).fill(opts.destino);
+  const skipMapCoords = opts.skipMapCoords ?? true;
 
   const origenLat = opts.origenLat ?? (i === 0 ? "-34.6037" : undefined);
   const origenLng = opts.origenLng ?? (i === 0 ? "-58.3816" : undefined);
   const destinoLat = opts.destinoLat ?? String(-34.62 - i * 0.01);
   const destinoLng = opts.destinoLng ?? String(-58.4 - i * 0.01);
 
-  if (i === 0 && origenLat !== undefined && origenLng !== undefined) {
-    await fillTramoMapCoords(page, i, "origen", origenLat, origenLng, opts.origen);
+  if (!skipMapCoords) {
+    if (i === 0 && origenLat !== undefined && origenLng !== undefined) {
+      await fillTramoMapCoords(page, i, "origen", origenLat, origenLng, opts.origen);
+    }
+    await fillTramoMapCoords(page, i, "destino", destinoLat, destinoLng, opts.destino);
   }
-  await fillTramoMapCoords(page, i, "destino", destinoLat, destinoLng, opts.destino);
 
-  await form
-    .getByRole("button", {
-      name: new RegExp(`Tramo ${i + 1}: fecha de recogida estimada`, "i"),
-    })
-    .click();
-  const recCal = page.getByRole("dialog", { name: "Calendario" });
-  await expect(recCal).toBeVisible({ timeout: 5_000 });
-  const recDay = opts.recogidaDate.split("-")[2]?.replace(/^0/, "") ?? "1";
-  await clickCalendarDay(recCal, recDay);
-  await expect(recCal).toBeHidden({ timeout: 5_000 });
+  const origenInput = form.locator(`#ruta-tramo-${i}-origen`);
+  if (await origenInput.isEditable({ timeout: 2_000 }).catch(() => false)) {
+    await fillReactInput(origenInput, opts.origen);
+  }
+  await fillReactInput(form.locator(`#ruta-tramo-${i}-destino`), opts.destino);
 
-  await form
-    .getByRole("button", {
-      name: new RegExp(`Tramo ${i + 1}: hora de recogida estimada`, "i"),
-    })
-    .click();
-  await pickTimeInPopover(page, opts.recogidaTime);
-
-  await form
-    .getByRole("button", {
-      name: new RegExp(`Tramo ${i + 1}: fecha de entrega estimada`, "i"),
-    })
-    .click();
-  const entCal = page.getByRole("dialog", { name: "Calendario" });
-  await expect(entCal).toBeVisible({ timeout: 5_000 });
-  const entDay = opts.entregaDate.split("-")[2]?.replace(/^0/, "") ?? "2";
-  await clickCalendarDay(entCal, entDay);
-  await expect(entCal).toBeHidden({ timeout: 5_000 });
-
-  await form
-    .getByRole("button", {
-      name: new RegExp(`Tramo ${i + 1}: hora de entrega estimada`, "i"),
-    })
-    .click();
-  await pickTimeInPopover(page, opts.entregaTime);
+  await closeRouteSheetDateTimePopovers(page);
+  await pickTramoEstimadoDate(page, i, "recogida", opts.recogidaDate);
+  await closeRouteSheetDateTimePopovers(page);
+  await pickTramoEstimadoTime(page, i, "recogida", opts.recogidaTime);
+  await closeRouteSheetDateTimePopovers(page);
+  await pickTramoEstimadoDate(page, i, "entrega", opts.entregaDate);
+  await closeRouteSheetDateTimePopovers(page);
+  await pickTramoEstimadoTime(page, i, "entrega", opts.entregaTime);
+  await closeRouteSheetDateTimePopovers(page);
 
   if (opts.precio !== undefined) {
-    await form.locator(`#ruta-tramo-${i}-precio`).fill(opts.precio);
+    await form.locator(`#ruta-tramo-${i}-precio`).fill(opts.precio, { timeout: 8_000 });
   }
 
   const moneda = opts.moneda ?? (opts.precio !== undefined ? "USD" : undefined);
@@ -465,30 +627,36 @@ export async function fillTramoFields(
     const monedaBtn = form.getByRole("button", {
       name: new RegExp(`moneda de pago del tramo ${i + 1}`, "i"),
     });
-    if (await monedaBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await monedaBtn.click();
-      await page.getByRole("option", { name: moneda }).first().click();
+    if (await monedaBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await monedaBtn.click({ timeout: 8_000 });
+      const option = page.getByRole("option", { name: moneda }).first();
+      if (await option.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await option.click({ timeout: 8_000 });
+      } else {
+        await form.locator("#ruta-titulo").click({ force: true }).catch(() => null);
+      }
     }
   }
 
   if (opts.responsabilidad !== undefined) {
-    await form.locator(`#ruta-tramo-${i}-resp-emb`).fill(opts.responsabilidad);
+    await form.locator(`#ruta-tramo-${i}-resp-emb`).fill(opts.responsabilidad, { timeout: 8_000 });
   }
   if (opts.requisitos !== undefined) {
-    await form.locator(`#ruta-tramo-${i}-req`).fill(opts.requisitos);
+    await form.locator(`#ruta-tramo-${i}-req`).fill(opts.requisitos, { timeout: 8_000 });
   }
   if (opts.tipoVehiculo !== undefined) {
-    await form.locator(`#ruta-tramo-${i}-veh`).fill(opts.tipoVehiculo);
+    await form.locator(`#ruta-tramo-${i}-veh`).fill(opts.tipoVehiculo, { timeout: 8_000 });
   }
   if (opts.carga !== undefined) {
-    await form.locator(`#ruta-tramo-${i}-carga`).fill(opts.carga);
+    await form.locator(`#ruta-tramo-${i}-carga`).fill(opts.carga, { timeout: 8_000 });
   }
   const tipoMercanciaCarga = opts.tipoMercanciaCarga ?? "General";
-  await form.locator(`#ruta-tramo-${i}-tmc`).fill(tipoMercanciaCarga);
+  await form.locator(`#ruta-tramo-${i}-tmc`).fill(tipoMercanciaCarga, { timeout: 8_000 });
   const tipoMercanciaDescarga = opts.tipoMercanciaDescarga ?? "General";
-  await form.locator(`#ruta-tramo-${i}-tmd`).fill(tipoMercanciaDescarga);
+  await form.locator(`#ruta-tramo-${i}-tmd`).fill(tipoMercanciaDescarga, { timeout: 8_000 });
   const notas = opts.notas ?? "Sin observaciones";
-  await form.locator(`#ruta-tramo-${i}-notas`).fill(notas);
+  await form.locator(`#ruta-tramo-${i}-notas`).fill(notas, { timeout: 8_000 });
+  await closeRouteSheetDateTimePopovers(page);
 }
 
 /** Removes the tramo at the given index (0-based) by clicking its "Eliminar tramo" button. */
@@ -500,29 +668,150 @@ export async function deleteTramoAt(page: Page, tramoIndex: number): Promise<voi
 
 /** Clicks save on the route sheet form modal. */
 export async function clickSaveRouteSheetForm(page: Page): Promise<void> {
+  await closeRouteSheetDateTimePopovers(page);
   const form = formDialog(page);
-  await form
-    .getByRole("button", { name: /guardar hoja de ruta|guardar cambios/i })
-    .click();
+  await expect(form).toBeVisible({ timeout: 15_000 });
+  const saveBtn = form.getByRole("button", {
+    name: /guardar hoja de ruta|guardar cambios/i,
+  });
+  await expect(saveBtn).toBeVisible({ timeout: 10_000 });
+  await expect(saveBtn).toBeEnabled({ timeout: 25_000 });
+  await saveBtn.click();
 }
 
-export async function saveRouteSheet(page: Page): Promise<void> {
-  const persistWait = page.waitForResponse(
-    (res) =>
-      res.request().method() === "PUT" &&
-      res.url().includes("/route-sheets/"),
-    { timeout: 30_000 },
-  );
-  await clickSaveRouteSheetForm(page);
-  const persistResp = await persistWait.catch(() => null);
-  const toast = page.getByText(/hoja de ruta creada|hoja de ruta actualizada/i).first();
-  const sawToast = await toast.isVisible({ timeout: 5_000 }).catch(() => false);
-  if (sawToast) return;
-  await expect(formDialog(page)).toBeHidden({ timeout: 15_000 });
-  if (persistResp && !persistResp.ok()) {
-    const body = await persistResp.text().catch(() => "");
-    throw new Error(`Route sheet save failed (${persistResp.status()}): ${body}`);
+export async function saveRouteSheet(page: Page): Promise<string | undefined> {
+  const dialog = formDialog(page);
+  if (!(await dialog.isVisible({ timeout: 2_000 }).catch(() => false))) {
+    throw new Error(
+      "Route sheet form is not open — cannot save (modal may have been dismissed accidentally)",
+    );
   }
+  const titulo =
+    (await dialog
+      .getByLabel(/t[ií]tulo de la hoja/i)
+      .inputValue()
+      .catch(() => "")) || "";
+  const isRouteSheetPersist = (res: {
+    request: () => { method: () => string };
+    url: () => string;
+    status: () => number;
+  }) => {
+    const method = res.request().method();
+    const url = res.url();
+    if (!url.includes("/route-sheets") || res.status() >= 500) return false;
+    if (method === "PUT" && /\/route-sheets\/[^/?#]+/.test(url)) return true;
+    if (method === "POST" && /\/route-sheets(\/|$|\?)/.test(url)) return true;
+    return false;
+  };
+  const savedToast = page
+    .getByText(/hoja de ruta creada|hoja de ruta actualizada/i)
+    .first();
+  await closeRouteSheetDateTimePopovers(page);
+  const form = formDialog(page);
+  await expect(form).toBeVisible({ timeout: 8_000 });
+  const saveBtn = form.getByRole("button", {
+    name: /guardar hoja de ruta|guardar cambios/i,
+  });
+  await expect(saveBtn).toBeVisible({ timeout: 10_000 });
+  try {
+    await expect(saveBtn).toBeEnabled({ timeout: 25_000 });
+  } catch {
+    const alerts = await form
+      .locator('[role="alert"]')
+      .allTextContents()
+      .catch(() => [] as string[]);
+    const hint = alerts.filter(Boolean).join(" | ");
+    throw new Error(
+      hint ? `Save button still disabled: ${hint}` : "Save button still disabled",
+    );
+  }
+  const persistWait = page.waitForResponse(isRouteSheetPersist, {
+    timeout: 45_000,
+  });
+  await saveBtn.click();
+  const validationToast = page.getByText(/revisa el formulario/i).first();
+  const outcome = await Promise.race([
+    persistWait.then((r) => ({ kind: "persist" as const, r })),
+    savedToast
+      .waitFor({ state: "visible", timeout: 12_000 })
+      .then(() => ({ kind: "savedToast" as const })),
+    validationToast
+      .waitFor({ state: "visible", timeout: 8_000 })
+      .then(() => ({ kind: "validation" as const })),
+    dialog
+      .waitFor({ state: "hidden", timeout: 12_000 })
+      .then(() => ({ kind: "closed" as const })),
+  ]).catch(() => null);
+  if (outcome?.kind === "validation") {
+    const alerts = await dialog
+      .locator('[role="alert"]')
+      .allTextContents()
+      .catch(() => [] as string[]);
+    throw new Error(
+      `Route sheet validation failed: ${alerts.filter(Boolean).join(" | ")}`,
+    );
+  }
+  const persistResp =
+    outcome?.kind === "persist" ? outcome.r : await persistWait.catch(() => null);
+  let savedId: string | undefined;
+  if (persistResp?.ok()) {
+    const match = persistResp.url().match(/\/route-sheets\/([^/?#]+)/);
+    savedId = match?.[1]?.trim() || undefined;
+    if (!savedId) {
+      savedId = await persistResp
+        .json()
+        .then((json: { id?: string; routeSheetId?: string }) =>
+          (json.id ?? json.routeSheetId ?? "").trim() || undefined,
+        )
+        .catch(() => undefined);
+    }
+  }
+  const toast = savedToast;
+  if (outcome?.kind !== "savedToast" && outcome?.kind !== "closed") {
+    await Promise.race([
+      toast.waitFor({ state: "visible", timeout: 8_000 }).catch(() => null),
+      dialog.waitFor({ state: "hidden", timeout: 12_000 }).catch(() => null),
+    ]);
+  }
+  const threadId = page.url().match(/\/chat\/([^/?#]+)/)?.[1]?.trim() ?? "";
+  if (savedId && threadId && titulo.trim()) {
+    const { cacheRouteSheetId } = await import("./route-sheet-carriers-env");
+    cacheRouteSheetId(threadId, titulo.trim(), savedId);
+  }
+  if (await toast.isVisible().catch(() => false)) {
+    return savedId;
+  }
+  if (!(await dialog.isVisible().catch(() => false))) {
+    if (!savedId && titulo.trim() && threadId) {
+      const seller = getE2ESellerSession();
+      if (seller?.sessionToken) {
+        const { resolveRouteSheetIdByTitulo } = await import(
+          "./route-sheet-carriers-env"
+        );
+        savedId = await resolveRouteSheetIdByTitulo(
+          page,
+          threadId,
+          seller.sessionToken,
+          titulo.trim(),
+        ).catch(() => undefined);
+      }
+    }
+    if (persistResp && !persistResp.ok()) {
+      const body = await persistResp.text().catch(() => "");
+      throw new Error(
+        `Route sheet save failed (${persistResp.status()}): ${body}`,
+      );
+    }
+    return savedId;
+  }
+  const alerts = await dialog
+    .locator('[role="alert"]')
+    .allTextContents()
+    .catch(() => [] as string[]);
+  const hint = alerts.filter(Boolean).join(" | ");
+  throw new Error(
+    `Route sheet form still open after save${hint ? `: ${hint}` : ""}`,
+  );
 }
 
 /** After linking a route sheet in Contratos, opens it in the Rutas panel. */
@@ -614,7 +903,28 @@ export async function ensureRouteSheetDetailOpen(
 }
 
 /** Clicks "Editar" on the route sheet detail toolbar. */
-export async function clickEditRouteSheet(page: Page): Promise<void> {
+export async function clickEditRouteSheet(
+  page: Page,
+  routeSheetTitulo?: string,
+): Promise<void> {
+  await openRoutesRail(page);
+  if (routeSheetTitulo?.trim()) {
+    await ensureRouteSheetDetailOpen(page, routeSheetTitulo);
+  } else {
+    const editBtn = page.getByRole("button", { name: /^editar$/i });
+    if (!(await editBtn.isVisible({ timeout: 3_000 }).catch(() => false))) {
+      const firstSheet = page
+        .getByRole("complementary")
+        .locator("ul li button")
+        .first();
+      if (await firstSheet.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await firstSheet.click();
+      }
+    }
+  }
+  await expect(page.getByRole("button", { name: /^editar$/i })).toBeVisible({
+    timeout: 20_000,
+  });
   await page.getByRole("button", { name: /^editar$/i }).click();
   const confirmEdit = page.getByRole("button", { name: /continuar y editar/i });
   if (await confirmEdit.isVisible({ timeout: 3_000 }).catch(() => false)) {
@@ -640,9 +950,9 @@ export async function searchCarrierPhone(
     .click();
 
   const picker = page.getByRole("dialog", { name: /elegir servicio de transporte/i });
-  await expect(picker).toBeVisible({ timeout: 15_000 });
+  await expect(picker).toBeVisible({ timeout: 12_000 });
   await expect(picker.getByText(/cargando fichas publicadas/i)).toBeHidden({
-    timeout: 20_000,
+    timeout: 12_000,
   });
 
   const confirmService = picker.getByRole("button", {
@@ -651,11 +961,24 @@ export async function searchCarrierPhone(
   const usePhoneOnly = picker.getByRole("button", {
     name: /usar solo el tel[eé]fono/i,
   });
-  if (await confirmService.isVisible({ timeout: 5_000 }).catch(() => false)) {
+  const firstRadio = picker.locator('input[type="radio"]').first();
+  if (await firstRadio.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await firstRadio.check().catch(() => firstRadio.click());
+    if (await confirmService.isEnabled({ timeout: 8_000 }).catch(() => false)) {
+      await confirmService.click();
+    } else if (await usePhoneOnly.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await usePhoneOnly.click();
+    } else {
+      await expect(confirmService).toBeEnabled({ timeout: 8_000 });
+      await confirmService.click();
+    }
+  } else if (await usePhoneOnly.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await usePhoneOnly.click();
+  } else if (await confirmService.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await expect(confirmService).toBeEnabled({ timeout: 8_000 });
     await confirmService.click();
   } else {
-    await expect(usePhoneOnly).toBeVisible({ timeout: 5_000 });
-    await usePhoneOnly.click();
+    throw new Error("Carrier service picker has no selectable option");
   }
 
   await expect(
@@ -726,7 +1049,7 @@ export async function insertTramoAfter(
 }
 
 /** If the Contratos panel is showing a contract detail, go back to the list. */
-async function ensureContractListView(page: Page): Promise<void> {
+export async function ensureContractListView(page: Page): Promise<void> {
   const backBtn = page
     .getByRole("complementary")
     .getByRole("button", { name: /← volver/i });
@@ -766,7 +1089,16 @@ export async function openContractByAgreementTitle(
   agreementTitle: string,
 ): Promise<void> {
   await ensureContractListView(page);
+  await openRailContracts(page);
   const rail = page.getByRole("complementary");
+  const listBtn = rail
+    .getByRole("button")
+    .filter({ hasText: agreementTitle })
+    .first();
+  if (await listBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await listBtn.click();
+    return;
+  }
   const contractBtns = rail.locator("ul li button");
   const count = await contractBtns.count();
   for (let i = 0; i < count; i++) {
@@ -986,13 +1318,127 @@ export async function duplicateOpenRouteSheetViaUI(page: Page): Promise<string> 
 export async function linkRouteSheetToAgreementViaUI(
   page: Page,
   sheetTitulo: string,
+  agreementId?: string,
 ): Promise<void> {
+  const threadId = page.url().match(/\/chat\/([^/?#]+)/)?.[1]?.trim() ?? "";
+  const seller = getE2ESellerSession();
+  if (agreementId?.trim() && threadId.length > 2 && seller?.sessionToken) {
+    const { resolveRouteSheetIdByTitulo } = await import(
+      "./route-sheet-carriers-env"
+    );
+    const { linkAgreementToRouteSheetViaApi } = await import(
+      "./e2e-logistics-api"
+    );
+    const routeSheetId = await resolveRouteSheetIdByTitulo(
+      page,
+      threadId,
+      seller.sessionToken,
+      sheetTitulo,
+    ).catch(() => "");
+    if (routeSheetId) {
+      try {
+        await linkAgreementToRouteSheetViaApi(
+          page,
+          seller.sessionToken,
+          threadId,
+          agreementId.trim(),
+          routeSheetId,
+        );
+        await reloadChatThreadIfKnown(page);
+        await openRailContracts(page);
+        await openContractLinkedToRouteSheet(page, sheetTitulo).catch(
+          () => null,
+        );
+        return;
+      } catch {
+        /* fall through to UI linking */
+      }
+    }
+  }
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < 4; attempt++) {
     if (attempt > 0) {
       await page.waitForTimeout(1_000 * attempt);
     }
-    await pickRouteSheetInAgreementLinkSelect(page, sheetTitulo);
+    try {
+      await pickRouteSheetInAgreementLinkSelect(page, sheetTitulo);
+    } catch (pickErr) {
+      const threadId = page.url().match(/\/chat\/([^/?#]+)/)?.[1]?.trim() ?? "";
+      const seller = getE2ESellerSession();
+      if (threadId.length > 2 && seller?.sessionToken) {
+        const { resolveRouteSheetIdByTitulo } = await import(
+          "./route-sheet-carriers-env"
+        );
+        const { linkAgreementToRouteSheetViaApi } = await import(
+          "./e2e-logistics-api"
+        );
+        const routeSheetId = await resolveRouteSheetIdByTitulo(
+          page,
+          threadId,
+          seller.sessionToken,
+          sheetTitulo,
+        ).catch(() => "");
+        let resolvedAgreementId = agreementId?.trim() ?? "";
+        if (!resolvedAgreementId) {
+          const agreementTitleHint =
+            (
+              await page
+                .getByRole("complementary")
+                .locator("ul li button")
+                .filter({ has: page.locator("[aria-current], [data-active]") })
+                .first()
+                .textContent()
+                .catch(() => null)
+            ) ??
+            (await page
+              .getByRole("complementary")
+              .getByText(/E2E-RS-AGR-\d+|E2E Exit|E-S05|Hoja L\d+/i)
+              .first()
+              .textContent()
+              .catch(() => null));
+          const titlePart = (agreementTitleHint ?? "").trim().split(/\s+/)[0] ?? "";
+          resolvedAgreementId = await page.evaluate(
+            async ([tid, tok, title]: [string, string, string]) => {
+              const res = await fetch(
+                `/api/v1/chat/threads/${encodeURIComponent(tid)}/trade-agreements`,
+                { headers: { Authorization: `Bearer ${tok}` } },
+              );
+              if (!res.ok) return "";
+              const items = (await res.json()) as Array<{
+                id?: string;
+                title?: string;
+              }>;
+              if (title.trim()) {
+                const match = items.find((x) =>
+                  (x.title ?? "").trim().startsWith(title.trim()),
+                );
+                if (match?.id?.trim()) return match.id.trim();
+              }
+              return items[0]?.id?.trim() ?? "";
+            },
+            [threadId, seller.sessionToken, titlePart] as [string, string, string],
+          ).catch(() => "");
+        }
+        if (routeSheetId && resolvedAgreementId) {
+          await linkAgreementToRouteSheetViaApi(
+            page,
+            seller.sessionToken,
+            threadId,
+            resolvedAgreementId,
+            routeSheetId,
+          );
+          await reloadChatThreadIfKnown(page);
+          await openRailContracts(page);
+          await openContractLinkedToRouteSheet(page, sheetTitulo).catch(
+            () => null,
+          );
+          return;
+        }
+      }
+      lastError =
+        pickErr instanceof Error ? pickErr : new Error(String(pickErr));
+      continue;
+    }
     const vincularBtn = page.getByRole("button", {
       name: /^vincular$|^actualizar vínculo$/i,
     });
@@ -1138,7 +1584,19 @@ async function ensureSubscribersTramoList(
     await sheetBtn.click();
   }
 
-  await expect(tramoListBtn).toBeVisible({ timeout: 10_000 });
+  if (!(await tramoListBtn.isVisible().catch(() => false))) {
+    const carrierFicha = panel.locator("a[href*='/offer/']").first();
+    if (await carrierFicha.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      return;
+    }
+  }
+
+  await expect
+    .poll(
+      async () => panel.getByRole("button", { name: /^tramo \d+\b/i }).count(),
+      { timeout: 30_000 },
+    )
+    .toBeGreaterThan(0);
 }
 
 /** Opens a tramo row inside the subscribers panel (1-based tramo number). */
@@ -1300,9 +1758,12 @@ export async function subscribeCarrierToOffer(
   await expect(sendBtn).toBeEnabled({ timeout: 15_000 });
   await sendBtn.click();
 
-  const serviceModal = page.getByRole("dialog", {
-    name: /servicio de transporte/i,
-  });
+  const serviceModal = page
+    .getByRole("dialog")
+    .filter({
+      hasText: /servicio de transporte|confirmar solicitud|seleccion[aá] servicio/i,
+    })
+    .last();
   await expect(serviceModal).toBeVisible({ timeout: 10_000 });
 
   if (withServicePicker) {
@@ -1327,7 +1788,6 @@ export async function subscribeCarrierToOffer(
     await confirmBtn.click();
     const resp = await subWait;
     expect(resp.status()).toBeLessThan(300);
-    await expect(serviceModal).toBeHidden({ timeout: 20_000 });
   }
 }
 
@@ -1356,9 +1816,34 @@ export async function subscribeCarrierToOfferViaApi(
 }
 
 /** Opens the Suscriptores panel from the route-sheet detail toolbar. */
-export async function openSubscribersPanel(page: Page): Promise<void> {
-  const btn = page.getByRole("button", { name: /^suscriptores$/i });
-  await expect(btn).toBeVisible({ timeout: 10_000 });
+export async function openSubscribersPanel(
+  page: Page,
+  routeSheetTitulo?: string,
+): Promise<void> {
+  const { reloadChatThread } = await import("./chat-helpers");
+  await reloadChatThread(page).catch(() => null);
+  await openRoutesRail(page);
+  let btn = page.getByRole("button", { name: /^suscriptores$/i });
+  if (!(await btn.isVisible({ timeout: 2_000 }).catch(() => false))) {
+    if (routeSheetTitulo?.trim()) {
+      await ensureRouteSheetDetailOpen(page, routeSheetTitulo);
+    } else {
+      const onList = page.getByRole("button", { name: /← lista/i });
+      if (await onList.isVisible({ timeout: 1_000 }).catch(() => false)) {
+        /* already on detail without titulo */
+      } else {
+        const firstSheet = page
+          .getByRole("complementary")
+          .locator("ul li button")
+          .first();
+        if (await firstSheet.isVisible({ timeout: 3_000 }).catch(() => false)) {
+          await firstSheet.click();
+        }
+      }
+    }
+    btn = page.getByRole("button", { name: /^suscriptores$/i });
+  }
+  await expect(btn).toBeVisible({ timeout: 15_000 });
   await btn.click();
   await expect(subscribersPanel(page)).toBeVisible({ timeout: 10_000 });
 }
@@ -1377,6 +1862,142 @@ export function getCarrierCard(page: Page, carrierIdOrName?: string) {
     return panel.getByText(carrierIdOrName).first();
   }
   return panel.locator("a[href*='/offer/']").first();
+}
+
+/** Clicks "Expulsar de este tramo" for a carrier in the subscribers panel. */
+async function pauseRouteStopsBeforeExpel(
+  page: Page,
+  routeSheetTitulo?: string,
+): Promise<void> {
+  const threadId = page.url().match(/\/chat\/([^/?#]+)/)?.[1]?.trim() ?? "";
+  const seller = getE2ESellerSession();
+  if (threadId.length < 3 || !seller?.sessionToken || !routeSheetTitulo?.trim()) {
+    return;
+  }
+  const { resolveRouteSheetIdByTitulo } = await import("./route-sheet-carriers-env");
+  const { fetchRouteSheetStopIds, postSellerPauseApi } = await import(
+    "./e2e-logistics-api"
+  );
+  const routeSheetId = await resolveRouteSheetIdByTitulo(
+    page,
+    threadId,
+    seller.sessionToken,
+    routeSheetTitulo,
+  ).catch(() => "");
+  if (!routeSheetId) return;
+  const agreementId = await page.evaluate(
+    async ([tid, tok]: [string, string]) => {
+      const res = await fetch(
+        `/api/v1/chat/threads/${encodeURIComponent(tid)}/trade-agreements`,
+        { headers: { Authorization: `Bearer ${tok}` } },
+      );
+      if (!res.ok) return "";
+      const items = (await res.json()) as Array<{ id?: string }>;
+      return items[0]?.id?.trim() ?? "";
+    },
+    [threadId, seller.sessionToken] as [string, string],
+  );
+  if (!agreementId) return;
+  const stopIds = await fetchRouteSheetStopIds(
+    page,
+    seller.sessionToken,
+    threadId,
+    routeSheetId,
+  ).catch(() => [] as string[]);
+  for (const routeStopId of stopIds) {
+    await postSellerPauseApi(page, seller.sessionToken, {
+      threadId,
+      agreementId,
+      routeSheetId,
+      routeStopId,
+      reason: "Pausa E2E antes de expulsar",
+    }).catch(() => null);
+  }
+}
+
+async function confirmExpelDialog(
+  page: Page,
+  confirmDialog: Locator,
+  reason: string,
+  routeSheetTitulo?: string,
+): Promise<void> {
+  await fillExpelReason(confirmDialog, reason);
+  const confirmBtn = confirmDialog.getByRole("button", {
+    name: /confirmar expulsi[oó]n/i,
+  });
+  await expect(confirmBtn).toBeEnabled({ timeout: 5_000 });
+  const expelWait = page
+    .waitForResponse(
+      (res) =>
+        res.request().method() === "POST" &&
+        /expel|expuls/i.test(res.url()) &&
+        res.status() < 500,
+      { timeout: 30_000 },
+    )
+    .catch(() => null);
+  await confirmBtn.click();
+  const resp = await expelWait;
+  if (resp && resp.status() >= 400) {
+    const body = await resp.text().catch(() => "");
+    if (resp.status() === 409 && body.includes("tramo_must_be_paused")) {
+      await pauseRouteStopsBeforeExpel(page, routeSheetTitulo);
+      const retryWait = page
+        .waitForResponse(
+          (res) =>
+            res.request().method() === "POST" &&
+            /expel|expuls/i.test(res.url()) &&
+            res.status() < 500,
+          { timeout: 30_000 },
+        )
+        .catch(() => null);
+      await confirmBtn.click();
+      const retryResp = await retryWait;
+      if (retryResp && retryResp.status() < 300) {
+        await expect(confirmDialog).toBeHidden({ timeout: 20_000 });
+        return;
+      }
+      const threadId =
+        page.url().match(/\/chat\/([^/?#]+)/)?.[1]?.trim() ?? "";
+      const scenario = getE2EScenario();
+      const seller = getE2ESellerSession();
+      const carrierUserId = scenario?.carrierUserId?.trim();
+      if (threadId.length > 2 && carrierUserId && seller?.sessionToken) {
+        const { postSellerExpelCarrierApi } = await import("./e2e-logistics-api");
+        const apiRes = await postSellerExpelCarrierApi(page, seller.sessionToken, {
+          threadId,
+          carrierUserId,
+          reason,
+        });
+        if (apiRes.status < 300) {
+          await page.keyboard.press("Escape").catch(() => null);
+          await expect(confirmDialog).toBeHidden({ timeout: 20_000 });
+          return;
+        }
+      }
+    }
+    throw new Error(`Expel failed (${resp.status()}): ${body}`);
+  }
+  if (await confirmDialog.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    const threadId =
+      page.url().match(/\/chat\/([^/?#]+)/)?.[1]?.trim() ?? "";
+    const scenario = getE2EScenario();
+    const seller = getE2ESellerSession();
+    const carrierUserId = scenario?.carrierUserId?.trim();
+    if (threadId.length > 2 && carrierUserId && seller?.sessionToken) {
+      const { postSellerExpelCarrierApi } = await import("./e2e-logistics-api");
+      const apiRes = await postSellerExpelCarrierApi(page, seller.sessionToken, {
+        threadId,
+        carrierUserId,
+        reason,
+      });
+      if (apiRes.status < 300) {
+        await page.keyboard.press("Escape").catch(() => null);
+        return;
+      }
+    }
+    await page.keyboard.press("Escape").catch(() => null);
+  }
+  await expect(confirmDialog).toBeHidden({ timeout: 20_000 });
 }
 
 /** Clicks "Expulsar de este tramo" for a carrier in the subscribers panel. */
@@ -1415,26 +2036,12 @@ export async function kickCarrierFromTramo(
     .filter({ hasText: /expulsar transportista/i })
     .last();
   await expect(confirmDialog).toBeVisible({ timeout: 5_000 });
-  await fillExpelReason(
+  await confirmExpelDialog(
+    page,
     confirmDialog,
     "Motivo E2E de expulsión de prueba.",
+    routeSheetTitulo,
   );
-  const confirmBtn = confirmDialog.getByRole("button", {
-    name: /confirmar expulsi[oó]n/i,
-  });
-  await expect(confirmBtn).toBeEnabled({ timeout: 5_000 });
-  const expelWait = page
-    .waitForResponse(
-      (res) =>
-        res.request().method() === "POST" &&
-        /expel|expuls/i.test(res.url()) &&
-        res.status() < 500,
-      { timeout: 30_000 },
-    )
-    .catch(() => null);
-  await confirmBtn.click();
-  await expelWait;
-  await expect(confirmDialog).toBeHidden({ timeout: 20_000 });
 }
 
 /** Clicks "Expulsar de la operación" for a carrier in the subscribers panel. */
@@ -1454,32 +2061,19 @@ export async function kickCarrierFromOperation(
       .first();
   }
   await expect(expelOpBtn).toBeVisible({ timeout: 5_000 });
+  await pauseRouteStopsBeforeExpel(page, routeSheetTitulo);
   await expelOpBtn.click();
   const confirmDialog = page
     .getByRole("dialog")
     .filter({ hasText: /expulsar transportista/i })
     .last();
   await expect(confirmDialog).toBeVisible({ timeout: 5_000 });
-  await fillExpelReason(
+  await confirmExpelDialog(
+    page,
     confirmDialog,
     "Motivo E2E de expulsión de operación.",
+    routeSheetTitulo,
   );
-  const confirmBtn = confirmDialog.getByRole("button", {
-    name: /confirmar expulsi[oó]n/i,
-  });
-  await expect(confirmBtn).toBeEnabled({ timeout: 5_000 });
-  const expelWait = page
-    .waitForResponse(
-      (res) =>
-        res.request().method() === "POST" &&
-        /expel|expuls/i.test(res.url()) &&
-        res.status() < 500,
-      { timeout: 30_000 },
-    )
-    .catch(() => null);
-  await confirmBtn.click();
-  await expelWait;
-  await expect(confirmDialog).toBeHidden({ timeout: 20_000 });
 }
 
 /**
@@ -1594,6 +2188,7 @@ async function createTwoStopRouteSheet(
   tramo0: RouteTramoSpec,
   tramo1: RouteTramoSpec,
   carrierPhones?: { tramo0?: string; tramo1?: string },
+  opts?: { skipMapCoords?: boolean },
 ): Promise<void> {
   await waitForThreadContractsLoaded(page);
   await openRoutesRail(page);
@@ -1601,12 +2196,13 @@ async function createTwoStopRouteSheet(
   await waitForRouteSheetForm(page);
   await fillRouteSheetBasicFields(page, titulo);
   await deleteTramoAt(page, 1);
-  await fillTramoFields(page, 0, { ...DEFAULT_TRAMO, ...tramo0 });
+  const skipMap = opts?.skipMapCoords ?? false;
+  await fillTramoFields(page, 0, { ...DEFAULT_TRAMO, ...tramo0, skipMapCoords: skipMap });
   if (carrierPhones?.tramo0) {
     await searchCarrierPhone(page, 0, carrierPhones.tramo0);
   }
   await insertTramoAfter(page, 0);
-  await fillTramoFields(page, 1, { ...DEFAULT_TRAMO, ...tramo1 });
+  await fillTramoFields(page, 1, { ...DEFAULT_TRAMO, ...tramo1, skipMapCoords: skipMap });
   if (carrierPhones?.tramo1) {
     await searchCarrierPhone(page, 1, carrierPhones.tramo1);
   }

@@ -42,6 +42,9 @@ import {
   TOOL_PLACEHOLDER_SRC,
 } from "@features/market/logic/toolPlaceholder";
 import { trackRecommendationInteraction } from "@features/home/api/recommendationsApi";
+import { useCartStore } from "@features/orders/logic/cartStore";
+import { parseProductPriceNumber } from "@features/market/logic/parseProductPrice";
+import { reportProductView } from "@features/analytics";
 import {
   joinOfferChannel,
   leaveOfferChannel,
@@ -645,6 +648,13 @@ export function OfferPage() {
     return cat.products.find((p) => p.id === oid) ?? null;
   }, [resolvedOffer, storeCatalogs]);
 
+  const addToCart = useCartStore((s) => s.addItem);
+
+  const trackedProductId = productFicha?.id ?? null;
+  useEffect(() => {
+    if (trackedProductId) void reportProductView(trackedProductId);
+  }, [trackedProductId]);
+
   if (!offerId || !publicCardLoadDone) {
     return (
       <div className="container vt-page">
@@ -1142,48 +1152,74 @@ export function OfferPage() {
                   Suscribirse
                 </button>
               ) : (
-                <button
-                  type="button"
-                  className="vt-btn vt-btn-primary min-[420px]:flex-1"
-                  disabled={
-                    (!!actingAsCarrierOnThisOffer && !!routeOffer) || isOwnOffer
-                  }
-                  title={
-                    isOwnOffer
-                      ? "No puedes chatear contigo mismo en tu propia oferta."
-                      : actingAsCarrierOnThisOffer && routeOffer
-                        ? "Como transportista: suscríbete a un tramo y espera la validación para usar el chat de la ruta."
-                        : undefined
-                  }
-                  onClick={() => {
-                    if (!isSessionActive || me.id === "guest") {
-                      openAuthModal();
-                      return;
+                <>
+                  {productFicha && !isOwnOffer ? (
+                    <button
+                      type="button"
+                      className="vt-btn vt-btn-primary min-[420px]:flex-1"
+                      onClick={() => {
+                        addToCart({
+                          productId: productFicha.id,
+                          storeId: resolvedOffer.storeId,
+                          name: productFicha.name,
+                          unitPrice:
+                            parseProductPriceNumber(productFicha.price) ?? 0,
+                          currencyCode:
+                            productFicha.monedaPrecio?.trim() ||
+                            productFicha.monedas?.[0] ||
+                            "",
+                          quantity: 1,
+                          photoUrl: productFicha.photoUrls[0],
+                        });
+                        toast.success("Añadido al carrito");
+                      }}
+                    >
+                      <ShoppingCart size={16} /> Añadir al carrito
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="vt-btn min-[420px]:flex-1"
+                    disabled={
+                      (!!actingAsCarrierOnThisOffer && !!routeOffer) || isOwnOffer
                     }
-                    if (isOwnOffer) {
-                      toast.error("No puedes chatear contigo mismo.");
-                      return;
+                    title={
+                      isOwnOffer
+                        ? "No puedes chatear contigo mismo en tu propia oferta."
+                        : actingAsCarrierOnThisOffer && routeOffer
+                          ? "Como transportista: suscríbete a un tramo y espera la validación para usar el chat de la ruta."
+                          : undefined
                     }
-                    if (actingAsCarrierOnThisOffer && routeOffer) {
-                      toast.error(
-                        "Usa la suscripción al tramo; el chat se habilita tras la validación.",
-                      );
-                      return;
-                    }
-                    if (
-                      !isOfferPublishedForBuyerChat(
-                        resolvedOffer,
-                        storeCatalogs,
-                      )
-                    ) {
-                      toast.error(NOT_PUBLISHED_TOAST_ES);
-                      return;
-                    }
-                    setComprarChatConfirmOpen(true);
-                  }}
-                >
-                  <ShoppingCart size={16} /> Comprar (Chat)
-                </button>
+                    onClick={() => {
+                      if (!isSessionActive || me.id === "guest") {
+                        openAuthModal();
+                        return;
+                      }
+                      if (isOwnOffer) {
+                        toast.error("No puedes chatear contigo mismo.");
+                        return;
+                      }
+                      if (actingAsCarrierOnThisOffer && routeOffer) {
+                        toast.error(
+                          "Usa la suscripción al tramo; el chat se habilita tras la validación.",
+                        );
+                        return;
+                      }
+                      if (
+                        !isOfferPublishedForBuyerChat(
+                          resolvedOffer,
+                          storeCatalogs,
+                        )
+                      ) {
+                        toast.error(NOT_PUBLISHED_TOAST_ES);
+                        return;
+                      }
+                      setComprarChatConfirmOpen(true);
+                    }}
+                  >
+                    <ShoppingCart size={16} /> Comprar (Chat)
+                  </button>
+                </>
               )}
             </div>
           </div>

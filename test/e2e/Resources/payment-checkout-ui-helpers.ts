@@ -41,6 +41,7 @@ export async function openChatPaymentModal(page: Page): Promise<void> {
   await expect(
     paymentModal(page).getByText(/cargando tarjetas/i),
   ).toBeHidden({ timeout: 45_000 });
+  await dismissRouteCarrierWarningIfOpen(page);
 }
 
 export async function expectPaymentModalChrome(page: Page): Promise<void> {
@@ -66,11 +67,32 @@ export async function expectPaymentCardConfigLink(page: Page): Promise<void> {
   ).toBeVisible({ timeout: 15_000 });
 }
 
+async function dismissRouteCarrierWarningIfOpen(page: Page): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const warn = page.locator(
+      '[role="dialog"][aria-labelledby="route-carrier-warning-title"]',
+    );
+    if (!(await warn.isVisible({ timeout: 2_000 }).catch(() => false))) {
+      return;
+    }
+    const ack = warn.getByRole("button", {
+      name: /^entendido$/i,
+    });
+    if (await ack.first().isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await ack.first().click();
+    } else {
+      await page.keyboard.press("Escape").catch(() => null);
+    }
+    await expect(warn).toBeHidden({ timeout: 8_000 }).catch(() => null);
+  }
+}
+
 export async function selectAgreementInPaymentModal(
   page: Page,
   titlePart: string | RegExp,
 ): Promise<void> {
   const modal = paymentModal(page);
+  await dismissRouteCarrierWarningIfOpen(page);
   const selected = modal.getByRole("button").filter({ hasText: titlePart }).first();
   if (await selected.isVisible({ timeout: 2_000 }).catch(() => false)) {
     return;
@@ -236,6 +258,10 @@ export async function pickFirstServiceRecurrenceOnly(
   const multi = modal.getByRole("button", {
     name: /seleccionar recurrencias para/i,
   });
+  if (!(await multi.isVisible({ timeout: 3_000 }).catch(() => false))) {
+    await waitForInformeReady(page);
+    return;
+  }
   await expect(multi).toBeVisible({ timeout: 10_000 });
   await multi.click();
   const listbox = page.getByRole("listbox", {
@@ -322,7 +348,7 @@ export async function waitForPayableRoutePathsInPaymentModal(
     modal.getByText(/cargando tarjetas/i),
   ).toBeHidden({ timeout: 45_000 });
   await expect(
-    modal.getByText(/transporte \(hoja de ruta\)/i),
+    modal.getByText(/transporte \(hoja de ruta\)/i).first(),
   ).toBeVisible({ timeout: 30_000 });
 }
 
@@ -367,6 +393,7 @@ export async function prepareBuyerRouteCheckout(
   page: Page,
   agreementTitle: string,
   routeSheetTitle: string,
+  opts?: { waitForPayableRoutePaths?: boolean },
 ): Promise<void> {
   await syncBuyerRouteSheetsForCheckout(
     page,
@@ -375,7 +402,9 @@ export async function prepareBuyerRouteCheckout(
   );
   await openChatPaymentModal(page);
   await selectAgreementInPaymentModal(page, agreementTitle);
-  await waitForPayableRoutePathsInPaymentModal(page);
+  if (opts?.waitForPayableRoutePaths !== false) {
+    await waitForPayableRoutePathsInPaymentModal(page);
+  }
 }
 
 
@@ -432,6 +461,7 @@ export async function expectProcessorFeeAviso(
 
 export async function confirmInformeCheckbox(page: Page): Promise<void> {
   await waitForInformeReady(page);
+  await dismissRouteCarrierWarningIfOpen(page);
   const modal = paymentModal(page);
   const checkbox = modal.getByRole("checkbox", {
     name: /confirmo el desglose/i,

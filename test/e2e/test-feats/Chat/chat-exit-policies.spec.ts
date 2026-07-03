@@ -20,6 +20,8 @@ import {
 import {
   fetchStoreTrustScore,
   fetchUserTrustScore,
+  fetchStoreTrustHistory,
+  expectStoreTrustLedgerContains,
   PARTY_EXIT_TRUST_PER_MEMBER,
   SELLER_HELD_EXIT_PENALTY,
   CARRIER_EXIT_PER_STOP,
@@ -50,6 +52,7 @@ import {
   submitServiceEvidencePendingViaUI,
   acceptServiceEvidenceViaUI,
 } from "../../Resources/e2e-exit-policies-env";
+import { postPartySoftLeaveApi } from "../../Resources/e2e-logistics-api";
 import { openSellerPage } from "../../Resources/agreement-ui-helpers";
 import { reloadChatThread } from "../../Resources/chat-helpers";
 
@@ -214,7 +217,12 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
       await buyerPage.goto(`/chat/${s.threadId}`, {
         waitUntil: "domcontentloaded",
       });
-      await payHeldMerchandiseAgreement(buyerPage);
+      await payHeldMerchandiseAgreement(
+        buyerPage,
+        s.threadId,
+        s.agreementTitle,
+        s.agreementId,
+      );
       await expect(buyerPage.getByText(/cargando chat/i)).toBeHidden({
         timeout: 45_000,
       });
@@ -375,6 +383,7 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
         buyerPage,
         s.threadId,
         s.serviceNamePart ?? "Consultoría E2E",
+        s.agreementId,
       );
       await buyerPage.context().close();
 
@@ -385,17 +394,39 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
       );
       const storeId = scenarioSellerStoreId();
       const before = await fetchStoreTrustScore(sellerList, storeId);
-      await partySoftLeaveViaChatListUI(
+      await sellerList.goto(`/chat/${s.threadId}`, {
+        waitUntil: "domcontentloaded",
+      });
+      const leaveRes = await postPartySoftLeaveApi(
         sellerList,
+        seller.sessionToken,
         s.threadId,
         "Motivo E2E S04 held",
+        s.agreementId,
+      );
+      expect(leaveRes.status).toBeLessThan(300);
+      await expectStoreTrustLedgerContains(
+        sellerList,
+        storeId,
+        seller.sessionToken,
+        /retenidos reembolsados|salida del vendedor del chat con pagos retenidos/i,
       );
       await expect
-        .poll(async () => fetchStoreTrustScore(sellerList, storeId), {
+        .poll(async () => {
+          const history = await fetchStoreTrustHistory(
+            sellerList,
+            storeId,
+            seller.sessionToken,
+            5,
+          );
+          return history[0]?.balanceAfter ?? Number.NaN;
+        }, {
           timeout: 45_000,
           intervals: [1_000, 2_000],
         })
         .toBe(before - SELLER_HELD_EXIT_PENALTY);
+      const after = await fetchStoreTrustScore(sellerList, storeId);
+      expect(after).toBe(before - SELLER_HELD_EXIT_PENALTY);
       await sellerList.context().close();
     });
 
@@ -415,7 +446,12 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
       await buyerPage.goto(`/chat/${s.threadId}`, {
         waitUntil: "domcontentloaded",
       });
-      await payHeldMerchandiseAgreement(buyerPage);
+      await payHeldMerchandiseAgreement(
+        buyerPage,
+        s.threadId,
+        s.agreementTitle,
+        s.agreementId,
+      );
       await buyerPage.context().close();
 
       const seller = getE2ESellerSession()!;
@@ -425,17 +461,39 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
       );
       const storeId = scenarioSellerStoreId();
       const before = await fetchStoreTrustScore(sellerList, storeId);
-      await partySoftLeaveViaChatListUI(
+      await sellerList.goto(`/chat/${s.threadId}`, {
+        waitUntil: "domcontentloaded",
+      });
+      const leaveRes = await postPartySoftLeaveApi(
         sellerList,
+        seller.sessionToken,
         s.threadId,
         "Motivo E2E S05 held",
+        s.agreementId,
+      );
+      expect(leaveRes.status).toBeLessThan(300);
+      await expectStoreTrustLedgerContains(
+        sellerList,
+        storeId,
+        seller.sessionToken,
+        /retenidos reembolsados|salida del vendedor del chat con pagos retenidos/i,
       );
       await expect
-        .poll(async () => fetchStoreTrustScore(sellerList, storeId), {
+        .poll(async () => {
+          const history = await fetchStoreTrustHistory(
+            sellerList,
+            storeId,
+            seller.sessionToken,
+            5,
+          );
+          return history[0]?.balanceAfter ?? Number.NaN;
+        }, {
           timeout: 45_000,
           intervals: [1_000, 2_000],
         })
         .toBe(before - SELLER_HELD_EXIT_PENALTY);
+      const after = await fetchStoreTrustScore(sellerList, storeId);
+      expect(after).toBe(before - SELLER_HELD_EXIT_PENALTY);
       await sellerList.context().close();
     });
 

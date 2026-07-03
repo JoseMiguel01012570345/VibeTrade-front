@@ -20,6 +20,9 @@ export function userFromSessionJson(j: SessionUserJson): User {
   if (Object.prototype.hasOwnProperty.call(j, 'username')) {
     u.username = optionalString(j.username)
   }
+  if (Array.isArray(j.roles)) {
+    u.roles = j.roles.filter((r): r is string => typeof r === 'string' && r.length > 0)
+  }
   if (Object.prototype.hasOwnProperty.call(j, 'avatarUrl')) {
     u.avatarUrl = optionalString(j.avatarUrl)
   }
