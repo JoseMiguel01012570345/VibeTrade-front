@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BadgeCheck, Search, ShoppingCart, Store } from "lucide-react";
+import { BadgeCheck, Search, Store } from "lucide-react";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
 import {
   storeCartHref,
@@ -10,10 +10,12 @@ import {
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useCartStore } from "@features/orders/logic/cartStore";
+import { CartNavButton } from "@features/orders/components/CartNavButton";
+import { GuestAuthControls } from "@features/auth/components/GuestAuthControls";
+import { ThemeToggle } from "@app/widgets/ThemeToggle";
 import { VtAutocompleteInput } from "@shared/components/ui/VtAutocompleteInput";
 import { fetchStoreCatalogAutocomplete } from "../api/fetchStoreCatalogAutocomplete";
 import { StorefrontSupportFab } from "./StorefrontSupportFab";
-import { StorefrontGuestAuthOverlay } from "./StorefrontGuestAuthOverlay";
 import { StoreCategoriesOffcanvas } from "./StoreCategoriesOffcanvas";
 import { StoreCommentsModal } from "./StoreCommentsModal";
 
@@ -27,22 +29,24 @@ const topLinkClass =
  * tienda (avatar + nombre). El buscador es controlado en el storefront (filtra el
  * catálogo) o navega a `/store/:id?q=` desde otras vistas (p. ej. el detalle).
  */
+const themeWrapClass =
+  "flex h-10 items-center [&_button]:border-emerald-200 [&_button]:bg-white/95 [&_button]:shadow-[0_2px_10px_rgba(15,118,110,0.08)]";
+
 export function StorefrontHeader({
   store,
   query,
   onQueryChange,
   onSearchSubmit,
   onOpenCategories,
-  guestAuthOverlay = false,
 }: Readonly<{
   store: StoreBadge;
   query?: string;
   onQueryChange?: (value: string) => void;
   onSearchSubmit?: (term: string) => void;
   onOpenCategories?: () => void;
-  guestAuthOverlay?: boolean;
 }>) {
   const nav = useNavigate();
+  const isSessionActive = useAppStore((s) => s.isSessionActive);
   const cartCount = useCartStore((s) =>
     s.items.reduce((n, i) => n + i.quantity, 0),
   );
@@ -116,18 +120,9 @@ export function StorefrontHeader({
     }
   }
 
-  const cartLabel =
-    cartCount > 0 ? `Ir al carrito (${cartCount})` : "Ir al carrito";
-
   return (
     <header className="sticky top-0 z-40 border-b border-emerald-100 bg-white/95 backdrop-blur">
-      <div
-        className={`mx-auto flex max-w-[1140px] flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4 ${
-          guestAuthOverlay
-            ? "pt-[max(2.75rem,env(safe-area-inset-top,0px)+2.25rem)] md:pt-[max(3rem,env(safe-area-inset-top,0px)+2.5rem)]"
-            : ""
-        }`}
-      >
+      <div className="mx-auto flex max-w-[1140px] flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4">
         <div className="flex min-w-0 w-full items-center justify-between gap-2 md:contents">
           <Link
             to={storeHome}
@@ -179,18 +174,16 @@ export function StorefrontHeader({
               <span className="sm:hidden">Rastreo</span>
               <span className="hidden sm:inline">Rastrea tu envío</span>
             </Link>
-            <Link
-              to={storeCartHref(store)}
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center self-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-700 transition hover:border-emerald-200 hover:bg-emerald-100"
-              aria-label={cartLabel}
-            >
-              <ShoppingCart size={18} aria-hidden />
-              {cartCount > 0 ? (
-                <span className="absolute -right-1 -top-1 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold leading-5 text-white">
-                  {cartCount > 99 ? "99+" : cartCount}
-                </span>
-              ) : null}
-            </Link>
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <CartNavButton href={storeCartHref(store)} count={cartCount} />
+              {!isSessionActive ? (
+                <GuestAuthControls />
+              ) : (
+                <div className={themeWrapClass}>
+                  <ThemeToggle />
+                </div>
+              )}
+            </div>
           </nav>
         </div>
 
@@ -333,18 +326,20 @@ export function StorefrontChrome({
 }>) {
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const isSessionActive = useAppStore((s) => s.isSessionActive);
-  const showGuestAuthOverlay = !isSessionActive;
+  const setActiveStore = useCartStore((s) => s.setActiveStore);
+
+  useEffect(() => {
+    if (store.id) setActiveStore(store.id);
+  }, [store.id, setActiveStore]);
+
   return (
     <div className="store-front-surface flex w-full min-h-0 flex-1 flex-col bg-[#f7f3ef] text-slate-900">
-      {showGuestAuthOverlay ? <StorefrontGuestAuthOverlay /> : null}
       <StorefrontHeader
         store={store}
         query={query}
         onQueryChange={onQueryChange}
         onSearchSubmit={onSearchSubmit}
         onOpenCategories={() => setCategoriesOpen(true)}
-        guestAuthOverlay={showGuestAuthOverlay}
       />
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       <StorefrontFooter store={store} onOpenComments={() => setCommentsOpen(true)} />

@@ -1,5 +1,9 @@
 export { CartPage } from "./pages/CartPage";
 export { CheckoutPage } from "./pages/CheckoutPage";
+export {
+  LegacyStoreCartRedirect,
+  LegacyStoreCheckoutRedirect,
+} from "./pages/LegacyStoreCartRedirects";
 export { OrderReceiptPage } from "./pages/OrderReceiptPage";
 export { PurchaseHistoryPage } from "./pages/PurchaseHistoryPage";
 export { TrackShipmentPage } from "./pages/TrackShipmentPage";

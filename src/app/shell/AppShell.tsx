@@ -3,19 +3,15 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   Home,
-  LogIn,
   MessageCircle,
   PlaySquare,
   Search,
-  ShoppingCart,
   User,
 } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { isStaffSession } from "@features/auth/logic/roles";
-import { useCartStore } from "@features/orders";
-import { useMarketStore } from "@features/market/logic/store/useMarketStore";
-import { storeCartHref } from "@features/market/logic/store/storePath";
+import { GuestAuthControls } from "@features/auth/components/GuestAuthControls";
 import { NotificationsBell } from "../widgets/NotificationsBell";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { AuthEntryModal } from "@features/auth";
@@ -86,16 +82,14 @@ const KNOWN_TOP_LEVEL_ROUTES = new Set<string>([
 ]);
 
 /**
- * Superficies de tienda (storefront `/{nombre}` y su panel, ficha `/offer/:id`, el
- * carrito `/cart` y el legado `/store/:id`): traen su propia cabecera de tienda, así
- * que la campana flotante de la app no debe superponerse. Una tienda es también
+ * Superficies de tienda (storefront `/{nombre}` y su panel, ficha `/offer/:id` y el
+ * legado `/store/:id`): traen su propia cabecera de tienda. Una tienda es también
  * cualquier ruta de raíz cuyo primer segmento no sea una ruta conocida de la app.
  */
 function isStoreSurfaceRoute(pathname: string) {
   if (
     pathname.startsWith("/store/") ||
-    pathname.startsWith("/offer/") ||
-    pathname === "/cart"
+    pathname.startsWith("/offer/")
   )
     return true;
   const seg = pathname.split("/")[1] ?? "";
@@ -110,26 +104,30 @@ export function AppShell() {
   const isHome = pathname === "/home";
   const isSessionActive = useAppStore((s) => s.isSessionActive);
   const staffSession = isStaffSession(useAppStore((s) => s.me)) && isSessionActive;
-  /** El personal (staff) navega solo el panel: sin barra inferior ni FAB de carrito. */
+  /** El personal (staff) navega solo el panel: sin barra inferior. */
   const hideBottomNav = isChatThreadPath(pathname) || staffSession;
   /** Sin campana en hilo de chat ni en Reels; en listado `/chat` sí. */
   const showNotificationsBell =
     isSessionActive &&
     !isChatThreadPath(pathname) &&
     !isReelsRoute(pathname);
-  /** Home / invitado u onboarding: barra superior con altura. Sesión en resto de rutas: sin franja vacía (campana superpuesta).
-   *  En superficies de tienda el chrome propio incluye el acceso de invitado; no duplicar la franja de AppShell. */
-  const showStickyShellHeader =
-    (isHome && !isOnboarding) ||
-    (!isHome &&
-      !isStoreSurfaceRoute(pathname) &&
-      (!isSessionActive || isOnboarding));
-  const shellNotificationsOverlay =
+  /** Home: barra con título y buscador. El resto de acciones va en overlay superior derecho. */
+  const showStickyShellHeader = isHome && !isOnboarding;
+  const showNotificationsInOverlay =
     showNotificationsBell &&
     isSessionActive &&
     !isOnboarding &&
-    !isHome &&
     !isStoreSurfaceRoute(pathname);
+  const showGuestAuthInOverlay =
+    !isSessionActive && !isOnboarding && !staffSession && !isStoreSurfaceRoute(pathname);
+  const showThemeInOverlay =
+    !staffSession &&
+    !isStoreSurfaceRoute(pathname) &&
+    (isOnboarding || isSessionActive);
+  const showShellTopRightOverlay =
+    showGuestAuthInOverlay ||
+    (showThemeInOverlay && !showGuestAuthInOverlay) ||
+    showNotificationsInOverlay;
   const me = useAppStore((s) => s.me);
   const trustThreshold = useAppStore((s) => s.trustThreshold);
   const showTrustBanner =
@@ -144,16 +142,6 @@ export function AppShell() {
 
   // Sincroniza puntaje/umbral de confianza desde el backend para el gate de interacciones (wiki cap. 08/10).
   useTrustGate();
-
-  const cartCount = useCartStore((s) =>
-    s.items.reduce((n, i) => n + i.quantity, 0),
-  );
-  // El carrito es de una sola tienda: el FAB abre `{base}/{nombre}/cart`.
-  const cartStoreId = useCartStore((s) => s.items[0]?.storeId ?? "");
-  const cartStore = useMarketStore((s) =>
-    cartStoreId ? s.stores[cartStoreId] : undefined,
-  );
-  const cartHref = storeCartHref(cartStore);
 
   useEffect(() => {
     if (!isSessionActive) return;
@@ -193,75 +181,47 @@ export function AppShell() {
         <div className="sticky top-0 z-50 overflow-visible bg-[color-mix(in_oklab,var(--bg)_65%,transparent)] pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-[10px]">
           <div className="container pb-2.5">
             {isHome && !isOnboarding ? (
-              <>
-                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 pt-2.5 md:flex-nowrap">
-                  <h1 className="order-1 shrink-0 text-lg font-black tracking-[-0.03em] text-[var(--text)]">
-                    Ofertas
-                  </h1>
-                  <button
-                    type="button"
-                    className="order-3 flex w-full min-w-0 basis-full items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 md:order-2 md:w-auto md:flex-1 md:basis-auto"
-                    onClick={() => navigate("/search")}
-                    aria-label="Abrir búsqueda de tiendas, productos y servicios"
-                  >
-                    <Search
-                      size={18}
-                      strokeWidth={2.25}
-                      className="shrink-0 text-[var(--muted)]"
-                      aria-hidden
-                    />
-                    <span className="min-w-0 text-[var(--muted)] max-md:whitespace-normal max-md:break-words max-md:leading-snug md:truncate">
-                      Buscar tiendas, productos o servicios…
-                    </span>
-                  </button>
-                  <div className="order-2 ml-auto flex shrink-0 items-center gap-2 self-center md:order-3 md:ml-0">
-                    {isSessionActive ? (
-                      <>
-                        {showNotificationsBell ? <NotificationsBell /> : null}
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className="vt-btn vt-btn-primary"
-                          onClick={openAuthModal}
-                        >
-                          <LogIn size={16} aria-hidden /> Iniciar sesión
-                        </button>
-                        <ThemeToggle />
-                      </>
-                    )}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center justify-end gap-2 pb-2.5 pt-2.5">
-                {!isOnboarding && !isSessionActive ? (
-                  <button
-                    type="button"
-                    className="vt-btn vt-btn-primary"
-                    onClick={openAuthModal}
-                  >
-                    <LogIn size={16} aria-hidden /> Iniciar sesión
-                  </button>
-                ) : null}
-                {(!isSessionActive || isOnboarding) && <ThemeToggle />}
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 pt-2.5 md:flex-nowrap">
+                <h1 className="order-1 shrink-0 text-lg font-black tracking-[-0.03em] text-[var(--text)]">
+                  Ofertas
+                </h1>
+                <button
+                  type="button"
+                  className="order-2 flex w-full min-w-0 basis-full items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 md:w-auto md:flex-1 md:basis-auto"
+                  onClick={() => navigate("/search")}
+                  aria-label="Abrir búsqueda de tiendas, productos y servicios"
+                >
+                  <Search
+                    size={18}
+                    strokeWidth={2.25}
+                    className="shrink-0 text-[var(--muted)]"
+                    aria-hidden
+                  />
+                  <span className="min-w-0 text-[var(--muted)] max-md:whitespace-normal max-md:break-words max-md:leading-snug md:truncate">
+                    Buscar tiendas, productos o servicios…
+                  </span>
+                </button>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       ) : null}
 
-      {shellNotificationsOverlay ? (
+      {showShellTopRightOverlay ? (
         <div className="pointer-events-none fixed inset-x-0 top-0 z-[55]">
-          {/*
-            Misma banda vertical que el contenido con `main` pt-4 + cabecera típica (~vt-card p-4).
-            Margen extra respecto al borde + safe-area para que el botón no quede pegado.
-          */}
-          <div className="container flex justify-end pt-[calc(env(safe-area-inset-top,0px)+1.625rem)]">
-            <div className="pointer-events-auto mt-1 shrink-0 pb-1 ps-2 pe-[max(10px,calc(env(safe-area-inset-right,0px)+10px))] pt-0.5 sm:pe-4">
-              <NotificationsBell />
-            </div>
+          <div className="container flex items-center justify-end gap-2 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pe-[max(10px,calc(env(safe-area-inset-right,0px)+10px))] sm:pe-4">
+            {showGuestAuthInOverlay ? (
+              <GuestAuthControls className="pointer-events-auto" />
+            ) : showThemeInOverlay ? (
+              <div className="pointer-events-auto flex h-10 items-center">
+                <ThemeToggle />
+              </div>
+            ) : null}
+            {showNotificationsInOverlay ? (
+              <div className="pointer-events-auto flex h-10 items-center">
+                <NotificationsBell />
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -277,20 +237,6 @@ export function AppShell() {
       >
         <Outlet />
       </main>
-
-      {!isOnboarding && !hideBottomNav && cartCount > 0 ? (
-        <button
-          type="button"
-          onClick={() => navigate(cartHref)}
-          aria-label={`Carrito (${cartCount})`}
-          className="fixed bottom-[96px] right-4 z-[61] grid h-12 w-12 place-items-center rounded-full border border-[var(--border)] bg-[var(--primary)] text-white shadow-lg transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
-        >
-          <ShoppingCart size={20} aria-hidden />
-          <span className="absolute -right-1 -top-1 grid min-h-[20px] min-w-[20px] place-items-center rounded-full border-2 border-[var(--surface)] bg-[var(--bad)] px-1 text-[11px] font-black tabular-nums text-white">
-            {cartCount > 99 ? "99+" : cartCount}
-          </span>
-        </button>
-      ) : null}
 
       {!isOnboarding && !hideBottomNav && (
         <nav className="fixed bottom-0 left-0 right-0 z-[60] border-t border-[var(--border)] bg-[var(--surface)]">

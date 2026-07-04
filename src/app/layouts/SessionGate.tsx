@@ -34,7 +34,7 @@ export function SessionGate() {
   }
 
   if (!isSessionActive) {
-    // `/cart` queda accesible para invitados; el resto de flujos con sesión se bloquean.
+    // El carrito y checkout viven bajo `/{nombre}/cart|checkout`; las rutas globales redirigen.
     const blocked =
       pathname.startsWith("/chat") ||
       pathname.startsWith("/reels") ||

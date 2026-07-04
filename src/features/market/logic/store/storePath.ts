@@ -143,20 +143,20 @@ export function storeServiceCategoryHref(
   return `${storeHref(store)}/servicios/${encodeURIComponent(category.trim())}`
 }
 
-/** Carrito dentro de la tienda: `{base}/{nombre}/cart` (cae a `/cart` sin nombre). */
+/** Carrito dentro de la tienda: `{base}/{nombre}/cart`. Sin tienda, vuelve al catálogo. */
 export function storeCartHref(
   store: Pick<StoreBadge, 'id' | 'name'> | null | undefined,
 ): string {
   const name = store?.name?.trim()
-  return name ? `${storePathFromName(name)}/cart` : '/cart'
+  return name ? `${storePathFromName(name)}/cart` : '/search'
 }
 
-/** Checkout dentro de la tienda: `{base}/{nombre}/checkout` (cae a `/checkout` sin nombre). */
+/** Checkout dentro de la tienda: `{base}/{nombre}/checkout`. Sin tienda, vuelve al catálogo. */
 export function storeCheckoutHref(
   store: Pick<StoreBadge, 'id' | 'name'> | null | undefined,
 ): string {
   const name = store?.name?.trim()
-  return name ? `${storePathFromName(name)}/checkout` : '/checkout'
+  return name ? `${storePathFromName(name)}/checkout` : '/search'
 }
 
 /**

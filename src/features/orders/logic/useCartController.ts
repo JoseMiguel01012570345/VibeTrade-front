@@ -35,6 +35,7 @@ export function useCartController() {
   const { storeName } = useParams();
   const [searchParams] = useSearchParams();
   const shareParam = searchParams.get("share");
+  const activeStoreId = useCartStore((s) => s.activeStoreId);
   const items = useCartStore((s) => s.items);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
@@ -51,7 +52,7 @@ export function useCartController() {
   // El carrito es de una sola tienda: normalmente la del primer artículo, pero si se
   // llega con carrito vacío a `/{nombre}/cart` resolvemos la tienda por el nombre.
   const nameResolution = useStoreIdFromName(storeName, me.id);
-  const storeId = items[0]?.storeId || nameResolution.storeId || "";
+  const storeId = activeStoreId || items[0]?.storeId || nameResolution.storeId || "";
   const storeFromState = useMarketStore((s) =>
     storeId ? s.stores[storeId] : undefined,
   );
@@ -65,8 +66,6 @@ export function useCartController() {
   const store: StoreBadge | undefined = storeFromState ?? detailQuery.data?.store;
 
   // Base de la ruta del carrito/checkout dentro de la tienda: `{base}/{nombre}/cart`.
-  // Preferimos el nombre de la URL (estable en el primer render) y caemos a la tienda
-  // resuelta; sin tienda, a las rutas globales legadas.
   const storeForLinks: Pick<StoreBadge, "id" | "name"> | undefined = storeName
     ? { id: store?.id ?? "", name: storeName }
     : store;

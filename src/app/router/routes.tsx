@@ -32,6 +32,8 @@ import { CatalogSearchPage } from "@features/catalog";
 import {
   CartPage,
   CheckoutPage,
+  LegacyStoreCartRedirect,
+  LegacyStoreCheckoutRedirect,
   OrderReceiptPage,
   PurchaseHistoryPage,
   TrackShipmentPage,
@@ -161,8 +163,8 @@ export function AppRoutes() {
             element={<StoreLegacyRedirect />}
           />
 
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/cart" element={<LegacyStoreCartRedirect />} />
+          <Route path="/checkout" element={<LegacyStoreCheckoutRedirect />} />
           <Route path="/pedido/:publicNumber" element={<OrderReceiptPage />} />
           <Route path="/rastreo" element={<TrackShipmentPage />} />
           <Route path="/mis-compras" element={<PurchaseHistoryPage />} />
