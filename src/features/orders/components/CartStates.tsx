@@ -24,8 +24,8 @@ export function CartEmptyState({ homeHref }: Readonly<{ homeHref: string }>) {
       <p className="mt-2 text-lg text-slate-500">
         Tu carrito está vacío por ahora.
       </p>
-      <div className="mt-6 rounded-[24px] border border-[#d9d5cf] bg-white px-6 py-10 text-center shadow-[0_14px_36px_rgba(33,37,41,0.05)]">
-        <p className="text-base text-slate-500">
+      <div className="mt-6 flex flex-col items-center rounded-[24px] border border-[#d9d5cf] bg-white px-6 py-10 text-center shadow-[0_14px_36px_rgba(33,37,41,0.05)]">
+        <p className="max-w-md text-base text-slate-500">
           Añade productos desde el catálogo para empezar tu pedido.
         </p>
         <Link

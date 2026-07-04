@@ -795,6 +795,15 @@ body:has(.vt-home-page) {
 .vt-main:has(.store-front-surface) {
   padding-top: 0;
   padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.vt-main:has(.store-front-surface) > .store-front-surface {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
 }
 
 /* Oculta la barra de scroll en carruseles horizontales (chips de categoría). */

@@ -285,7 +285,7 @@ export function StorefrontChrome({
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   return (
-    <div className="store-front-surface flex min-h-full flex-col bg-[#f7f3ef] text-slate-900">
+    <div className="store-front-surface flex w-full min-h-0 flex-1 flex-col bg-[#f7f3ef] text-slate-900">
       <StorefrontHeader
         store={store}
         query={query}
@@ -293,7 +293,7 @@ export function StorefrontChrome({
         onSearchSubmit={onSearchSubmit}
         onOpenCategories={() => setCategoriesOpen(true)}
       />
-      <div className="flex-1">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       <StorefrontFooter store={store} onOpenComments={() => setCommentsOpen(true)} />
       <StorefrontSupportFab store={store} />
       <StoreCategoriesOffcanvas
