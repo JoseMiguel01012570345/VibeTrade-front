@@ -19,6 +19,8 @@ type CartState = {
   addItem: (item: CartItem) => void;
   setQuantity: (productId: string, quantity: number) => void;
   removeItem: (productId: string) => void;
+  /** Reemplaza todo el carrito (p. ej. al importar un carrito compartido por enlace). */
+  replaceCart: (items: CartItem[]) => void;
   clear: () => void;
 };
 
@@ -76,6 +78,12 @@ export const useCartStore = create<CartState>((set) => ({
       const next = s.items.filter((i) => i.productId !== productId);
       persist(next);
       return { items: next };
+    }),
+
+  replaceCart: (items) =>
+    set(() => {
+      persist(items);
+      return { items };
     }),
 
   clear: () =>

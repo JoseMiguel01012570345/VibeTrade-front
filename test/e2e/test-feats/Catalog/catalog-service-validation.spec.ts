@@ -14,8 +14,8 @@ sellerTest.describe("serviceEditorModal E2E", () => {
 
   sellerTest("blocks save when category is missing", async ({ page }) => {
     const { storeId } = getE2EScenario()!;
-    await page.goto(`/store/${storeId}/services`);
-    await page.getByRole("button", { name: /añadir servicio/i }).click();
+    await page.goto(`/store/${storeId}/panel/servicios`);
+    await page.getByRole("button", { name: /agregar servicio/i }).click();
     const dialog = page.getByRole("dialog").filter({
       has: page.locator(".vt-modal-title", { hasText: /añadir servicio/i }),
     });

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ExternalLink, Package, Store, Wrench } from "lucide-react";
 import type { CatalogSearchItem } from "@features/catalog/Dtos/catalogSearchTypes";
+import { storeHref } from "@features/market/logic/store/storePath";
 import { websiteUrlDisplayLabel } from "@shared/lib/websiteUrl";
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
@@ -97,7 +98,7 @@ export function CatalogOfferSearchCard({ item }: Props) {
 
           <div className="flex flex-col items-end gap-1 border-t border-[var(--border)] pt-2">
             <Link
-              to={`/store/${s.id}`}
+              to={storeHref(s)}
               className="inline-flex max-w-full items-center gap-1.5 truncate rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-2 py-1 text-[11px] font-extrabold text-[var(--text)] lg:px-1.5 lg:text-[10px]"
             >
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--primary)]" />

@@ -27,3 +27,13 @@ export function isAdmin(me: Pick<User, 'roles'> | null | undefined): boolean {
 export function isSuperAdmin(me: Pick<User, 'roles'> | null | undefined): boolean {
   return hasRole(me, ROLE_SUPERADMIN)
 }
+
+/**
+ * Sesión de personal (staff) de una tienda: creada por el dueño con
+ * usuario/contraseña y restringida al panel de esa tienda.
+ */
+export function isStaffSession(
+  me: Pick<User, 'staffStoreId'> | null | undefined,
+): boolean {
+  return typeof me?.staffStoreId === 'string' && me.staffStoreId.length > 0
+}

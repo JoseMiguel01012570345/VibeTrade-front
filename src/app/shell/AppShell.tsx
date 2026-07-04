@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 import { useAppStore } from "@features/auth/logic/useAppStore";
+import { isStaffSession } from "@features/auth/logic/roles";
 import { useCartStore } from "@features/orders";
 import { NotificationsBell } from "../widgets/NotificationsBell";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
@@ -52,13 +53,63 @@ function isReelsRoute(pathname: string) {
   return pathname === "/reels" || pathname.startsWith("/reels/");
 }
 
+/**
+ * Primeros segmentos que pertenecen a la app (no son tiendas). Todo lo demás en la
+ * raíz (`/{nombre}`) es el storefront/panel de una tienda por su nombre.
+ */
+const KNOWN_TOP_LEVEL_ROUTES = new Set<string>([
+  "onboarding",
+  "home",
+  "search",
+  "stores",
+  "offer",
+  "staff-login",
+  "store",
+  "cart",
+  "checkout",
+  "pedido",
+  "rastreo",
+  "mis-compras",
+  "finanzas",
+  "afiliado",
+  "almacen",
+  "mensualidad",
+  "admin",
+  "estadisticas",
+  "chat",
+  "invite",
+  "reels",
+  "profile",
+  "notifications",
+]);
+
+/**
+ * Superficies de tienda (storefront `/{nombre}` y su panel, ficha `/offer/:id`, el
+ * carrito `/cart` y el legado `/store/:id`): traen su propia cabecera de tienda, así
+ * que la campana flotante de la app no debe superponerse. Una tienda es también
+ * cualquier ruta de raíz cuyo primer segmento no sea una ruta conocida de la app.
+ */
+function isStoreSurfaceRoute(pathname: string) {
+  if (
+    pathname.startsWith("/store/") ||
+    pathname.startsWith("/offer/") ||
+    pathname === "/cart"
+  )
+    return true;
+  const seg = pathname.split("/")[1] ?? "";
+  if (!seg) return false;
+  return !KNOWN_TOP_LEVEL_ROUTES.has(seg.toLowerCase());
+}
+
 export function AppShell() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const isOnboarding = pathname.startsWith("/onboarding");
   const isHome = pathname === "/home";
-  const hideBottomNav = isChatThreadPath(pathname);
   const isSessionActive = useAppStore((s) => s.isSessionActive);
+  const staffSession = isStaffSession(useAppStore((s) => s.me)) && isSessionActive;
+  /** El personal (staff) navega solo el panel: sin barra inferior ni FAB de carrito. */
+  const hideBottomNav = isChatThreadPath(pathname) || staffSession;
   /** Sin campana en hilo de chat ni en Reels; en listado `/chat` sí. */
   const showNotificationsBell =
     isSessionActive &&
@@ -69,7 +120,11 @@ export function AppShell() {
     (isHome && !isOnboarding) ||
     (!isHome && (!isSessionActive || isOnboarding));
   const shellNotificationsOverlay =
-    showNotificationsBell && isSessionActive && !isOnboarding && !isHome;
+    showNotificationsBell &&
+    isSessionActive &&
+    !isOnboarding &&
+    !isHome &&
+    !isStoreSurfaceRoute(pathname);
   const me = useAppStore((s) => s.me);
   const trustThreshold = useAppStore((s) => s.trustThreshold);
   const showTrustBanner =

@@ -9,6 +9,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes"
+import { storeHref } from "@features/market/logic/store/storePath"
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg"
 import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes"
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini"
@@ -34,7 +35,7 @@ export function VisitorStoreSummaryCard({
   return (
     <div className="relative min-w-0 max-w-full overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
       <Link
-        to={`/store/${b.id}`}
+        to={storeHref(b)}
         className="absolute inset-0 z-[1] rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
         aria-label={`Abrir tienda ${b.name}`}
       />

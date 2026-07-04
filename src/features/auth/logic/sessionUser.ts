@@ -35,5 +35,8 @@ export function userFromSessionJson(j: SessionUserJson): User {
   if (Object.prototype.hasOwnProperty.call(j, 'xAccount')) {
     u.xAccount = optionalString(j.xAccount)
   }
+  if (Object.prototype.hasOwnProperty.call(j, 'staffStoreId')) {
+    u.staffStoreId = optionalString(j.staffStoreId)
+  }
   return u
 }

@@ -13,6 +13,7 @@ import { useAppStore } from "@features/auth/logic/useAppStore";
 import { cn } from "@shared/lib/cn";
 import type { Message } from "@features/market/logic/store/marketStoreTypes";
 import type { Thread } from "@features/market/logic/store/useMarketStore";
+import { storeHref } from "@features/market/logic/store/storePath";
 import {
   buyerFirstNameForThread,
   chatBubbleHeaderLabel,
@@ -71,7 +72,7 @@ function messageBubbleAvatarColumn(
     const imSeller = sellerUid != null && me.id === sellerUid;
     if (imSeller) {
       return {
-        href: `/store/${store.id}/vitrina`,
+        href: storeHref(store),
         avatarUrl: store.avatarUrl,
         avatarLetter: store.name.slice(0, 1).toUpperCase(),
         trust: store.trustScore,
@@ -87,7 +88,7 @@ function messageBubbleAvatarColumn(
   const peerMsgFromSeller = inferMessageFromSeller(m, thread, me.id);
   if (peerMsgFromSeller) {
     return {
-      href: `/store/${store.id}/vitrina`,
+      href: storeHref(store),
       avatarUrl: store.avatarUrl,
       avatarLetter: store.name.slice(0, 1).toUpperCase(),
       trust: store.trustScore,

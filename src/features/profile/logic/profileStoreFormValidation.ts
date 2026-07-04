@@ -1,5 +1,6 @@
 import type { OwnerStoreFormValues } from "@features/market/logic/store/marketStoreTypes"
 import { formServiceQualifiesAsTransport } from "@features/market/logic/transportEligibility"
+import { storeNameUrlIssue } from "@features/market/logic/store/storePath"
 import { normalizeOwnerWebsiteUrl } from "@shared/lib/websiteUrl"
 import {
   catalogMonedasList,
@@ -42,6 +43,10 @@ function validateCustomFields(fields: StoreCustomField[]): string | null {
 
 export function validateOwnerStoreForm(values: OwnerStoreFormValues): string | null {
   if (!norm(values.name)) return 'Indica el nombre de la tienda.'
+  // El nombre es la URL pública de la tienda ({base}/{nombre}): no puede chocar con
+  // rutas de la app ni contener caracteres que rompan el segmento de URL.
+  const nameUrlIssue = storeNameUrlIssue(values.name)
+  if (nameUrlIssue) return nameUrlIssue
   if (!values.categories?.length || !values.categories.some((c) => norm(c).length >= TITLE_MIN)) {
     return 'Indica al menos una categoría (texto significativo).'
   }

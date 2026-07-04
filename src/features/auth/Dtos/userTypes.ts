@@ -14,6 +14,12 @@ export type User = {
   trustScore: number
   /** Roles efectivos de plataforma (superadmin/admin/almacen/afiliado). Vacío para invitados. */
   roles?: string[]
+  /**
+   * Si está definido, la sesión es de PERSONAL (staff) de una tienda: inicia sesión
+   * con usuario/contraseña emitidos por el dueño y queda restringido al panel
+   * `/store/:staffStoreId/panel`. No navega el resto de la app.
+   */
+  staffStoreId?: string
   /** Cuentas persistidas en servidor (también reflejadas en `profileSocialLinks`). */
   instagram?: string
   telegram?: string

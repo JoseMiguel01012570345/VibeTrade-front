@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ExternalLink, MapPin, Package, Store, Wrench } from "lucide-react";
 import { websiteUrlDisplayLabel } from "@shared/lib/websiteUrl";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
+import { storeHref } from "@features/market/logic/store/storePath";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
 import { fmtKm } from "@features/home/logic/formatDistance";
@@ -22,7 +23,7 @@ export function StoreSearchResultCard({
   return (
     <div className="relative min-w-0 max-w-full overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
       <Link
-        to={`/store/${s.id}/vitrina`}
+        to={storeHref(s)}
         className="absolute inset-0 z-[1] rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
         aria-label={`Abrir tienda ${s.name}`}
       />

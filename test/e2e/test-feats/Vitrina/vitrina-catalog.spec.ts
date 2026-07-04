@@ -5,22 +5,22 @@ import {
   getE2EScenario,
 } from "../../Resources/chat-env";
 
-/** Paridad E2E con storePage.vitrina, storePageCatalogFilters, vitrinaFiltersCard, productDetailCard. */
-test.describe("store vitrina catalog E2E", () => {
+/** Paridad E2E con storefront (StorefrontPage + StorefrontProductCard): catálogo público. */
+test.describe("store storefront catalog E2E", () => {
   test.skip(!chatE2EReady(), chatE2ESkipReason);
 
-  test("shows published products on public vitrina", async ({ page }) => {
+  test("shows published products on public storefront", async ({ page }) => {
     const scenario = getE2EScenario()!;
-    await page.goto(`/store/${scenario.storeId}/vitrina`);
+    await page.goto(`/store/${scenario.storeId}`);
     await expect(page.getByText(/producto e2e/i).first()).toBeVisible({
       timeout: 20_000,
     });
   });
 
-  test("filters products by name on public vitrina", async ({ page }) => {
+  test("filters products by name on public storefront", async ({ page }) => {
     const scenario = getE2EScenario()!;
-    await page.goto(`/store/${scenario.storeId}/vitrina`);
-    const search = page.getByPlaceholder(/nombre o modelo/i);
+    await page.goto(`/store/${scenario.storeId}`);
+    const search = page.getByPlaceholder(/qué estás buscando/i);
     if (await search.isVisible().catch(() => false)) {
       await search.fill("Producto E2E");
       await expect(page.getByText(/producto e2e/i).first()).toBeVisible();

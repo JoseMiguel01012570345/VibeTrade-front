@@ -20,9 +20,14 @@ export async function applyAuthSession(
 
   setSessionToken(json.sessionToken)
   stopChatRealtime()
-  applySessionUser(userFromSessionJson(json.user))
+  const user = userFromSessionJson(json.user)
+  applySessionUser(user)
   if (options?.successMessage) toast.success(options.successMessage)
   setSessionActive(true)
   await bootstrapWebApp()
-  nav(options?.redirectTo ?? '/home', { replace: true })
+  // El personal (staff) aterriza directamente en el panel de su tienda.
+  const staffRedirect = user.staffStoreId
+    ? `/store/${user.staffStoreId}/panel/productos`
+    : undefined
+  nav(options?.redirectTo ?? staffRedirect ?? '/home', { replace: true })
 }

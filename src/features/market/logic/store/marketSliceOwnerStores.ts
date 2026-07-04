@@ -2,6 +2,7 @@ import type { StoreCatalog, StoreProduct, StoreService } from "@features/market/
 import { normalizeOwnerWebsiteUrl } from "@shared/lib/websiteUrl"
 import { uid } from './marketStoreHelpers'
 import { isOwnerOfStore, normStoreName } from './marketSliceHelpers'
+import { storeNameUrlIssue } from './storePath'
 import type { MarketSliceGet, MarketSliceSet } from './marketSliceTypes'
 import type { MarketState, StoreBadge } from './marketStoreTypes'
 
@@ -22,6 +23,8 @@ export function createOwnerStoresSlice(set: MarketSliceSet, get: MarketSliceGet)
 createOwnerStore: (ownerUserId, values) => {
   const name = values.name.trim()
   if (!name) return null
+  // El nombre es la URL pública ({base}/{nombre}): rechazar reservados/ caracteres inválidos.
+  if (storeNameUrlIssue(name)) return null
   const normalized = normStoreName(name)
   const existing = Object.values(get().stores).find((x) => normStoreName(x.name) === normalized)
   if (existing) return null
@@ -64,6 +67,7 @@ updateOwnerStore: (storeId, ownerUserId, patch) => {
   if (!st || !cat) return false
   if (patch.name !== undefined) {
     const candidate = patch.name.trim()
+    if (candidate && storeNameUrlIssue(candidate)) return false
     const normalized = normStoreName(candidate)
     if (normalized) {
       const clash = Object.values(s.stores).find(

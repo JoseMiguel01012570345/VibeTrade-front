@@ -1,15 +1,18 @@
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { AppShell } from "@app/shell/AppShell";
 import { SessionGate } from "@app/layouts/SessionGate";
+import { storePathFromName } from "@features/market/logic/store/storePath";
 import { ChatListPage, ChatPage, RoutePreselInvitePage } from "@features/chat";
 import { HomePage } from "@features/home";
 import { NotificationsPage } from "@features/notifications";
 import {
   OfferPage,
   OfferRouteMapPage,
+  StoreLegacyRedirect,
   StoreLocationMapPage,
-  StorePage,
 } from "@features/market";
+import { StorefrontPage } from "@features/storefront";
+import { OwnerStoreDashboard, StaffLoginPage } from "@features/store-admin";
 import { ProfileComposerPage } from "@features/profile";
 import { ReelsPage } from "@features/reels";
 import {
@@ -49,6 +52,29 @@ function ProfileDefaultRedirect() {
   return <Navigate to={`/profile/${userId}/account`} replace />;
 }
 
+const DEFAULT_PANEL_SECTION = "productos";
+
+/**
+ * `/:storeName/panel` (o el legado `/store/:storeId/panel`) → sección por defecto.
+ * Conserva el esquema (nombre o id) por el que se llegó para no rebotar al personal.
+ */
+function StorePanelDefaultRedirect() {
+  const { storeName, storeId } = useParams();
+  if (storeName)
+    return (
+      <Navigate
+        to={`${storePathFromName(storeName)}/panel/${DEFAULT_PANEL_SECTION}`}
+        replace
+      />
+    );
+  if (storeId)
+    return (
+      <Navigate to={`/store/${storeId}/panel/${DEFAULT_PANEL_SECTION}`} replace />
+    );
+  return <Navigate to="/home" replace />;
+}
+
+
 export function AppRoutes() {
   return (
     <Routes>
@@ -71,11 +97,44 @@ export function AppRoutes() {
           <Route path="/stores" element={<Navigate to="/search" replace />} />
           <Route path="/offer/:offerId/mapa" element={<OfferRouteMapPage />} />
           <Route path="/offer/:offerId" element={<OfferPage />} />
+          <Route path="/staff-login" element={<StaffLoginPage />} />
+
+          {/* Panel de administración por nombre (dueño desde su perfil). */}
+          <Route
+            path="/:storeName/panel"
+            element={<StorePanelDefaultRedirect />}
+          />
+          <Route
+            path="/:storeName/panel/:section"
+            element={<OwnerStoreDashboard />}
+          />
+          <Route path="/:storeName/mapa" element={<StoreLocationMapPage />} />
+          {/* URL pública de la tienda: {base}/{nombre}. */}
+          <Route path="/:storeName" element={<StorefrontPage />} />
+
+          {/* Legado por id: el panel sigue funcional (staff) y el resto redirige al nombre. */}
+          <Route
+            path="/store/:storeId/panel"
+            element={<StorePanelDefaultRedirect />}
+          />
+          <Route
+            path="/store/:storeId/panel/:section"
+            element={<OwnerStoreDashboard />}
+          />
           <Route path="/store/:storeId/mapa" element={<StoreLocationMapPage />} />
-          <Route path="/store/:storeId" element={<StorePage />} />
-          <Route path="/store/:storeId/vitrina" element={<StorePage />} />
-          <Route path="/store/:storeId/products" element={<StorePage />} />
-          <Route path="/store/:storeId/services" element={<StorePage />} />
+          <Route path="/store/:storeId" element={<StoreLegacyRedirect />} />
+          <Route
+            path="/store/:storeId/vitrina"
+            element={<StoreLegacyRedirect />}
+          />
+          <Route
+            path="/store/:storeId/products"
+            element={<StoreLegacyRedirect />}
+          />
+          <Route
+            path="/store/:storeId/services"
+            element={<StoreLegacyRedirect />}
+          />
 
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />

@@ -13,6 +13,7 @@ import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMin
 import { StoreLocationMiniMap } from "@features/market/components/StoreLocationMiniMap";
 import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes";
 import type { StoreBadge } from "@features/market/logic/store/useMarketStore";
+import { storeHref } from "@features/market/logic/store/storePath";
 import { ChevronLeft, ChevronRight, ExternalLink, Store } from "lucide-react";
 import { websiteUrlDisplayLabel } from "@shared/lib/websiteUrl";
 import {
@@ -111,11 +112,11 @@ export function RecommendedStoresRow({
           role="link"
           tabIndex={0}
           className="vt-card flex w-full cursor-pointer flex-col gap-2 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3 text-left transition-colors hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
-          onClick={() => navigate(`/store/${s.id}`)}
+          onClick={() => navigate(storeHref(s))}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              navigate(`/store/${s.id}`);
+              navigate(storeHref(s));
             }
           }}
         >

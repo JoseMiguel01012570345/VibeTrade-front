@@ -4,6 +4,7 @@ import { cn } from "@shared/lib/cn";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import type { RouteOfferPublicState } from "@features/market/logic/store/marketStoreTypes";
 import type { Offer, StoreBadge } from "@features/market/logic/store/useMarketStore";
+import { storeHref } from "@features/market/logic/store/storePath";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { OfferSaveButton } from "@features/market/components/OfferSaveButton";
@@ -217,7 +218,7 @@ export function OfferCardsChunk({
 
               <div className="flex flex-col items-end gap-1">
                 <Link
-                  to={`/store/${store?.id ?? o.storeId}`}
+                  to={storeHref(store ?? { id: o.storeId, name: "" })}
                   className="inline-flex max-w-full items-center gap-1.5 truncate rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-2 py-1 text-[11px] font-extrabold text-[var(--text)] lg:px-1.5 lg:text-[10px]"
                 >
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--primary)]" />

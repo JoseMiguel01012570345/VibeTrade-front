@@ -1,4 +1,5 @@
 import type { StoreBadge } from "@features/market/logic/store/useMarketStore"
+import { storeHref } from "@features/market/logic/store/storePath"
 
 import type { ThreadChatCarrier } from "@features/market/logic/store/marketStoreTypes"
 import type {
@@ -41,7 +42,7 @@ export function buildChatParticipants(
       trustScore: seller.trustScore,
       verified: seller.verified,
       avatarUrl: seller.avatarUrl,
-      href: `/store/${seller.id}/vitrina`,
+      href: storeHref(seller),
     })
     seen.add(sellerId)
   }

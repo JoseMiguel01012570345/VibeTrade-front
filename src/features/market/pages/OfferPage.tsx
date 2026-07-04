@@ -6,13 +6,7 @@ import {
   useState,
 } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import {
-  ArrowLeft,
-  BadgeCheck,
-  Heart,
-  ShoppingCart,
-  Truck,
-} from "lucide-react";
+import { ArrowLeft, BadgeCheck, Heart, Truck } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@shared/lib/cn";
 import {
@@ -23,6 +17,7 @@ import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { ImageLightbox } from "@shared/components/media/ImageLightbox";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
+import { storeHref } from "@features/market/logic/store/storePath";
 import { RouteTramoSubscribeModal } from "../components/RouteTramoSubscribeModal";
 import { OfferSaveButton } from "../components/OfferSaveButton";
 import { OfferCommentsSection } from "../components/OfferCommentsSection";
@@ -76,14 +71,15 @@ import {
   postEmergentTramoSubscriptionRequest,
 } from "@features/market/api/emergentCarrierSubscriptionApi";
 import { fetchThreadRouteTramoSubscriptions } from "@features/chat/api/chatApi";
-import {
-  catalogItemKind,
-  collectOfferPublishedPhotoUrls,
-  sendPurchaseInterestIntro,
-} from "@features/chat/logic/messages/sendPurchaseInterestIntro";
-import { ConfirmModal } from "@shared/components/ui/ConfirmModal";
+import { OfferProductDetail } from "../components/OfferProductDetail";
+import { StorefrontChrome } from "@features/storefront/components/StorefrontChrome";
 import { useOfferPublicCard } from "../hooks/useOfferPublicCard";
 import { useEmergentRouteTramoSubscriptionsQuery } from "../hooks/useEmergentRouteTramoSubscriptionsQuery";
+
+/** Extrae un código de moneda (3 letras, p. ej. "USD") del texto de precio "$1.08 USD"; vacío si no hay. */
+function currencyCodeFromPriceText(price: string): string {
+  return /\b([A-Z]{3})\b/.exec(price ?? "")?.[1] ?? "";
+}
 
 function Trust({ score, helper }: { score: number; helper: string }) {
   return (
@@ -106,8 +102,6 @@ export function OfferPage() {
   const sessionReady = isSessionActive || !!getSessionToken();
   const stores = useMarketStore((s) => s.stores);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
-  const [comprarChatConfirmOpen, setComprarChatConfirmOpen] = useState(false);
-  const [comprarChatBusy, setComprarChatBusy] = useState(false);
 
   const {
     resolvedOffer,
@@ -132,59 +126,11 @@ export function OfferPage() {
     (s) => s.hydrateRouteOfferCarrierSubscriptions,
   );
   const submitOfferQuestion = useMarketStore((s) => s.submitOfferQuestion);
-  const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer);
   const refreshOfferQaFromServer = useMarketStore(
     (s) => s.refreshOfferQaFromServer,
   );
   /** Sin esto, cada `refreshOfferQaFromServer` sustituye `offers[id]` y `resolvedOffer` cambia de referencia → efectos con `[resolvedOffer]` reejecutan en bucle. */
   const offerResolved = Boolean(resolvedOffer);
-
-  const comprarChatConfirmMessage = useMemo(() => {
-    if (!resolvedOffer) {
-      return "Se abrirá un chat nuevo con la tienda. Se enviará un primer mensaje con tu interés, según el nombre y el tipo de la oferta en la ficha.";
-    }
-    const kind = catalogItemKind(resolvedOffer, storeCatalogs);
-    const n = collectOfferPublishedPhotoUrls(resolvedOffer).length;
-    const t = (resolvedOffer.title || "").trim() || "la oferta";
-    let tipoPapel = "oferta";
-    if (kind === "product") tipoPapel = "producto";
-    else if (kind === "service") tipoPapel = "servicio";
-    const fotos =
-      n > 0
-        ? ` Las fotos publicadas en la ficha (${n}) se envían en el mismo mensaje que el texto.`
-        : " Si no hay fotos de ficha, el mensaje solo incluye el texto, con el detalle adecuado al tipo (producto o servicio).";
-    return `Se creará un chat nuevo y el vendedor recibirá un aviso. El primer mensaje dirá que tienes interés en el ${tipoPapel} «${t}», teniendo en cuenta el tipo y el título de la oferta en la plataforma.${fotos}`;
-  }, [resolvedOffer, storeCatalogs]);
-
-  const runComprarChatAfterConfirm = useCallback(async () => {
-    if (!resolvedOffer) return;
-    setComprarChatBusy(true);
-    try {
-      const threadId = await ensureThreadForOffer(resolvedOffer.id, {
-        buyerId: me.id,
-        forceNewThread: true,
-      });
-      if (!threadId) {
-        toast.error("No se pudo abrir el chat. Prueba de nuevo.");
-        return;
-      }
-      try {
-        await sendPurchaseInterestIntro(threadId, resolvedOffer, storeCatalogs);
-      } catch (e) {
-        console.error(e);
-        toast.error(
-          "El chat se abrió, pero el primer mensaje no pudo enviarse. Escribe desde el chat.",
-        );
-      }
-      setComprarChatConfirmOpen(false);
-      void trackRecommendationInteraction(resolvedOffer.id, "chat_start").catch(
-        () => undefined,
-      );
-      nav(`/chat/${threadId}`);
-    } finally {
-      setComprarChatBusy(false);
-    }
-  }, [resolvedOffer, storeCatalogs, me.id, ensureThreadForOffer, nav]);
 
   const openTramos = useMemo(
     () => routeOffer?.tramos.filter((t) => !t.assignment) ?? [],
@@ -648,7 +594,53 @@ export function OfferPage() {
     return cat.products.find((p) => p.id === oid) ?? null;
   }, [resolvedOffer, storeCatalogs]);
 
+  /**
+   * La ficha pública solo hidrata `offers`/`stores`, no `storeCatalogs`. Para que el
+   * detalle (estilo storefront) muestre la ficha del producto, el precio unitario y
+   * los productos relacionados a cualquier visitante, cargamos el catálogo público
+   * de la tienda de la oferta si aún no está en memoria.
+   */
+  const offerStoreId = resolvedOffer?.storeId;
+  useEffect(() => {
+    if (!offerStoreId) return;
+    if (useMarketStore.getState().storeCatalogs[offerStoreId] !== undefined)
+      return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await fetchStoreDetail(offerStoreId, { userId: me.id });
+        if (cancelled) return;
+        useMarketStore.setState((s) => ({
+          stores: { ...s.stores, [offerStoreId]: data.store },
+          storeCatalogs: {
+            ...s.storeCatalogs,
+            [offerStoreId]: mergeStoreCatalogWithLocalExtras(
+              s.storeCatalogs[offerStoreId],
+              data.catalog,
+            ),
+          },
+        }));
+      } catch {
+        /* catálogo no disponible: la ficha degrada al enlace de la tienda */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [offerStoreId, me.id]);
+
   const addToCart = useCartStore((s) => s.addItem);
+
+  /** Otros productos publicados de la misma tienda (grid inferior de la ficha, estilo storefront). */
+  const relatedProducts = useMemo(() => {
+    if (!resolvedOffer) return [];
+    const cat = storeCatalogs[resolvedOffer.storeId];
+    if (!cat) return [];
+    const currentId = productFicha?.id ?? resolvedOffer.id;
+    return cat.products
+      .filter((p) => p.published && p.id !== currentId)
+      .slice(0, 8);
+  }, [resolvedOffer, storeCatalogs, productFicha]);
 
   const trackedProductId = productFicha?.id ?? null;
   useEffect(() => {
@@ -692,6 +684,114 @@ export function OfferPage() {
 
   const isOwnOffer =
     !!store?.ownerUserId && me.id !== "guest" && me.id === store.ownerUserId;
+
+  const canLikeOffer = sessionReady && me.id !== "guest";
+
+  function toggleOfferLikeNow() {
+    if (!offerId) return;
+    void (async () => {
+      try {
+        const r = await toggleOfferLike(offerId);
+        useMarketStore.setState((s) => {
+          const prev = s.offers[offerId];
+          if (!prev) return s;
+          return {
+            ...s,
+            offers: {
+              ...s.offers,
+              [offerId]: {
+                ...prev,
+                offerLikeCount: r.likeCount,
+                viewerLikedOffer: r.liked,
+              },
+            },
+          };
+        });
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "No se pudo guardar el me gusta.",
+        );
+      }
+    })();
+  }
+
+  function addFichaToCart(qty: number) {
+    if (!resolvedOffer) return;
+    const quantity = Math.max(1, qty);
+    // Con ficha usamos sus datos; sin ella (catálogo aún no cargado) caemos a la
+    // oferta pública para no bloquear la compra —el id de producto coincide con el
+    // de la oferta—.
+    if (productFicha) {
+      addToCart({
+        productId: productFicha.id,
+        storeId: productFicha.storeId,
+        name: productFicha.name,
+        unitPrice: parseProductPriceNumber(productFicha.price) ?? 0,
+        currencyCode:
+          productFicha.monedaPrecio?.trim() || productFicha.monedas?.[0] || "",
+        quantity,
+        photoUrl: productFicha.photoUrls[0],
+      });
+    } else {
+      addToCart({
+        productId: resolvedOffer.id,
+        storeId: resolvedOffer.storeId,
+        name: resolvedOffer.title,
+        unitPrice: parseProductPriceNumber(resolvedOffer.price) ?? 0,
+        currencyCode: currencyCodeFromPriceText(resolvedOffer.price),
+        quantity,
+        photoUrl: resolvedOffer.imageUrl || resolvedOffer.imageUrls?.[0],
+      });
+    }
+    toast.success("Añadido al carrito");
+  }
+
+  // Ficha de producto/servicio (no hoja de ruta): réplica del detalle de la app de
+  // referencia (frontend-guest). Envuelta en `.store-front-surface` para que la
+  // ficha y los comentarios adopten el estilo emerald/crema del storefront.
+  if (!isEmergentRouteFicha) {
+    return (
+      <StorefrontChrome store={store}>
+        <div className="mx-auto w-full max-w-[1140px] px-4 py-6 sm:py-10">
+          <OfferProductDetail
+            offer={resolvedOffer}
+            productFicha={productFicha}
+            store={store}
+            gallery={galleryUrls}
+            descriptionText={fichaDescriptionText}
+            purchasable={!resolvedOffer.tags.includes("Servicio")}
+            canLike={canLikeOffer}
+            liked={!!resolvedOffer.viewerLikedOffer}
+            likeCount={resolvedOffer.offerLikeCount ?? 0}
+            onToggleLike={toggleOfferLikeNow}
+            onAddToCart={addFichaToCart}
+            onBuyNow={(qty) => {
+              addFichaToCart(qty);
+              nav("/cart");
+            }}
+            onOpenLightbox={(url) => setGalleryLightboxUrl(url)}
+            relatedProducts={relatedProducts}
+          />
+
+          <div className="mt-10">
+            <OfferCommentsSection
+              offer={resolvedOffer}
+              store={store}
+              me={me}
+              isSessionActive={isSessionActive}
+              isOwnOffer={isOwnOffer}
+              submitOfferQuestion={submitOfferQuestion}
+            />
+          </div>
+        </div>
+
+        <ImageLightbox
+          url={galleryLightboxUrl}
+          onClose={() => setGalleryLightboxUrl(null)}
+        />
+      </StorefrontChrome>
+    );
+  }
 
   return (
     <div className="container vt-page">
@@ -874,7 +974,7 @@ export function OfferPage() {
 
             <div className="vt-row flex-wrap justify-between">
               <Link
-                to={`/store/${store.id}`}
+                to={storeHref(store)}
                 className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-2.5 py-1.5 text-xs font-extrabold text-[var(--text)]"
               >
                 <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
@@ -1103,124 +1203,49 @@ export function OfferPage() {
             ) : null}
 
             <div className="flex flex-wrap gap-2.5">
-              {isEmergentRouteFicha ? (
-                <button
-                  type="button"
-                  className="vt-btn vt-btn-primary min-[420px]:flex-1"
-                  disabled={isOwnOffer || subscribeBlockedAsBuyerWithAgreement}
-                  title={
-                    isOwnOffer
-                      ? "No puedes suscribirte a tu propia publicación."
-                      : subscribeBlockedAsBuyerWithAgreement
-                        ? ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES
-                        : undefined
+              <button
+                type="button"
+                className="vt-btn vt-btn-primary min-[420px]:flex-1"
+                disabled={isOwnOffer || subscribeBlockedAsBuyerWithAgreement}
+                title={
+                  isOwnOffer
+                    ? "No puedes suscribirte a tu propia publicación."
+                    : subscribeBlockedAsBuyerWithAgreement
+                      ? ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES
+                      : undefined
+                }
+                onClick={() => {
+                  if (!isSessionActive || me.id === "guest") {
+                    openAuthModal();
+                    return;
                   }
-                  onClick={() => {
-                    if (!isSessionActive || me.id === "guest") {
-                      openAuthModal();
-                      return;
-                    }
-                    if (isOwnOffer) {
-                      toast.error("No puedes suscribirte a tu propia oferta.");
-                      return;
-                    }
-                    if (subscribeBlockedAsBuyerWithAgreement) {
-                      toast.error(
-                        ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
-                      );
-                      return;
-                    }
-                    if (
-                      !userHasTransportService(me.id, stores, storeCatalogs)
-                    ) {
-                      toast.error(
-                        "Necesitas un servicio de transporte publicado en tu tienda para suscribirte.",
-                      );
-                      return;
-                    }
-                    if (!routeOffer) {
-                      toast.error(
-                        "Aún no tenemos la hoja de ruta en esta sesión. Entra desde el inicio o recarga la página.",
-                      );
-                      return;
-                    }
-                    document
-                      .getElementById("hoja-suscribir")
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
-                >
-                  Suscribirse
-                </button>
-              ) : (
-                <>
-                  {productFicha && !isOwnOffer ? (
-                    <button
-                      type="button"
-                      className="vt-btn vt-btn-primary min-[420px]:flex-1"
-                      onClick={() => {
-                        addToCart({
-                          productId: productFicha.id,
-                          storeId: resolvedOffer.storeId,
-                          name: productFicha.name,
-                          unitPrice:
-                            parseProductPriceNumber(productFicha.price) ?? 0,
-                          currencyCode:
-                            productFicha.monedaPrecio?.trim() ||
-                            productFicha.monedas?.[0] ||
-                            "",
-                          quantity: 1,
-                          photoUrl: productFicha.photoUrls[0],
-                        });
-                        toast.success("Añadido al carrito");
-                      }}
-                    >
-                      <ShoppingCart size={16} /> Añadir al carrito
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="vt-btn min-[420px]:flex-1"
-                    disabled={
-                      (!!actingAsCarrierOnThisOffer && !!routeOffer) || isOwnOffer
-                    }
-                    title={
-                      isOwnOffer
-                        ? "No puedes chatear contigo mismo en tu propia oferta."
-                        : actingAsCarrierOnThisOffer && routeOffer
-                          ? "Como transportista: suscríbete a un tramo y espera la validación para usar el chat de la ruta."
-                          : undefined
-                    }
-                    onClick={() => {
-                      if (!isSessionActive || me.id === "guest") {
-                        openAuthModal();
-                        return;
-                      }
-                      if (isOwnOffer) {
-                        toast.error("No puedes chatear contigo mismo.");
-                        return;
-                      }
-                      if (actingAsCarrierOnThisOffer && routeOffer) {
-                        toast.error(
-                          "Usa la suscripción al tramo; el chat se habilita tras la validación.",
-                        );
-                        return;
-                      }
-                      if (
-                        !isOfferPublishedForBuyerChat(
-                          resolvedOffer,
-                          storeCatalogs,
-                        )
-                      ) {
-                        toast.error(NOT_PUBLISHED_TOAST_ES);
-                        return;
-                      }
-                      setComprarChatConfirmOpen(true);
-                    }}
-                  >
-                    <ShoppingCart size={16} /> Comprar (Chat)
-                  </button>
-                </>
-              )}
+                  if (isOwnOffer) {
+                    toast.error("No puedes suscribirte a tu propia oferta.");
+                    return;
+                  }
+                  if (subscribeBlockedAsBuyerWithAgreement) {
+                    toast.error(ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES);
+                    return;
+                  }
+                  if (!userHasTransportService(me.id, stores, storeCatalogs)) {
+                    toast.error(
+                      "Necesitas un servicio de transporte publicado en tu tienda para suscribirte.",
+                    );
+                    return;
+                  }
+                  if (!routeOffer) {
+                    toast.error(
+                      "Aún no tenemos la hoja de ruta en esta sesión. Entra desde el inicio o recarga la página.",
+                    );
+                    return;
+                  }
+                  document
+                    .getElementById("hoja-suscribir")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              >
+                Suscribirse
+              </button>
             </div>
           </div>
         </div>
@@ -1234,22 +1259,6 @@ export function OfferPage() {
           submitOfferQuestion={submitOfferQuestion}
         />
       </div>
-
-      <ConfirmModal
-        open={comprarChatConfirmOpen}
-        title="Iniciar chat con la tienda"
-        message={comprarChatConfirmMessage}
-        confirmLabel="Sí, abrir chat"
-        cancelLabel="Cancelar"
-        confirmBusy={comprarChatBusy}
-        onCancel={() => {
-          if (comprarChatBusy) return;
-          setComprarChatConfirmOpen(false);
-        }}
-        onConfirm={() => {
-          void runComprarChatAfterConfirm();
-        }}
-      />
 
       <RouteTramoSubscribeModal
         open={subscribeModalOpen}

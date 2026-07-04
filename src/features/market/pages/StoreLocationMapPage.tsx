@@ -4,6 +4,8 @@ import { ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
+import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
+import { storeHref } from "@features/market/logic/store/storePath";
 import { mergeStoreCatalogWithLocalExtras } from "@features/market/logic/storeCatalogTypes";
 import { fetchStoreDetail } from "@features/market/api/fetchStoreDetail";
 import { setMarketHydrating } from "@features/market/api/marketPersistence";
@@ -14,9 +16,11 @@ import { isValidStoreLocation } from "@features/home/logic/homeTextUtils";
  * Vista solo mapa (Leaflet OSM, zoom y arrastre) para la ubicación de una tienda — misma base que rutas y feed.
  */
 export function StoreLocationMapPage() {
-  const { storeId } = useParams();
+  const { storeName, storeId: storeIdParam } = useParams();
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
+  const { storeId: resolvedByName } = useStoreIdFromName(storeName, me.id);
+  const storeId = storeIdParam ?? resolvedByName;
   const store = useMarketStore((s) =>
     storeId ? s.stores[storeId] : undefined,
   );
@@ -90,7 +94,7 @@ export function StoreLocationMapPage() {
         <div className="vt-card vt-card-pad space-y-3">
           <p>Esta tienda no tiene ubicación en mapa.</p>
           <Link
-            to={`/store/${encodeURIComponent(storeId)}`}
+            to={storeHref(store ?? { id: storeId ?? "", name: "" })}
             className="vt-btn vt-btn-sm inline-block no-underline"
           >
             Volver a la tienda

@@ -756,3 +756,52 @@ body:has(.vt-home-page) {
     transform: translateY(1px);
   }
 }
+
+/*
+ * Superficies de tienda (emerald) — replican la UI/UX de las apps de referencia
+ * (frontend-guest storefront + frontend-admin panel). Sobrescriben los tokens de
+ * color solo dentro de estas superficies, sin repintar el resto de la app (azul).
+ */
+.store-front-surface {
+  --primary: #0f766e;
+  --primary-2: #115e59;
+  --bg: #f7f3ef;
+  --surface: #ffffff;
+  --border: #d9d5cf;
+  /* Texto oscuro fijo: estas superficies son siempre claras (como las apps de
+     referencia), incluso si la app está en modo oscuro. */
+  --text: #0f172a;
+  --muted: #64748b;
+  color-scheme: light;
+}
+
+.store-admin-surface {
+  --primary: #0f6b4f;
+  --primary-2: #0b5540;
+  --bg: #eef0f4;
+  --surface: #ffffff;
+  --border: rgba(15, 23, 42, 0.1);
+  --text: #0f172a;
+  --muted: #64748b;
+  color-scheme: light;
+}
+
+/*
+ * La superficie de tienda es full-bleed: ocupa todo el alto del <main> sin dejar
+ * visible la franja de fondo de la app (el pt-4 / pb-[88px] que AppShell reserva
+ * para la barra inferior fija). El espacio para esa barra se reintegra dentro del
+ * propio footer del storefront. Mismo patrón :has() que ya usamos para home/chat.
+ */
+.vt-main:has(.store-front-surface) {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Oculta la barra de scroll en carruseles horizontales (chips de categoría). */
+.store-no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.store-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

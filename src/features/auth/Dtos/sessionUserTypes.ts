@@ -13,6 +13,8 @@ export type SessionUserJson = {
   instagram?: string | null
   telegram?: string | null
   xAccount?: string | null
+  /** Si viene, la sesión es de personal (staff) atado a esa tienda. */
+  staffStoreId?: string | null
 }
 
 export type AuthSessionJson = {

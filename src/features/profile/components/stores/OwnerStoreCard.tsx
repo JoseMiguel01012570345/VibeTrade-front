@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-react";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
+import { storePanelHref } from "@features/market/logic/store/storePath";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes";
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
@@ -42,9 +43,9 @@ export function OwnerStoreCard({
   return (
     <div className="relative min-w-0 w-full overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
       <Link
-        to={`/store/${b.id}`}
+        to={storePanelHref(b)}
         className="absolute inset-0 z-[1] rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
-        aria-label={`Abrir tienda ${b.name}`}
+        aria-label={`Abrir panel de ${b.name}`}
       />
       <div className="relative z-[2] min-w-0 w-full space-y-0 p-3.5 pointer-events-none">
         {/*
@@ -117,9 +118,10 @@ export function OwnerStoreCard({
                 {b.categories.join(" · ")}
               </div>
               <p className="vt-muted mt-2 max-w-full text-[12px] leading-snug sm:max-w-md">
-                Gestioná productos y servicios desde el catálogo al abrir la
-                tienda. Elige una imagen con el avatar y guárdala con el botón
-                (vista previa local con URL blob).
+                Abre el panel de gestión para administrar productos, servicios,
+                pedidos, estadísticas, finanzas, personal y afiliados. Elige una
+                imagen con el avatar y guárdala con el botón (vista previa local
+                con URL blob).
               </p>
               <div className="pointer-events-auto mt-2 flex min-w-0 flex-col gap-2 min-[360px]:flex-row min-[360px]:flex-wrap">
                 <button
@@ -142,6 +144,12 @@ export function OwnerStoreCard({
             </div>
           </div>
           <div className="flex w-full min-w-0 flex-wrap gap-2 pointer-events-auto min-[480px]:w-auto min-[480px]:shrink-0 min-[480px]:justify-end">
+            <Link
+              to={storePanelHref(b)}
+              className="vt-btn vt-btn-primary vt-btn-sm inline-flex flex-1 items-center justify-center gap-1 min-[360px]:flex-initial"
+            >
+              <Store size={14} /> Gestionar
+            </Link>
             <button
               type="button"
               className="vt-btn vt-btn-sm inline-flex flex-1 items-center justify-center gap-1 min-[360px]:flex-initial"

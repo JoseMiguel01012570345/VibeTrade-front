@@ -99,10 +99,10 @@ export async function addProductViaUI(
   productName: string,
   formOpts: ProductFormOpts = {},
 ): Promise<string> {
-  await page.goto(`${baseURL}/store/${storeId}/products`, {
+  await page.goto(`${baseURL}/store/${storeId}/panel/productos`, {
     waitUntil: "domcontentloaded",
   });
-  await page.getByRole("button", { name: /añadir producto/i }).click();
+  await page.getByRole("button", { name: /agregar producto/i }).click();
   await expect(
     page.getByRole("dialog").filter({
       has: page.locator(".vt-modal-title", { hasText: /añadir producto/i }),
@@ -122,10 +122,10 @@ export async function addProductViaUI(
   const res = await putResponse;
   const match = res.url().match(/\/products\/([^/?]+)/);
   if (!match?.[1]) throw new Error("product id missing from save response URL");
-  await page.goto(`${baseURL}/store/${storeId}/products`, {
+  await page.goto(`${baseURL}/store/${storeId}/panel/productos`, {
     waitUntil: "domcontentloaded",
   });
-  await expect(page.getByText(/cargando tienda/i)).toBeHidden({ timeout: 45_000 });
+  await expect(page.getByText(/cargando panel/i)).toBeHidden({ timeout: 45_000 });
   await expect(page.getByText(productName).first()).toBeVisible({
     timeout: 30_000,
   });
@@ -136,9 +136,11 @@ export async function publishCatalogItemViaUI(
   page: Page,
   itemName: string,
 ): Promise<void> {
-  const row = page.locator("li").filter({ hasText: itemName });
+  const row = page.locator("tr").filter({ hasText: itemName }).first();
   await expect(row).toBeVisible({ timeout: 10_000 });
-  const publish = row.getByRole("button", { name: /^publicar$/i });
+  const publish = row.getByRole("button", {
+    name: /^publicar (producto|servicio)$/i,
+  });
   if (await publish.isVisible().catch(() => false)) {
     await publish.click();
   }
@@ -198,10 +200,10 @@ export async function addServiceViaUI(
   formOpts: ServiceFormOpts = {},
   sessionToken?: string,
 ): Promise<string> {
-  await page.goto(`${baseURL}/store/${storeId}/services`, {
+  await page.goto(`${baseURL}/store/${storeId}/panel/servicios`, {
     waitUntil: "domcontentloaded",
   });
-  await page.getByRole("button", { name: /añadir servicio/i }).click();
+  await page.getByRole("button", { name: /agregar servicio/i }).click();
   await expect(
     page.getByRole("dialog").filter({
       has: page.locator(".vt-modal-title", { hasText: /añadir servicio/i }),
@@ -234,7 +236,7 @@ export async function addServiceViaUI(
     }
   }
 
-  await page.goto(`${baseURL}/store/${storeId}/services`, {
+  await page.goto(`${baseURL}/store/${storeId}/panel/servicios`, {
     waitUntil: "domcontentloaded",
   });
   await expect(page.getByText(serviceType).first()).toBeVisible({
@@ -250,12 +252,12 @@ export async function editProductNameViaUI(
   productName: string,
   newName: string,
 ): Promise<void> {
-  await page.goto(`${baseURL}/store/${storeId}/products`, {
+  await page.goto(`${baseURL}/store/${storeId}/panel/productos`, {
     waitUntil: "domcontentloaded",
   });
-  const row = page.locator("li").filter({ hasText: productName });
+  const row = page.locator("tr").filter({ hasText: productName }).first();
   await expect(row).toBeVisible({ timeout: 15_000 });
-  await row.getByRole("button", { name: /^editar$/i }).click();
+  await row.getByRole("button", { name: /editar producto/i }).click();
   const dialog = page.getByRole("dialog").filter({
     has: page.locator(".vt-modal-title", { hasText: /editar producto/i }),
   });
@@ -279,12 +281,12 @@ export async function deleteProductViaUI(
   storeId: string,
   productName: string,
 ): Promise<void> {
-  await page.goto(`${baseURL}/store/${storeId}/products`, {
+  await page.goto(`${baseURL}/store/${storeId}/panel/productos`, {
     waitUntil: "domcontentloaded",
   });
-  const row = page.locator("li").filter({ hasText: productName });
+  const row = page.locator("tr").filter({ hasText: productName }).first();
   await expect(row).toBeVisible({ timeout: 15_000 });
-  await row.getByRole("button", { name: /^quitar$/i }).click();
+  await row.getByRole("button", { name: /eliminar producto/i }).click();
   const modal = page.getByRole("dialog").filter({
     hasText: /eliminar producto/i,
   });
@@ -309,9 +311,13 @@ export async function deleteStoreViaUI(
   await page.goto(`${baseURL}/profile/me/stores`, {
     waitUntil: "domcontentloaded",
   });
-  const card = page.locator("li, article, [class*='card']").filter({
-    hasText: storeName,
-  }).first();
+  // La tarjeta de tienda del dueño es un <div>; delimitamos el contenedor más
+  // interno que contiene el nombre y el botón "Eliminar" de esa tienda.
+  const card = page
+    .locator("div")
+    .filter({ hasText: storeName })
+    .filter({ has: page.getByRole("button", { name: /^eliminar$/i }) })
+    .last();
   await expect(card).toBeVisible({ timeout: 15_000 });
   await card.getByRole("button", { name: /^eliminar$/i }).click();
   const modal = page.getByRole("dialog").filter({
