@@ -6,6 +6,7 @@ import { storeCartHref, storeHref } from "@features/market/logic/store/storePath
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { useCartStore } from "@features/orders/logic/cartStore";
 import { StorefrontSupportModal } from "./StorefrontSupportModal";
+import { StoreCategoriesOffcanvas } from "./StoreCategoriesOffcanvas";
 
 const topLinkClass =
   "inline-flex items-center text-xs font-semibold text-slate-600 transition-colors hover:text-emerald-700 sm:text-sm";
@@ -22,11 +23,13 @@ export function StorefrontHeader({
   query,
   onQueryChange,
   onOpenSupport,
+  onOpenCategories,
 }: Readonly<{
   store: StoreBadge;
   query?: string;
   onQueryChange?: (value: string) => void;
   onOpenSupport?: () => void;
+  onOpenCategories?: () => void;
 }>) {
   const nav = useNavigate();
   const cartCount = useCartStore((s) =>
@@ -108,7 +111,10 @@ export function StorefrontHeader({
             <button
               type="button"
               className={topLinkClass}
-              onClick={() => goToSection("storefront-categorias")}
+              onClick={() => {
+                if (onOpenCategories) onOpenCategories();
+                else goToSection("storefront-categorias");
+              }}
             >
               Categorías
             </button>
@@ -270,6 +276,7 @@ export function StorefrontChrome({
   children: ReactNode;
 }>) {
   const [supportOpen, setSupportOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   return (
     <div className="store-front-surface flex min-h-full flex-col bg-[#f7f3ef] text-slate-900">
       <StorefrontHeader
@@ -277,6 +284,7 @@ export function StorefrontChrome({
         query={query}
         onQueryChange={onQueryChange}
         onOpenSupport={() => setSupportOpen(true)}
+        onOpenCategories={() => setCategoriesOpen(true)}
       />
       <div className="flex-1">{children}</div>
       <StorefrontFooter store={store} />
@@ -284,6 +292,11 @@ export function StorefrontChrome({
         open={supportOpen}
         store={store}
         onClose={() => setSupportOpen(false)}
+      />
+      <StoreCategoriesOffcanvas
+        open={categoriesOpen}
+        store={store}
+        onClose={() => setCategoriesOpen(false)}
       />
     </div>
   );

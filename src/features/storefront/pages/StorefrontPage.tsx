@@ -56,10 +56,13 @@ export function StorefrontPage() {
     canRight: false,
   });
 
-  /** El término puede llegar por URL (`?q=`) al buscar desde otra vista (p. ej. el detalle). */
+  /**
+   * El término puede llegar por URL (`?q=`) al buscar desde otra vista (p. ej. el
+   * detalle) y la categoría por `?cat=` (desde el menú de Categorías / "Ver todos").
+   */
   useEffect(() => {
     setQuery(searchParams.get("q") ?? "");
-    setActiveCategory(ALL_CATEGORIES);
+    setActiveCategory(searchParams.get("cat")?.trim() || ALL_CATEGORIES);
   }, [storeId, searchParams]);
 
   const publishedProducts = useMemo(
