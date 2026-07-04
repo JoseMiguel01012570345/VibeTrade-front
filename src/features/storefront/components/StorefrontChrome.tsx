@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, useEffect, useMemo, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BadgeCheck, Search, ShoppingCart, Store } from "lucide-react";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
@@ -8,8 +8,12 @@ import {
   storeTrackingHref,
 } from "@features/market/logic/store/storePath";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
+import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useCartStore } from "@features/orders/logic/cartStore";
+import { VtAutocompleteInput } from "@shared/components/ui/VtAutocompleteInput";
+import { fetchStoreCatalogAutocomplete } from "../api/fetchStoreCatalogAutocomplete";
 import { StorefrontSupportFab } from "./StorefrontSupportFab";
+import { StorefrontGuestAuthOverlay } from "./StorefrontGuestAuthOverlay";
 import { StoreCategoriesOffcanvas } from "./StoreCategoriesOffcanvas";
 import { StoreCommentsModal } from "./StoreCommentsModal";
 
@@ -29,12 +33,14 @@ export function StorefrontHeader({
   onQueryChange,
   onSearchSubmit,
   onOpenCategories,
+  guestAuthOverlay = false,
 }: Readonly<{
   store: StoreBadge;
   query?: string;
   onQueryChange?: (value: string) => void;
   onSearchSubmit?: (term: string) => void;
   onOpenCategories?: () => void;
+  guestAuthOverlay?: boolean;
 }>) {
   const nav = useNavigate();
   const cartCount = useCartStore((s) =>
@@ -43,22 +49,55 @@ export function StorefrontHeader({
 
   const controlled = onQueryChange !== undefined;
   const [localQuery, setLocalQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const value = controlled ? (query ?? "") : localQuery;
+
+  useEffect(() => {
+    const q = value.trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const next = await fetchStoreCatalogAutocomplete(store.id, q, 10);
+          if (!cancelled) setSuggestions(next);
+        } catch {
+          if (!cancelled) setSuggestions([]);
+        }
+      })();
+    }, 220);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [value, store.id]);
+
+  const autocompleteOptions = useMemo(
+    () => suggestions.map((s) => ({ value: s, label: s })),
+    [suggestions],
+  );
 
   function onChange(next: string) {
     if (controlled) onQueryChange?.(next);
     else setLocalQuery(next);
   }
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const term = value.trim();
+  function submitSearch(term: string) {
+    const trimmed = term.trim();
     if (controlled) {
-      onSearchSubmit?.(term);
+      onSearchSubmit?.(trimmed);
       return;
     }
-    const suffix = term ? `?q=${encodeURIComponent(term)}` : "";
+    const suffix = trimmed ? `?q=${encodeURIComponent(trimmed)}` : "";
     nav(`${storeHref(store)}${suffix}`);
+  }
+
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    submitSearch(value);
   }
 
   const storeHome = storeHref(store);
@@ -82,7 +121,13 @@ export function StorefrontHeader({
 
   return (
     <header className="sticky top-0 z-40 border-b border-emerald-100 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-[1140px] flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4">
+      <div
+        className={`mx-auto flex max-w-[1140px] flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4 ${
+          guestAuthOverlay
+            ? "pt-[max(2.75rem,env(safe-area-inset-top,0px)+2.25rem)] md:pt-[max(3rem,env(safe-area-inset-top,0px)+2.5rem)]"
+            : ""
+        }`}
+      >
         <div className="flex min-w-0 w-full items-center justify-between gap-2 md:contents">
           <Link
             to={storeHome}
@@ -154,13 +199,17 @@ export function StorefrontHeader({
           role="search"
           className="relative w-full md:order-2 md:min-w-0 md:flex-1 md:max-w-xl"
         >
-          <input
-            type="search"
+          <VtAutocompleteInput
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={onChange}
+            onSelect={submitSearch}
+            options={autocompleteOptions}
+            filterOptionsLocally={false}
+            matchMode="substring"
             placeholder="¿Qué estás buscando?"
-            aria-label="Buscar en la tienda"
-            className="h-11 w-full rounded-full border border-emerald-100 bg-stone-50 pl-4 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+            ariaLabel="Buscar en la tienda"
+            className="w-full"
+            inputClassName="h-11 rounded-full border border-emerald-100 bg-stone-50 pl-4 pr-12 text-sm text-slate-900 shadow-none outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
           />
           <button
             type="submit"
@@ -284,14 +333,18 @@ export function StorefrontChrome({
 }>) {
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const isSessionActive = useAppStore((s) => s.isSessionActive);
+  const showGuestAuthOverlay = !isSessionActive;
   return (
     <div className="store-front-surface flex w-full min-h-0 flex-1 flex-col bg-[#f7f3ef] text-slate-900">
+      {showGuestAuthOverlay ? <StorefrontGuestAuthOverlay /> : null}
       <StorefrontHeader
         store={store}
         query={query}
         onQueryChange={onQueryChange}
         onSearchSubmit={onSearchSubmit}
         onOpenCategories={() => setCategoriesOpen(true)}
+        guestAuthOverlay={showGuestAuthOverlay}
       />
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       <StorefrontFooter store={store} onOpenComments={() => setCommentsOpen(true)} />

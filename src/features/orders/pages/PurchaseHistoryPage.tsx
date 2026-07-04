@@ -36,7 +36,7 @@ export function PurchaseHistoryPage() {
           <button
             key={o.id}
             className="vt-card vt-card-pad flex items-center justify-between gap-3 text-left transition hover:border-[var(--primary)]"
-            onClick={() => navigate(`/rastreo/${encodeURIComponent(o.publicNumber)}`)}
+            onClick={() => navigate(`/pedido/${encodeURIComponent(o.publicNumber)}`)}
           >
             <div>
               <div className="font-black tracking-[-0.02em]">{o.publicNumber}</div>

@@ -33,7 +33,6 @@ import {
   CartPage,
   CheckoutPage,
   OrderReceiptPage,
-  OrderTrackingPage,
   PurchaseHistoryPage,
   TrackShipmentPage,
 } from "@features/orders";
@@ -165,9 +164,7 @@ export function AppRoutes() {
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/pedido/:publicNumber" element={<OrderReceiptPage />} />
-          {/* Buscador de rastreo (sin número) antes que el detalle por número. */}
           <Route path="/rastreo" element={<TrackShipmentPage />} />
-          <Route path="/rastreo/:publicNumber" element={<OrderTrackingPage />} />
           <Route path="/mis-compras" element={<PurchaseHistoryPage />} />
 
           <Route path="/finanzas/deudas" element={<DebtsAdminPage />} />

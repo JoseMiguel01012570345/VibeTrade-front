@@ -117,10 +117,13 @@ export function AppShell() {
     isSessionActive &&
     !isChatThreadPath(pathname) &&
     !isReelsRoute(pathname);
-  /** Home / invitado u onboarding: barra superior con altura. Sesión en resto de rutas: sin franja vacía (campana superpuesta). */
+  /** Home / invitado u onboarding: barra superior con altura. Sesión en resto de rutas: sin franja vacía (campana superpuesta).
+   *  En superficies de tienda el chrome propio incluye el acceso de invitado; no duplicar la franja de AppShell. */
   const showStickyShellHeader =
     (isHome && !isOnboarding) ||
-    (!isHome && (!isSessionActive || isOnboarding));
+    (!isHome &&
+      !isStoreSurfaceRoute(pathname) &&
+      (!isSessionActive || isOnboarding));
   const shellNotificationsOverlay =
     showNotificationsBell &&
     isSessionActive &&

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { cartHasProducts, cartSubtotal, useCartStore } from "./cartStore";
 import { useCheckoutPreview, useCreateOrder } from "../hooks/useOrders";
@@ -17,11 +17,11 @@ import { useStoreDetail } from "@features/market/hooks/useStoreDetail";
 import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
 import { storeHref } from "@features/market/logic/store/storePath";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
+import type { CreateOrderResponse } from "../Dtos/orders";
 
 /** Orquesta el checkout: resuelve la tienda, calcula el envío (debounce) y crea el
  *  pedido, exponiendo estado y acciones para que la página solo componga la vista. */
 export function useCheckout() {
-  const navigate = useNavigate();
   const { storeName } = useParams();
   const items = useCartStore((s) => s.items);
   const clear = useCartStore((s) => s.clear);
@@ -30,6 +30,8 @@ export function useCheckout() {
   const [mode, setMode] = useState<OrderDeliveryMode>("shipping");
   const [delivery, setDelivery] = useState<DeliveryFormData>(EMPTY_DELIVERY);
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] =
+    useState<CreateOrderResponse | null>(null);
 
   const {
     mutate: runPreview,
@@ -125,8 +127,8 @@ export function useCheckout() {
     try {
       const res = await create.mutateAsync(buildOrderRequest(items, mode, delivery));
       clear();
+      setPaymentSuccess(res);
       toast.success(`Pedido ${res.publicNumber} creado.`);
-      navigate(`/pedido/${encodeURIComponent(res.publicNumber)}`);
     } catch (err) {
       toast.error(errorToUserMessage(err, "No se pudo crear el pedido."));
     }
@@ -166,6 +168,7 @@ export function useCheckout() {
     summaryCurrency,
     hasProducts,
     isCreating: create.isPending,
+    paymentSuccess,
     submit,
   };
 }

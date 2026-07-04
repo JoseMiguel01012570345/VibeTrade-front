@@ -28,10 +28,12 @@ test.describe("pedido checkout + rastreo E2E", () => {
     expect(order.publicNumber).toMatch(/^VT-\d{8}$/);
     expect(order.status).toBe("procesado");
 
-    await page.goto(`/rastreo/${encodeURIComponent(order.publicNumber)}`, {
+    await page.goto(`/pedido/${encodeURIComponent(order.publicNumber)}`, {
       waitUntil: "domcontentloaded",
     });
-    await expect(page.getByRole("heading", { name: /rastreo/i })).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: /pago realizado con éxito/i }),
+    ).toBeVisible({
       timeout: 20_000,
     });
     await expect(page.getByText(order.publicNumber)).toBeVisible({

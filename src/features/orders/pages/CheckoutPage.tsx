@@ -7,6 +7,7 @@ import type { OrderDeliveryMode } from "../Dtos/orders";
 import { DeliveryDataModal } from "../components/DeliveryDataModal";
 import { CheckoutSectionBadge } from "../components/CheckoutSectionBadge";
 import { CheckoutPayButton } from "../components/CheckoutPayButton";
+import { CheckoutPaymentSuccess } from "../components/CheckoutPaymentSuccess";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { storeProductHref } from "@features/market/logic/store/storePath";
 import { StorefrontChrome } from "@features/storefront";
@@ -36,11 +37,21 @@ export function CheckoutPage() {
     summaryCurrency,
     hasProducts,
     isCreating,
+    paymentSuccess,
     submit,
   } = useCheckout();
 
   const wrap = (node: ReactNode): ReactNode =>
     store ? <StorefrontChrome store={store}>{node}</StorefrontChrome> : node;
+
+  if (paymentSuccess) {
+    return wrap(
+      <CheckoutPaymentSuccess
+        publicNumber={paymentSuccess.publicNumber}
+        continueShoppingHref={backHref}
+      />,
+    );
+  }
 
   if (isEmpty) {
     return wrap(
