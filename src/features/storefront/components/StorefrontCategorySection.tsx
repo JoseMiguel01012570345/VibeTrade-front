@@ -39,7 +39,7 @@ export function StorefrontCategorySection({
           </p>
           <CategoryTileCarousel
             categories={productCategoryMetas}
-            hrefFor={(category) => storeCategoryHref(store, category.label)}
+            hrefFor={(category) => storeCategoryHref(store, category.slug)}
             ariaLabel="Categorías de productos"
             kind="product"
           />

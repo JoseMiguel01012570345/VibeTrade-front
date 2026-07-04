@@ -4,6 +4,8 @@ import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { useStorePageDetail } from "@features/market/hooks/useStorePageDetail";
 import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
+import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
+import type { StoreProduct } from "@features/market/Dtos/storeCatalogTypes";
 import {
   isReservedStoreName,
   storeCategoryHref,
@@ -19,6 +21,9 @@ import {
   StorefrontLoadingState,
   StorefrontNotFoundState,
 } from "../components/StorefrontPageStates";
+import { useStoreCategories } from "../context/StoreCategoriesContext";
+import { findGuestCategoryMetaBySlug } from "../logic/categoryTree/buildGuestCategoryMetas";
+import { leafDescendantsUnderRoot } from "../logic/categoryTree/guestCategoryTree";
 import {
   decodeCategoryParam,
   PRODUCT_SORTS,
@@ -29,26 +34,27 @@ import {
 import { CATEGORY_PAGE_SIZE } from "../logic/storefrontConstants";
 import type { CategoryKind, SortMode } from "../logic/storefrontTypes";
 
-/**
- * Página dedicada de una categoría de la tienda: breadcrumb, título, ordenamiento,
- * grid paginado y pestañas del resto de categorías del mismo catálogo.
- */
-export function StorefrontCategoryPage({
+function productMatchesCategoryIds(
+  product: StoreProduct,
+  targetIds: ReadonlySet<string>,
+  labelFallback: string,
+): boolean {
+  if (product.categoryIds?.some((id) => targetIds.has(id))) return true;
+  if (!labelFallback) return false;
+  return product.category.trim() === labelFallback;
+}
+
+function StorefrontCategoryPageBody({
+  store,
   kind,
-}: Readonly<{ kind: CategoryKind }>) {
-  const { storeName, cat } = useParams();
-  const nav = useNavigate();
-  const category = decodeCategoryParam(cat);
-
-  const me = useAppStore((s) => s.me);
-  const { storeId, resolving, notFound } = useStoreIdFromName(storeName, me.id);
-  const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
-  const catalog = useMarketStore((s) =>
-    storeId ? s.storeCatalogs[storeId] : undefined,
-  );
-  const [loadNonce] = useState(0);
-  const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
-
+  categoryParam,
+}: Readonly<{
+  store: StoreBadge;
+  kind: CategoryKind;
+  categoryParam: string;
+}>) {
+  const catalog = useMarketStore((s) => s.storeCatalogs[store.id]);
+  const { categories, categoryMetas } = useStoreCategories();
   const isService = kind === "service";
   const sortOptions = isService ? SERVICE_SORTS : PRODUCT_SORTS;
 
@@ -64,15 +70,25 @@ export function StorefrontCategoryPage({
     [catalog],
   );
 
-  const productCategories = useMemo(() => {
-    const fromStore = (store?.categories ?? [])
-      .map((c) => c.trim())
-      .filter(Boolean);
-    const fromProducts = publishedProducts
-      .map((p) => p.category.trim())
-      .filter(Boolean);
-    return Array.from(new Set([...fromStore, ...fromProducts]));
-  }, [store, publishedProducts]);
+  const productMeta = useMemo(
+    () =>
+      !isService && categoryParam
+        ? findGuestCategoryMetaBySlug(categories, categoryParam)
+        : null,
+    [isService, categoryParam, categories],
+  );
+
+  const productTargetIds = useMemo(() => {
+    if (isService || !productMeta) return new Set<string>();
+    const leaves = leafDescendantsUnderRoot(productMeta.id, categories);
+    const ids = leaves.length > 0 ? leaves.map((l) => l.id) : [productMeta.id];
+    return new Set(ids);
+  }, [isService, productMeta, categories]);
+
+  const productCategories = useMemo(
+    () => categoryMetas.map((m) => m.slug),
+    [categoryMetas],
+  );
 
   const serviceCategories = useMemo(
     () =>
@@ -83,15 +99,30 @@ export function StorefrontCategoryPage({
       ),
     [publishedServices],
   );
-  const categories = isService ? serviceCategories : productCategories;
+  const tabCategories = isService ? serviceCategories : productCategories;
 
-  const filteredProducts = useMemo(
-    () => publishedProducts.filter((p) => p.category.trim() === category),
-    [publishedProducts, category],
-  );
+  const filteredProducts = useMemo(() => {
+    if (isService) return [];
+    if (productMeta) {
+      return publishedProducts.filter((p) =>
+        productMatchesCategoryIds(p, productTargetIds, productMeta.label),
+      );
+    }
+    return publishedProducts.filter(
+      (p) => p.category.trim() === categoryParam,
+    );
+  }, [
+    isService,
+    productMeta,
+    publishedProducts,
+    productTargetIds,
+    categoryParam,
+  ]);
+
   const filteredServices = useMemo(
-    () => publishedServices.filter((s) => s.category.trim() === category),
-    [publishedServices, category],
+    () =>
+      publishedServices.filter((s) => s.category.trim() === categoryParam),
+    [publishedServices, categoryParam],
   );
 
   const sortedProducts = useMemo(
@@ -118,7 +149,70 @@ export function StorefrontCategoryPage({
 
   useEffect(() => {
     setPage(1);
-  }, [category, sort, kind]);
+  }, [categoryParam, sort, kind]);
+
+  const storeHome = storeHref(store);
+  const hrefForCategory = (nameOrSlug: string) =>
+    isService
+      ? storeServiceCategoryHref(store, nameOrSlug)
+      : storeCategoryHref(store, nameOrSlug);
+  const title =
+    (isService ? categoryParam : productMeta?.label ?? categoryParam) ||
+    (isService ? "Servicios" : "Categoría");
+  const currentTab = isService
+    ? categoryParam
+    : (productMeta?.slug ?? categoryParam);
+
+  return (
+    <div className="mx-auto w-full max-w-[1140px] space-y-10 px-4 py-6 sm:py-8">
+      <CategoryHeader
+        storeHome={storeHome}
+        title={title}
+        isService={isService}
+        sortOptions={sortOptions}
+        sort={sort}
+        onSortChange={setSort}
+        selectedSortLabel={selectedSortLabel}
+      />
+
+      <CategoryGrid
+        isService={isService}
+        products={pageProducts}
+        services={pageServices}
+      />
+
+      <CategoryPagination
+        page={page}
+        totalPages={totalPages}
+        onChange={setPage}
+      />
+
+      <CategoryFooterTabs
+        categories={tabCategories}
+        current={currentTab}
+        isService={isService}
+        hrefFor={hrefForCategory}
+      />
+    </div>
+  );
+}
+
+/**
+ * Página dedicada de una categoría de la tienda: breadcrumb, título, ordenamiento,
+ * grid paginado y pestañas del resto de categorías del mismo catálogo.
+ */
+export function StorefrontCategoryPage({
+  kind,
+}: Readonly<{ kind: CategoryKind }>) {
+  const { storeName, cat } = useParams();
+  const nav = useNavigate();
+  const categoryParam = decodeCategoryParam(cat);
+
+  const me = useAppStore((s) => s.me);
+  const { storeId, resolving, notFound } = useStoreIdFromName(storeName, me.id);
+  const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
+  const [loadNonce] = useState(0);
+  const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
 
   if (!store && isReservedStoreName(storeName ?? "")) {
     return <Navigate to="/home" replace />;
@@ -132,45 +226,13 @@ export function StorefrontCategoryPage({
     return <StorefrontNotFoundState onBack={() => nav("/home")} />;
   }
 
-  const storeHome = storeHref(store);
-  const hrefForCategory = (name: string) =>
-    isService
-      ? storeServiceCategoryHref(store, name)
-      : storeCategoryHref(store, name);
-  const title = category || (isService ? "Servicios" : "Categoría");
-
   return (
     <StorefrontChrome store={store}>
-      <div className="mx-auto w-full max-w-[1140px] space-y-10 px-4 py-6 sm:py-8">
-        <CategoryHeader
-          storeHome={storeHome}
-          title={title}
-          isService={isService}
-          sortOptions={sortOptions}
-          sort={sort}
-          onSortChange={setSort}
-          selectedSortLabel={selectedSortLabel}
-        />
-
-        <CategoryGrid
-          isService={isService}
-          products={pageProducts}
-          services={pageServices}
-        />
-
-        <CategoryPagination
-          page={page}
-          totalPages={totalPages}
-          onChange={setPage}
-        />
-
-        <CategoryFooterTabs
-          categories={categories}
-          current={category}
-          isService={isService}
-          hrefFor={hrefForCategory}
-        />
-      </div>
+      <StorefrontCategoryPageBody
+        store={store}
+        kind={kind}
+        categoryParam={categoryParam}
+      />
     </StorefrontChrome>
   );
 }

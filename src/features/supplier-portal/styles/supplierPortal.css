@@ -1,0 +1,56 @@
+.data-table-wrap {
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(229 231 235);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.dark .data-table-wrap {
+  border-color: rgb(55 65 81);
+}
+
+.data-table {
+  width: 100%;
+  text-align: left;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: rgb(107 114 128);
+}
+
+.dark .data-table {
+  color: rgb(156 163 175);
+}
+
+.data-table thead {
+  background-color: rgb(249 250 251);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  text-transform: uppercase;
+  color: rgb(55 65 81);
+}
+
+.dark .data-table thead {
+  background-color: rgb(31 41 55);
+  color: rgb(209 213 219);
+}
+
+.data-table th,
+.data-table td {
+  border-bottom: 1px solid rgb(243 244 246);
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+}
+
+.dark .data-table th,
+.dark .data-table td {
+  border-bottom-color: rgb(55 65 81);
+}
+
+.data-table tbody tr:hover td {
+  background-color: rgb(240 253 244 / 0.4);
+}
+
+.dark .data-table tbody tr:hover td {
+  background-color: rgb(31 41 55 / 0.5);
+}

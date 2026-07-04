@@ -814,3 +814,51 @@ body:has(.vt-home-page) {
 .store-no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ce-promo-exit-right,
+  .ce-promo-enter-from-left {
+    animation-duration: 800ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-fill-mode: both;
+  }
+
+  .ce-promo-exit-right {
+    animation-name: ce-promo-exit-right;
+  }
+
+  .ce-promo-enter-from-left {
+    animation-name: ce-promo-enter-from-left;
+    will-change: transform, opacity;
+  }
+}
+
+.ce-promo-at-rest {
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+  will-change: auto;
+}
+
+@keyframes ce-promo-exit-right {
+  from {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translate3d(100%, 0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes ce-promo-enter-from-left {
+  from {
+    transform: translate3d(-100%, 0, 0);
+    opacity: 0;
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}

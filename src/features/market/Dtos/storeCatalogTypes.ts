@@ -49,6 +49,13 @@ export type StoreProduct = {
   photoUrls: string[];
   /** Si es true, la ficha aparece en la vitrina pública de la tienda y puede anclarse en acuerdos como catálogo publicado. */
   published: boolean;
+  stockQuantity?: number | null;
+  updatedAt?: string;
+  pendingApproval?: boolean;
+  supplierId?: string | null;
+  categoryIds?: string[];
+  categoryId?: string | null;
+  subcategoryId?: string | null;
   /** Enriquecido en detalle de tienda (API). */
   publicCommentCount?: number;
   offerLikeCount?: number;
@@ -95,4 +102,29 @@ export type StoreCatalog = {
   joinedAt: number;
   products: StoreProduct[];
   services: StoreService[];
+};
+
+export type StoreCategoryDto = {
+  id: string;
+  name: string;
+  parentCategoryId: string | null;
+};
+
+export type StoreSupplierDto = {
+  id: string;
+  storeId: string;
+  businessName: string;
+  portalUsername: string;
+  active: boolean;
+  platformDebtAmount: number;
+  platformDebtCurrencyCode: string;
+};
+
+export type StoreBannerDto = {
+  id: string;
+  storeId: string;
+  kind: "main" | "secondary";
+  sortOrder: number;
+  mediaUrl: string;
+  active: boolean;
 };

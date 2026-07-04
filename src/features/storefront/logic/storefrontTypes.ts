@@ -1,5 +1,5 @@
 /** Familia (categoría) para los carruseles de categorías (por tienda). */
-export type CategoryMeta = { id: string; label: string; slug: string };
+export type { CategoryMeta } from "./categoryTree/categoryMeta";
 
 /** A qué catálogo pertenece la página de categoría. */
 export type CategoryKind = "product" | "service";

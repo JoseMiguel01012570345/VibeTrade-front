@@ -46,6 +46,7 @@ import {
 import { MensualidadPage } from "@features/trust";
 import { UsersAdminPage } from "@features/users";
 import { StatisticsPage } from "@features/statistics";
+import { ProveedorPortalPage } from "@features/supplier-portal";
 
 function RootRedirect() {
   return <Navigate to="/home" replace />;
@@ -171,6 +172,7 @@ export function AppRoutes() {
 
           <Route path="/finanzas/deudas" element={<DebtsAdminPage />} />
           <Route path="/afiliado" element={<AffiliateDashboardPage />} />
+          <Route path="/proveedor" element={<ProveedorPortalPage />} />
           <Route path="/almacen/:storeId/pedidos" element={<WarehousePortalPage />} />
           <Route path="/mensualidad" element={<MensualidadPage />} />
           <Route path="/admin/usuarios" element={<UsersAdminPage />} />

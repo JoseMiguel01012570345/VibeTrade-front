@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Link,
   Navigate,
@@ -9,7 +9,10 @@ import {
 import { ExternalLink, LogOut, Menu, Store, X } from "lucide-react";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
-import { useStorePageDetail } from "@features/market/hooks/useStorePageDetail";
+import {
+  reloadStoreDetailToStore,
+  useStorePageDetail,
+} from "@features/market/hooks/useStorePageDetail";
 import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
 import { storeHref, storePanelHref } from "@features/market/logic/store/storePath";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
@@ -22,6 +25,14 @@ import {
   sectionLabel,
   type StoreAdminSectionId,
 } from "../logic/storeAdminNav";
+import type {
+  StoreCategoryDto,
+  StoreSupplierDto,
+} from "@features/market/Dtos/storeCatalogTypes";
+import {
+  fetchStoreCategories,
+  fetchStoreSuppliers,
+} from "@features/market/api/storeInventoryApi";
 import { useOwnerStoreCatalog } from "../hooks/useOwnerStoreCatalog";
 import { InventorySection } from "../sections/InventorySection";
 import { ServicesSection } from "../sections/ServicesSection";
@@ -43,8 +54,17 @@ export function OwnerStoreDashboard() {
   const storeId = storeIdParam ?? resolvedByName;
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
   const [loadNonce] = useState(0);
-  const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
+  const { detailStatus, isFetching } = useStorePageDetail(
+    storeId,
+    me.id,
+    loadNonce,
+  );
   const [menuOpen, setMenuOpen] = useState(false);
+  const [storeCategories, setStoreCategories] = useState<StoreCategoryDto[]>(
+    [],
+  );
+  const [storeSuppliers, setStoreSuppliers] = useState<StoreSupplierDto[]>([]);
+  const [inventoryMetaLoading, setInventoryMetaLoading] = useState(false);
 
   const activeSection: StoreAdminSectionId = isStoreAdminSection(section)
     ? section
@@ -57,6 +77,30 @@ export function OwnerStoreDashboard() {
 
   // Se llama siempre (aunque no autorizado) para respetar el orden de hooks.
   const ownerCatalog = useOwnerStoreCatalog(storeId ?? "", ownerId);
+
+  useEffect(() => {
+    if (!storeId) return;
+    let cancelled = false;
+    setInventoryMetaLoading(true);
+    void Promise.all([
+      fetchStoreCategories(storeId),
+      fetchStoreSuppliers(storeId),
+    ])
+      .then(([cats, sups]) => {
+        if (cancelled) return;
+        setStoreCategories(cats);
+        setStoreSuppliers(sups);
+      })
+      .finally(() => {
+        if (!cancelled) setInventoryMetaLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeId]);
+
+  const inventoryLoading =
+    detailStatus === "loading" || inventoryMetaLoading || isFetching;
 
   const displayName = useMemo(
     () => (isOwner ? "Dueño" : "Personal"),
@@ -102,11 +146,17 @@ export function OwnerStoreDashboard() {
       case "productos":
         return (
           <InventorySection
+            storeId={sid}
             products={ownerCatalog.products}
+            categories={storeCategories}
+            suppliers={storeSuppliers}
+            isLoading={inventoryLoading}
+            onRefresh={async () => {
+              await reloadStoreDetailToStore(sid, me.id);
+            }}
             onAdd={ownerCatalog.openAddProduct}
             onEdit={ownerCatalog.openEditProduct}
             onRemove={ownerCatalog.requestDeleteProduct}
-            onTogglePublish={ownerCatalog.togglePublishProduct}
           />
         );
       case "servicios":

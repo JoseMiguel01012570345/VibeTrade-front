@@ -16,6 +16,8 @@ import { ThemeToggle } from "@app/widgets/ThemeToggle";
 import { VtAutocompleteInput } from "@shared/components/ui/VtAutocompleteInput";
 import { fetchStoreCatalogAutocomplete } from "../api/fetchStoreCatalogAutocomplete";
 import { StorefrontSupportFab } from "./StorefrontSupportFab";
+import { StoreCategoriesProvider } from "../context/StoreCategoriesContext";
+import { StoreBannersProvider } from "../context/StoreBannersContext";
 import { StoreCategoriesOffcanvas } from "./StoreCategoriesOffcanvas";
 import { StoreCommentsModal } from "./StoreCommentsModal";
 
@@ -333,27 +335,34 @@ export function StorefrontChrome({
   }, [store.id, setActiveStore]);
 
   return (
-    <div className="store-front-surface flex w-full min-h-0 flex-1 flex-col bg-[#f7f3ef] text-slate-900">
-      <StorefrontHeader
-        store={store}
-        query={query}
-        onQueryChange={onQueryChange}
-        onSearchSubmit={onSearchSubmit}
-        onOpenCategories={() => setCategoriesOpen(true)}
-      />
-      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-      <StorefrontFooter store={store} onOpenComments={() => setCommentsOpen(true)} />
-      <StorefrontSupportFab store={store} />
-      <StoreCategoriesOffcanvas
-        open={categoriesOpen}
-        store={store}
-        onClose={() => setCategoriesOpen(false)}
-      />
-      <StoreCommentsModal
-        open={commentsOpen}
-        store={store}
-        onClose={() => setCommentsOpen(false)}
-      />
-    </div>
+    <StoreCategoriesProvider storeId={store.id}>
+      <StoreBannersProvider storeId={store.id}>
+        <div className="store-front-surface flex w-full min-h-0 flex-1 flex-col bg-[#f7f3ef] text-slate-900">
+          <StorefrontHeader
+            store={store}
+            query={query}
+            onQueryChange={onQueryChange}
+            onSearchSubmit={onSearchSubmit}
+            onOpenCategories={() => setCategoriesOpen(true)}
+          />
+          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          <StorefrontFooter
+            store={store}
+            onOpenComments={() => setCommentsOpen(true)}
+          />
+          <StorefrontSupportFab store={store} />
+          <StoreCategoriesOffcanvas
+            open={categoriesOpen}
+            store={store}
+            onClose={() => setCategoriesOpen(false)}
+          />
+          <StoreCommentsModal
+            open={commentsOpen}
+            store={store}
+            onClose={() => setCommentsOpen(false)}
+          />
+        </div>
+      </StoreBannersProvider>
+    </StoreCategoriesProvider>
   );
 }

@@ -1,41 +1,27 @@
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
-import { ChevronRight, Wrench, X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { useStoreDetail } from "@features/market/hooks/useStoreDetail";
 import {
   storeCategoryHref,
   storeProductHref,
-  storeServiceCategoryHref,
 } from "@features/market/logic/store/storePath";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
-import type {
-  StoreProduct,
-  StoreService,
-} from "@features/market/logic/storeCatalogTypes";
+import type { StoreProduct } from "@features/market/Dtos/storeCatalogTypes";
+import { useStoreCategories } from "../context/StoreCategoriesContext";
+import { assignUniqueCategorySlugs } from "../logic/categoryTree/buildGuestCategoryMetas";
+import type { CategoryMeta } from "../logic/categoryTree/categoryMeta";
+import {
+  leafDescendantsUnderRoot,
+  pickLeafCategoryForProduct,
+} from "../logic/categoryTree/guestCategoryTree";
 
-/** Debe coincidir con `duration-300` de los paneles. */
+const MAX_PRODUCTS_PER_SUBCATEGORY_IN_PANEL = 32;
 const PANEL_TRANSITION_MS = 300;
-/** Máximo de fichas listadas por categoría en el panel (el resto en la página de categoría). */
-const MAX_ITEMS_IN_PANEL = 60;
-/** Mismo breakpoint que Tailwind `md`: hoja inferior solo bajo este ancho. */
 const MD_UP_MEDIA = "(min-width: 768px)";
-
-/** Tipo de catálogo al que pertenece una categoría (para diferenciar productos de servicios). */
-type CategoryKind = "product" | "service";
-/** Categoría seleccionada: nombre + a qué catálogo pertenece (evita colisiones de nombre). */
-type PickedCategory = { kind: CategoryKind; name: string };
-/** Ficha genérica (producto o servicio) para listar en el panel de detalle. */
-type DetailItem = { id: string; name: string };
 
 function useMdUp() {
   const [mdUp, setMdUp] = useState(
@@ -53,196 +39,169 @@ function useMdUp() {
   return mdUp;
 }
 
-type DetailBodyProps = {
+function resolveProductLeafId(
+  product: StoreProduct,
+  leafIds: ReadonlySet<string>,
+  categories: ReturnType<typeof useStoreCategories>["categories"],
+): string | null {
+  if (product.categoryIds?.length) {
+    const picked = pickLeafCategoryForProduct(
+      product.categoryIds,
+      leafIds,
+      categories,
+    );
+    if (picked) return picked;
+  }
+  const catName = product.category.trim().toLowerCase();
+  if (!catName) return null;
+  for (const leafId of leafIds) {
+    const leaf = categories.find((c) => c.id === leafId);
+    if (leaf && leaf.name.trim().toLowerCase() === catName) return leafId;
+  }
+  return null;
+}
+
+type OffcanvasDetailBodyProps = {
   store: StoreBadge;
-  picked: PickedCategory | null;
-  items: DetailItem[];
-  loading: boolean;
+  selected: CategoryMeta | null;
+  listingLeaves: ReturnType<typeof useStoreCategories>["categories"];
+  productsByLeaf: Map<string, StoreProduct[]>;
+  productsLoading: boolean;
+  idToSlug: Map<string, string>;
   onNavigate: () => void;
 };
 
-/** Cuerpo del panel de detalle: fichas de la categoría elegida (columna derecha o
- *  hoja inferior). VibeTrade usa categorías planas, así que listamos las fichas de
- *  la categoría (no hay subcategorías como en la app de referencia). Sirve tanto para
- *  productos como para servicios. */
-function CategoryDetailBody({
+function OffcanvasDetailBody({
   store,
-  picked,
-  items,
-  loading,
+  selected,
+  listingLeaves,
+  productsByLeaf,
+  productsLoading,
+  idToSlug,
   onNavigate,
-}: Readonly<DetailBodyProps>) {
-  if (!picked) {
+}: OffcanvasDetailBodyProps) {
+  if (!selected) {
     return <p className="text-sm text-slate-500">Selecciona una categoría.</p>;
   }
-  const noun = picked.kind === "service" ? "servicios" : "productos";
-  const seeAllHref =
-    picked.kind === "service"
-      ? storeServiceCategoryHref(store, picked.name)
-      : storeCategoryHref(store, picked.name);
-  if (loading) {
-    return <p className="text-sm text-slate-500">Cargando {noun}…</p>;
-  }
-  if (items.length === 0) {
+  if (listingLeaves.length === 0) {
     return (
       <div className="space-y-4">
         <p className="text-sm text-slate-600">
-          No hay {noun} en esta categoría por ahora. Puedes ver todo el catálogo
-          de la tienda.
+          No hay subcategorías para mostrar. Podés ver todos los productos de
+          esta categoría.
         </p>
         <Link
-          to={seeAllHref}
+          to={storeCategoryHref(store, selected.slug)}
           onClick={onNavigate}
-          className="inline-flex text-sm font-semibold text-emerald-700 underline-offset-4 hover:underline"
+          className="inline-flex text-sm font-semibold italic text-emerald-700 underline-offset-4 hover:underline"
         >
           Explorar categoría
         </Link>
       </div>
     );
   }
-  const shown = items.slice(0, MAX_ITEMS_IN_PANEL);
-  const truncated = items.length > MAX_ITEMS_IN_PANEL;
+  if (productsLoading) {
+    return <p className="text-sm text-slate-500">Cargando productos…</p>;
+  }
   return (
     <>
-      <section aria-labelledby="offcanvas-category-heading" className="min-w-0">
-        <div className="flex flex-wrap items-end justify-between gap-2 border-b border-[#ece4dc] pb-2">
-          <h3
-            id="offcanvas-category-heading"
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700"
-          >
-            {picked.kind === "service" ? (
-              <Wrench className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            ) : null}
-            {picked.name}
-          </h3>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-x-8 gap-y-8 md:gap-y-10">
+        {listingLeaves.map((leaf) => {
+          const slug = idToSlug.get(leaf.id);
+          if (!slug) return null;
+          const allForLeaf = productsByLeaf.get(leaf.id) ?? [];
+          const shownProducts = allForLeaf.slice(
+            0,
+            MAX_PRODUCTS_PER_SUBCATEGORY_IN_PANEL,
+          );
+          const productListTruncated =
+            allForLeaf.length > MAX_PRODUCTS_PER_SUBCATEGORY_IN_PANEL;
+
+          return (
+            <section
+              key={leaf.id}
+              className="min-w-0"
+              aria-labelledby={`offcanvas-leaf-${leaf.id}`}
+            >
+              <div className="flex flex-wrap items-end justify-between gap-2 border-b border-[#ece4dc] pb-2">
+                <h3
+                  id={`offcanvas-leaf-${leaf.id}`}
+                  className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700"
+                >
+                  <Link
+                    to={storeCategoryHref(store, slug)}
+                    onClick={onNavigate}
+                    className="transition hover:text-emerald-900"
+                  >
+                    {leaf.name}
+                  </Link>
+                </h3>
+                <Link
+                  to={storeCategoryHref(store, slug)}
+                  onClick={onNavigate}
+                  className="text-xs font-semibold text-slate-500 underline-offset-2 hover:text-emerald-700 hover:underline"
+                >
+                  Ver todos
+                </Link>
+              </div>
+
+              {allForLeaf.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-500">
+                  No hay productos en esta subcategoría por ahora.
+                </p>
+              ) : (
+                <div className="mt-3 md:mt-4">
+                  <ul className="flex flex-col gap-2.5 pt-1">
+                    {shownProducts.map((p) => (
+                      <li key={p.id}>
+                        <Link
+                          to={storeProductHref(store, p.id)}
+                          onClick={onNavigate}
+                          className="block text-sm font-normal leading-snug text-slate-600 transition hover:text-emerald-700"
+                        >
+                          {p.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  {productListTruncated ? (
+                    <p className="mt-3 text-xs text-slate-500">
+                      Mostrando los primeros{" "}
+                      {MAX_PRODUCTS_PER_SUBCATEGORY_IN_PANEL} productos.{" "}
+                      <Link
+                        to={storeCategoryHref(store, slug)}
+                        onClick={onNavigate}
+                        className="font-semibold text-emerald-700 hover:underline"
+                      >
+                        Ver todos en esta subcategoría
+                      </Link>
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
+
+      {listingLeaves.length > 0 && !productsLoading ? (
+        <div className="mt-8 flex justify-start border-t border-[#ece4dc] pt-6 md:mt-10 md:pt-8">
           <Link
-            to={seeAllHref}
+            to={storeCategoryHref(store, selected.slug)}
             onClick={onNavigate}
-            className="text-xs font-semibold text-slate-500 underline-offset-2 hover:text-emerald-700 hover:underline"
+            className="inline-flex w-fit max-w-full shrink-0 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800"
           >
-            Ver todos
+            Ver todos en {selected.label}
           </Link>
         </div>
-
-        <ul className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2.5 pt-1 sm:grid-cols-2 md:mt-4 md:grid-cols-3">
-          {shown.map((it) => (
-            <li key={it.id} className="min-w-0">
-              <Link
-                to={storeProductHref(store, it.id)}
-                onClick={onNavigate}
-                className="block truncate text-sm font-normal leading-snug text-slate-600 transition hover:text-emerald-700"
-                title={it.name}
-              >
-                {it.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-
-        {truncated ? (
-          <p className="mt-3 text-xs text-slate-500">
-            Mostrando los primeros {MAX_ITEMS_IN_PANEL} {noun}.{" "}
-            <Link
-              to={seeAllHref}
-              onClick={onNavigate}
-              className="font-semibold text-emerald-700 hover:underline"
-            >
-              Ver todos en esta categoría
-            </Link>
-          </p>
-        ) : null}
-      </section>
-
-      <div className="mt-8 border-t border-[#ece4dc] pt-6 md:mt-10 md:pt-8">
-        <Link
-          to={seeAllHref}
-          onClick={onNavigate}
-          className="inline-flex rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800"
-        >
-          Ver todos en {picked.name}
-        </Link>
-      </div>
+      ) : null}
     </>
   );
 }
 
-type CategoryNavGroupProps = {
-  kind: CategoryKind;
-  label: string;
-  categories: string[];
-  picked: PickedCategory | null;
-  mdUp: boolean;
-  detailDisplayed: boolean;
-  detailAnimateIn: boolean;
-  onPick: (kind: CategoryKind, name: string) => void;
-};
-
-/** Grupo de categorías del panel izquierdo, con encabezado (Productos / Servicios). */
-function CategoryNavGroup({
-  kind,
-  label,
-  categories,
-  picked,
-  mdUp,
-  detailDisplayed,
-  detailAnimateIn,
-  onPick,
-}: Readonly<CategoryNavGroupProps>) {
-  if (categories.length === 0) return null;
-  return (
-    <div className="py-1">
-      <p className="flex items-center gap-1.5 px-5 pb-1 pt-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 md:px-3">
-        {kind === "service" ? (
-          <Wrench className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        ) : null}
-        {label}
-      </p>
-      <ul className="grid w-full content-start">
-        {categories.map((cat) => {
-          const isThis = picked?.kind === kind && picked?.name === cat;
-          const sheetOpenForThis =
-            !mdUp && detailDisplayed && detailAnimateIn && isThis;
-          const desktopActive = mdUp && isThis;
-          const isHighlighted = sheetOpenForThis || desktopActive;
-          return (
-            <li
-              key={cat}
-              className="flex min-h-[3rem] border-b border-[#ece4dc] last:border-b-0"
-            >
-              <button
-                type="button"
-                onClick={() => onPick(kind, cat)}
-                className={`flex h-full w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm font-semibold transition md:rounded-xl md:px-3 md:py-2.5 ${
-                  isHighlighted
-                    ? "bg-emerald-700 text-white shadow-sm"
-                    : "text-slate-700 hover:bg-stone-50"
-                }`}
-                aria-expanded={mdUp ? undefined : sheetOpenForThis}
-                aria-current={desktopActive ? "true" : undefined}
-              >
-                <span className="min-w-0 truncate">{cat}</span>
-                <ChevronRight
-                  className={`h-4 w-4 shrink-0 ${
-                    isHighlighted ? "text-white" : "text-slate-300"
-                  }`}
-                  aria-hidden
-                />
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
 /**
- * Menú de categorías de la tienda como offcanvas (réplica de la UI/UX del
- * `CategoriesOffcanvas` de la app de referencia): en desktop, lista de categorías a
- * la izquierda y fichas de la categoría activa a la derecha; en móvil, la lista a
- * pantalla completa y una hoja inferior con las fichas al tocar una categoría.
- * Adaptado al catálogo por tienda de VibeTrade (categorías planas), diferenciando las
- * categorías de productos de las de servicios en dos grupos.
+ * Menú de categorías jerárquico de la tienda: desktop en dos columnas (raíces +
+ * subcategorías con productos); móvil con hoja inferior al elegir una raíz.
  */
 export function StoreCategoriesOffcanvas({
   open,
@@ -258,94 +217,53 @@ export function StoreCategoriesOffcanvas({
   const detailTitleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const detailPanelRef = useRef<HTMLDivElement>(null);
-  const previousFocus = useRef<HTMLElement | null>(null);
   const sheetCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const { categoryMetas, categories, loading: categoriesLoading } =
+    useStoreCategories();
   const me = useAppStore((s) => s.me);
   const catalogFromState = useMarketStore((s) => s.storeCatalogs[store.id]);
   const detailQuery = useStoreDetail(store.id, me.id);
-  const products = useMemo(() => {
+  const publishedProducts = useMemo(() => {
     const list =
       catalogFromState?.products ?? detailQuery.data?.catalog.products ?? [];
     return list.filter((p) => p.published);
   }, [catalogFromState, detailQuery.data]);
-  const services = useMemo(() => {
-    const list =
-      catalogFromState?.services ?? detailQuery.data?.catalog.services ?? [];
-    return list.filter((s) => s.published !== false);
-  }, [catalogFromState, detailQuery.data]);
-  const loading = !catalogFromState && detailQuery.isLoading;
+  const productsLoading =
+    categoriesLoading || (!catalogFromState && detailQuery.isLoading);
 
-  const productCategories = useMemo(() => {
-    const fromStore = (store.categories ?? [])
-      .map((c) => c.trim())
-      .filter(Boolean);
-    const fromProducts = products
-      .map((p) => p.category.trim())
-      .filter(Boolean);
-    return Array.from(new Set([...fromStore, ...fromProducts]));
-  }, [store.categories, products]);
-
-  const serviceCategories = useMemo(
-    () =>
-      Array.from(
-        new Set(services.map((s) => s.category.trim()).filter(Boolean)),
-      ),
-    [services],
+  const [pickedCategoryId, setPickedCategoryId] = useState<string | null>(
+    null,
   );
-
-  const hasAnyCategory =
-    productCategories.length > 0 || serviceCategories.length > 0;
-
-  const productsByCategory = useMemo(() => {
-    const map = new Map<string, StoreProduct[]>();
-    for (const c of productCategories) map.set(c, []);
-    for (const p of products) {
-      const c = p.category.trim();
-      if (!c) continue;
-      let arr = map.get(c);
-      if (!arr) {
-        arr = [];
-        map.set(c, arr);
-      }
-      arr.push(p);
-    }
-    return map;
-  }, [productCategories, products]);
-
-  const servicesByCategory = useMemo(() => {
-    const map = new Map<string, StoreService[]>();
-    for (const c of serviceCategories) map.set(c, []);
-    for (const s of services) {
-      const c = s.category.trim();
-      if (!c) continue;
-      let arr = map.get(c);
-      if (!arr) {
-        arr = [];
-        map.set(c, arr);
-      }
-      arr.push(s);
-    }
-    return map;
-  }, [serviceCategories, services]);
-
-  const [picked, setPicked] = useState<PickedCategory | null>(null);
   const [detailDisplayed, setDetailDisplayed] = useState(false);
   const [detailAnimateIn, setDetailAnimateIn] = useState(false);
 
-  const selectedItems: DetailItem[] = useMemo(() => {
-    if (!picked) return [];
-    if (picked.kind === "service") {
-      return (servicesByCategory.get(picked.name) ?? []).map((s) => ({
-        id: s.id,
-        name: s.nombreServicio.trim() || s.category.trim() || "Servicio",
-      }));
+  const selected =
+    categoryMetas.find((m) => m.id === pickedCategoryId) ?? null;
+
+  const idToSlug = useMemo(
+    () => assignUniqueCategorySlugs(categories),
+    [categories],
+  );
+
+  const listingLeaves = useMemo(() => {
+    if (!pickedCategoryId) return [];
+    return leafDescendantsUnderRoot(pickedCategoryId, categories);
+  }, [pickedCategoryId, categories]);
+
+  const productsByLeaf = useMemo(() => {
+    if (!pickedCategoryId || listingLeaves.length === 0) {
+      return new Map<string, StoreProduct[]>();
     }
-    return (productsByCategory.get(picked.name) ?? []).map((p) => ({
-      id: p.id,
-      name: p.name,
-    }));
-  }, [picked, productsByCategory, servicesByCategory]);
+    const leafIdSet = new Set(listingLeaves.map((l) => l.id));
+    const map = new Map<string, StoreProduct[]>();
+    for (const leaf of listingLeaves) map.set(leaf.id, []);
+    for (const p of publishedProducts) {
+      const leafKey = resolveProductLeafId(p, leafIdSet, categories);
+      if (leafKey && map.has(leafKey)) map.get(leafKey)!.push(p);
+    }
+    return map;
+  }, [pickedCategoryId, listingLeaves, publishedProducts, categories]);
 
   const closeCategorySheet = useCallback(() => {
     if (mdUp) return;
@@ -357,18 +275,25 @@ export function StoreCategoriesOffcanvas({
     sheetCloseTimerRef.current = globalThis.setTimeout(() => {
       sheetCloseTimerRef.current = null;
       setDetailDisplayed(false);
-      setPicked(null);
+      setPickedCategoryId(null);
     }, PANEL_TRANSITION_MS);
   }, [mdUp]);
 
   const openCategorySheet = useCallback(
-    (kind: CategoryKind, name: string) => {
+    (categoryId: string) => {
+      if (mdUp) {
+        if (sheetCloseTimerRef.current != null) {
+          clearTimeout(sheetCloseTimerRef.current);
+          sheetCloseTimerRef.current = null;
+        }
+        setPickedCategoryId(categoryId);
+        return;
+      }
       if (sheetCloseTimerRef.current != null) {
         clearTimeout(sheetCloseTimerRef.current);
         sheetCloseTimerRef.current = null;
       }
-      setPicked({ kind, name });
-      if (mdUp) return;
+      setPickedCategoryId(categoryId);
       setDetailDisplayed(true);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setDetailAnimateIn(true));
@@ -377,13 +302,11 @@ export function StoreCategoriesOffcanvas({
     [mdUp],
   );
 
-  /** Overlay principal: sigue en el DOM durante la animación de salida. */
   const [displayed, setDisplayed] = useState(false);
   const [animateIn, setAnimateIn] = useState(false);
 
   useEffect(() => {
     if (open) {
-      previousFocus.current = document.activeElement as HTMLElement;
       setDisplayed(true);
       if (sheetCloseTimerRef.current != null) {
         clearTimeout(sheetCloseTimerRef.current);
@@ -391,7 +314,7 @@ export function StoreCategoriesOffcanvas({
       }
       setDetailAnimateIn(false);
       setDetailDisplayed(false);
-      setPicked(null);
+      setPickedCategoryId(null);
       const startId = requestAnimationFrame(() => {
         requestAnimationFrame(() => setAnimateIn(true));
       });
@@ -404,39 +327,37 @@ export function StoreCategoriesOffcanvas({
     }
     setDetailAnimateIn(false);
     setDetailDisplayed(false);
-    setPicked(null);
+    setPickedCategoryId(null);
     return undefined;
   }, [open]);
 
-  /** Desktop: preselecciona la primera categoría (columna derecha); móvil: sin selección. */
   useEffect(() => {
     if (!open || !animateIn) return;
-    if (!mdUp) {
-      setPicked(null);
-      return;
+    if (mdUp) {
+      if (sheetCloseTimerRef.current != null) {
+        clearTimeout(sheetCloseTimerRef.current);
+        sheetCloseTimerRef.current = null;
+      }
+      setDetailDisplayed(false);
+      setDetailAnimateIn(false);
+      if (!categoryMetas.length) {
+        setPickedCategoryId(null);
+        return;
+      }
+      setPickedCategoryId((prev) => {
+        if (prev && categoryMetas.some((m) => m.id === prev)) return prev;
+        return categoryMetas[0]!.id;
+      });
+    } else {
+      if (sheetCloseTimerRef.current != null) {
+        clearTimeout(sheetCloseTimerRef.current);
+        sheetCloseTimerRef.current = null;
+      }
+      setDetailDisplayed(false);
+      setDetailAnimateIn(false);
+      setPickedCategoryId(null);
     }
-    if (!hasAnyCategory) {
-      setPicked(null);
-      return;
-    }
-    setPicked((prev) => {
-      const stillValid =
-        prev &&
-        ((prev.kind === "product" && productCategories.includes(prev.name)) ||
-          (prev.kind === "service" && serviceCategories.includes(prev.name)));
-      if (stillValid) return prev;
-      if (productCategories.length > 0)
-        return { kind: "product", name: productCategories[0]! };
-      return { kind: "service", name: serviceCategories[0]! };
-    });
-  }, [
-    open,
-    animateIn,
-    mdUp,
-    hasAnyCategory,
-    productCategories,
-    serviceCategories,
-  ]);
+  }, [open, animateIn, mdUp, categoryMetas]);
 
   useEffect(() => {
     if (!open && displayed) {
@@ -499,47 +420,6 @@ export function StoreCategoriesOffcanvas({
     onClose();
   }, [closeCategorySheet, onClose]);
 
-  const renderNavBody = () => {
-    if (loading) {
-      return (
-        <p className="px-5 py-4 text-sm text-slate-500">
-          Cargando categorías…
-        </p>
-      );
-    }
-    if (!hasAnyCategory) {
-      return (
-        <p className="px-5 py-4 text-sm text-slate-500">
-          Esta tienda todavía no tiene categorías.
-        </p>
-      );
-    }
-    return (
-      <>
-        <CategoryNavGroup
-          kind="product"
-          label="Productos"
-          categories={productCategories}
-          picked={picked}
-          mdUp={mdUp}
-          detailDisplayed={detailDisplayed}
-          detailAnimateIn={detailAnimateIn}
-          onPick={openCategorySheet}
-        />
-        <CategoryNavGroup
-          kind="service"
-          label="Servicios"
-          categories={serviceCategories}
-          picked={picked}
-          mdUp={mdUp}
-          detailDisplayed={detailDisplayed}
-          detailAnimateIn={detailAnimateIn}
-          onPick={openCategorySheet}
-        />
-      </>
-    );
-  };
-
   if (!displayed) return null;
 
   const mainPanelIn =
@@ -591,9 +471,64 @@ export function StoreCategoriesOffcanvas({
 
             <nav
               className="min-h-0 flex-1 overflow-y-auto md:px-2 md:pb-4 md:pt-4"
-              aria-label="Categorías de la tienda"
+              aria-label="Categorías principales"
             >
-              {renderNavBody()}
+              {categoriesLoading ? (
+                <p className="px-5 py-4 text-sm text-slate-500">
+                  Cargando categorías…
+                </p>
+              ) : categoryMetas.length === 0 ? (
+                <p className="px-5 py-4 text-sm text-slate-500">
+                  No hay categorías.
+                </p>
+              ) : (
+                <ul
+                  className="grid w-full content-start"
+                  style={{
+                    minHeight: "100%",
+                    gridTemplateRows:
+                      categoryMetas.length > 1
+                        ? `repeat(${categoryMetas.length}, minmax(3rem, 1fr))`
+                        : "auto",
+                  }}
+                >
+                  {categoryMetas.map((cat) => {
+                    const sheetOpenForThis =
+                      !mdUp &&
+                      detailDisplayed &&
+                      detailAnimateIn &&
+                      pickedCategoryId === cat.id;
+                    const desktopActive = mdUp && pickedCategoryId === cat.id;
+                    const isHighlighted = sheetOpenForThis || desktopActive;
+                    return (
+                      <li
+                        key={cat.id}
+                        className="flex min-h-[3rem] border-b border-[#ece4dc] last:border-b-0"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => openCategorySheet(cat.id)}
+                          className={`flex h-full w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm font-semibold transition md:rounded-xl md:px-3 md:py-2.5 ${
+                            isHighlighted
+                              ? "bg-emerald-700 text-white shadow-sm md:shadow-sm"
+                              : "text-slate-700 hover:bg-stone-50"
+                          }`}
+                          aria-expanded={mdUp ? undefined : sheetOpenForThis}
+                          aria-current={desktopActive ? "true" : undefined}
+                        >
+                          <span className="min-w-0 truncate">{cat.label}</span>
+                          <ChevronRight
+                            className={`h-4 w-4 shrink-0 ${
+                              isHighlighted ? "text-white" : "text-slate-300"
+                            }`}
+                            aria-hidden
+                          />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </nav>
           </aside>
 
@@ -601,10 +536,10 @@ export function StoreCategoriesOffcanvas({
             <div className="flex items-start justify-between gap-4 border-b border-[#ece4dc] bg-white px-5 py-4 sm:px-8 sm:py-5">
               <div className="min-w-0 space-y-1">
                 <p className="text-[11px] font-semibold uppercase leading-relaxed tracking-[0.12em] text-slate-400">
-                  {picked?.kind === "service" ? "Servicio" : "Categoría"}
+                  Categoría
                 </p>
                 <p className="text-[11px] font-bold uppercase leading-relaxed tracking-[0.12em] text-emerald-700">
-                  {picked?.name ?? "—"}
+                  {selected ? selected.label : "—"}
                 </p>
               </div>
               <button
@@ -618,11 +553,13 @@ export function StoreCategoriesOffcanvas({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-8 sm:py-8">
-              <CategoryDetailBody
+              <OffcanvasDetailBody
                 store={store}
-                picked={picked}
-                items={selectedItems}
-                loading={loading}
+                selected={selected}
+                listingLeaves={listingLeaves}
+                productsByLeaf={productsByLeaf}
+                productsLoading={productsLoading}
+                idToSlug={idToSlug}
                 onNavigate={onClose}
               />
             </div>
@@ -637,7 +574,7 @@ export function StoreCategoriesOffcanvas({
             className={`fixed inset-0 z-[125] bg-slate-900/35 transition-opacity duration-300 ease-out motion-reduce:transition-none ${
               detailAnimateIn ? "opacity-100" : "opacity-0"
             }`}
-            aria-label="Cerrar panel de fichas"
+            aria-label="Cerrar panel de subcategorías"
             onClick={closeCategorySheet}
           />
           <div
@@ -659,30 +596,30 @@ export function StoreCategoriesOffcanvas({
                   id={detailTitleId}
                   className="text-[11px] font-bold uppercase leading-relaxed tracking-[0.12em] text-emerald-700"
                 >
-                  {picked?.name ?? "—"}
+                  {selected ? selected.label : "—"}
                 </p>
                 <p className="text-[11px] font-semibold uppercase leading-relaxed tracking-[0.12em] text-slate-400">
-                  {picked?.kind === "service"
-                    ? "Servicios de la categoría"
-                    : "Productos de la categoría"}
+                  Subcategorías y productos
                 </p>
               </div>
               <button
                 type="button"
                 onClick={closeCategorySheet}
                 className="shrink-0 rounded-full p-2 text-slate-400 transition hover:bg-stone-100 hover:text-slate-700"
-                aria-label="Cerrar fichas"
+                aria-label="Cerrar subcategorías"
               >
                 <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
-              <CategoryDetailBody
+              <OffcanvasDetailBody
                 store={store}
-                picked={picked}
-                items={selectedItems}
-                loading={loading}
+                selected={selected}
+                listingLeaves={listingLeaves}
+                productsByLeaf={productsByLeaf}
+                productsLoading={productsLoading}
+                idToSlug={idToSlug}
                 onNavigate={onNavigateMobile}
               />
             </div>
