@@ -7,6 +7,7 @@ import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
 import { isReservedStoreName } from "@features/market/logic/store/storePath";
 import { TrackShipmentContent } from "@features/orders";
 import { StorefrontChrome } from "../components/StorefrontChrome";
+import { StorefrontLoadingState } from "../components/StorefrontPageStates";
 
 /**
  * Buscador de rastreo dentro de una tienda (`{base}/{nombre}/rastreo`). Igual que el rastreo
@@ -31,13 +32,7 @@ export function StorefrontTrackingPage() {
     "store-front-surface min-h-full bg-[#f7f3ef] text-slate-900";
 
   if (!store && (resolving || detailStatus === "loading") && !notFound) {
-    return (
-      <div className={surface}>
-        <div className="mx-auto max-w-[900px] px-4 py-10 text-sm text-slate-500">
-          Cargando tienda…
-        </div>
-      </div>
-    );
+    return <StorefrontLoadingState />;
   }
 
   // Sin tienda resoluble: buscador de rastreo sin cintillo (mismo contenido).
