@@ -2,10 +2,7 @@ import type { RouteSheetPayload } from "@features/chat/Dtos/route-sheet/routeShe
 import type { Offer, Thread } from "@features/market/logic/store/marketStoreTypes";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
-import {
-  buildPurchaseThreadSystemOnly,
-  syncOwnQaIntoMessages,
-} from "@features/market/logic/store/marketStoreHelpers";
+import { buildPurchaseThreadSystemOnly } from "@features/market/logic/store/marketStoreHelpers";
 import { mapTradeAgreementApiToTradeAgreement } from "@features/chat/logic/agreement/tradeAgreementApiMapper";
 import {
   mapChatMessageDtoToMessage,
@@ -150,15 +147,6 @@ export async function rehydrateCthThreadInStoreForIncomingMessage(
   const mergedMsgs = mergePersistedChatMessages(mapped, bootstrap.messages, {
     validTradeAgreementIds: validAgreementIds,
   });
-  const sellerUserId = dto.sellerUserId?.trim() || store.ownerUserId;
-  const threadBuyerId = dto.buyerUserId?.trim() || bootstrap.buyerUserId;
-  const qaSynced = syncOwnQaIntoMessages(
-    mergedMsgs,
-    offer,
-    threadBuyerId,
-    sellerUserId,
-    meId,
-  );
   const peerExit = peerPartyExitFromDto(dto);
   const premature =
     peerExit != null && peerExit.userId.trim() !== meId.trim();
@@ -200,7 +188,7 @@ export async function rehydrateCthThreadInStoreForIncomingMessage(
           }
         : {}),
       ...partyExpelledFieldsFromDto(dto),
-      messages: qaSynced,
+      messages: mergedMsgs,
       contracts,
       routeSheets: routeSheets.length > 0 ? routeSheets : bootstrap.routeSheets ?? [],
     };

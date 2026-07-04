@@ -17,12 +17,11 @@ export function withReplyToIds(
 
 export function buildPostTextBody(
   text: string,
-  opts?: { replyToIds?: string[]; offerQaId?: string },
+  opts?: { replyToIds?: string[] },
 ): PostChatMessageBody {
   return withReplyToIds(
     {
       text: text.trim(),
-      ...(opts?.offerQaId ? { offerQaId: opts.offerQaId } : {}),
     },
     opts?.replyToIds,
   );

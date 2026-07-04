@@ -65,10 +65,7 @@ export function OfferCardsChunk({
           ? ""
           : offerDescriptionPreview(descFull);
         const mapLegs = buildEmergentMapLegs(o, routePreview);
-        const commentTotal =
-          typeof o.publicCommentCount === "number"
-            ? o.publicCommentCount
-            : (o.qa?.length ?? 0);
+        const commentTotal = o.publicCommentCount ?? 0;
         const offerLikes = o.offerLikeCount ?? 0;
         const likedOffer = o.viewerLikedOffer ?? false;
         const thumbSrc =

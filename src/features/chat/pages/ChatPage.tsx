@@ -85,7 +85,6 @@ export function ChatPage() {
   const setTrustScore = useAppStore((s) => s.setTrustScore);
   const pushNotification = useAppStore((s) => s.pushNotification);
 
-  const syncThreadBuyerQa = useMarketStore((s) => s.syncThreadBuyerQa);
   const respondTradeAgreement = useMarketStore((s) => s.respondTradeAgreement);
   /** Una sola suscripción: evita referenciar `thread` antes de inicializarlo si el catálogo depende del hilo. */
   const { thread, sellerCatalog, routeOfferForThisThread, offerForThread } =
@@ -107,9 +106,6 @@ export function ChatPage() {
   );
   const applyThreadRouteTramoSubscriptions = useMarketStore(
     (s) => s.applyThreadRouteTramoSubscriptions,
-  );
-  const refreshOfferQaFromServer = useMarketStore(
-    (s) => s.refreshOfferQaFromServer,
   );
   const refreshThreadTradeAgreements = useMarketStore(
     (s) => s.refreshThreadTradeAgreements,
@@ -391,7 +387,6 @@ export function ChatPage() {
   useHydratePersistedChatThread({
     threadId,
     searchParams,
-    refreshOfferQaFromServer,
     setPersistThreadError,
     setContractsLoading,
     setRouteSheetsLoading,
@@ -428,11 +423,6 @@ export function ChatPage() {
     hasComposeToSend,
     canSend,
   } = composer;
-
-  useEffect(() => {
-    if (!threadId) return;
-    syncThreadBuyerQa(threadId, me.id);
-  }, [me.id, syncThreadBuyerQa, threadId, thread?.buyerUserId]);
 
   useEffect(() => {
     setRouteSubscribersSheetId(null);

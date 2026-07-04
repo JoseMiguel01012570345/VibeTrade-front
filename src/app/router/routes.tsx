@@ -11,7 +11,7 @@ import {
   StoreLegacyRedirect,
   StoreLocationMapPage,
 } from "@features/market";
-import { StorefrontPage } from "@features/storefront";
+import { StorefrontPage, StorefrontTrackingPage } from "@features/storefront";
 import { OwnerStoreDashboard, StaffLoginPage } from "@features/store-admin";
 import { ProfileComposerPage } from "@features/profile";
 import { ReelsPage } from "@features/reels";
@@ -31,6 +31,7 @@ import {
   OrderReceiptPage,
   OrderTrackingPage,
   PurchaseHistoryPage,
+  TrackShipmentPage,
 } from "@features/orders";
 import {
   AffiliateDashboardPage,
@@ -113,6 +114,11 @@ export function AppRoutes() {
               estos segmentos estáticos sobre el dinámico :productId de abajo). */}
           <Route path="/:storeName/cart" element={<CartPage />} />
           <Route path="/:storeName/checkout" element={<CheckoutPage />} />
+          {/* Rastreo con el cintillo de la tienda: {base}/{nombre}/rastreo. */}
+          <Route
+            path="/:storeName/rastreo"
+            element={<StorefrontTrackingPage />}
+          />
           {/* Detalle de producto dentro de la tienda: {base}/{nombre}/{productId}. */}
           <Route path="/:storeName/:productId" element={<OfferPage />} />
           {/* URL pública de la tienda: {base}/{nombre}. */}
@@ -145,6 +151,8 @@ export function AppRoutes() {
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/pedido/:publicNumber" element={<OrderReceiptPage />} />
+          {/* Buscador de rastreo (sin número) antes que el detalle por número. */}
+          <Route path="/rastreo" element={<TrackShipmentPage />} />
           <Route path="/rastreo/:publicNumber" element={<OrderTrackingPage />} />
           <Route path="/mis-compras" element={<PurchaseHistoryPage />} />
 

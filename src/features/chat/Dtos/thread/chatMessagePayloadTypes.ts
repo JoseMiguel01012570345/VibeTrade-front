@@ -7,7 +7,6 @@
 export type PostChatMessageBody = {
   replyToIds?: string[];
   text?: string;
-  offerQaId?: string;
   url?: string;
   seconds?: number;
   images?: { url: string }[];
@@ -27,7 +26,6 @@ export type PostChatMessageBody = {
 /** Payload unificado tal como lo devuelve GET/POST /messages (camelCase JSON). */
 export type ChatUnifiedMessagePayloadDto = {
   text?: string;
-  offerQaId?: string;
   images?: { url: string }[];
   documents?: {
     name: string;

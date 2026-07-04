@@ -1,6 +1,6 @@
 /**
- * Domain types for offer public Q&A (jsonb `OfferQaJson` on the server).
- * Keep in sync with `VibeTrade-back/Domain/Market/OfferQa*.cs`.
+ * Shared shapes for public comment threads: store-level comments (`CommentsJson`) and
+ * emergent-offer Q&A (`OfferQaJson`) on the server. Keep in sync with the backend `OfferQa*` records.
  */
 
 /** Persisted author snapshot in jsonb — mirrors C# `OfferQaAuthorSnapshot`. */
@@ -23,7 +23,7 @@ export type OfferQaComment = {
   answer?: string;
 };
 
-/** Optional fields added by GET `/market/offers/{id}/qa` (not stored in jsonb). */
+/** Optional fields added by the comments list endpoint (likes; not stored in jsonb). */
 export type OfferQaCommentApiFields = {
   likeCount?: number;
   viewerLiked?: boolean;

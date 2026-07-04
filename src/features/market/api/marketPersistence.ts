@@ -8,7 +8,6 @@ import {
 import type {
   MarketState,
   Offer,
-  QAItem,
   StoreBadge,
 } from "@features/market/logic/store/marketStoreTypes";
 import { storeProfileBodiesToPersist } from "../logic/marketSerializable";
@@ -17,56 +16,11 @@ import { storeProfileBodiesToPersist } from "../logic/marketSerializable";
 export function setMarketHydrating(_value: boolean) {}
 
 export type {
-  PostOfferInquiryBody,
-  PostOfferInquiryResponse,
   PublicOfferCardResponse,
 } from "../Dtos/marketPersistenceTypes";
 import type {
-  PostOfferInquiryBody,
-  PostOfferInquiryResponse,
   PublicOfferCardResponse,
 } from "../Dtos/marketPersistenceTypes";
-
-/** Añade una consulta pública; el servidor devuelve el ítem creado (id, createdAt). */
-export async function postOfferInquiry(
-  body: PostOfferInquiryBody,
-): Promise<PostOfferInquiryResponse> {
-  const res = await apiFetch("/api/v1/market/inquiries", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    if (res.status === 404 && t) {
-      const j = tryParseJsonBody(t);
-      if (j?.message) throw new Error(j.message);
-    }
-    throw new Error(
-      apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
-    );
-  }
-  return (await res.json()) as PostOfferInquiryResponse;
-}
-
-/** Lista `qa` desde el servidor (jsonb), para refrescar la ficha sin recargar el feed. */
-export async function fetchOfferQaFromServer(
-  offerId: string,
-): Promise<QAItem[] | null> {
-  const res = await apiFetch(
-    `/api/v1/market/offers/${encodeURIComponent(offerId)}/qa`,
-    { method: "GET" },
-  );
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    throw new Error(
-      apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
-    );
-  }
-  const raw = (await res.json()) as unknown;
-  if (!Array.isArray(raw)) return [];
-  return raw as QAItem[];
-}
 
 /**
  * Ficha de oferta (catálogo o publicación `emo_`) + tienda, para abrir /offer/… sin el feed.

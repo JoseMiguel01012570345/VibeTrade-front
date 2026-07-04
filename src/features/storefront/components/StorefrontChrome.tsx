@@ -2,11 +2,16 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BadgeCheck, Search, ShoppingCart, Store } from "lucide-react";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
-import { storeCartHref, storeHref } from "@features/market/logic/store/storePath";
+import {
+  storeCartHref,
+  storeHref,
+  storeTrackingHref,
+} from "@features/market/logic/store/storePath";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { useCartStore } from "@features/orders/logic/cartStore";
 import { StorefrontSupportModal } from "./StorefrontSupportModal";
 import { StoreCategoriesOffcanvas } from "./StoreCategoriesOffcanvas";
+import { StoreCommentsModal } from "./StoreCommentsModal";
 
 const topLinkClass =
   "inline-flex items-center text-xs font-semibold text-slate-600 transition-colors hover:text-emerald-700 sm:text-sm";
@@ -119,12 +124,12 @@ export function StorefrontHeader({
               Categorías
             </button>
             <Link
-              to="/mis-compras"
+              to={storeTrackingHref(store)}
               className={topLinkClass}
-              aria-label="Rastrea tu pedido"
+              aria-label="Rastrea tu envío"
             >
               <span className="sm:hidden">Rastreo</span>
-              <span className="hidden sm:inline">Rastrea tu pedido</span>
+              <span className="hidden sm:inline">Rastrea tu envío</span>
             </Link>
             <button
               type="button"
@@ -185,7 +190,10 @@ const footerLink =
  * (frontend-guest): marca + tagline y columnas de enlaces, con la línea de
  * copyright. Adaptado al contexto de una tienda de VibeTrade.
  */
-export function StorefrontFooter({ store }: Readonly<{ store: StoreBadge }>) {
+export function StorefrontFooter({
+  store,
+  onOpenComments,
+}: Readonly<{ store: StoreBadge; onOpenComments?: () => void }>) {
   const tagline =
     store.pitch?.trim() ||
     "Calidad, confianza y buena atención en cada compra.";
@@ -214,9 +222,13 @@ export function StorefrontFooter({ store }: Readonly<{ store: StoreBadge }>) {
             </h3>
             <ul className="mt-4 flex flex-col gap-2">
               <li>
-                <Link to={storeHomeHref} className={footerLink}>
+                <button
+                  type="button"
+                  className={`${footerLink} text-left`}
+                  onClick={onOpenComments}
+                >
                   FAQ
-                </Link>
+                </button>
               </li>
               <li>
                 <Link to={storeHomeHref} className={footerLink}>
@@ -242,8 +254,8 @@ export function StorefrontFooter({ store }: Readonly<{ store: StoreBadge }>) {
                 </Link>
               </li>
               <li>
-                <Link to="/mis-compras" className={footerLink}>
-                  Rastrea tu pedido
+                <Link to={storeTrackingHref(store)} className={footerLink}>
+                  Rastrea tu envío
                 </Link>
               </li>
             </ul>
@@ -277,6 +289,7 @@ export function StorefrontChrome({
 }>) {
   const [supportOpen, setSupportOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   return (
     <div className="store-front-surface flex min-h-full flex-col bg-[#f7f3ef] text-slate-900">
       <StorefrontHeader
@@ -287,7 +300,7 @@ export function StorefrontChrome({
         onOpenCategories={() => setCategoriesOpen(true)}
       />
       <div className="flex-1">{children}</div>
-      <StorefrontFooter store={store} />
+      <StorefrontFooter store={store} onOpenComments={() => setCommentsOpen(true)} />
       <StorefrontSupportModal
         open={supportOpen}
         store={store}
@@ -297,6 +310,11 @@ export function StorefrontChrome({
         open={categoriesOpen}
         store={store}
         onClose={() => setCategoriesOpen(false)}
+      />
+      <StoreCommentsModal
+        open={commentsOpen}
+        store={store}
+        onClose={() => setCommentsOpen(false)}
       />
     </div>
   );

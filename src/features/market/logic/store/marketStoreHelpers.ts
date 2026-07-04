@@ -1,6 +1,5 @@
-import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";import { normalizeThreadMessages } from "@features/chat/logic/thread/chatMerge"
+import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
 import { quoteAuthorForMessage } from "@features/chat/logic/participants/chatParticipantLabels"
-import { normalizeOfferComments } from "@features/market/logic/offerComments"
 import type { Message, Offer, ReplyQuote, Thread } from './marketStoreTypes'
 import { useAppStore } from '@features/auth/logic/useAppStore'
 
@@ -61,54 +60,7 @@ export function collectReplyQuotes(
   return list.length ? list : undefined
 }
 
-/**
- * Añade al hilo los comentarios públicos de la ficha (comprador y vendedor del hilo).
- * `from` es relativo al usuario que ve el chat (`viewerUserId`), no al rol “comprador = me” fijo.
- */
-export function syncOwnQaIntoMessages(
-  prev: Message[],
-  offer: Offer,
-  threadBuyerUserId: string | undefined,
-  sellerUserId?: string | null,
-  viewerUserId?: string,
-): Message[] {
-  if (!threadBuyerUserId?.trim()) return prev
-
-  const seller = sellerUserId ?? undefined
-  const viewer = viewerUserId?.trim() || threadBuyerUserId
-  const comments = normalizeOfferComments(offer)
-
-  let next = [...prev]
-  const atNums = next.map((m) => m.at).filter((x) => typeof x === 'number' && !Number.isNaN(x))
-  let legacySeq = atNums.length ? Math.max(...atNums) + 1 : Date.now()
-
-  function hasSeeded(commentId: string): boolean {
-    return next.some((m) => m.type === 'text' && m.offerQaId === commentId)
-  }
-
-  for (const c of comments) {
-    const isBuyer = c.author.id === threadBuyerUserId
-    const isSeller = !!seller && c.author.id === seller
-    if (!isBuyer && !isSeller) continue
-    const from = c.author.id === viewer ? 'me' : 'other'
-    const at = typeof c.createdAt === 'number' && !Number.isNaN(c.createdAt) ? c.createdAt : legacySeq++
-    if (!hasSeeded(c.id)) {
-      next.push({
-        id: uid('m'),
-        from,
-        type: 'text',
-        text: c.text,
-        at,
-        read: true,
-        offerQaId: c.id,
-      })
-    }
-  }
-
-  return normalizeThreadMessages(next)
-}
-
-/** Solo el aviso de sistema (sin Q&A; la Q&A pública se añade vía syncOwnQaIntoMessages o el API). */
+/** Solo el aviso de sistema del hilo de compra. */
 export function buildPurchaseThreadSystemOnly(offer: Offer): Message[] {
   return [
     {
@@ -119,22 +71,6 @@ export function buildPurchaseThreadSystemOnly(offer: Offer): Message[] {
       at: Date.now() - 90_000,
     },
   ]
-}
-
-/** Hilos locales sin persistencia: sistema + consultas públicas desde `offer.qa`. */
-export function buildPurchaseThreadMessages(
-  offer: Offer,
-  threadBuyerUserId: string | undefined,
-  sellerUserId?: string | null,
-  viewerUserId?: string,
-): Message[] {
-  return syncOwnQaIntoMessages(
-    buildPurchaseThreadSystemOnly(offer),
-    offer,
-    threadBuyerUserId,
-    sellerUserId,
-    viewerUserId,
-  )
 }
 
 export function routeSheetIdsLinkedToContracts(th: Thread): Set<string> {

@@ -289,9 +289,6 @@ export function mapChatMessageDtoToMessage(
       from,
       type: "text",
       text: p.text,
-      ...(typeof p.offerQaId === "string" && p.offerQaId.length > 0
-        ? { offerQaId: p.offerQaId }
-        : {}),
     };
   }
 
@@ -339,51 +336,13 @@ export function dedupeMessagesById(messages: readonly Message[]): Message[] {
   return sortMessagesChronological([...byId.values()]);
 }
 
-/**
- * Dos copias de la misma Q&A pública (ids distintos: local `m_*` + servidor `cmg_*`).
- * Conserva preferentemente el mensaje persistido `cmg_*`.
- */
-export function dedupePublicQaMirrors(messages: readonly Message[]): Message[] {
-  const byKey = new Map<string, Message>();
-  for (const m of messages) {
-    if (m.type !== "text" || !m.offerQaId) continue;
-    const key = `${m.offerQaId}:${m.from}`;
-    const prev = byKey.get(key);
-    if (!prev) {
-      byKey.set(key, m);
-      continue;
-    }
-    const winner =
-      m.id.startsWith("cmg_") && !prev.id.startsWith("cmg_")
-        ? m
-        : prev.id.startsWith("cmg_") && !m.id.startsWith("cmg_")
-          ? prev
-          : prev.at <= m.at
-            ? prev
-            : m;
-    byKey.set(key, winner);
-  }
-  const out: Message[] = [];
-  for (const m of sortMessagesChronological(messages)) {
-    if (m.type !== "text" || !m.offerQaId) {
-      out.push(m);
-      continue;
-    }
-    const key = `${m.offerQaId}:${m.from}`;
-    const w = byKey.get(key);
-    if (w && w.id === m.id) out.push(m);
-  }
-  return sortMessagesChronological(out);
-}
-
 export function normalizeThreadMessages(messages: readonly Message[]): Message[] {
-  return dedupePublicQaMirrors(dedupeMessagesById(messages));
+  return dedupeMessagesById(messages);
 }
 
 /**
  * Combina mensajes persistidos con estado local.
- * Si ya hay mensajes del servidor, descarta texto local que no sea sistema/acuerdo/pendiente
- * para no duplicar la misma consulta pública (offer.qa) que ya viene en `serverMapped`.
+ * Si ya hay mensajes del servidor, descarta texto local que no sea sistema/acuerdo/pendiente.
  */
 export function mergePersistedChatMessages(
   serverMapped: Message[],

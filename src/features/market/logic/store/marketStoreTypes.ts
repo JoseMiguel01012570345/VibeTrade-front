@@ -6,7 +6,6 @@ import type { TradeAgreementDraft } from "@features/chat/Dtos/agreement/tradeAgr
 import type { RouteSheetCreatePayload, RouteSheetStatus } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
 import type {
   Offer,
-  QAItem,
   RouteOfferPublicState,
   StoreBadge,
 } from "@features/market/Dtos/marketTypes";
@@ -31,7 +30,6 @@ export type {
 export type {
   EmergentRouteParadaSnapshot,
   Offer,
-  QAItem,
   RouteOfferPublicState,
   RouteOfferTramoAssignment,
   RouteOfferTramoPublic,
@@ -118,31 +116,10 @@ export type MarketState = {
     opts?: { forceLocal?: boolean },
   ) => void;
 
-  ask: (
-    offerId: string,
-    askedBy: { id: string; name: string; trustScore: number },
-    question: string,
-  ) => string;
-  /**
-   * Persiste la consulta en el servidor y solo entonces añade la pregunta al estado local.
-   */
-  submitOfferQuestion: (
-    offerId: string,
-    askedBy: { id: string; name: string; trustScore: number },
-    question: string,
-    options?: { parentId?: string | null },
-  ) => Promise<void>;
-  answer: (offerId: string, qaId: string, answer: string) => void;
   ensureThreadForOffer: (
     offerId: string,
     opts?: { buyerId?: string; forceNewThread?: boolean },
   ) => Promise<string>;
-  /** `viewerId` = usuario conectado; el comprador del hilo se toma de `thread.buyerUserId`. */
-  syncThreadBuyerQa: (threadId: string, viewerId: string) => void;
-  /** Reemplaza `offer.qa` desde el API (otros comentarios / otra pestaña). */
-  applyOfferQaFromServer: (offerId: string, qa: QAItem[]) => void;
-  /** GET `/market/offers/:id/qa` y aplica en store + hilos de compra. */
-  refreshOfferQaFromServer: (offerId: string) => Promise<void>;
   /** GET acuerdos del hilo y reemplaza `thread.contracts` (p. ej. tras SignalR, sin refetch de todos los mensajes). */
   refreshThreadTradeAgreements: (threadId: string) => Promise<void>;
   /** Mergea mensaje desde SignalR (evita duplicados por id). */

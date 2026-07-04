@@ -20,7 +20,6 @@ import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { storeCartHref, storeHref } from "@features/market/logic/store/storePath";
 import { RouteTramoSubscribeModal } from "../components/RouteTramoSubscribeModal";
 import { OfferSaveButton } from "../components/OfferSaveButton";
-import { OfferCommentsSection } from "../components/OfferCommentsSection";
 import {
   confirmedStopIdsForCarrier,
   ROUTE_SUBSCRIBE_BLOCKED_BUYER_WITH_AGREEMENT_ES,
@@ -128,11 +127,7 @@ export function OfferPage() {
   const hydrateRouteOfferCarrierSubscriptions = useMarketStore(
     (s) => s.hydrateRouteOfferCarrierSubscriptions,
   );
-  const submitOfferQuestion = useMarketStore((s) => s.submitOfferQuestion);
-  const refreshOfferQaFromServer = useMarketStore(
-    (s) => s.refreshOfferQaFromServer,
-  );
-  /** Sin esto, cada `refreshOfferQaFromServer` sustituye `offers[id]` y `resolvedOffer` cambia de referencia → efectos con `[resolvedOffer]` reejecutan en bucle. */
+  /** Bandera estable: al actualizar `offers[id]` la referencia de `resolvedOffer` cambia; usarla en deps evita reejecutar efectos con `[resolvedOffer]` en bucle. */
   const offerResolved = Boolean(resolvedOffer);
 
   const openTramos = useMemo(
@@ -254,6 +249,16 @@ export function OfferPage() {
     sessionReady,
     hydrateRouteOfferCarrierSubscriptions,
   ]);
+
+  /** Une la conexión al grupo <c>offer:{id}</c> para recibir <c>routeTramoSubscriptionsChanged</c> sin depender de <c>JoinThread</c>. */
+  useEffect(() => {
+    if (!offerId || !offerResolved) return;
+    if (!isSessionActive || me.id === "guest") return;
+    void joinOfferChannel(offerId);
+    return () => {
+      void leaveOfferChannel(offerId);
+    };
+  }, [offerId, offerResolved, isSessionActive, me.id]);
 
   useEffect(() => {
     const tid = (
@@ -424,8 +429,6 @@ export function OfferPage() {
     );
   }, [offerId, offerResolved]);
 
-  /** Evita repetir scrollIntoView cuando `resolvedOffer`/QA se actualiza (polling o SignalR): obligaba a bajar si el usuario intentaba subir. */
-  const offerCommentsAnchorScrolledKeyRef = useRef<string | null>(null);
   const hojaSuscribirScrolledKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -444,61 +447,6 @@ export function OfferPage() {
     });
     return () => cancelAnimationFrame(id);
   }, [offerId, offerResolved, location.hash, location.pathname, resolvedOffer]);
-
-  useEffect(() => {
-    if (!offerId || !resolvedOffer) return;
-    if (location.hash !== "#offer-comments") {
-      offerCommentsAnchorScrolledKeyRef.current = null;
-      return;
-    }
-    const el = document.getElementById("offer-comments");
-    if (!el) return;
-
-    const key = `${offerId}|${location.pathname}|#offer-comments`;
-    if (offerCommentsAnchorScrolledKeyRef.current === key) return;
-    offerCommentsAnchorScrolledKeyRef.current = key;
-
-    const id = requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [offerId, offerResolved, location.hash, location.pathname]);
-
-  useEffect(() => {
-    if (!offerId || !resolvedOffer) return;
-    void refreshOfferQaFromServer(offerId);
-  }, [offerId, offerResolved, refreshOfferQaFromServer]);
-
-  useEffect(() => {
-    if (!offerId || !resolvedOffer) return;
-    if (!isSessionActive || me.id === "guest") return;
-    void joinOfferChannel(offerId);
-    return () => {
-      void leaveOfferChannel(offerId);
-    };
-  }, [offerId, offerResolved, isSessionActive, me.id]);
-
-  useEffect(() => {
-    if (!offerId || !resolvedOffer) return;
-    const onVis = () => {
-      if (document.visibilityState === "visible") {
-        void refreshOfferQaFromServer(offerId);
-      }
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, [offerId, offerResolved, refreshOfferQaFromServer]);
-
-  useEffect(() => {
-    if (!offerId || !resolvedOffer) return;
-    if (me.id !== "guest") return;
-    const t = setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void refreshOfferQaFromServer(offerId);
-      }
-    }, 15000);
-    return () => clearInterval(t);
-  }, [offerId, offerResolved, me.id, refreshOfferQaFromServer]);
 
   const confirmRouteSubscribe = useCallback(
     async (storeServiceId: string) => {
@@ -775,17 +723,6 @@ export function OfferPage() {
             onOpenLightbox={(url) => setGalleryLightboxUrl(url)}
             relatedProducts={relatedProducts}
           />
-
-          <div className="mt-10">
-            <OfferCommentsSection
-              offer={resolvedOffer}
-              store={store}
-              me={me}
-              isSessionActive={isSessionActive}
-              isOwnOffer={isOwnOffer}
-              submitOfferQuestion={submitOfferQuestion}
-            />
-          </div>
         </div>
 
         <ImageLightbox
@@ -1252,15 +1189,6 @@ export function OfferPage() {
             </div>
           </div>
         </div>
-
-        <OfferCommentsSection
-          offer={resolvedOffer}
-          store={store}
-          me={me}
-          isSessionActive={isSessionActive}
-          isOwnOffer={isOwnOffer}
-          submitOfferQuestion={submitOfferQuestion}
-        />
       </div>
 
       <RouteTramoSubscribeModal

@@ -298,12 +298,6 @@ export function startChatRealtime(): void {
     })();
   });
 
-  conn.on("offerCommentsUpdated", (payload: { offerId?: string }) => {
-    const oid = payload?.offerId;
-    if (!oid) return;
-    void useMarketStore.getState().refreshOfferQaFromServer(oid);
-  });
-
   conn.on(
     "routeTramoSubscriptionsChanged",
     (payload: {
@@ -521,7 +515,10 @@ export function stopChatRealtime(): void {
   }
 }
 
-/** Suscripción al grupo <c>offer:{id}</c> (comentarios en tiempo real en la ficha). */
+/**
+ * Suscribe la conexión al grupo <c>offer:{id}</c>. En <c>/offer/emo_*</c> el visitante suele no
+ * tener <c>JoinThread</c>, así que este grupo es la vía para recibir <c>routeTramoSubscriptionsChanged</c>.
+ */
 export async function joinOfferChannel(offerId: string): Promise<void> {
   if (!offerId || offerId.length < 2) return;
   startChatRealtime();

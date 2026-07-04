@@ -38,7 +38,6 @@ export type Message =
       text: string;
       at: number;
       read?: boolean;
-      offerQaId?: string;
       replyQuotes?: ReplyQuote[];
       /** Solo mensajes de texto persistidos / realtime. */
       chatStatus?: ChatDeliveryStatus;

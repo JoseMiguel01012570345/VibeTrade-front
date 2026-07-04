@@ -17,5 +17,4 @@ export type PublishedTransportServiceDto = {
   riesgos?: unknown
   dependencias?: unknown
   garantias?: unknown
-  qa?: unknown
 }

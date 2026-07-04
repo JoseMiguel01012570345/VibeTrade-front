@@ -1,7 +1,3 @@
-import type {
-  OfferQaAuthorSnapshot,
-  OfferQaCommentEnriched,
-} from "./offerQaTypes";
 import type { StoreLocationPoint } from "@shared/Dtos/storeLocationPoint";
 
 export type { StoreLocationPoint } from "@shared/Dtos/storeLocationPoint";
@@ -50,16 +46,6 @@ export type EmergentRouteParadaSnapshot = {
   osrmRouteLatLngs?: [number, number][];
 };
 
-/**
- * QA fila en el cliente: modelo de dominio enriquecido + campo `question` usado en UI legada
- * (la API persiste `text` / `question` según el flujo).
- */
-export type QAItem = OfferQaCommentEnriched & {
-  question: string;
-  askedBy: OfferQaAuthorSnapshot;
-  answeredBy?: OfferQaAuthorSnapshot;
-};
-
 export type Offer = {
   id: string;
   storeId: string;
@@ -75,7 +61,6 @@ export type Offer = {
   imageUrl: string;
   /** Galería (mismas URLs que catálogo); la primera suele coincidir con imageUrl. */
   imageUrls?: string[];
-  qa?: QAItem[];
   /** Número de comentarios públicos (feed / recomendaciones). */
   publicCommentCount?: number;
   offerLikeCount?: number;

@@ -78,9 +78,7 @@ export async function apiFetch(
     !!token &&
     isMutating &&
     (/^\/api\/v1\/market\/offers\/[^/]+\/like$/.test(path) ||
-      /^\/api\/v1\/market\/offers\/[^/]+\/qa\/[^/]+\/like$/.test(path) ||
-      path === "/api/v1/market/inquiries" ||
-      path === "/api/v1/market/workspace/inquiries" ||
+      /^\/api\/v1\/market\/stores\/[^/]+\/comments(\/[^/]+\/like)?$/.test(path) ||
       path === "/api/v1/me/trust-adjust" ||
       /^\/api\/v1\/stores\/[^/]+\/trust-adjust$/.test(path));
   /**

@@ -137,6 +137,17 @@ export function storeCheckoutHref(
   return name ? `${storePathFromName(name)}/checkout` : '/checkout'
 }
 
+/**
+ * Buscador de rastreo dentro de la tienda: `{base}/{nombre}/rastreo` (conserva el cintillo
+ * de la tienda). Cae a la ruta global `/rastreo` cuando no hay nombre de tienda.
+ */
+export function storeTrackingHref(
+  store: Pick<StoreBadge, 'id' | 'name'> | null | undefined,
+): string {
+  const name = store?.name?.trim()
+  return name ? `${storePathFromName(name)}/rastreo` : '/rastreo'
+}
+
 /** Busca en el estado una tienda cuyo nombre normalizado coincida con `normalized`. */
 export function findStoreByNormalizedName(
   stores: Record<string, StoreBadge>,

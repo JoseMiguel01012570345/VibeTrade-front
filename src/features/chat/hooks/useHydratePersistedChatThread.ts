@@ -15,9 +15,7 @@ import {
   VT_SOCIAL_PLACEHOLDER_OFFER_ID,
 } from "@features/chat/logic/thread/chatThreadDtoFallbacks";
 import {
-  buildPurchaseThreadMessages,
   buildPurchaseThreadSystemOnly,
-  syncOwnQaIntoMessages,
 } from "@features/market/logic/store/marketStoreHelpers";
 import { mergedRouteOfferPublicAfterChatThreadHydration } from "@features/market/logic/routeOfferPublicFromEmergentCard";
 import { applyViewerRouteTramoSubscriptions } from "@features/chat/logic/route-sheet/routeOfferSubscriptionMerge";
@@ -39,7 +37,6 @@ import {
 type Params = {
   threadId: string | undefined;
   searchParams: URLSearchParams;
-  refreshOfferQaFromServer: (offerId: string) => Promise<void>;
   setPersistThreadError: (v: boolean) => void;
   setContractsLoading: (v: boolean) => void;
   setRouteSheetsLoading: (v: boolean) => void;
@@ -48,7 +45,6 @@ type Params = {
 export function useHydratePersistedChatThread({
   threadId,
   searchParams,
-  refreshOfferQaFromServer,
   setPersistThreadError,
   setContractsLoading,
   setRouteSheetsLoading,
@@ -173,35 +169,18 @@ export function useHydratePersistedChatThread({
         const meId = useAppStore.getState().me.id;
         const mapped = msgs.map((d) => mapChatMessageDtoToMessage(d, meId));
         const prevMsgs = existingTh?.messages;
-        const sellerUserId = dto.sellerUserId ?? store.ownerUserId;
         const localBasis =
           prevMsgs && prevMsgs.length > 0
             ? prevMsgs
-            : msgs.length > 0
-              ? dto.purchaseMode
-                ? buildPurchaseThreadSystemOnly(offer)
-                : []
-              : dto.purchaseMode
-                ? buildPurchaseThreadMessages(
-                    offer,
-                    dto.buyerUserId,
-                    sellerUserId,
-                    meId,
-                  )
-                : [];
+            : dto.purchaseMode
+              ? buildPurchaseThreadSystemOnly(offer)
+              : [];
         const merged = mergePersistedChatMessages(
           mapped,
           localBasis,
           validAgreementIds
             ? { validTradeAgreementIds: validAgreementIds }
             : undefined,
-        );
-        const qaSynced = syncOwnQaIntoMessages(
-          merged,
-          offer,
-          dto.buyerUserId,
-          sellerUserId,
-          meId,
         );
         if (cancelled) return;
         const sheetsForThread =
@@ -239,7 +218,7 @@ export function useHydratePersistedChatThread({
                 }
               : {}),
             ...partyExpelledFieldsFromDto(dto),
-            messages: qaSynced,
+            messages: merged,
             contracts,
             routeSheets: sheetsForThread,
             ...(Object.keys(acksFromSheets).length > 0
@@ -273,9 +252,6 @@ export function useHydratePersistedChatThread({
           return next;
         });
         syncedKeyRef.current = syncKey;
-        if (dto.purchaseMode && dto.offerId?.trim()) {
-          void refreshOfferQaFromServer(dto.offerId.trim());
-        }
       } catch {
         if (!cancelled) setPersistThreadError(true);
       }
@@ -303,7 +279,6 @@ export function useHydratePersistedChatThread({
     subsQ.isSuccess,
     subsQ.isLoading,
     queryClient,
-    refreshOfferQaFromServer,
     setPersistThreadError,
   ]);
 }
