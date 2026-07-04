@@ -3,9 +3,8 @@ import { Download } from "lucide-react";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { cn } from "@shared/lib/cn";
 import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
-import { agreementDeclaresMerchandise, agreementDeclaresService, legacyCombinedExtraFields, merchandiseScopedExtraFields } from "@features/chat/logic/agreement/tradeAgreementTypes";
+import { agreementDeclaresService, legacyCombinedExtraFields } from "@features/chat/logic/agreement/tradeAgreementTypes";
 import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
-import { AgreementMerchandiseEvidenceSection } from "./AgreementMerchandiseEvidenceSection";
 import { downloadTradeAgreementPdf } from "@features/chat/logic/agreement/tradeAgreementPdfDownload";
 import {
   agrDetailBlock,
@@ -16,8 +15,6 @@ import {
 import {
   AgreementDetailRow,
   ExtraFieldClauseCards,
-  legacyMerchandiseMetaHasContent,
-  MerchandiseBlock,
 } from "./agreementDetailPresentation";
 import { AgreementDetailRouteSection } from "./AgreementDetailRouteSection";
 import { AgreementDetailServicesSection } from "./AgreementDetailServicesSection";
@@ -48,9 +45,7 @@ export function AgreementDetailView({
   linkActionsDisabled?: boolean;
   routeLinkFrozenAfterPayment?: boolean;
 }) {
-  const m = a.merchandiseMeta ?? undefined;
   const catalog = useMarketStore((s) => s.storeCatalogs[a.issuedByStoreId]);
-  const showMerch = agreementDeclaresMerchandise(a);
   const showService = agreementDeclaresService(a);
   const {
     servicePays,
@@ -60,12 +55,7 @@ export function AgreementDetailView({
     sellerPayoutModal,
     setSellerPayoutModal,
     refreshServicePays,
-    lastMsg,
   } = useAgreementDetailServicePayments(threadId, a.id);
-
-  const linkedSheet = a.routeSheetId
-    ? routeSheets.find((r) => r.id === a.routeSheetId)
-    : undefined;
 
   const evidenceModalSellerCanEdit =
     evidenceModal !== null &&
@@ -111,64 +101,6 @@ export function AgreementDetailView({
         linkActionsDisabled={linkActionsDisabled}
         routeLinkFrozenAfterPayment={routeLinkFrozenAfterPayment}
       />
-
-      {showMerch ? (
-        <MerchandiseBlock lines={a.merchandise} catalog={catalog} />
-      ) : null}
-
-      {showMerch ? (
-        <AgreementMerchandiseEvidenceSection
-          threadId={threadId}
-          agreementId={a.id}
-          isActingSeller={isActingSeller}
-          routeSheetId={a.routeSheetId}
-          routeSheetEstado={linkedSheet?.estado}
-          lastSystemMessageId={
-            lastMsg?.from === "system" ? lastMsg.id : undefined
-          }
-          lastSystemMessageText={
-            lastMsg?.from === "system" && lastMsg.type === "text"
-              ? lastMsg.text
-              : undefined
-          }
-        />
-      ) : null}
-
-      {showMerch && merchandiseScopedExtraFields(a.extraFields).length ? (
-        <div className={agrDetailBlock}>
-          <div className={agrDetailH}>Otras cl�usulas (mercanc�a)</div>
-          <ExtraFieldClauseCards
-            fields={merchandiseScopedExtraFields(a.extraFields)}
-          />
-        </div>
-      ) : null}
-
-      {showMerch && legacyMerchandiseMetaHasContent(m) ? (
-        <div className={agrDetailBlock}>
-          <div className={agrDetailH}>
-            Mercanc�as � condiciones generales (acuerdo anterior)
-          </div>
-          <p className={cn("vt-muted", agrDetailHint, "mb-2")}>
-            Estos datos eran comunes a todo el bloque; en acuerdos nuevos van por
-            cada �tem.
-          </p>
-          <AgreementDetailRow label="Moneda" value={m!.moneda} />
-          <AgreementDetailRow label="Tipo de embalaje" value={m!.tipoEmbalaje} />
-          <AgreementDetailRow
-            label="Condiciones para devolver y garantias"
-            value={m!.devolucionesDesc}
-          />
-          <AgreementDetailRow
-            label="Qui�n paga env�o de devoluci�n"
-            value={m!.devolucionQuienPaga}
-          />
-          <AgreementDetailRow label="Plazos (devoluci�n)" value={m!.devolucionPlazos} />
-          <AgreementDetailRow
-            label="Regulaciones, aduanas, restricciones, permisos"
-            value={m!.regulaciones}
-          />
-        </div>
-      ) : null}
 
       {showService ? (
         <AgreementDetailServicesSection

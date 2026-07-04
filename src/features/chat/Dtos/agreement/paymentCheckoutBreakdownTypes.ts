@@ -1,7 +1,4 @@
-export type CheckoutLineCategory =
-  | "merchandise"
-  | "service_installment"
-  | "route_leg";
+export type CheckoutLineCategory = "service_installment" | "route_leg";
 
 export type CheckoutBasisLine = {
   category: CheckoutLineCategory;
@@ -10,7 +7,6 @@ export type CheckoutBasisLine = {
   /** Para agrupación y etiquetas PDF. */
   amountMajor: number;
   amountMinor: number;
-  merchandiseIndex?: number;
   serviceIndex?: number;
   routeSheetId?: string;
   stopId?: string;

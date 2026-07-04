@@ -19,8 +19,7 @@ import {
   openSellerPage,
   sellerEmitSingleCurrencyTwoRecurrenceServiceAgreement,
   sellerAttemptEmitDualCurrencyServiceAgreementRejected,
-  sellerAttemptEmitMerchandiseDualCurrencyAgreementRejected,
-  sellerEmitMerchandiseAgreement,
+  sellerEmitServiceAgreement,
 } from "../../Resources/agreement-ui-helpers";
 import { openChatThread, reloadChatThread, waitForAgreementBubble } from "../../Resources/chat-helpers";
 import {
@@ -45,8 +44,6 @@ import {
   paymentModal,
   pickFirstServiceRecurrenceOnly,
   pickServiceRecurrences,
-  setAllMerchandiseLines,
-  setMerchandiseLineChecked,
   ensureBuyerDemoCard,
   buyerHasPayCard,
   waitForPayableRoutePathsInPaymentModal,
@@ -338,114 +335,6 @@ test.describe("chat agreement checkout (UI)", () => {
     });
   });
 
-  test.describe("merchandise single currency checkout", () => {
-    test("dual currency merchandise agreement emit blocked", async ({
-      browser,
-    }) => {
-      const seller = getE2ESellerSession()!;
-      const title = `E2E Merch reject dual ${Date.now()}`;
-
-      const { buyerPage, threadId } = await createThreadAsBuyer(
-        browser,
-        getE2EToken(),
-        e2eOfferId,
-      );
-      const sellerPage = await openSellerPage(
-        browser,
-        seller.sessionToken,
-        threadId,
-      );
-
-      await sellerAttemptEmitMerchandiseDualCurrencyAgreementRejected(
-        sellerPage,
-        {
-          title,
-          usdProductNamePart: "Producto E2E",
-          eurProductNamePart: eurProductName,
-        },
-      );
-
-      await sellerPage.close();
-      await buyerPage.context().close();
-    });
-
-    test("merch single line checkout USD", async ({ browser }) => {
-      const seller = getE2ESellerSession()!;
-      const title = `E2E Merch 1ccy ${Date.now()}`;
-
-      const { buyerPage, threadId } = await createThreadAsBuyer(
-        browser,
-        getE2EToken(),
-        e2eOfferId,
-      );
-      const sellerPage = await openSellerPage(
-        browser,
-        seller.sessionToken,
-        threadId,
-      );
-
-      await sellerEmitMerchandiseAgreement(sellerPage, {
-        title,
-        productNamePart: "Producto E2E",
-      });
-      await waitForAgreementBubble(buyerPage, title);
-      await buyerRespondToAgreement(buyerPage, title, "accept");
-      await reloadChatThread(buyerPage);
-      await openChatPaymentModal(buyerPage);
-      await setAllMerchandiseLines(buyerPage, true);
-
-      await expectInformeCurrencyBlocks(buyerPage, ["USD"]);
-
-      await sellerPage.close();
-      await buyerPage.context().close();
-    });
-
-    test("duplicate merchandise line shows toast", async ({ browser }) => {
-      const seller = getE2ESellerSession()!;
-      const title = `E2E Merch dup ${Date.now()}`;
-
-      const { buyerPage, threadId } = await createThreadAsBuyer(
-        browser,
-        getE2EToken(),
-        e2eOfferId,
-      );
-      const sellerPage = await openSellerPage(
-        browser,
-        seller.sessionToken,
-        threadId,
-      );
-
-      await sellerEmitMerchandiseAgreement(sellerPage, {
-        title,
-        productNamePart: "Producto E2E",
-      });
-      await waitForAgreementBubble(buyerPage, title);
-      await buyerRespondToAgreement(buyerPage, title, "accept");
-      await ensureBuyerDemoCard(buyerPage, threadId);
-      test.skip(
-        !(await buyerHasPayCard(buyerPage, threadId)),
-        "Buyer needs a saved PaymentGateway card to execute payments",
-      );
-
-      await openChatPaymentModal(buyerPage);
-      await setAllMerchandiseLines(buyerPage, false);
-      await setMerchandiseLineChecked(buyerPage, /Producto E2E/i, true);
-      await confirmInformeCheckbox(buyerPage);
-      await clickPayCurrency(buyerPage, "USD");
-      await expect(
-        paymentModal(buyerPage).getByText(
-          /no hay importes para cobrar|sin montos a cobrar/i,
-        ),
-      ).toBeVisible({ timeout: 30_000 });
-      await expect(
-        paymentModal(buyerPage).getByRole("button", { name: /^pagar USD$/i }),
-      ).toHaveCount(0);
-
-      await sellerPage.close();
-      await buyerPage.context().close();
-    });
-  });
-
   test.describe("route paths in checkout", () => {
     test("linked stops show one route path with two paradas", async ({
       browser,
@@ -467,9 +356,9 @@ test.describe("chat agreement checkout (UI)", () => {
         threadId,
       );
 
-      await sellerEmitMerchandiseAgreement(sellerPage, {
+      await sellerEmitServiceAgreement(sellerPage, {
         title,
-        productNamePart: "Producto E2E",
+        serviceNamePart: "Consultoría E2E",
       });
       await waitForAgreementBubble(buyerPage, title);
       await buyerRespondToAgreement(buyerPage, title, "accept");
@@ -526,9 +415,9 @@ test.describe("chat agreement checkout (UI)", () => {
         threadId,
       );
 
-      await sellerEmitMerchandiseAgreement(sellerPage, {
+      await sellerEmitServiceAgreement(sellerPage, {
         title,
-        productNamePart: "Producto E2E",
+        serviceNamePart: "Consultoría E2E",
       });
       await waitForAgreementBubble(buyerPage, title);
       await buyerRespondToAgreement(buyerPage, title, "accept");
@@ -550,7 +439,7 @@ test.describe("chat agreement checkout (UI)", () => {
       await reloadChatThread(buyerPage);
       await prepareBuyerRouteCheckout(buyerPage, title, routeTitulo);
 
-      await setAllMerchandiseLines(buyerPage, false);
+      await clearServiceRecurrences(buyerPage);
       await selectAllRoutePathsForPayment(buyerPage);
       const modal = paymentModal(buyerPage);
       await expect(modal.getByText(/informe/i).first()).toBeVisible();
@@ -581,9 +470,9 @@ test.describe("chat agreement checkout (UI)", () => {
         threadId,
       );
 
-      await sellerEmitMerchandiseAgreement(sellerPage, {
+      await sellerEmitServiceAgreement(sellerPage, {
         title,
-        productNamePart: "Producto E2E",
+        serviceNamePart: "Consultoría E2E",
       });
       await waitForAgreementBubble(buyerPage, title);
       await buyerRespondToAgreement(buyerPage, title, "accept");

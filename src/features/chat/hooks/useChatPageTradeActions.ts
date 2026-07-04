@@ -95,7 +95,7 @@ export function useChatPageTradeActions({
           : await fetchThreadHasUnpaidRouteSheets(thread.id)
         if (!canCreate) {
           toast.error(
-            'No hay acuerdos pendientes de hoja de ruta (sin pago o con mercancía cobrada sin roadmap vinculado).',
+            'No hay acuerdos pendientes de hoja de ruta (sin pago o con servicio cobrado sin roadmap vinculado).',
           )
           return
         }

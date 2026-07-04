@@ -5,8 +5,6 @@ export type AgreementCheckoutBasisLineApi = {
   amountMinor: number;
   routeSheetId?: string | null;
   routeStopId?: string | null;
-  /** Presente en líneas de mercadería (desglose servidor). */
-  merchandiseLineId?: string | null;
 };
 
 export type AgreementCheckoutCurrencyTotalsApi = {

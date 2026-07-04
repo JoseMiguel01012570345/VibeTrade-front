@@ -42,7 +42,7 @@ export type TradeAgreementExtraFieldApiDto = {
   mediaUrl?: string | null;
   fileName?: string | null;
   /** Opcional: respuestas antiguas; el servidor ya no persiste ni devuelve alcance por fila. */
-  scope?: "merchandise" | "service" | "legacy_combined";
+  scope?: "service" | "legacy_combined";
 };
 
 /** Coincide con el JSON de payload del backend (camelCase). */
@@ -59,12 +59,9 @@ export type TradeAgreementApiDto = {
   respondedAt?: number | null;
   sellerEditBlockedUntilBuyerResponse?: boolean | null;
   hadBuyerAcceptance?: boolean | null;
-  includeMerchandise: boolean;
   includeService: boolean;
-  merchandise: Record<string, unknown>[];
-  merchandiseMeta?: Record<string, unknown> | null;
   services: Record<string, unknown>[];
-  /** Cláusulas extras cuando el acuerdo tiene mercancías y servicios. */
+  /** Cláusulas extras del acuerdo (servicios). */
   extraFields?: TradeAgreementExtraFieldApiDto[];
   routeSheetId?: string | null;
   routeSheetUrl?: string | null;
@@ -72,8 +69,6 @@ export type TradeAgreementApiDto = {
   hasSucceededPayments?: boolean | null;
   /** Hay al menos un tramo de transporte cobrado; bloquea cambiar o desvincular la hoja. */
   hasSucceededRoutePayments?: boolean | null;
-  /** Evidencia de mercancía aceptada; bloquea vincular o desvincular hoja de ruta. */
-  hasAcceptedMerchandiseEvidence?: boolean | null;
 };
 
 /** Payload unificado del mensaje (respuesta API); alineado a ChatUnifiedMessagePayload del backend. */

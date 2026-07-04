@@ -92,8 +92,8 @@ import {
 } from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
 import {
   applyRouteLegPaymentCurrencyToParadas,
-  ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES,
-} from "@features/chat/logic/agreement/merchandiseRouteCurrency";
+  ROUTE_LEG_MUST_MATCH_AGREEMENT_CURRENCY_ES,
+} from "@features/chat/logic/agreement/agreementCheckoutCurrency";
 import type {
   RouteSheetFormPayload,
   RouteSheetSubmitResult,
@@ -116,7 +116,7 @@ type Props = {
   routeOfferForSheet?: RouteOfferPublicState | undefined;
   /** Oferta pública del hilo (`resolveRouteOfferPublicForThread`); usada como respaldo si la de arriba es undefined. */
   routeOfferForThread?: RouteOfferPublicState | undefined;
-  /** Acuerdo con mercadería: tramos se cobran en esta moneda (ISO 4217). */
+  /** Acuerdo de servicio vinculado: tramos se cobran en esta moneda (ISO 4217). */
   routeLegPaymentCurrency?: string | null;
   onSubmit: (p: RouteSheetFormPayload) => RouteSheetSubmitResult;
 };
@@ -1154,7 +1154,7 @@ export function RouteSheetFormModal({
                               {routeLegCurrencyNorm}
                             </p>
                             <p className={cn(modalSub, "mt-1")}>
-                              {ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES}
+                              {ROUTE_LEG_MUST_MATCH_AGREEMENT_CURRENCY_ES}
                             </p>
                           </>
                         ) : (

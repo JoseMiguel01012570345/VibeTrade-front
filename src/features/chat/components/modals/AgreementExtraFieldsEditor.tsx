@@ -28,7 +28,7 @@ type Props = {
   fields: TradeAgreementExtraFieldDraft[];
   errors?: Record<number, string>;
   onChange: (next: TradeAgreementExtraFieldDraft[]) => void;
-  /** Scope asignado a las filas nuevas (bloque mercancía, servicio o legado combinado). */
+  /** Scope asignado a las filas nuevas (bloque servicio o legado combinado). */
   newRowScope?: TradeAgreementExtraFieldScope;
 };
 
@@ -36,7 +36,7 @@ export function AgreementExtraFieldsEditor({
   fields,
   errors,
   onChange,
-  newRowScope = "merchandise",
+  newRowScope = "service",
 }: Props) {
   const [uploadingRowKey, setUploadingRowKey] = useState<string | null>(null);
 

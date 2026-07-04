@@ -920,7 +920,6 @@ export async function payRouteStopsViaBuyerApi(
         paymentMethodId,
         idempotencyKey: `idem-e2e-${Date.now()}`,
         selectedRoutePathIds: args.routeStopIds,
-        selectedMerchandiseLineIds: null,
         selectedServicePayments: null,
       },
     },
@@ -928,7 +927,7 @@ export async function payRouteStopsViaBuyerApi(
   return { status: res.status, text: res.text };
 }
 
-export async function payMerchandiseLinesViaBuyerApi(
+export async function payServiceAgreementViaBuyerApi(
   page: Page,
   buyerToken: string,
   args: {
@@ -946,23 +945,40 @@ export async function payMerchandiseLinesViaBuyerApi(
   if (agRes.status >= 400) {
     return { status: agRes.status, text: agRes.text };
   }
-  let merchandiseIds: string[] = [];
+
+  let servicePicks: Array<{
+    serviceItemId: string;
+    entryMonth: number;
+    entryDay: number;
+  }> = [];
   try {
     const agreements = JSON.parse(agRes.text) as Array<{
       id?: string;
-      merchandise?: Array<{ id?: string }>;
+      services?: Array<{
+        id?: string;
+        recurrenciaPagos?: { entries?: Array<{ month?: number; day?: number }> };
+      }>;
     }>;
     const agreement = agreements.find(
       (a) => (a.id ?? "").trim() === args.agreementId.trim(),
     );
-    merchandiseIds = (agreement?.merchandise ?? [])
-      .map((m) => (m.id ?? "").trim())
-      .filter((id) => id.length >= 4);
+    const svc = agreement?.services?.[0];
+    const entry = svc?.recurrenciaPagos?.entries?.[0];
+    const sid = (svc?.id ?? "").trim();
+    if (sid.length >= 4 && entry?.month && entry?.day) {
+      servicePicks = [
+        {
+          serviceItemId: sid,
+          entryMonth: entry.month,
+          entryDay: entry.day,
+        },
+      ];
+    }
   } catch {
     return { status: 500, text: "invalid agreement json" };
   }
-  if (merchandiseIds.length === 0) {
-    return { status: 400, text: "no merchandise lines on agreement" };
+  if (servicePicks.length === 0) {
+    return { status: 400, text: "no billable service payments on agreement" };
   }
 
   await ensureBuyerPaymentReady(buyerToken);
@@ -976,158 +992,13 @@ export async function payMerchandiseLinesViaBuyerApi(
       body: {
         currency: "USD",
         paymentMethodId,
-        idempotencyKey: `idem-e2e-merch-${Date.now()}`,
+        idempotencyKey: `idem-e2e-svc-${Date.now()}`,
         selectedRoutePathIds: null,
-        selectedMerchandiseLineIds: merchandiseIds,
-        selectedServicePayments: null,
+        selectedServicePayments: servicePicks,
       },
     },
   );
   return { status: res.status, text: res.text };
-}
-
-/** Polls until at least one merchandise line payment is in `held` status. */
-export async function waitForHeldMerchPayment(
-  page: Page,
-  token: string,
-  threadId: string,
-  agreementId: string,
-): Promise<void> {
-  await expect
-    .poll(
-      async () =>
-        page.evaluate(
-          async ([tid, tok, aid]: [string, string, string]) => {
-            const res = await fetch(
-              `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments`,
-              { headers: { Authorization: `Bearer ${tok}` } },
-            );
-            if (!res.ok) return 0;
-            const rows = (await res.json()) as Array<{ status?: string }>;
-            return rows.filter(
-              (p) => (p.status ?? "").trim().toLowerCase() === "held",
-            ).length;
-          },
-          [threadId, token, agreementId] as [string, string, string],
-        ),
-      { timeout: 45_000 },
-    )
-    .toBeGreaterThan(0);
-}
-
-/** PUT merchandise evidence for the first held payment; returns HTTP status. */
-export async function submitMerchandiseEvidenceViaApi(
-  page: Page,
-  token: string,
-  threadId: string,
-  agreementId: string,
-  note: string,
-): Promise<number> {
-  return page.evaluate(
-    async ([tid, tok, aid, text]: [string, string, string, string]) => {
-      const hdr: Record<string, string> = {
-        Authorization: `Bearer ${tok}`,
-        "Content-Type": "application/json",
-      };
-      const listRes = await fetch(
-        `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments`,
-        { headers: hdr },
-      );
-      if (!listRes.ok) return listRes.status;
-      const payments = (await listRes.json()) as Array<{
-        id?: string;
-        status?: string;
-      }>;
-      const payId = payments.find(
-        (p) => (p.status ?? "").trim().toLowerCase() === "held",
-      )?.id;
-      if (!payId) return 404;
-      const putRes = await fetch(
-        `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments/${encodeURIComponent(payId)}/evidence`,
-        {
-          method: "PUT",
-          headers: hdr,
-          body: JSON.stringify({ text, submit: true }),
-        },
-      );
-      return putRes.status;
-    },
-    [threadId, token, agreementId, note] as [string, string, string, string],
-  );
-}
-
-/** POST buyer accept on submitted merchandise evidence; returns HTTP status. */
-export async function acceptMerchandiseEvidenceViaApi(
-  page: Page,
-  token: string,
-  threadId: string,
-  agreementId: string,
-): Promise<number> {
-  return page.evaluate(
-    async ([tid, tok, aid]: [string, string, string]) => {
-      const hdr: Record<string, string> = {
-        Authorization: `Bearer ${tok}`,
-        "Content-Type": "application/json",
-      };
-      const listRes = await fetch(
-        `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments`,
-        { headers: hdr },
-      );
-      if (!listRes.ok) return listRes.status;
-      const payments = (await listRes.json()) as Array<{
-        id?: string;
-        status?: string;
-        evidence?: { status?: string };
-      }>;
-      const payId = payments.find((p) => {
-        const paySt = (p.status ?? "").trim().toLowerCase();
-        const evSt = (p.evidence?.status ?? "").trim().toLowerCase();
-        return paySt === "held" && evSt === "submitted";
-      })?.id;
-      if (!payId) return 404;
-      const decideRes = await fetch(
-        `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments/${encodeURIComponent(payId)}/evidence/decision`,
-        {
-          method: "POST",
-          headers: hdr,
-          body: JSON.stringify({ decision: "accepted" }),
-        },
-      );
-      return decideRes.status;
-    },
-    [threadId, token, agreementId] as [string, string, string],
-  );
-}
-
-/** Poll until no merchandise line payments remain in `held` status. */
-export async function waitForMerchandisePaymentsReleased(
-  page: Page,
-  token: string,
-  threadId: string,
-  agreementId: string,
-): Promise<void> {
-  await expect
-    .poll(
-      async () => {
-        const held = await page.evaluate(
-          async ([tid, tok, aid]: [string, string, string]) => {
-            const res = await fetch(
-              `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments`,
-              { headers: { Authorization: `Bearer ${tok}` } },
-            );
-            if (!res.ok) return -1;
-            const rows = (await res.json()) as Array<{ status?: string }>;
-            return rows.filter(
-              (r) => (r.status ?? "").trim().toLowerCase() === "held",
-            ).length;
-          },
-          [threadId, token, agreementId] as [string, string, string],
-        );
-        return held;
-      },
-      { timeout: 45_000 },
-    )
-    .toBe(0);
 }
 
 type E2ERouteSheetRecord = Record<string, unknown> & {

@@ -40,12 +40,10 @@ import {
 } from "../../Resources/exit-policies-ui-helpers";
 import {
   openAuthenticatedChatListPage,
-  payHeldMerchandiseAgreement,
   payHeldServiceAgreement,
   scenarioBuyerUserId,
   scenarioCarrierUserId,
   scenarioSellerStoreId,
-  setupAcceptedMerchandiseAgreementNoPayments,
   setupAcceptedServiceAgreementNoPayments,
   setupPaidRouteForExitPolicies,
   setupRouteWithConfirmedCarriers,
@@ -201,10 +199,10 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
       await buyerList.context().close();
     });
 
-    test("E-B05: party soft leave bloqueado pago Held mercancía", async ({
+    test("E-B05: party soft leave bloqueado pago Held servicio", async ({
       browser,
     }) => {
-      const s = await setupAcceptedMerchandiseAgreementNoPayments(
+      const s = await setupAcceptedServiceAgreementNoPayments(
         browser,
         e2eOfferId,
         getE2EToken(),
@@ -217,10 +215,10 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
       await buyerPage.goto(`/chat/${s.threadId}`, {
         waitUntil: "domcontentloaded",
       });
-      await payHeldMerchandiseAgreement(
+      await payHeldServiceAgreement(
         buyerPage,
         s.threadId,
-        s.agreementTitle,
+        s.serviceNamePart ?? "Consultoría E2E",
         s.agreementId,
       );
       await expect(buyerPage.getByText(/cargando chat/i)).toBeHidden({
@@ -430,10 +428,10 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
       await sellerList.context().close();
     });
 
-    test("E-S05: party soft leave con Held mercancía (−15 tienda)", async ({
+    test("E-S05: party soft leave con Held servicio (−15 tienda)", async ({
       browser,
     }) => {
-      const s = await setupAcceptedMerchandiseAgreementNoPayments(
+      const s = await setupAcceptedServiceAgreementNoPayments(
         browser,
         e2eOfferId,
         getE2EToken(),
@@ -446,10 +444,10 @@ test.describe("chat exit policies — party soft leave & carrier withdraw", () =
       await buyerPage.goto(`/chat/${s.threadId}`, {
         waitUntil: "domcontentloaded",
       });
-      await payHeldMerchandiseAgreement(
+      await payHeldServiceAgreement(
         buyerPage,
         s.threadId,
-        s.agreementTitle,
+        s.serviceNamePart ?? "Consultoría E2E",
         s.agreementId,
       );
       await buyerPage.context().close();

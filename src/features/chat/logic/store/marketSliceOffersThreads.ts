@@ -1,8 +1,5 @@
 import type { TradeAgreement, TradeAgreementDraft } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
-import {
-  normalizeExtraScope,
-  normalizeMerchandiseLine,
-} from "@features/chat/logic/agreement/tradeAgreementTypes"
+import { normalizeExtraScope } from "@features/chat/logic/agreement/tradeAgreementTypes"
 import { hasValidationErrors, validateTradeAgreementDraft } from "@features/chat/logic/agreement/tradeAgreementValidation"
 import type { RouteSheetPayload } from "@features/chat/Dtos/route-sheet/routeSheetTypes";import type { ChatMessageDto, ChatThreadDto } from "@features/chat/Dtos/thread/chatApiTypes";
 import { CHAT_CANNOT_MESSAGE_SELF, createOrGetChatThread, deleteChatThread, deleteThreadTradeAgreement, fetchChatMessages, fetchChatThread, fetchChatThreadByOffer, fetchThreadRouteSheets, fetchThreadTradeAgreements, patchThreadTradeAgreement, postThreadTradeAgreement, postThreadTradeAgreementDuplicate, postThreadTradeAgreementRespond } from "@features/chat/api/chatApi";import { mapTradeAgreementApiToTradeAgreement } from "@features/chat/logic/agreement/tradeAgreementApiMapper"
@@ -52,7 +49,7 @@ function extraFieldsPayloadForApi(
   | Array<{
       title: string;
       valueKind: "text" | "image" | "document";
-      scope: "merchandise" | "service" | "legacy_combined";
+      scope: "service" | "legacy_combined";
       textValue?: string;
       mediaUrl?: string;
       fileName?: string;
@@ -62,20 +59,15 @@ function extraFieldsPayloadForApi(
   const out: Array<{
     title: string;
     valueKind: "text" | "image" | "document";
-    scope: "merchandise" | "service" | "legacy_combined";
+    scope: "service" | "legacy_combined";
     textValue?: string;
     mediaUrl?: string;
     fileName?: string;
   }> = [];
   for (const r of rows) {
     const scope = normalizeExtraScope(r.scope as string | undefined);
-    if (scope === "merchandise" && !draft.includeMerchandise) continue;
     if (scope === "service" && !draft.includeService) continue;
-    if (
-      scope === "legacy_combined" &&
-      !(draft.includeMerchandise && draft.includeService)
-    )
-      continue;
+    // `legacy_combined` se conserva por compatibilidad (acuerdos service-only).
     const title = r.title.trim();
     const text = r.textValue.trim();
     const url = r.mediaUrl.trim();
@@ -111,14 +103,8 @@ function snapshotDraftExtraFields(
   const rows = draft.extraFields ?? [];
   const kept = rows.filter((r) => {
     const scope = normalizeExtraScope(r.scope as string | undefined);
-    if (scope === "merchandise" && draft.includeMerchandise) return true;
     if (scope === "service" && draft.includeService) return true;
-    if (
-      scope === "legacy_combined" &&
-      draft.includeMerchandise &&
-      draft.includeService
-    )
-      return true;
+    if (scope === "legacy_combined") return true;
     return false;
   });
   return kept.length
@@ -513,9 +499,7 @@ emitTradeAgreement: async (threadId, draft) => {
       const xfApi = extraFieldsPayloadForApi(draft);
       const body = {
         title: draft.title,
-        includeMerchandise: draft.includeMerchandise,
-        includeService: draft.includeService,
-        merchandise: draft.merchandise,
+        includeService: true,
         services: draft.services,
         ...(xfApi ? { extraFields: xfApi } : {}),
       };
@@ -542,10 +526,8 @@ emitTradeAgreement: async (threadId, draft) => {
       issuedByStoreId: th.storeId,
       issuerLabel: th.store.name,
       status: 'pending_buyer',
-      merchandise: draft.includeMerchandise
-        ? draft.merchandise.map((l) => normalizeMerchandiseLine(l))
-        : [],
-      services: draft.includeService ? draft.services : [],
+      includeService: true,
+      services: draft.services,
       extraFields: snapshotDraftExtraFields(draft),
       routeSheetId: undefined,
       hadBuyerAcceptance: false,
@@ -593,9 +575,7 @@ updatePendingTradeAgreement: async (threadId, agreementId, draft) => {
       const xfApi = extraFieldsPayloadForApi(draft);
       const body = {
         title: draft.title,
-        includeMerchandise: draft.includeMerchandise,
-        includeService: draft.includeService,
-        merchandise: draft.merchandise,
+        includeService: true,
         services: draft.services,
         ...(xfApi ? { extraFields: xfApi } : {}),
       };
@@ -634,12 +614,8 @@ updatePendingTradeAgreement: async (threadId, agreementId, draft) => {
     nextContracts[idx] = {
       ...ag,
       title,
-      includeMerchandise: draft.includeMerchandise,
-      includeService: draft.includeService,
-      merchandise: draft.includeMerchandise
-        ? draft.merchandise.map((l) => normalizeMerchandiseLine(l))
-        : [],
-      services: draft.includeService ? draft.services : [],
+      includeService: true,
+      services: draft.services,
       extraFields: snapshotDraftExtraFields(draft),
       service: undefined,
       routeSheetId: nextRouteSheetId,

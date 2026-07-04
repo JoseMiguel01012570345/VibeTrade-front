@@ -3,7 +3,7 @@ import type { RouteStopDeliveryStatusApi } from "@features/chat/Dtos/route-sheet
 import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
 import { routeSheetEstadoIsEntregada } from "@features/chat/logic/route-sheet/routeSheetTypes";
 import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
-import { agreementDeclaresMerchandise, normalizeAgreementServices } from "@features/chat/logic/agreement/tradeAgreementTypes";
+import { normalizeAgreementServices } from "@features/chat/logic/agreement/tradeAgreementTypes";
 import {
   minorToMajor,
   currencyMinorDecimals,
@@ -121,7 +121,6 @@ export function shouldWarnUnconfirmedRouteCarriers(
   if (shouldSkipRouteCarrierPaymentWarning(agreement, linkedRouteSheet)) {
     return false;
   }
-  if (!agreementDeclaresMerchandise(agreement)) return false;
   if ((agreement.routeSheetId ?? "").trim().length < 2) return false;
   if (paths.length === 0) return false;
   if (paths.every((p) => p.paid)) return false;

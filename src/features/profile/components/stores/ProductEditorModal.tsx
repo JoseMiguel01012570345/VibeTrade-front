@@ -1,7 +1,7 @@
 import { type ChangeEvent, useId, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Loader2, Upload, X } from "lucide-react";
-import type { MerchandiseCondition } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import type { MerchandiseCondition } from "@features/market/Dtos/merchandiseCondition";
 import {
   catalogMonedasList,
   mergeMonedaPrecioIntoMonedas,

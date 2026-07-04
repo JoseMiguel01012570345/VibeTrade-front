@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BadgeCheck, Heart, Truck } from "lucide-react";
+import { Heart, MessageCircle, Truck } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { isToolPlaceholderUrl } from "@features/market/logic/toolPlaceholder";
 import type { Offer, StoreBadge } from "@features/market/logic/store/marketStoreTypes";
 import { storeHref } from "@features/market/logic/store/storePath";
-import type { StoreProduct } from "@features/market/logic/storeCatalogTypes";
+import type {
+  StoreProduct,
+  StoreService,
+} from "@features/market/logic/storeCatalogTypes";
 import { StorefrontProductCard } from "@features/storefront/components/StorefrontProductCard";
 import { OfferSaveButton } from "./OfferSaveButton";
+import { ServiceDetailFields } from "./ServiceDetailFields";
 
 /**
  * Galería del detalle (columna izquierda). Réplica de la app de referencia
@@ -151,6 +155,95 @@ function BuyActions({
   );
 }
 
+/** Acciones de la miga de pan: "me gusta" (o contador si no puede) + guardar. */
+function OfferLikeActions({
+  offerId,
+  canLike,
+  liked,
+  likeCount,
+  onToggleLike,
+}: Readonly<{
+  offerId: string;
+  canLike: boolean;
+  liked: boolean;
+  likeCount: number;
+  onToggleLike: () => void;
+}>) {
+  return (
+    <span className="ml-auto flex shrink-0 items-center gap-2">
+      {canLike ? (
+        <button
+          type="button"
+          onClick={onToggleLike}
+          className="inline-flex items-center gap-1.5 rounded-full border border-[#d9d5cf] bg-white px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700"
+          title={liked ? "Quitar me gusta" : "Me gusta"}
+        >
+          <Heart
+            size={16}
+            className={cn(liked && "fill-rose-500 text-rose-500")}
+            aria-hidden
+          />
+          <span className="tabular-nums">{likeCount}</span>
+        </button>
+      ) : (
+        <span className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-400">
+          <Heart size={16} aria-hidden />
+          <span className="tabular-nums">{likeCount}</span>
+        </span>
+      )}
+      <OfferSaveButton offerId={offerId} className="border-[#d9d5cf] bg-white" />
+    </span>
+  );
+}
+
+/** Bloque de precio del detalle. En servicios sin precio, solo un separador. */
+function OfferPriceBlock({
+  price,
+  measureLabel,
+}: Readonly<{ price: string; measureLabel: string }>) {
+  if (!price.trim()) {
+    return <div className="mt-7 border-t border-[#e5ddd5] pt-6" />;
+  }
+  return (
+    <div className="mt-7 border-y border-[#e5ddd5] py-6">
+      <span className="text-2xl font-extrabold leading-none text-emerald-700 sm:text-4xl lg:text-[3.3rem]">
+        {price}
+      </span>
+      <p className="mt-2 text-sm text-slate-500">
+        Precio unitario: {price}
+        {measureLabel ? ` · ${measureLabel}` : ""}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Servicios: "Escribir al privado" (abre el chat operativo del vendedor). Sustituye
+ * a las acciones de compra cuando la oferta no es comprable por carrito.
+ */
+function ServiceContactBlock({
+  onContactSeller,
+  contactBusy,
+}: Readonly<{
+  onContactSeller?: () => void;
+  contactBusy: boolean;
+}>) {
+  if (!onContactSeller) return null;
+  return (
+    <div className="mt-8">
+      <button
+        type="button"
+        className="flex h-14 w-full items-center justify-center gap-2 rounded-[6px] bg-emerald-700 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+        onClick={onContactSeller}
+        disabled={contactBusy}
+      >
+        <MessageCircle size={18} aria-hidden />
+        {contactBusy ? "Abriendo chat…" : "Escribir al privado"}
+      </button>
+    </div>
+  );
+}
+
 /**
  * Detalle de producto (vista de cliente). Réplica de la UI/UX del `ProductDetail`
  * de la app de referencia (frontend-guest, `src/pages/ProductDetail.tsx`):
@@ -162,6 +255,7 @@ function BuyActions({
 export function OfferProductDetail({
   offer,
   productFicha,
+  serviceFicha,
   store,
   gallery,
   descriptionText,
@@ -172,11 +266,15 @@ export function OfferProductDetail({
   onToggleLike,
   onAddToCart,
   onBuyNow,
+  onContactSeller,
+  contactBusy = false,
   onOpenLightbox,
   relatedProducts,
 }: Readonly<{
   offer: Offer;
   productFicha: StoreProduct | null;
+  /** Ficha del servicio (cuando la oferta es un servicio); habilita el detalle rico. */
+  serviceFicha?: StoreService | null;
   store: StoreBadge;
   gallery: string[];
   descriptionText: string;
@@ -192,6 +290,12 @@ export function OfferProductDetail({
   onToggleLike: () => void;
   onAddToCart: (qty: number) => void;
   onBuyNow: (qty: number) => void;
+  /**
+   * Servicios: abre el chat operativo con el vendedor ("Escribir al privado"). Si no
+   * se pasa (p. ej. la oferta es del propio dueño), no se muestra el botón.
+   */
+  onContactSeller?: () => void;
+  contactBusy?: boolean;
   onOpenLightbox: (url: string) => void;
   relatedProducts: StoreProduct[];
 }>) {
@@ -230,32 +334,13 @@ export function OfferProductDetail({
             <span className="min-w-0 max-w-full truncate font-semibold text-slate-700">
               {offer.title}
             </span>
-            <span className="ml-auto flex shrink-0 items-center gap-2">
-              {canLike ? (
-                <button
-                  type="button"
-                  onClick={onToggleLike}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[#d9d5cf] bg-white px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700"
-                  title={liked ? "Quitar me gusta" : "Me gusta"}
-                >
-                  <Heart
-                    size={16}
-                    className={cn(liked && "fill-rose-500 text-rose-500")}
-                    aria-hidden
-                  />
-                  <span className="tabular-nums">{likeCount}</span>
-                </button>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-400">
-                  <Heart size={16} aria-hidden />
-                  <span className="tabular-nums">{likeCount}</span>
-                </span>
-              )}
-              <OfferSaveButton
-                offerId={offer.id}
-                className="border-[#d9d5cf] bg-white"
-              />
-            </span>
+            <OfferLikeActions
+              offerId={offer.id}
+              canLike={canLike}
+              liked={liked}
+              likeCount={likeCount}
+              onToggleLike={onToggleLike}
+            />
           </div>
 
           <ProductGallery
@@ -273,15 +358,7 @@ export function OfferProductDetail({
             {offer.title}
           </h1>
 
-          <div className="mt-7 border-y border-[#e5ddd5] py-6">
-            <span className="text-2xl font-extrabold leading-none text-emerald-700 sm:text-4xl lg:text-[3.3rem]">
-              {offer.price}
-            </span>
-            <p className="mt-2 text-sm text-slate-500">
-              Precio unitario: {offer.price}
-              {measureLabel ? ` · ${measureLabel}` : ""}
-            </p>
-          </div>
+          <OfferPriceBlock price={offer.price} measureLabel={measureLabel} />
 
           {measureLabel ? (
             <p className="mt-4 text-sm font-semibold text-slate-700">
@@ -311,18 +388,10 @@ export function OfferProductDetail({
           {canBuy ? (
             <BuyActions onAddToCart={onAddToCart} onBuyNow={onBuyNow} />
           ) : (
-            <div className="mt-8 flex items-center gap-2 rounded-[12px] border border-[#e5ddd5] bg-white px-4 py-3">
-              <Link
-                to={storeHref(store)}
-                className="inline-flex items-center gap-2 text-sm font-bold text-emerald-700 hover:underline"
-              >
-                <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-600" />
-                {store.name}
-                {store.verified ? (
-                  <BadgeCheck size={16} aria-hidden className="text-emerald-600" />
-                ) : null}
-              </Link>
-            </div>
+            <ServiceContactBlock
+              onContactSeller={onContactSeller}
+              contactBusy={contactBusy}
+            />
           )}
 
           <div className="mt-8 flex items-center gap-3 text-sm font-semibold text-slate-600">
@@ -331,6 +400,12 @@ export function OfferProductDetail({
           </div>
         </aside>
       </section>
+
+      {serviceFicha ? (
+        <section>
+          <ServiceDetailFields s={serviceFicha} />
+        </section>
+      ) : null}
 
       {relatedProducts.length > 0 ? (
         <section>

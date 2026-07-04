@@ -7,7 +7,6 @@ import {
   yearsTouchingVigencia,
 } from "./serviceVigenciaDates";
 import type {
-  MerchandiseLine,
   ServiceAgreementBlock,
   ServiceItem,
   ServicePaymentRecurrence,
@@ -17,13 +16,13 @@ import type {
   TradeAgreementExtraFieldDraft,
   TradeAgreementExtraFieldScope,
   WeekdayIndex,
-  MerchandiseSectionMeta,
 } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
 
 export function normalizeExtraScope(
   raw: string | undefined,
 ): TradeAgreementExtraFieldScope {
-  if (raw === "merchandise" || raw === "service") return raw;
+  if (raw === "service") return "service";
+  // Datos legados pasan a combinado.
   return "legacy_combined";
 }
 
@@ -34,7 +33,7 @@ export function newAgreementExtraFieldId(): string {
 }
 
 export function emptyTradeAgreementExtraField(
-  scope: TradeAgreementExtraFieldScope = "merchandise",
+  scope: TradeAgreementExtraFieldScope = "service",
 ): TradeAgreementExtraFieldDraft {
   return {
     id: newAgreementExtraFieldId(),
@@ -45,12 +44,6 @@ export function emptyTradeAgreementExtraField(
     mediaUrl: "",
     fileName: "",
   };
-}
-
-export function merchandiseScopedExtraFields(
-  xf?: TradeAgreementExtraFieldDraft[],
-): TradeAgreementExtraFieldDraft[] {
-  return (xf ?? []).filter((f) => f.scope === "merchandise");
 }
 
 export function serviceScopedExtraFields(
@@ -66,59 +59,15 @@ export function legacyCombinedExtraFields(
 }
 
 export function rebuildExtraFieldsFromSections(
-  merchandise: TradeAgreementExtraFieldDraft[],
   service: TradeAgreementExtraFieldDraft[],
   legacy: TradeAgreementExtraFieldDraft[],
 ): TradeAgreementExtraFieldDraft[] {
-  const m = merchandise.map((f) => ({
-    ...f,
-    scope: "merchandise" as const,
-  }));
   const s = service.map((f) => ({ ...f, scope: "service" as const }));
   const l = legacy.map((f) => ({
     ...f,
     scope: "legacy_combined" as const,
   }));
-  return [...m, ...s, ...l];
-}
-
-export function emptyMerchandiseLine(): MerchandiseLine {
-  return {
-    tipo: "",
-    cantidad: "",
-    valorUnitario: "",
-    estado: "nuevo",
-    descuento: "",
-    impuestos: "",
-    moneda: "",
-    tipoEmbalaje: "",
-    devolucionesDesc: "",
-    devolucionQuienPaga: "",
-    devolucionPlazos: "",
-    regulaciones: "",
-  };
-}
-
-/** Completa claves faltantes (p. ej. datos persistidos antes del modelo por ítem). */
-export function normalizeMerchandiseLine(
-  line: Partial<MerchandiseLine>,
-): MerchandiseLine {
-  return {
-    ...emptyMerchandiseLine(),
-    ...line,
-    estado: line.estado ?? "nuevo",
-  };
-}
-
-export function emptyMerchandiseMeta(): MerchandiseSectionMeta {
-  return {
-    moneda: "",
-    tipoEmbalaje: "",
-    devolucionesDesc: "",
-    devolucionQuienPaga: "",
-    devolucionPlazos: "",
-    regulaciones: "",
-  };
+  return [...s, ...l];
 }
 
 export function emptyServiceBlock(): ServiceAgreementBlock {
@@ -497,9 +446,7 @@ export function normalizeAgreementServices(a: TradeAgreement): ServiceItem[] {
 export function defaultAgreementDraft(): TradeAgreementDraft {
   return {
     title: "",
-    includeMerchandise: true,
-    includeService: false,
-    merchandise: [emptyMerchandiseLine()],
+    includeService: true,
     services: [],
     extraFields: [],
   };
@@ -507,10 +454,6 @@ export function defaultAgreementDraft(): TradeAgreementDraft {
 
 /** Copia editable de un acuerdo ya emitido (para el formulario). No incluye id ni estado. */
 export function tradeAgreementToDraft(a: TradeAgreement): TradeAgreementDraft {
-  const merchandise =
-    a.merchandise.length > 0
-      ? a.merchandise.map((l) => normalizeMerchandiseLine(l))
-      : [emptyMerchandiseLine()];
   const services = normalizeAgreementServices(a);
   const xfRaw =
     a.extraFields && a.extraFields.length > 0
@@ -524,19 +467,10 @@ export function tradeAgreementToDraft(a: TradeAgreement): TradeAgreementDraft {
   }));
   return {
     title: a.title,
-    includeMerchandise: a.includeMerchandise !== false,
-    includeService: a.includeService !== false,
-    merchandise,
+    includeService: true,
     services: services.length ? JSON.parse(JSON.stringify(services)) : [],
     extraFields: xf,
   };
-}
-
-/** Compatibilidad: acuerdos sin flag se tratan como ambos bloques incluidos. */
-export function agreementDeclaresMerchandise(
-  a: Pick<TradeAgreement, "includeMerchandise">,
-): boolean {
-  return a.includeMerchandise !== false;
 }
 
 export function agreementDeclaresService(
@@ -555,15 +489,9 @@ export function agreementRouteLinkFrozenAfterPayment(
   );
 }
 
-/** Bloquea vincular o desvincular hoja (evidencia aceptada o transporte ya cobrado). */
+/** Bloquea vincular o desvincular hoja (transporte ya cobrado). */
 export function agreementRouteLinkFrozen(
-  a: Pick<
-    TradeAgreement,
-    | "hasSucceededRoutePayments"
-    | "hasAcceptedMerchandiseEvidence"
-    | "routeSheetId"
-  >,
+  a: Pick<TradeAgreement, "hasSucceededRoutePayments" | "routeSheetId">,
 ): boolean {
-  if (a.hasAcceptedMerchandiseEvidence === true) return true;
   return agreementRouteLinkFrozenAfterPayment(a);
 }

@@ -4,7 +4,7 @@ import {
   normalizeRouteSheetParadas,
 } from "@features/chat/logic/route-sheet/routeSheetValidation"
 import type { RouteSheet, RouteStop, RouteTramoFormInput } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
-import { routeSheetEditAcksRecordFromSheets, summarizeRouteSheetMonedaPago } from "@features/chat/logic/route-sheet/routeSheetTypes";import { agreementHasMerchandiseForRouteLink } from "@features/chat/logic/agreement/tradeAgreementValidation"
+import { routeSheetEditAcksRecordFromSheets, summarizeRouteSheetMonedaPago } from "@features/chat/logic/route-sheet/routeSheetTypes";
 import {
   resolveRouteOfferPublicForSheet,
   resolveRouteOfferPublicForThread,
@@ -497,11 +497,6 @@ linkAgreementToRouteSheet: async (threadId, agreementId, routeSheetId) => {
   if (!sheet0) return false
   const prev0 = contracts0.find((c) => c.id === agreementId)
   if (!prev0 || prev0.status === 'deleted') return false
-  if (!agreementHasMerchandiseForRouteLink(prev0)) {
-    throw new Error(
-      'Solo podés vincular una hoja de ruta si el acuerdo incluye mercancía con al menos una línea con cantidad, precio unitario y moneda válidos.',
-    )
-  }
   if (prev0.routeSheetId === routeSheetId) return true
 
   const applyLocal = () => {

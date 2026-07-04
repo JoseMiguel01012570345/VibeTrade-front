@@ -19,15 +19,12 @@ export async function fetchAgreementCheckoutBreakdown(
      * `null` o array = explícito en POST (array vacío = sin transporte).
      */
     selectedRoutePathIds?: string[] | null;
-    /** Igual que rutas: solo POST cuando se define (mercadería explícita). */
-    selectedMerchandiseLineIds?: string[] | null;
   },
 ): Promise<AgreementCheckoutBreakdownApi> {
   const picks = opts?.selectedServicePayments ?? [];
   const hasServicePicks = picks.length > 0;
   const routeExplicit = opts?.selectedRoutePathIds !== undefined;
-  const merchExplicit = opts?.selectedMerchandiseLineIds !== undefined;
-  const usePost = hasServicePicks || routeExplicit || merchExplicit;
+  const usePost = hasServicePicks || routeExplicit;
 
   const res = usePost
     ? await apiFetch(
@@ -45,9 +42,6 @@ export async function fetchAgreementCheckoutBreakdown(
               : null,
             selectedRoutePathIds: routeExplicit
               ? (opts?.selectedRoutePathIds ?? null)
-              : null,
-            selectedMerchandiseLineIds: merchExplicit
-              ? (opts?.selectedMerchandiseLineIds ?? null)
               : null,
           }),
         },
@@ -88,7 +82,6 @@ export async function executeAgreementCurrencyPayment(args: {
     entryKey: { month: number; day: number };
   }>;
   selectedRoutePathIds?: string[] | null;
-  selectedMerchandiseLineIds?: string[] | null;
 }): Promise<AgreementExecutePaymentResultApi> {
   const headers: HeadersInit = { "Content-Type": "application/json" };
   const ik = args.idempotencyKey?.trim();
@@ -114,10 +107,6 @@ export async function executeAgreementCurrencyPayment(args: {
           args.selectedRoutePathIds === undefined
             ? null
             : args.selectedRoutePathIds,
-        selectedMerchandiseLineIds:
-          args.selectedMerchandiseLineIds === undefined
-            ? null
-            : args.selectedMerchandiseLineIds,
       }),
     },
   );

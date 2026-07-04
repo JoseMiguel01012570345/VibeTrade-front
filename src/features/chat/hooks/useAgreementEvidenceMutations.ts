@@ -1,13 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  decideMerchandiseEvidence,
-  upsertMerchandiseEvidence,
-} from '../api/agreementMerchandiseEvidenceApi'
-import {
   decideServiceEvidence,
   upsertServiceEvidence,
 } from '../api/agreementServiceEvidenceApi'
-import { useInvalidateAgreementMerchandisePayments } from './useAgreementMerchandisePaymentsQuery'
 import { useInvalidateAgreementServicePayments } from './useAgreementServicePaymentsQuery'
 
 export function useDecideServiceEvidenceMutation(
@@ -28,28 +23,6 @@ export function useUpsertServiceEvidenceMutation(
   const invalidate = useInvalidateAgreementServicePayments()
   return useMutation({
     mutationFn: upsertServiceEvidence,
-    onSuccess: () => invalidate(threadId, agreementId),
-  })
-}
-
-export function useDecideMerchandiseEvidenceMutation(
-  threadId: string,
-  agreementId: string,
-) {
-  const invalidate = useInvalidateAgreementMerchandisePayments()
-  return useMutation({
-    mutationFn: decideMerchandiseEvidence,
-    onSuccess: () => invalidate(threadId, agreementId),
-  })
-}
-
-export function useUpsertMerchandiseEvidenceMutation(
-  threadId: string,
-  agreementId: string,
-) {
-  const invalidate = useInvalidateAgreementMerchandisePayments()
-  return useMutation({
-    mutationFn: upsertMerchandiseEvidence,
     onSuccess: () => invalidate(threadId, agreementId),
   })
 }

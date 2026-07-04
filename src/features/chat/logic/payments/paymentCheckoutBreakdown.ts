@@ -14,10 +14,8 @@ import type {
   PaymentCheckoutBreakdown,
 } from "@features/chat/Dtos/agreement/paymentCheckoutBreakdownTypes";
 import {
-  agreementDeclaresMerchandise,
   agreementDeclaresService,
   normalizeAgreementServices,
-  normalizeMerchandiseLine,
 } from "@features/chat/logic/agreement/tradeAgreementTypes";
 import {
   MULTIPLE_AGREEMENT_CURRENCIES_ES,
@@ -144,27 +142,6 @@ export function buildPaymentCheckoutBreakdown(
     return { basisLines: [], byCurrency: [], errors };
   }
 
-  if (agreementDeclaresMerchandise(agreement)) {
-    agreement.merchandise.forEach((raw, i) => {
-      const line = normalizeMerchandiseLine(raw);
-      const q = parseDecimal(line.cantidad);
-      const vu = parseDecimal(line.valorUnitario);
-      const mon = isoNorm(line.moneda || agreement.merchandiseMeta?.moneda);
-      if ((q ?? 0) <= 0 || (vu ?? 0) <= 0) return;
-      if (!mon)
-        errors.push(`Mercancía ${i + 1}: falta código de moneda.`);
-      if (!mon) return;
-      pushLineBucket(bucket, {
-        category: "merchandise",
-        label:
-          `${line.tipo || "Producto"} (× ${line.cantidad})`.slice(0, 200),
-        currency: mon,
-        amountMajor: q! * vu!,
-        merchandiseIndex: i,
-      });
-    });
-  }
-
   if (agreementDeclaresService(agreement)) {
     const services = normalizeAgreementServices(agreement);
     services.forEach((sv, svcIndex) => {
@@ -190,7 +167,7 @@ export function buildPaymentCheckoutBreakdown(
     });
   }
 
-  const subtotalMerchOrServiceMinor = [...bucket.values()].reduce(
+  const subtotalServiceMinor = [...bucket.values()].reduce(
     (s, b) => s + b.subtotalMinor,
     0,
   );
@@ -211,7 +188,7 @@ export function buildPaymentCheckoutBreakdown(
         errors.push(ROUTE_LEG_MUST_MATCH_AGREEMENT_CURRENCY_ES);
       } else if (curCheck.reason === "missing") {
         errors.push(
-          "El acuerdo con mercadería debe indicar la moneda de la mercadería antes de cobrar transporte.",
+          "El acuerdo debe indicar la moneda de los servicios antes de cobrar transporte.",
         );
       }
     } else {
@@ -243,14 +220,14 @@ export function buildPaymentCheckoutBreakdown(
   } else if (
     linkId.length > 0 &&
     !routeSheet &&
-    subtotalMerchOrServiceMinor <= 0
+    subtotalServiceMinor <= 0
   ) {
     errors.push("Hoja de ruta vinculada no cargada en el cliente.");
   } else if (
     linkId.length > 0 &&
     routeSheet &&
     routeSheet.id?.trim() !== linkId &&
-    subtotalMerchOrServiceMinor <= 0
+    subtotalServiceMinor <= 0
   ) {
     errors.push(
       "El id de la hoja de ruta no coincide con el acuerdo; recarga el chat.",

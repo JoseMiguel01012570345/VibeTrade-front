@@ -6,8 +6,6 @@ import {
   statusPillPending,
 } from '@shared/styles/modals/formModalStyles';
 import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
-import { agreementDeclaresMerchandise, agreementDeclaresService } from "@features/chat/logic/agreement/tradeAgreementTypes";
-import { hasMerchandise } from "@features/chat/logic/agreement/tradeAgreementValidation";
 
 export function AgreementBubble({
   title,
@@ -31,10 +29,8 @@ export function AgreementBubble({
   const isDeleted = st === "deleted";
   const hasRoute =
     !isDeleted &&
-    agreement &&
-    agreementDeclaresMerchandise(agreement) &&
-    hasMerchandise({ merchandise: agreement.merchandise }) &&
-    (agreement.routeSheetId || agreement.routeSheetUrl);
+    !!agreement &&
+    !!(agreement.routeSheetId || agreement.routeSheetUrl);
   return (
     <div
       className={cn(
@@ -60,14 +56,7 @@ export function AgreementBubble({
         <div className="mt-1.5 text-sm text-[var(--muted)]">
           {isDeleted
             ? "Este acuerdo fue eliminado por el vendedor. Se conserva el registro en el hilo."
-            : agreementDeclaresMerchandise(agreement) &&
-                agreementDeclaresService(agreement)
-              ? "Mercancías y servicios"
-              : agreementDeclaresMerchandise(agreement)
-                ? "Solo mercancías"
-                : agreementDeclaresService(agreement)
-                  ? "Solo servicios"
-                  : "Sin bloques declarados"}
+            : "Servicios"}
         </div>
       ) : (
         <div className="vt-muted">Cargando detalle…</div>

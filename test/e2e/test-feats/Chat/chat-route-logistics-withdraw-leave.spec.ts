@@ -26,10 +26,16 @@ import {
   postCedeOwnershipApi,
   completeLegEvidenceFlowViaApi,
   ensureStopReadyForCedeApi,
-  acceptMerchandiseEvidenceViaApi,
-  waitForMerchandisePaymentsReleased,
 } from "../../Resources/e2e-logistics-api";
-import { openAuthenticatedChatListPage, scenarioCarrierUserId, scenarioSellerStoreId, provisionFreshMerchandiseThread } from "../../Resources/e2e-exit-policies-env";
+import {
+  openAuthenticatedChatListPage,
+  scenarioCarrierUserId,
+  scenarioSellerStoreId,
+  provisionFreshServiceThread,
+  payHeldServiceAgreement,
+  submitServiceEvidencePendingViaUI,
+  acceptServiceEvidenceViaApi,
+} from "../../Resources/e2e-exit-policies-env";
 import { fetchStoreTrustScore } from "../../Resources/e2e-trust-api";
 import {
   assertNoNativeDialogDuring,
@@ -50,10 +56,6 @@ import {
   sellerDecideEvidenceViaUI,
 } from "../../Resources/route-logistics-ui-helpers";
 import { openSellerPage } from "../../Resources/agreement-ui-helpers";
-import {
-  payHeldMerchandiseViaUI,
-  submitMerchandiseEvidenceAsSeller,
-} from "../../Resources/route-completion-e2e-helpers";
 
 test.describe("chat route logistics — withdraw & party leave", () => {
   test.describe.configure({ mode: "serial", timeout: 480_000 });
@@ -314,34 +316,32 @@ test.describe("chat route logistics — withdraw & party leave", () => {
       buyer.sessionToken,
       s.threadId,
     );
-    await payHeldMerchandiseViaUI(buyerPayPage, s.threadId, s.agreementTitle, s.agreementId);
+    await payHeldServiceAgreement(
+      buyerPayPage,
+      s.threadId,
+      "Consultoría E2E",
+      s.agreementId,
+    );
     await buyerPayPage.context().close();
 
-    await submitMerchandiseEvidenceAsSeller(
+    const sellerEvidencePage = await openSellerPage(
       browser,
-      {
-        threadId: s.threadId,
-        agreementId: s.agreementId,
-        agreementTitle: s.agreementTitle,
-        routeSheetTitulo: s.routeSheetTitulo,
-        sellerSessionToken: seller.sessionToken,
-      },
-      "L13 merch evidence",
+      seller.sessionToken,
+      s.threadId,
     );
+    await submitServiceEvidencePendingViaUI(
+      sellerEvidencePage,
+      s.agreementTitle,
+      "L13 service evidence",
+    );
+    await sellerEvidencePage.context().close();
 
     const buyerAcceptPage = await openSellerPage(
       browser,
       buyer.sessionToken,
       s.threadId,
     );
-    const acceptStatus = await acceptMerchandiseEvidenceViaApi(
-      buyerAcceptPage,
-      buyer.sessionToken,
-      s.threadId,
-      s.agreementId,
-    );
-    expect(acceptStatus).toBeLessThan(300);
-    await waitForMerchandisePaymentsReleased(
+    await acceptServiceEvidenceViaApi(
       buyerAcceptPage,
       buyer.sessionToken,
       s.threadId,
@@ -465,7 +465,7 @@ test.describe("chat route logistics — withdraw & party leave", () => {
     const seller = getE2ESellerSession()!;
     const scenario = getE2EScenario()!;
     const carrierToken = scenario.carrierSessionToken!;
-    const fresh = await provisionFreshMerchandiseThread(browser, "L17");
+    const fresh = await provisionFreshServiceThread(browser, "L17");
     const s = await setupPaidRouteLogisticsScenario(browser, {
       tituloPrefix: "Hoja L17 Seller Leave",
       threadId: fresh.threadId,

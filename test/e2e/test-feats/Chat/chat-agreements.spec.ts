@@ -16,7 +16,6 @@ import {
   openAgreementDetailInRail,
   openSellerPage,
   sellerEditAgreementInRail,
-  sellerEmitMerchandiseAgreement,
   sellerEmitServiceAgreement,
   SELLER_TRUST_PENALTY_PTS,
 } from "../../Resources/agreement-ui-helpers";
@@ -49,9 +48,9 @@ test.describe("chat agreements (UI + buyer respond)", () => {
       seller.sessionToken,
       threadId,
     );
-    await sellerEmitMerchandiseAgreement(sellerPage, {
+    await sellerEmitServiceAgreement(sellerPage, {
       title,
-      productNamePart: "Producto E2E",
+      serviceNamePart: "Consultoría E2E",
     });
 
     await waitForAgreementBubble(buyerPage, title);
@@ -78,48 +77,14 @@ test.describe("chat agreements (UI + buyer respond)", () => {
       seller.sessionToken,
       threadId,
     );
-    await sellerEmitMerchandiseAgreement(sellerPage, {
+    await sellerEmitServiceAgreement(sellerPage, {
       title,
-      productNamePart: "Producto E2E",
+      serviceNamePart: "Consultoría E2E",
     });
 
     await waitForAgreementBubble(buyerPage, title);
     await buyerRespondToAgreement(buyerPage, title, "reject");
     await expect(buyerPage.getByText(/rechazado/i).first()).toBeVisible();
-
-    await sellerPage.close();
-    await buyerPage.context().close();
-  });
-
-  test("seller emits agreement with two merchandise lines", async ({
-    browser,
-  }) => {
-    const seller = getE2ESellerSession()!;
-    const title = `E2E Multi merch ${Date.now()}`;
-
-    const { buyerPage, threadId } = await createThreadAsBuyer(
-      browser,
-      getE2EToken(),
-      e2eOfferId,
-    );
-    const sellerPage = await openSellerPage(
-      browser,
-      seller.sessionToken,
-      threadId,
-    );
-
-    await sellerEmitMerchandiseAgreement(sellerPage, {
-      title,
-      productNamePart: "Producto E2E",
-      secondProductNamePart: "Producto 2 E2E",
-    });
-
-    await waitForAgreementBubble(buyerPage, title);
-
-    await openAgreementDetailInRail(buyerPage, title);
-    await expect(
-      buyerPage.getByText(/solo mercancías|mercancías/i).first(),
-    ).toBeVisible();
 
     await sellerPage.close();
     await buyerPage.context().close();
@@ -153,15 +118,15 @@ test.describe("chat agreements (UI + buyer respond)", () => {
       threadId,
     );
 
-    await sellerEmitMerchandiseAgreement(sellerPage, {
+    await sellerEmitServiceAgreement(sellerPage, {
       title,
-      productNamePart: "Producto E2E",
+      serviceNamePart: "Consultoría E2E",
     });
     await reloadChatThread(buyerPage);
     await buyerRespondToAgreement(buyerPage, title, "accept");
 
     await reloadChatThread(sellerPage);
-    await sellerEditAgreementInRail(sellerPage, title, revised, "Producto E2E");
+    await sellerEditAgreementInRail(sellerPage, title, revised);
 
     await reloadChatThread(buyerPage);
     await expect(
@@ -208,15 +173,15 @@ test.describe("chat agreements (UI + buyer respond)", () => {
       threadId,
     );
 
-    await sellerEmitMerchandiseAgreement(sellerPage, {
+    await sellerEmitServiceAgreement(sellerPage, {
       title,
-      productNamePart: "Producto E2E",
+      serviceNamePart: "Consultoría E2E",
     });
     await reloadChatThread(buyerPage);
     await buyerRespondToAgreement(buyerPage, title, "reject");
 
     await reloadChatThread(sellerPage);
-    await sellerEditAgreementInRail(sellerPage, title, revised, "Producto E2E");
+    await sellerEditAgreementInRail(sellerPage, title, revised);
 
     await reloadChatThread(buyerPage);
     await expect(

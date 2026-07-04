@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@shared/lib/cn'
 import { VtSelect, type VtSelectOption } from '@shared/components/ui/VtSelect'
-import type { RouteSheet } from '@features/chat/Dtos/route-sheet/routeSheetTypes';import type { TradeAgreement } from '@features/chat/Dtos/agreement/tradeAgreementTypes';import { agreementHasMerchandiseForRouteLink } from '@features/chat/logic/agreement/tradeAgreementValidation'
+import type { RouteSheet } from '@features/chat/Dtos/route-sheet/routeSheetTypes';import type { TradeAgreement } from '@features/chat/Dtos/agreement/tradeAgreementTypes'
 import {
   agrDetailBlock,
   agrDetailH,
@@ -54,19 +54,16 @@ export function AgreementDetailRouteSection({
     !linkedSheet?.publicadaPlataforma &&
     !!onUnlinkRouteSheet &&
     !routeLinkFrozenAfterPayment
-  const merchOkForRouteLink = agreementHasMerchandiseForRouteLink(a)
   const selectRouteSheetDisabled =
     linkPublishedLocked ||
     linkActionsDisabled ||
-    routeLinkFrozenAfterPayment ||
-    (!!onLinkRouteSheet && !merchOkForRouteLink)
+    routeLinkFrozenAfterPayment
   const vincularDisabled =
     linkActionsDisabled ||
     linkPublishedLocked ||
     routeLinkFrozenAfterPayment ||
     !pickId ||
-    pickId === (a.routeSheetId ?? '') ||
-    !merchOkForRouteLink
+    pickId === (a.routeSheetId ?? '')
 
   const routeSheetSelectOptions: VtSelectOption[] = useMemo(
     () => [
@@ -94,16 +91,10 @@ export function AgreementDetailRouteSection({
             Elige una sola hoja de ruta del chat para este acuerdo. Podés cambiarla
             mientras la hoja no esté publicada a transportistas
             {a.hasSucceededPayments && !a.routeSheetId
-              ? ', incluso después del primer cobro de mercancía'
+              ? ', incluso después del primer cobro'
               : ''}
             .
           </p>
-          {!merchOkForRouteLink ? (
-            <p className={cn('vt-muted', agrDetailHint, 'mb-2')}>
-              Solo podés vincular una hoja de ruta si el acuerdo incluye mercancía
-              con al menos una línea con cantidad, precio unitario y moneda válidos.
-            </p>
-          ) : null}
           {routeSheets.length === 0 ? (
             <p className={cn('vt-muted', agrDetailHint)}>
               No hay hojas de ruta en este chat. Crea una en la pestaña Rutas y
@@ -118,23 +109,12 @@ export function AgreementDetailRouteSection({
                 </p>
               ) : routeLinkFrozenAfterPayment ? (
                 <p className={cn('vt-muted', agrDetailHint, 'mb-2')}>
-                  {a.hasAcceptedMerchandiseEvidence ? (
-                    <>
-                      Con evidencia de mercancía{' '}
-                      <strong className="text-[var(--text)]">aceptada</strong>,
-                      el roadmap vinculado no se puede modificar ni quitar desde
-                      aquí.
-                    </>
-                  ) : (
-                    <>
-                      Con pagos de transporte registrados y hoja vinculada, el
-                      roadmap no se puede modificar ni quitar desde aquí.
-                    </>
-                  )}
+                  Con pagos de transporte registrados y hoja vinculada, el
+                  roadmap no se puede modificar ni quitar desde aquí.
                 </p>
               ) : a.hasSucceededPayments && !a.routeSheetId ? (
                 <p className={cn('vt-muted', agrDetailHint, 'mb-2')}>
-                  Ya hay cobros de mercancía: vinculá una hoja para habilitar el
+                  Ya hay cobros registrados: vinculá una hoja para habilitar el
                   pago del transporte.
                 </p>
               ) : null}

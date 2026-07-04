@@ -17,12 +17,6 @@ export const queryKeys = {
       threadId.trim(),
       agreementId.trim(),
     ] as const,
-  agreementMerchandisePayments: (threadId: string, agreementId: string) =>
-    [
-      'agreement-merchandise-payments',
-      threadId.trim(),
-      agreementId.trim(),
-    ] as const,
   agreementRouteDeliveries: (threadId: string, agreementId: string) =>
     [
       'agreement-route-deliveries',

@@ -1,8 +1,5 @@
 import type { ServiceItem, TradeAgreement, TradeAgreementExtraFieldDraft, TradeAgreementExtraFieldScope, TradeAgreementExtraValueKind } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
-import {
-  normalizeExtraScope,
-  normalizeMerchandiseLine,
-} from "@features/chat/logic/agreement/tradeAgreementTypes";
+import { normalizeExtraScope } from "@features/chat/logic/agreement/tradeAgreementTypes";
 import type { TradeAgreementApiDto, TradeAgreementExtraFieldApiDto } from "@features/chat/Dtos/thread/chatApiTypes";
 
 function mapExtraFieldDtoFromApi(
@@ -45,15 +42,10 @@ function mapServiceDtoToServiceItem(raw: Record<string, unknown>): ServiceItem {
 export function mapTradeAgreementApiToTradeAgreement(
   d: TradeAgreementApiDto,
 ): TradeAgreement {
-  const merchandise = (d.merchandise ?? []).map((x) =>
-    normalizeMerchandiseLine(x as object),
-  );
   const services = (d.services ?? []).map((row) =>
     mapServiceDtoToServiceItem(row as Record<string, unknown>),
   );
-  const rootScopeFallback: TradeAgreementExtraFieldScope = d.includeMerchandise
-    ? "merchandise"
-    : "service";
+  const rootScopeFallback: TradeAgreementExtraFieldScope = "service";
   const extraFields: TradeAgreementExtraFieldDraft[] | undefined =
     d.extraFields && d.extraFields.length
       ? d.extraFields.map((row) =>
@@ -73,20 +65,13 @@ export function mapTradeAgreementApiToTradeAgreement(
     sellerEditBlockedUntilBuyerResponse:
       d.sellerEditBlockedUntilBuyerResponse ?? undefined,
     hadBuyerAcceptance: d.hadBuyerAcceptance === true ? true : undefined,
-    includeMerchandise: d.includeMerchandise,
-    includeService: d.includeService,
-    merchandise,
+    includeService: true,
     services: services.length ? services : undefined,
-    merchandiseMeta: d.merchandiseMeta
-      ? (d.merchandiseMeta as TradeAgreement["merchandiseMeta"])
-      : undefined,
     extraFields,
     routeSheetId: d.routeSheetId ?? undefined,
     routeSheetUrl: d.routeSheetUrl ?? undefined,
     hasSucceededPayments: d.hasSucceededPayments === true ? true : undefined,
     hasSucceededRoutePayments:
       d.hasSucceededRoutePayments === true ? true : undefined,
-    hasAcceptedMerchandiseEvidence:
-      d.hasAcceptedMerchandiseEvidence === true ? true : undefined,
   };
 }

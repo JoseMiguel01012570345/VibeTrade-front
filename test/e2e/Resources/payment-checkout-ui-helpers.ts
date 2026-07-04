@@ -112,45 +112,6 @@ export async function selectAgreementInPaymentModal(
   ).toBeVisible({ timeout: 10_000 });
 }
 
-export async function setMerchandiseLineChecked(
-  page: Page,
-  lineLabel: string | RegExp,
-  checked: boolean,
-): Promise<void> {
-  const modal = paymentModal(page);
-  const label = modal
-    .locator("label")
-    .filter({ hasText: lineLabel })
-    .first();
-  await expect(label).toBeVisible({ timeout: 15_000 });
-  const box = label.locator('input[type="checkbox"]');
-  if (checked) await box.check();
-  else await box.uncheck();
-  await waitForInformeReady(page);
-}
-
-export async function setAllMerchandiseLines(
-  page: Page,
-  checked: boolean,
-): Promise<void> {
-  const modal = paymentModal(page);
-  const btn = checked
-    ? modal.getByRole("button", { name: /seleccionar todo/i })
-    : modal.getByRole("button", { name: /^limpiar$/i });
-  if (await btn.first().isVisible().catch(() => false)) {
-    await btn.first().click();
-    if (checked) {
-      await waitForInformeReady(page);
-    } else {
-      await expect(
-        modal
-          .getByText(/marcá al menos una opción|^informe$/i)
-          .first(),
-      ).toBeVisible({ timeout: 30_000 });
-    }
-  }
-}
-
 export async function setRoutePathChecked(
   page: Page,
   pathLabelPart: string | RegExp,
@@ -640,13 +601,8 @@ export async function clickPayCurrency(
 
 export async function expectDuplicatePaymentToast(
   page: Page,
-  kind: "recurrence" | "merchandise",
 ): Promise<void> {
-  const pattern =
-    kind === "recurrence"
-      ? /recurrencia ya fue cobrada|ya fue cobrada/i
-      : /mercadería ya fue cobrada|ya fue cobrada/i;
-  await expect(page.getByText(pattern).first()).toBeVisible({
+  await expect(page.getByText(/recurrencia ya fue cobrada|ya fue cobrada/i).first()).toBeVisible({
     timeout: 20_000,
   });
 }

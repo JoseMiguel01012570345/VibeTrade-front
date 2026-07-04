@@ -6,7 +6,6 @@ import {
   injectE2ESession,
   openAgreementDetailInRail,
   openSellerPage,
-  sellerEmitMerchandiseAgreement,
   sellerEmitServiceAgreement,
 } from "./agreement-ui-helpers";
 import { getE2EScenario, getE2ESellerSession, getE2ESession, getE2EToken, e2eOfferId } from "./chat-env";
@@ -30,7 +29,6 @@ import {
   ensureBuyerDemoCard,
   openChatPaymentModal,
   pickServiceRecurrences,
-  setAllMerchandiseLines,
 } from "./payment-checkout-ui-helpers";
 import {
   clickInviteCarriers,
@@ -129,51 +127,19 @@ export async function setupAcceptedServiceAgreementNoPayments(
   return { threadId, agreementId, agreementTitle: title, serviceNamePart };
 }
 
-export async function setupAcceptedMerchandiseAgreementNoPayments(
-  browser: Browser,
-  offerId: string,
-  buyerToken: string,
-  opts: { titlePrefix?: string } = {},
-): Promise<AcceptedAgreementScenario> {
-  const seller = getE2ESellerSession()!;
-  const title = `${opts.titlePrefix ?? "E2E Exit Merch"} ${Date.now()}`;
-
-  const { buyerPage, threadId } = await createThreadAsBuyer(
-    browser,
-    buyerToken,
-    offerId,
-  );
-  const sellerPage = await openSellerPage(
-    browser,
-    seller.sessionToken,
-    threadId,
-  );
-  await sellerEmitMerchandiseAgreement(sellerPage, { title });
-  await waitForAgreementBubble(buyerPage, title);
-  await buyerRespondToAgreement(buyerPage, title, "accept");
-  const agreementId = await resolveAgreementIdByTitle(
-    buyerPage,
-    buyerToken,
-    threadId,
-    title,
-  );
-  await sellerPage.close();
-  await buyerPage.context().close();
-
-  return { threadId, agreementId, agreementTitle: title };
-}
-
-type FreshMerchThread = {
+type FreshServiceThread = {
   threadId: string;
   agreementId: string;
   agreementTitle: string;
+  serviceNamePart: string;
 };
 
 /** Hilo comprador+vendedor aislado (evita party-soft-leave en el hilo RS compartido del global-setup). */
-export async function provisionFreshMerchandiseThread(
+export async function provisionFreshServiceThread(
   browser: Browser,
   titlePrefix: string,
-): Promise<FreshMerchThread> {
+  serviceNamePart = "Consultoría E2E",
+): Promise<FreshServiceThread> {
   const seller = getE2ESellerSession()!;
   const title = `${titlePrefix} AGR ${Date.now()}`;
   const { buyerPage, threadId } = await createThreadAsBuyer(
@@ -186,7 +152,7 @@ export async function provisionFreshMerchandiseThread(
     seller.sessionToken,
     threadId,
   );
-  await sellerEmitMerchandiseAgreement(sellerPage, { title });
+  await sellerEmitServiceAgreement(sellerPage, { title, serviceNamePart });
   await waitForAgreementBubble(buyerPage, title);
   await buyerRespondToAgreement(buyerPage, title, "accept");
   const agreementId = await buyerPage.evaluate(
@@ -206,7 +172,7 @@ export async function provisionFreshMerchandiseThread(
   expect(agreementId.length).toBeGreaterThan(2);
   await buyerPage.context().close();
   await sellerPage.close();
-  return { threadId, agreementId, agreementTitle: title };
+  return { threadId, agreementId, agreementTitle: title, serviceNamePart };
 }
 
 export async function setupRouteWithConfirmedCarriers(
@@ -218,7 +184,7 @@ export async function setupRouteWithConfirmedCarriers(
     payRoutes?: boolean;
   } = {},
 ): Promise<PaidLogisticsScenario> {
-  const fresh = await provisionFreshMerchandiseThread(
+  const fresh = await provisionFreshServiceThread(
     browser,
     opts.tituloPrefix ?? "E2E Exit Route",
   );
@@ -241,7 +207,7 @@ export async function setupPaidRouteForExitPolicies(
     payRoutes?: boolean;
   } = {},
 ): Promise<PaidLogisticsScenario> {
-  const fresh = await provisionFreshMerchandiseThread(
+  const fresh = await provisionFreshServiceThread(
     browser,
     opts.tituloPrefix ?? "E2E Exit Paid Route",
   );
@@ -289,57 +255,6 @@ export async function payHeldServiceAgreement(
               if (!res.ok) return 0;
               const rows = (await res.json()) as Array<{ status?: string }>;
               return rows.filter((r) => r.status === "held").length;
-            },
-            [threadId, agreementId.trim(), token] as [string, string, string],
-          );
-          return held;
-        },
-        { timeout: 45_000, intervals: [1_000, 2_000] },
-      )
-      .toBeGreaterThan(0);
-  }
-}
-
-export async function payHeldMerchandiseAgreement(
-  page: Page,
-  threadId?: string,
-  agreementTitle?: string,
-  agreementId?: string,
-): Promise<void> {
-  const { selectAgreementInPaymentModal } = await import(
-    "./payment-checkout-ui-helpers"
-  );
-  await openChatPaymentModal(page);
-  if (agreementTitle?.trim()) {
-    await selectAgreementInPaymentModal(page, agreementTitle);
-  }
-  await setAllMerchandiseLines(page, true);
-  await confirmInformeCheckbox(page);
-  await clickPayCurrency(page, "USD");
-  await expect(
-    page
-      .getByText(/pago exitoso|pagos completados|todo cobrado|recibo de pago/i)
-      .first(),
-  ).toBeVisible({ timeout: 60_000 });
-  if (agreementId?.trim() && threadId?.trim()) {
-    const token =
-      (await page.evaluate(() =>
-        sessionStorage.getItem("vt_session_token"),
-      )) ?? "";
-    await expect
-      .poll(
-        async () => {
-          const held = await page.evaluate(
-            async ([tid, aid, tok]: [string, string, string]) => {
-              const res = await fetch(
-                `/api/v1/chat/threads/${encodeURIComponent(tid)}/agreements/${encodeURIComponent(aid)}/merchandise-line-payments`,
-                { headers: { Authorization: `Bearer ${tok}` } },
-              );
-              if (!res.ok) return 0;
-              const rows = (await res.json()) as Array<{ status?: string }>;
-              return rows.filter(
-                (r) => (r.status ?? "").trim().toLowerCase() === "held",
-              ).length;
             },
             [threadId, agreementId.trim(), token] as [string, string, string],
           );

@@ -15,9 +15,7 @@ function ag(
     issuedAt: 0,
     issuedByStoreId: "st",
     issuerLabel: "Tienda",
-    includeMerchandise: false,
-    includeService: false,
-    merchandise: [],
+    includeService: true,
     ...partial,
     id: partial.id,
   };
@@ -36,7 +34,7 @@ describe("agreementRouteLinkFrozenAfterPayment", () => {
     ).toBe(true);
   });
 
-  it("no congela con cobro de mercancía sin transporte pagado", () => {
+  it("no congela con cobro de servicio sin transporte pagado", () => {
     expect(
       agreementRouteLinkFrozenAfterPayment(
         ag({
@@ -50,17 +48,6 @@ describe("agreementRouteLinkFrozenAfterPayment", () => {
 });
 
 describe("agreementRouteLinkFrozen", () => {
-  it("congela con evidencia de mercancía aceptada aunque no haya hoja", () => {
-    expect(
-      agreementRouteLinkFrozen(
-        ag({
-          id: "a1",
-          hasAcceptedMerchandiseEvidence: true,
-        }),
-      ),
-    ).toBe(true);
-  });
-
   it("congela con transporte pagado y hoja vinculada", () => {
     expect(
       agreementRouteLinkFrozen(
@@ -73,7 +60,7 @@ describe("agreementRouteLinkFrozen", () => {
     ).toBe(true);
   });
 
-  it("no congela con cobro de mercancía sin transporte ni evidencia aceptada", () => {
+  it("no congela con cobro de servicio sin transporte pagado", () => {
     expect(
       agreementRouteLinkFrozen(
         ag({

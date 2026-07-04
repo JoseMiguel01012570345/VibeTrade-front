@@ -9,7 +9,7 @@ import {
 } from '@features/market/logic/routeOfferPublicFromEmergentCard'
 import { rebuildRouteOfferAssignmentsFromThreadItems } from '@features/chat/logic/route-sheet/routeOfferSubscriptionMerge'
 import { resolveRouteOfferPublicForSheet } from '@features/chat/logic/route-sheet/routeSheetOfferGuards'
-import { resolveRouteLegPaymentCurrencyForThread } from '@features/chat/logic/agreement/merchandiseRouteCurrency'
+import { resolveRouteLegPaymentCurrencyForThread } from '@features/chat/logic/agreement/agreementCheckoutCurrency'
 
 export function useChatPageRouteSheetForm(
   thread: Thread | undefined,

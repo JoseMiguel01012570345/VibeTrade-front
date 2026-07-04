@@ -234,7 +234,7 @@ export async function fetchThreadRouteSheets(
   return (await res.json()) as RouteSheetPayload[];
 }
 
-/** True si el hilo permite crear otra hoja (acuerdo sin pago o con mercancía cobrada sin roadmap vinculado). */
+/** True si el hilo permite crear otra hoja (acuerdo sin pago o con servicio cobrado sin roadmap vinculado). */
 export async function fetchThreadHasUnpaidRouteSheets(
   threadId: string,
 ): Promise<boolean> {

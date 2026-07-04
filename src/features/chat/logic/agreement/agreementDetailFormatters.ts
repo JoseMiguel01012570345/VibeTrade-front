@@ -1,6 +1,3 @@
-import type {
-  MerchandiseSectionMeta,
-} from "@features/chat/Dtos/agreement/tradeAgreementTypes";
 import {
   minorToMajor,
   currencyMinorDecimals,
@@ -26,10 +23,3 @@ export function fmtAgreementMoneyMinor(
 }
 
 export const normalizeEvidenceForCompare = normalizeCarrierEvidenceForCompare;
-
-export function legacyMerchandiseMetaHasContent(
-  m?: MerchandiseSectionMeta,
-): boolean {
-  if (!m) return false;
-  return Object.values(m).some((v) => (v ?? "").trim() !== "");
-}

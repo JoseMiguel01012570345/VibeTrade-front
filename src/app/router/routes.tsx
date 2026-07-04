@@ -11,7 +11,11 @@ import {
   StoreLegacyRedirect,
   StoreLocationMapPage,
 } from "@features/market";
-import { StorefrontPage, StorefrontTrackingPage } from "@features/storefront";
+import {
+  StorefrontCategoryPage,
+  StorefrontPage,
+  StorefrontTrackingPage,
+} from "@features/storefront";
 import { OwnerStoreDashboard, StaffLoginPage } from "@features/store-admin";
 import { ProfileComposerPage } from "@features/profile";
 import { ReelsPage } from "@features/reels";
@@ -118,6 +122,16 @@ export function AppRoutes() {
           <Route
             path="/:storeName/rastreo"
             element={<StorefrontTrackingPage />}
+          />
+          {/* Categoría de productos de la tienda: {base}/{nombre}/categoria/{categoria}. */}
+          <Route
+            path="/:storeName/categoria/:cat"
+            element={<StorefrontCategoryPage kind="product" />}
+          />
+          {/* Categoría de servicios de la tienda: {base}/{nombre}/servicios/{categoria}. */}
+          <Route
+            path="/:storeName/servicios/:cat"
+            element={<StorefrontCategoryPage kind="service" />}
           />
           {/* Detalle de producto dentro de la tienda: {base}/{nombre}/{productId}. */}
           <Route path="/:storeName/:productId" element={<OfferPage />} />

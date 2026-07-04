@@ -1,38 +1,5 @@
 /** Modelo de acuerdo comercial (formulario emitido por el vendedor, aceptación del comprador). */
 
-import type { MerchandiseCondition } from "@features/market/Dtos/merchandiseCondition";
-
-export type { MerchandiseCondition } from "@features/market/Dtos/merchandiseCondition";
-
-export type MerchandiseLine = {
-  /** Id persistente (servidor) para checkout parcial por línea. */
-  id?: string;
-  /** Ancla a la ficha de producto configurada en la tienda del vendedor (flow-ui). */
-  linkedStoreProductId?: string;
-  tipo: string;
-  cantidad: string;
-  valorUnitario: string;
-  estado: MerchandiseCondition;
-  descuento: string;
-  impuestos: string;
-  moneda: string;
-  tipoEmbalaje: string;
-  devolucionesDesc: string;
-  devolucionQuienPaga: string;
-  devolucionPlazos: string;
-  regulaciones: string;
-};
-
-/** Legado: antes las condiciones iban una sola vez a nivel bloque; ya no se emite desde el formulario. */
-export type MerchandiseSectionMeta = {
-  moneda: string;
-  tipoEmbalaje: string;
-  devolucionesDesc: string;
-  devolucionQuienPaga: string;
-  devolucionPlazos: string;
-  regulaciones: string;
-};
-
 /** Bloque plano legado (acuerdos emitidos antes del modelo por ítem de servicio). */
 export type ServiceAgreementBlock = {
   tipoServicio: string;
@@ -132,17 +99,14 @@ export type AgreementStatus =
 
 export type TradeAgreementExtraValueKind = "text" | "image" | "document";
 
-/** Alcance del campo libre: bloque mercancía, bloque servicio o acuerdos emitidos antes de discriminar sección. */
-export type TradeAgreementExtraFieldScope =
-  | "merchandise"
-  | "service"
-  | "legacy_combined";
+/** Alcance del campo libre: bloque servicio o acuerdos emitidos antes de discriminar sección. */
+export type TradeAgreementExtraFieldScope = "service" | "legacy_combined";
 
-/** Campo libre adicional dentro del bloque de mercancía o de servicio (y legado combinado). */
+/** Campo libre adicional dentro del bloque de servicio (y legado combinado). */
 export type TradeAgreementExtraFieldDraft = {
   /** Id estable al editar (local o servidor). */
   id: string;
-  /** merchandise | service | legacy_combined */
+  /** service | legacy_combined */
   scope: TradeAgreementExtraFieldScope;
   title: string;
   valueKind: TradeAgreementExtraValueKind;
@@ -170,13 +134,8 @@ export type TradeAgreement = {
   sellerEditBlockedUntilBuyerResponse?: boolean;
   /** El comprador llegó a aceptar al menos una vez; rechazar después implica riesgo para la confianza de la tienda (demo). */
   hadBuyerAcceptance?: boolean;
-  /** Si el acuerdo declara el bloque de mercancías (al menos uno de mercancías/servicio debe ser true). */
-  includeMerchandise: boolean;
-  /** Si el acuerdo declara el bloque de servicios. */
+  /** Un acuerdo siempre declara servicios (modelo service-only). */
   includeService: boolean;
-  merchandise: MerchandiseLine[];
-  /** Solo lectura / datos antiguos (una cabecera para todo el bloque). */
-  merchandiseMeta?: MerchandiseSectionMeta;
   /** Servicios configurados (nuevo modelo). Opcional en datos persistidos antiguos. */
   services?: ServiceItem[];
   /**
@@ -192,8 +151,6 @@ export type TradeAgreement = {
   hasSucceededPayments?: boolean;
   /** Al menos un tramo de transporte cobrado con éxito. */
   hasSucceededRoutePayments?: boolean;
-  /** El comprador aceptó evidencia de mercancía. */
-  hasAcceptedMerchandiseEvidence?: boolean;
   /** Cláusulas adicionales (título + texto o adjunto) por bloque o legado combinado. */
   extraFields?: TradeAgreementExtraFieldDraft[];
 };
@@ -209,11 +166,9 @@ type TradeAgreementDraftBase = Omit<
   | "respondedAt"
   | "routeSheetUrl"
   | "routeSheetId"
-  | "merchandiseMeta"
   | "service"
   | "hasSucceededPayments"
   | "hasSucceededRoutePayments"
-  | "hasAcceptedMerchandiseEvidence"
 >;
 
 /** Borrador del formulario: siempre incluye lista de servicios (puede estar vacía). */

@@ -1,17 +1,12 @@
-import type { MerchandiseLine, ServiceItem, TradeAgreement, TradeAgreementDraft } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import type { ServiceItem, TradeAgreementDraft } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
 import {
-  agreementDeclaresMerchandise,
   coerceServiceSchedule,
   monedasFromRecurrenciaPagos,
-  normalizeExtraScope,
-  normalizeMerchandiseLine,
 } from "./tradeAgreementTypes";
 import { validateVigenciaRange } from "./serviceVigenciaDates";
 import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes";
 import { agreementSingleCurrencyError } from "./agreementCheckoutCurrency";
 import type { TradeAgreementFormErrors } from "@features/chat/Dtos/agreement/tradeAgreementValidationTypes";
-
-type MerchandiseHolder = { merchandise: MerchandiseLine[] };
 
 const TITLE_MIN = 3;
 const TITLE_MAX = 200;
@@ -106,30 +101,9 @@ function validateAvisoDias(raw: string): string | undefined {
   return optionalTextMax(raw, "Periodo de aviso", false);
 }
 
-function lineIsActive(line: MerchandiseLine): boolean {
-  /** La ficha del producto aporta el resto; la línea cuenta al haber producto anclado. */
-  return !!line.linkedStoreProductId;
-}
-
-/** Línea vacía añadida con «+» y aún no usada: no exige producto. */
-function isSkippableEmptyMerchLine(line: MerchandiseLine): boolean {
-  if (line.linkedStoreProductId) return false;
-  return (
-    isBlank(line.cantidad) &&
-    isBlank(line.tipoEmbalaje) &&
-    isBlank(line.devolucionQuienPaga) &&
-    isBlank(line.devolucionPlazos) &&
-    isBlank(line.regulaciones)
-  );
-}
-
-export function hasMerchandise(d: MerchandiseHolder): boolean {
-  return d.merchandise.some(lineIsActive);
-}
-
 /**
- * Validación completa según flow-ui: título, mercancías (cada línea con su bloque de condiciones),
- * servicios (todos los campos), hoja de ruta interna si hay mercancías.
+ * Validación completa (service-only): título, al menos un servicio configurado con todos sus
+ * campos, campos adicionales y moneda única del acuerdo.
  */
 export function validateTradeAgreementDraft(
   d: TradeAgreementDraft,
@@ -144,109 +118,15 @@ export function validateTradeAgreementDraft(
   else if (title.length > TITLE_MAX)
     errors.title = `El título no puede superar ${TITLE_MAX} caracteres`;
 
-  if (d.includeMerchandise === d.includeService) {
+  {
     const c = options?.sellerCatalog;
-    if (
-      c != null &&
-      c.products.length === 0 &&
-      c.services.length === 0
-    ) {
+    if (c != null && c.services.length === 0) {
       errors.scope =
-        "No hay productos ni servicios en la ficha de la tienda. Cargalos en la vitrina para poder acordar.";
-    } else {
-      errors.scope =
-        "Debes elegir si el acuerdo es de mercancías o de servicios (solo uno).";
+        "No hay servicios en la ficha de la tienda. Cargalos en la vitrina para poder acordar.";
     }
   }
 
-  if (d.includeMerchandise && !hasMerchandise(d)) {
-    errors.scope =
-      errors.scope ??
-      "Con «Incluir mercancías» activado, elige al menos un producto del catálogo y completa los datos del comprador.";
-  }
-
-  const lineErrors: NonNullable<TradeAgreementFormErrors["merchandiseLines"]> =
-    {};
-
-  d.merchandise.forEach((line, i) => {
-    if (!d.includeMerchandise) return;
-    if (isSkippableEmptyMerchLine(line)) return;
-    if (!line.linkedStoreProductId) {
-      lineErrors[i] = {
-        tipo: "Selecciona un producto del catálogo de la tienda",
-      };
-      return;
-    }
-
-    const le: Partial<Record<keyof MerchandiseLine, string>> = {};
-    {
-      const valErr = requireDecimal(line.valorUnitario, "Valor unitario (ficha)", {
-        allowZero: true,
-      });
-      if (valErr) le.valorUnitario = valErr;
-    }
-
-    const cantErr = requireDecimal(line.cantidad, "Cantidad", {
-      positive: true,
-    });
-    if (cantErr) le.cantidad = cantErr;
-
-    (
-      [
-        ["tipoEmbalaje", "Tipo de embalaje"],
-        ["devolucionQuienPaga", "Quién paga el envío de devolución"],
-        ["devolucionPlazos", "Plazos de devolución"],
-      ] as const
-    ).forEach(([key, label]) => {
-      const v = line[key];
-      const e = requireNonEmpty(v, label, false);
-      if (e) le[key] = e;
-      else {
-        const om = optionalTextMax(v, label, false);
-        if (om) le[key] = om;
-      }
-    });
-
-    const regE = requireNonEmpty(
-      line.regulaciones,
-      "Regulaciones y cumplimiento (comprador)",
-      true,
-    );
-    if (regE) le.regulaciones = regE;
-    else {
-      const omR = optionalTextMax(
-        line.regulaciones,
-        "Regulaciones y cumplimiento (comprador)",
-        true,
-      );
-      if (omR) le.regulaciones = omR;
-    }
-
-    if (Object.keys(le).length) lineErrors[i] = le;
-  });
-
-  if (d.includeMerchandise) {
-    const merchSeen = new Map<string, number>();
-    d.merchandise.forEach((line, i) => {
-      if (isSkippableEmptyMerchLine(line)) return;
-      const pid = line.linkedStoreProductId?.trim();
-      if (!pid) return;
-      const firstIdx = merchSeen.get(pid);
-      if (firstIdx !== undefined) {
-        lineErrors[i] = {
-          ...(lineErrors[i] ?? {}),
-          tipo:
-            "Este producto ya está en otra línea de mercancía; elegí otro producto o quitá la línea duplicada.",
-        };
-      } else {
-        merchSeen.set(pid, i);
-      }
-    });
-  }
-
-  if (Object.keys(lineErrors).length) errors.merchandiseLines = lineErrors;
-
-  if (d.includeService) {
+  {
     const services = d.services ?? [];
     if (!services.length) {
       errors.serviceItems =
@@ -280,11 +160,6 @@ export function validateTradeAgreementDraft(
   const xf = d.extraFields ?? [];
   const xfErr: Record<number, string> = {};
   xf.forEach((row, i) => {
-    const scope = normalizeExtraScope(row.scope as string | undefined);
-    if (scope === "merchandise" && !d.includeMerchandise) return;
-    if (scope === "service" && !d.includeService) return;
-    // `legacy_combined` es compatibilidad: en acuerdos nuevos (XOR) se trata como el bloque activo.
-
     const ti = norm(row.title);
     const tx = norm(row.textValue);
     const mu = norm(row.mediaUrl);
@@ -483,7 +358,7 @@ export function validateServiceWizardAdvance(
 
 /**
  * Errores por fila para `AgreementExtraFieldsEditor` — mismos criterios y textos que
- * `validateTradeAgreementDraft` para `extraFields` (bloques mercancía / servicio del modal).
+ * `validateTradeAgreementDraft` para `extraFields` (bloque de servicio del modal).
  */
 export function condicionesExtrasRowErrors(
   sv: ServiceItem,
@@ -561,7 +436,7 @@ export function validateServiceItem(sv: ServiceItem): string[] {
     );
   } else if (monedasFromRecurrenciaPagos(sv.recurrenciaPagos).length > 1) {
     msgs.push(
-      "El acuerdo debe cobrarse en una sola moneda; unifica mercadería, servicios y transporte.",
+      "El acuerdo debe cobrarse en una sola moneda; unifica servicios y transporte.",
     );
   }
 
@@ -607,11 +482,6 @@ export function validationErrorCount(e: TradeAgreementFormErrors): number {
   let n = 0;
   if (e.title) n++;
   if (e.scope) n++;
-  if (e.merchandiseLines) {
-    Object.values(e.merchandiseLines).forEach((row) => {
-      if (row) n += Object.keys(row).length;
-    });
-  }
   if (e.serviceItems) n++;
   if (e.serviceErrors) {
     Object.values(e.serviceErrors).forEach((arr) => {
@@ -626,23 +496,4 @@ export function validationErrorCount(e: TradeAgreementFormErrors): number {
 
 export function hasValidationErrors(e: TradeAgreementFormErrors): boolean {
   return validationErrorCount(e) > 0;
-}
-
-function iso4217Like(raw: string | undefined): boolean {
-  const t = (raw ?? "").trim().toUpperCase();
-  return t.length >= 3 && t.length <= 8;
-}
-
-/** Mercancía mínima para permitir vínculo acuerdo ↔ hoja de ruta (coincide con servidor). */
-export function agreementHasMerchandiseForRouteLink(a: TradeAgreement): boolean {
-  if (!agreementDeclaresMerchandise(a)) return false;
-  const metaMon = a.merchandiseMeta?.moneda;
-  for (const raw of a.merchandise ?? []) {
-    const line = normalizeMerchandiseLine(raw);
-    const q = parseDecimal(line.cantidad);
-    const vu = parseDecimal(line.valorUnitario);
-    const mon = (line.moneda || metaMon || "").trim();
-    if ((q ?? 0) > 0 && (vu ?? 0) > 0 && iso4217Like(mon)) return true;
-  }
-  return false;
 }

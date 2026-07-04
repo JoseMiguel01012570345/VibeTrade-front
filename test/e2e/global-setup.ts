@@ -232,29 +232,46 @@ async function provisionRouteSheetScenario(
     throw new Error(`First message send failed: ${msgRes.status} — ${body}`);
   }
 
-  const merchandiseLine = {
-    tipo: "Producto de transporte E2E",
-    cantidad: "1",
-    valorUnitario: "100",
-    estado: "nuevo",
-    descuento: "",
-    impuestos: "",
+  const serviceItem = {
+    id: "svc-e2e-setup",
+    configured: true,
+    tipoServicio: "Consultoría E2E transporte",
+    tiempo: { startDate: "2026-01-01", endDate: "2026-12-31" },
+    horarios: {
+      months: [1],
+      calendarYear: 2026,
+      daysByMonth: { "1": [1] },
+      defaultWindow: { start: "09:00", end: "18:00" },
+      dayHourOverrides: {},
+    },
+    recurrenciaPagos: {
+      months: [1],
+      entries: [{ month: 1, day: 1, amount: "100", moneda: "USD" }],
+    },
+    descripcion: "E2E setup",
+    riesgos: { enabled: false, items: [] },
+    incluye: "",
+    noIncluye: "",
+    dependencias: { enabled: false, items: [] },
+    entregables: "",
+    garantias: { enabled: false, texto: "" },
+    penalAtraso: { enabled: false, texto: "" },
+    terminacion: { enabled: false, causas: [], avisoDias: "" },
+    metodoPago: "transferencia",
     moneda: "USD",
-    tipoEmbalaje: "",
-    devolucionesDesc: "",
-    devolucionQuienPaga: "",
-    devolucionPlazos: "",
-    regulaciones: "",
+    monedasAceptadas: ["USD"],
+    medicionCumplimiento: "",
+    penalIncumplimiento: "",
+    nivelResponsabilidad: "",
+    propIntelectual: "",
   };
 
   async function createAndAcceptAgreement(index: number): Promise<string> {
     const agTitle = `E2E-RS-AGR-${index}-${Date.now()}`;
     const agPayload = {
       title: agTitle,
-      includeMerchandise: true,
-      includeService: false,
-      merchandise: [merchandiseLine],
-      services: [],
+      includeService: true,
+      services: [serviceItem],
     };
     const agRes = await fetch(
       `${apiBase}/api/v1/chat/threads/${encodeURIComponent(threadId)}/trade-agreements`,

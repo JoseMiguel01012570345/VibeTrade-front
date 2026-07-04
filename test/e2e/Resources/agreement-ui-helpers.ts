@@ -25,24 +25,6 @@ export async function injectE2ESession(
   }, token);
 }
 
-async function fillMerchandiseBuyerFields(
-  page: Page,
-  lineIndex: number,
-  opts: { cantidad?: string } = {},
-) {
-  const fill = async (field: string, value: string) => {
-    const input = page.locator(`#agr-m-${lineIndex}-${field}`);
-    if (await input.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await input.fill(value);
-    }
-  };
-  await fill("cantidad", opts.cantidad ?? "1");
-  await fill("tipoEmbalaje", "caja");
-  await fill("devolucionQuienPaga", "comprador");
-  await fill("devolucionPlazos", "30 dias");
-  await fill("regulaciones", "Cumplimiento normativo E2E");
-}
-
 async function selectCatalogService(
   page: Page,
   wizard: Locator,
@@ -71,122 +53,6 @@ async function selectCatalogService(
     timeout: 10_000,
   });
   await expect(trigger).not.toContainText(/elige un servicio/i);
-}
-
-async function selectCatalogProduct(
-  page: Page,
-  lineIndex: number,
-  productLabelIncludes: string,
-) {
-  const dialog = page.getByRole("dialog").filter({
-    hasText: /emitir acuerdo|editar acuerdo/i,
-  });
-  const trigger = dialog
-    .getByRole("button", { name: /producto de la ficha de la tienda/i })
-    .nth(lineIndex);
-  await expect(trigger).toBeEnabled({ timeout: 20_000 });
-  await trigger.click();
-  const option = page
-    .getByRole("option")
-    .filter({ hasText: new RegExp(productLabelIncludes, "i") })
-    .first();
-  await expect(option).toBeVisible({ timeout: 10_000 });
-  await option.click();
-}
-
-export async function sellerEmitMerchandiseAgreement(
-  page: Page,
-  opts: {
-    title: string;
-    /** Texto del producto de ficha a enlazar en la línea 1 (p. ej. "Producto E2E"). */
-    productNamePart?: string;
-    /** Segunda línea enlazada a otro productId (nombre parcial). */
-    secondProductNamePart?: string;
-  },
-): Promise<void> {
-  await page.getByRole("button", { name: /emitir acuerdo/i }).click();
-  const dialog = page.getByRole("dialog").filter({
-    hasText: /emitir acuerdo de compra/i,
-  });
-  await expect(dialog).toBeVisible({ timeout: 15_000 });
-
-  await dialog.locator("#agr-title").fill(opts.title);
-
-  const merchRadio = dialog.getByRole("radio", { name: /incluir mercancías/i });
-  if (!(await merchRadio.isChecked())) {
-    await merchRadio.check();
-  }
-  await expect(
-    dialog.getByRole("button", { name: /producto de la ficha de la tienda/i }).first(),
-  ).toBeEnabled({ timeout: 20_000 });
-
-  const productNeedle = opts.productNamePart ?? "Producto E2E";
-  await selectCatalogProduct(page, 0, productNeedle);
-  await fillMerchandiseBuyerFields(page, 0);
-
-  if (opts.secondProductNamePart) {
-    await dialog.getByRole("button", { name: /añadir tipo de mercancía/i }).click();
-    await selectCatalogProduct(page, 1, opts.secondProductNamePart);
-    await fillMerchandiseBuyerFields(page, 1);
-  }
-
-  const emitBtn = dialog.getByRole("button", { name: /^emitir acuerdo$/i });
-  await expect(emitBtn).toBeEnabled({ timeout: 20_000 });
-  const emitResponse = page.waitForResponse(
-    (res) =>
-      res.request().method() === "POST" &&
-      /\/trade-agreements(?:\?|$)/.test(res.url()),
-    { timeout: 45_000 },
-  );
-  await emitBtn.click();
-  const res = await emitResponse.catch(() => null);
-  if (res && res.status() >= 400) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`emitTradeAgreement failed (${res.status()}): ${body}`);
-  }
-  await expect(dialog).toBeHidden({ timeout: 45_000 });
-
-  await expect(page.getByText(opts.title).first()).toBeVisible({
-    timeout: 25_000,
-  });
-}
-
-export async function sellerEmitMerchandiseDualCurrencyAgreement(
-  page: Page,
-  opts: {
-    title: string;
-    usdProductNamePart: string;
-    eurProductNamePart: string;
-    usdQty?: string;
-    eurQty?: string;
-  },
-): Promise<void> {
-  await page.getByRole("button", { name: /emitir acuerdo/i }).click();
-  const dialog = page.getByRole("dialog").filter({
-    hasText: /emitir acuerdo de compra/i,
-  });
-  await expect(dialog).toBeVisible({ timeout: 15_000 });
-  await dialog.locator("#agr-title").fill(opts.title);
-  await dialog.getByRole("radio", { name: /incluir mercancías/i }).check();
-  await expect(
-    dialog.getByRole("button", { name: /producto de la ficha de la tienda/i }).first(),
-  ).toBeEnabled({ timeout: 20_000 });
-
-  await selectCatalogProduct(page, 0, opts.usdProductNamePart);
-  await fillMerchandiseBuyerFields(page, 0, {
-    cantidad: opts.usdQty ?? "1",
-  });
-
-  await dialog.getByRole("button", { name: /añadir tipo de mercancía/i }).click();
-  await selectCatalogProduct(page, 1, opts.eurProductNamePart);
-  await fillMerchandiseBuyerFields(page, 1, {
-    cantidad: opts.eurQty ?? "2",
-  });
-
-  await dialog.getByRole("button", { name: /^emitir acuerdo$/i }).click();
-  await expect(page.getByText(opts.title).first()).toBeVisible({
-    timeout: 25_000,
-  });
 }
 
 const CALENDAR_MONTH_LABELS = [
@@ -444,9 +310,6 @@ export async function sellerEmitServiceAgreement(
   await expect(agreementDialog).toBeVisible({ timeout: 15_000 });
 
   await agreementDialog.locator("#agr-title").fill(opts.title);
-  await agreementDialog.getByRole("radio", { name: /incluir servicios/i }).check();
-
-  // «Añadir servicio» abre el asistente de configuración automáticamente.
   await agreementDialog.getByRole("button", { name: /añadir servicio/i }).click();
 
   await completeServiceConfigWizard(page, opts.serviceNamePart);
@@ -653,7 +516,6 @@ export async function sellerEmitSingleCurrencyTwoRecurrenceServiceAgreement(
   await expect(agreementDialog).toBeVisible({ timeout: 15_000 });
 
   await agreementDialog.locator("#agr-title").fill(opts.title);
-  await agreementDialog.getByRole("radio", { name: /incluir servicios/i }).check();
   await agreementDialog.getByRole("button", { name: /añadir servicio/i }).click();
 
   await completeSingleCurrencyTwoRecurrenceServiceConfigWizard(page, opts.serviceNamePart);
@@ -682,7 +544,6 @@ export async function sellerAttemptEmitDualCurrencyServiceAgreementRejected(
   await expect(agreementDialog).toBeVisible({ timeout: 15_000 });
 
   await agreementDialog.locator("#agr-title").fill(opts.title);
-  await agreementDialog.getByRole("radio", { name: /incluir servicios/i }).check();
   await agreementDialog.getByRole("button", { name: /añadir servicio/i }).click();
 
   await completeDualCurrencyServiceConfigWizard(page, opts.serviceNamePart, {
@@ -697,41 +558,6 @@ export async function sellerAttemptEmitDualCurrencyServiceAgreementRejected(
   await expect(page.getByText(opts.title).first()).toBeHidden({ timeout: 5_000 });
 }
 
-/** Dos líneas USD+EUR: emitir debe quedar bloqueado. */
-export async function sellerAttemptEmitMerchandiseDualCurrencyAgreementRejected(
-  page: Page,
-  opts: {
-    title: string;
-    usdProductNamePart: string;
-    eurProductNamePart: string;
-  },
-): Promise<void> {
-  await page.getByRole("button", { name: /emitir acuerdo/i }).click();
-  const dialog = page.getByRole("dialog").filter({
-    hasText: /emitir acuerdo de compra/i,
-  });
-  await expect(dialog).toBeVisible({ timeout: 15_000 });
-  await dialog.locator("#agr-title").fill(opts.title);
-  await dialog.getByRole("radio", { name: /incluir mercancías/i }).check();
-  await expect(
-    dialog.getByRole("button", { name: /producto de la ficha de la tienda/i }).first(),
-  ).toBeEnabled({ timeout: 20_000 });
-
-  await selectCatalogProduct(page, 0, opts.usdProductNamePart);
-  await fillMerchandiseBuyerFields(page, 0);
-
-  await dialog.getByRole("button", { name: /añadir tipo de mercancía/i }).click();
-  await selectCatalogProduct(page, 1, opts.eurProductNamePart);
-  await fillMerchandiseBuyerFields(page, 1);
-
-  await dialog.getByRole("button", { name: /^emitir acuerdo$/i }).click();
-
-  await expect(dialog.getByText(/una sola moneda/i)).toBeVisible({
-    timeout: 10_000,
-  });
-  await expect(page.getByText(opts.title).first()).toBeHidden({ timeout: 5_000 });
-}
-
 export async function sellerEmitDualCurrencyServiceAgreement(
   page: Page,
   opts: { title: string; serviceNamePart: string },
@@ -743,7 +569,6 @@ export async function sellerEmitDualCurrencyServiceAgreement(
   await expect(agreementDialog).toBeVisible({ timeout: 15_000 });
 
   await agreementDialog.locator("#agr-title").fill(opts.title);
-  await agreementDialog.getByRole("radio", { name: /incluir servicios/i }).check();
   await agreementDialog.getByRole("button", { name: /añadir servicio/i }).click();
 
   await completeDualCurrencyServiceConfigWizard(page, opts.serviceNamePart);
@@ -792,7 +617,7 @@ export async function sellerEditAgreementInRail(
   page: Page,
   currentTitle: string,
   newTitle: string,
-  productNamePart = "Producto E2E",
+  _serviceNamePart = "Consultoría E2E",
 ): Promise<void> {
   await openAgreementDetailInRail(page, currentTitle);
   await page.getByRole("button", { name: /editar acuerdo/i }).click();
@@ -800,8 +625,6 @@ export async function sellerEditAgreementInRail(
     timeout: 10_000,
   });
   await page.locator("#agr-title").fill(newTitle);
-  await selectCatalogProduct(page, 0, productNamePart);
-  await fillMerchandiseBuyerFields(page, 0);
   await page.getByRole("button", { name: /guardar cambios/i }).click();
   await expect(page.getByText(newTitle).first()).toBeVisible({
     timeout: 25_000,

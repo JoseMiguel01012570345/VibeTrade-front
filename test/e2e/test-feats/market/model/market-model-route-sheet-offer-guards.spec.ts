@@ -24,7 +24,7 @@ import {
   setupPaidRouteForExitPolicies,
   setupPublishedRouteTwoTramosCarrierOnFirstOnly,
 } from "../../../Resources/e2e-exit-policies-env";
-import { payMerchandiseLinesViaBuyerApi } from "../../../Resources/e2e-logistics-api";
+import { payServiceAgreementViaBuyerApi } from "../../../Resources/e2e-logistics-api";
 import {
   newAuthenticatedPage,
   type PaidLogisticsScenario,
@@ -99,7 +99,7 @@ test.describe("route sheet offer guards — paid edit UI", () => {
     const buyer = getE2ESession()!;
 
     const buyerPage = await newAuthenticatedPage(browser, buyer.sessionToken);
-    const payRes = await payMerchandiseLinesViaBuyerApi(
+    const payRes = await payServiceAgreementViaBuyerApi(
       buyerPage,
       buyer.sessionToken,
       {

@@ -1,8 +1,5 @@
 import { CreditCard, FileDown, Loader2 } from "lucide-react";
 import { cn } from "@shared/lib/cn";
-import {
-  agreementDeclaresMerchandise,
-} from "@features/chat/logic/agreement/tradeAgreementTypes";
 import { paymentFeeLabels, minorToMajor } from "@features/payments/logic/paymentFeePolicy";
 import { PAYMENT_FEE_POLICY_URL } from "@features/payments/logic/paymentFeePolicyLinks";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
@@ -34,101 +31,6 @@ function formatRoutePathTotals(
     })
     .join(" · ");
   return ` — ${amounts}`;
-}
-
-function MerchandiseChargeSection({ vm }: { vm: Vm }) {
-  const {
-    merchCheckboxSectionVisible,
-    serviceOnlyAgreement,
-    selectedAgreement,
-    payableMerchLines,
-    selectedMerchandiseLineIds,
-    setSelectedMerchandiseLineIds,
-    setAcceptedInforme,
-  } = vm;
-
-  if (merchCheckboxSectionVisible) {
-    return (
-      <section className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
-        <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
-          Mercancía a incluir en este cobro
-        </div>
-        <p className="vt-muted mt-1 text-[12px] leading-snug">
-          Marcá cada ítem de mercadería que quieras sumar al informe y al cobro.
-          Desmarcar actualiza el desglose al instante.
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
-            onClick={() =>
-              setSelectedMerchandiseLineIds(payableMerchLines.map((m) => m.id))
-            }
-          >
-            Seleccionar todo
-          </button>
-          <button
-            type="button"
-            className="vt-btn vt-btn-ghost px-3 py-1 text-[12px]"
-            onClick={() => setSelectedMerchandiseLineIds([])}
-          >
-            Limpiar
-          </button>
-        </div>
-        <div className="mt-2 space-y-2">
-          {payableMerchLines.map((m) => {
-            const checked = selectedMerchandiseLineIds.includes(m.id);
-            return (
-              <label
-                key={m.id}
-                className="flex cursor-pointer items-start gap-2 rounded-xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--surface)_94%,transparent)] p-2.5 text-[13px] text-[var(--text)]"
-              >
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
-                  checked={checked}
-                  onChange={(e) => {
-                    const on = e.target.checked;
-                    setSelectedMerchandiseLineIds((prev) => {
-                      const set = new Set(prev);
-                      if (on) set.add(m.id);
-                      else set.delete(m.id);
-                      return [...set];
-                    });
-                    setAcceptedInforme(false);
-                  }}
-                />
-                <span className="min-w-0">
-                  <span className="font-bold">{m.title}</span>
-                  <span className="vt-muted mt-0.5 block text-[12px]">
-                    {m.subtitle}
-                  </span>
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      </section>
-    );
-  }
-
-  const showMissingLineIdsWarning =
-    !serviceOnlyAgreement &&
-    selectedAgreement &&
-    agreementDeclaresMerchandise(selectedAgreement) &&
-    selectedAgreement.merchandise.length > 0;
-
-  if (showMissingLineIdsWarning) {
-    return (
-      <div className="rounded-2xl border border-amber-500/35 bg-[color-mix(in_oklab,amber_8%,var(--surface))] p-3 text-[12px] leading-snug text-[var(--text)]">
-        Hay mercancía en el acuerdo pero las líneas no tienen identificador
-        persistido; no se puede desglosar por ítem hasta que el vendedor vuelva
-        a emitir o actualice el acuerdo en el sistema.
-      </div>
-    );
-  }
-
-  return null;
 }
 
 function RouteTransportChargeBody({ vm }: { vm: Vm }) {
@@ -219,7 +121,7 @@ function RouteTransportSection({ vm }: { vm: Vm }) {
       </div>
       <p className="vt-muted mt-1 text-[12px] leading-snug">
         Podés incluir o excluir el transporte de la hoja de ruta en este cobro
-        (combinable con mercancía).
+        (combinable con los servicios).
       </p>
       <RouteTransportChargeBody vm={vm} />
     </section>
@@ -272,7 +174,7 @@ function ServicePaymentSection({ vm }: { vm: Vm }) {
 
   const hint = serviceOnlyAgreement
     ? "Este acuerdo contiene solo servicios. Selecciona uno o varios servicios y, para cada uno, la recurrencia a pagar. Las ya cobradas no aparecen."
-    : "Este acuerdo incluye servicios: marcá servicios y recurrencias si querés sumarlos a este cobro (podés combinarlos con mercancía y la hoja de ruta). Cada cambio actualiza el desglose.";
+    : "Este acuerdo incluye servicios: marcá servicios y recurrencias si querés sumarlos a este cobro (podés combinarlos con la hoja de ruta). Cada cambio actualiza el desglose.";
 
   return (
     <section className="rounded-2xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
@@ -452,7 +354,7 @@ function PaymentCheckoutContent({ vm }: { vm: Vm }) {
   if (!checkoutSelectionsReady && !allRecurrencesComplete) {
     const hint = serviceOnlyAgreement
       ? "Selecciona al menos un servicio y una recurrencia para ver el desglose de pago."
-      : "Marcá al menos una opción: mercancía, tramo de ruta o cuota de servicio (según corresponda al acuerdo).";
+      : "Marcá al menos una opción: tramo de ruta o cuota de servicio (según corresponda al acuerdo).";
     return (
       <div className="rounded-2xl border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3 text-[13px] leading-snug text-[var(--text)]">
         {hint}
@@ -791,14 +693,14 @@ export function ChatPaymentModalBody({ vm, onClose }: ChatPaymentModalBodyProps)
                 <CreditCard size={18} aria-hidden /> Pago del acuerdo
               </div>
               <p className="vt-muted mt-1 text-[12px] leading-snug">
-                Elegí acuerdo con el selector. En acuerdos con mercancía y/o hoja
-                de ruta marcá qué líneas de mercadería incluís y si sumás la hoja
-                de ruta (todos los tramos pendientes); el desglose se actualiza al
-                cambiar la selección. En acuerdos solo servicios, elegí las cuotas
-                a pagar. La referencia Climate (
-                {paymentFeeLabels.climateRateDisplay}) y la tarifa de procesador
-                estimada ({paymentFeeLabels.processorPctDisplay} + fijo) son
-                informativas y no se suman al cargo.
+                Elegí acuerdo con el selector. En acuerdos con hoja de ruta marcá
+                si sumás la hoja de ruta (todos los tramos pendientes) y las cuotas
+                de servicio a pagar; el desglose se actualiza al cambiar la
+                selección. En acuerdos solo servicios, elegí las cuotas a pagar.
+                La referencia Climate ({paymentFeeLabels.climateRateDisplay}) y la
+                tarifa de procesador estimada (
+                {paymentFeeLabels.processorPctDisplay} + fijo) son informativas y
+                no se suman al cargo.
               </p>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1.5 text-right">
@@ -846,7 +748,6 @@ export function ChatPaymentModalBody({ vm, onClose }: ChatPaymentModalBodyProps)
                 />
               </label>
 
-              <MerchandiseChargeSection vm={vm} />
               <RouteTransportSection vm={vm} />
               <PaidRecurrencesBanner vm={vm} />
               <ServicePaymentSection vm={vm} />

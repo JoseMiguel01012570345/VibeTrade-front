@@ -13,7 +13,7 @@ import {
   createThreadAsBuyer,
   openAgreementDetailInRail,
   openSellerPage,
-  sellerEmitMerchandiseAgreement,
+  sellerEmitServiceAgreement,
 } from "../../Resources/agreement-ui-helpers";
 import { waitForAgreementBubble } from "../../Resources/chat-helpers";
 
@@ -38,9 +38,9 @@ test.describe("tradeAgreementPdfDownload E2E", () => {
       seller.sessionToken,
       threadId,
     );
-    await sellerEmitMerchandiseAgreement(sellerPage, {
+    await sellerEmitServiceAgreement(sellerPage, {
       title,
-      productNamePart: "Producto E2E",
+      serviceNamePart: "Consultoría E2E",
     });
     await waitForAgreementBubble(buyerPage, title);
     await buyerRespondToAgreement(buyerPage, title, "accept");

@@ -17,7 +17,7 @@ import {
 } from "../../Resources/chat-helpers";
 import {
   buyerRespondToAgreement,
-  sellerEmitMerchandiseAgreement,
+  sellerEmitServiceAgreement,
 } from "../../Resources/agreement-ui-helpers";
 
 /** E2E tests for real-time notifications. */
@@ -110,8 +110,9 @@ test.describe("notifications realtime E2E", () => {
       
       // Seller emits agreement
       const agreementTitle = `Agreement Test ${Date.now()}`;
-      await sellerEmitMerchandiseAgreement(sellerPage, {
+      await sellerEmitServiceAgreement(sellerPage, {
         title: agreementTitle,
+        serviceNamePart: "Consultoría E2E",
       });
       
       // Wait for agreement to appear in buyer's chat

@@ -1,17 +1,11 @@
-import type { MerchandiseLine } from "./tradeAgreementTypes";
-
-/** Errores por clave de campo plana o por índice de línea de mercancía. */
+/** Errores por clave de campo plana o por índice de servicio del acuerdo. */
 export type TradeAgreementFormErrors = {
   title?: string;
-  /** Alcance global: al menos mercancías o servicio; mercancías vacías con el flag activo. */
+  /** Error global del acuerdo (p. ej. moneda única, falta de servicios en catálogo). */
   scope?: string;
-  merchandiseLines?: Record<
-    number,
-    Partial<Record<keyof MerchandiseLine, string>>
-  >;
   /** Al menos un servicio; errores por índice de servicio */
   serviceItems?: string;
   serviceErrors?: Record<number, string[]>;
-  /** Campos adicionales (mercancía + servicio), una cadena por fila problemática */
+  /** Campos adicionales (servicio), una cadena por fila problemática */
   extraFieldsLines?: Record<number, string>;
 };

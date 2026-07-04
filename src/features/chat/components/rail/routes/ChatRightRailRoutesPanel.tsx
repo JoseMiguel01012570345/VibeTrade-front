@@ -219,7 +219,7 @@ export function ChatRightRailRoutesPanel({
     if (rsid.length < 2) return null;
     return (
       acceptedAgreements.find(
-        (a) => (a.routeSheetId ?? "").trim() === rsid && !!a.includeMerchandise,
+        (a) => (a.routeSheetId ?? "").trim() === rsid,
       ) ?? null
     );
   }

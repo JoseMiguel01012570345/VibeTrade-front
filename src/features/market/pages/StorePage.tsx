@@ -35,7 +35,7 @@ import {
 } from "@features/market/logic/parseProductPrice";
 import { ProductDetailCard } from "../components/ProductDetailCard";
 import { ProductFiltersCard } from "../components/ProductFiltersCard";
-import { ServiceDetailCard } from "../components/ServiceDetailCard";
+import { StorefrontServiceCard } from "@features/storefront/components/StorefrontServiceCard";
 import { ServiceFiltersCard } from "../components/ServiceFiltersCard";
 import { StoreCatalogHubTile } from "../components/StoreCatalogHubTile";
 import { StoreIdentityBlock } from "../components/StoreIdentityBlock";
@@ -901,9 +901,9 @@ export function StorePage() {
                       Ver todos
                     </button>
                   </div>
-                  <div className="flex flex-col gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     {vitrinaPublishedServices.map((s) => (
-                      <ServiceDetailCard key={s.id} s={s} />
+                      <StorefrontServiceCard key={s.id} s={s} />
                     ))}
                   </div>
                 </div>
@@ -1136,9 +1136,9 @@ export function StorePage() {
                   </p>
                   <div className="vt-divider my-3" />
                   {servicesTabPublishedServices.length ? (
-                    <div className="flex flex-col gap-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       {servicesTabPublishedServices.map((s) => (
-                        <ServiceDetailCard key={s.id} s={s} />
+                        <StorefrontServiceCard key={s.id} s={s} />
                       ))}
                     </div>
                   ) : publishedServices.length ? (

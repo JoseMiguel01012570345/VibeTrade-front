@@ -121,6 +121,28 @@ export function storeProductHref(
   return `/offer/${id}`
 }
 
+/**
+ * Página de categoría de productos dentro de la tienda: `{base}/{nombre}/categoria/{categoria}`.
+ * La categoría (texto libre de la tienda) se codifica como segmento de URL.
+ */
+export function storeCategoryHref(
+  store: Pick<StoreBadge, 'id' | 'name'> | null | undefined,
+  category: string,
+): string {
+  return `${storeHref(store)}/categoria/${encodeURIComponent(category.trim())}`
+}
+
+/**
+ * Página de categoría de servicios dentro de la tienda: `{base}/{nombre}/servicios/{categoria}`.
+ * La categoría (texto libre de la tienda) se codifica como segmento de URL.
+ */
+export function storeServiceCategoryHref(
+  store: Pick<StoreBadge, 'id' | 'name'> | null | undefined,
+  category: string,
+): string {
+  return `${storeHref(store)}/servicios/${encodeURIComponent(category.trim())}`
+}
+
 /** Carrito dentro de la tienda: `{base}/{nombre}/cart` (cae a `/cart` sin nombre). */
 export function storeCartHref(
   store: Pick<StoreBadge, 'id' | 'name'> | null | undefined,

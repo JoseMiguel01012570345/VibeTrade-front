@@ -12,7 +12,7 @@ import {
   buyerRespondToAgreement,
   createThreadAsBuyer,
   openSellerPage,
-  sellerEmitMerchandiseAgreement,
+  sellerEmitServiceAgreement,
 } from "../../Resources/agreement-ui-helpers";
 import {
   reloadChatThread,
@@ -44,9 +44,9 @@ test.describe("chat agreement reply E2E", () => {
     );
     
     // Seller emits an agreement
-    await sellerEmitMerchandiseAgreement(sellerPage, {
+    await sellerEmitServiceAgreement(sellerPage, {
       title,
-      productNamePart: "Producto E2E",
+      serviceNamePart: "Consultoría E2E",
     });
 
     // Buyer waits for agreement to appear
@@ -111,9 +111,9 @@ test.describe("chat agreement reply E2E", () => {
     );
     
     // Seller emits an agreement
-    await sellerEmitMerchandiseAgreement(sellerPage, {
+    await sellerEmitServiceAgreement(sellerPage, {
       title,
-      productNamePart: "Producto E2E",
+      serviceNamePart: "Consultoría E2E",
     });
 
     // Buyer accepts the agreement first
@@ -182,9 +182,9 @@ test.describe("chat agreement reply E2E", () => {
     );
     
     // Seller emits an agreement
-    await sellerEmitMerchandiseAgreement(sellerPage, {
+    await sellerEmitServiceAgreement(sellerPage, {
       title,
-      productNamePart: "Producto E2E",
+      serviceNamePart: "Consultoría E2E",
     });
 
     // Buyer waits for agreement and clicks to reply

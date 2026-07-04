@@ -23,12 +23,6 @@ export function invalidateQueriesForChatThread(threadId: string): void {
   void queryClient.invalidateQueries({
     predicate: (q) =>
       Array.isArray(q.queryKey) &&
-      q.queryKey[0] === 'agreement-merchandise-payments' &&
-      q.queryKey[1] === tid,
-  })
-  void queryClient.invalidateQueries({
-    predicate: (q) =>
-      Array.isArray(q.queryKey) &&
       q.queryKey[0] === 'agreement-route-deliveries' &&
       q.queryKey[1] === tid,
   })

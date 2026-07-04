@@ -19,9 +19,8 @@ function toAmountMinor(totalMajor: number): number {
 }
 
 /**
- * Monto a cobrar al comprador por un acuerdo aceptado:
- * - Mercancías: suma de cantidad × valor unitario por línea.
- * - Servicios: para cada ítem, el **primer** vencimiento de la recurrencia (mes/día más próximo en el calendario anual).
+ * Monto a cobrar al comprador por un acuerdo aceptado (service-only):
+ * para cada servicio, el **primer** vencimiento de la recurrencia (mes/día más próximo en el calendario anual).
  */
 export function previewPaymentForAcceptedAgreement(
   ag: TradeAgreement,
@@ -38,18 +37,6 @@ export function previewPaymentForAcceptedAgreement(
     const k = normCurrency(currencyRaw);
     buckets.set(k, (buckets.get(k) ?? 0) + delta);
   };
-
-  if (ag.includeMerchandise !== false) {
-    for (const line of ag.merchandise ?? []) {
-      const q = parseDecimal(line.cantidad);
-      const vu = parseDecimal(line.valorUnitario);
-      if (q === null || vu === null || q <= 0 || vu <= 0) continue;
-      const sub = q * vu;
-      bump(line.moneda, sub);
-      const label = (line.tipo ?? "").trim() || "Producto";
-      summaryLines.push(`${label}: ${q} × ${vu} → ${sub.toFixed(2)}`);
-    }
-  }
 
   const services = normalizeAgreementServices(ag);
   if (ag.includeService !== false) {
@@ -82,7 +69,7 @@ export function previewPaymentForAcceptedAgreement(
     return {
       ok: false,
       reason:
-        "No se pudo calcular un monto (revisá precios en mercancías y montos en la recurrencia de servicios).",
+        "No se pudo calcular un monto (revisá los montos en la recurrencia de servicios).",
     };
   }
   if (positive.length > 1) {

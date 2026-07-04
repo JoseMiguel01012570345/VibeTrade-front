@@ -1,20 +1,12 @@
 import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
-import type { MerchandiseSectionMeta, TradeAgreement, TradeAgreementDraft } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
-import {
-  agreementDeclaresMerchandise,
-  normalizeAgreementServices,
-  normalizeMerchandiseLine,
-} from "./tradeAgreementTypes";
+import type { TradeAgreement, TradeAgreementDraft } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import { normalizeAgreementServices } from "./tradeAgreementTypes";
 
 export const MULTIPLE_AGREEMENT_CURRENCIES_ES =
-  "El acuerdo debe cobrarse en una sola moneda; unifica mercadería, servicios y transporte.";
+  "El acuerdo debe cobrarse en una sola moneda; unifica servicios y transporte.";
 
 export const ROUTE_LEG_MUST_MATCH_AGREEMENT_CURRENCY_ES =
   "Los tramos deben usar la misma moneda de pago que el resto del acuerdo vinculado.";
-
-/** @deprecated Use ROUTE_LEG_MUST_MATCH_AGREEMENT_CURRENCY_ES */
-export const ROUTE_LEG_MUST_MATCH_MERCHANDISE_CURRENCY_ES =
-  ROUTE_LEG_MUST_MATCH_AGREEMENT_CURRENCY_ES;
 
 import type { AgreementCurrencyResolution } from "@features/chat/Dtos/agreement/agreementCheckoutCurrencyTypes";
 
@@ -32,33 +24,12 @@ function isoNorm(c: string | undefined | null): string {
   return t.slice(0, 3);
 }
 
-type MerchandiseCurrencyAgreementSlice = {
-  includeMerchandise: boolean;
-  merchandise: TradeAgreement["merchandise"];
-  merchandiseMeta?: MerchandiseSectionMeta;
-};
-
 function agreementRouteSheetId(
   agreement: TradeAgreement | TradeAgreementDraft,
 ): string | undefined {
   if (!("routeSheetId" in agreement)) return undefined;
   const id = agreement.routeSheetId?.trim();
   return id || undefined;
-}
-
-function collectMerchandiseCurrencies(
-  agreement: MerchandiseCurrencyAgreementSlice,
-  out: Set<string>,
-): void {
-  if (!agreement.includeMerchandise) return;
-  for (const raw of agreement.merchandise ?? []) {
-    const line = normalizeMerchandiseLine(raw);
-    const q = parseDecimal(line.cantidad);
-    const vu = parseDecimal(line.valorUnitario);
-    if ((q ?? 0) <= 0 || (vu ?? 0) <= 0) continue;
-    const mon = isoNorm(line.moneda || agreement.merchandiseMeta?.moneda);
-    if (mon) out.add(mon);
-  }
 }
 
 function collectServiceCurrencies(
@@ -99,10 +70,8 @@ export function collectBillableAgreementCurrencies(
   routeSheet?: RouteSheet | null,
 ): Set<string> {
   const out = new Set<string>();
-  collectMerchandiseCurrencies(agreement, out);
   collectServiceCurrencies(agreement, out);
   if (
-    agreementDeclaresMerchandise(agreement as TradeAgreement) &&
     agreementRouteSheetId(agreement) &&
     routeSheet?.id?.trim() === agreementRouteSheetId(agreement)
   ) {
@@ -120,11 +89,7 @@ export function resolveSingleAgreementCurrency(
   if (monedas.size > 1) return { ok: false, reason: "multiple" };
 
   const currency = [...monedas][0]!;
-  if (
-    agreementDeclaresMerchandise(agreement as TradeAgreement) &&
-    routeSheet?.paradas?.length &&
-    agreementRouteSheetId(agreement)
-  ) {
+  if (routeSheet?.paradas?.length && agreementRouteSheetId(agreement)) {
     const required = isoNorm(currency);
     for (const p of routeSheet.paradas) {
       const amt = parseDecimal(p.precioTransportista ?? "");
@@ -150,40 +115,39 @@ export function agreementSingleCurrencyError(
   return null;
 }
 
-/** Moneda única de mercadería cobrable (compat). */
-export function resolveSingleMerchandiseCurrencyFromAgreement(
-  agreement: MerchandiseCurrencyAgreementSlice,
-): { ok: true; currency: string } | { ok: false; reason: "no_merchandise" | "missing" | "multiple" } {
-  if (!agreement.includeMerchandise) {
-    return { ok: false, reason: "no_merchandise" };
-  }
+/** Moneda única de servicio cobrable de un acuerdo. */
+function resolveSingleServiceCurrencyFromAgreement(
+  agreement: TradeAgreement,
+): { ok: true; currency: string } | { ok: false } {
   const set = new Set<string>();
-  collectMerchandiseCurrencies(agreement, set);
-  if (set.size === 0) return { ok: false, reason: "missing" };
-  if (set.size > 1) return { ok: false, reason: "multiple" };
+  collectServiceCurrencies(agreement, set);
+  if (set.size !== 1) return { ok: false };
   return { ok: true, currency: [...set][0]! };
 }
 
+/**
+ * Moneda con la que deben cobrarse los tramos de transporte de una hoja de ruta,
+ * inferida desde los acuerdos aceptados del hilo (service-only). Devuelve `null`
+ * si no hay una moneda única.
+ */
 export function resolveRouteLegPaymentCurrencyForThread(
   agreements: TradeAgreement[],
   routeSheetId?: string | null,
 ): string | null {
   const rsId = routeSheetId?.trim();
-  const acceptedMerch = agreements.filter(
-    (a) => a.status === "accepted" && a.includeMerchandise,
-  );
-  if (acceptedMerch.length === 0) return null;
+  const accepted = agreements.filter((a) => a.status === "accepted");
+  if (accepted.length === 0) return null;
 
   const linked = rsId
-    ? acceptedMerch.filter((a) => a.routeSheetId?.trim() === rsId)
+    ? accepted.filter((a) => a.routeSheetId?.trim() === rsId)
     : [];
-  const unlinked = acceptedMerch.filter((a) => !a.routeSheetId?.trim());
+  const unlinked = accepted.filter((a) => !a.routeSheetId?.trim());
   const sources = linked.length > 0 ? linked : unlinked;
   if (sources.length === 0) return null;
 
   let currency: string | null = null;
   for (const a of sources) {
-    const r = resolveSingleMerchandiseCurrencyFromAgreement(a);
+    const r = resolveSingleServiceCurrencyFromAgreement(a);
     if (!r.ok) return null;
     if (currency && currency !== r.currency) return null;
     currency = r.currency;

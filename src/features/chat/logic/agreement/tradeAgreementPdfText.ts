@@ -1,11 +1,11 @@
-import type { MerchandiseSectionMeta, MerchandiseLine, ServiceItem, ServiceScheduleState, TradeAgreement, TradeAgreementExtraFieldDraft } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
-import { agreementDeclaresMerchandise, agreementDeclaresService, coerceServiceSchedule, legacyCombinedExtraFields, merchandiseScopedExtraFields, monedasFromRecurrenciaPagos, normalizeAgreementServices, normalizeMerchandiseLine, serviceScopedExtraFields } from "@features/chat/logic/agreement/tradeAgreementTypes";
+import type { ServiceItem, ServiceScheduleState, TradeAgreement, TradeAgreementExtraFieldDraft } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import { agreementDeclaresService, coerceServiceSchedule, legacyCombinedExtraFields, monedasFromRecurrenciaPagos, normalizeAgreementServices, serviceScopedExtraFields } from "@features/chat/logic/agreement/tradeAgreementTypes";
 import type {
   AgreementInformePreviewItem,
   CollectAgreementQrLinksOpts,
 } from "@features/chat/Dtos/agreement/tradeAgreementPdfTypes";
 import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes";
-import { findStoreProduct, findStoreService } from "@features/market/logic/storeCatalogTypes";
+import { findStoreService } from "@features/market/logic/storeCatalogTypes";
 import {
   formatPaymentSummary,
   formatScheduleSummary,
@@ -372,54 +372,6 @@ function buildServiceItemText(sv: ServiceItem, catalog?: StoreCatalog | null): s
   return parts.join("\n");
 }
 
-function merchandiseLineText(
-  line: MerchandiseLine,
-  index: number,
-  catalog?: StoreCatalog | null,
-): string {
-  const ln = normalizeMerchandiseLine(line);
-  const linked = catalog
-    ? findStoreProduct(catalog, ln.linkedStoreProductId)
-    : undefined;
-  const chunks: string[] = [];
-  chunks.push(`--- Item de mercancia ${index + 1} ---`);
-  if (linked) {
-    chunks.push(`Catalogo: ${linked.name} - ${linked.category}`);
-  }
-  chunks.push(`Tipo: ${norm(ln.tipo) || "-"}`);
-  chunks.push(`Cantidad: ${norm(ln.cantidad) || "-"}`);
-  chunks.push(`Valor unitario: ${norm(ln.valorUnitario) || "-"}`);
-  chunks.push(`Estado: ${norm(ln.estado) || "-"}`);
-  chunks.push(
-    `Descuento / impuestos / moneda: ${norm(ln.descuento)} / ${norm(ln.impuestos)} / ${norm(ln.moneda)}`,
-  );
-  chunks.push(`Devoluciones (descripcion): ${norm(ln.devolucionesDesc) || "-"}`);
-  chunks.push(
-    `Quien paga envio devolucion: ${norm(ln.devolucionQuienPaga) || "-"}`,
-  );
-  chunks.push(`Plazos devolucion: ${norm(ln.devolucionPlazos) || "-"}`);
-  chunks.push(`Tipo de embalaje: ${norm(ln.tipoEmbalaje) || "-"}`);
-  chunks.push(
-    `Regulaciones y cumplimiento: ${norm(ln.regulaciones) || "-"}`,
-  );
-  return chunks.join("\n");
-}
-
-function legacyMerchandiseMetaLines(m?: MerchandiseSectionMeta): string[] {
-  if (!m) return [];
-  const rows: string[] = [];
-  if (norm(m.moneda)) rows.push(`  Moneda: ${m.moneda}`);
-  if (norm(m.tipoEmbalaje)) rows.push(`  Tipo embalaje: ${m.tipoEmbalaje}`);
-  if (norm(m.devolucionesDesc)) rows.push(`  Devoluciones: ${m.devolucionesDesc}`);
-  if (norm(m.devolucionQuienPaga))
-    rows.push(`  Quien paga devolucion: ${m.devolucionQuienPaga}`);
-  if (norm(m.devolucionPlazos))
-    rows.push(`  Plazos devolucion (legacy): ${m.devolucionPlazos}`);
-  if (norm(m.regulaciones)) rows.push(`  Regulaciones: ${m.regulaciones}`);
-  if (!rows.length) return [];
-  return ["Condiciones generales legacy (cabecera bloque viejo):", ...rows, ""];
-}
-
 function extraFieldsText(
   heading: string,
   fields?: TradeAgreementExtraFieldDraft[],
@@ -479,36 +431,6 @@ export function buildTradeAgreementPlainDocument(
       `Enlace hoja de ruta (referencia externa): ${rs ?? norm(a.routeSheetUrl)}`,
     );
     sections.push("");
-  }
-
-  sections.push("---------------------------------------");
-  sections.push("MERCANCIAS");
-  sections.push("---------------------------------------");
-
-  if (!agreementDeclaresMerchandise(a)) {
-    sections.push("(Este acuerdo no declara mercancias en el bloque de contrato)");
-  } else if (!a.merchandise.length) {
-    sections.push("(Mercancias activadas pero sin lineas cargadas)");
-  } else {
-    for (let i = 0; i < a.merchandise.length; i++) {
-      sections.push(merchandiseLineText(a.merchandise[i], i, catalog));
-      sections.push("");
-    }
-  }
-
-  const leg = legacyMerchandiseMetaLines(a.merchandiseMeta);
-  if (leg.length) sections.push(...leg);
-
-  if (
-    agreementDeclaresMerchandise(a) &&
-    merchandiseScopedExtraFields(a.extraFields).length
-  ) {
-    sections.push(
-      ...extraFieldsText(
-        "Otras clausulas (mercancia)",
-        merchandiseScopedExtraFields(a.extraFields),
-      ),
-    );
   }
 
   sections.push("---------------------------------------");

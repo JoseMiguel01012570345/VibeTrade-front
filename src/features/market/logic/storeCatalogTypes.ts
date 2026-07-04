@@ -1,13 +1,9 @@
-import type {
-  MerchandiseLine,
-  ServiceItem,
-} from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import type { ServiceItem } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
 import type {
   StoreCatalog,
   StoreProduct,
   StoreService,
 } from "../Dtos/storeCatalogTypes";
-import { emptyMerchandiseLine } from "@features/chat/logic/agreement/tradeAgreementTypes";
 
 export type {
   StoreCustomAttachment,
@@ -144,70 +140,6 @@ function appendDetailBlock(base: string, title: string, body: string): string {
   if (!prefix) return chunk;
   if (prefix.includes(t)) return base;
   return `${prefix}\n\n${chunk}`;
-}
-
-/** Valores por defecto del acuerdo inferidos desde la ficha de producto de la tienda. */
-export function storeProductToMerchandiseDefaults(
-  p: StoreProduct,
-): MerchandiseLine {
-  const tipo = [p.name, p.model].filter(Boolean).join(" — ");
-
-  const monedaLine =
-    norm(p.monedaPrecio ?? "") !== ""
-      ? (p.monedaPrecio ?? "").trim()
-      : catalogMonedasMerchandiseString(p);
-
-  return {
-    ...emptyMerchandiseLine(),
-    tipo,
-    cantidad: "",
-    valorUnitario: p.price,
-    moneda: monedaLine,
-    estado: p.condition,
-    impuestos: p.taxesShippingInstall ?? "",
-    devolucionesDesc: p.warrantyReturn,
-    tipoEmbalaje: "",
-    /** Solo lo completa el comprador en el acuerdo; la ficha se muestra aparte. */
-    regulaciones: "",
-  };
-}
-
-/**
- * Fusión para el acuerdo: lo ya cargado en la línea del acuerdo tiene prioridad;
- * lo vacío se completa desde la ficha del catálogo (flow-ui).
- */
-export function mergeMerchandiseLineWithStoreProduct(
-  line: MerchandiseLine,
-  p: StoreProduct,
-): MerchandiseLine {
-  const def = storeProductToMerchandiseDefaults(p);
-  const sameLink = line.linkedStoreProductId === p.id;
-  const merged: MerchandiseLine = {
-    ...line,
-    linkedStoreProductId: p.id,
-    tipo: pickLine(line.tipo, def.tipo),
-    cantidad: pickLine(line.cantidad, def.cantidad),
-    valorUnitario: pickLine(line.valorUnitario, def.valorUnitario),
-    estado: sameLink ? line.estado : p.condition,
-    descuento: pickLine(line.descuento, def.descuento),
-    impuestos: pickLine(line.impuestos, def.impuestos),
-    moneda: pickLine(line.moneda, def.moneda),
-    tipoEmbalaje: pickLine(line.tipoEmbalaje, def.tipoEmbalaje),
-    devolucionesDesc: pickLine(line.devolucionesDesc, def.devolucionesDesc),
-    devolucionQuienPaga: pickLine(
-      line.devolucionQuienPaga,
-      def.devolucionQuienPaga,
-    ),
-    devolucionPlazos: pickLine(line.devolucionPlazos, def.devolucionPlazos),
-    /** A cargo del comprador; no se mezcla con el texto de la ficha. */
-    regulaciones: line.regulaciones,
-  };
-
-  if (norm(p.availability) && !norm(merged.cantidad)) {
-    merged.cantidad = p.availability;
-  }
-
-  return merged;
 }
 
 function mergeListBlock(

@@ -15,9 +15,7 @@ function agr(partial: Partial<TradeAgreement> & Pick<TradeAgreement, "id">): Tra
     issuedAt: 0,
     issuedByStoreId: "st",
     issuerLabel: "Tienda",
-    includeMerchandise: false,
-    includeService: false,
-    merchandise: [],
+    includeService: true,
     ...partial,
     id: partial.id,
   };

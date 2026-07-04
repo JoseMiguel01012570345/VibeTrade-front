@@ -104,6 +104,8 @@ export function OfferPage() {
   const sessionReady = isSessionActive || !!getSessionToken();
   const stores = useMarketStore((s) => s.stores);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
+  const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer);
+  const [contactBusy, setContactBusy] = useState(false);
 
   const {
     resolvedOffer,
@@ -545,6 +547,17 @@ export function OfferPage() {
     return cat.products.find((p) => p.id === oid) ?? null;
   }, [resolvedOffer, storeCatalogs]);
 
+  const serviceFicha = useMemo(() => {
+    if (!resolvedOffer) return null;
+    const cat = storeCatalogs[resolvedOffer.storeId];
+    if (!cat) return null;
+    const oid = (
+      resolvedOffer.emergentBaseOfferId?.trim() || resolvedOffer.id
+    ).trim();
+    if (!oid) return null;
+    return cat.services.find((s) => s.id === oid) ?? null;
+  }, [resolvedOffer, storeCatalogs]);
+
   /**
    * La ficha pública solo hidrata `offers`/`stores`, no `storeCatalogs`. Para que el
    * detalle (estilo storefront) muestre la ficha del producto, el precio unitario y
@@ -697,6 +710,32 @@ export function OfferPage() {
     toast.success("Añadido al carrito");
   }
 
+  /**
+   * Servicios: "Escribir al privado" abre el chat operativo del vendedor (mismo hilo
+   * de negociación de la oferta). Invitados: se les pide iniciar sesión.
+   */
+  function contactSellerNow() {
+    if (!offerId) return;
+    if (!isSessionActive || me.id === "guest") {
+      openAuthModal();
+      return;
+    }
+    setContactBusy(true);
+    void (async () => {
+      try {
+        const threadId = await ensureThreadForOffer(offerId, {
+          buyerId: me.id,
+        });
+        if (threadId) nav(`/chat/${threadId}`);
+        else toast.error("No se pudo abrir el chat con el vendedor.");
+      } catch {
+        toast.error("No se pudo abrir el chat con el vendedor.");
+      } finally {
+        setContactBusy(false);
+      }
+    })();
+  }
+
   // Ficha de producto/servicio (no hoja de ruta): réplica del detalle de la app de
   // referencia (frontend-guest). Envuelta en `.store-front-surface` para que la
   // ficha y los comentarios adopten el estilo emerald/crema del storefront.
@@ -707,6 +746,7 @@ export function OfferPage() {
           <OfferProductDetail
             offer={resolvedOffer}
             productFicha={productFicha}
+            serviceFicha={serviceFicha}
             store={store}
             gallery={galleryUrls}
             descriptionText={fichaDescriptionText}
@@ -720,6 +760,8 @@ export function OfferPage() {
               addFichaToCart(qty);
               nav(storeCartHref(store));
             }}
+            onContactSeller={isOwnOffer ? undefined : contactSellerNow}
+            contactBusy={contactBusy}
             onOpenLightbox={(url) => setGalleryLightboxUrl(url)}
             relatedProducts={relatedProducts}
           />

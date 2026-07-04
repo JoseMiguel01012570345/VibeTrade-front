@@ -96,9 +96,7 @@ export function ChatRightRailContractsPanel({
               Hay <strong className="text-[var(--text)]">cobros registrados</strong> para este acuerdo. No se puede
               editar ni eliminar
               {agreementRouteLinkFrozen(agreementForDetail) ?
-                agreementForDetail.hasAcceptedMerchandiseEvidence ?
-                  ' ni modificar el vínculo con la hoja de ruta (evidencia de mercancía aceptada)'
-                : ' ni cambiar el vínculo con la hoja de ruta'
+                ' ni cambiar el vínculo con la hoja de ruta'
               : agreementForDetail.routeSheetId ?
                 '; podés desvincular la hoja si el transporte aún no fue pagado'
               : '; podés vincular una hoja de ruta para cobrar el transporte después'}

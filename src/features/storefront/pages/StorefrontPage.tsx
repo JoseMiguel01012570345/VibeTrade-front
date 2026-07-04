@@ -6,24 +6,30 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { ArrowLeft, MapPin } from "lucide-react";
+import { ArrowLeft, MapPin, Wrench } from "lucide-react";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { useStorePageDetail } from "@features/market/hooks/useStorePageDetail";
 import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
 import {
   isReservedStoreName,
+  storeCategoryHref,
   storeMapHref,
+  storeServiceCategoryHref,
 } from "@features/market/logic/store/storePath";
-import { ServiceDetailCard } from "@features/market/components/ServiceDetailCard";
+import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
+import type {
+  StoreProduct,
+  StoreService,
+} from "@features/market/logic/storeCatalogTypes";
+import { StorefrontServiceCard } from "../components/StorefrontServiceCard";
 import { StorefrontProductCard } from "../components/StorefrontProductCard";
 import { ScrollArrowButton } from "../components/ScrollArrowButton";
 import { StorefrontChrome } from "../components/StorefrontChrome";
 
-const ALL_CATEGORIES = "__all__";
 const LATEST_PRODUCTS_COUNT = 4;
 
-/** Familia de productos para el carrusel de categorías (por tienda). */
+/** Familia (categoría) para los carruseles de categorías (por tienda). */
 type CategoryMeta = { id: string; label: string; slug: string };
 
 /**
@@ -32,7 +38,7 @@ type CategoryMeta = { id: string; label: string; slug: string };
  * Réplica de la UI/UX del catálogo de la app de referencia (frontend-guest,
  * `src/pages/Catalog.tsx`): carrusel "Explora por Categoría" con flechas de
  * desplazamiento, "Productos más recientes" y grid "Ofertas que no puedes dejar
- * pasar". Adaptada a un catálogo por tienda: las categorías filtran el grid.
+ * pasar". Las categorías (productos y servicios) llevan a su página dedicada.
  */
 export function StorefrontPage() {
   const { storeName } = useParams();
@@ -48,21 +54,14 @@ export function StorefrontPage() {
   const [searchParams] = useSearchParams();
 
   const [query, setQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState<string>(ALL_CATEGORIES);
-
-  const categoriesScrollerRef = useRef<HTMLDivElement | null>(null);
-  const [categoryScroll, setCategoryScroll] = useState({
-    canLeft: false,
-    canRight: false,
-  });
 
   /**
    * El término puede llegar por URL (`?q=`) al buscar desde otra vista (p. ej. el
-   * detalle) y la categoría por `?cat=` (desde el menú de Categorías / "Ver todos").
+   * detalle). Navegar por categoría abre su página dedicada (`/{tienda}/categoria/…`
+   * o `/{tienda}/servicios/…`), no un filtro en esta pantalla.
    */
   useEffect(() => {
     setQuery(searchParams.get("q") ?? "");
-    setActiveCategory(searchParams.get("cat")?.trim() || ALL_CATEGORIES);
   }, [storeId, searchParams]);
 
   const publishedProducts = useMemo(
@@ -74,7 +73,7 @@ export function StorefrontPage() {
     [catalog],
   );
 
-  const categoryMetas: CategoryMeta[] = useMemo(() => {
+  const productCategoryMetas: CategoryMeta[] = useMemo(() => {
     const fromProducts = publishedProducts
       .map((p) => p.category.trim())
       .filter(Boolean);
@@ -85,70 +84,46 @@ export function StorefrontPage() {
     return unique.map((label) => ({ id: label, label, slug: label }));
   }, [publishedProducts, store]);
 
+  const serviceCategoryMetas: CategoryMeta[] = useMemo(() => {
+    const unique = Array.from(
+      new Set(
+        publishedServices.map((s) => s.category.trim()).filter(Boolean),
+      ),
+    );
+    return unique.map((label) => ({ id: label, label, slug: label }));
+  }, [publishedServices]);
+
   const visibleProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return publishedProducts.filter((p) => {
-      if (
-        activeCategory !== ALL_CATEGORIES &&
-        p.category.trim() !== activeCategory
-      )
-        return false;
-      if (!q) return true;
-      return (
+    if (!q) return publishedProducts;
+    return publishedProducts.filter(
+      (p) =>
         p.name.toLowerCase().includes(q) ||
         p.shortDescription.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q)
-      );
-    });
-  }, [publishedProducts, activeCategory, query]);
+        p.category.toLowerCase().includes(q),
+    );
+  }, [publishedProducts, query]);
 
-  const isBrowsingAll = activeCategory === ALL_CATEGORIES && !query.trim();
+  const visibleServices = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return publishedServices;
+    return publishedServices.filter(
+      (s) =>
+        s.tipoServicio.toLowerCase().includes(q) ||
+        s.descripcion.toLowerCase().includes(q) ||
+        s.category.toLowerCase().includes(q),
+    );
+  }, [publishedServices, query]);
+
+  const isBrowsingAll = !query.trim();
   const latestProducts = useMemo(
     () => publishedProducts.slice(0, LATEST_PRODUCTS_COUNT),
     [publishedProducts],
   );
 
-  let mainHeading = "Ofertas que no puedes dejar pasar";
-  if (!isBrowsingAll) {
-    mainHeading =
-      activeCategory === ALL_CATEGORIES ? "Resultados" : activeCategory;
-  }
-
-  const updateCategoryScrollState = useCallback(() => {
-    const el = categoriesScrollerRef.current;
-    if (!el) return;
-    const maxScroll = el.scrollWidth - el.clientWidth;
-    const canLeft = el.scrollLeft > 1;
-    const canRight = el.scrollLeft < maxScroll - 1;
-    setCategoryScroll((prev) =>
-      prev.canLeft === canLeft && prev.canRight === canRight
-        ? prev
-        : { canLeft, canRight },
-    );
-  }, []);
-
-  const scrollCategories = useCallback((direction: "left" | "right") => {
-    const el = categoriesScrollerRef.current;
-    if (!el) return;
-    const amount = Math.max(el.clientWidth * 0.8, 200);
-    el.scrollBy({
-      left: direction === "left" ? -amount : amount,
-      behavior: "smooth",
-    });
-  }, []);
-
-  useEffect(() => {
-    const el = categoriesScrollerRef.current;
-    if (!el) return;
-    updateCategoryScrollState();
-    el.addEventListener("scroll", updateCategoryScrollState, { passive: true });
-    const win = typeof globalThis === "undefined" ? null : globalThis;
-    win?.addEventListener("resize", updateCategoryScrollState);
-    return () => {
-      el.removeEventListener("scroll", updateCategoryScrollState);
-      win?.removeEventListener("resize", updateCategoryScrollState);
-    };
-  }, [updateCategoryScrollState, categoryMetas.length]);
+  const mainHeading = isBrowsingAll
+    ? "Ofertas que no puedes dejar pasar"
+    : "Resultados";
 
   // Un segmento reservado (p. ej. `/finanzas`, `/admin`, `/offer` sin subruta) no es
   // una tienda: volvemos al feed en vez de mostrar "tienda no encontrada".
@@ -218,67 +193,12 @@ export function StorefrontPage() {
           </div>
         </section>
 
-        {/* Explora por Categoría */}
-        {categoryMetas.length > 0 ? (
-          <section id="storefront-categorias" className="scroll-mt-24">
-            <div className="mb-4 flex items-end justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
-                  Explora por Categoría
-                </h2>
-                <p className="text-sm text-slate-500">
-                  Filtra el catálogo por familia de productos.
-                </p>
-              </div>
-            </div>
-
-            <div className="relative -mx-4 sm:mx-0">
-              <div
-                ref={categoriesScrollerRef}
-                className="store-no-scrollbar flex gap-3 overflow-x-auto px-4 pb-2 pt-0.5 [-webkit-overflow-scrolling:touch] sm:gap-4 sm:px-0"
-                role="list"
-                aria-label="Categorías"
-              >
-                <div className="w-[9.5rem] shrink-0 sm:w-40" role="listitem">
-                  <CategoryTile
-                    label="Todos"
-                    active={activeCategory === ALL_CATEGORIES}
-                    onClick={() => setActiveCategory(ALL_CATEGORIES)}
-                  />
-                </div>
-                {categoryMetas.map((category) => (
-                  <div
-                    key={category.id}
-                    className="w-[9.5rem] shrink-0 sm:w-40"
-                    role="listitem"
-                  >
-                    <CategoryTile
-                      label={category.label}
-                      active={activeCategory === category.label}
-                      onClick={() => setActiveCategory(category.label)}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {categoryScroll.canLeft ? (
-                <ScrollArrowButton
-                  direction="left"
-                  onClick={() => scrollCategories("left")}
-                  aria-label="Desplazar categorías a la izquierda"
-                />
-              ) : null}
-
-              {categoryScroll.canRight ? (
-                <ScrollArrowButton
-                  direction="right"
-                  onClick={() => scrollCategories("right")}
-                  aria-label="Desplazar categorías a la derecha"
-                />
-              ) : null}
-            </div>
-          </section>
-        ) : null}
+        {/* Explora por Categoría: al tocar una categoría se entra a su página dedicada */}
+        <StorefrontCategorySection
+          store={store}
+          productCategoryMetas={productCategoryMetas}
+          serviceCategoryMetas={serviceCategoryMetas}
+        />
 
         {/* Productos más recientes (solo al navegar sin filtro/búsqueda) */}
         {isBrowsingAll && latestProducts.length > 0 ? (
@@ -297,72 +217,270 @@ export function StorefrontPage() {
         ) : null}
 
         {/* Grid principal de productos */}
-        <section>
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
-              {mainHeading}
-            </h2>
-          </div>
-          {visibleProducts.length === 0 ? (
-            <p className="rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
-              {publishedProducts.length === 0
-                ? "Esta tienda todavía no publicó productos."
-                : "Ningún producto coincide con tu búsqueda."}
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
-              {visibleProducts.map((p) => (
-                <StorefrontProductCard key={p.id} p={p} />
-              ))}
-            </div>
-          )}
-        </section>
+        <StorefrontProductsSection
+          heading={mainHeading}
+          products={visibleProducts}
+          hasAnyPublished={publishedProducts.length > 0}
+        />
 
         {/* Servicios */}
         {publishedServices.length > 0 ? (
-          <section>
-            <div className="mb-5">
-              <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
-                Servicios
-              </h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              {publishedServices.map((s) => (
-                <ServiceDetailCard key={s.id} s={s} />
-              ))}
-            </div>
-          </section>
+          <StorefrontServicesSection
+            heading={isBrowsingAll ? "Servicios" : "Resultados"}
+            services={visibleServices}
+          />
         ) : null}
       </div>
     </StorefrontChrome>
   );
 }
 
-/**
- * Ficha de categoría del carrusel. Réplica del `CategoryTile` de referencia
- * (frontend-guest, `catalogUi.tsx`); aquí actúa como filtro (botón) en vez de
- * enlace, porque el catálogo es de una sola tienda.
- */
-function CategoryTile({
-  label,
-  active,
-  onClick,
+/** Sección "Explora por Categoría": carruseles de categorías de productos y servicios. */
+function StorefrontCategorySection({
+  store,
+  productCategoryMetas,
+  serviceCategoryMetas,
 }: Readonly<{
-  label: string;
-  active: boolean;
-  onClick: () => void;
+  store: StoreBadge;
+  productCategoryMetas: CategoryMeta[];
+  serviceCategoryMetas: CategoryMeta[];
+}>) {
+  if (productCategoryMetas.length === 0 && serviceCategoryMetas.length === 0) {
+    return null;
+  }
+  return (
+    <section id="storefront-categorias" className="scroll-mt-24 space-y-6">
+      <div>
+        <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+          Explora por Categoría
+        </h2>
+        <p className="text-sm text-slate-500">
+          Entra a una familia de productos o servicios y navega su catálogo
+          dedicado.
+        </p>
+      </div>
+
+      {productCategoryMetas.length > 0 ? (
+        <div>
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+            Productos
+          </p>
+          <CategoryTileCarousel
+            categories={productCategoryMetas}
+            hrefFor={(category) => storeCategoryHref(store, category.label)}
+            ariaLabel="Categorías de productos"
+            kind="product"
+          />
+        </div>
+      ) : null}
+
+      {serviceCategoryMetas.length > 0 ? (
+        <div>
+          <p className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+            <Wrench className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            Servicios
+          </p>
+          <CategoryTileCarousel
+            categories={serviceCategoryMetas}
+            hrefFor={(category) =>
+              storeServiceCategoryHref(store, category.label)
+            }
+            ariaLabel="Categorías de servicios"
+            kind="service"
+          />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/** Grid principal de productos (todos los publicados o el resultado de la búsqueda). */
+function StorefrontProductsSection({
+  heading,
+  products,
+  hasAnyPublished,
+}: Readonly<{
+  heading: string;
+  products: StoreProduct[];
+  hasAnyPublished: boolean;
 }>) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex h-full w-full items-center justify-center rounded-[20px] border px-4 py-5 text-center transition ${
-        active
-          ? "border-emerald-700 bg-emerald-700 text-white shadow-[0_18px_34px_rgba(5,150,105,0.25)]"
-          : "border-[#d9d5cf] bg-white text-emerald-700 hover:border-emerald-300"
-      }`}
+    <section>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+          {heading}
+        </h2>
+      </div>
+      {products.length === 0 ? (
+        <p className="rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
+          {hasAnyPublished
+            ? "Ningún producto coincide con tu búsqueda."
+            : "Esta tienda todavía no publicó productos."}
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+          {products.map((p) => (
+            <StorefrontProductCard key={p.id} p={p} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Grid de servicios (todos los publicados o el resultado de la búsqueda). */
+function StorefrontServicesSection({
+  heading,
+  services,
+}: Readonly<{
+  heading: string;
+  services: StoreService[];
+}>) {
+  return (
+    <section id="storefront-servicios" className="scroll-mt-24">
+      <div className="mb-5">
+        <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+          {heading}
+        </h2>
+      </div>
+      {services.length === 0 ? (
+        <p className="rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
+          Ningún servicio coincide con tu búsqueda.
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+          {services.map((s) => (
+            <StorefrontServiceCard key={s.id} s={s} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Carrusel horizontal de fichas de categoría con flechas de desplazamiento (réplica
+ * del carrusel "Explora por Categoría" de la app de referencia). Cada ficha es un
+ * enlace a la página dedicada de esa categoría (productos o servicios).
+ */
+function CategoryTileCarousel({
+  categories,
+  hrefFor,
+  ariaLabel,
+  kind,
+}: Readonly<{
+  categories: CategoryMeta[];
+  hrefFor: (category: CategoryMeta) => string;
+  ariaLabel: string;
+  kind: "product" | "service";
+}>) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const [scrollState, setScrollState] = useState({
+    canLeft: false,
+    canRight: false,
+  });
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    const canLeft = el.scrollLeft > 1;
+    const canRight = el.scrollLeft < maxScroll - 1;
+    setScrollState((prev) =>
+      prev.canLeft === canLeft && prev.canRight === canRight
+        ? prev
+        : { canLeft, canRight },
+    );
+  }, []);
+
+  const scrollBy = useCallback((direction: "left" | "right") => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const amount = Math.max(el.clientWidth * 0.8, 200);
+    el.scrollBy({
+      left: direction === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
+  }, []);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    updateScrollState();
+    el.addEventListener("scroll", updateScrollState, { passive: true });
+    const win = typeof globalThis === "undefined" ? null : globalThis;
+    win?.addEventListener("resize", updateScrollState);
+    return () => {
+      el.removeEventListener("scroll", updateScrollState);
+      win?.removeEventListener("resize", updateScrollState);
+    };
+  }, [updateScrollState, categories.length]);
+
+  return (
+    <div className="relative -mx-4 sm:mx-0">
+      <div
+        ref={scrollerRef}
+        className="store-no-scrollbar flex gap-3 overflow-x-auto px-4 pb-2 pt-0.5 [-webkit-overflow-scrolling:touch] sm:gap-4 sm:px-0"
+        role="list"
+        aria-label={ariaLabel}
+      >
+        {categories.map((category) => (
+          <div
+            key={category.id}
+            className="w-[9.5rem] shrink-0 sm:w-40"
+            role="listitem"
+          >
+            <CategoryTileLink
+              label={category.label}
+              to={hrefFor(category)}
+              kind={kind}
+            />
+          </div>
+        ))}
+      </div>
+
+      {scrollState.canLeft ? (
+        <ScrollArrowButton
+          direction="left"
+          onClick={() => scrollBy("left")}
+          aria-label="Desplazar categorías a la izquierda"
+        />
+      ) : null}
+
+      {scrollState.canRight ? (
+        <ScrollArrowButton
+          direction="right"
+          onClick={() => scrollBy("right")}
+          aria-label="Desplazar categorías a la derecha"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Ficha de categoría del carrusel. Réplica del `CategoryTile` de referencia
+ * (frontend-guest, `catalogUi.tsx`): enlace que lleva a la página de la categoría.
+ * Los servicios llevan un icono de herramienta para diferenciarse de los productos.
+ */
+function CategoryTileLink({
+  label,
+  to,
+  kind,
+}: Readonly<{
+  label: string;
+  to: string;
+  kind: "product" | "service";
+}>) {
+  return (
+    <Link
+      to={to}
+      className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-[20px] border border-[#d9d5cf] bg-white px-4 py-5 text-center text-emerald-700 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-[0_18px_34px_rgba(5,150,105,0.12)]"
     >
-      <div className="text-sm font-bold">{label}</div>
-    </button>
+      {kind === "service" ? (
+        <Wrench className="h-5 w-5 shrink-0" aria-hidden />
+      ) : null}
+      <span className="text-sm font-bold">{label}</span>
+    </Link>
   );
 }

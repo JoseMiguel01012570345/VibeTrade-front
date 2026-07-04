@@ -5,7 +5,6 @@ import {
 } from "@features/chat/logic/payments/chatPaymentUtils";
 import type { AgreementRoutePathApi } from "@features/chat/Dtos/agreement/agreementCheckoutApiTypes";
 import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
-import { emptyMerchandiseLine } from "@features/chat/logic/agreement/tradeAgreementTypes";
 
 function path(partial: Partial<AgreementRoutePathApi>): AgreementRoutePathApi {
   return {
@@ -32,17 +31,7 @@ function merchAg(partial?: Partial<TradeAgreement>): TradeAgreement {
     issuedAt: 0,
     issuedByStoreId: "st",
     issuerLabel: "Tienda",
-    includeMerchandise: true,
-    includeService: false,
-    merchandise: [
-      {
-        ...emptyMerchandiseLine(),
-        id: "m1",
-        cantidad: "1",
-        valorUnitario: "10",
-        moneda: "USD",
-      },
-    ],
+    includeService: true,
     routeSheetId: "rs1",
     ...partial,
   };
