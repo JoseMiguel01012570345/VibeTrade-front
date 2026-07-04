@@ -107,6 +107,36 @@ export function storeMapHref(
   return `${storeHref(store)}/mapa`
 }
 
+/**
+ * URL del detalle de un producto dentro de la tienda: `{base}/{nombre}/{productId}`.
+ * Si no hay nombre de tienda (contexto sin tienda), cae a la ruta global `/offer/:id`.
+ */
+export function storeProductHref(
+  store: Pick<StoreBadge, 'id' | 'name'> | null | undefined,
+  productId: string,
+): string {
+  const id = encodeURIComponent(productId.trim())
+  const name = store?.name?.trim()
+  if (name) return `${storePathFromName(name)}/${id}`
+  return `/offer/${id}`
+}
+
+/** Carrito dentro de la tienda: `{base}/{nombre}/cart` (cae a `/cart` sin nombre). */
+export function storeCartHref(
+  store: Pick<StoreBadge, 'id' | 'name'> | null | undefined,
+): string {
+  const name = store?.name?.trim()
+  return name ? `${storePathFromName(name)}/cart` : '/cart'
+}
+
+/** Checkout dentro de la tienda: `{base}/{nombre}/checkout` (cae a `/checkout` sin nombre). */
+export function storeCheckoutHref(
+  store: Pick<StoreBadge, 'id' | 'name'> | null | undefined,
+): string {
+  const name = store?.name?.trim()
+  return name ? `${storePathFromName(name)}/checkout` : '/checkout'
+}
+
 /** Busca en el estado una tienda cuyo nombre normalizado coincida con `normalized`. */
 export function findStoreByNormalizedName(
   stores: Record<string, StoreBadge>,

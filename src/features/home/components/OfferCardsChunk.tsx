@@ -4,7 +4,10 @@ import { cn } from "@shared/lib/cn";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import type { RouteOfferPublicState } from "@features/market/logic/store/marketStoreTypes";
 import type { Offer, StoreBadge } from "@features/market/logic/store/useMarketStore";
-import { storeHref } from "@features/market/logic/store/storePath";
+import {
+  storeHref,
+  storeProductHref,
+} from "@features/market/logic/store/storePath";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { OfferSaveButton } from "@features/market/components/OfferSaveButton";
@@ -54,6 +57,10 @@ export function OfferCardsChunk({
             : undefined);
         /** Solo publicaciones `emo_*`: el mapa y CTA de suscripción. No mezclar con `routeOfferPublic` hidratado por el chat (suscriptores), para no mutar la tarjeta en el feed. */
         const isEmergentRouteFeed = o.isEmergentRoutePublication === true;
+        /** Producto/servicio de tienda → `{base}/{nombre}/{id}`; ruta emergente → `/offer/:id`. */
+        const offerHref = isEmergentRouteFeed
+          ? `/offer/${o.id}`
+          : storeProductHref(store ?? { id: o.storeId, name: "" }, o.id);
         const descPreview = isEmergentRouteFeed
           ? ""
           : offerDescriptionPreview(descFull);
@@ -87,7 +94,7 @@ export function OfferCardsChunk({
           >
             <div className="relative h-[150px] overflow-hidden bg-gray-200 lg:h-[132px]">
               <Link
-                to={`/offer/${o.id}`}
+                to={offerHref}
                 className={cn(
                   "block h-full overflow-hidden",
                   isEmergentRouteFeed ? "group" : !isToolPlaceholder && "group",
@@ -131,7 +138,7 @@ export function OfferCardsChunk({
             <div className="flex flex-col gap-2 p-3 lg:gap-2 lg:p-2.5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1 font-black tracking-[-0.02em] text-[15px] leading-tight lg:text-sm">
-                  <Link to={`/offer/${o.id}`} className="line-clamp-2">
+                  <Link to={offerHref} className="line-clamp-2">
                     {o.title}
                   </Link>
                 </div>

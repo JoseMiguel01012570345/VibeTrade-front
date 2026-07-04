@@ -1,235 +1,322 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
-import { Loader2, MapPin, ShoppingBag, Trash2 } from "lucide-react";
-import { cartSubtotal, useCartStore } from "../logic/cartStore";
-import { useCheckoutPreview, useCreateOrder } from "../hooks/useOrders";
-import { formatMoney } from "../logic/formatMoney";
-import type { CreateOrderRequest, OrderDeliveryMode } from "../Dtos/orders";
-import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { ShieldCheck, Truck } from "lucide-react";
+import { useCheckout } from "../logic/useCheckout";
+import { priceTag } from "../logic/formatMoney";
+import type { OrderDeliveryMode } from "../Dtos/orders";
+import { DeliveryDataModal } from "../components/DeliveryDataModal";
+import { CheckoutSectionBadge } from "../components/CheckoutSectionBadge";
+import { CheckoutPayButton } from "../components/CheckoutPayButton";
+import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
+import { storeProductHref } from "@features/market/logic/store/storePath";
+import { StorefrontChrome } from "@features/storefront";
 
 export function CheckoutPage() {
-  const navigate = useNavigate();
-  const items = useCartStore((s) => s.items);
-  const setQuantity = useCartStore((s) => s.setQuantity);
-  const removeItem = useCartStore((s) => s.removeItem);
-  const clear = useCartStore((s) => s.clear);
+  const {
+    store,
+    backHref,
+    items,
+    isEmpty,
+    mode,
+    setMode,
+    delivery,
+    deliveryModalOpen,
+    openDeliveryModal,
+    closeDeliveryModal,
+    confirmDelivery,
+    needsAddress,
+    pinReady,
+    deliveryComplete,
+    deliveryAddressLine,
+    preview,
+    previewLoading,
+    previewError,
+    subtotal,
+    summaryCurrency,
+    isCreating,
+    submit,
+  } = useCheckout();
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [phone2, setPhone2] = useState("");
-  const [mode, setMode] = useState<OrderDeliveryMode>("shipping");
-  const [address, setAddress] = useState("");
-  const [lat, setLat] = useState("");
-  const [lng, setLng] = useState("");
+  const wrap = (node: ReactNode): ReactNode =>
+    store ? <StorefrontChrome store={store}>{node}</StorefrontChrome> : node;
 
-  const preview = useCheckoutPreview();
-  const create = useCreateOrder();
-
-  const subtotal = useMemo(() => cartSubtotal(items), [items]);
-  const currency = items[0]?.currencyCode ?? "";
-
-  function buildRequest(): CreateOrderRequest {
-    return {
-      customerFirstName: firstName.trim(),
-      customerLastName: lastName.trim(),
-      phonePrimary: phone.trim(),
-      phoneSecondary: phone2.trim() || null,
-      deliveryMode: mode,
-      deliveryAddress: address.trim() || null,
-      deliveryLatitude: lat.trim() ? Number(lat) : null,
-      deliveryLongitude: lng.trim() ? Number(lng) : null,
-      paymentMethod: "platform",
-      affiliateCode: null,
-      lines: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-    };
-  }
-
-  async function onPreview() {
-    if (items.length === 0) return;
-    try {
-      await preview.mutateAsync(buildRequest());
-    } catch (e) {
-      toast.error(errorToUserMessage(e, "No se pudo calcular el total."));
-    }
-  }
-
-  async function onConfirm() {
-    if (items.length === 0) {
-      toast.error("Tu carrito está vacío.");
-      return;
-    }
-    if (!firstName.trim() || !phone.trim()) {
-      toast.error("Indica al menos nombre y teléfono.");
-      return;
-    }
-    try {
-      const res = await create.mutateAsync(buildRequest());
-      clear();
-      toast.success(`Pedido ${res.publicNumber} creado.`);
-      navigate(`/pedido/${encodeURIComponent(res.publicNumber)}`);
-    } catch (e) {
-      toast.error(errorToUserMessage(e, "No se pudo crear el pedido."));
-    }
-  }
-
-  const total = preview.data?.total ?? subtotal;
-  const deliveryFee = preview.data?.deliveryFee ?? 0;
-
-  if (items.length === 0) {
-    return (
-      <div className="container vt-page">
-        <h1 className="vt-h1">Finalizar compra</h1>
-        <div className="vt-card vt-card-pad mt-4 flex flex-col items-center gap-3 text-center">
-          <ShoppingBag size={40} className="opacity-60" />
-          <div className="vt-muted">Tu carrito está vacío.</div>
-          <button className="vt-btn" onClick={() => navigate("/search")}>
-            Explorar el catálogo
-          </button>
+  if (isEmpty) {
+    return wrap(
+      <div className="mx-auto w-full max-w-lg px-4 py-10">
+        <div className="rounded-[24px] border border-[#d9d5cf] bg-white px-6 py-10 text-center shadow-[0_14px_36px_rgba(33,37,41,0.05)]">
+          <p className="text-base font-semibold text-slate-900">
+            No hay productos en el carrito.
+          </p>
+          <p className="mt-2 text-sm text-slate-500">
+            Añade artículos antes de pagar.
+          </p>
+          <Link
+            to={backHref}
+            className="mt-6 inline-flex h-12 items-center justify-center rounded-full bg-emerald-700 px-7 text-sm font-bold text-white transition hover:bg-emerald-800"
+          >
+            {store ? "Volver a la tienda" : "Volver al catálogo"}
+          </Link>
         </div>
-      </div>
+      </div>,
     );
   }
 
-  return (
-    <div className="container vt-page">
-      <h1 className="vt-h1">Finalizar compra</h1>
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <div className="flex flex-col gap-4">
-          <section className="vt-card vt-card-pad">
-            <h2 className="mb-3 font-black tracking-[-0.02em]">Productos</h2>
-            <div className="flex flex-col gap-3">
-              {items.map((i) => (
-                <div
-                  key={i.productId}
-                  className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-[var(--border)] pb-3 last:border-0 last:pb-0"
-                >
-                  <div>
-                    <div className="font-semibold">{i.name}</div>
-                    <div className="vt-muted text-sm">
-                      {formatMoney(i.unitPrice, i.currencyCode)} c/u
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={1}
-                      value={i.quantity}
-                      onChange={(e) => setQuantity(i.productId, Number(e.target.value))}
-                      className="vt-input w-16 text-center"
-                    />
+  return wrap(
+    <div className="mx-auto w-full max-w-[1140px] px-4 py-6 pb-10 sm:py-10">
+      <DeliveryDataModal
+        open={deliveryModalOpen}
+        mode={mode}
+        initial={delivery}
+        onClose={closeDeliveryModal}
+        onConfirm={confirmDelivery}
+      />
+
+      <div className="mb-8">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-[2.6rem]">
+          Finalizar compra
+        </h1>
+        <p className="mt-1.5 text-[0.95rem] text-slate-500">
+          Revisa tu pedido y confirma el pago protegido.
+        </p>
+      </div>
+
+      <form onSubmit={submit}>
+        <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-10">
+          <div className="order-2 min-w-0 lg:order-1 lg:flex-[7]">
+            <div className="space-y-6">
+              <section className="rounded-[14px] border border-[#e8e1da] bg-white p-6 shadow-[0_12px_32px_rgba(33,37,41,0.05)] sm:p-8">
+                <div className="flex items-center gap-3">
+                  <CheckoutSectionBadge n={1} />
+                  <h2 className="text-xl font-extrabold tracking-tight text-slate-900">
+                    Datos de entrega
+                  </h2>
+                </div>
+
+                <div className="mt-6 flex gap-2">
+                  {(["shipping", "pickup"] as OrderDeliveryMode[]).map((m) => (
                     <button
-                      className="vt-btn vt-btn-sm"
-                      aria-label="Quitar"
-                      onClick={() => removeItem(i.productId)}
+                      key={m}
+                      type="button"
+                      onClick={() => setMode(m)}
+                      className={`flex-1 rounded-[10px] border px-4 py-2.5 text-sm font-bold transition ${
+                        mode === m
+                          ? "border-emerald-600 bg-emerald-50 text-emerald-800"
+                          : "border-[#e2dcd4] bg-white text-slate-600 hover:bg-stone-50"
+                      }`}
                     >
-                      <Trash2 size={16} />
+                      {m === "shipping" ? "Envío a domicilio" : "Recoger"}
                     </button>
+                  ))}
+                </div>
+
+                <div className="mt-6">
+                  {deliveryComplete ? (
+                    <div className="rounded-[10px] border border-[#e8e1da] bg-[#fafaf9] px-4 py-4">
+                      <p className="text-sm font-bold text-slate-900">
+                        {delivery.fullName.trim()}
+                      </p>
+                      {needsAddress && deliveryAddressLine ? (
+                        <p className="mt-1 text-sm text-slate-600">
+                          {deliveryAddressLine}
+                        </p>
+                      ) : null}
+                      <p className="mt-1 text-sm text-slate-600">
+                        {delivery.phone.trim()}
+                      </p>
+                      {delivery.phone2.trim() ? (
+                        <p className="mt-0.5 text-sm text-slate-500">
+                          {delivery.phone2.trim()}
+                        </p>
+                      ) : null}
+                      {needsAddress && pinReady ? (
+                        <p className="mt-2 text-xs text-slate-500">
+                          Pin: {delivery.latitude?.toFixed(5)},{" "}
+                          {delivery.longitude?.toFixed(5)}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-relaxed text-slate-600">
+                      {needsAddress
+                        ? "Completa nombre, dirección, teléfonos y ubicación en el mapa para calcular el envío."
+                        : "Completa nombre y teléfono para coordinar la recogida."}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={openDeliveryModal}
+                    className="mt-4 w-full rounded-[10px] border border-emerald-200 bg-emerald-50/60 py-3 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50"
+                  >
+                    {deliveryComplete
+                      ? "Editar datos de entrega"
+                      : "Completar datos de entrega"}
+                  </button>
+                </div>
+              </section>
+
+              <section className="rounded-[14px] border border-[#e8e1da] bg-white p-6 shadow-[0_12px_32px_rgba(33,37,41,0.05)] sm:p-8">
+                <div className="flex items-center gap-3">
+                  <CheckoutSectionBadge n={2} />
+                  <h2 className="text-xl font-extrabold tracking-tight text-slate-900">
+                    Método de Pago
+                  </h2>
+                </div>
+
+                {previewLoading ? (
+                  <p className="mt-6 text-sm text-slate-500">
+                    Calculando total con envío…
+                  </p>
+                ) : null}
+
+                {previewError ? (
+                  <p className="mt-6 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    {previewError}
+                  </p>
+                ) : null}
+
+                <div className="mt-6 flex items-start gap-3 rounded-[10px] border border-emerald-200 bg-emerald-50/60 px-4 py-4">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                    <ShieldCheck className="h-5 w-5" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-extrabold text-slate-900">
+                      Pago protegido
+                    </p>
+                    <p className="mt-1 text-sm leading-snug text-slate-600">
+                      El pago se retiene como garantía y se libera al vendedor
+                      cuando confirmes la entrega.
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
+              </section>
 
-          <section className="vt-card vt-card-pad">
-            <h2 className="mb-3 font-black tracking-[-0.02em]">Datos de entrega</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex flex-col gap-1">
-                <span className="text-sm vt-muted">Nombre</span>
-                <input className="vt-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-sm vt-muted">Apellidos</span>
-                <input className="vt-input" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-sm vt-muted">Teléfono</span>
-                <input className="vt-input" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-sm vt-muted">Teléfono alternativo</span>
-                <input className="vt-input" value={phone2} onChange={(e) => setPhone2(e.target.value)} />
-              </label>
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              {(["shipping", "pickup"] as OrderDeliveryMode[]).map((m) => (
-                <button
-                  key={m}
-                  className={`vt-btn ${mode === m ? "vt-btn-primary" : ""}`}
-                  onClick={() => setMode(m)}
-                >
-                  {m === "shipping" ? "Envío a domicilio" : "Recoger en almacén"}
-                </button>
-              ))}
-            </div>
-
-            {mode === "shipping" && (
-              <div className="mt-3 grid gap-3">
-                <label className="flex flex-col gap-1">
-                  <span className="text-sm vt-muted">Dirección</span>
-                  <input className="vt-input" value={address} onChange={(e) => setAddress(e.target.value)} />
-                </label>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="flex flex-col gap-1">
-                    <span className="flex items-center gap-1 text-sm vt-muted">
-                      <MapPin size={14} /> Latitud
-                    </span>
-                    <input className="vt-input" value={lat} onChange={(e) => setLat(e.target.value)} placeholder="23.1136" />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="flex items-center gap-1 text-sm vt-muted">
-                      <MapPin size={14} /> Longitud
-                    </span>
-                    <input className="vt-input" value={lng} onChange={(e) => setLng(e.target.value)} placeholder="-82.3666" />
-                  </label>
-                </div>
+              <div className="lg:hidden">
+                <CheckoutPayButton
+                  isCreating={isCreating}
+                  previewLoading={previewLoading}
+                />
+                <p className="mt-4 text-center text-[11px] leading-relaxed text-slate-500">
+                  Al confirmar aceptas nuestros términos de servicio y política
+                  de privacidad.
+                </p>
               </div>
-            )}
-          </section>
+            </div>
+          </div>
+
+          <aside className="order-1 flex min-w-0 flex-col gap-4 lg:order-2 lg:flex-[3] lg:sticky lg:top-28">
+            <div className="rounded-[14px] border border-[#e3ddd6] bg-white p-5 shadow-[0_12px_30px_rgba(33,37,41,0.06)]">
+              <h3 className="text-lg font-extrabold tracking-tight text-slate-900">
+                Resumen del pedido
+              </h3>
+              <div className="mt-5 space-y-4">
+                {items.map((line) => {
+                  const href = storeProductHref(store, line.productId);
+                  return (
+                    <div key={line.productId} className="flex gap-3">
+                      <Link
+                        to={href}
+                        className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-lg bg-stone-100"
+                      >
+                        {line.photoUrl ? (
+                          <ProtectedMediaImg
+                            src={line.photoUrl}
+                            alt={line.name}
+                            wrapperClassName="h-full w-full"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-[10px] font-semibold text-slate-400">
+                            —
+                          </span>
+                        )}
+                      </Link>
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          to={href}
+                          className="line-clamp-2 text-sm font-bold text-slate-900 transition hover:text-emerald-700"
+                        >
+                          {line.name}
+                        </Link>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          Cant. {line.quantity}
+                        </p>
+                        <p className="mt-1 text-sm font-extrabold text-emerald-700">
+                          {priceTag(line.unitPrice * line.quantity, line.currencyCode)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-6 space-y-2 border-t border-[#efe9e3] pt-5 text-sm">
+                <div className="flex justify-between text-slate-600">
+                  <span>Subtotal</span>
+                  <span className="font-semibold text-slate-800">
+                    {priceTag(preview?.subtotal ?? subtotal, summaryCurrency)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Envío</span>
+                  {preview ? (
+                    <span className="font-extrabold text-emerald-700">
+                      {priceTag(preview.deliveryFee, preview.currencyCode)}
+                    </span>
+                  ) : (
+                    <span className="max-w-[11rem] text-right text-sm font-medium text-slate-500">
+                      {needsAddress
+                        ? "Se calcula según tu ubicación"
+                        : "Sin costo (recogida)"}
+                    </span>
+                  )}
+                </div>
+                {preview?.routeDistanceKm != null ? (
+                  <div className="flex justify-between text-slate-600">
+                    <span>Distancia</span>
+                    <span className="font-semibold text-slate-800">
+                      {preview.routeDistanceKm.toFixed(1)} km
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mt-5 flex items-end justify-between border-t border-[#efe9e3] pt-5">
+                <span className="text-base font-extrabold text-slate-900">
+                  Total
+                </span>
+                <span className="text-right text-xl font-extrabold text-emerald-800">
+                  {priceTag(preview?.total ?? subtotal, summaryCurrency)}
+                </span>
+              </div>
+
+              <div className="hidden lg:block">
+                <CheckoutPayButton
+                  isCreating={isCreating}
+                  previewLoading={previewLoading}
+                  className="mt-6"
+                />
+                <p className="mt-4 text-center text-[11px] leading-relaxed text-slate-500">
+                  Al confirmar aceptas nuestros términos de servicio y política
+                  de privacidad.
+                </p>
+              </div>
+            </div>
+          </aside>
         </div>
 
-        <aside className="vt-card vt-card-pad h-fit lg:sticky lg:top-20">
-          <h2 className="mb-3 font-black tracking-[-0.02em]">Resumen</h2>
-          <div className="flex flex-col gap-2 text-sm">
-            <Row label="Subtotal" value={formatMoney(subtotal, currency)} />
-            <Row
-              label="Mensajería"
-              value={mode === "pickup" ? "—" : formatMoney(deliveryFee, currency)}
-            />
-            {preview.data?.routeDistanceKm != null && (
-              <Row label="Distancia" value={`${preview.data.routeDistanceKm.toFixed(1)} km`} />
-            )}
-            <div className="my-1 h-px bg-[var(--border)]" />
-            <Row label="Total" value={formatMoney(total, currency)} strong />
+        <div className="mt-10 flex gap-3 rounded-[14px] border border-[#e3ddd6] bg-[#f5f2ee] px-4 py-4 text-sm text-slate-600">
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+            <Truck className="h-5 w-5" aria-hidden />
+          </span>
+          <div>
+            <p className="font-extrabold text-slate-900">Logística segura</p>
+            <p className="mt-1 leading-snug text-slate-600">
+              Seguimiento del envío y entrega coordinada. Te avisaremos en cada
+              etapa.
+            </p>
           </div>
-
-          <p className="vt-muted mt-3 text-xs">
-            El pago se retiene como garantía y se libera al vendedor cuando confirmes la entrega.
-          </p>
-
-          <div className="mt-4 flex flex-col gap-2">
-            <button className="vt-btn" onClick={onPreview} disabled={preview.isPending}>
-              {preview.isPending ? <Loader2 size={16} className="animate-spin" /> : null}
-              Calcular total
-            </button>
-            <button className="vt-btn vt-btn-primary" onClick={onConfirm} disabled={create.isPending}>
-              {create.isPending ? <Loader2 size={16} className="animate-spin" /> : null}
-              Confirmar y pagar
-            </button>
-          </div>
-        </aside>
-      </div>
-    </div>
-  );
-}
-
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className={strong ? "font-black" : "vt-muted"}>{label}</span>
-      <span className={strong ? "font-black" : ""}>{value}</span>
-    </div>
+        </div>
+      </form>
+    </div>,
   );
 }

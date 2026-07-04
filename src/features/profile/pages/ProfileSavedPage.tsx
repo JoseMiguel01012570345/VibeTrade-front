@@ -6,6 +6,7 @@ import {
   TOOL_PLACEHOLDER_SRC,
 } from '@features/market/logic/toolPlaceholder'
 import { buildEmergentMapLegs } from '@features/market/logic/map/emergentRouteMapLegs'
+import { storeProductHref } from '@features/market/logic/store/storePath'
 import { EmergentRouteFeedMap } from '@features/home'
 import { ProtectedMediaImg } from '@shared/components/media/ProtectedMediaImg'
 
@@ -42,6 +43,10 @@ export function ProfileSavedPage({
             const isEmergentRouteCard =
               o.isEmergentRoutePublication === true ||
               (o.tags?.includes('Hoja de ruta (publicada)') && !!routePreview)
+            /** Producto/servicio → `{base}/{nombre}/{id}`; ruta emergente → `/offer/:id`. */
+            const offerHref = isEmergentRouteCard
+              ? `/offer/${o.id}`
+              : storeProductHref(store ?? { id: o.storeId, name: '' }, o.id)
             const mapLegs = buildEmergentMapLegs(o, routePreview)
             const thumbSrc =
               o.imageUrl?.trim() ||
@@ -52,7 +57,7 @@ export function ProfileSavedPage({
             return (
               <Link
                 key={o.id}
-                to={`/offer/${o.id}`}
+                to={offerHref}
                 className={cn(
                   'vt-card col-span-12 overflow-hidden min-[640px]:col-span-6 no-underline text-[var(--text)]',
                   isEmergentRouteCard ? 'group' : !isToolPlaceholder && 'group',

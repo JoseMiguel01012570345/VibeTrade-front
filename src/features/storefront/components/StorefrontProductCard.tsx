@@ -6,6 +6,8 @@ import {
   type StoreProduct,
 } from "@features/market/logic/storeCatalogTypes";
 import { parseProductPriceNumber } from "@features/market/logic/parseProductPrice";
+import { storeProductHref } from "@features/market/logic/store/storePath";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { useCartStore } from "@features/orders/logic/cartStore";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { ProductCardCartIcon } from "./ProductCardCartIcon";
@@ -38,7 +40,8 @@ export function StorefrontProductCard({
 
   const monedas = catalogMonedasList(p);
   const precioMoneda = p.monedaPrecio?.trim() || monedas[0] || "";
-  const offerHref = `/offer/${encodeURIComponent(p.id)}`;
+  const storeName = useMarketStore((s) => s.stores[p.storeId]?.name);
+  const offerHref = storeProductHref({ id: p.storeId, name: storeName ?? "" }, p.id);
 
   const cartQuantity =
     items.find((l) => l.productId === p.id)?.quantity ?? 0;

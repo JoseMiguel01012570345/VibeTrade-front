@@ -2,7 +2,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BadgeCheck, Search, ShoppingCart, Store } from "lucide-react";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
-import { storeHref } from "@features/market/logic/store/storePath";
+import { storeCartHref, storeHref } from "@features/market/logic/store/storePath";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { useCartStore } from "@features/orders/logic/cartStore";
 import { StorefrontSupportModal } from "./StorefrontSupportModal";
@@ -131,7 +131,7 @@ export function StorefrontHeader({
               Ayuda
             </button>
             <Link
-              to="/cart"
+              to={storeCartHref(store)}
               className="relative flex h-10 w-10 shrink-0 items-center justify-center self-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-700 transition hover:border-emerald-200 hover:bg-emerald-100"
               aria-label={cartLabel}
             >
@@ -231,7 +231,7 @@ export function StorefrontFooter({ store }: Readonly<{ store: StoreBadge }>) {
             </h3>
             <ul className="mt-4 flex flex-col gap-2">
               <li>
-                <Link to="/home" className={footerLink}>
+                <Link to={storeHomeHref} className={footerLink}>
                   Home
                 </Link>
               </li>

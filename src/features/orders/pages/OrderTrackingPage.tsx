@@ -1,28 +1,15 @@
-import { useState } from "react";
 import { useParams } from "react-router-dom";
-import toast from "react-hot-toast";
-import { CheckCircle2, Loader2, Truck, XCircle } from "lucide-react";
-import { useDecideEvidence, useOrderTracking } from "../hooks/useOrders";
+import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { useOrderTracking } from "../hooks/useOrders";
+import { useEvidenceDecision } from "../logic/orderTracking";
 import { formatMoney, paymentStatusLabel, statusLabel } from "../logic/formatMoney";
-import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
+import { OrderStatusStepper } from "../components/OrderStatusStepper";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
-import type { OrderStatus } from "../Dtos/orders";
-
-const STEPS: { key: OrderStatus; label: string }[] = [
-  { key: "procesado", label: "Procesado" },
-  { key: "en_transito", label: "En tránsito" },
-  { key: "entregado", label: "Entregado" },
-];
-
-function stepIndex(status: OrderStatus): number {
-  return STEPS.findIndex((s) => s.key === status);
-}
 
 export function OrderTrackingPage() {
   const { publicNumber = "" } = useParams();
   const { data, isLoading, isError } = useOrderTracking(publicNumber);
-  const decide = useDecideEvidence(publicNumber);
-  const [rejectReason, setRejectReason] = useState("");
+  const evidence = useEvidenceDecision(publicNumber);
 
   if (isLoading) {
     return (
@@ -40,21 +27,7 @@ export function OrderTrackingPage() {
     );
   }
 
-  const current = stepIndex(data.status);
   const pendingEvidence = data.clientEvidenceDecision === "pending";
-
-  async function onDecide(accept: boolean) {
-    try {
-      await decide.mutateAsync({
-        orderId: data!.id,
-        accept,
-        rejectReason: accept ? undefined : rejectReason.trim() || undefined,
-      });
-      toast.success(accept ? "Entrega confirmada." : "Evidencia rechazada.");
-    } catch (e) {
-      toast.error(errorToUserMessage(e, "No se pudo registrar tu decisión."));
-    }
-  }
 
   return (
     <div className="container vt-page">
@@ -71,26 +44,7 @@ export function OrderTrackingPage() {
           </span>
         </div>
 
-        <section className="vt-card vt-card-pad mt-4">
-          <div className="flex items-center justify-between">
-            {STEPS.map((s, i) => (
-              <div key={s.key} className="flex flex-1 flex-col items-center gap-1">
-                <div
-                  className={`grid h-9 w-9 place-items-center rounded-full border ${
-                    i <= current
-                      ? "border-[var(--primary)] bg-[color-mix(in_oklab,var(--primary)_18%,var(--surface))]"
-                      : "border-[var(--border)] bg-[var(--surface)]"
-                  }`}
-                >
-                  <Truck size={16} />
-                </div>
-                <span className={`text-xs ${i <= current ? "font-semibold" : "vt-muted"}`}>
-                  {s.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
+        <OrderStatusStepper status={data.status} />
 
         <section className="vt-card vt-card-pad mt-4">
           <h2 className="mb-2 font-black tracking-[-0.02em]">Pago</h2>
@@ -131,18 +85,22 @@ export function OrderTrackingPage() {
                 <input
                   className="vt-input"
                   placeholder="Motivo del rechazo (opcional)"
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
+                  value={evidence.rejectReason}
+                  onChange={(e) => evidence.setRejectReason(e.target.value)}
                 />
                 <div className="flex gap-2">
                   <button
                     className="vt-btn vt-btn-primary"
-                    onClick={() => onDecide(true)}
-                    disabled={decide.isPending}
+                    onClick={() => evidence.submit(data.id, true)}
+                    disabled={evidence.isPending}
                   >
                     <CheckCircle2 size={16} /> Aceptar entrega
                   </button>
-                  <button className="vt-btn" onClick={() => onDecide(false)} disabled={decide.isPending}>
+                  <button
+                    className="vt-btn"
+                    onClick={() => evidence.submit(data.id, false)}
+                    disabled={evidence.isPending}
+                  >
                     <XCircle size={16} /> Rechazar
                   </button>
                 </div>

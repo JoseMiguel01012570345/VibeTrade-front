@@ -17,7 +17,7 @@ import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { ImageLightbox } from "@shared/components/media/ImageLightbox";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
-import { storeHref } from "@features/market/logic/store/storePath";
+import { storeCartHref, storeHref } from "@features/market/logic/store/storePath";
 import { RouteTramoSubscribeModal } from "../components/RouteTramoSubscribeModal";
 import { OfferSaveButton } from "../components/OfferSaveButton";
 import { OfferCommentsSection } from "../components/OfferCommentsSection";
@@ -93,7 +93,10 @@ function Trust({ score, helper }: { score: number; helper: string }) {
 }
 
 export function OfferPage() {
-  const { offerId } = useParams();
+  // La ficha se alcanza como `/{store}/{productId}` (dentro de la tienda) o como
+  // `/offer/:offerId` (feed/servicios/rutas emergentes). El id de oferta es el mismo.
+  const params = useParams();
+  const offerId = params.offerId ?? params.productId;
   const location = useLocation();
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
@@ -767,7 +770,7 @@ export function OfferPage() {
             onAddToCart={addFichaToCart}
             onBuyNow={(qty) => {
               addFichaToCart(qty);
-              nav("/cart");
+              nav(storeCartHref(store));
             }}
             onOpenLightbox={(url) => setGalleryLightboxUrl(url)}
             relatedProducts={relatedProducts}

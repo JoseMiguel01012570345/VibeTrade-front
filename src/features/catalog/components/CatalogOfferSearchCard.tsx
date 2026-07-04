@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import { ExternalLink, Package, Store, Wrench } from "lucide-react";
 import type { CatalogSearchItem } from "@features/catalog/Dtos/catalogSearchTypes";
-import { storeHref } from "@features/market/logic/store/storePath";
+import {
+  storeHref,
+  storeProductHref,
+} from "@features/market/logic/store/storePath";
 import { websiteUrlDisplayLabel } from "@shared/lib/websiteUrl";
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
@@ -132,6 +135,8 @@ export function CatalogOfferSearchCard({ item }: Props) {
 
   const title = offerTitle(offer);
   const sub = offerSubtitle(offer);
+  // Producto/servicio de tienda → detalle dentro de la tienda `{base}/{nombre}/{id}`.
+  const offerHref = storeProductHref(s, offer.id);
   const desc =
     offer.kind === "product" ? offer.shortDescription : offer.descripcion;
   const accepted = offer.acceptedCurrencies ?? [];
@@ -144,7 +149,7 @@ export function CatalogOfferSearchCard({ item }: Props) {
   return (
     <div className="relative overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
       <Link
-        to={`/offer/${offer.id}`}
+        to={offerHref}
         className="absolute inset-0 z-[1] rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
         aria-label={`Abrir oferta ${title}`}
       />

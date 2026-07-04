@@ -14,6 +14,8 @@ import { cn } from "@shared/lib/cn";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { isStaffSession } from "@features/auth/logic/roles";
 import { useCartStore } from "@features/orders";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
+import { storeCartHref } from "@features/market/logic/store/storePath";
 import { NotificationsBell } from "../widgets/NotificationsBell";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { AuthEntryModal } from "@features/auth";
@@ -143,6 +145,12 @@ export function AppShell() {
   const cartCount = useCartStore((s) =>
     s.items.reduce((n, i) => n + i.quantity, 0),
   );
+  // El carrito es de una sola tienda: el FAB abre `{base}/{nombre}/cart`.
+  const cartStoreId = useCartStore((s) => s.items[0]?.storeId ?? "");
+  const cartStore = useMarketStore((s) =>
+    cartStoreId ? s.stores[cartStoreId] : undefined,
+  );
+  const cartHref = storeCartHref(cartStore);
 
   useEffect(() => {
     if (!isSessionActive) return;
@@ -270,7 +278,7 @@ export function AppShell() {
       {!isOnboarding && !hideBottomNav && cartCount > 0 ? (
         <button
           type="button"
-          onClick={() => navigate("/cart")}
+          onClick={() => navigate(cartHref)}
           aria-label={`Carrito (${cartCount})`}
           className="fixed bottom-[96px] right-4 z-[61] grid h-12 w-12 place-items-center rounded-full border border-[var(--border)] bg-[var(--primary)] text-white shadow-lg transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
         >

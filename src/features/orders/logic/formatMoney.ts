@@ -1,3 +1,11 @@
+/** "$1.08 USD" — formato de precio del storefront (carrito/checkout). */
+export function priceTag(amount: number, currency: string): string {
+  const value = Number.isFinite(amount) ? amount : 0;
+  const code = currency.trim();
+  const suffix = code ? ` ${code}` : "";
+  return `$${value.toFixed(2)}${suffix}`;
+}
+
 export function formatMoney(amount: number, currency: string): string {
   const code = (currency || "").trim().toUpperCase();
   const value = Number.isFinite(amount) ? amount : 0;

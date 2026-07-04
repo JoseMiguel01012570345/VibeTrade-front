@@ -5,6 +5,8 @@ import {
   catalogMonedasList,
   type StoreService,
 } from "@features/market/logic/storeCatalogTypes";
+import { storeProductHref } from "@features/market/logic/store/storePath";
+import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import {
   ProtectedMediaAnchor,
   ProtectedMediaImg,
@@ -16,6 +18,11 @@ export function ServiceDetailCard({ s }: { s: StoreService }) {
   const monedas = catalogMonedasList(s);
   const commentTotal = s.publicCommentCount ?? 0;
   const offerLikes = s.offerLikeCount ?? 0;
+  const storeName = useMarketStore((st) => st.stores[s.storeId]?.name);
+  const commentsHref = `${storeProductHref(
+    { id: s.storeId, name: storeName ?? "" },
+    s.id,
+  )}#offer-comments`;
   return (
     <div className="min-w-0 max-w-full overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3.5">
       <div className="flex items-start gap-2">
@@ -33,7 +40,7 @@ export function ServiceDetailCard({ s }: { s: StoreService }) {
               {s.tipoServicio}
             </span>
             <Link
-              to={`/offer/${encodeURIComponent(s.id)}#offer-comments`}
+              to={commentsHref}
               className="inline-flex shrink-0 items-center gap-3 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-2.5 py-1 text-[11px] font-extrabold text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))]"
               title="Ver ficha y comentarios"
             >

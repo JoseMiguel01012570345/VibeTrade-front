@@ -109,6 +109,12 @@ export function AppRoutes() {
             element={<OwnerStoreDashboard />}
           />
           <Route path="/:storeName/mapa" element={<StoreLocationMapPage />} />
+          {/* Compra dentro de la tienda: {base}/{nombre}/... (React Router prioriza
+              estos segmentos estáticos sobre el dinámico :productId de abajo). */}
+          <Route path="/:storeName/cart" element={<CartPage />} />
+          <Route path="/:storeName/checkout" element={<CheckoutPage />} />
+          {/* Detalle de producto dentro de la tienda: {base}/{nombre}/{productId}. */}
+          <Route path="/:storeName/:productId" element={<OfferPage />} />
           {/* URL pública de la tienda: {base}/{nombre}. */}
           <Route path="/:storeName" element={<StorefrontPage />} />
 
