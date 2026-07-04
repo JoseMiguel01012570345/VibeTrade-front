@@ -70,6 +70,7 @@ export type OrderTrackingDto = {
   publicNumber: string;
   status: OrderStatus;
   storeId: string;
+  storeName: string;
   deliveryMode: OrderDeliveryMode;
   deliveryAddress: string;
   currencyCode: string;

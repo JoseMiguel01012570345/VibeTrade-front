@@ -29,10 +29,21 @@ export function downloadOrderTrackingPdf(order: OrderTrackingDto): void {
   const amountX = pageW - margin;
   let y = 20;
 
+  const storeName = sanitize(order.storeName?.trim() || "Tienda");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
+  const storeNameLines = doc.splitTextToSize(storeName, maxW) as string[];
+  doc.text(storeNameLines, margin, y);
+  y += storeNameLines.length * 6;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(130, 130, 130);
   doc.text("VibeTrade", margin, y);
-  y += 8;
+  doc.setTextColor(0, 0, 0);
+  y += 7;
+
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.text("Comprobante de pedido", margin, y);
   y += 10;
