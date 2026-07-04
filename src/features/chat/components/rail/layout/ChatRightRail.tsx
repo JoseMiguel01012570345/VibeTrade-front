@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Route, Users } from "lucide-react";
+import { Route, Users } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import type {
   StoreBadge,
@@ -17,36 +17,29 @@ import {
   TAB_BASE,
   TAB_ON,
 } from "./chatRailStyles";
-import { ChatRightRailContractsPanel } from "./ChatRightRailContractsPanel";
 import { ChatRightRailPeoplePanel } from "./ChatRightRailPeoplePanel";
 import { ChatRightRailRoutesPanel } from "../routes/ChatRightRailRoutesPanel";
 
 type Props = {
   threadId: string;
-  threadStoreId: string;
   /** IDs de comprador/vendedor del hilo (API); mejoran permisos UX en logística. */
   buyerUserId?: string;
   sellerUserId?: string;
   contracts: TradeAgreement[];
   routeSheets: RouteSheet[];
-  contractsLoading?: boolean;
   routeSheetsLoading?: boolean;
   actionsLocked?: boolean;
   buyer: { id: string; name: string; trustScore: number; avatarUrl?: string };
   seller: StoreBadge;
   focusRouteId?: string | null;
   onConsumedRouteFocus?: () => void;
-  onOpenNewRouteSheet: () => void;
   onEditRouteSheet: (sheet: RouteSheet) => void;
   toggleRouteStop: (
     threadId: string,
     routeSheetId: string,
     stopId: string,
   ) => void;
-  onRequestEditAgreement?: (agreement: TradeAgreement) => void;
   isActingSeller?: boolean;
-  onDeleteAgreement?: (agreement: TradeAgreement) => void;
-  onDuplicateAgreement?: (agreement: TradeAgreement) => void;
   chatCarriers?: ThreadChatCarrier[];
   onOpenRouteSubscribers?: (routeSheetId: string) => void;
   /** Tras mutaciones de ruta en hilo persistido: hojas + suscripciones desde API. */
@@ -58,25 +51,19 @@ type Props = {
 
 export function ChatRightRail({
   threadId,
-  threadStoreId,
   buyerUserId,
   sellerUserId,
   contracts,
   routeSheets,
-  contractsLoading = false,
   routeSheetsLoading = false,
   actionsLocked = false,
   focusRouteId,
   buyer,
   seller,
   onConsumedRouteFocus,
-  onOpenNewRouteSheet,
   onEditRouteSheet,
   toggleRouteStop,
-  onRequestEditAgreement,
   isActingSeller = false,
-  onDeleteAgreement,
-  onDuplicateAgreement,
   chatCarriers,
   onOpenRouteSubscribers,
   onPersistedRouteDataRefresh,
@@ -89,12 +76,6 @@ export function ChatRightRail({
   const unpublishRouteSheetFromPlatform = useMarketStore(
     (s) => s.unpublishRouteSheetFromPlatform,
   );
-  const linkAgreementToRouteSheet = useMarketStore(
-    (s) => s.linkAgreementToRouteSheet,
-  );
-  const unlinkAgreementFromRouteSheet = useMarketStore(
-    (s) => s.unlinkAgreementFromRouteSheet,
-  );
   const deleteRouteSheet = useMarketStore((s) => s.deleteRouteSheet);
   const duplicateRouteSheet = useMarketStore((s) => s.duplicateRouteSheet);
   const routeOfferForThread = useMarketStore(
@@ -103,10 +84,7 @@ export function ChatRightRail({
       return resolveRouteOfferPublicForThread(s, th);
     }),
   );
-  const [tab, setTab] = useState<"contracts" | "routes" | "people">(
-    "contracts",
-  );
-  const [selContract, setSelContract] = useState<TradeAgreement | null>(null);
+  const [tab, setTab] = useState<"routes" | "people">("routes");
   const [selRouteId, setSelRouteId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -143,38 +121,17 @@ export function ChatRightRail({
   const selRoute = selRouteId
     ? routeSheets.find((r) => r.id === selRouteId)
     : undefined;
-  const agreementForDetail = selContract
-    ? (contracts.find((c) => c.id === selContract.id) ?? selContract)
-    : null;
 
-  function openRouteFromContract(rid: string) {
-    setTab("routes");
-    setSelRouteId(rid);
-    setSelContract(null);
-  }
   return (
     <aside
       className={RAIL_ROOT}
-      aria-label="Contratos, rutas e integrantes del chat"
+      aria-label="Rutas e integrantes del chat"
     >
       <div className="flex shrink-0 border-b border-[var(--border)]">
         <button
           type="button"
-          className={cn(TAB_BASE, tab === "contracts" && TAB_ON)}
-          onClick={() => {
-            setTab("contracts");
-            setSelRouteId(null);
-          }}
-        >
-          <FileText size={15} aria-hidden /> Contratos
-        </button>
-        <button
-          type="button"
           className={cn(TAB_BASE, tab === "routes" && TAB_ON)}
-          onClick={() => {
-            setTab("routes");
-            setSelContract(null);
-          }}
+          onClick={() => setTab("routes")}
         >
           <Route size={15} aria-hidden /> Rutas
         </button>
@@ -183,35 +140,12 @@ export function ChatRightRail({
           className={cn(TAB_BASE, tab === "people" && TAB_ON)}
           onClick={() => {
             setTab("people");
-            setSelContract(null);
             setSelRouteId(null);
           }}
         >
           <Users size={15} aria-hidden /> Integrantes ({participants.length})
         </button>
       </div>
-
-      {tab === "contracts" && (
-        <ChatRightRailContractsPanel
-          bodyClassName={RAIL_BODY}
-          selContract={selContract}
-          setSelContract={setSelContract}
-          agreementForDetail={agreementForDetail}
-          displayContracts={contracts}
-          contractsLoading={contractsLoading}
-          routeSheets={routeSheets}
-          threadId={threadId}
-          threadStoreId={threadStoreId}
-          linkAgreementToRouteSheet={linkAgreementToRouteSheet}
-          unlinkAgreementFromRouteSheet={unlinkAgreementFromRouteSheet}
-          openRouteFromContract={openRouteFromContract}
-          onRequestEditAgreement={onRequestEditAgreement}
-          isActingSeller={isActingSeller}
-          onDeleteAgreement={onDeleteAgreement}
-          onDuplicateAgreement={onDuplicateAgreement}
-          actionsLocked={actionsLocked}
-        />
-      )}
 
       {tab === "routes" && (
         <ChatRightRailRoutesPanel
@@ -226,7 +160,6 @@ export function ChatRightRail({
           selRoute={selRoute}
           setSelRouteId={setSelRouteId}
           threadId={threadId}
-          onOpenNewRouteSheet={onOpenNewRouteSheet}
           onEditRouteSheet={onEditRouteSheet}
           toggleRouteStop={toggleRouteStop}
           deleteRouteSheet={deleteRouteSheet}

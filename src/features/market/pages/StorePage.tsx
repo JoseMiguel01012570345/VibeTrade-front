@@ -5,7 +5,7 @@ import { useAppStore } from "@features/auth/logic/useAppStore";
 import { ArrowLeft, LayoutGrid, RefreshCw } from "lucide-react";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import {
-  catalogMonedasList,
+  CATALOG_CURRENCY_CODE,
   emptyStoreProductInput,
   emptyStoreServiceInput,
 } from "@features/market/logic/storeCatalogTypes";
@@ -585,7 +585,7 @@ export function StorePage() {
     const out: string[] = [];
     for (const s of allCatalogServices) {
       if (!s) continue;
-      const t = (s.tipoServicio ?? "").trim();
+      const t = (s.nombreServicio ?? "").trim();
       const c = (s.category ?? "").trim();
       if (t) out.push(t);
       if (c && c !== t) out.push(c);
@@ -1232,7 +1232,6 @@ export function StorePage() {
             open
             title={productEditing ? "Editar producto" : "Añadir producto"}
             categoryOptions={catHints}
-            currencyOptions={currencyHints}
             initial={
               productEditing
                 ? {
@@ -1245,8 +1244,8 @@ export function StorePage() {
                     condition: productEditing.condition,
                     price: productEditing.price,
                     transportIncluded: productEditing.transportIncluded,
-                    monedaPrecio: productEditing.monedaPrecio ?? "",
-                    monedas: catalogMonedasList(productEditing),
+                    monedaPrecio: CATALOG_CURRENCY_CODE,
+                    monedas: [CATALOG_CURRENCY_CODE],
                     taxesShippingInstall: productEditing.taxesShippingInstall,
                     availability: productEditing.availability,
                     warrantyReturn: productEditing.warrantyReturn,
@@ -1317,14 +1316,13 @@ export function StorePage() {
             open
             title={serviceEditing ? "Editar servicio" : "Añadir servicio"}
             categoryOptions={catHints}
-            currencyOptions={currencyHints}
             initial={
               serviceEditing
                 ? {
                     published: serviceEditing.published !== false,
                     category: serviceEditing.category,
-                    tipoServicio: serviceEditing.tipoServicio,
-                    monedas: catalogMonedasList(serviceEditing),
+                    nombreServicio: serviceEditing.nombreServicio,
+                    
                     descripcion: serviceEditing.descripcion,
                     riesgos: { ...serviceEditing.riesgos },
                     incluye: serviceEditing.incluye,

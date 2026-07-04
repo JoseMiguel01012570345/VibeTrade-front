@@ -23,9 +23,9 @@ export function ProductFiltersCard({
   onPriceFloor,
   onPriceCeiling,
   priceSliderMax,
-  acceptedMonedaQ,
-  onAcceptedMonedaQ,
-  acceptedMonedaOptions,
+  acceptedMonedaQ: _acceptedMonedaQ,
+  onAcceptedMonedaQ: _onAcceptedMonedaQ,
+  acceptedMonedaOptions: _acceptedMonedaOptions,
   showPublishedFilter,
   catalogPublishedFilter,
   onCatalogPublishedFilter,
@@ -57,7 +57,7 @@ export function ProductFiltersCard({
         Filtrar productos
       </div>
       <p className="vt-muted mt-1 text-[12px] leading-snug">
-        Por nombre, modelo, categoría, estado, monedas aceptadas y precio.
+        Por nombre, modelo, categoría, estado y precio.
       </p>
       <div className="vt-divider my-3" />
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -85,15 +85,6 @@ export function ProductFiltersCard({
             ariaLabel="Filtrar productos por estado"
             placeholder="Todos los estados"
             options={[...PRODUCT_CONDITION_FILTER_OPTIONS]}
-          />
-        </div>
-        <div className="min-w-0 sm:w-52">
-          <VtMultiSelect
-            value={acceptedMonedaQ}
-            onChange={onAcceptedMonedaQ}
-            ariaLabel="Filtrar productos por monedas aceptadas"
-            placeholder="Todas las monedas"
-            options={acceptedMonedaOptions.map((c) => ({ value: c, label: c }))}
           />
         </div>
         {showPublishedFilter ? (

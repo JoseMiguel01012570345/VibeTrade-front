@@ -42,7 +42,7 @@ import type { ServicePriceSource } from "../Dtos/parseProductPriceTypes";
  */
 export function serviceComparablePrice(s: ServicePriceSource): number | null {
   const parts = [
-    s.tipoServicio,
+    s.nombreServicio,
     s.descripcion,
     s.incluye,
     s.noIncluye,

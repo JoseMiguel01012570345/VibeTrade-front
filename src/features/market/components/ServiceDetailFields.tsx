@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  catalogMonedasList,
   type StoreService,
 } from "@features/market/logic/storeCatalogTypes";
 import {
@@ -34,19 +33,12 @@ function Field({
  */
 export function ServiceDetailFields({ s }: Readonly<{ s: StoreService }>) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const monedas = catalogMonedasList(s);
 
   return (
     <div className="rounded-[16px] border border-[#e5ddd5] bg-white p-5 sm:p-6">
       <h2 className="text-lg font-extrabold tracking-tight text-slate-900 sm:text-xl">
         Detalles del servicio
       </h2>
-
-      {monedas.length > 0 ? (
-        <p className="mt-2 text-sm font-semibold text-slate-500">
-          Monedas aceptadas: {monedas.join(" · ")}
-        </p>
-      ) : null}
 
       <dl className="mt-5 space-y-4">
         {s.riesgos.enabled && s.riesgos.items.length > 0 ? (

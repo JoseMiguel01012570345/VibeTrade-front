@@ -66,14 +66,17 @@ export function decodeShareCartParam(
 }
 
 export function cartMatchesShareParam(
-  cart: Pick<CartItem, "productId" | "quantity" | "storeId">[],
+  cart: CartItem[],
   raw: string | null | undefined,
 ): boolean {
   const { storeId, items } = decodeShareCartParam(raw);
-  if (!items.length || cart.length !== items.length) return false;
+  const productLines = cart.filter((l) => l.kind === "product");
+  if (!items.length || productLines.length !== items.length) return false;
   if ((cart[0]?.storeId ?? "") !== storeId) return false;
   const shareMap = new Map(items.map((i) => [i.productId, i.quantity]));
-  return cart.every((line) => shareMap.get(line.productId) === line.quantity);
+  return productLines.every(
+    (line) => shareMap.get(line.productId ?? "") === line.quantity,
+  );
 }
 
 export function buildShareCartPath(
@@ -157,6 +160,7 @@ export async function importSharedCartItems(
     }
 
     lines.push({
+      kind: "product",
       productId: p.id,
       storeId: p.storeId,
       name: p.name,

@@ -11,9 +11,11 @@ import {
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { OfferSaveButton } from "@features/market/components/OfferSaveButton";
-import { ExternalLink, Heart, MessageCircle } from "lucide-react";
+import { ExternalLink, MessageCircle } from "lucide-react";
 import { websiteUrlDisplayLabel } from "@shared/lib/websiteUrl";
 import { toggleOfferLike } from "@features/market/api/offerEngagementApi";
+import { applyOfferLikeResult } from "@features/market/logic/applyOfferLikeResult";
+import { OfferImageLikeButton } from "@features/market/components/OfferImageLikeButton";
 import {
   isToolPlaceholderUrl,
   TOOL_PLACEHOLDER_SRC,
@@ -84,6 +86,7 @@ export function OfferCardsChunk({
           me.id !== "guest" &&
           userHasTransportService(me.id, allStores, storeCatalogs) &&
           !buyerBlockedOnRoute;
+        const canLikeOffer = sessionReady && me.id !== "guest";
         return (
           <div
             key={`${o.id}-${i}`}
@@ -130,6 +133,34 @@ export function OfferCardsChunk({
               <div className="pointer-events-auto absolute right-1.5 top-1.5 z-[2] lg:right-1 lg:top-1">
                 <OfferSaveButton offerId={o.id} />
               </div>
+              <OfferImageLikeButton
+                liked={likedOffer}
+                likeCount={offerLikes}
+                canLike={canLikeOffer}
+                onToggle={() => {
+                  if (!canLikeOffer) {
+                    openAuthModal();
+                    return;
+                  }
+                  void (async () => {
+                    try {
+                      const r = await toggleOfferLike(o.id);
+                      applyOfferLikeResult(o.id, r, {
+                        storeId: o.storeId,
+                        catalogKind: o.tags.includes("Servicio")
+                          ? "service"
+                          : "product",
+                      });
+                    } catch (err) {
+                      toast.error(
+                        err instanceof Error
+                          ? err.message
+                          : "No se pudo guardar el me gusta.",
+                      );
+                    }
+                  })();
+                }}
+              />
             </div>
 
             <div className="flex flex-col gap-2 p-3 lg:gap-2 lg:p-2.5">
@@ -155,7 +186,7 @@ export function OfferCardsChunk({
                 </p>
               ) : null}
 
-              <div className="flex items-center justify-between gap-2 text-[11px] lg:text-[10px]">
+              <div className="flex items-center gap-2 text-[11px] lg:text-[10px]">
                 <span className="inline-flex min-w-0 items-center gap-1 text-[var(--muted)]">
                   <MessageCircle
                     size={14}
@@ -169,55 +200,6 @@ export function OfferCardsChunk({
                     </span>
                   </span>
                 </span>
-                <button
-                  type="button"
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_50%,var(--surface))] px-2 py-0.5 font-extrabold text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--muted)_10%,var(--surface))]"
-                  title={likedOffer ? "Quitar me gusta" : "Me gusta"}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (!sessionReady) {
-                      openAuthModal();
-                      return;
-                    }
-                    void (async () => {
-                      try {
-                        const r = await toggleOfferLike(o.id);
-                        useMarketStore.setState((s) => {
-                          const prev = s.offers[o.id];
-                          if (!prev) return s;
-                          return {
-                            ...s,
-                            offers: {
-                              ...s.offers,
-                              [o.id]: {
-                                ...prev,
-                                offerLikeCount: r.likeCount,
-                                viewerLikedOffer: r.liked,
-                              },
-                            },
-                          };
-                        });
-                      } catch (err) {
-                        toast.error(
-                          err instanceof Error
-                            ? err.message
-                            : "No se pudo guardar el me gusta.",
-                        );
-                      }
-                    })();
-                  }}
-                >
-                  <Heart
-                    size={14}
-                    className={cn(
-                      likedOffer &&
-                        "fill-[color-mix(in_oklab,var(--bad)_50%,#f43f5e)] text-[color-mix(in_oklab,var(--bad)_50%,#f43f5e)]",
-                    )}
-                    aria-hidden
-                  />
-                  <span className="tabular-nums">{offerLikes}</span>
-                </button>
               </div>
 
               <div className="flex flex-col items-end gap-1">

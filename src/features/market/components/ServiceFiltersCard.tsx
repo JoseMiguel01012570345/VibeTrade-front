@@ -20,9 +20,9 @@ export function ServiceFiltersCard({
   onPriceFloor,
   onPriceCeiling,
   priceSliderMax,
-  acceptedMonedaQ,
-  onAcceptedMonedaQ,
-  acceptedMonedaOptions,
+  acceptedMonedaQ: _acceptedMonedaQ,
+  onAcceptedMonedaQ: _onAcceptedMonedaQ,
+  acceptedMonedaOptions: _acceptedMonedaOptions,
   showPublishedFilter,
   catalogPublishedFilter,
   onCatalogPublishedFilter,
@@ -52,17 +52,17 @@ export function ServiceFiltersCard({
         Filtrar servicios
       </div>
       <p className="vt-muted mt-1 text-[12px] leading-snug">
-        Por nombre, tipo, categoría, monedas aceptadas y precio inferido del texto.
+        Por nombre de servicio, categoría y precio.
       </p>
       <div className="vt-divider my-3" />
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           type="search"
           className="vt-input min-w-0 flex-1"
-          placeholder="Nombre o tipo…"
+          placeholder="Nombre de servicio…"
           value={serviceNameQ}
           onChange={(e) => onServiceNameQ(e.target.value)}
-          aria-label="Filtrar servicios por nombre o tipo"
+          aria-label="Filtrar servicios por nombre"
         />
         <div className="min-w-0 sm:w-60">
           <VtMultiSelect
@@ -71,15 +71,6 @@ export function ServiceFiltersCard({
             ariaLabel="Filtrar servicios por categoría"
             placeholder="Todas las categorías"
             options={serviceCategories.map((c) => ({ value: c, label: c }))}
-          />
-        </div>
-        <div className="min-w-0 sm:w-52">
-          <VtMultiSelect
-            value={acceptedMonedaQ}
-            onChange={onAcceptedMonedaQ}
-            ariaLabel="Filtrar servicios por monedas aceptadas"
-            placeholder="Todas las monedas"
-            options={acceptedMonedaOptions.map((c) => ({ value: c, label: c }))}
           />
         </div>
         {showPublishedFilter ? (

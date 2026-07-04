@@ -16,6 +16,7 @@ import {
   waitForRouteSheetForm,
   fillRouteSheetBasicFields,
   fillTramoFields,
+  publishRouteSheetViaUI,
   saveRouteSheet,
   deleteTramoAt,
   openRouteSheetDetail,

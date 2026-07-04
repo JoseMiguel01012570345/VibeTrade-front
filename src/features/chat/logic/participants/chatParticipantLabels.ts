@@ -1,11 +1,21 @@
 import type { ChatMessageDto } from "@features/chat/Dtos/thread/chatApiTypes";
 import type { Message, Thread } from "@features/market/logic/store/marketStoreTypes";
-import { VT_SOCIAL_PLACEHOLDER_OFFER_ID } from "@features/chat/logic/thread/chatThreadDtoFallbacks";
+import {
+  VT_SOCIAL_PLACEHOLDER_OFFER_ID,
+  VT_SUPPORT_PLACEHOLDER_OFFER_ID,
+} from "@features/chat/logic/thread/chatThreadDtoFallbacks";
 
 export function threadIsSocialLike(th: Thread): boolean {
   return (
     th.isSocialGroup === true ||
     th.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID
+  );
+}
+
+export function threadIsSupportLike(th: Thread): boolean {
+  return (
+    th.isSupportThread === true ||
+    th.offerId?.trim() === VT_SUPPORT_PLACEHOLDER_OFFER_ID
   );
 }
 
@@ -159,6 +169,20 @@ export function chatThreadHeaderTitle(
       return `Grupo · ${first} +${uniq.length - 1}`;
     }
     return "Chat";
+  }
+  if (threadIsSupportLike(th)) {
+    const storeName = (th.store.name || "Negocio").trim();
+    const supportLabel = "Soporte";
+    const sellerUid = resolveSellerUserId(th);
+    const imSeller = sellerUid != null && me.id === sellerUid;
+    if (!imSeller) return `${storeName} \u00b7 ${supportLabel}`;
+    const buyerName = buyerFirstNameForThread(
+      th,
+      me.id,
+      me.name,
+      profileDisplayNames,
+    );
+    return `${buyerName} \u00b7 ${supportLabel}`;
   }
   const storeName = (th.store.name || "Negocio").trim();
   const productLabel = (offerTitle ?? "Oferta").trim();

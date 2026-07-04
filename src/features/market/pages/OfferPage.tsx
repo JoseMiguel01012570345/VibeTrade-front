@@ -104,8 +104,6 @@ export function OfferPage() {
   const sessionReady = isSessionActive || !!getSessionToken();
   const stores = useMarketStore((s) => s.stores);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
-  const ensureThreadForOffer = useMarketStore((s) => s.ensureThreadForOffer);
-  const [contactBusy, setContactBusy] = useState(false);
 
   const {
     resolvedOffer,
@@ -682,22 +680,31 @@ export function OfferPage() {
   function addFichaToCart(qty: number) {
     if (!resolvedOffer) return;
     const quantity = Math.max(1, qty);
-    // Con ficha usamos sus datos; sin ella (catálogo aún no cargado) caemos a la
-    // oferta pública para no bloquear la compra —el id de producto coincide con el
-    // de la oferta—.
-    if (productFicha) {
+    if (serviceFicha) {
       addToCart({
+        kind: "service",
+        serviceId: serviceFicha.id,
+        storeId: serviceFicha.storeId,
+        name: serviceFicha.nombreServicio,
+        unitPrice: serviceFicha.fixedPrice ?? 0,
+        currencyCode: "USD",
+        quantity,
+        photoUrl: serviceFicha.photoUrls?.[0],
+      });
+    } else if (productFicha) {
+      addToCart({
+        kind: "product",
         productId: productFicha.id,
         storeId: productFicha.storeId,
         name: productFicha.name,
         unitPrice: parseProductPriceNumber(productFicha.price) ?? 0,
-        currencyCode:
-          productFicha.monedaPrecio?.trim() || productFicha.monedas?.[0] || "",
+        currencyCode: "USD",
         quantity,
         photoUrl: productFicha.photoUrls[0],
       });
     } else {
       addToCart({
+        kind: "product",
         productId: resolvedOffer.id,
         storeId: resolvedOffer.storeId,
         name: resolvedOffer.title,
@@ -708,32 +715,6 @@ export function OfferPage() {
       });
     }
     toast.success("Añadido al carrito");
-  }
-
-  /**
-   * Servicios: "Escribir al privado" abre el chat operativo del vendedor (mismo hilo
-   * de negociación de la oferta). Invitados: se les pide iniciar sesión.
-   */
-  function contactSellerNow() {
-    if (!offerId) return;
-    if (!isSessionActive || me.id === "guest") {
-      openAuthModal();
-      return;
-    }
-    setContactBusy(true);
-    void (async () => {
-      try {
-        const threadId = await ensureThreadForOffer(offerId, {
-          buyerId: me.id,
-        });
-        if (threadId) nav(`/chat/${threadId}`);
-        else toast.error("No se pudo abrir el chat con el vendedor.");
-      } catch {
-        toast.error("No se pudo abrir el chat con el vendedor.");
-      } finally {
-        setContactBusy(false);
-      }
-    })();
   }
 
   // Ficha de producto/servicio (no hoja de ruta): réplica del detalle de la app de
@@ -750,7 +731,10 @@ export function OfferPage() {
             store={store}
             gallery={galleryUrls}
             descriptionText={fichaDescriptionText}
-            purchasable={!resolvedOffer.tags.includes("Servicio")}
+            purchasable={
+              !resolvedOffer.tags.includes("Servicio") ||
+              (serviceFicha?.fixedPrice ?? 0) > 0
+            }
             canLike={canLikeOffer}
             liked={!!resolvedOffer.viewerLikedOffer}
             likeCount={resolvedOffer.offerLikeCount ?? 0}
@@ -760,8 +744,6 @@ export function OfferPage() {
               addFichaToCart(qty);
               nav(storeCartHref(store));
             }}
-            onContactSeller={isOwnOffer ? undefined : contactSellerNow}
-            contactBusy={contactBusy}
             onOpenLightbox={(url) => setGalleryLightboxUrl(url)}
             relatedProducts={relatedProducts}
           />

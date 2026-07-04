@@ -73,7 +73,7 @@ async function fillExpelReason(
 }
 
 /** Closes calendar/time/map/service pickers without dismissing the route sheet form. */
-async function dismissTransientRouteSheetOverlays(page: Page): Promise<void> {
+export async function dismissTransientRouteSheetOverlays(page: Page): Promise<void> {
   const form = formDialog(page);
   const formOpen = await form.isVisible({ timeout: 500 }).catch(() => false);
 

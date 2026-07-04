@@ -74,7 +74,7 @@ function sortStoreProducts(
 }
 
 function serviceTitle(s: StoreService): string {
-  return s.tipoServicio.trim() || s.category.trim() || "Servicio";
+  return s.nombreServicio.trim() || s.category.trim() || "Servicio";
 }
 
 function sortStoreServices(

@@ -28,3 +28,16 @@ export function isOfferPublishedForBuyerChat(
 
   return true;
 }
+
+/** True si el id de catálogo corresponde a un servicio (no se abre chat comercial). */
+export function catalogOfferIsService(
+  catalogOfferId: string,
+  storeId: string,
+  storeCatalogs: Partial<Record<string, StoreCatalog>>,
+): boolean {
+  const id = catalogOfferId.trim();
+  if (!id) return false;
+  const cat = storeCatalogs[storeId];
+  if (!cat) return false;
+  return cat.services.some((s) => s.id === id);
+}

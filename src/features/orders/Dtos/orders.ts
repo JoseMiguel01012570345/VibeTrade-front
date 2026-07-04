@@ -6,7 +6,8 @@ export type OrderPaymentStatus = "held" | "released" | "refunded";
 export type OrderEvidenceDecision = "none" | "pending" | "accepted" | "rejected";
 
 export type CheckoutCartLine = {
-  productId: string;
+  productId?: string | null;
+  serviceId?: string | null;
   quantity: number;
 };
 
@@ -25,12 +26,16 @@ export type CreateOrderRequest = {
 };
 
 export type CheckoutPreviewLine = {
-  productId: string;
-  productName: string;
+  lineKind: "product" | "service";
+  productId?: string | null;
+  serviceId?: string | null;
+  lineName: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
   currencyCode: string;
+  recurrenceMonth?: number | null;
+  recurrenceDay?: number | null;
 };
 
 export type CheckoutPreviewResponse = {
@@ -56,9 +61,14 @@ export type CreateOrderResponse = {
 
 export type OrderLineDto = {
   id: string;
+  lineKind: "product" | "service";
   productId?: string | null;
+  serviceId?: string | null;
   productName: string;
   technicalSpecs: string;
+  serviceTipo?: string | null;
+  recurrenceMonth?: number | null;
+  recurrenceDay?: number | null;
   quantity: number;
   unitPrice: number;
   lineTotal: number;

@@ -1,9 +1,15 @@
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 import { Wrench } from "lucide-react";
 import { type StoreService } from "@features/market/logic/storeCatalogTypes";
 import { storeProductHref } from "@features/market/logic/store/storePath";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
+import { useAppStore } from "@features/auth/logic/useAppStore";
+import { toggleOfferLike } from "@features/market/api/offerEngagementApi";
+import { applyOfferLikeResult } from "@features/market/logic/applyOfferLikeResult";
+import { OfferImageLikeButton } from "@features/market/components/OfferImageLikeButton";
+import { getSessionToken } from "@shared/services/http/sessionToken";
 
 /**
  * Tarjeta de servicio del storefront (cliente). Comparte la misma estructura, clases
@@ -21,6 +27,21 @@ export function StorefrontServiceCard({
   compact?: boolean;
 }>) {
   const storeName = useMarketStore((st) => st.stores[s.storeId]?.name);
+  const catalogLiked = useMarketStore((st) => {
+    const svc = st.storeCatalogs[s.storeId]?.services.find((x) => x.id === s.id);
+    return svc?.viewerLikedOffer;
+  });
+  const catalogLikeCount = useMarketStore((st) => {
+    const svc = st.storeCatalogs[s.storeId]?.services.find((x) => x.id === s.id);
+    return svc?.offerLikeCount;
+  });
+  const isSessionActive = useAppStore((st) => st.isSessionActive);
+  const me = useAppStore((st) => st.me);
+  const openAuthModal = useAppStore((st) => st.openAuthModal);
+  const sessionReady = isSessionActive || !!getSessionToken();
+  const canLike = sessionReady && me.id !== "guest";
+  const liked = catalogLiked ?? s.viewerLikedOffer ?? false;
+  const likeCount = catalogLikeCount ?? s.offerLikeCount ?? 0;
   const detailHref = storeProductHref(
     { id: s.storeId, name: storeName ?? "" },
     s.id,
@@ -29,8 +50,28 @@ export function StorefrontServiceCard({
   const photo = (s.photoUrls ?? [])
     .map((u) => String(u).trim())
     .find((u) => u.length > 0);
-  const title = s.tipoServicio.trim() || s.category.trim() || "Servicio";
+  const title = s.nombreServicio.trim() || s.category.trim() || "Servicio";
   const description = s.descripcion.trim();
+
+  function toggleLikeNow() {
+    if (!canLike) {
+      openAuthModal();
+      return;
+    }
+    void (async () => {
+      try {
+        const r = await toggleOfferLike(s.id);
+        applyOfferLikeResult(s.id, r, {
+          storeId: s.storeId,
+          catalogKind: "service",
+        });
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "No se pudo guardar el me gusta.",
+        );
+      }
+    })();
+  }
 
   return (
     <article
@@ -38,24 +79,32 @@ export function StorefrontServiceCard({
         compact ? "rounded-[14px] p-2.5" : ""
       }`}
     >
-      <Link to={detailHref} className="block">
-        {photo ? (
-          <ProtectedMediaImg
-            src={photo}
-            alt={title}
-            wrapperClassName={`w-full overflow-hidden rounded-[14px] ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div
-            className={`flex w-full items-center justify-center rounded-[14px] bg-emerald-50 text-emerald-600 ${
-              compact ? "aspect-[1/1]" : "aspect-[4/3]"
-            }`}
-          >
-            <Wrench className="h-9 w-9" aria-hidden />
-          </div>
-        )}
-      </Link>
+      <div className="relative">
+        <Link to={detailHref} className="block">
+          {photo ? (
+            <ProtectedMediaImg
+              src={photo}
+              alt={title}
+              wrapperClassName={`w-full overflow-hidden rounded-[14px] ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div
+              className={`flex w-full items-center justify-center rounded-[14px] bg-emerald-50 text-emerald-600 ${
+                compact ? "aspect-[1/1]" : "aspect-[4/3]"
+              }`}
+            >
+              <Wrench className="h-9 w-9" aria-hidden />
+            </div>
+          )}
+        </Link>
+        <OfferImageLikeButton
+          liked={liked}
+          likeCount={likeCount}
+          canLike={canLike}
+          onToggle={toggleLikeNow}
+        />
+      </div>
 
       <div
         className={`flex min-w-0 flex-1 flex-col ${compact ? "px-1 pt-3" : "px-1 pt-4"}`}

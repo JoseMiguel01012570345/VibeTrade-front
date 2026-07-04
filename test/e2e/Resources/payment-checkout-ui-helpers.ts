@@ -504,7 +504,7 @@ export async function downloadPaymentInformePdf(
         capture(blob);
       }
       return blob;
-    } as typeof Blob;
+    } as unknown as typeof Blob;
     const origCreateObjectURL = URL.createObjectURL.bind(URL);
     URL.createObjectURL = ((blob: Blob) => {
       capture(blob);
@@ -546,7 +546,10 @@ export async function downloadPaymentInformePdf(
   const arrayBuffer = await page.evaluate(async () => {
     const w = window as Window & { __vtE2ePdfBuffer?: Promise<ArrayBuffer> };
     const buf = await Promise.race([
-      w.__vtE2ePdfBuffer,
+      w.__vtE2ePdfBuffer ??
+        new Promise<ArrayBuffer>((_, reject) =>
+          reject(new Error("PDF blob hook not installed")),
+        ),
       new Promise<ArrayBuffer>((_, reject) =>
         setTimeout(() => reject(new Error("PDF blob capture timeout")), 90_000),
       ),
@@ -557,7 +560,7 @@ export async function downloadPaymentInformePdf(
   const buffer = Buffer.from(arrayBuffer);
   expect(buffer.length).toBeGreaterThan(500);
   expect(buffer.toString("latin1")).toContain("Informe de pago");
-  return { download: download as Download, buffer };
+  return { download: download as unknown as Download, buffer };
 }
 
 export function assertInformePdfContent(

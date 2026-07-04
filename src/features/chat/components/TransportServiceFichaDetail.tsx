@@ -13,7 +13,7 @@ export function TransportServiceFichaDetail({ s }: Props) {
   return (
     <div className="min-w-0 space-y-2 text-sm">
       <div className="font-extrabold text-[var(--text)]">
-        {(s.tipoServicio ?? '').trim() || 'Servicio'}
+        {(s.nombreServicio ?? '').trim() || 'Servicio'}
         {(s.category ?? '').trim() ? (
           <span className="vt-muted ml-2 font-semibold">· {(s.category ?? '').trim()}</span>
         ) : null}

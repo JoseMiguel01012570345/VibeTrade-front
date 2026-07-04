@@ -1,5 +1,4 @@
 import type { Page } from "@playwright/test";
-import { expect } from "@playwright/test";
 import { e2eApiUrl, getE2EAppBaseUrl } from "./e2e-api-base";
 import {
   ensureBuyerPaymentReady,

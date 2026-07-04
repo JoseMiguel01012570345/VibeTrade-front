@@ -4,7 +4,9 @@ const STORAGE_KEY = "vt.cart.v1";
 
 /** Ítem del carrito con snapshot mínimo para render sin re-fetch. */
 export type CartItem = {
-  productId: string;
+  kind: "product" | "service";
+  productId?: string;
+  serviceId?: string;
   storeId: string;
   name: string;
   unitPrice: number;
@@ -13,13 +15,16 @@ export type CartItem = {
   photoUrl?: string;
 };
 
+export function cartLineKey(item: Pick<CartItem, "kind" | "productId" | "serviceId">): string {
+  if (item.kind === "service") return `svc:${item.serviceId ?? ""}`;
+  return `prd:${item.productId ?? ""}`;
+}
+
 type CartState = {
   items: CartItem[];
-  /** Agrega o incrementa; el carrito es de una sola tienda (si cambia, se reemplaza). */
   addItem: (item: CartItem) => void;
-  setQuantity: (productId: string, quantity: number) => void;
-  removeItem: (productId: string) => void;
-  /** Reemplaza todo el carrito (p. ej. al importar un carrito compartido por enlace). */
+  setQuantity: (lineKey: string, quantity: number) => void;
+  removeItem: (lineKey: string) => void;
   replaceCart: (items: CartItem[]) => void;
   clear: () => void;
 };
@@ -29,7 +34,13 @@ function readStored(): CartItem[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as CartItem[];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((i) => ({
+      ...i,
+      kind: i.kind === "service" ? "service" : "product",
+      productId: i.kind === "service" ? undefined : i.productId,
+      serviceId: i.kind === "service" ? i.serviceId : undefined,
+    }));
   } catch {
     return [];
   }
@@ -51,10 +62,11 @@ export const useCartStore = create<CartState>((set) => ({
       const differentStore =
         s.items.length > 0 && s.items[0]!.storeId !== item.storeId;
       const base = differentStore ? [] : s.items;
-      const existing = base.find((i) => i.productId === item.productId);
+      const key = cartLineKey(item);
+      const existing = base.find((i) => cartLineKey(i) === key);
       const next = existing
         ? base.map((i) =>
-            i.productId === item.productId
+            cartLineKey(i) === key
               ? { ...i, quantity: i.quantity + item.quantity }
               : i,
           )
@@ -63,19 +75,19 @@ export const useCartStore = create<CartState>((set) => ({
       return { items: next };
     }),
 
-  setQuantity: (productId, quantity) =>
+  setQuantity: (lineKey, quantity) =>
     set((s) => {
       const q = Math.max(1, Math.floor(quantity) || 1);
       const next = s.items.map((i) =>
-        i.productId === productId ? { ...i, quantity: q } : i,
+        cartLineKey(i) === lineKey ? { ...i, quantity: q } : i,
       );
       persist(next);
       return { items: next };
     }),
 
-  removeItem: (productId) =>
+  removeItem: (lineKey) =>
     set((s) => {
-      const next = s.items.filter((i) => i.productId !== productId);
+      const next = s.items.filter((i) => cartLineKey(i) !== lineKey);
       persist(next);
       return { items: next };
     }),
@@ -95,4 +107,8 @@ export const useCartStore = create<CartState>((set) => ({
 
 export function cartSubtotal(items: CartItem[]): number {
   return items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+}
+
+export function cartHasProducts(items: CartItem[]): boolean {
+  return items.some((i) => i.kind === "product");
 }

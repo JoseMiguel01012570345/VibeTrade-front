@@ -338,7 +338,7 @@ export function StoreCategoriesOffcanvas({
     if (picked.kind === "service") {
       return (servicesByCategory.get(picked.name) ?? []).map((s) => ({
         id: s.id,
-        name: s.tipoServicio.trim() || s.category.trim() || "Servicio",
+        name: s.nombreServicio.trim() || s.category.trim() || "Servicio",
       }));
     }
     return (productsByCategory.get(picked.name) ?? []).map((p) => ({

@@ -5,8 +5,6 @@ import { cn } from "@shared/lib/cn"
 import { VtSelect } from "@shared/components/ui/VtSelect"
 import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes"
 import {
-  catalogMonedasList,
-  mergeMonedaPrecioIntoMonedas,
   mergeServiceItemWithStoreService,
   serviceItemAcceptedMonedas,
   sortCatalogItemsByContextId,
@@ -140,7 +138,7 @@ export function ServiceConfigWizard({
     const blocked = new Set(excludeLinkedServiceIds.filter(Boolean))
     return catalogServicesOrdered.map((s) => ({
       value: s.id,
-      label: `${s.category} · ${s.tipoServicio}${
+      label: `${s.category} · ${s.nombreServicio}${
         s.published === false ? ' (borrador)' : ''
       }${contextOfferId && s.id === contextOfferId ? ' — anuncio de este chat' : ''}`,
       disabled:
@@ -197,10 +195,8 @@ export function ServiceConfigWizard({
     if (ficha && sv.linkedStoreServiceId) {
       const cat = catalogServicesOrdered.find((s) => s.id === sv.linkedStoreServiceId)
       if (cat) {
-        const m = mergeMonedaPrecioIntoMonedas(cat.monedas, undefined)
-        if (m.length) return m
-        const c2 = catalogMonedasList(cat)
-        if (c2.length) return c2
+        const c = (cat.currencyCode ?? "USD").trim().toUpperCase()
+        if (c) return [c]
       }
     }
     const merged = new Set<string>([...MONEDAS_BASE])

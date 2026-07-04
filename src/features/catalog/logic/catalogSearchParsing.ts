@@ -304,7 +304,7 @@ function parseOfferPreview(
   out.acceptedCurrencies = accArr;
   const photos = parseStringArray(o.photoUrls);
   if (photos.length) out.photoUrls = photos;
-  if (typeof o.tipoServicio === "string") out.tipoServicio = o.tipoServicio;
+  if (typeof o.nombreServicio === "string") out.nombreServicio = o.nombreServicio;
   if (typeof o.shortDescription === "string")
     out.shortDescription = o.shortDescription;
   if (typeof o.descripcion === "string") out.descripcion = o.descripcion;

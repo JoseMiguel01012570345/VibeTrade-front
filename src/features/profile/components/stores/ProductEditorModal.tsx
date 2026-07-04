@@ -3,8 +3,7 @@ import toast from "react-hot-toast";
 import { Loader2, Upload, X } from "lucide-react";
 import type { MerchandiseCondition } from "@features/market/Dtos/merchandiseCondition";
 import {
-  catalogMonedasList,
-  mergeMonedaPrecioIntoMonedas,
+  CATALOG_CURRENCY_CODE,
   type StoreProduct,
 } from "@features/market/logic/storeCatalogTypes";
 import {
@@ -47,8 +46,6 @@ type Props = Readonly<{
   initial: Omit<StoreProduct, "id" | "storeId">;
   /** Categorías del backend (GET /api/v1/market/catalog-categories). */
   categoryOptions?: string[];
-  /** Monedas del backend (GET /api/v1/market/currencies). */
-  currencyOptions?: string[];
   onClose: () => void;
   onSave: (v: Omit<StoreProduct, "id" | "storeId">) => void;
 }>;
@@ -58,7 +55,6 @@ export function ProductEditorModal({
   title,
   initial,
   categoryOptions = [],
-  currencyOptions = [],
   onClose,
   onSave,
 }: Props) {
@@ -73,28 +69,12 @@ export function ProductEditorModal({
 
   const photoOk = photoSlots.length >= 1;
 
-  const acceptedMonedasMerged = useMemo(
-    () => mergeMonedaPrecioIntoMonedas([], form.monedaPrecio),
-    [form.monedaPrecio],
-  );
-
   const categorySelectOptions = useMemo(() => {
     const base = categoryOptions.length > 0 ? categoryOptions : [];
     const merged = new Set(base.map((c) => c.trim()).filter(Boolean));
     if (form.category.trim()) merged.add(form.category.trim());
     return [...merged].sort((a, b) => a.localeCompare(b, "es"));
   }, [categoryOptions, form.category]);
-
-  /** Lista para el tipo de moneda del precio; incluye CUP. */
-  const allCurrencyCodes = useMemo(() => {
-    const merged = new Set<string>(
-      currencyOptions.map((c) => c.trim()).filter(Boolean),
-    );
-    merged.add("CUP");
-    const mp = (form.monedaPrecio ?? "").trim();
-    if (mp) merged.add(mp);
-    return [...merged].sort((a, b) => a.localeCompare(b, "es"));
-  }, [currencyOptions, form.monedaPrecio]);
 
   if (!open) return null;
 
@@ -143,7 +123,7 @@ export function ProductEditorModal({
         const candidateSnapshot = {
           ...form,
           photoUrls: candidateUrls,
-          monedas: acceptedMonedasMerged,
+          monedas: [CATALOG_CURRENCY_CODE],
         };
         const limitErr = assertEntityPayloadUnderLimit(
           candidateSnapshot,
@@ -294,31 +274,11 @@ export function ProductEditorModal({
               <label
                 className={fieldRootWithInvalid(showVal && !form.price.trim())}
               >
-                <span className={fieldLabel}>Precio</span>
+                <span className={fieldLabel}>Precio ({CATALOG_CURRENCY_CODE})</span>
                 <input
                   className="vt-input"
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
-                />
-              </label>
-              <label
-                className={fieldRootWithInvalid(
-                  showVal && !(form.monedaPrecio ?? "").trim(),
-                )}
-              >
-                <span className={fieldLabel}>Tipo de moneda (precio)</span>
-                <VtSelect
-                  value={form.monedaPrecio ?? ""}
-                  onChange={(v) => setForm((prev) => ({ ...prev, monedaPrecio: v }))}
-                  ariaLabel="Tipo de moneda del precio (obligatorio)"
-                  placeholder="Seleccionar…"
-                  options={[
-                    { value: "", label: "Seleccionar moneda del precio…" },
-                    ...allCurrencyCodes.map((c) => ({
-                      value: c,
-                      label: c,
-                    })),
-                  ]}
                 />
               </label>
             </div>
@@ -546,7 +506,7 @@ export function ProductEditorModal({
                 const candidate = {
                   ...form,
                   customFields: cf,
-                  monedas: acceptedMonedasMerged,
+                  monedas: [CATALOG_CURRENCY_CODE],
                 };
                 const payload = {
                   ...candidate,
@@ -573,15 +533,11 @@ export function ProductEditorModal({
               type="button"
               className="vt-btn vt-btn-primary"
               onClick={() => {
-                const monedas = catalogMonedasList({
-                  monedas: acceptedMonedasMerged,
-                  moneda: form.moneda,
-                });
                 const snapshot = {
                   ...form,
                   photoUrls: photoSlots.map((p) => p.url),
-                  monedaPrecio: (form.monedaPrecio ?? "").trim() || undefined,
-                  monedas: monedas.length ? monedas : undefined,
+                  monedaPrecio: CATALOG_CURRENCY_CODE,
+                  monedas: [CATALOG_CURRENCY_CODE],
                 };
                 const err = validateProductForm(snapshot);
                 if (err) {

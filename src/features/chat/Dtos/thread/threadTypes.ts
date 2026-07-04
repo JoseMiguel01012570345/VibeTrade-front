@@ -194,6 +194,8 @@ export type Thread = {
   routeTramoSubscriptionsSnapshot?: RouteTramoSubscriptionItemApi[];
   /** Hilo de mensajería sin oferta (grupo / directo): sin acuerdos, pagos ni panel de rutas. */
   isSocialGroup?: boolean;
+  /** Chat de soporte tienda-comprador (sin acuerdos comerciales ni panel de rutas). */
+  isSupportThread?: boolean;
   /** Título personalizado del grupo social (API; solo el creador puede cambiarlo). */
   socialGroupTitle?: string | null;
 };

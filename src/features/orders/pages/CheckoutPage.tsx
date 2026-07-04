@@ -10,6 +10,7 @@ import { CheckoutPayButton } from "../components/CheckoutPayButton";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { storeProductHref } from "@features/market/logic/store/storePath";
 import { StorefrontChrome } from "@features/storefront";
+import { cartLineKey } from "../logic/cartStore";
 
 export function CheckoutPage() {
   const {
@@ -33,6 +34,7 @@ export function CheckoutPage() {
     previewError,
     subtotal,
     summaryCurrency,
+    hasProducts,
     isCreating,
     submit,
   } = useCheckout();
@@ -84,6 +86,7 @@ export function CheckoutPage() {
         <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-10">
           <div className="order-2 min-w-0 lg:order-1 lg:flex-[7]">
             <div className="space-y-6">
+              {hasProducts ? (
               <section className="rounded-[14px] border border-[#e8e1da] bg-white p-6 shadow-[0_12px_32px_rgba(33,37,41,0.05)] sm:p-8">
                 <div className="flex items-center gap-3">
                   <CheckoutSectionBadge n={1} />
@@ -153,10 +156,49 @@ export function CheckoutPage() {
                   </button>
                 </div>
               </section>
+              ) : (
+              <section className="rounded-[14px] border border-[#e8e1da] bg-white p-6 shadow-[0_12px_32px_rgba(33,37,41,0.05)] sm:p-8">
+                <div className="flex items-center gap-3">
+                  <CheckoutSectionBadge n={1} />
+                  <h2 className="text-xl font-extrabold tracking-tight text-slate-900">
+                    Datos de contacto
+                  </h2>
+                </div>
+                <p className="mt-4 text-sm text-slate-600">
+                  Los servicios no requieren dirección de entrega. Indica nombre y
+                  teléfono para el comprobante.
+                </p>
+                <div className="mt-6">
+                  {deliveryComplete ? (
+                    <div className="rounded-[10px] border border-[#e8e1da] bg-[#fafaf9] px-4 py-4">
+                      <p className="text-sm font-bold text-slate-900">
+                        {delivery.fullName.trim()}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {delivery.phone.trim()}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-600">
+                      Completa nombre y teléfono de contacto.
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={openDeliveryModal}
+                    className="mt-4 w-full rounded-[10px] border border-emerald-200 bg-emerald-50/60 py-3 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50"
+                  >
+                    {deliveryComplete
+                      ? "Editar datos de contacto"
+                      : "Completar datos de contacto"}
+                  </button>
+                </div>
+              </section>
+              )}
 
               <section className="rounded-[14px] border border-[#e8e1da] bg-white p-6 shadow-[0_12px_32px_rgba(33,37,41,0.05)] sm:p-8">
                 <div className="flex items-center gap-3">
-                  <CheckoutSectionBadge n={2} />
+                  <CheckoutSectionBadge n={hasProducts ? 2 : 1} />
                   <h2 className="text-xl font-extrabold tracking-tight text-slate-900">
                     Método de Pago
                   </h2>
@@ -210,9 +252,13 @@ export function CheckoutPage() {
               </h3>
               <div className="mt-5 space-y-4">
                 {items.map((line) => {
-                  const href = storeProductHref(store, line.productId);
+                  const lineId =
+                    line.kind === "service" ? line.serviceId : line.productId;
+                  const href = lineId
+                    ? storeProductHref(store, lineId)
+                    : "#";
                   return (
-                    <div key={line.productId} className="flex gap-3">
+                    <div key={cartLineKey(line)} className="flex gap-3">
                       <Link
                         to={href}
                         className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-lg bg-stone-100"
@@ -238,6 +284,7 @@ export function CheckoutPage() {
                           {line.name}
                         </Link>
                         <p className="mt-0.5 text-xs text-slate-500">
+                          {line.kind === "service" ? "Servicio" : "Producto"} ·
                           Cant. {line.quantity}
                         </p>
                         <p className="mt-1 text-sm font-extrabold text-emerald-700">

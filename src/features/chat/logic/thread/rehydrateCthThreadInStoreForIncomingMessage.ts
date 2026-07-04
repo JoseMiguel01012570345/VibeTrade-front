@@ -27,6 +27,7 @@ import { partyExpelledFieldsFromDto } from "@features/chat/logic/party-exit/thre
 import {
   minimalOfferStoreFromChatThreadDto,
   VT_SOCIAL_PLACEHOLDER_OFFER_ID,
+  VT_SUPPORT_PLACEHOLDER_OFFER_ID,
 } from "./chatThreadDtoFallbacks";
 
 function resolveOffer(
@@ -76,7 +77,9 @@ export async function rehydrateCthThreadInStoreForIncomingMessage(
   if (
     (!offer || !store) &&
     dto.offerId?.trim() !== VT_SOCIAL_PLACEHOLDER_OFFER_ID &&
-    dto.isSocialGroup !== true
+    dto.isSocialGroup !== true &&
+    dto.offerId?.trim() !== VT_SUPPORT_PLACEHOLDER_OFFER_ID &&
+    dto.isSupportThread !== true
   ) {
     const card = await fetchPublicOfferCard(dto.offerId).catch(() => null);
     if (card?.offer?.id) {
@@ -170,6 +173,10 @@ export async function rehydrateCthThreadInStoreForIncomingMessage(
       ...(dto.isSocialGroup ||
       dto.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID
         ? { isSocialGroup: true as const }
+        : {}),
+      ...(dto.isSupportThread ||
+      dto.offerId?.trim() === VT_SUPPORT_PLACEHOLDER_OFFER_ID
+        ? { isSupportThread: true as const }
         : {}),
       ...(dto.socialGroupTitle !== undefined
         ? {

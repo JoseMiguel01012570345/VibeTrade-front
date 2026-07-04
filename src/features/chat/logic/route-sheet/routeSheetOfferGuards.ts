@@ -379,6 +379,29 @@ export function resolveRouteOfferPublicForThread(
   return undefined;
 }
 
+/**
+ * True si el hilo debe mostrar el panel logístico (Rutas + Integrantes): hay al menos un
+ * transportista con tramo confirmado en la oferta pública o en integrantes del chat.
+ */
+export function threadShowsRouteSheets(
+  state: Pick<MarketState, "threads" | "routeOfferPublic" | "offers">,
+  thread: Thread,
+): boolean {
+  if ((thread.chatCarriers?.length ?? 0) > 0) return true;
+  for (const ro of Object.values(state.routeOfferPublic)) {
+    if (ro.threadId !== thread.id) continue;
+    if (
+      ro.tramos?.some((t) => t.assignment?.status === "confirmed") ?? false
+    ) {
+      return true;
+    }
+  }
+  const ro = resolveRouteOfferPublicForThread(state, thread);
+  return (
+    ro?.tramos?.some((t) => t.assignment?.status === "confirmed") ?? false
+  );
+}
+
 /** Transportista con tramo confirmado en la oferta pública del hilo o listado en integrantes del chat. */
 export function viewerIsConfirmedRouteCarrierOnThread(
   state: Pick<MarketState, "threads" | "routeOfferPublic" | "offers">,

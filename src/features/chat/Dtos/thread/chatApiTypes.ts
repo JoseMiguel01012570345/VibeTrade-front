@@ -24,6 +24,8 @@ export type ChatThreadDto = {
   isSocialGroup?: boolean;
   /** Nombre del grupo (solo lo edita el creador en API). */
   socialGroupTitle?: string | null;
+  /** Chat de soporte tienda-comprador. */
+  isSupportThread?: boolean;
 };
 
 /** Aligned with backend <see cref="VibeTrade.Backend.Data.ChatMessageStatus" /> (camelCase JSON). */
@@ -105,6 +107,7 @@ export type ChatThreadSummaryDto = {
   sellerExpelledAtUtc?: string | null;
   isSocialGroup?: boolean;
   socialGroupTitle?: string | null;
+  isSupportThread?: boolean;
 };
 
 export type ChatThreadMemberDto = {

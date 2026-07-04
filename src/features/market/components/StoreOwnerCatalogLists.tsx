@@ -222,7 +222,7 @@ export function OwnerCatalogServiceList({
               >
                 <span className="inline-flex min-w-0 flex-wrap items-center gap-2">
                   <Wrench size={14} className="shrink-0 opacity-70" aria-hidden />
-                  <span className="truncate font-bold">{sv.tipoServicio}</span>
+                  <span className="truncate font-bold">{sv.nombreServicio}</span>
                   {pub ? (
                     <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-[color-mix(in_oklab,var(--good)_14%,transparent)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-green-900">
                       <BadgeCheck size={12} aria-hidden /> Publicado

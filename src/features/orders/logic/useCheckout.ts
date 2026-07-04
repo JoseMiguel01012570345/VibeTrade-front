@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import { cartSubtotal, useCartStore } from "./cartStore";
+import { cartHasProducts, cartSubtotal, useCartStore } from "./cartStore";
 import { useCheckoutPreview, useCreateOrder } from "../hooks/useOrders";
 import type { OrderDeliveryMode } from "../Dtos/orders";
 import {
@@ -52,8 +52,9 @@ export function useCheckout() {
 
   const subtotal = useMemo(() => cartSubtotal(items), [items]);
   const cartCurrency = items[0]?.currencyCode ?? "";
+  const hasProducts = useMemo(() => cartHasProducts(items), [items]);
 
-  const needsAddress = mode === "shipping";
+  const needsAddress = hasProducts && mode === "shipping";
   const pinReady =
     delivery.pinPlaced && delivery.latitude != null && delivery.longitude != null;
   const deliveryComplete = isDeliveryComplete(mode, delivery);
@@ -83,7 +84,8 @@ export function useCheckout() {
         paymentMethod: "platform",
         affiliateCode: null,
         lines: items.map((i) => ({
-          productId: i.productId,
+          productId: i.kind === "product" ? i.productId ?? null : null,
+          serviceId: i.kind === "service" ? i.serviceId ?? null : null,
           quantity: i.quantity,
         })),
       });
@@ -93,6 +95,7 @@ export function useCheckout() {
     items,
     mode,
     needsAddress,
+    hasProducts,
     pinReady,
     delivery.latitude,
     delivery.longitude,
@@ -161,6 +164,7 @@ export function useCheckout() {
     previewError,
     subtotal,
     summaryCurrency,
+    hasProducts,
     isCreating: create.isPending,
     submit,
   };

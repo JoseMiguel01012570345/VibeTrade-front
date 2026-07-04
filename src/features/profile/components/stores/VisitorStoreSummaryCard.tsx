@@ -153,7 +153,7 @@ export function VisitorStoreSummaryCard({
             <ul className="vt-muted mt-1.5 space-y-0.5 text-[12px] leading-snug">
               {publishedServices.slice(0, 4).map((s) => (
                 <li key={s.id} className="truncate">
-                  {s.tipoServicio}
+                  {s.nombreServicio}
                 </li>
               ))}
               {publishedServices.length > 4 ?

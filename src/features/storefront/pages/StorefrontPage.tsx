@@ -26,6 +26,7 @@ import { StorefrontServiceCard } from "../components/StorefrontServiceCard";
 import { StorefrontProductCard } from "../components/StorefrontProductCard";
 import { ScrollArrowButton } from "../components/ScrollArrowButton";
 import { StorefrontChrome } from "../components/StorefrontChrome";
+import { useStoreCatalogSearch } from "../hooks/useStoreCatalogSearch";
 
 const LATEST_PRODUCTS_COUNT = 4;
 
@@ -51,18 +52,31 @@ export function StorefrontPage() {
   );
   const [loadNonce] = useState(0);
   const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [query, setQuery] = useState("");
+  const submittedQuery = (searchParams.get("q") ?? "").trim();
 
   /**
    * El término puede llegar por URL (`?q=`) al buscar desde otra vista (p. ej. el
-   * detalle). Navegar por categoría abre su página dedicada (`/{tienda}/categoria/…`
-   * o `/{tienda}/servicios/…`), no un filtro en esta pantalla.
+   * detalle). Al pulsar buscar se actualiza la URL y se consulta la BD con ILIKE.
    */
   useEffect(() => {
     setQuery(searchParams.get("q") ?? "");
   }, [storeId, searchParams]);
+
+  const catalogSearch = useStoreCatalogSearch(storeId, submittedQuery);
+
+  const handleSearchSubmit = useCallback(
+    (term: string) => {
+      const next = new URLSearchParams(searchParams);
+      const trimmed = term.trim();
+      if (trimmed) next.set("q", trimmed);
+      else next.delete("q");
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
   const publishedProducts = useMemo(
     () => (catalog?.products ?? []).filter((p) => p.published),
@@ -94,28 +108,17 @@ export function StorefrontPage() {
   }, [publishedServices]);
 
   const visibleProducts = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return publishedProducts;
-    return publishedProducts.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.shortDescription.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q),
-    );
-  }, [publishedProducts, query]);
+    if (!submittedQuery) return publishedProducts;
+    return (catalogSearch.data?.products ?? []).filter((p) => p.published);
+  }, [publishedProducts, submittedQuery, catalogSearch.data?.products]);
 
   const visibleServices = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return publishedServices;
-    return publishedServices.filter(
-      (s) =>
-        s.tipoServicio.toLowerCase().includes(q) ||
-        s.descripcion.toLowerCase().includes(q) ||
-        s.category.toLowerCase().includes(q),
-    );
-  }, [publishedServices, query]);
+    if (!submittedQuery) return publishedServices;
+    return (catalogSearch.data?.services ?? []).filter((s) => s.published !== false);
+  }, [publishedServices, submittedQuery, catalogSearch.data?.services]);
 
-  const isBrowsingAll = !query.trim();
+  const isBrowsingAll = !submittedQuery;
+  const isSearchLoading = submittedQuery.length > 0 && catalogSearch.isLoading;
   const latestProducts = useMemo(
     () => publishedProducts.slice(0, LATEST_PRODUCTS_COUNT),
     [publishedProducts],
@@ -161,7 +164,12 @@ export function StorefrontPage() {
   }
 
   return (
-    <StorefrontChrome store={store} query={query} onQueryChange={setQuery}>
+    <StorefrontChrome
+      store={store}
+      query={query}
+      onQueryChange={setQuery}
+      onSearchSubmit={handleSearchSubmit}
+    >
       <div className="mx-auto w-full max-w-[1140px] space-y-8 px-4 py-6 sm:py-8">
         {/* Banner principal (pitch de la tienda) */}
         <section aria-label="Banner principal" className="relative">
@@ -221,13 +229,16 @@ export function StorefrontPage() {
           heading={mainHeading}
           products={visibleProducts}
           hasAnyPublished={publishedProducts.length > 0}
+          loading={isSearchLoading}
+          isSearch={!!submittedQuery}
         />
 
         {/* Servicios */}
-        {publishedServices.length > 0 ? (
+        {publishedServices.length > 0 || submittedQuery ? (
           <StorefrontServicesSection
             heading={isBrowsingAll ? "Servicios" : "Resultados"}
             services={visibleServices}
+            loading={isSearchLoading}
           />
         ) : null}
       </div>
@@ -299,10 +310,14 @@ function StorefrontProductsSection({
   heading,
   products,
   hasAnyPublished,
+  loading,
+  isSearch,
 }: Readonly<{
   heading: string;
   products: StoreProduct[];
   hasAnyPublished: boolean;
+  loading?: boolean;
+  isSearch?: boolean;
 }>) {
   return (
     <section>
@@ -311,11 +326,17 @@ function StorefrontProductsSection({
           {heading}
         </h2>
       </div>
-      {products.length === 0 ? (
+      {loading ? (
         <p className="rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
-          {hasAnyPublished
+          Buscando en el catálogo…
+        </p>
+      ) : products.length === 0 ? (
+        <p className="rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
+          {isSearch
             ? "Ningún producto coincide con tu búsqueda."
-            : "Esta tienda todavía no publicó productos."}
+            : hasAnyPublished
+              ? "Ningún producto coincide con tu búsqueda."
+              : "Esta tienda todavía no publicó productos."}
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
@@ -332,9 +353,11 @@ function StorefrontProductsSection({
 function StorefrontServicesSection({
   heading,
   services,
+  loading,
 }: Readonly<{
   heading: string;
   services: StoreService[];
+  loading?: boolean;
 }>) {
   return (
     <section id="storefront-servicios" className="scroll-mt-24">
@@ -343,7 +366,11 @@ function StorefrontServicesSection({
           {heading}
         </h2>
       </div>
-      {services.length === 0 ? (
+      {loading ? (
+        <p className="rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
+          Buscando en el catálogo…
+        </p>
+      ) : services.length === 0 ? (
         <p className="rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
           Ningún servicio coincide con tu búsqueda.
         </p>

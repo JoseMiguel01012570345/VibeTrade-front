@@ -17,7 +17,6 @@ import {
   openRouteSheetDetail,
   publishRouteSheetViaUI,
   linkRouteSheetToAgreementViaUI,
-  openContractByAgreementIndex,
   openFirstUnlinkedContract,
   openNotificationsPanel,
   getNotificationItem,
@@ -340,7 +339,7 @@ export async function createAndPublishRouteSheet(
   sellerToken: string,
   threadId: string,
   agreementTitle?: string,
-  agreementIndex = 0,
+  _agreementIndex = 0,
 ): Promise<{ sellerPage: Page; titulo: string; offerUrl: string | null }> {
   const sellerPage = await openSellerPage(browser, sellerToken, threadId);
   await waitForThreadContractsLoaded(sellerPage);

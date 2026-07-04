@@ -75,6 +75,10 @@ export function buildOrderRequest(
     deliveryLongitude: needsAddress ? delivery.longitude : null,
     paymentMethod: "platform",
     affiliateCode: null,
-    lines: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+    lines: items.map((i) => ({
+      productId: i.kind === "product" ? i.productId ?? null : null,
+      serviceId: i.kind === "service" ? i.serviceId ?? null : null,
+      quantity: i.quantity,
+    })),
   };
 }

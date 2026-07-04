@@ -20,9 +20,12 @@ import {
   storeHref,
 } from "@features/market/logic/store/storePath";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
-import type { StoreProduct } from "@features/market/logic/storeCatalogTypes";
+import type { StoreProduct, StoreService } from "@features/market/logic/storeCatalogTypes";
 
-export type DetailedLine = CartItem & { product: StoreProduct | null };
+export type DetailedLine = CartItem & {
+  product: StoreProduct | null;
+  service: StoreService | null;
+};
 
 /** Orquesta el carrito: resuelve la tienda, importa/sincroniza el enlace compartido
  *  y expone acciones (cantidad, quitar, checkout, compartir) para la página. */
@@ -70,9 +73,14 @@ export function useCartController() {
   const cartPath = storeCartHref(storeForLinks);
   const checkoutPath = storeCheckoutHref(storeForLinks);
   const detailProducts = detailQuery.data?.catalog.products;
+  const detailServices = detailQuery.data?.catalog.services;
   const catalogProducts = useMemo(
     () => catalogFromState?.products ?? detailProducts ?? [],
     [catalogFromState, detailProducts],
+  );
+  const catalogServices = useMemo(
+    () => catalogFromState?.services ?? detailServices ?? [],
+    [catalogFromState, detailServices],
   );
 
   const subtotal = useMemo(() => cartSubtotal(items), [items]);
@@ -88,7 +96,12 @@ export function useCartController() {
         ? buildShareCartUrl(
             cartPath,
             storeId,
-            items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+            items
+              .filter((i) => i.kind === "product" && i.productId)
+              .map((i) => ({
+                productId: i.productId!,
+                quantity: i.quantity,
+              })),
           )
         : "",
     [items, storeId, cartPath],
@@ -156,7 +169,12 @@ export function useCartController() {
       ? buildShareCartPath(
           cartPath,
           storeId,
-          items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+          items
+            .filter((i) => i.kind === "product" && i.productId)
+            .map((i) => ({
+              productId: i.productId!,
+              quantity: i.quantity,
+            })),
         )
       : cartPath;
     const currentPath = `${location.pathname}${location.search}`;
@@ -199,15 +217,28 @@ export function useCartController() {
     () =>
       items.map((line) => ({
         ...line,
-        product: catalogProducts.find((p) => p.id === line.productId) ?? null,
+        product:
+          line.kind === "product"
+            ? (catalogProducts.find((p) => p.id === line.productId) ?? null)
+            : null,
+        service:
+          line.kind === "service"
+            ? (catalogServices.find((s) => s.id === line.serviceId) ?? null)
+            : null,
       })),
-    [items, catalogProducts],
+    [items, catalogProducts, catalogServices],
   );
 
   const suggestions = useMemo(() => {
-    const inCart = new Set(items.map((i) => i.productId));
+    const inCart = new Set(
+      items.map((i) =>
+        i.kind === "service" ? `svc:${i.serviceId}` : `prd:${i.productId}`,
+      ),
+    );
     return catalogProducts
-      .filter((p) => p.published && !inCart.has(p.id))
+      .filter(
+        (p) => p.published && !inCart.has(`prd:${p.id}`),
+      )
       .slice(0, 4);
   }, [catalogProducts, items]);
 

@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart, MessageCircle, Truck } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { isToolPlaceholderUrl } from "@features/market/logic/toolPlaceholder";
 import type { Offer, StoreBadge } from "@features/market/logic/store/marketStoreTypes";
 import { storeHref } from "@features/market/logic/store/storePath";
-import type {
-  StoreProduct,
-  StoreService,
+import {
+  catalogDisplayPriceUsd,
+  type StoreProduct,
+  type StoreService,
 } from "@features/market/logic/storeCatalogTypes";
 import { StorefrontProductCard } from "@features/storefront/components/StorefrontProductCard";
 import { OfferSaveButton } from "./OfferSaveButton";
+import { OfferImageLikeButton } from "./OfferImageLikeButton";
 import { ServiceDetailFields } from "./ServiceDetailFields";
 
 /**
@@ -23,10 +24,18 @@ function ProductGallery({
   gallery,
   alt,
   onOpenLightbox,
+  canLike,
+  liked,
+  likeCount,
+  onToggleLike,
 }: Readonly<{
   gallery: string[];
   alt: string;
   onOpenLightbox: (url: string) => void;
+  canLike: boolean;
+  liked: boolean;
+  likeCount: number;
+  onToggleLike: () => void;
 }>) {
   const [activeImage, setActiveImage] = useState(0);
 
@@ -62,6 +71,12 @@ function ProductGallery({
                 onClick={() => onOpenLightbox(currentImage)}
               />
             )}
+            <OfferImageLikeButton
+              liked={liked}
+              likeCount={likeCount}
+              canLike={canLike}
+              onToggle={onToggleLike}
+            />
           </div>
         ) : (
           <div className="flex aspect-[1/1] w-full items-center justify-center rounded-[4px] bg-stone-100 text-sm text-slate-400">
@@ -155,42 +170,14 @@ function BuyActions({
   );
 }
 
-/** Acciones de la miga de pan: "me gusta" (o contador si no puede) + guardar. */
-function OfferLikeActions({
+/** Acciones de la miga de pan: guardar oferta. */
+function OfferSaveActions({
   offerId,
-  canLike,
-  liked,
-  likeCount,
-  onToggleLike,
 }: Readonly<{
   offerId: string;
-  canLike: boolean;
-  liked: boolean;
-  likeCount: number;
-  onToggleLike: () => void;
 }>) {
   return (
     <span className="ml-auto flex shrink-0 items-center gap-2">
-      {canLike ? (
-        <button
-          type="button"
-          onClick={onToggleLike}
-          className="inline-flex items-center gap-1.5 rounded-full border border-[#d9d5cf] bg-white px-3 py-1.5 text-sm font-bold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700"
-          title={liked ? "Quitar me gusta" : "Me gusta"}
-        >
-          <Heart
-            size={16}
-            className={cn(liked && "fill-rose-500 text-rose-500")}
-            aria-hidden
-          />
-          <span className="tabular-nums">{likeCount}</span>
-        </button>
-      ) : (
-        <span className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-400">
-          <Heart size={16} aria-hidden />
-          <span className="tabular-nums">{likeCount}</span>
-        </span>
-      )}
       <OfferSaveButton offerId={offerId} className="border-[#d9d5cf] bg-white" />
     </span>
   );
@@ -218,28 +205,13 @@ function OfferPriceBlock({
 }
 
 /**
- * Servicios: "Escribir al privado" (abre el chat operativo del vendedor). Sustituye
- * a las acciones de compra cuando la oferta no es comprable por carrito.
+ * Servicios sin precio fijo: mensaje informativo (la compra es por checkout).
  */
-function ServiceContactBlock({
-  onContactSeller,
-  contactBusy,
-}: Readonly<{
-  onContactSeller?: () => void;
-  contactBusy: boolean;
-}>) {
-  if (!onContactSeller) return null;
+function ServiceUnavailableBuyBlock() {
   return (
-    <div className="mt-8">
-      <button
-        type="button"
-        className="flex h-14 w-full items-center justify-center gap-2 rounded-[6px] bg-emerald-700 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-        onClick={onContactSeller}
-        disabled={contactBusy}
-      >
-        <MessageCircle size={18} aria-hidden />
-        {contactBusy ? "Abriendo chat…" : "Escribir al privado"}
-      </button>
+    <div className="mt-8 rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      Este servicio aún no tiene precio publicado. Vuelve más tarde o contacta a
+      la tienda.
     </div>
   );
 }
@@ -250,7 +222,7 @@ function ServiceContactBlock({
  * miga de pan, galería a la izquierda y columna de información a la derecha (pill
  * de categoría, nombre, precio grande en verde, precio unitario, presentación,
  * descripción, selector de cantidad y acciones "Añadir al carrito" / "Comprar
- * ahora" + "Logística Segura"). Debajo, un grid de otros productos de la tienda.
+ * ahora"). Debajo, un grid de otros productos de la tienda.
  */
 export function OfferProductDetail({
   offer,
@@ -266,8 +238,6 @@ export function OfferProductDetail({
   onToggleLike,
   onAddToCart,
   onBuyNow,
-  onContactSeller,
-  contactBusy = false,
   onOpenLightbox,
   relatedProducts,
 }: Readonly<{
@@ -290,12 +260,6 @@ export function OfferProductDetail({
   onToggleLike: () => void;
   onAddToCart: (qty: number) => void;
   onBuyNow: (qty: number) => void;
-  /**
-   * Servicios: abre el chat operativo con el vendedor ("Escribir al privado"). Si no
-   * se pasa (p. ej. la oferta es del propio dueño), no se muestra el botón.
-   */
-  onContactSeller?: () => void;
-  contactBusy?: boolean;
   onOpenLightbox: (url: string) => void;
   relatedProducts: StoreProduct[];
 }>) {
@@ -308,12 +272,10 @@ export function OfferProductDetail({
     productFicha?.mainBenefit?.trim() ||
     "";
   const canBuy = purchasable;
-
-  let logisticaLabel = "Logística Segura";
-  if (productFicha?.transportIncluded === true)
-    logisticaLabel = "Transporte incluido";
-  else if (productFicha?.transportIncluded === false)
-    logisticaLabel = "Transporte no incluido";
+  const displayPrice =
+    serviceFicha && (serviceFicha.fixedPrice ?? 0) > 0
+      ? `$${serviceFicha.fixedPrice!.toFixed(2)} USD`
+      : catalogDisplayPriceUsd(productFicha?.price?.trim() || offer.price);
 
   return (
     <div className="space-y-10">
@@ -334,19 +296,17 @@ export function OfferProductDetail({
             <span className="min-w-0 max-w-full truncate font-semibold text-slate-700">
               {offer.title}
             </span>
-            <OfferLikeActions
-              offerId={offer.id}
-              canLike={canLike}
-              liked={liked}
-              likeCount={likeCount}
-              onToggleLike={onToggleLike}
-            />
+            <OfferSaveActions offerId={offer.id} />
           </div>
 
           <ProductGallery
             gallery={gallery}
             alt={offer.title}
             onOpenLightbox={onOpenLightbox}
+            canLike={canLike}
+            liked={liked}
+            likeCount={likeCount}
+            onToggleLike={onToggleLike}
           />
         </div>
 
@@ -358,7 +318,7 @@ export function OfferProductDetail({
             {offer.title}
           </h1>
 
-          <OfferPriceBlock price={offer.price} measureLabel={measureLabel} />
+          <OfferPriceBlock price={displayPrice} measureLabel={measureLabel} />
 
           {measureLabel ? (
             <p className="mt-4 text-sm font-semibold text-slate-700">
@@ -388,16 +348,8 @@ export function OfferProductDetail({
           {canBuy ? (
             <BuyActions onAddToCart={onAddToCart} onBuyNow={onBuyNow} />
           ) : (
-            <ServiceContactBlock
-              onContactSeller={onContactSeller}
-              contactBusy={contactBusy}
-            />
+            <ServiceUnavailableBuyBlock />
           )}
-
-          <div className="mt-8 flex items-center gap-3 text-sm font-semibold text-slate-600">
-            <Truck className="h-5 w-5 text-emerald-700" aria-hidden />
-            <span>{logisticaLabel}</span>
-          </div>
         </aside>
       </section>
 

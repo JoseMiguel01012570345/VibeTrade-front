@@ -28,6 +28,16 @@ export function sortCatalogItemsByContextId<T extends { id: string }>(
   return [pick, ...items.filter((_, j) => j !== i)];
 }
 
+export const CATALOG_CURRENCY_CODE = "USD";
+
+/** Precio de catálogo con etiqueta USD (única moneda de la plataforma). */
+export function catalogDisplayPriceUsd(price: string | undefined | null): string {
+  const t = (price ?? "").trim();
+  if (!t) return "—";
+  const amount = t.replace(/\s+(USD|CUP|EUR|ARS|MLC)\s*$/i, "").trim();
+  return `${amount} ${CATALOG_CURRENCY_CODE}`;
+}
+
 function norm(s: string): string {
   return s.trim();
 }
@@ -121,13 +131,6 @@ export function serviceItemAcceptedMonedas(sv: {
   return [m];
 }
 
-function catalogMonedasMerchandiseString(item: {
-  monedas?: string[];
-  moneda?: string;
-}): string {
-  return catalogMonedasList(item).join(", ");
-}
-
 function pickLine(a: string, b: string): string {
   return norm(a) !== "" ? a : b;
 }
@@ -171,7 +174,6 @@ export function mergeServiceItemWithStoreService(
 ): ServiceItem {
   const anchorChanged =
     (item.linkedStoreServiceId ?? "").trim() !== (s.id ?? "").trim();
-  const catMonedas = catalogMonedasList(s);
   const fromItem =
     item.monedasAceptadas && item.monedasAceptadas.length > 0
       ? item.monedasAceptadas
@@ -181,21 +183,21 @@ export function mergeServiceItemWithStoreService(
   const mergedMonedas =
     fromItem && fromItem.length > 0
       ? fromItem
-      : catMonedas.length > 0
-        ? catMonedas
-        : undefined;
+      : s.currencyCode?.trim()
+        ? [s.currencyCode.trim().toUpperCase()]
+        : ["USD"];
   const next: ServiceItem = {
     ...item,
     linkedStoreServiceId: s.id,
     // Si el usuario cambió la ficha ancla, el tipo debe reflejar la nueva ficha (evita previews “pegados” al anterior).
-    tipoServicio: anchorChanged ? (s.tipoServicio ?? "") : pickLine(item.tipoServicio, s.tipoServicio),
+    tipoServicio: anchorChanged ? (s.nombreServicio ?? "") : pickLine(item.tipoServicio, s.nombreServicio),
     descripcion: pickLine(item.descripcion, s.descripcion),
     incluye: pickLine(item.incluye, s.incluye),
     noIncluye: pickLine(item.noIncluye, s.noIncluye),
     entregables: pickLine(item.entregables, s.entregables),
     propIntelectual: pickLine(item.propIntelectual, s.propIntelectual),
     monedasAceptadas: mergedMonedas,
-    moneda: pickLine(item.moneda, catalogMonedasMerchandiseString(s)),
+    moneda: pickLine(item.moneda, mergedMonedas.join(", ")),
     riesgos: mergeListBlock(
       item.riesgos.enabled,
       item.riesgos.items,
@@ -294,8 +296,8 @@ export function emptyStoreProductInput(): Omit<StoreProduct, "id" | "storeId"> {
     technicalSpecs: "",
     condition: "nuevo",
     price: "",
-    monedaPrecio: "",
-    monedas: [],
+    monedaPrecio: CATALOG_CURRENCY_CODE,
+    monedas: [CATALOG_CURRENCY_CODE],
     taxesShippingInstall: "",
     availability: "",
     warrantyReturn: "",
@@ -312,8 +314,11 @@ export function emptyStoreServiceInput(): Omit<StoreService, "id" | "storeId"> {
   return {
     published: false,
     category: "",
-    tipoServicio: "",
-    monedas: [],
+    nombreServicio: "",
+    fixedPrice: 0,
+    currencyCode: "USD",
+    recurrenceMonth: 1,
+    recurrenceDay: 1,
     descripcion: "",
     riesgos: { enabled: false, items: [] },
     incluye: "",

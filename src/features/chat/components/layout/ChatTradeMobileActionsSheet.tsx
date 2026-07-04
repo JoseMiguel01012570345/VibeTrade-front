@@ -1,28 +1,15 @@
-import { FileText, Loader2, PanelRight, Wallet, X } from "lucide-react";
-import { cn } from "@shared/lib/cn";
+import { PanelRight, X } from "lucide-react";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   setRailOpen: (open: boolean) => void;
-  isActingSeller: boolean;
-  showBuyerPayment: boolean;
-  chatPayPreparing: boolean;
-  onOpenBuyerPayment: () => Promise<void>;
-  chatActionsLocked: boolean;
-  onEmitAgreement: () => void;
 };
 
 export function ChatTradeMobileActionsSheet({
   open,
   onClose,
   setRailOpen,
-  isActingSeller,
-  showBuyerPayment,
-  chatPayPreparing,
-  onOpenBuyerPayment,
-  chatActionsLocked,
-  onEmitAgreement,
 }: Props) {
   if (!open) return null;
   return (
@@ -71,66 +58,8 @@ export function ChatTradeMobileActionsSheet({
                   className="shrink-0 text-[var(--primary)]"
                   aria-hidden
                 />
-                Panel (contratos y rutas)
+                Panel (rutas e integrantes)
               </button>
-              {showBuyerPayment ? (
-                <button
-                  type="button"
-                  className="flex min-h-12 w-full shrink-0 items-center justify-start gap-2.5 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] px-4 py-3 text-left text-[13px] font-bold text-[var(--text)] transition hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] disabled:cursor-not-allowed disabled:opacity-70"
-                  disabled={chatPayPreparing}
-                  aria-busy={chatPayPreparing}
-                  onClick={() => {
-                    void (async () => {
-                      await onOpenBuyerPayment();
-                      onClose();
-                    })();
-                  }}
-                >
-                  {chatPayPreparing ? (
-                    <Loader2
-                      size={18}
-                      className="shrink-0 animate-spin text-[var(--primary)]"
-                      aria-hidden
-                    />
-                  ) : (
-                    <Wallet
-                      size={18}
-                      className="shrink-0 text-[var(--primary)]"
-                      aria-hidden
-                    />
-                  )}
-                  {chatPayPreparing ? "Cargando…" : "Pagar"}
-                </button>
-              ) : null}
-              {isActingSeller ? (
-                <button
-                  type="button"
-                  className={cn(
-                    "flex min-h-12 w-full shrink-0 items-center justify-start gap-2.5 rounded-xl border px-4 py-3 text-left text-[13px] font-bold transition",
-                    chatActionsLocked
-                      ? "cursor-not-allowed border-[color-mix(in_oklab,var(--muted)_40%,var(--border))] opacity-65"
-                      : "border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))]",
-                  )}
-                  disabled={chatActionsLocked}
-                  title={
-                    chatActionsLocked
-                      ? "No disponible hasta registrar el pago"
-                      : undefined
-                  }
-                  onClick={() => {
-                    if (chatActionsLocked) return;
-                    onEmitAgreement();
-                    onClose();
-                  }}
-                >
-                  <FileText
-                    size={18}
-                    className="shrink-0 text-[var(--primary)]"
-                    aria-hidden
-                  />
-                  Emitir acuerdo
-                </button>
-              ) : null}
             </div>
           </div>
         </div>

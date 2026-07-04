@@ -1,10 +1,6 @@
 import type { RouteOfferPublicState } from '@features/market/logic/store/marketStoreTypes'
-import type { TradeAgreement } from '@features/chat/Dtos/agreement/tradeAgreementTypes';import type { RouteSheet } from '@features/chat/Dtos/route-sheet/routeSheetTypes';import type { RouteSheetFormPayload, RouteSheetSubmitResult } from '@features/chat/Dtos/route-sheet/routeSheetFormModalTypes';import type { StoreCatalog } from '@features/market/logic/storeCatalogTypes'
-import type { TradeAgreementDraft } from '@features/chat/Dtos/agreement/tradeAgreementTypes';import { ImageLightbox } from '@shared/components/media/ImageLightbox'
-import { AgreementDeleteRouteSheetsModal } from '../modals/AgreementDeleteRouteSheetsModal'
-import { ChatPaymentModal } from '../ChatPayment/ChatPaymentModal'
+import type { RouteSheet } from '@features/chat/Dtos/route-sheet/routeSheetTypes';import type { RouteSheetFormPayload, RouteSheetSubmitResult } from '@features/chat/Dtos/route-sheet/routeSheetFormModalTypes';import { ImageLightbox } from '@shared/components/media/ImageLightbox'
 import { TrustRiskEditConfirmModal } from '../modals/TrustRiskEditConfirmModal'
-import { TradeAgreementFormModal } from '../modals/TradeAgreementFormModal'
 import { RouteSheetFormModal } from '../modals/RouteSheetFormModal'
 import { PeerPartyExitedInfoModal } from '../modals/PeerPartyExitedInfoModal'
 import { CarrierTelemetryBridge } from '../logistics/CarrierTelemetryBridge'
@@ -32,25 +28,12 @@ type Props = {
   }
   lightboxUrl: string | null
   onCloseLightbox: () => void
-  agreementDeleteSheetsModal: null | { agreementId: string; title: string }
-  onCloseAgreementDeleteSheets: () => void
-  chatPayOpen: boolean
-  showBuyerPaymentInChat: boolean
-  acceptedAgreementsForPayment: TradeAgreement[]
-  onCloseChatPay: () => void
-  onPaymentFullySettled: () => void
   carrierTelemetryTargets: CarrierTarget[]
   pendingRouteSheetTrustConfirm: RouteSheet | null
   onCloseRouteSheetTrustConfirm: () => void
   onConfirmRouteSheetTrust: () => void
-  showAgreementForm: boolean
-  isActingSeller: boolean
-  sellerCatalog: StoreCatalog | null
-  agreementBeingEditedId: string | null
-  agreementFormInitial: TradeAgreementDraft | null
-  onCloseAgreementForm: () => void
-  onSubmitAgreement: (draft: TradeAgreementDraft) => Promise<boolean>
   showRouteSheetForm: boolean
+  isActingSeller: boolean
   routeSheetBeingEdited: RouteSheet | null
   routeSheetLockedByPaidAgreement: boolean
   routeSheetCarrierContactEditOnly: boolean
@@ -75,25 +58,12 @@ export function ChatPageModals({
   thread,
   lightboxUrl,
   onCloseLightbox,
-  agreementDeleteSheetsModal,
-  onCloseAgreementDeleteSheets,
-  chatPayOpen,
-  showBuyerPaymentInChat,
-  acceptedAgreementsForPayment,
-  onCloseChatPay,
-  onPaymentFullySettled,
   carrierTelemetryTargets,
   pendingRouteSheetTrustConfirm,
   onCloseRouteSheetTrustConfirm,
   onConfirmRouteSheetTrust,
-  showAgreementForm,
-  isActingSeller,
-  sellerCatalog,
-  agreementBeingEditedId,
-  agreementFormInitial,
-  onCloseAgreementForm,
-  onSubmitAgreement,
   showRouteSheetForm,
+  isActingSeller,
   routeSheetBeingEdited,
   routeSheetLockedByPaidAgreement,
   routeSheetCarrierContactEditOnly,
@@ -159,24 +129,6 @@ export function ChatPageModals({
 
       <ImageLightbox url={lightboxUrl} onClose={onCloseLightbox} />
 
-      <AgreementDeleteRouteSheetsModal
-        open={agreementDeleteSheetsModal !== null}
-        threadId={thread.id}
-        agreementId={agreementDeleteSheetsModal?.agreementId ?? ''}
-        agreementTitle={agreementDeleteSheetsModal?.title ?? ''}
-        onClose={onCloseAgreementDeleteSheets}
-        onAgreementDeleted={onCloseAgreementDeleteSheets}
-      />
-
-      <ChatPaymentModal
-        open={chatPayOpen && showBuyerPaymentInChat}
-        threadId={thread.id}
-        agreements={acceptedAgreementsForPayment}
-        routeSheets={thread.routeSheets ?? []}
-        onClose={onCloseChatPay}
-        onPaymentFullySettled={onPaymentFullySettled}
-      />
-
       {carrierTelemetryTargets.map((t) => (
         <CarrierTelemetryBridge
           key={`${t.agreementId}:${t.routeStopId}`}
@@ -192,17 +144,6 @@ export function ChatPageModals({
         open={pendingRouteSheetTrustConfirm !== null}
         onClose={onCloseRouteSheetTrustConfirm}
         onConfirm={onConfirmRouteSheetTrust}
-      />
-
-      <TradeAgreementFormModal
-        open={showAgreementForm && isActingSeller}
-        onClose={onCloseAgreementForm}
-        storeName={thread.store.name}
-        sellerCatalog={sellerCatalog}
-        contextOfferId={thread.offerId}
-        initialDraft={agreementBeingEditedId ? agreementFormInitial : null}
-        editingAgreementId={agreementBeingEditedId}
-        onSubmit={onSubmitAgreement}
       />
 
       <RouteSheetFormModal

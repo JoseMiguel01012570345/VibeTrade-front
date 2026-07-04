@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Trash2 } from "lucide-react";
 import { priceTag } from "../logic/formatMoney";
 import type { DetailedLine } from "../logic/useCartController";
+import { cartLineKey } from "../logic/cartStore";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { storeProductHref } from "@features/market/logic/store/storePath";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
@@ -17,12 +18,25 @@ export function CartLineRow({
   line: DetailedLine;
   isLast: boolean;
   store: Pick<StoreBadge, "id" | "name"> | null | undefined;
-  onSetQuantity: (productId: string, quantity: number) => void;
-  onRemove: (productId: string) => void;
+  onSetQuantity: (lineKey: string, quantity: number) => void;
+  onRemove: (lineKey: string) => void;
 }>) {
-  const offerHref = storeProductHref(store, line.productId);
-  const photo = line.photoUrl || line.product?.photoUrls[0] || "";
-  const measure = line.product?.model?.trim() || "Presentación estándar";
+  const lineKey = cartLineKey(line);
+  const offerHref =
+    line.kind === "product" && line.productId
+      ? storeProductHref(store, line.productId)
+      : line.kind === "service" && line.serviceId
+        ? storeProductHref(store, line.serviceId)
+        : "#";
+  const photo =
+    line.photoUrl ||
+    line.product?.photoUrls[0] ||
+    line.service?.photoUrls?.[0] ||
+    "";
+  const measure =
+    line.kind === "service"
+      ? "Servicio"
+      : line.product?.model?.trim() || "Presentación estándar";
   return (
     <div
       className={`flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between ${
@@ -70,7 +84,7 @@ export function CartLineRow({
           <button
             type="button"
             onClick={() =>
-              onSetQuantity(line.productId, Math.max(1, line.quantity - 1))
+              onSetQuantity(lineKey, Math.max(1, line.quantity - 1))
             }
             className="transition hover:text-emerald-700"
             aria-label={`Reducir cantidad de ${line.name}`}
@@ -82,7 +96,7 @@ export function CartLineRow({
           </span>
           <button
             type="button"
-            onClick={() => onSetQuantity(line.productId, line.quantity + 1)}
+            onClick={() => onSetQuantity(lineKey, line.quantity + 1)}
             className="transition hover:text-emerald-700"
             aria-label={`Aumentar cantidad de ${line.name}`}
           >
@@ -92,7 +106,7 @@ export function CartLineRow({
 
         <button
           type="button"
-          onClick={() => onRemove(line.productId)}
+          onClick={() => onRemove(lineKey)}
           className="text-[#d9532b] transition hover:text-[#bf4420]"
           aria-label={`Quitar ${line.name}`}
         >

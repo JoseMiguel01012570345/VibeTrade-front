@@ -1,5 +1,5 @@
 import {
-  catalogMonedasList,
+  CATALOG_CURRENCY_CODE,
   type StoreProduct,
   type StoreService,
 } from "@features/market/logic/storeCatalogTypes";
@@ -43,14 +43,8 @@ function matchesCatalogPublishedFilter(
   return !isPublished;
 }
 
-/** Monedas aceptadas + moneda del precio (si no está ya en la lista). */
-export function productCurrencyCodesForFilter(p: StoreProduct): string[] {
-  const list = catalogMonedasList(p);
-  const mp = p.monedaPrecio?.trim();
-  if (!mp) return list;
-  const up = mp.toUpperCase();
-  if (list.some((c) => c.trim().toUpperCase() === up)) return list;
-  return [...list, mp].sort((a, b) => a.localeCompare(b, "es"));
+export function productCurrencyCodesForFilter(_p: StoreProduct): string[] {
+  return [CATALOG_CURRENCY_CODE];
 }
 
 function matchesAcceptedMonedaFilter(
@@ -63,6 +57,10 @@ function matchesAcceptedMonedaFilter(
   );
   if (wanted.size === 0) return true;
   return codes.some((c) => wanted.has(c.trim().toUpperCase()));
+}
+
+export function serviceCurrencyCodesForFilter(_s: StoreService): string[] {
+  return [CATALOG_CURRENCY_CODE];
 }
 
 /** Códigos únicos para el select (hints del API + catálogo). */
@@ -83,7 +81,7 @@ export function collectCurrencyCodesForFilterOptions(
     }
   }
   for (const s of services) {
-    for (const x of catalogMonedasList(s)) {
+    for (const x of serviceCurrencyCodesForFilter(s)) {
       const t = x.trim();
       if (t) set.add(t);
     }
@@ -122,12 +120,12 @@ export function filterServicesBySectionText(
         f.catalogPublishedFilter,
         isStoreServicePublished(s),
       ) &&
-      (matchesNameQuery(s.tipoServicio, f.serviceNameQ) ||
+      (matchesNameQuery(s.nombreServicio, f.serviceNameQ) ||
         matchesNameQuery(s.descripcion, f.serviceNameQ)) &&
       matchesAnyCategoryFilter(s.category, f.serviceCategoryQ) &&
       matchesAcceptedMonedaFilter(
         f.acceptedMonedaQ,
-        catalogMonedasList(s),
+        serviceCurrencyCodesForFilter(s),
       ),
   );
 }
@@ -197,8 +195,8 @@ export function applyServicePriceRangeAndSort(
         order,
         () =>
           order === "asc"
-            ? a.tipoServicio.localeCompare(b.tipoServicio, "es")
-            : b.tipoServicio.localeCompare(a.tipoServicio, "es"),
+            ? a.nombreServicio.localeCompare(b.nombreServicio, "es")
+            : b.nombreServicio.localeCompare(a.nombreServicio, "es"),
       ),
     );
   }

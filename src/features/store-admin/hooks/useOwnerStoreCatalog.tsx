@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import {
-  catalogMonedasList,
+  CATALOG_CURRENCY_CODE,
   emptyStoreProductInput,
   emptyStoreServiceInput,
 } from "@features/market/logic/storeCatalogTypes";
@@ -46,9 +46,8 @@ export function useOwnerStoreCatalog(storeId: string, ownerId: string) {
     (s) => s.setOwnerStoreServicePublished,
   );
 
-  const { catalogCategories, catalogCurrencies } = useStoreCatalogMeta();
+  const { catalogCategories } = useStoreCatalogMeta();
   const catHints = catalogCategories;
-  const currencyHints = catalogCurrencies;
 
   const [productCtx, setProductCtx] = useState<{ productId?: string } | null>(
     null,
@@ -156,7 +155,6 @@ export function useOwnerStoreCatalog(storeId: string, ownerId: string) {
           open
           title={productEditing ? "Editar producto" : "Añadir producto"}
           categoryOptions={catHints}
-          currencyOptions={currencyHints}
           initial={
             productEditing
               ? {
@@ -169,8 +167,8 @@ export function useOwnerStoreCatalog(storeId: string, ownerId: string) {
                   condition: productEditing.condition,
                   price: productEditing.price,
                   transportIncluded: productEditing.transportIncluded,
-                  monedaPrecio: productEditing.monedaPrecio ?? "",
-                  monedas: catalogMonedasList(productEditing),
+                  monedaPrecio: CATALOG_CURRENCY_CODE,
+                  monedas: [CATALOG_CURRENCY_CODE],
                   taxesShippingInstall: productEditing.taxesShippingInstall,
                   availability: productEditing.availability,
                   warrantyReturn: productEditing.warrantyReturn,
@@ -240,14 +238,13 @@ export function useOwnerStoreCatalog(storeId: string, ownerId: string) {
           open
           title={serviceEditing ? "Editar servicio" : "Añadir servicio"}
           categoryOptions={catHints}
-          currencyOptions={currencyHints}
           initial={
             serviceEditing
               ? {
                   published: serviceEditing.published !== false,
                   category: serviceEditing.category,
-                  tipoServicio: serviceEditing.tipoServicio,
-                  monedas: catalogMonedasList(serviceEditing),
+                  nombreServicio: serviceEditing.nombreServicio,
+                  
                   descripcion: serviceEditing.descripcion,
                   riesgos: { ...serviceEditing.riesgos },
                   incluye: serviceEditing.incluye,

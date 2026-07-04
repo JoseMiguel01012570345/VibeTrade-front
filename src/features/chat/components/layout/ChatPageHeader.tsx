@@ -1,4 +1,4 @@
-import { ArrowLeft, BadgeCheck, FileText, Loader2, MoreVertical, PanelRight } from "lucide-react";
+import { ArrowLeft, BadgeCheck, MoreVertical, PanelRight } from "lucide-react";
 import type { NavigateFunction } from "react-router-dom";
 import { cn } from "@shared/lib/cn";
 import type { Thread } from "@features/market/logic/store/marketStoreTypes";
@@ -14,17 +14,12 @@ type Props = {
   profileDisplayNames: Record<string, string>;
   offerTitle?: string;
   isSocialThread: boolean;
+  isSupportThread?: boolean;
+  showLogisticsRail: boolean;
   railOpen: boolean;
   mobileChatActionsOpen: boolean;
   setMobileChatActionsOpen: (open: boolean | ((o: boolean) => boolean)) => void;
   setRailOpen: (open: boolean | ((o: boolean) => boolean)) => void;
-  isActingSeller: boolean;
-  /** Solo el comprador del hilo puede abrir el cobro (transportistas / terceros no). */
-  showBuyerPayment: boolean;
-  chatPayPreparing: boolean;
-  onOpenBuyerPayment: () => void;
-  chatActionsLocked: boolean;
-  onEmitAgreement: () => void;
 };
 
 export function ChatPageHeader({
@@ -35,17 +30,15 @@ export function ChatPageHeader({
   profileDisplayNames,
   offerTitle,
   isSocialThread,
+  isSupportThread,
+  showLogisticsRail,
   railOpen,
   mobileChatActionsOpen,
   setMobileChatActionsOpen,
   setRailOpen,
-  isActingSeller,
-  showBuyerPayment,
-  chatPayPreparing,
-  onOpenBuyerPayment,
-  chatActionsLocked,
-  onEmitAgreement,
 }: Props) {
+  const showMobileActions = !isSocialThread && showLogisticsRail;
+
   return (
     <div className="vt-card shrink-0 px-3 py-2 sm:px-[22px] sm:py-[18px]">
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:gap-x-3 md:gap-y-3">
@@ -79,19 +72,25 @@ export function ChatPageHeader({
                 </span>
               ) : null}
             </div>
+            {isSupportThread ? (
+              <p className="mt-1 text-xs font-medium text-[var(--muted)]">
+                Mensajería de soporte con la tienda (sin acuerdos ni rutas)
+              </p>
+            ) : null}
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-2" />
           </div>
           <button
             type="button"
             className={cn(
-              !isSocialThread && "min-[961px]:hidden",
+              showMobileActions && "min-[961px]:hidden",
               "grid size-11 shrink-0 place-items-center rounded-full border border-[var(--border)]",
               "bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[var(--muted)] shadow-sm transition",
               "hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] hover:text-[var(--text)]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]",
               railOpen && "pointer-events-none opacity-0",
+              !showMobileActions && "hidden",
             )}
-            aria-hidden={railOpen || undefined}
+            aria-hidden={railOpen || !showMobileActions || undefined}
             aria-expanded={mobileChatActionsOpen}
             aria-haspopup="dialog"
             aria-label="Abrir acciones del chat"
@@ -102,61 +101,23 @@ export function ChatPageHeader({
           </button>
         </div>
 
-        <div
-          className={cn(
-            "hidden w-full min-w-0 shrink-0 flex-wrap items-center gap-y-2 min-[961px]:ml-auto min-[961px]:w-auto min-[961px]:max-w-[52%] min-[961px]:justify-end lg:max-w-none",
-            !isSocialThread && "min-[961px]:flex",
-            isSocialThread && "min-[961px]:hidden",
-          )}
-        >
-          <button
-            type="button"
-            className="vt-btn vt-chat-rail-toggle min-h-10 shrink-0"
-            onClick={() => setRailOpen((o) => !o)}
-            title="Contratos y hojas de ruta"
+        {showLogisticsRail ? (
+          <div
+            className={cn(
+              "hidden w-full min-w-0 shrink-0 flex-wrap items-center gap-y-2 min-[961px]:ml-auto min-[961px]:w-auto min-[961px]:max-w-[52%] min-[961px]:justify-end lg:max-w-none",
+              "min-[961px]:flex",
+            )}
           >
-            <PanelRight size={16} /> Panel
-          </button>
-          {showBuyerPayment ? (
             <button
               type="button"
-              className="vt-btn min-h-10 shrink-0 inline-flex items-center justify-center gap-2"
-              disabled={chatPayPreparing}
-              aria-busy={chatPayPreparing}
-              onClick={onOpenBuyerPayment}
-              title="Pagar"
+              className="vt-btn vt-chat-rail-toggle min-h-10 shrink-0"
+              onClick={() => setRailOpen((o) => !o)}
+              title="Rutas e integrantes"
             >
-              {chatPayPreparing ? (
-                <>
-                  <Loader2
-                    size={16}
-                    className="shrink-0 animate-spin"
-                    aria-hidden
-                  />
-                  Cargando…
-                </>
-              ) : (
-                "Pagar"
-              )}
+              <PanelRight size={16} /> Panel
             </button>
-          ) : null}
-          {isActingSeller ? (
-            <button
-              type="button"
-              className="vt-btn min-h-10 min-w-0 shrink"
-              disabled={chatActionsLocked}
-              title={
-                chatActionsLocked
-                  ? "No disponible hasta registrar el pago"
-                  : "Emitir acuerdo como negocio"
-              }
-              onClick={onEmitAgreement}
-            >
-              <FileText size={16} className="shrink-0" />{" "}
-              <span className="truncate">Emitir acuerdo</span>
-            </button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

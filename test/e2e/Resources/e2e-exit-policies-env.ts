@@ -40,7 +40,6 @@ import {
   kickCarrierFromTramo,
   linkRouteSheetToAgreementViaUI,
   openContractByAgreementIndex,
-  openContractByAgreementTitle,
   openLinkedRouteSheetFromContractDetail,
   openRoutesRail,
   publishRouteSheetViaUI,

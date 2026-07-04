@@ -12,7 +12,7 @@ export type CatalogOfferPreview = {
   currency?: string | null;
   acceptedCurrencies: string[];
   photoUrls?: string[];
-  tipoServicio?: string;
+  nombreServicio?: string;
   shortDescription?: string;
   descripcion?: string;
   /** Solo emergentes: tramos para el mismo mapa que en el feed. */

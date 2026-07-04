@@ -11,7 +11,6 @@ import {
   releaseMediaObjectUrl,
 } from "@shared/services/media/mediaClient";
 import {
-  catalogMonedasList,
   type StoreService,
 } from "@features/market/logic/storeCatalogTypes";
 import {
@@ -31,7 +30,6 @@ import {
 } from "@shared/styles/modals/formModalStyles";
 import { cn } from "@shared/lib/cn";
 import { VtSelect } from "@shared/components/ui/VtSelect";
-import { formServiceQualifiesAsTransport } from "@features/market/logic/transportEligibility";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import {
   fixSplitLines,
@@ -48,8 +46,6 @@ type Props = Readonly<{
   initial: Omit<StoreService, "id" | "storeId">;
   /** Categorías del backend (GET /api/v1/market/catalog-categories). */
   categoryOptions?: string[];
-  /** Monedas del backend (GET /api/v1/market/currencies). */
-  currencyOptions?: string[];
   onClose: () => void;
   onSave: (v: Omit<StoreService, "id" | "storeId">) => void;
 }>;
@@ -59,7 +55,6 @@ export function ServiceEditorModal({
   title,
   initial,
   categoryOptions = [],
-  currencyOptions = [],
   onClose,
   onSave,
 }: Props) {
@@ -166,28 +161,6 @@ export function ServiceEditorModal({
     return [...merged].sort((a, b) => a.localeCompare(b, "es"));
   }, [categoryOptions, form.category]);
 
-  const monedaAceptada = (form.monedas?.[0] ?? catalogMonedasList(form)[0] ?? "").trim();
-
-  const currencySelectOptions = useMemo(() => {
-    const merged = new Set<string>(
-      currencyOptions.map((c) => c.trim()).filter(Boolean),
-    );
-    for (const c of form.monedas ?? []) {
-      const t = c.trim();
-      if (t) merged.add(t);
-    }
-    return [...merged].sort((a, b) => a.localeCompare(b, "es"));
-  }, [currencyOptions, form.monedas]);
-
-  const qualifiesTransport = useMemo(
-    () =>
-      formServiceQualifiesAsTransport({
-        category: form.category,
-        tipoServicio: form.tipoServicio,
-      }),
-    [form.category, form.tipoServicio],
-  );
-
   const servicePhotoUrls = useMemo(
     () => serviceCatalogImagePhotoUrlsFromSlots(photoSlots),
     [photoSlots],
@@ -241,41 +214,37 @@ export function ServiceEditorModal({
               <label
                 className={fieldRootWithInvalid(
                   showVal &&
-                    form.tipoServicio.trim().length < PROFILE_TITLE_MIN,
+                    form.nombreServicio.trim().length < PROFILE_TITLE_MIN,
                 )}
               >
-                <span className={fieldLabel}>Tipo de servicio</span>
+                <span className={fieldLabel}>Nombre de servicio</span>
                 <input
                   className="vt-input"
-                  value={form.tipoServicio}
+                  value={form.nombreServicio}
                   onChange={(e) =>
-                    setForm({ ...form, tipoServicio: e.target.value })
+                    setForm({ ...form, nombreServicio: e.target.value })
                   }
                 />
               </label>
               <label
                 className={fieldRootWithInvalid(
-                  showVal && monedaAceptada.length < 1,
+                  showVal && !(Number(form.fixedPrice) > 0),
                 )}
               >
-                <span className={fieldLabel}>Moneda aceptada</span>
-                <VtSelect
-                  value={monedaAceptada}
-                  onChange={(v) =>
+                <span className={fieldLabel}>Precio fijo (USD)</span>
+                <input
+                  className="vt-input"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.fixedPrice ?? ""}
+                  onChange={(e) =>
                     setForm({
                       ...form,
-                      monedas: v.trim() ? [v.trim()] : undefined,
+                      fixedPrice: Number.parseFloat(e.target.value) || 0,
+                      currencyCode: "USD",
                     })
                   }
-                  ariaLabel="Moneda aceptada para el pago (obligatorio)"
-                  placeholder="Seleccionar moneda…"
-                  options={[
-                    { value: "", label: "Seleccionar moneda…" },
-                    ...currencySelectOptions.map((c) => ({
-                      value: c,
-                      label: c,
-                    })),
-                  ]}
                 />
               </label>
             </div>
@@ -459,21 +428,15 @@ export function ServiceEditorModal({
             </label>
             <div
               className={fieldRootWithInvalid(
-                showVal &&
-                  qualifiesTransport &&
-                  servicePhotoUrls.filter((u) => u.trim()).length < 1,
+                showVal && servicePhotoUrls.filter((u) => u.trim()).length < 1,
               )}
             >
               <span className={fieldLabel}>
-                Fotos del servicio
-                {qualifiesTransport ?
-                  " (obligatorio: al menos una imagen)"
-                : " (opcional)"}
+                Fotos del servicio (obligatorio: al menos una imagen)
               </span>
               <p className="vt-muted mb-2 text-[11px] leading-snug">
-                {qualifiesTransport ?
-                  "Los servicios de transporte o logística deben incluir al menos una foto. Se muestran en la ficha pública y en la oferta."
-                : "Puedes sumar varias imágenes; se muestran en la ficha pública y en la oferta."}
+                Subí al menos una foto; se muestra en la ficha pública y en la
+                oferta.
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <input
@@ -616,11 +579,12 @@ export function ServiceEditorModal({
                   return;
                 }
                 setShowVal(false);
-                const monedas = catalogMonedasList({ monedas: form.monedas });
                 const snapshot: Omit<StoreService, "id" | "storeId"> = {
                   ...form,
                   photoUrls: serviceCatalogImagePhotoUrlsFromSlots(photoSlots),
-                  monedas: monedas.length ? monedas : undefined,
+                  currencyCode: "USD",
+                  recurrenceMonth: form.recurrenceMonth ?? 1,
+                  recurrenceDay: form.recurrenceDay ?? 1,
                   published: form.published !== false,
                   riesgos: {
                     enabled: form.riesgos.enabled && riesgosItems.length > 0,

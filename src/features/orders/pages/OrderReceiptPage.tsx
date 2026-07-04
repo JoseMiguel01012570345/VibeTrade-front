@@ -44,7 +44,17 @@ export function OrderReceiptPage() {
             {data.lines.map((l) => (
               <div key={l.id} className="flex items-center justify-between text-sm">
                 <span>
-                  {l.productName} <span className="vt-muted">× {l.quantity}</span>
+                  {l.productName}{" "}
+                  {l.lineKind === "service" ? (
+                    <span className="vt-muted">
+                      (servicio
+                      {l.recurrenceMonth && l.recurrenceDay
+                        ? ` · rec. ${l.recurrenceDay}/${l.recurrenceMonth}`
+                        : ""}
+                      )
+                    </span>
+                  ) : null}{" "}
+                  <span className="vt-muted">× {l.quantity}</span>
                 </span>
                 <span>{formatMoney(l.lineTotal, l.currencyCode)}</span>
               </div>

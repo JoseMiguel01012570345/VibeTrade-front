@@ -13,6 +13,7 @@ import {
 import {
   minimalOfferStoreFromChatThreadDto,
   VT_SOCIAL_PLACEHOLDER_OFFER_ID,
+  VT_SUPPORT_PLACEHOLDER_OFFER_ID,
 } from "@features/chat/logic/thread/chatThreadDtoFallbacks";
 import {
   buildPurchaseThreadSystemOnly,
@@ -120,7 +121,9 @@ export function useHydratePersistedChatThread({
         if (
           (!offer || !store) &&
           dto.offerId?.trim() !== VT_SOCIAL_PLACEHOLDER_OFFER_ID &&
-          dto.isSocialGroup !== true
+          dto.isSocialGroup !== true &&
+          dto.offerId?.trim() !== VT_SUPPORT_PLACEHOLDER_OFFER_ID &&
+          dto.isSupportThread !== true
         ) {
           const card = await queryClient.fetchQuery({
             queryKey: queryKeys.publicOfferCard(dto.offerId),
@@ -209,6 +212,10 @@ export function useHydratePersistedChatThread({
             ...(dto.isSocialGroup ||
             dto.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID
               ? { isSocialGroup: true as const }
+              : {}),
+            ...(dto.isSupportThread ||
+            dto.offerId?.trim() === VT_SUPPORT_PLACEHOLDER_OFFER_ID
+              ? { isSupportThread: true as const }
               : {}),
             ...(dto.socialGroupTitle !== undefined
               ? {

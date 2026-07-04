@@ -62,11 +62,15 @@ export type StoreService = {
   /** Si es `false`, la ficha no aparece en la vitrina pública de la tienda. Si falta, se trata como publicada. */
   published?: boolean;
   category: string;
-  tipoServicio: string;
-  /** Códigos de moneda aceptados (p. ej. USD, CUP); opcional. */
-  monedas?: string[];
-  /** @deprecated Persistencia antigua; preferir `monedas`. */
-  moneda?: string;
+  nombreServicio: string;
+  /** Precio fijo en checkout (USD). */
+  fixedPrice?: number;
+  /** Moneda del precio fijo; siempre USD. */
+  currencyCode?: string;
+  /** Mes (1–12) de la única recurrencia del contrato. */
+  recurrenceMonth?: number;
+  /** Día (1–31) de la única recurrencia del contrato. */
+  recurrenceDay?: number;
   descripcion: string;
   riesgos: { enabled: boolean; items: string[] };
   incluye: string;

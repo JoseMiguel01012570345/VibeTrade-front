@@ -1,19 +1,15 @@
 import { Button, Spinner } from "flowbite-react";
-import { MapPin, Truck } from "lucide-react";
+import { Truck } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 
-/** Acciones globales sobre hojas: alta y suscriptores. */
+/** Acciones globales sobre hojas: suscriptores. */
 export function RoutesRailEntryActions(props: {
   routeSheetsLoading: boolean;
-  isActingSeller: boolean;
-  onOpenNewRouteSheet: () => void;
   subscribersTargetSheetId: string | null;
   onOpenRouteSubscribers?: (routeSheetId: string) => void;
 }) {
   const {
     routeSheetsLoading,
-    isActingSeller,
-    onOpenNewRouteSheet,
     subscribersTargetSheetId,
     onOpenRouteSubscribers,
   } = props;
@@ -26,25 +22,11 @@ export function RoutesRailEntryActions(props: {
           Cargando hojas de ruta...
         </div>
       ) : null}
-      <div className="mb-3 flex flex-wrap gap-2">
-        {isActingSeller ? (
+      {subscribersTargetSheetId && onOpenRouteSubscribers ? (
+        <div className="mb-3 flex flex-wrap gap-2">
           <Button
             className={cn(
-              "min-w-0 flex-1 shrink-0 justify-center [&>span]:inline-flex [&>span]:items-center [&>span]:gap-2",
-            )}
-            color="blue"
-            onClick={onOpenNewRouteSheet}
-          >
-            <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="truncate">Nueva hoja de ruta</span>
-          </Button>
-        ) : null}
-
-        {subscribersTargetSheetId && onOpenRouteSubscribers ? (
-          <Button
-            className={cn(
-              "!inline-flex shrink-0 items-center justify-center gap-1.5",
-              !isActingSeller && "min-w-0 flex-1",
+              "!inline-flex shrink-0 items-center justify-center gap-1.5 min-w-0 flex-1",
             )}
             color="gray"
             onClick={() => onOpenRouteSubscribers(subscribersTargetSheetId)}
@@ -53,8 +35,8 @@ export function RoutesRailEntryActions(props: {
             <Truck className="h-4 w-4" aria-hidden />
             Suscriptores
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </>
   );
 }

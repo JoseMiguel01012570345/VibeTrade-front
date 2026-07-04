@@ -2,7 +2,7 @@ import type { TradeAgreement, TradeAgreementDraft } from "@features/chat/Dtos/ag
 import { normalizeExtraScope } from "@features/chat/logic/agreement/tradeAgreementTypes"
 import { hasValidationErrors, validateTradeAgreementDraft } from "@features/chat/logic/agreement/tradeAgreementValidation"
 import type { RouteSheetPayload } from "@features/chat/Dtos/route-sheet/routeSheetTypes";import type { ChatMessageDto, ChatThreadDto } from "@features/chat/Dtos/thread/chatApiTypes";
-import { CHAT_CANNOT_MESSAGE_SELF, createOrGetChatThread, deleteChatThread, deleteThreadTradeAgreement, fetchChatMessages, fetchChatThread, fetchChatThreadByOffer, fetchThreadRouteSheets, fetchThreadTradeAgreements, patchThreadTradeAgreement, postThreadTradeAgreement, postThreadTradeAgreementDuplicate, postThreadTradeAgreementRespond } from "@features/chat/api/chatApi";import { mapTradeAgreementApiToTradeAgreement } from "@features/chat/logic/agreement/tradeAgreementApiMapper"
+import { CHAT_CANNOT_MESSAGE_SELF, createOrGetChatThread, deleteChatThread, deleteThreadTradeAgreement, fetchChatMessages, fetchChatThread, fetchChatThreadByOffer, fetchThreadRouteSheets, fetchThreadTradeAgreements, patchThreadTradeAgreement, postThreadTradeAgreementDuplicate, postThreadTradeAgreementRespond } from "@features/chat/api/chatApi";import { mapTradeAgreementApiToTradeAgreement } from "@features/chat/logic/agreement/tradeAgreementApiMapper"
 import { disconnectFromChatThread } from "@features/chat/logic/realtime/chatRealtime"
 import {
   mapChatMessageDtoToMessage,
@@ -36,11 +36,12 @@ import {
   peerPartyExitFromDto,
 } from "@features/chat/logic/party-exit/threadPeerPartyExit"
 import { partyExpelledFieldsFromDto, markPartyExpelledOnThread } from "@features/chat/logic/party-exit/threadPartyExpelled"
-import { isOfferPublishedForBuyerChat } from "@features/market/logic/offerPublishedForBuyerChat"
+import { catalogOfferIsService, isOfferPublishedForBuyerChat } from "@features/market/logic/offerPublishedForBuyerChat"
 import { useAppStore } from '@features/auth/logic/useAppStore'
 import {
   minimalOfferStoreFromChatThreadDto,
   VT_SOCIAL_PLACEHOLDER_OFFER_ID,
+  VT_SUPPORT_PLACEHOLDER_OFFER_ID,
 } from "@features/chat/logic/thread/chatThreadDtoFallbacks";
 
 function extraFieldsPayloadForApi(
@@ -179,6 +180,13 @@ onThreadCreatedFromServer: (dto: ChatThreadDto) => {
       stores = { ...s.stores, [st.id]: st }
       store = stores[dto.storeId]
     }
+    const isSupport =
+      dto.isSupportThread === true ||
+      dto.offerId?.trim() === VT_SUPPORT_PLACEHOLDER_OFFER_ID
+    if (isSupport) {
+      const { offer: fo } = minimalOfferStoreFromChatThreadDto(dto)
+      offers = { ...offers, [fo.id]: { ...fo, storeId: dto.storeId } }
+    }
     if (!store) return s
     const nextThreads: typeof s.threads = { ...s.threads }
     nextThreads[dto.id] = {
@@ -195,6 +203,10 @@ onThreadCreatedFromServer: (dto: ChatThreadDto) => {
       ...(dto.isSocialGroup ||
       dto.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID
         ? { isSocialGroup: true as const }
+        : {}),
+      ...(dto.isSupportThread ||
+      dto.offerId?.trim() === VT_SUPPORT_PLACEHOLDER_OFFER_ID
+        ? { isSupportThread: true as const }
         : {}),
       ...(dto.socialGroupTitle !== undefined
         ? {
@@ -224,6 +236,13 @@ ensureThreadForOffer: async (offerId, opts) => {
 
   const threadCatalogId =
     (offer as { emergentBaseOfferId?: string }).emergentBaseOfferId?.trim() || offerId
+
+  if (
+    catalogOfferIsService(threadCatalogId, offer.storeId, s.storeCatalogs) ||
+    offer.tags?.some((t) => t.trim().toLowerCase() === "servicio")
+  ) {
+    return ''
+  }
 
   const viewerBid = (opts?.buyerId ?? '').trim()
   const sameOffer = Object.values(s.threads).filter(
@@ -260,6 +279,7 @@ ensureThreadForOffer: async (offerId, opts) => {
       | 'sellerExpelledAtUtc'
       | 'isSocialGroup'
       | 'socialGroupTitle'
+      | 'isSupportThread'
     >,
     contractsOverride?: TradeAgreement[],
     routeSheetsFromServer?: RouteSheetPayload[],
@@ -320,6 +340,10 @@ ensureThreadForOffer: async (offerId, opts) => {
         ...(participantDto?.isSocialGroup ||
         participantDto?.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID
           ? { isSocialGroup: true as const }
+          : {}),
+        ...(participantDto?.isSupportThread ||
+        participantDto?.offerId?.trim() === VT_SUPPORT_PLACEHOLDER_OFFER_ID
+          ? { isSupportThread: true as const }
           : {}),
         ...(participantDto && participantDto.socialGroupTitle !== undefined
           ? {
@@ -475,86 +499,12 @@ ensureThreadForOffer: async (offerId, opts) => {
   return id
 },
 
-emitTradeAgreement: async (threadId, draft) => {
+emitTradeAgreement: async (_threadId, _draft) => {
   const fail = (message?: string) =>
     ({ ok: false as const, message: message?.trim() || undefined })
-  const okOf = (agreementId: string) =>
-    ({ ok: true as const, agreementId })
-  if (hasValidationErrors(validateTradeAgreementDraft(draft))) {
-    return fail('Revisa el acuerdo: hay datos incorrectos.')
-  }
-  if (threadIsActionLocked(get().threads[threadId])) {
-    return fail('Este chat no permite enviar ese cambio.')
-  }
-  const title = draft.title.trim()
-  if (!title) return fail('Indica el título del acuerdo.')
-  const th0 = get().threads[threadId]
-  if (!th0 || threadIsActionLocked(th0)) {
-    return fail('Este chat no permite enviar ese cambio.')
-  }
-
-  const persist = !!getSessionToken() && threadId.startsWith('cth_')
-  if (persist) {
-    try {
-      const xfApi = extraFieldsPayloadForApi(draft);
-      const body = {
-        title: draft.title,
-        includeService: true,
-        services: draft.services,
-        ...(xfApi ? { extraFields: xfApi } : {}),
-      };
-      const created = await postThreadTradeAgreement(threadId, body)
-      await syncPersistedAgreementsAndMessages(set, get, threadId)
-      return okOf(created.id)
-    } catch (e: unknown) {
-      const apiMsg =
-        e instanceof Error && e.message.trim() ? e.message.trim() : undefined
-      return fail(apiMsg || 'No se pudo emitir el acuerdo.')
-    }
-  }
-
-  const aid = uid('agr')
-  set((s) => {
-    const th = s.threads[threadId]
-    if (!th || threadIsActionLocked(th)) return s
-    const agreement: TradeAgreement = {
-      ...draft,
-      title,
-      id: aid,
-      threadId,
-      issuedAt: Date.now(),
-      issuedByStoreId: th.storeId,
-      issuerLabel: th.store.name,
-      status: 'pending_buyer',
-      includeService: true,
-      services: draft.services,
-      extraFields: snapshotDraftExtraFields(draft),
-      routeSheetId: undefined,
-      hadBuyerAcceptance: false,
-    }
-    const msg: Message = {
-      id: uid('m'),
-      from: 'me',
-      type: 'agreement',
-      agreementId: aid,
-      title,
-      at: Date.now(),
-      read: false,
-    }
-    return {
-      ...s,
-      threads: {
-        ...s.threads,
-        [threadId]: {
-          ...th,
-          contracts: [...(th.contracts ?? []), agreement],
-          messages: [...th.messages, msg],
-          routeSheets: th.routeSheets ?? [],
-        },
-      },
-    }
-  })
-  return okOf(aid)
+  return fail(
+    'Los acuerdos en chat están deshabilitados. Comprá servicios por checkout.',
+  )
 },
 
 updatePendingTradeAgreement: async (threadId, agreementId, draft) => {

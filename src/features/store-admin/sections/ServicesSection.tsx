@@ -10,7 +10,6 @@ import {
   Wrench,
 } from "lucide-react";
 import type { StoreService } from "@features/market/logic/storeCatalogTypes";
-import { catalogMonedasList } from "@features/market/logic/storeCatalogTypes";
 import { downloadCsv } from "../logic/exportCsv";
 import {
   AdminCard,
@@ -62,7 +61,7 @@ export function ServicesSection({
       if (published === "draft" && isPublished(s)) return false;
       if (!q) return true;
       return (
-        s.tipoServicio.toLowerCase().includes(q) ||
+        s.nombreServicio.toLowerCase().includes(q) ||
         s.category.toLowerCase().includes(q) ||
         s.descripcion.toLowerCase().includes(q)
       );
@@ -77,12 +76,12 @@ export function ServicesSection({
   function exportCsv() {
     downloadCsv(
       "servicios.csv",
-      ["ID", "Servicio", "Categoría", "Monedas", "Publicado"],
+      ["ID", "Servicio", "Categoría", "Moneda", "Publicado"],
       filtered.map((s) => [
         s.id,
-        s.tipoServicio,
+        s.nombreServicio,
         s.category,
-        catalogMonedasList(s).join(" / "),
+        (s.currencyCode ?? "USD").trim().toUpperCase() || "USD",
         isPublished(s) ? "Sí" : "No",
       ]),
     );
@@ -179,7 +178,6 @@ export function ServicesSection({
                 <tr className="border-b border-gray-200 bg-gray-50/90 text-xs font-bold uppercase tracking-wider text-gray-600">
                   <th className="whitespace-nowrap px-4 py-3.5">Servicio</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Categoría</th>
-                  <th className="whitespace-nowrap px-4 py-3.5">Monedas</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Publicado</th>
                   <th className="whitespace-nowrap px-4 py-3.5 text-right">
                     Acciones
@@ -189,7 +187,6 @@ export function ServicesSection({
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((s) => {
                   const pub = isPublished(s);
-                  const monedas = catalogMonedasList(s);
                   return (
                     <tr
                       key={s.id}
@@ -202,7 +199,7 @@ export function ServicesSection({
                           </span>
                           <div className="min-w-0">
                             <p className="truncate font-bold text-gray-900">
-                              {s.tipoServicio}
+                              {s.nombreServicio}
                             </p>
                             <p className="max-w-[22rem] truncate text-xs text-gray-500">
                               {s.descripcion || "—"}
@@ -214,9 +211,6 @@ export function ServicesSection({
                         <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
                           {s.category || "—"}
                         </span>
-                      </td>
-                      <td className="px-4 py-4 text-gray-700">
-                        {monedas.length ? monedas.join(" · ") : "—"}
                       </td>
                       <td className="px-4 py-4">
                         {pub ? (

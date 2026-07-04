@@ -26,12 +26,12 @@ function storeCategoriesImplyTransport(categories: string[]): boolean {
 
 /** Categoría o tipo que califica como transporte / logística (sin mirar publicado). */
 export function formServiceQualifiesAsTransport(
-  form: Pick<StoreService, 'category' | 'tipoServicio'>,
+  form: Pick<StoreService, 'category' | 'nombreServicio'>,
 ): boolean {
-  const tipo = (form.tipoServicio ?? '').trim()
+  const nombre = (form.nombreServicio ?? '').trim()
   const cat = (form.category ?? '').trim()
   if (cat.length > 0 && TRANSPORT_TAXONOMY_RE.test(cat)) return true
-  if (tipo.length > 0 && SERVICE_TRANSPORT_HINT.test(tipo)) return true
+  if (nombre.length > 0 && SERVICE_TRANSPORT_HINT.test(nombre)) return true
   if (cat.length > 0 && SERVICE_TRANSPORT_HINT.test(cat)) return true
   return false
 }
@@ -103,7 +103,7 @@ export function listUserTransportServices(
     if (!cat?.services?.length) continue
     for (const s of cat.services) {
       if (!serviceQualifiesAsTransport(s)) continue
-      const label = [s.tipoServicio, s.category].filter((x) => x?.trim()).join(' · ') || 'Servicio de transporte'
+      const label = [s.nombreServicio, s.category].filter((x) => x?.trim()).join(' · ') || 'Servicio de transporte'
       out.push({ storeId: sid, serviceId: s.id, label })
     }
   }

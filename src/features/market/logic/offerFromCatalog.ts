@@ -33,7 +33,7 @@ export function offerFromStoreCatalogs(
       return {
         id: s.id,
         storeId: s.storeId,
-        title: s.tipoServicio.trim() || s.category || "Servicio",
+        title: s.nombreServicio.trim() || s.category || "Servicio",
         price: "",
         description: s.descripcion,
         tags,

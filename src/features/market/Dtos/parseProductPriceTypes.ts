@@ -1,6 +1,6 @@
 /** Campos de texto donde puede aparecer un importe (servicios no tienen `price` dedicado). */
 export type ServicePriceSource = {
-  tipoServicio: string;
+  nombreServicio: string;
   descripcion: string;
   incluye: string;
   noIncluye: string;

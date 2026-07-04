@@ -6,7 +6,7 @@ export function offerTitle(offer: CatalogOfferPreview): string {
     return offer.name?.trim() || offer.category || "Hoja de ruta";
   if (offer.kind === "product")
     return offer.name?.trim() || offer.category || "Producto";
-  return offer.tipoServicio?.trim() || offer.category || "Servicio";
+  return offer.nombreServicio?.trim() || offer.category || "Servicio";
 }
 
 export function offerSubtitle(offer: CatalogOfferPreview): string | null {

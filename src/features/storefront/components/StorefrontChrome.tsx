@@ -9,7 +9,7 @@ import {
 } from "@features/market/logic/store/storePath";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { useCartStore } from "@features/orders/logic/cartStore";
-import { StorefrontSupportModal } from "./StorefrontSupportModal";
+import { StorefrontSupportFab } from "./StorefrontSupportFab";
 import { StoreCategoriesOffcanvas } from "./StoreCategoriesOffcanvas";
 import { StoreCommentsModal } from "./StoreCommentsModal";
 
@@ -27,13 +27,13 @@ export function StorefrontHeader({
   store,
   query,
   onQueryChange,
-  onOpenSupport,
+  onSearchSubmit,
   onOpenCategories,
 }: Readonly<{
   store: StoreBadge;
   query?: string;
   onQueryChange?: (value: string) => void;
-  onOpenSupport?: () => void;
+  onSearchSubmit?: (term: string) => void;
   onOpenCategories?: () => void;
 }>) {
   const nav = useNavigate();
@@ -52,8 +52,11 @@ export function StorefrontHeader({
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (controlled) return;
-    const term = localQuery.trim();
+    const term = value.trim();
+    if (controlled) {
+      onSearchSubmit?.(term);
+      return;
+    }
     const suffix = term ? `?q=${encodeURIComponent(term)}` : "";
     nav(`${storeHref(store)}${suffix}`);
   }
@@ -61,9 +64,9 @@ export function StorefrontHeader({
   const storeHome = storeHref(store);
 
   /**
-   * "Categorías"/"Ayuda" hacen scroll a su sección dentro del storefront (ancla por
-   * id); en otras vistas (p. ej. la ficha) no existe la sección, así que navegamos
-   * al home de la tienda como alternativa.
+   * "Categorías" hace scroll a su sección dentro del storefront (ancla por id);
+   * en otras vistas (p. ej. la ficha) no existe la sección, así que navegamos al
+   * home de la tienda como alternativa.
    */
   function goToSection(id: string) {
     const el = document.getElementById(id);
@@ -131,16 +134,6 @@ export function StorefrontHeader({
               <span className="sm:hidden">Rastreo</span>
               <span className="hidden sm:inline">Rastrea tu envío</span>
             </Link>
-            <button
-              type="button"
-              className={topLinkClass}
-              onClick={() => {
-                if (onOpenSupport) onOpenSupport();
-                else goToSection("storefront-ayuda");
-              }}
-            >
-              Ayuda
-            </button>
             <Link
               to={storeCartHref(store)}
               className="relative flex h-10 w-10 shrink-0 items-center justify-center self-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-700 transition hover:border-emerald-200 hover:bg-emerald-100"
@@ -200,7 +193,7 @@ export function StorefrontFooter({
   const storeHomeHref = storeHref(store);
   return (
     <footer
-      id="storefront-ayuda"
+      id="storefront-footer"
       className="mt-12 scroll-mt-24 border-t border-emerald-100 bg-[#f0ebe6]"
     >
       {/* El pb extra reintegra el espacio de la barra inferior fija que antes daba
@@ -280,14 +273,15 @@ export function StorefrontChrome({
   store,
   query,
   onQueryChange,
+  onSearchSubmit,
   children,
 }: Readonly<{
   store: StoreBadge;
   query?: string;
   onQueryChange?: (value: string) => void;
+  onSearchSubmit?: (term: string) => void;
   children: ReactNode;
 }>) {
-  const [supportOpen, setSupportOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   return (
@@ -296,16 +290,12 @@ export function StorefrontChrome({
         store={store}
         query={query}
         onQueryChange={onQueryChange}
-        onOpenSupport={() => setSupportOpen(true)}
+        onSearchSubmit={onSearchSubmit}
         onOpenCategories={() => setCategoriesOpen(true)}
       />
       <div className="flex-1">{children}</div>
       <StorefrontFooter store={store} onOpenComments={() => setCommentsOpen(true)} />
-      <StorefrontSupportModal
-        open={supportOpen}
-        store={store}
-        onClose={() => setSupportOpen(false)}
-      />
+      <StorefrontSupportFab store={store} />
       <StoreCategoriesOffcanvas
         open={categoriesOpen}
         store={store}

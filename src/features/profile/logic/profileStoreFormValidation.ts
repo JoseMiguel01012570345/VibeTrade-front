@@ -1,10 +1,8 @@
 import type { OwnerStoreFormValues } from "@features/market/logic/store/marketStoreTypes"
-import { formServiceQualifiesAsTransport } from "@features/market/logic/transportEligibility"
 import { storeNameUrlIssue } from "@features/market/logic/store/storePath"
 import { normalizeOwnerWebsiteUrl } from "@shared/lib/websiteUrl"
-import {
-  catalogMonedasList,
-  type StoreCustomField,
+import type {
+  StoreCustomField,
 } from "@features/market/logic/storeCatalogTypes"
 import type {
   ProductFormSnapshot,
@@ -67,12 +65,6 @@ export function validateProductForm(form: ProductFormSnapshot): string | null {
     return 'Indica si el transporte está incluido en este producto.'
   }
   if (!norm(form.price)) return 'Completa el precio.'
-  if (!norm(form.monedaPrecio ?? '')) {
-    return 'Elige la moneda del precio (tipo de moneda).'
-  }
-  if (catalogMonedasList(form).length < 1) {
-    return 'Indica al menos una moneda aceptada para el pago.'
-  }
   if (norm(form.shortDescription).length < DESC_MIN) return `La descripción breve debe tener al menos ${DESC_MIN} caracteres.`
   if (norm(form.mainBenefit).length < DESC_MIN) return `El beneficio principal debe tener al menos ${DESC_MIN} caracteres.`
   if (norm(form.technicalSpecs).length < DESC_MIN) return `Las características técnicas deben tener al menos ${DESC_MIN} caracteres.`
@@ -99,9 +91,10 @@ export function validateServiceForm(
   dependenciasLines: string[],
 ): string | null {
   if (norm(form.category).length < TITLE_MIN) return 'Completa la categoría.'
-  if (norm(form.tipoServicio).length < TITLE_MIN) return 'Completa el tipo de servicio.'
-  if (catalogMonedasList(form).length < 1) {
-    return 'Indica al menos una moneda aceptada para el pago.'
+  if (norm(form.nombreServicio).length < TITLE_MIN) return 'Completa el nombre de servicio.'
+  if (form.published !== false) {
+    const price = form.fixedPrice ?? 0
+    if (!(price > 0)) return 'Indica un precio fijo mayor que cero (USD).'
   }
   if (norm(form.descripcion).length < DESC_MIN) return `La descripción del servicio debe tener al menos ${DESC_MIN} caracteres.`
 
@@ -134,8 +127,8 @@ export function validateServiceForm(
   if (customErr) return customErr
 
   const photoUrls = form.photoUrls?.map(norm).filter(Boolean) ?? []
-  if (formServiceQualifiesAsTransport(form) && photoUrls.length < 1) {
-    return 'Los servicios de transporte o logística requieren al menos una foto (subí una imagen desde tu dispositivo).'
+  if (photoUrls.length < 1) {
+    return 'Sube al menos una foto del servicio (imagen desde tu dispositivo).'
   }
 
   return null

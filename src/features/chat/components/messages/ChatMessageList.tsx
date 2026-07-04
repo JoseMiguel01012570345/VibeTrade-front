@@ -458,12 +458,7 @@ export function ChatMessageList({
                       }
                     : undefined
                 }
-                canRespondAgreement={
-                  m.type === "agreement" &&
-                  agreementDoc?.status === "pending_buyer" &&
-                  !chatActionsLocked &&
-                  viewerIsBuyer
-                }
+                canRespondAgreement={false}
                 agreementViewerIsBuyer={viewerIsBuyer}
                 onOpenAgreementRouteSheet={
                   m.type === "agreement" &&

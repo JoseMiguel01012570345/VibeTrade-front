@@ -299,7 +299,7 @@ function buildServiceItemText(sv: ServiceItem, catalog?: StoreCatalog | null): s
   parts.push(norm(sv.tipoServicio) || "SERVICIO (sin tipo)");
   parts.push("=======================================");
   if (linked) {
-    parts.push(`Anclaje al catalogo: ${linked.tipoServicio} - ${linked.category}`);
+    parts.push(`Anclaje al catalogo: ${linked.nombreServicio} - ${linked.category}`);
     parts.push("");
   }
   parts.push("[Identificacion y vigencia]");

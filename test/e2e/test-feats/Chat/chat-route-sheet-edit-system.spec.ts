@@ -11,7 +11,6 @@ import {
 import { openSellerPage } from "../../Resources/agreement-ui-helpers";
 import { openChatThread, openRailContracts, waitForChatReady } from "../../Resources/chat-helpers";
 import {
-  waitForThreadContractsLoaded,
   openRoutesRail,
   openRouteSheetDetail,
   clickEditRouteSheet,
@@ -21,7 +20,6 @@ import {
   sendCarrierInvites,
   linkRouteSheetToAgreementViaUI,
   publishRouteSheetViaUI,
-  openContractByAgreementIndex,
   openFirstUnlinkedContract,
 } from "../../Resources/route-sheet-ui-helpers";
 import {

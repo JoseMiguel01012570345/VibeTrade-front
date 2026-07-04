@@ -4,7 +4,7 @@ export type PublishedTransportServiceDto = {
   storeId: string
   storeName?: string
   category?: string
-  tipoServicio?: string
+  nombreServicio?: string
   descripcion?: string
   incluye?: string
   noIncluye?: string
@@ -12,7 +12,8 @@ export type PublishedTransportServiceDto = {
   propIntelectual?: string
   published?: boolean
   photoUrls?: string[]
-  monedas?: unknown
+  fixedPrice?: number
+  currencyCode?: string
   customFields?: unknown
   riesgos?: unknown
   dependencias?: unknown

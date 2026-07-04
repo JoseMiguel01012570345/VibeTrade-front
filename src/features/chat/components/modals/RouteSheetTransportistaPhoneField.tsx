@@ -361,7 +361,7 @@ export function RouteSheetTransportistaPhoneField({
                               )}
                             >
                               <div className="truncate">
-                                {(s.tipoServicio ?? "").trim() || "Servicio"}
+                                {(s.nombreServicio ?? "").trim() || "Servicio"}
                               </div>
                               <div className="vt-muted truncate text-[11px]">
                                 {(s.category ?? "").trim()}

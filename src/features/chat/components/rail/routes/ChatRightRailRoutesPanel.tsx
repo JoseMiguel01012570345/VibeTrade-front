@@ -55,7 +55,6 @@ type Props = {
   selRoute: RouteSheet | undefined;
   setSelRouteId: (id: string | null) => void;
   threadId: string;
-  onOpenNewRouteSheet: () => void;
   onEditRouteSheet: (sheet: RouteSheet) => void;
   toggleRouteStop: (
     threadId: string,
@@ -94,7 +93,6 @@ export function ChatRightRailRoutesPanel({
   selRoute,
   setSelRouteId,
   threadId,
-  onOpenNewRouteSheet,
   onEditRouteSheet,
   toggleRouteStop,
   deleteRouteSheet,
@@ -452,8 +450,6 @@ export function ChatRightRailRoutesPanel({
   return (
     <div className={bodyClassName}>
         <RoutesRailEntryActions
-          isActingSeller={isActingSeller}
-          onOpenNewRouteSheet={onOpenNewRouteSheet}
           onOpenRouteSubscribers={onOpenRouteSubscribers}
           routeSheetsLoading={routeSheetsLoading}
           subscribersTargetSheetId={subscribersTargetSheetId}

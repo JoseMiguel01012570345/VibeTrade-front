@@ -3,7 +3,7 @@ import type { PublishedTransportServiceDto } from "../Dtos/publishedTransportSer
 export function summarizeTransportServiceForInvite(
   s: PublishedTransportServiceDto,
 ): string {
-  const tipo = (s.tipoServicio ?? "").trim();
+  const tipo = (s.nombreServicio ?? "").trim();
   const cat = (s.category ?? "").trim();
   const store = (s.storeName ?? "").trim();
   const core = [tipo, cat].filter(Boolean).join(" · ");

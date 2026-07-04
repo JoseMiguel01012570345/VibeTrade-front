@@ -2,14 +2,20 @@ import { type MouseEvent } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
-  catalogMonedasList,
+  CATALOG_CURRENCY_CODE,
+  catalogDisplayPriceUsd,
   type StoreProduct,
 } from "@features/market/logic/storeCatalogTypes";
 import { parseProductPriceNumber } from "@features/market/logic/parseProductPrice";
 import { storeProductHref } from "@features/market/logic/store/storePath";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
-import { useCartStore } from "@features/orders/logic/cartStore";
+import { cartLineKey, useCartStore } from "@features/orders/logic/cartStore";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
+import { useAppStore } from "@features/auth/logic/useAppStore";
+import { toggleOfferLike } from "@features/market/api/offerEngagementApi";
+import { applyOfferLikeResult } from "@features/market/logic/applyOfferLikeResult";
+import { OfferImageLikeButton } from "@features/market/components/OfferImageLikeButton";
+import { getSessionToken } from "@shared/services/http/sessionToken";
 import { ProductCardCartIcon } from "./ProductCardCartIcon";
 
 function stopCardNavigation(e: MouseEvent) {
@@ -37,14 +43,35 @@ export function StorefrontProductCard({
   const addItem = useCartStore((s) => s.addItem);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
-
-  const monedas = catalogMonedasList(p);
-  const precioMoneda = p.monedaPrecio?.trim() || monedas[0] || "";
+  const isSessionActive = useAppStore((s) => s.isSessionActive);
+  const me = useAppStore((s) => s.me);
+  const openAuthModal = useAppStore((s) => s.openAuthModal);
+  const sessionReady = isSessionActive || !!getSessionToken();
   const storeName = useMarketStore((s) => s.stores[p.storeId]?.name);
+  const catalogLiked = useMarketStore((s) => {
+    const prod = s.storeCatalogs[p.storeId]?.products.find((x) => x.id === p.id);
+    return prod?.viewerLikedOffer;
+  });
+  const catalogLikeCount = useMarketStore((s) => {
+    const prod = s.storeCatalogs[p.storeId]?.products.find((x) => x.id === p.id);
+    return prod?.offerLikeCount;
+  });
+  const canLike = sessionReady && me.id !== "guest";
+  const liked = catalogLiked ?? p.viewerLikedOffer ?? false;
+  const likeCount = catalogLikeCount ?? p.offerLikeCount ?? 0;
+
+  const precioMoneda = CATALOG_CURRENCY_CODE;
   const offerHref = storeProductHref({ id: p.storeId, name: storeName ?? "" }, p.id);
 
-  const cartQuantity =
-    items.find((l) => l.productId === p.id)?.quantity ?? 0;
+  const cartLine = items.find(
+    (l) => l.kind === "product" && l.productId === p.id,
+  );
+  const cartQuantity = cartLine?.quantity ?? 0;
+  const lineKey = cartLine ? cartLineKey(cartLine) : cartLineKey({
+    kind: "product",
+    productId: p.id,
+    serviceId: undefined,
+  });
   const canPurchase = p.availability.trim().length > 0;
   const inStockDisplay = canPurchase;
 
@@ -62,6 +89,7 @@ export function StorefrontProductCard({
 
   function addOne() {
     addItem({
+      kind: "product",
       productId: p.id,
       storeId: p.storeId,
       name: p.name,
@@ -76,8 +104,8 @@ export function StorefrontProductCard({
   function onMinus(e: MouseEvent) {
     stopCardNavigation(e);
     if (cartQuantity <= 0) return;
-    if (cartQuantity <= 1) removeItem(p.id);
-    else setQuantity(p.id, cartQuantity - 1);
+    if (cartQuantity <= 1) removeItem(lineKey);
+    else setQuantity(lineKey, cartQuantity - 1);
   }
 
   function onPlus(e: MouseEvent) {
@@ -91,7 +119,7 @@ export function StorefrontProductCard({
       addOne();
       return;
     }
-    setQuantity(p.id, cartQuantity + 1);
+    else setQuantity(lineKey, cartQuantity + 1);
   }
 
   function onCartIcon(e: MouseEvent) {
@@ -104,30 +132,58 @@ export function StorefrontProductCard({
     addOne();
   }
 
+  function toggleLikeNow() {
+    if (!canLike) {
+      openAuthModal();
+      return;
+    }
+    void (async () => {
+      try {
+        const r = await toggleOfferLike(p.id);
+        applyOfferLikeResult(p.id, r, {
+          storeId: p.storeId,
+          catalogKind: "product",
+        });
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "No se pudo guardar el me gusta.",
+        );
+      }
+    })();
+  }
+
   return (
     <article
       className={`group flex h-full min-w-0 flex-col rounded-[18px] border border-[#d9d5cf] bg-white p-3 shadow-[0_12px_30px_rgba(33,37,41,0.05)] transition hover:-translate-y-1 hover:shadow-[0_20px_36px_rgba(33,37,41,0.08)] ${
         compact ? "rounded-[14px] p-2.5" : ""
       }`}
     >
-      <Link to={offerHref} className="block">
-        {p.photoUrls[0] ? (
-          <ProtectedMediaImg
-            src={p.photoUrls[0]}
-            alt={p.name}
-            wrapperClassName={`w-full overflow-hidden rounded-[14px] ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div
-            className={`flex w-full items-center justify-center rounded-[14px] bg-stone-100 text-sm text-slate-400 ${
-              compact ? "aspect-[1/1]" : "aspect-[4/3]"
-            }`}
-          >
-            Sin foto
-          </div>
-        )}
-      </Link>
+      <div className="relative">
+        <Link to={offerHref} className="block">
+          {p.photoUrls[0] ? (
+            <ProtectedMediaImg
+              src={p.photoUrls[0]}
+              alt={p.name}
+              wrapperClassName={`w-full overflow-hidden rounded-[14px] ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div
+              className={`flex w-full items-center justify-center rounded-[14px] bg-stone-100 text-sm text-slate-400 ${
+                compact ? "aspect-[1/1]" : "aspect-[4/3]"
+              }`}
+            >
+              Sin foto
+            </div>
+          )}
+        </Link>
+        <OfferImageLikeButton
+          liked={liked}
+          likeCount={likeCount}
+          canLike={canLike}
+          onToggle={toggleLikeNow}
+        />
+      </div>
 
       <div
         className={`flex min-w-0 flex-1 flex-col ${compact ? "px-1 pt-3" : "px-1 pt-4"}`}
@@ -199,14 +255,12 @@ export function StorefrontProductCard({
             className={`block truncate font-extrabold leading-none text-[#d9532b] ${
               compact ? "text-[1.1rem]" : "text-xl sm:text-[1.65rem]"
             }`}
-            title={`${p.price} ${precioMoneda}`.trim()}
+            title={catalogDisplayPriceUsd(p.price)}
           >
             {p.price}
-            {precioMoneda ? (
-              <span className="ml-1 text-sm font-bold text-[#d9532b]/80">
-                {precioMoneda}
-              </span>
-            ) : null}
+            <span className="ml-1 text-sm font-bold text-[#d9532b]/80">
+              {precioMoneda}
+            </span>
           </span>
         </div>
 

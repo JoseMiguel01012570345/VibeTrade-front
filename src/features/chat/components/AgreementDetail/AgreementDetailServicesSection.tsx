@@ -73,7 +73,7 @@ export function AgreementDetailServicesSection({
               <div className={cn(agrDetailRow, 'mt-2')}>
                 <div className={agrDetailLabel}>Anclaje al catálogo</div>
                 <div className={agrDetailValue}>
-                  {linked.tipoServicio} · {linked.category}
+                  {linked.nombreServicio} · {linked.category}
                 </div>
               </div>
             ) : null}

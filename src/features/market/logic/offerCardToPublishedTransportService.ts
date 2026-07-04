@@ -23,7 +23,7 @@ export function offerAndStoreToPublishedTransportServiceDto(
     photoUrls = [offer.imageUrl.trim()]
   }
 
-  const tipo = str('tipoServicio') || offer.title?.trim() || ''
+  const tipo = str('nombreServicio') || offer.title?.trim() || ''
   const cat =
     str('category') ||
     (offer.tags ?? []).find((t) => t !== 'Servicio' && t !== 'Producto') ||
@@ -36,7 +36,7 @@ export function offerAndStoreToPublishedTransportServiceDto(
     storeId: offer.storeId,
     storeName: store?.name?.trim() || undefined,
     category: cat || undefined,
-    tipoServicio: tipo || undefined,
+    nombreServicio: tipo || undefined,
     descripcion: descFromOffer || undefined,
     incluye: str('incluye') || undefined,
     noIncluye: str('noIncluye') || undefined,

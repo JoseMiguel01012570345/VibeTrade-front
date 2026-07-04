@@ -62,6 +62,28 @@ export async function createSocialGroupChatThread(
   return (await res.json()) as ChatThreadDto;
 }
 
+export async function createSupportThread(body: {
+  storeId: string;
+  motive?: string;
+  replyPhone?: string;
+  publicNumber?: string | null;
+}): Promise<ChatThreadDto> {
+  const res = await apiFetch("/api/v1/chat/threads/support", {
+    method: "POST",
+    body: JSON.stringify({
+      storeId: body.storeId,
+      motive: body.motive?.trim() || null,
+      replyPhone: body.replyPhone?.trim() || null,
+      publicNumber: body.publicNumber?.trim() || null,
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(chatApiErrorMessage(t, res.status));
+  }
+  return (await res.json()) as ChatThreadDto;
+}
+
 export async function createOrGetChatThread(
   offerId: string,
   purchaseIntent: boolean = true,

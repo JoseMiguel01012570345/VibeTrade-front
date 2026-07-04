@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { Heart, MessageCircle, Package, ShoppingCart, Truck } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-  catalogMonedasList,
+  CATALOG_CURRENCY_CODE,
+  catalogDisplayPriceUsd,
   type StoreProduct,
 } from "@features/market/logic/storeCatalogTypes";
 import { parseProductPriceNumber } from "@features/market/logic/parseProductPrice";
@@ -17,18 +18,17 @@ import { ImageLightbox } from "@shared/components/media/ImageLightbox";
 export function ProductDetailCard({ p }: { p: StoreProduct }) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const addToCart = useCartStore((s) => s.addItem);
-  const monedasAceptadas = catalogMonedasList(p);
-  const precioMoneda = p.monedaPrecio?.trim();
   const commentTotal = p.publicCommentCount ?? 0;
   const offerLikes = p.offerLikeCount ?? 0;
 
   function handleAddToCart() {
     addToCart({
+      kind: "product",
       productId: p.id,
       storeId: p.storeId,
       name: p.name,
       unitPrice: parseProductPriceNumber(p.price) ?? 0,
-      currencyCode: precioMoneda || monedasAceptadas[0] || "",
+      currencyCode: CATALOG_CURRENCY_CODE,
       quantity: 1,
       photoUrl: p.photoUrls[0],
     });
@@ -75,12 +75,7 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
           </div>
           <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
             <div className="min-w-0 text-sm font-bold text-[color-mix(in_oklab,var(--primary)_90%,var(--text))]">
-              {p.price}
-              {precioMoneda ? (
-                <span className="ml-1.5 font-semibold text-[var(--muted)]">
-                  · {precioMoneda}
-                </span>
-              ) : null}
+              {catalogDisplayPriceUsd(p.price)}
             </div>
             {p.transportIncluded !== undefined ? (
               <span
@@ -110,16 +105,6 @@ export function ProductDetailCard({ p }: { p: StoreProduct }) {
               </span>
             </Link>
           </div>
-          {monedasAceptadas.length > 0 &&
-          !(
-            precioMoneda &&
-            monedasAceptadas.length === 1 &&
-            monedasAceptadas[0] === precioMoneda
-          ) ? (
-            <div className="mt-1 text-[11px] font-semibold leading-snug text-[var(--muted)]">
-              Moneda aceptada: {monedasAceptadas.join(" · ")}
-            </div>
-          ) : null}
           <button
             type="button"
             className="vt-btn vt-btn-primary mt-3 inline-flex items-center gap-2"

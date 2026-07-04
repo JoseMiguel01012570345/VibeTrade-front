@@ -29,6 +29,7 @@ import {
   confirmedStopIdsForCarrier,
   viewerIsConfirmedRouteCarrierOnThread,
   resolveRouteOfferPublicForThread,
+  threadShowsRouteSheets,
   tramoNotifyLineFromOffer,
 } from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
 import { userHasTransportService } from "@features/market/logic/transportEligibility";
@@ -45,7 +46,7 @@ import {
   mergePublicProfileIntoAppStore,
   wasPublicProfileHydrated,
 } from "@features/auth/logic/publicProfile";
-import { VT_SOCIAL_PLACEHOLDER_OFFER_ID } from "@features/chat/logic/thread/chatThreadDtoFallbacks";
+import { VT_SOCIAL_PLACEHOLDER_OFFER_ID, VT_SUPPORT_PLACEHOLDER_OFFER_ID } from "@features/chat/logic/thread/chatThreadDtoFallbacks";
 import {
   mergeBuyerLabelFromThreadDto,
   mergeSocialThreadMembersIntoProfileStore,
@@ -87,7 +88,7 @@ export function ChatPage() {
 
   const respondTradeAgreement = useMarketStore((s) => s.respondTradeAgreement);
   /** Una sola suscripción: evita referenciar `thread` antes de inicializarlo si el catálogo depende del hilo. */
-  const { thread, sellerCatalog, routeOfferForThisThread, offerForThread } =
+  const { thread, routeOfferForThisThread, offerForThread } =
     useMarketStore(
       useShallow((s) => {
         const th = threadId ? s.threads[threadId] : undefined;
@@ -95,7 +96,6 @@ export function ChatPage() {
         const oid = th?.offerId?.trim();
         return {
           thread: th,
-          sellerCatalog: th ? (s.storeCatalogs[th.storeId] ?? null) : null,
           routeOfferForThisThread: ro,
           offerForThread: oid ? s.offers[oid] : undefined,
         };
@@ -106,9 +106,6 @@ export function ChatPage() {
   );
   const applyThreadRouteTramoSubscriptions = useMarketStore(
     (s) => s.applyThreadRouteTramoSubscriptions,
-  );
-  const refreshThreadTradeAgreements = useMarketStore(
-    (s) => s.refreshThreadTradeAgreements,
   );
   const stores = useMarketStore((s) => s.stores);
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
@@ -130,6 +127,29 @@ export function ChatPage() {
     (thread.isSocialGroup === true ||
       thread.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID);
 
+  const isSupportThread =
+    !!thread &&
+    (thread.isSupportThread === true ||
+      thread.offerId?.trim() === VT_SUPPORT_PLACEHOLDER_OFFER_ID);
+
+  const isNonCommercialThread = isSocialThread || isSupportThread;
+
+  const showLogisticsRail = useMarketStore(
+    useShallow((s) => {
+      const th = threadId ? s.threads[threadId] : undefined;
+      if (!th) return false;
+      if (
+        th.isSocialGroup === true ||
+        th.offerId?.trim() === VT_SOCIAL_PLACEHOLDER_OFFER_ID ||
+        th.isSupportThread === true ||
+        th.offerId?.trim() === VT_SUPPORT_PLACEHOLDER_OFFER_ID
+      ) {
+        return false;
+      }
+      return threadShowsRouteSheets(s, th);
+    }),
+  );
+
   const isSocialGroupCreator = useMemo(
     () =>
       isSocialThread &&
@@ -150,14 +170,6 @@ export function ChatPage() {
     () => acceptedAgreementsForPayment.map((c) => c.id),
     [acceptedAgreementsForPayment],
   );
-
-  /** Cobro en chat: solo comprador (el backend también lo exige). Oculta «Pagar» para transportistas y terceros. */
-  const showBuyerPaymentInChat = useMemo(() => {
-    if (!thread) return false;
-    if (isSocialThread) return false;
-    if (isActingSeller) return false;
-    return resolveBuyerUserId(thread, me.id) === me.id;
-  }, [thread, me.id, isSocialThread, isActingSeller]);
 
   const viewerIsConfirmedCarrier = useMarketStore(
     useShallow((s) =>
@@ -237,17 +249,16 @@ export function ChatPage() {
     setRailOpen,
   });
   /** Tras cobro: refrescar entregas + volver a intentar permiso de ubicación para telemetría. */
-  const [carrierGeoNonce, setCarrierGeoNonce] = useState(0);
   useEffect(() => {
-    if (thread?.isSocialGroup) setRailOpen(false);
-  }, [thread?.isSocialGroup]);
+    if (isNonCommercialThread || !showLogisticsRail) setRailOpen(false);
+  }, [isNonCommercialThread, showLogisticsRail]);
 
   const carrierTelemetryTargets = useCarrierThreadGeolocationAndTelemetry({
     threadId,
     viewerIsConfirmedCarrier,
     isSocialThread,
     meId: me.id,
-    refreshNonce: carrierGeoNonce,
+    refreshNonce: 0,
   });
   /** Panel izquierdo: suscriptores a la oferta de hoja de ruta (solo comprador). */
   const [routeSubscribersSheetId, setRouteSubscribersSheetId] = useState<
@@ -259,15 +270,6 @@ export function ChatPage() {
   >(null);
   const [focusRouteId, setFocusRouteId] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [chatPayOpen, setChatPayOpen] = useState(false);
-  /** Comprador: refresco de acuerdos/hojas antes de abrir el modal de pago. */
-  const [chatPayPreparing, setChatPayPreparing] = useState(false);
-
-  useEffect(() => {
-    if (!chatPayOpen || showBuyerPaymentInChat) return;
-    setChatPayOpen(false);
-  }, [chatPayOpen, showBuyerPaymentInChat]);
-  const [contractsLoading, setContractsLoading] = useState(false);
   const [routeSheetsLoading, setRouteSheetsLoading] = useState(false);
   const { refreshChatRouteData, syncThreadRouteSheetsFromSubscribersPanel } =
     useChatRouteRefresh({
@@ -275,8 +277,7 @@ export function ChatPage() {
       applyThreadRouteTramoSubscriptions,
       setRouteSheetsLoading,
     });
-  const chatPayOpenInFlightRef = useRef(false);
-  /** Móvil: acciones Panel / Pagar / Emitir desde FAB + hoja inferior (más alto útil para mensajes). */
+  /** Móvil: acciones Panel desde FAB + hoja inferior. */
   const [mobileChatActionsOpen, setMobileChatActionsOpen] = useState(false);
   const [socialMembersOpen, setSocialMembersOpen] = useState(false);
   const [socialRenameOpen, setSocialRenameOpen] = useState(false);
@@ -349,27 +350,6 @@ export function ChatPage() {
     }
   }, [thread?.id, socialRenameDraft]);
 
-  const openBuyerPaymentModal = useCallback(async () => {
-    if (chatPayOpenInFlightRef.current) return;
-    const tid = thread?.id?.trim();
-    if (!tid || !showBuyerPaymentInChat) return;
-    chatPayOpenInFlightRef.current = true;
-    setChatPayPreparing(true);
-    setContractsLoading(true);
-    try {
-      if (tid.startsWith("cth_")) {
-        await refreshThreadTradeAgreements(tid);
-      }
-    } catch {
-      toast.error("No se pudieron actualizar los datos del chat.");
-    } finally {
-      chatPayOpenInFlightRef.current = false;
-      setChatPayPreparing(false);
-      setContractsLoading(false);
-      setChatPayOpen(true);
-    }
-  }, [thread?.id, showBuyerPaymentInChat, refreshThreadTradeAgreements]);
-
   const [peerPartyExitedInfo, setPeerPartyExitedInfo] = useState<{
     roleLabel: string;
     reason: string;
@@ -388,7 +368,7 @@ export function ChatPage() {
     threadId,
     searchParams,
     setPersistThreadError,
-    setContractsLoading,
+    setContractsLoading: () => {},
     setRouteSheetsLoading,
   });
 
@@ -708,7 +688,7 @@ export function ChatPage() {
     routeOfferForThisThread.threadId === thread.id &&
     carrierHasChatAccessTramoOnOffer(routeOfferForThisThread, me.id);
   const carrierBlockedFromRouteChat =
-    !isSocialThread &&
+    !isNonCommercialThread &&
     hasTransportService &&
     !viewerIsThreadBuyer &&
     !viewerIsThreadSeller &&
@@ -729,7 +709,8 @@ export function ChatPage() {
         className={cn(
           "grid min-h-0 flex-1 grid-cols-1 items-stretch gap-5",
           "max-[960px]:grid-rows-[minmax(0,1fr)_auto] max-[960px]:gap-x-4 max-[960px]:row-gap-0",
-          !isSocialThread &&
+          !isNonCommercialThread &&
+            showLogisticsRail &&
             "min-[961px]:[grid-template-columns:minmax(520px,_1fr)_minmax(260px,_min(420px,_28vw))]",
         )}
       >
@@ -741,18 +722,16 @@ export function ChatPage() {
               store={store}
               me={me}
               profileDisplayNames={profileDisplayNames}
-              offerTitle={offerForThread?.title}
+              offerTitle={
+                isSupportThread ? "Soporte" : offerForThread?.title
+              }
               isSocialThread={isSocialThread}
+              isSupportThread={isSupportThread}
+              showLogisticsRail={showLogisticsRail}
               railOpen={railOpen}
               mobileChatActionsOpen={mobileChatActionsOpen}
               setMobileChatActionsOpen={setMobileChatActionsOpen}
               setRailOpen={setRailOpen}
-              isActingSeller={isActingSeller}
-              showBuyerPayment={showBuyerPaymentInChat}
-              chatPayPreparing={chatPayPreparing}
-              onOpenBuyerPayment={() => void openBuyerPaymentModal()}
-              chatActionsLocked={chatActionsLocked}
-              onEmitAgreement={trade.openEmitAgreement}
             />
 
             {chatActionsLocked ? (
@@ -761,10 +740,8 @@ export function ChatPage() {
                 role="status"
               >
                 Chat restringido: saliste con un acuerdo{" "}
-                <strong>aceptado</strong> y el pago aún no registrado. Solo
-                puedes usar <strong>Pago</strong> para continuar; no puedes
-                enviar mensajes ni crear acuerdos u hojas de ruta hasta
-                entonces.
+                <strong>aceptado</strong> pendiente de cierre. No puedes enviar
+                mensajes hasta que la operación se resuelva por otro canal.
               </div>
             ) : null}
 
@@ -827,15 +804,9 @@ export function ChatPage() {
             />
 
             <ChatTradeMobileActionsSheet
-              open={mobileChatActionsOpen && !isSocialThread}
+              open={mobileChatActionsOpen && showLogisticsRail}
               onClose={() => setMobileChatActionsOpen(false)}
               setRailOpen={(open) => setRailOpen(open)}
-              isActingSeller={isActingSeller}
-              showBuyerPayment={showBuyerPaymentInChat}
-              chatPayPreparing={chatPayPreparing}
-              onOpenBuyerPayment={openBuyerPaymentModal}
-              chatActionsLocked={chatActionsLocked}
-              onEmitAgreement={trade.openEmitAgreement}
             />
 
             <ChatSocialOverlays
@@ -861,7 +832,7 @@ export function ChatPage() {
           </div>
         </div>
 
-        {!isSocialThread ? (
+        {showLogisticsRail ? (
           <div
             className={cn(
               /* En móvil el drawer es fixed: hace falta z por encima del header (z-50) y del nav (z-60). */
@@ -880,7 +851,6 @@ export function ChatPage() {
             ) : null}
             <ChatRightRail
               threadId={thread.id}
-              threadStoreId={thread.storeId}
               buyerUserId={thread.buyerUserId ?? buyerForRail.id}
               sellerUserId={
                 thread.sellerUserId?.trim() ||
@@ -889,7 +859,6 @@ export function ChatPage() {
               }
               contracts={thread.contracts ?? []}
               routeSheets={thread.routeSheets ?? []}
-              contractsLoading={contractsLoading}
               routeSheetsLoading={routeSheetsLoading}
               actionsLocked={chatActionsLocked}
               buyer={buyerForRail}
@@ -899,7 +868,6 @@ export function ChatPage() {
               excludeSellerFromParticipants={excludeSellerFromParticipants}
               focusRouteId={focusRouteId}
               onConsumedRouteFocus={() => setFocusRouteId(null)}
-              onOpenNewRouteSheet={trade.onOpenNewRouteSheet}
               onEditRouteSheet={trade.onEditRouteSheet}
               toggleRouteStop={trade.onToggleRouteStop}
               isActingSeller={isActingSeller}
@@ -907,9 +875,6 @@ export function ChatPage() {
                 setRouteSubscribersSheetId(routeSheetId);
               }}
               onPersistedRouteDataRefresh={refreshChatRouteData}
-              onRequestEditAgreement={trade.onRequestEditAgreement}
-              onDuplicateAgreement={trade.onDuplicateAgreement}
-              onDeleteAgreement={trade.onDeleteAgreement}
             />
             {routeSubscribersSheetId && subsSheetWideLayout ? (
               <div className="absolute inset-0 z-[38] flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]">
@@ -943,28 +908,12 @@ export function ChatPage() {
         thread={thread}
         lightboxUrl={lightboxUrl}
         onCloseLightbox={() => setLightboxUrl(null)}
-        agreementDeleteSheetsModal={trade.agreementDeleteSheetsModal}
-        onCloseAgreementDeleteSheets={trade.onCloseAgreementDeleteSheets}
-        chatPayOpen={chatPayOpen}
-        showBuyerPaymentInChat={showBuyerPaymentInChat}
-        acceptedAgreementsForPayment={acceptedAgreementsForPayment}
-        onCloseChatPay={() => setChatPayOpen(false)}
-        onPaymentFullySettled={() => {
-          markThreadPaymentCompleted(thread.id);
-          setCarrierGeoNonce((n) => n + 1);
-        }}
         carrierTelemetryTargets={carrierTelemetryTargets}
         pendingRouteSheetTrustConfirm={trade.pendingRouteSheetTrustConfirm}
         onCloseRouteSheetTrustConfirm={trade.onCloseRouteSheetTrustConfirm}
         onConfirmRouteSheetTrust={trade.onConfirmRouteSheetTrust}
-        showAgreementForm={trade.showAgreementForm}
-        isActingSeller={isActingSeller}
-        sellerCatalog={sellerCatalog}
-        agreementBeingEditedId={trade.agreementBeingEditedId}
-        agreementFormInitial={trade.agreementFormInitial}
-        onCloseAgreementForm={trade.onCloseAgreementForm}
-        onSubmitAgreement={trade.onSubmitAgreement}
         showRouteSheetForm={trade.showRouteSheetForm}
+        isActingSeller={isActingSeller}
         routeSheetBeingEdited={trade.routeSheetBeingEdited}
         routeSheetLockedByPaidAgreement={trade.routeSheetLockedByPaidAgreement}
         routeSheetCarrierContactEditOnly={trade.routeSheetCarrierContactEditOnly}
