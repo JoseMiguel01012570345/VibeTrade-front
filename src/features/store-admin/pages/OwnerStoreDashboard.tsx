@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Link,
   Navigate,
@@ -76,28 +76,33 @@ export function OwnerStoreDashboard() {
   const authorized = isOwner || isStaffOfStore;
 
   // Se llama siempre (aunque no autorizado) para respetar el orden de hooks.
-  const ownerCatalog = useOwnerStoreCatalog(storeId ?? "", ownerId);
+  const reloadInventoryMeta = useCallback(async () => {
+    if (!storeId) return;
+    const [cats, sups] = await Promise.all([
+      fetchStoreCategories(storeId),
+      fetchStoreSuppliers(storeId),
+    ]);
+    setStoreCategories(cats);
+    setStoreSuppliers(sups);
+  }, [storeId]);
+
+  const ownerCatalog = useOwnerStoreCatalog(storeId ?? "", ownerId, {
+    categories: storeCategories,
+    suppliers: storeSuppliers,
+    onRefreshCategories: reloadInventoryMeta,
+  });
 
   useEffect(() => {
     if (!storeId) return;
     let cancelled = false;
     setInventoryMetaLoading(true);
-    void Promise.all([
-      fetchStoreCategories(storeId),
-      fetchStoreSuppliers(storeId),
-    ])
-      .then(([cats, sups]) => {
-        if (cancelled) return;
-        setStoreCategories(cats);
-        setStoreSuppliers(sups);
-      })
-      .finally(() => {
-        if (!cancelled) setInventoryMetaLoading(false);
-      });
+    void reloadInventoryMeta().finally(() => {
+      if (!cancelled) setInventoryMetaLoading(false);
+    });
     return () => {
       cancelled = true;
     };
-  }, [storeId]);
+  }, [storeId, reloadInventoryMeta]);
 
   const inventoryLoading =
     detailStatus === "loading" || inventoryMetaLoading || isFetching;

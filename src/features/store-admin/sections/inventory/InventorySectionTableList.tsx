@@ -6,8 +6,7 @@ import type {
 } from "@features/market/Dtos/storeCatalogTypes";
 import { catalogDisplayPriceUsd } from "@features/market/logic/storeCatalogTypes";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
-import { AdminPagination } from "../../components/AdminPagination";
-import { AdminGhostButton } from "../../components/StoreAdminUi";
+import { AdminGhostButton, AdminTableFooter, adminTableBodyClass, adminTableClass, adminTableHeadRowClass } from "../../components/StoreAdminUi";
 import {
   categoryDisplay,
   formatInventoryId,
@@ -48,9 +47,9 @@ export function InventorySectionTableList({
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[72rem] border-collapse text-left text-sm">
+        <table className={`${adminTableClass} min-w-[72rem]`}>
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-100/90 text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-gray-700 dark:bg-gray-800/90 dark:text-slate-300">
+            <tr className={adminTableHeadRowClass}>
               <th className="whitespace-nowrap px-4 py-3.5">Producto</th>
               <th className="whitespace-nowrap px-4 py-3.5">Categoría</th>
               <th className="whitespace-nowrap px-4 py-3.5">Precio</th>
@@ -60,7 +59,7 @@ export function InventorySectionTableList({
               <th className="whitespace-nowrap px-4 py-3.5 text-right">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          <tbody className={adminTableBodyClass}>
             {pg.slice.length === 0 ? (
               <tr>
                 <td
@@ -184,15 +183,13 @@ export function InventorySectionTableList({
         </table>
       </div>
 
-      <div className="border-t border-gray-100 px-4 py-4 dark:border-gray-800">
-        <AdminPagination
-          page={pg.page}
-          totalPages={pg.totalPages}
-          totalItems={pg.total}
-          onPageChange={pg.setPage}
-          itemLabel="productos"
-        />
-      </div>
+      <AdminTableFooter
+        page={pg.page}
+        totalPages={pg.totalPages}
+        totalItems={pg.total}
+        onPageChange={pg.setPage}
+        itemLabel="productos"
+      />
     </>
   );
 }

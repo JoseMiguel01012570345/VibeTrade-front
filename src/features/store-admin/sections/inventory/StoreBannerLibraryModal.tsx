@@ -5,6 +5,7 @@ import {
   createStoreBanner,
   deleteStoreBanner,
   fetchStoreBannersAdmin,
+  patchStoreBanner,
 } from "@features/market/api/storeInventoryApi";
 import type { StoreBannerDto } from "@features/market/Dtos/storeCatalogTypes";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
@@ -33,6 +34,7 @@ function BannerColumn({
   uploading,
   busyIds,
   onUpload,
+  onToggleActive,
   onDelete,
 }: {
   kind: BannerKind;
@@ -41,6 +43,7 @@ function BannerColumn({
   uploading: boolean;
   busyIds: Set<string>;
   onUpload: (file: File) => void;
+  onToggleActive: (banner: StoreBannerDto, next: boolean) => void;
   onDelete: (banner: StoreBannerDto) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,7 +86,11 @@ function BannerColumn({
           {banners.map((b) => (
             <li
               key={b.id}
-              className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900"
+              className={`flex items-center gap-3 rounded-lg border bg-white p-2 dark:bg-gray-900 ${
+                b.active
+                  ? "border-emerald-300 dark:border-emerald-700/70"
+                  : "border-gray-200 dark:border-gray-700"
+              } ${busyIds.has(b.id) ? "opacity-60" : ""}`}
             >
               <span className="h-14 w-24 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-100">
                 <ProtectedMediaImg
@@ -97,9 +104,16 @@ function BannerColumn({
                 <p className="truncate text-xs font-semibold text-gray-800 dark:text-gray-200">
                   Orden {b.sortOrder}
                 </p>
-                <p className="text-[11px] text-gray-500">
-                  {b.active ? "Activo" : "Inactivo"}
-                </p>
+                <label className="mt-1 inline-flex cursor-pointer items-center gap-2 text-[11px] font-medium text-gray-600 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={b.active}
+                    disabled={busyIds.has(b.id)}
+                    onChange={(e) => onToggleActive(b, e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span>{b.active ? "Activo" : "Inactivo"}</span>
+                </label>
               </div>
               <button
                 type="button"
@@ -184,12 +198,35 @@ export function StoreBannerLibraryModal({
         mediaUrl: mediaApiUrl(uploaded.id),
         sortOrder: banners.filter((b) => b.kind === kind).length,
       });
-      toast.success("Banner subido correctamente.");
+      toast.success("Banner subido correctamente. Actívalo cuando quieras mostrarlo.");
       await reload();
     } catch {
       toast.error("No se pudo subir el banner.");
     } finally {
       setUploadingKind(null);
+    }
+  }
+
+  async function handleToggleActive(
+    banner: StoreBannerDto,
+    next: boolean,
+  ): Promise<void> {
+    markBusy(banner.id, true);
+    setBanners((prev) =>
+      prev.map((b) => (b.id === banner.id ? { ...b, active: next } : b)),
+    );
+    try {
+      await patchStoreBanner(storeId, banner.id, { active: next });
+      toast.success(next ? "Banner activado." : "Banner desactivado.");
+    } catch {
+      toast.error("No se pudo actualizar el banner.");
+      setBanners((prev) =>
+        prev.map((b) =>
+          b.id === banner.id ? { ...b, active: banner.active } : b,
+        ),
+      );
+    } finally {
+      markBusy(banner.id, false);
     }
   }
 
@@ -237,6 +274,7 @@ export function StoreBannerLibraryModal({
                 uploading={uploadingKind === "main"}
                 busyIds={busyIds}
                 onUpload={(file) => void handleUpload("main", file)}
+                onToggleActive={(b, next) => void handleToggleActive(b, next)}
                 onDelete={(b) => void handleDelete(b)}
               />
               <BannerColumn
@@ -246,6 +284,7 @@ export function StoreBannerLibraryModal({
                 uploading={uploadingKind === "secondary"}
                 busyIds={busyIds}
                 onUpload={(file) => void handleUpload("secondary", file)}
+                onToggleActive={(b, next) => void handleToggleActive(b, next)}
                 onDelete={(b) => void handleDelete(b)}
               />
             </div>

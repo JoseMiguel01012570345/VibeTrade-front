@@ -16,10 +16,18 @@ import {
   AdminEmptyState,
   AdminGhostButton,
   AdminPrimaryButton,
+  AdminTableFooter,
   AdminTableFrame,
+  adminTableBodyClass,
+  adminTableClass,
+  adminTableHeadRowClass,
   SectionHeader,
   SummaryCard,
 } from "../components/StoreAdminUi";
+import {
+  DEFAULT_ADMIN_PAGE_SIZE,
+  usePagedSlice,
+} from "../logic/usePagedSlice";
 
 type PublishedFilter = "all" | "published" | "draft";
 
@@ -67,6 +75,13 @@ export function ServicesSection({
       );
     });
   }, [services, query, category, published]);
+
+  const pg = usePagedSlice(filtered, DEFAULT_ADMIN_PAGE_SIZE, [
+    filtered.length,
+    query,
+    category,
+    published,
+  ]);
 
   const publishedCount = useMemo(
     () => services.filter(isPublished).length,
@@ -173,9 +188,9 @@ export function ServicesSection({
       ) : (
         <AdminCard>
           <AdminTableFrame>
-            <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
+            <table className={`${adminTableClass} min-w-[44rem]`}>
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/90 text-xs font-bold uppercase tracking-wider text-gray-600">
+                <tr className={adminTableHeadRowClass}>
                   <th className="whitespace-nowrap px-4 py-3.5">Servicio</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Categoría</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Publicado</th>
@@ -184,8 +199,8 @@ export function ServicesSection({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filtered.map((s) => {
+              <tbody className={adminTableBodyClass}>
+                {pg.slice.map((s) => {
                   const pub = isPublished(s);
                   return (
                     <tr
@@ -262,9 +277,13 @@ export function ServicesSection({
               </tbody>
             </table>
           </AdminTableFrame>
-          <div className="border-t border-gray-100 px-4 py-3 text-xs text-gray-500">
-            Mostrando {filtered.length} de {services.length} servicios
-          </div>
+          <AdminTableFooter
+            page={pg.page}
+            totalPages={pg.totalPages}
+            totalItems={pg.total}
+            onPageChange={pg.setPage}
+            itemLabel="servicios"
+          />
         </AdminCard>
       )}
     </div>

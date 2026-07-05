@@ -10,11 +10,19 @@ import {
   AdminEmptyState,
   AdminGhostButton,
   AdminPrimaryButton,
+  AdminTableFooter,
   AdminTableFrame,
+  adminTableBodyClass,
+  adminTableClass,
+  adminTableHeadRowClass,
   SectionHeader,
   StatusDot,
   SummaryCard,
 } from "../components/StoreAdminUi";
+import {
+  DEFAULT_ADMIN_PAGE_SIZE,
+  usePagedSlice,
+} from "../logic/usePagedSlice";
 
 export function AffiliatesSection({ storeId }: { storeId: string }) {
   const affiliatesAll = useStoreAdminExtras((s) => s.affiliates);
@@ -27,6 +35,8 @@ export function AffiliatesSection({ storeId }: { storeId: string }) {
     [affiliatesAll, storeId],
   );
   const activeCount = affiliates.filter((a) => a.active).length;
+
+  const pg = usePagedSlice(affiliates, DEFAULT_ADMIN_PAGE_SIZE, [affiliates.length]);
 
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -132,9 +142,9 @@ export function AffiliatesSection({ storeId }: { storeId: string }) {
       ) : (
         <AdminCard>
           <AdminTableFrame>
-            <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
+            <table className={`${adminTableClass} min-w-[40rem]`}>
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/90 text-xs font-bold uppercase tracking-wider text-gray-600">
+                <tr className={adminTableHeadRowClass}>
                   <th className="whitespace-nowrap px-4 py-3.5">Afiliado</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Código</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Comisión</th>
@@ -144,8 +154,8 @@ export function AffiliatesSection({ storeId }: { storeId: string }) {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {affiliates.map((a) => (
+              <tbody className={adminTableBodyClass}>
+                {pg.slice.map((a) => (
                   <tr key={a.id} className="bg-white hover:bg-gray-50/80">
                     <td className="px-4 py-4 font-bold text-gray-900">
                       {a.name}
@@ -199,6 +209,13 @@ export function AffiliatesSection({ storeId }: { storeId: string }) {
               </tbody>
             </table>
           </AdminTableFrame>
+          <AdminTableFooter
+            page={pg.page}
+            totalPages={pg.totalPages}
+            totalItems={pg.total}
+            onPageChange={pg.setPage}
+            itemLabel="afiliados"
+          />
         </AdminCard>
       )}
     </div>

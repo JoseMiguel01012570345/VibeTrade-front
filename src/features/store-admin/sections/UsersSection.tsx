@@ -10,11 +10,19 @@ import {
   AdminEmptyState,
   AdminGhostButton,
   AdminPrimaryButton,
+  AdminTableFooter,
   AdminTableFrame,
+  adminTableBodyClass,
+  adminTableClass,
+  adminTableHeadRowClass,
   SectionHeader,
   StatusDot,
   SummaryCard,
 } from "../components/StoreAdminUi";
+import {
+  DEFAULT_ADMIN_PAGE_SIZE,
+  usePagedSlice,
+} from "../logic/usePagedSlice";
 
 export function UsersSection({ storeId }: { storeId: string }) {
   const staffAll = useStoreAdminExtras((s) => s.staff);
@@ -28,6 +36,8 @@ export function UsersSection({ storeId }: { storeId: string }) {
     [staffAll, storeId],
   );
   const activeCount = staff.filter((s) => s.active).length;
+
+  const pg = usePagedSlice(staff, DEFAULT_ADMIN_PAGE_SIZE, [staff.length]);
 
   const [showForm, setShowForm] = useState(false);
   const [displayName, setDisplayName] = useState("");
@@ -138,9 +148,9 @@ export function UsersSection({ storeId }: { storeId: string }) {
       ) : (
         <AdminCard>
           <AdminTableFrame>
-            <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
+            <table className={`${adminTableClass} min-w-[40rem]`}>
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/90 text-xs font-bold uppercase tracking-wider text-gray-600">
+                <tr className={adminTableHeadRowClass}>
                   <th className="whitespace-nowrap px-4 py-3.5">Usuario</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Nombre</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Estado</th>
@@ -150,8 +160,8 @@ export function UsersSection({ storeId }: { storeId: string }) {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {staff.map((s) => (
+              <tbody className={adminTableBodyClass}>
+                {pg.slice.map((s) => (
                   <tr key={s.id} className="bg-white hover:bg-gray-50/80">
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
@@ -217,6 +227,13 @@ export function UsersSection({ storeId }: { storeId: string }) {
               </tbody>
             </table>
           </AdminTableFrame>
+          <AdminTableFooter
+            page={pg.page}
+            totalPages={pg.totalPages}
+            totalItems={pg.total}
+            onPageChange={pg.setPage}
+            itemLabel="usuarios"
+          />
         </AdminCard>
       )}
     </div>

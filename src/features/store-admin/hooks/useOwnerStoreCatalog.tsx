@@ -2,27 +2,39 @@ import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import {
-  CATALOG_CURRENCY_CODE,
-  emptyStoreProductInput,
   emptyStoreServiceInput,
 } from "@features/market/logic/storeCatalogTypes";
+import type {
+  StoreCategoryDto,
+  StoreSupplierDto,
+} from "@features/market/Dtos/storeCatalogTypes";
 import {
   deleteStoreProductApi,
   deleteStoreServiceApi,
   putStoreProduct,
   putStoreService,
 } from "@features/market/api/marketPersistence";
-import { ProductEditorModal } from "@features/profile/components/stores/ProductEditorModal";
+import { ProductModalDetail } from "../components/ProductModalDetail";
 import { ServiceEditorModal } from "@features/profile/components/stores/ServiceEditorModal";
 import { ConfirmDeleteModal } from "@shared/components/ui/ConfirmDeleteModal";
 import { useStoreCatalogMeta } from "@features/market/hooks/useStorePageDetail";
+
+export type OwnerInventoryMeta = {
+  categories: StoreCategoryDto[];
+  suppliers: StoreSupplierDto[];
+  onRefreshCategories: () => Promise<void>;
+};
 
 /**
  * Encapsula la gestión de catálogo del dueño (alta/edición/baja/publicación de
  * productos y servicios) + los modales de edición y confirmación. Extraído del
  * flujo de `StorePage` para reutilizarlo en las secciones del panel de la tienda.
  */
-export function useOwnerStoreCatalog(storeId: string, ownerId: string) {
+export function useOwnerStoreCatalog(
+  storeId: string,
+  ownerId: string,
+  inventoryMeta?: OwnerInventoryMeta,
+) {
   const catalog = useMarketStore((s) => s.storeCatalogs[storeId]);
 
   const addOwnerStoreProduct = useMarketStore((s) => s.addOwnerStoreProduct);
@@ -149,85 +161,58 @@ export function useOwnerStoreCatalog(storeId: string, ownerId: string) {
         }}
       />
 
-      {productCtx !== null ? (
-        <ProductEditorModal
+      {productCtx !== null && inventoryMeta ? (
+        <ProductModalDetail
           key={`${storeId}-product-${productCtx.productId ?? "new"}`}
-          open
-          title={productEditing ? "Editar producto" : "Añadir producto"}
-          categoryOptions={catHints}
-          initial={
-            productEditing
-              ? {
-                  category: productEditing.category,
-                  name: productEditing.name,
-                  model: productEditing.model,
-                  shortDescription: productEditing.shortDescription,
-                  mainBenefit: productEditing.mainBenefit,
-                  technicalSpecs: productEditing.technicalSpecs,
-                  condition: productEditing.condition,
-                  price: productEditing.price,
-                  transportIncluded: productEditing.transportIncluded,
-                  monedaPrecio: CATALOG_CURRENCY_CODE,
-                  monedas: [CATALOG_CURRENCY_CODE],
-                  taxesShippingInstall: productEditing.taxesShippingInstall,
-                  availability: productEditing.availability,
-                  warrantyReturn: productEditing.warrantyReturn,
-                  contentIncluded: productEditing.contentIncluded,
-                  usageConditions: productEditing.usageConditions,
-                  photoUrls: productEditing.photoUrls,
-                  published: productEditing.published,
-                  customFields: productEditing.customFields.length
-                    ? productEditing.customFields
-                    : [],
-                }
-              : emptyStoreProductInput()
-          }
+          show
+          storeId={storeId}
+          editProduct={productEditing}
+          products={products}
+          categories={inventoryMeta.categories}
+          suppliers={inventoryMeta.suppliers}
+          onRefreshCategories={inventoryMeta.onRefreshCategories}
           onClose={() => setProductCtx(null)}
-          onSave={(input) => {
-            void (async () => {
-              try {
-                if (productCtx.productId) {
-                  const ok = updateOwnerStoreProduct(
-                    storeId,
-                    ownerId,
-                    productCtx.productId,
-                    input,
-                  );
-                  if (!ok) {
-                    toast.error("No se pudo actualizar el producto.");
-                    return;
-                  }
-                  const p = useMarketStore
-                    .getState()
-                    .storeCatalogs[storeId]?.products.find(
-                      (x) => x.id === productCtx.productId,
-                    );
-                  if (p) await putStoreProduct(storeId, p);
-                  toast.success("Producto actualizado");
-                  setProductCtx(null);
-                } else {
-                  const pid = addOwnerStoreProduct(storeId, ownerId, input);
-                  if (pid) {
-                    const p = useMarketStore
-                      .getState()
-                      .storeCatalogs[storeId]?.products.find(
-                        (x) => x.id === pid,
-                      );
-                    if (p) await putStoreProduct(storeId, p);
-                    toast.success("Producto añadido");
-                    setProductCtx(null);
-                  } else {
-                    toast.error(
-                      "No se pudo añadir el producto. Revisa que seas el dueño o recarga la tienda.",
-                    );
-                  }
-                }
-              } catch {
-                toast.error(
-                  "No se pudo guardar el producto en el servidor. Reintenta.",
+          onSave={async (input) => {
+            try {
+              if (productCtx.productId) {
+                const ok = updateOwnerStoreProduct(
+                  storeId,
+                  ownerId,
+                  productCtx.productId,
+                  input,
                 );
+                if (!ok) {
+                  toast.error("No se pudo actualizar el producto.");
+                  return false;
+                }
+                const p = useMarketStore
+                  .getState()
+                  .storeCatalogs[storeId]?.products.find(
+                    (x) => x.id === productCtx.productId,
+                  );
+                if (p) await putStoreProduct(storeId, p);
+                toast.success("Producto actualizado");
+                return true;
               }
-            })();
+              const pid = addOwnerStoreProduct(storeId, ownerId, input);
+              if (pid) {
+                const p = useMarketStore
+                  .getState()
+                  .storeCatalogs[storeId]?.products.find((x) => x.id === pid);
+                if (p) await putStoreProduct(storeId, p);
+                toast.success("Producto añadido");
+                return true;
+              }
+              toast.error(
+                "No se pudo añadir el producto. Revisa que seas el dueño o recarga la tienda.",
+              );
+              return false;
+            } catch {
+              toast.error(
+                "No se pudo guardar el producto en el servidor. Reintenta.",
+              );
+              return false;
+            }
           }}
         />
       ) : null}

@@ -8,10 +8,18 @@ import {
   AdminCard,
   AdminEmptyState,
   AdminGhostButton,
+  AdminTableFooter,
   AdminTableFrame,
+  adminTableBodyClass,
+  adminTableClass,
+  adminTableHeadRowClass,
   SectionHeader,
   SummaryCard,
 } from "../components/StoreAdminUi";
+import {
+  DEFAULT_ADMIN_PAGE_SIZE,
+  usePagedSlice,
+} from "../logic/usePagedSlice";
 
 type CurrencyRow = {
   code: string;
@@ -40,6 +48,7 @@ export function FinanceSection({ storeId }: { storeId: string }) {
   const { data, isLoading, isError } = useStoreOrders(storeId);
   const orders = useMemo(() => data ?? [], [data]);
   const rows = useMemo(() => financeByCurrency(orders), [orders]);
+  const pg = usePagedSlice(rows, DEFAULT_ADMIN_PAGE_SIZE, [rows.length]);
 
   const releasedTotal = rows
     .map((r) => formatMoney(r.released, r.code))
@@ -102,9 +111,9 @@ export function FinanceSection({ storeId }: { storeId: string }) {
 
           <AdminCard>
             <AdminTableFrame>
-              <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
+              <table className={`${adminTableClass} min-w-[40rem]`}>
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50/90 text-xs font-bold uppercase tracking-wider text-gray-600">
+                  <tr className={adminTableHeadRowClass}>
                     <th className="whitespace-nowrap px-4 py-3.5">Moneda</th>
                     <th className="whitespace-nowrap px-4 py-3.5">Liberado</th>
                     <th className="whitespace-nowrap px-4 py-3.5">Retenido</th>
@@ -112,8 +121,8 @@ export function FinanceSection({ storeId }: { storeId: string }) {
                     <th className="whitespace-nowrap px-4 py-3.5">Pedidos</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {rows.map((r) => (
+                <tbody className={adminTableBodyClass}>
+                  {pg.slice.map((r) => (
                     <tr key={r.code} className="bg-white hover:bg-gray-50/80">
                       <td className="px-4 py-4 font-bold text-gray-900">
                         {r.code}
@@ -135,6 +144,13 @@ export function FinanceSection({ storeId }: { storeId: string }) {
                 </tbody>
               </table>
             </AdminTableFrame>
+            <AdminTableFooter
+              page={pg.page}
+              totalPages={pg.totalPages}
+              totalItems={pg.total}
+              onPageChange={pg.setPage}
+              itemLabel="monedas"
+            />
           </AdminCard>
         </>
       )}

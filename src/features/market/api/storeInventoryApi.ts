@@ -15,6 +15,29 @@ export async function fetchStoreCategories(
   return (await res.json()) as StoreCategoryDto[];
 }
 
+export async function createStoreCategory(
+  storeId: string,
+  body: { name: string; parentCategoryId?: string | null },
+): Promise<StoreCategoryDto> {
+  const res = await apiFetch(
+    `/api/v1/market/stores/${encodeURIComponent(storeId)}/categories`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+  if (!res.ok) throw new Error("No se pudo crear la categoría.");
+  return (await res.json()) as StoreCategoryDto;
+}
+
+export async function deleteStoreCategory(
+  storeId: string,
+  categoryId: string,
+): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/market/stores/${encodeURIComponent(storeId)}/categories/${encodeURIComponent(categoryId)}`,
+    { method: "DELETE" },
+  );
+  if (!res.ok) throw new Error("No se pudo eliminar la categoría.");
+}
+
 export async function fetchStoreSuppliers(
   storeId: string,
 ): Promise<StoreSupplierDto[]> {
@@ -78,6 +101,18 @@ export async function createStoreBanner(
   );
   if (!res.ok) throw new Error("No se pudo crear el banner.");
   return (await res.json()) as StoreBannerDto;
+}
+
+export async function patchStoreBanner(
+  storeId: string,
+  bannerId: string,
+  body: { active?: boolean; sortOrder?: number; mediaUrl?: string },
+): Promise<void> {
+  const res = await apiFetch(
+    `/api/v1/market/stores/${encodeURIComponent(storeId)}/banners/${encodeURIComponent(bannerId)}`,
+    { method: "PATCH", body: JSON.stringify(body) },
+  );
+  if (!res.ok) throw new Error("No se pudo actualizar el banner.");
 }
 
 export async function deleteStoreBanner(

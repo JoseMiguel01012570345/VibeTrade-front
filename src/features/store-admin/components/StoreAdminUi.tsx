@@ -1,4 +1,42 @@
 import type { ReactNode } from "react";
+import { AdminPagination } from "./AdminPagination";
+
+/** Clases compartidas para tablas del panel admin. */
+export const adminTableClass =
+  "w-full border-collapse text-left text-sm";
+export const adminTableHeadRowClass =
+  "border-b border-gray-200 bg-gray-50/90 text-xs font-bold uppercase tracking-wider text-gray-600 dark:border-gray-700 dark:bg-gray-800/90 dark:text-slate-300";
+export const adminTableBodyClass =
+  "divide-y divide-gray-100 dark:divide-gray-800";
+
+type AdminTableFooterProps = {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  onPageChange: (p: number) => void;
+  itemLabel: string;
+};
+
+/** Pie de tabla estándar: contador + paginación Anterior/Siguiente. */
+export function AdminTableFooter({
+  page,
+  totalPages,
+  totalItems,
+  onPageChange,
+  itemLabel,
+}: AdminTableFooterProps) {
+  return (
+    <div className="border-t border-gray-100 px-4 py-4 dark:border-gray-800">
+      <AdminPagination
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        onPageChange={onPageChange}
+        itemLabel={itemLabel}
+      />
+    </div>
+  );
+}
 
 /** Tarjeta base del panel (look del frontend-admin de referencia). */
 export function AdminCard({
@@ -39,7 +77,9 @@ export function SummaryCard({
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
             {icon}
           </span>
-        ) : null}
+        ) : (
+          <span className="h-9 w-9 shrink-0" aria-hidden />
+        )}
       </div>
       <p className="mt-2 text-2xl font-black tracking-tight text-gray-900 sm:text-3xl">
         {value}

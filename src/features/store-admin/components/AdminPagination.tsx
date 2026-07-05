@@ -16,18 +16,17 @@ export function AdminPagination({
   className = "",
 }: AdminPaginationProps) {
   if (totalItems === 0) return null;
-  if (totalPages <= 1) return null;
 
   return (
     <nav
-      className={`flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between ${className}`}
+      className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between ${className}`}
       aria-label="Paginación"
     >
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-gray-600 dark:text-gray-400">
         {totalItems === 1 ? `1 ${itemLabel}` : `${totalItems} ${itemLabel}`} ·
         Página {page} de {totalPages}
       </p>
-      <div className="flex flex-wrap items-center justify-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <button
           type="button"
           disabled={page <= 1}

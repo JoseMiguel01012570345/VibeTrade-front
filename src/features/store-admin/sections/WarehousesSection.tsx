@@ -11,11 +11,19 @@ import {
   AdminEmptyState,
   AdminGhostButton,
   AdminPrimaryButton,
+  AdminTableFooter,
   AdminTableFrame,
+  adminTableBodyClass,
+  adminTableClass,
+  adminTableHeadRowClass,
   SectionHeader,
   StatusDot,
   SummaryCard,
 } from "../components/StoreAdminUi";
+import {
+  DEFAULT_ADMIN_PAGE_SIZE,
+  usePagedSlice,
+} from "../logic/usePagedSlice";
 
 export function WarehousesSection({
   storeId,
@@ -34,6 +42,8 @@ export function WarehousesSection({
     [warehousesAll, storeId],
   );
   const activeCount = warehouses.filter((w) => w.active).length;
+
+  const pg = usePagedSlice(warehouses, DEFAULT_ADMIN_PAGE_SIZE, [warehouses.length]);
 
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -136,9 +146,9 @@ export function WarehousesSection({
       ) : (
         <AdminCard>
           <AdminTableFrame>
-            <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
+            <table className={`${adminTableClass} min-w-[36rem]`}>
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/90 text-xs font-bold uppercase tracking-wider text-gray-600">
+                <tr className={adminTableHeadRowClass}>
                   <th className="whitespace-nowrap px-4 py-3.5">Almacén</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Dirección</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Estado</th>
@@ -147,8 +157,8 @@ export function WarehousesSection({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {warehouses.map((w) => (
+              <tbody className={adminTableBodyClass}>
+                {pg.slice.map((w) => (
                   <tr key={w.id} className="bg-white hover:bg-gray-50/80">
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
@@ -202,6 +212,13 @@ export function WarehousesSection({
               </tbody>
             </table>
           </AdminTableFrame>
+          <AdminTableFooter
+            page={pg.page}
+            totalPages={pg.totalPages}
+            totalItems={pg.total}
+            onPageChange={pg.setPage}
+            itemLabel="almacenes"
+          />
         </AdminCard>
       )}
     </div>

@@ -24,10 +24,18 @@ import {
   AdminCard,
   AdminEmptyState,
   AdminGhostButton,
+  AdminTableFooter,
   AdminTableFrame,
+  adminTableBodyClass,
+  adminTableClass,
+  adminTableHeadRowClass,
   SectionHeader,
   SummaryCard,
 } from "../components/StoreAdminUi";
+import {
+  DEFAULT_ADMIN_PAGE_SIZE,
+  usePagedSlice,
+} from "../logic/usePagedSlice";
 
 function paymentLabel(p: OrderPaymentStatus): string {
   if (p === "held") return "Retenido";
@@ -52,6 +60,8 @@ export function OrdersSection({ storeId }: { storeId: string }) {
   const inTransit = orders.filter((o) => o.status === "en_transito").length;
   const delivered = orders.filter((o) => o.status === "entregado").length;
   const processing = orders.filter((o) => o.status === "procesado").length;
+
+  const pg = usePagedSlice(orders, DEFAULT_ADMIN_PAGE_SIZE, [orders.length]);
 
   async function onAdvance(o: OrderSummaryDto) {
     try {
@@ -143,9 +153,9 @@ export function OrdersSection({ storeId }: { storeId: string }) {
       ) : (
         <AdminCard>
           <AdminTableFrame>
-            <table className="w-full min-w-[48rem] border-collapse text-left text-sm">
+            <table className={`${adminTableClass} min-w-[48rem]`}>
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50/90 text-xs font-bold uppercase tracking-wider text-gray-600">
+                <tr className={adminTableHeadRowClass}>
                   <th className="whitespace-nowrap px-4 py-3.5">Pedido</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Fecha</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Estado</th>
@@ -156,8 +166,8 @@ export function OrdersSection({ storeId }: { storeId: string }) {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {orders.map((o) => (
+              <tbody className={adminTableBodyClass}>
+                {pg.slice.map((o) => (
                   <tr
                     key={o.id}
                     className="bg-white transition-colors hover:bg-gray-50/80"
@@ -225,6 +235,13 @@ export function OrdersSection({ storeId }: { storeId: string }) {
               </tbody>
             </table>
           </AdminTableFrame>
+          <AdminTableFooter
+            page={pg.page}
+            totalPages={pg.totalPages}
+            totalItems={pg.total}
+            onPageChange={pg.setPage}
+            itemLabel="pedidos"
+          />
         </AdminCard>
       )}
     </div>

@@ -1,14 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { ArrowLeft, LayoutGrid, RefreshCw } from "lucide-react";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import {
-  CATALOG_CURRENCY_CODE,
-  emptyStoreProductInput,
   emptyStoreServiceInput,
 } from "@features/market/logic/storeCatalogTypes";
+import type {
+  StoreCategoryDto,
+  StoreSupplierDto,
+} from "@features/market/Dtos/storeCatalogTypes";
+import {
+  fetchStoreCategories,
+  fetchStoreSuppliers,
+} from "@features/market/api/storeInventoryApi";
 import {
   deleteStoreProductApi,
   deleteStoreServiceApi,
@@ -22,7 +28,7 @@ import {
 } from "../hooks/useStorePageDetail";
 import { ConfirmDeleteModal } from "@shared/components/ui/ConfirmDeleteModal";
 import { ScrollToTopFab } from "@shared/components/ui/ScrollToTopFab";
-import { ProductEditorModal } from "@features/profile/components/stores/ProductEditorModal";
+import { ProductModalDetail } from "@features/store-admin/components/ProductModalDetail";
 import { ServiceEditorModal } from "@features/profile/components/stores/ServiceEditorModal";
 import {
   OwnerCatalogProductList,
@@ -164,6 +170,23 @@ export function StorePage() {
   >(null);
   const [catalogDeleteBusy, setCatalogDeleteBusy] = useState(false);
   const [catalogReloadBusy, setCatalogReloadBusy] = useState(false);
+  const [storeCategories, setStoreCategories] = useState<StoreCategoryDto[]>([]);
+  const [storeSuppliers, setStoreSuppliers] = useState<StoreSupplierDto[]>([]);
+
+  const reloadInventoryMeta = useCallback(async () => {
+    if (!storeId) return;
+    const [cats, sups] = await Promise.all([
+      fetchStoreCategories(storeId),
+      fetchStoreSuppliers(storeId),
+    ]);
+    setStoreCategories(cats);
+    setStoreSuppliers(sups);
+  }, [storeId]);
+
+  useEffect(() => {
+    if (!storeId || !isOwner) return;
+    void reloadInventoryMeta();
+  }, [storeId, isOwner, reloadInventoryMeta]);
 
   useEffect(() => {
     setProductCtx(null);
@@ -1227,85 +1250,62 @@ export function StorePage() {
         />
 
         {productCtx !== null ? (
-          <ProductEditorModal
+          <ProductModalDetail
             key={`${sid}-product-${productCtx.productId ?? "new"}`}
-            open
-            title={productEditing ? "Editar producto" : "Añadir producto"}
-            categoryOptions={catHints}
-            initial={
-              productEditing
-                ? {
-                    category: productEditing.category,
-                    name: productEditing.name,
-                    model: productEditing.model,
-                    shortDescription: productEditing.shortDescription,
-                    mainBenefit: productEditing.mainBenefit,
-                    technicalSpecs: productEditing.technicalSpecs,
-                    condition: productEditing.condition,
-                    price: productEditing.price,
-                    transportIncluded: productEditing.transportIncluded,
-                    monedaPrecio: CATALOG_CURRENCY_CODE,
-                    monedas: [CATALOG_CURRENCY_CODE],
-                    taxesShippingInstall: productEditing.taxesShippingInstall,
-                    availability: productEditing.availability,
-                    warrantyReturn: productEditing.warrantyReturn,
-                    contentIncluded: productEditing.contentIncluded,
-                    usageConditions: productEditing.usageConditions,
-                    photoUrls: productEditing.photoUrls,
-                    published: productEditing.published,
-                    customFields: productEditing.customFields.length
-                      ? productEditing.customFields
-                      : [],
-                  }
-                : emptyStoreProductInput()
-            }
+            show
+            storeId={sid}
+            editProduct={productEditing}
+            products={allCatalogProducts}
+            categories={storeCategories}
+            suppliers={storeSuppliers}
+            onRefreshCategories={reloadInventoryMeta}
             onClose={() => setProductCtx(null)}
-            onSave={(input) => {
-              void (async () => {
-                try {
-                  if (productCtx.productId) {
-                    const ok = updateOwnerStoreProduct(
-                      sid,
-                      ownerId,
-                      productCtx.productId,
-                      input,
-                    );
-                    if (!ok) {
-                      toast.error("No se pudo actualizar el producto.");
-                      return;
-                    }
-                    const p = useMarketStore
-                      .getState()
-                      .storeCatalogs[
-                        sid
-                      ]?.products.find((x) => x.id === productCtx.productId);
-                    if (p) await putStoreProduct(sid, p);
-                    toast.success("Producto actualizado");
-                  } else {
-                    const pid = addOwnerStoreProduct(sid, ownerId, input);
-                    if (pid) {
-                      const p = useMarketStore
-                        .getState()
-                        .storeCatalogs[sid]?.products.find((x) => x.id === pid);
-                      if (p) await putStoreProduct(sid, p);
-                      toast.success("Producto añadido");
-                      patchSection("products", {
-                        productNameQ: "",
-                        productCategoryQ: [],
-                        productConditionQ: "",
-                      });
-                    } else {
-                      toast.error(
-                        "No se pudo añadir el producto. Revisa que seas el dueño o recarga la tienda.",
-                      );
-                    }
-                  }
-                } catch {
-                  toast.error(
-                    "No se pudo guardar el producto en el servidor. Reintenta.",
+            onSave={async (input) => {
+              try {
+                if (productCtx.productId) {
+                  const ok = updateOwnerStoreProduct(
+                    sid,
+                    ownerId,
+                    productCtx.productId,
+                    input,
                   );
+                  if (!ok) {
+                    toast.error("No se pudo actualizar el producto.");
+                    return false;
+                  }
+                  const p = useMarketStore
+                    .getState()
+                    .storeCatalogs[sid]?.products.find(
+                      (x) => x.id === productCtx.productId,
+                    );
+                  if (p) await putStoreProduct(sid, p);
+                  toast.success("Producto actualizado");
+                  return true;
                 }
-              })();
+                const pid = addOwnerStoreProduct(sid, ownerId, input);
+                if (pid) {
+                  const p = useMarketStore
+                    .getState()
+                    .storeCatalogs[sid]?.products.find((x) => x.id === pid);
+                  if (p) await putStoreProduct(sid, p);
+                  toast.success("Producto añadido");
+                  patchSection("products", {
+                    productNameQ: "",
+                    productCategoryQ: [],
+                    productConditionQ: "",
+                  });
+                  return true;
+                }
+                toast.error(
+                  "No se pudo añadir el producto. Revisa que seas el dueño o recarga la tienda.",
+                );
+                return false;
+              } catch {
+                toast.error(
+                  "No se pudo guardar el producto en el servidor. Reintenta.",
+                );
+                return false;
+              }
             }}
           />
         ) : null}
