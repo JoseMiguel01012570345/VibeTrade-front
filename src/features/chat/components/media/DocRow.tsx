@@ -15,7 +15,7 @@ function DocIcon({ kind }: { kind: 'pdf' | 'doc' | 'other' }) {
   if (kind === 'pdf')
     return (
       <span
-        className="grid h-12 w-10 place-items-center rounded-lg border border-black/10 text-[11px] font-black text-[#c62828] bg-[#fde8e8]"
+        className="grid size-12 place-items-center rounded-md border border-black/10 text-[10px] font-black text-[#c62828] bg-[#fde8e8]"
         aria-hidden
       >
         PDF
@@ -24,15 +24,15 @@ function DocIcon({ kind }: { kind: 'pdf' | 'doc' | 'other' }) {
   if (kind === 'doc')
     return (
       <span
-        className="grid h-12 w-10 place-items-center rounded-lg border border-black/10 text-base font-black text-[#1565c0] bg-[#e8f0fe]"
+        className="grid size-12 place-items-center rounded-md border border-black/10 text-sm font-black text-[#1565c0] bg-[#e8f0fe]"
         aria-hidden
       >
         W
       </span>
     )
   return (
-    <span className="grid h-12 w-10 place-items-center rounded-lg border border-black/10 text-[#546e7a] bg-[#eceff1]" aria-hidden>
-      <FileText size={18} />
+    <span className="grid size-12 place-items-center rounded-md border border-black/10 text-[#546e7a] bg-[#eceff1]" aria-hidden>
+      <FileText size={20} />
     </span>
   )
 }
@@ -126,10 +126,10 @@ export function DocRow({
   return (
     <div
       className={cn(
-        'flex min-w-0 max-w-[min(300px,100%)] w-full items-center gap-2.5 rounded-xl border px-2 py-2 pl-2.5',
+        'flex min-w-0 max-w-[min(300px,100%)] w-full items-center gap-2.5 rounded-lg border px-2 py-2 pl-2.5',
         isMine
-          ? 'border-[color-mix(in_oklab,#86cf81_35%,var(--border))] bg-[color-mix(in_oklab,#d9fdd3_92%,var(--surface))]'
-          : 'border-[color-mix(in_oklab,var(--border)_60%,transparent)] bg-[#f0f2f5]',
+          ? 'border-[var(--chat-bubble-out-border)] bg-[color-mix(in_oklab,var(--chat-bubble-out-bg)_92%,var(--surface))] backdrop-blur-md'
+          : 'border-[color-mix(in_oklab,var(--border)_60%,transparent)] bg-[color-mix(in_oklab,var(--muted)_8%,var(--surface))]',
         downloaded &&
           'cursor-pointer outline-none hover:brightness-[0.98] focus-visible:shadow-[0_0_0_2px_color-mix(in_oklab,var(--primary)_45%,transparent)]',
       )}

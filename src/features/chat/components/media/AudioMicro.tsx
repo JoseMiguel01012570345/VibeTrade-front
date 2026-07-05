@@ -368,7 +368,7 @@ export function AudioMicro({
           className={cn(
             "grid h-10 w-10 shrink-0 cursor-pointer place-items-center self-center rounded-full border transition-[transform,opacity] active:scale-95",
             isMine
-              ? "border-[color-mix(in_oklab,var(--primary)_40%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] text-[var(--primary)] hover:bg-[color-mix(in_oklab,var(--primary)_16%,var(--surface))]"
+              ? "border-[var(--chat-bubble-out-border)] bg-[color-mix(in_oklab,var(--chat-bubble-out-bg)_90%,var(--surface))] text-[var(--text)] backdrop-blur-md hover:brightness-[0.98]"
               : "border-[color-mix(in_oklab,var(--border)_80%,transparent)] bg-[color-mix(in_oklab,var(--surface)_92%,var(--bg))] text-[var(--text)] shadow-[0_1px_0_rgba(15,23,42,0.05)] hover:bg-[color-mix(in_oklab,var(--muted)_10%,var(--surface))]",
           )}
           onClick={toggle}
@@ -402,7 +402,9 @@ export function AudioMicro({
               "rounded-[11px] border border-[color-mix(in_oklab,var(--border)_85%,transparent)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))] px-2 py-1",
             isMine && "px-0 py-0",
             "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
-            "focus-visible:outline-[color-mix(in_oklab,var(--primary)_45%,transparent)]",
+            isMine
+              ? "focus-visible:outline-[var(--primary)]"
+              : "focus-visible:outline-[color-mix(in_oklab,var(--primary)_45%,transparent)]",
           )}
           onPointerDown={onWavePointerDown}
           onPointerMove={onWavePointerMove}

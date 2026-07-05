@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { cn } from "@shared/lib/cn";
 import type { Message, ReplyQuote } from "@features/market/logic/store/useMarketStore";
 import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import { ChatLinkEmbed } from "../embeds/ChatLinkEmbed";
+import { ChatStructuredEmbed } from "../embeds/ChatStructuredEmbed";
 import { AgreementBubble } from "./AgreementBubble";
 import { AudioMicro } from "./AudioMicro";
 import { ChatReplyQuotes } from "./ChatReplyQuotes";
@@ -19,8 +21,6 @@ import {
   paymentFeeLabels,
   currencyMinorDecimals,
 } from "@features/payments/logic/paymentFeePolicy";
-import type { LinkPreviewResult } from "@features/chat/Dtos/thread/chatApiTypes";
-import { useLinkPreview } from "@features/chat/hooks/useLinkPreview";
 
 function firstHttpUrl(text: string): string | null {
   const m = text.match(/https?:\/\/[^\s<>'")\]]+/i);
@@ -53,69 +53,9 @@ function TextMessageBody({
         <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
           {text}
         </div>
-        {previewUrl ? <LinkPreviewCard url={previewUrl} /> : null}
+        {previewUrl ? <ChatLinkEmbed url={previewUrl} /> : null}
       </div>
     </div>
-  );
-}
-
-function LinkPreviewCard({ url }: { url: string }) {
-  const previewQuery = useLinkPreview(url);
-  const data: LinkPreviewResult | null | undefined = previewQuery.isLoading
-    ? undefined
-    : (previewQuery.data ?? null);
-  if (data === undefined) {
-    return (
-      <div className="mt-2 max-w-[min(100%,360px)] rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_50%,var(--surface))] px-3 py-2 text-[11px] font-semibold text-[var(--muted)]">
-        Vista previa…
-      </div>
-    );
-  }
-  if (
-    !data ||
-    (!data.title?.trim() && !data.description?.trim() && !data.imageUrl?.trim())
-  ) {
-    return null;
-  }
-  let host = "";
-  try {
-    host = new URL(data.url).host;
-  } catch {
-    host = "";
-  }
-  return (
-    <a
-      href={data.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="mt-2 flex max-w-[min(100%,380px)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] text-left no-underline shadow-[0_2px_12px_rgba(15,23,42,0.08)] transition hover:border-[color-mix(in_oklab,var(--primary)_28%,var(--border))]"
-    >
-      {data.imageUrl?.trim() ? (
-        <div className="max-h-44 w-full overflow-hidden bg-[var(--border)]/25">
-          <img
-            src={data.imageUrl.trim()}
-            alt=""
-            className="max-h-44 w-full object-cover"
-            loading="lazy"
-          />
-        </div>
-      ) : null}
-      <div className="p-2.5">
-        <div className="line-clamp-2 text-[13px] font-black leading-snug text-[var(--text)]">
-          {data.title?.trim() || host || data.url}
-        </div>
-        {data.description?.trim() ? (
-          <div className="mt-1 line-clamp-3 text-[11px] font-semibold leading-snug text-[var(--muted)]">
-            {data.description.trim()}
-          </div>
-        ) : null}
-        {host ? (
-          <div className="mt-1 truncate text-[10px] font-bold uppercase tracking-wide text-[var(--muted)] opacity-75">
-            {host}
-          </div>
-        ) : null}
-      </div>
-    </a>
   );
 }
 
@@ -137,85 +77,97 @@ function fmtReceiptMinor(amountMinor: number, curLower: string): string {
 function PaymentFeeReceiptBubble({ receipt }: { receipt: PaymentFeeReceiptPayload }) {
   const [busy, setBusy] = useState(false);
   const cur = receipt.currencyLower;
+  const issuerLine = (
+    <>
+      Emisor:{" "}
+      <span className="text-[var(--text)]">{receipt.invoiceIssuerPlatform || "VibeTrade"}</span>
+      {receipt.invoiceStoreName?.trim() ? (
+        <>
+          {" "}
+          · Tienda:{" "}
+          <span className="text-[var(--text)]">{receipt.invoiceStoreName.trim()}</span>
+        </>
+      ) : null}
+    </>
+  );
+  const agreementLine = (
+    <>
+      Acuerdo:{" "}
+      <span className="text-[var(--text)]">{receipt.agreementTitle || "(sin título)"}</span>
+      {" · "}
+      {cur.toUpperCase()}
+    </>
+  );
   return (
-    <div className="flex min-w-0 max-w-full flex-col gap-2.5 text-[13px] leading-snug text-[var(--text)]">
-      <div className="font-black text-[var(--text)]">Recibo de pago</div>
-      <p className="text-[12px] text-[var(--muted)]">
-        Emisor:{" "}
-        <span className="text-[var(--text)]">{receipt.invoiceIssuerPlatform || "VibeTrade"}</span>
-        {receipt.invoiceStoreName?.trim() ?
-          <>
-            {" "}
-            · Tienda:{" "}
-            <span className="text-[var(--text)]">{receipt.invoiceStoreName.trim()}</span>
-          </>
-        : null}
-      </p>
-      <p className="text-[12px] text-[var(--muted)]">
-        Acuerdo: <span className="text-[var(--text)]">{receipt.agreementTitle || "(sin título)"}</span>
-        {" · "}
-        {cur.toUpperCase()}
-      </p>
-      <div className="rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_50%,var(--surface))] px-3 py-2.5 text-[12px] space-y-1">
-        <div className="flex justify-between gap-2">
-          <span className="text-[var(--muted)]">Subtotal</span>
-          <span className="font-semibold tabular-nums">{fmtReceiptMinor(receipt.subtotalMinor, cur)}</span>
-        </div>
-        <div className="flex justify-between gap-2">
-          <span className="text-[var(--muted)]">
-            Climate ref. ({paymentFeeLabels.climateRateDisplay}, no cobrado)
-          </span>
-          <span className="font-semibold tabular-nums">{fmtReceiptMinor(receipt.climateMinor, cur)}</span>
-        </div>
-        <div className="flex justify-between gap-2">
-          <span className="text-[var(--muted)]">tarifa de procesador liquidación (referencia)</span>
-          <span className="font-semibold tabular-nums">
-            {fmtReceiptMinor(receipt.processorFeeMinorActual, cur)}
-          </span>
-        </div>
-        <div className="border-t border-[color-mix(in_oklab,var(--border)_85%,transparent)] pt-1.5 flex justify-between gap-2">
-          <span className="font-black">Total cobrado (subtotal)</span>
-          <span className="font-black tabular-nums">
-            {fmtReceiptMinor(receipt.totalChargedMinor, cur)}
-          </span>
-        </div>
-      </div>
-      <p className="text-[11px] leading-snug text-[var(--muted)]">
-        tarifa de procesador estimada antes del pago (referencia):{" "}
-        {fmtReceiptMinor(receipt.processorFeeMinorEstimated, cur)}. Políticas de tarifas:{" "}
-        <a
-          href={receipt.paymentFeePolicyUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-bold text-[var(--primary)] underline"
-        >
-          consultá aquí
-        </a>
-        .
-      </p>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => {
-          void (async () => {
-            setBusy(true);
-            try {
-              await downloadPaymentFeeReceiptPdf(receipt);
-            } catch (e) {
-              toast.error((e as Error)?.message ?? "No se pudo generar el PDF.");
-            } finally {
-              setBusy(false);
-            }
-          })();
-        }}
-        className="inline-flex min-h-10 w-full max-w-xs items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] px-3 py-2 text-[12px] font-black text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--primary)_16%,var(--surface))] disabled:opacity-60"
-      >
-        {busy ?
-          <CeSpinner size="sm" aria-hidden />
-        : <FileDown className="size-4 shrink-0" aria-hidden />}
-        Descargar PDF del desglose
-      </button>
-    </div>
+    <ChatStructuredEmbed
+      title="Recibo de pago"
+      subtitle={
+        <>
+          <span className="block">{issuerLine}</span>
+          <span className="mt-1 block">{agreementLine}</span>
+        </>
+      }
+      rows={[
+        {
+          label: "Subtotal",
+          value: fmtReceiptMinor(receipt.subtotalMinor, cur),
+        },
+        {
+          label: `Climate ref. (${paymentFeeLabels.climateRateDisplay}, no cobrado)`,
+          value: fmtReceiptMinor(receipt.climateMinor, cur),
+        },
+        {
+          label: "tarifa de procesador liquidación (referencia)",
+          value: fmtReceiptMinor(receipt.processorFeeMinorActual, cur),
+        },
+        {
+          label: "Total cobrado (subtotal)",
+          value: fmtReceiptMinor(receipt.totalChargedMinor, cur),
+          emphasize: true,
+        },
+      ]}
+      footer={
+        <>
+          <p className="text-[11px] leading-snug text-[var(--muted)]">
+            tarifa de procesador estimada antes del pago (referencia):{" "}
+            {fmtReceiptMinor(receipt.processorFeeMinorEstimated, cur)}. Políticas de tarifas:{" "}
+            <a
+              href={receipt.paymentFeePolicyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-[var(--primary)] underline"
+            >
+              consultá aquí
+            </a>
+            .
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              void (async () => {
+                setBusy(true);
+                try {
+                  await downloadPaymentFeeReceiptPdf(receipt);
+                } catch (e) {
+                  toast.error((e as Error)?.message ?? "No se pudo generar el PDF.");
+                } finally {
+                  setBusy(false);
+                }
+              })();
+            }}
+            className="mt-2 inline-flex min-h-10 w-full max-w-xs items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] px-3 py-2 text-[12px] font-black text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--primary)_16%,var(--surface))] disabled:opacity-60"
+          >
+            {busy ? (
+              <CeSpinner size="sm" aria-hidden />
+            ) : (
+              <FileDown className="size-4 shrink-0" aria-hidden />
+            )}
+            Descargar PDF del desglose
+          </button>
+        </>
+      }
+    />
   );
 }
 

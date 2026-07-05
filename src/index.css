@@ -1,6 +1,6 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
-/* Flowbite React: tokens y utilidades (sin resolver vía exports del paquete). */
+/* Flowbite React: tokens y utilidades (sin resolver vÃ­a exports del paquete). */
 @import "../node_modules/flowbite-react/dist/plugin/tailwindcss/index.css";
 
 @source "../node_modules/flowbite-react/dist";
@@ -36,6 +36,9 @@
 
     --good: #22c55e;
     --bad: #ef4444;
+
+    /* Altura real de la barra inferior fija (AppShell nav). */
+    --vt-bottom-nav-clearance: 78px;
 
     font-family:
       Inter,
@@ -455,7 +458,7 @@
     animation-duration: 620ms, 1100ms;
   }
 
-  /* Modo oscuro: degradado más apagado y ondas menos brillantes */
+  /* Modo oscuro: degradado mÃ¡s apagado y ondas menos brillantes */
   :root.dark .vt-trust-fill {
     background: linear-gradient(
       90deg,
@@ -558,6 +561,15 @@
   overflow: hidden;
   flex: 1;
   min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+@media (min-width: 961px) {
+  /* Escritorio: reservar exactamente el alto de la nav fija */
+  .vt-main:has(.vt-chat-page) {
+    padding-bottom: var(--vt-bottom-nav-clearance);
+  }
 }
 
 .vt-main:has(.vt-chat-page) > .container.vt-chat-page {
@@ -565,6 +577,13 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+/* Split lista + hilo: la direcciÃ³n la define .vt-chat-layout (fila en escritorio). */
+.vt-main:has(.vt-chat-page) > .vt-chat-layout.vt-chat-page {
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -629,14 +648,20 @@ body:has(.vt-home-page) {
   min-height: 0;
 }
 
-/* Escritorio: usar más ancho que el contenido típico (1100px) para que el hilo no quede muy angosto junto al rail. */
+/* Escritorio: split-pane usa todo el ancho; hilo individual conserva contenedor amplio. */
 @media (min-width: 961px) {
   .container.vt-chat-page {
     max-width: min(1520px, calc(100vw - 56px));
   }
+
+  .vt-chat-layout.vt-chat-page {
+    max-width: none;
+    width: 100%;
+    padding: 0;
+  }
 }
 
-/* Chat: menos márgenes laterales duplicados en teléfonos (lista ya lleva padding). */
+/* Chat: menos mÃ¡rgenes laterales duplicados en telÃ©fonos (lista ya lleva padding). */
 @media (max-width: 639px) {
   .container.vt-chat-page {
     padding-inline-start: max(10px, env(safe-area-inset-left, 0px));
@@ -758,7 +783,7 @@ body:has(.vt-home-page) {
 }
 
 /*
- * Superficies de tienda (emerald) — replican la UI/UX de las apps de referencia
+ * Superficies de tienda (emerald) â€” replican la UI/UX de las apps de referencia
  * (frontend-guest storefront + frontend-admin panel). Sobrescriben los tokens de
  * color solo dentro de estas superficies, sin repintar el resto de la app (azul).
  */
@@ -769,7 +794,7 @@ body:has(.vt-home-page) {
   --surface: #ffffff;
   --border: #d9d5cf;
   /* Texto oscuro fijo: estas superficies son siempre claras (como las apps de
-     referencia), incluso si la app está en modo oscuro. */
+     referencia), incluso si la app estÃ¡ en modo oscuro. */
   --text: #0f172a;
   --muted: #64748b;
   color-scheme: light;
@@ -790,7 +815,7 @@ body:has(.vt-home-page) {
  * La superficie de tienda es full-bleed: ocupa todo el alto del <main> sin dejar
  * visible la franja de fondo de la app (el pt-4 / pb-[88px] que AppShell reserva
  * para la barra inferior fija). El espacio para esa barra se reintegra dentro del
- * propio footer del storefront. Mismo patrón :has() que ya usamos para home/chat.
+ * propio footer del storefront. Mismo patrÃ³n :has() que ya usamos para home/chat.
  */
 .vt-main:has(.store-front-surface) {
   padding-top: 0;
@@ -806,7 +831,7 @@ body:has(.vt-home-page) {
   width: 100%;
 }
 
-/* Oculta la barra de scroll en carruseles horizontales (chips de categoría). */
+/* Oculta la barra de scroll en carruseles horizontales (chips de categorÃ­a). */
 .store-no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -862,3 +887,4 @@ body:has(.vt-home-page) {
     opacity: 1;
   }
 }
+

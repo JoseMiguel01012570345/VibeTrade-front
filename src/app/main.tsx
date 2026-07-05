@@ -13,18 +13,8 @@ import {
 import { bootstrapWebApp } from "@app/bootstrap/bootstrapWebApp";
 import { restoreAuthSession } from "@features/auth";
 import { queryClient } from "@shared/lib/queryClient";
-import {
-  findStoreByNormalizedName,
-  isStoreSurfacePath,
-} from "@features/market/logic/store/storePath";
-import { normStoreName } from "@features/market/logic/store/marketSliceHelpers";
-import { useMarketStore } from "@features/market/logic/store/useMarketStore";
-import {
-  applyStoreBootSplashToDom,
-  lookupStoreBootSplashByPathname,
-  rememberStoreBootSplash,
-  storeNameFromPathname,
-} from "@shared/lib/storeBootSplash";
+import { isStoreSurfacePath } from "@features/market/logic/store/storePath";
+import { enableStoreEntryBootSplashToDom } from "@shared/lib/storeBootSplash";
 
 applyColorSchemeToDocument(readStoredColorScheme());
 
@@ -39,15 +29,7 @@ async function start() {
   if (typeof globalThis.window !== "undefined") {
     const path = globalThis.window.location.pathname;
     if (isStoreSurfacePath(path)) {
-      const name = storeNameFromPathname(path);
-      const store = findStoreByNormalizedName(
-        useMarketStore.getState().stores,
-        normStoreName(name),
-      );
-      if (store?.avatarUrl) {
-        rememberStoreBootSplash(store.name, store.avatarUrl);
-      }
-      applyStoreBootSplashToDom(lookupStoreBootSplashByPathname(path));
+      enableStoreEntryBootSplashToDom();
     }
   }
 

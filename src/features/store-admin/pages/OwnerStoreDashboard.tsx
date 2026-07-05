@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Link,
   Navigate,
@@ -17,7 +17,7 @@ import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
 import { storeHref, storePanelHref } from "@features/market/logic/store/storePath";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { StoreEntryLoadingScreen } from "@features/storefront/components/StoreEntryLoadingScreen";
-import { useStoreLogoLoaded } from "@features/storefront/logic/useStoreLogoLoaded";
+import { dismissBootSplash } from "@shared/lib/bootSplash";
 import { logoutWebApp } from "@features/auth/logic/logoutWebApp";
 import { isStaffSession } from "@features/auth/logic/roles";
 import {
@@ -49,19 +49,14 @@ export function OwnerStoreDashboard() {
   const { storeName, storeId: storeIdParam, section } = useParams();
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
-  const { storeId: resolvedByName, resolving, notFound, fetchedStore } = useStoreIdFromName(
+  const { storeId: resolvedByName, resolving, notFound } = useStoreIdFromName(
     storeName,
     me.id,
   );
   const storeId = storeIdParam ?? resolvedByName;
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
-  const loadingStore = store ?? fetchedStore;
-  const logoLoaded = useStoreLogoLoaded(
-    loadingStore?.name ?? storeName,
-    loadingStore?.avatarUrl,
-  );
   const [loadNonce] = useState(0);
-  const { detailStatus, isFetching } = useStorePageDetail(
+  const { detailStatus } = useStorePageDetail(
     storeId,
     me.id,
     loadNonce,
@@ -112,26 +107,26 @@ export function OwnerStoreDashboard() {
   }, [storeId, reloadInventoryMeta]);
 
   const inventoryLoading =
-    detailStatus === "loading" || inventoryMetaLoading || isFetching;
+    detailStatus === "loading" || inventoryMetaLoading;
+
+  useEffect(() => {
+    dismissBootSplash(true);
+  }, []);
 
   const displayName = useMemo(
-    () => (isOwner ? "Dueño" : "Personal"),
+    () => (isOwner ? "DueÃ±o" : "Personal"),
     [isOwner],
   );
 
   if (!storeName && !storeIdParam) return <Navigate to="/home" replace />;
 
-  if ((resolving || detailStatus === "loading" || !logoLoaded) && !store && !notFound) {
+  if ((resolving || detailStatus === "loading") && !store && !notFound) {
     return (
-      <StoreEntryLoadingScreen
-        storeName={loadingStore?.name ?? storeName}
-        avatarUrl={loadingStore?.avatarUrl}
-        label="Cargando panel"
-      />
+      <StoreEntryLoadingScreen label="Cargando panel" />
     );
   }
 
-  // Cargado y sin autorización: mostrar el storefront (cliente).
+  // Cargado y sin autorizaciÃ³n: mostrar el storefront (cliente).
   if (store && !authorized) {
     return <Navigate to={storeHref(store)} replace />;
   }
@@ -146,8 +141,8 @@ export function OwnerStoreDashboard() {
 
   const sid: string = store.id;
   const storeForSections = store;
-  // Conserva el esquema de URL por el que se entró (nombre para el dueño; id legado para el staff)
-  // para no rebotar la navegación interna.
+  // Conserva el esquema de URL por el que se entrÃ³ (nombre para el dueÃ±o; id legado para el staff)
+  // para no rebotar la navegaciÃ³n interna.
   const usingName = Boolean(storeName);
   const panelLinkTo = (sectionId: string) =>
     usingName
@@ -194,7 +189,7 @@ export function OwnerStoreDashboard() {
           <UsersSection storeId={sid} />
         ) : (
           <div className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-14 text-center text-sm text-gray-500">
-            Solo el dueño de la tienda puede gestionar el personal.
+            Solo el dueÃ±o de la tienda puede gestionar el personal.
           </div>
         );
       case "afiliados":
@@ -229,7 +224,7 @@ export function OwnerStoreDashboard() {
           <p className="truncate text-base font-black leading-tight text-emerald-800">
             {store.name}
           </p>
-          <p className="text-xs text-gray-500">Panel de gestión</p>
+          <p className="text-xs text-gray-500">Panel de gestiÃ³n</p>
         </div>
       </div>
 
@@ -276,7 +271,7 @@ export function OwnerStoreDashboard() {
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-600 hover:bg-white/70"
         >
           <LogOut size={16} className="text-gray-400" aria-hidden />
-          Cerrar sesión
+          Cerrar sesiÃ³n
         </button>
         <div className="flex items-center gap-3 rounded-xl bg-white px-3 py-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-700 text-xs font-bold text-white">
@@ -300,7 +295,7 @@ export function OwnerStoreDashboard() {
         {sidebar}
       </aside>
 
-      {/* Off-canvas móvil */}
+      {/* Off-canvas mÃ³vil */}
       <button
         type="button"
         aria-hidden={!menuOpen}
@@ -309,7 +304,7 @@ export function OwnerStoreDashboard() {
           menuOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={() => setMenuOpen(false)}
-        aria-label="Cerrar menú"
+        aria-label="Cerrar menÃº"
       />
       <aside
         className={`fixed bottom-0 left-0 top-0 z-[50] flex w-[min(84vw,300px)] flex-col border-r border-emerald-100 bg-[#e9f2ee] py-5 shadow-xl transition-transform md:hidden ${
@@ -318,13 +313,13 @@ export function OwnerStoreDashboard() {
       >
         <div className="flex items-center justify-between px-4 pb-3">
           <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
-            Menú
+            MenÃº
           </span>
           <button
             type="button"
             onClick={() => setMenuOpen(false)}
             className="rounded-lg p-2 text-gray-500 hover:bg-white/70"
-            aria-label="Cerrar menú"
+            aria-label="Cerrar menÃº"
           >
             <X size={18} aria-hidden />
           </button>
@@ -339,7 +334,7 @@ export function OwnerStoreDashboard() {
             type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 md:hidden"
             onClick={() => setMenuOpen(true)}
-            aria-label="Abrir menú"
+            aria-label="Abrir menÃº"
           >
             <Menu size={20} aria-hidden />
           </button>
@@ -364,3 +359,7 @@ export function OwnerStoreDashboard() {
     </div>
   );
 }
+
+
+
+

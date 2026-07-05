@@ -1,8 +1,9 @@
-import { ArrowLeft, BadgeCheck, MoreVertical, PanelRight } from "lucide-react";
+﻿import { ArrowLeft, BadgeCheck, MoreVertical, PanelRight } from "lucide-react";
 import type { NavigateFunction } from "react-router-dom";
 import { cn } from "@shared/lib/cn";
 import type { Thread } from "@features/market/logic/store/marketStoreTypes";
 import { chatThreadHeaderTitle } from "@features/chat/logic/participants/chatParticipantLabels";
+import { useMinWidth961 } from "@features/chat/hooks/useMinWidth961";
 
 type Me = { id: string; name: string };
 
@@ -37,19 +38,22 @@ export function ChatPageHeader({
   setMobileChatActionsOpen,
   setRailOpen,
 }: Props) {
+  const wide = useMinWidth961();
   const showMobileActions = !isSocialThread && showLogisticsRail;
 
   return (
-    <div className="vt-card shrink-0 px-3 py-2 sm:px-[22px] sm:py-[18px]">
+    <div className="vt-chat-thread-header shrink-0 border-b border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-2.5 sm:px-4 sm:py-3 min-[961px]:bg-[var(--surface)]">
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:gap-x-3 md:gap-y-3">
         <div className="flex min-w-0 w-full items-center gap-2.5 md:min-h-0 md:min-w-0 md:flex-1">
-          <button
-            className="vt-btn shrink-0"
-            onClick={() => nav("/chat")}
-            aria-label="Volver a la lista de chats"
-          >
-            <ArrowLeft size={16} />
-          </button>
+          {!wide ? (
+            <button
+              className="vt-btn shrink-0"
+              onClick={() => nav("/chat")}
+              aria-label="Volver a la lista de chats"
+            >
+              <ArrowLeft size={16} />
+            </button>
+          ) : null}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2 font-black tracking-[-0.03em] break-words text-[clamp(14px,3.9vw,18px)] leading-snug">
               <span>

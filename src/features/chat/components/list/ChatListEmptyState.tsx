@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { MessageCircle, Search } from 'lucide-react'
 
 type Props =
@@ -22,9 +21,6 @@ export function ChatListEmptyState(props: Props) {
         <div className="vt-muted mt-1.5 text-[13px]">
           Abre una oferta y toca «Comprar» para iniciar un chat.
         </div>
-        <Link to="/home" className="vt-btn vt-btn-primary mt-4 inline-flex">
-          Ver ofertas
-        </Link>
       </div>
     )
   }

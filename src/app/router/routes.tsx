@@ -2,7 +2,7 @@ import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { AppShell } from "@app/shell/AppShell";
 import { SessionGate } from "@app/layouts/SessionGate";
 import { storePathFromName } from "@features/market/logic/store/storePath";
-import { ChatListPage, ChatPage, RoutePreselInvitePage } from "@features/chat";
+import { ChatLayout, ChatPage, RoutePreselInvitePage } from "@features/chat";
 import { HomePage } from "@features/home";
 import { NotificationsPage } from "@features/notifications";
 import {
@@ -178,12 +178,13 @@ export function AppRoutes() {
           <Route path="/admin/usuarios" element={<UsersAdminPage />} />
           <Route path="/estadisticas" element={<StatisticsPage />} />
 
-          <Route path="/chat" element={<ChatListPage />} />
+          <Route path="/chat" element={<ChatLayout />}>
+            <Route path=":threadId" element={<ChatPage />} />
+          </Route>
           <Route
             path="/invite/presel/:threadId"
             element={<RoutePreselInvitePage />}
           />
-          <Route path="/chat/:threadId" element={<ChatPage />} />
           <Route path="/reels" element={<ReelsPage />} />
 
           <Route path="/profile/:userId" element={<ProfileDefaultRedirect />} />

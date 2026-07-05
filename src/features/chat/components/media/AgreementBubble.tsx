@@ -6,6 +6,8 @@ import {
   statusPillPending,
 } from '@shared/styles/modals/formModalStyles';
 import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
+import { ChatEmbedCard } from "../embeds/ChatEmbedCard";
+import { ChatEmbedFrame } from "../embeds/ChatEmbedFrame";
 
 export function AgreementBubble({
   title,
@@ -31,36 +33,9 @@ export function AgreementBubble({
     !isDeleted &&
     !!agreement &&
     !!(agreement.routeSheetId || agreement.routeSheetUrl);
-  return (
-    <div
-      className={cn(
-        "max-w-full rounded-[14px] border border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] px-3.5 py-3",
-        isDeleted &&
-          "opacity-85 [border-color:color-mix(in_oklab,var(--muted)_40%,var(--border))] bg-[color-mix(in_oklab,var(--muted)_10%,var(--surface))]",
-      )}
-      data-chat-agreement
-    >
-      <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
-        <FileText size={18} aria-hidden />
-        <span>Acuerdo de compra</span>
-      </div>
-      <div
-        className={cn(
-          "mt-1.5 text-base font-black tracking-[-0.03em]",
-          isDeleted && "line-through opacity-80",
-        )}
-      >
-        {title}
-      </div>
-      {agreement ? (
-        <div className="mt-1.5 text-sm text-[var(--muted)]">
-          {isDeleted
-            ? "Este acuerdo fue eliminado por el vendedor. Se conserva el registro en el hilo."
-            : "Servicios"}
-        </div>
-      ) : (
-        <div className="vt-muted">Cargando detalle…</div>
-      )}
+
+  const statusFooter = (
+    <>
       {isDeleted ? (
         <div className="mt-2">
           <span className={statusPillNo}>Eliminado</span>
@@ -136,6 +111,39 @@ export function AgreementBubble({
           </div>
         </div>
       ) : null}
-    </div>
+    </>
+  );
+
+  return (
+    <ChatEmbedCard
+      className={cn(
+        "max-w-full",
+        isDeleted &&
+          "opacity-85 [border-color:color-mix(in_oklab,var(--muted)_40%,var(--border))] bg-[color-mix(in_oklab,var(--muted)_10%,var(--surface))]",
+      )}
+      frame={
+        <ChatEmbedFrame
+          aspect="square"
+          fallback={<FileText size={32} strokeWidth={1.75} aria-hidden />}
+        />
+      }
+      header={
+        <div className="mb-1.5 flex items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
+          <FileText size={16} aria-hidden />
+          <span>Acuerdo de compra</span>
+        </div>
+      }
+      title={
+        <span className={cn(isDeleted && "line-through opacity-80")}>{title}</span>
+      }
+      description={
+        agreement
+          ? isDeleted
+            ? "Este acuerdo fue eliminado por el vendedor. Se conserva el registro en el hilo."
+            : "Servicios"
+          : "Cargando detalle…"
+      }
+      footer={statusFooter}
+    />
   );
 }

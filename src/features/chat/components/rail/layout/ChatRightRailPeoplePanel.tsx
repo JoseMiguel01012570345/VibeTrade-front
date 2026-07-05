@@ -15,7 +15,7 @@ function ParticipantCardBody({ p }: { p: ChatParticipant }) {
   return (
     <>
       <span
-        className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-[color-mix(in_oklab,var(--primary)_18%,transparent)] text-[15px] font-black text-[var(--text)]"
+        className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-[var(--border)] bg-white text-[15px] font-black text-[var(--muted)]"
         aria-hidden
       >
         {p.avatarUrl ? (

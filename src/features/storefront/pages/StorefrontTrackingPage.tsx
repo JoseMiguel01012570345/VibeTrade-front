@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
@@ -7,25 +7,19 @@ import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
 import { isReservedStoreName } from "@features/market/logic/store/storePath";
 import { TrackShipmentContent } from "@features/orders";
 import { StorefrontChrome } from "../components/StorefrontChrome";
-import { useStoreLogoLoaded } from "../logic/useStoreLogoLoaded";
 import { StorefrontLoadingState } from "../components/StorefrontPageStates";
 
 /**
  * Buscador de rastreo dentro de una tienda (`{base}/{nombre}/rastreo`). Igual que el rastreo
  * global pero conservando el cintillo de la tienda (cabecera + pie de `StorefrontChrome`), que
- * es como se llega desde el enlace «Rastrea tu envío» del header. Si la tienda no se puede
+ * es como se llega desde el enlace Â«Rastrea tu envÃ­oÂ» del header. Si la tienda no se puede
  * resolver, cae al buscador simple (sin cintillo).
  */
 export function StorefrontTrackingPage() {
   const { storeName } = useParams();
   const me = useAppStore((s) => s.me);
-  const { storeId, resolving, notFound, fetchedStore } = useStoreIdFromName(storeName, me.id);
+  const { storeId, resolving, notFound } = useStoreIdFromName(storeName, me.id);
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
-  const loadingStore = store ?? fetchedStore;
-  const logoLoaded = useStoreLogoLoaded(
-    loadingStore?.name ?? storeName,
-    loadingStore?.avatarUrl,
-  );
   const [loadNonce] = useState(0);
   const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
 
@@ -37,13 +31,8 @@ export function StorefrontTrackingPage() {
   const surface =
     "store-front-surface min-h-full bg-[#f7f3ef] text-slate-900";
 
-  if (!notFound && (resolving || detailStatus === "loading" || !logoLoaded)) {
-    return (
-      <StorefrontLoadingState
-        storeName={loadingStore?.name ?? storeName}
-        avatarUrl={loadingStore?.avatarUrl}
-      />
-    );
+  if (!notFound && (resolving || detailStatus === "loading")) {
+    return <StorefrontLoadingState />;
   }
 
   // Sin tienda resoluble: buscador de rastreo sin cintillo (mismo contenido).
@@ -61,3 +50,4 @@ export function StorefrontTrackingPage() {
     </StorefrontChrome>
   );
 }
+

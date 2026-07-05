@@ -13,8 +13,8 @@ import { toastApiError } from "@features/auth/logic/toastApiError";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 import { cn } from "@shared/lib/cn";
 
-/** Altura reservada por la barra inferior fija de AppShell (`pb-[88px]`). */
-const BOTTOM_NAV_CLEARANCE_PX = 88;
+/** Altura reservada por la barra inferior fija de AppShell. */
+const BOTTOM_NAV_CLEARANCE_PX = 78;
 
 function isChatThreadPath(pathname: string) {
   return pathname.startsWith("/chat/") && pathname.length > "/chat/".length;

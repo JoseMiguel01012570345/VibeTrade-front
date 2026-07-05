@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
@@ -14,7 +14,6 @@ import { StorefrontLatestProductsSection } from "../components/StorefrontLatestP
 import { StorefrontSearchResultsSection } from "../components/StorefrontSearchResultsSection";
 import { StorefrontProductsSection } from "../components/StorefrontProductsSection";
 import { StorefrontServicesSection } from "../components/StorefrontServicesSection";
-import { useStoreLogoLoaded } from "../logic/useStoreLogoLoaded";
 import {
   StorefrontLoadingState,
   StorefrontNotFoundState,
@@ -57,7 +56,7 @@ function StorefrontCatalogBody({ store }: Readonly<{ store: StoreBadge }>) {
       id: label,
       label,
       slug: label,
-      description: "Explora servicios en esta categoría.",
+      description: "Explora servicios en esta categorÃ­a.",
       icon: null,
     }));
   }, [publishedServices]);
@@ -86,7 +85,7 @@ function StorefrontCatalogBody({ store }: Readonly<{ store: StoreBadge }>) {
       mainBanners.map((b) => ({
         id: b.id,
         src: b.mediaUrl,
-        alt: "Banner principal del catálogo",
+        alt: "Banner principal del catÃ¡logo",
       })),
     [mainBanners],
   );
@@ -187,19 +186,14 @@ function StorefrontCatalogBody({ store }: Readonly<{ store: StoreBadge }>) {
 
 /**
  * Storefront (vista de cliente) de una tienda. Se muestra a cualquier visitante
- * que entra a `/store/:storeId` desde el feed, la búsqueda o el perfil de otro.
+ * que entra a `/store/:storeId` desde el feed, la bÃºsqueda o el perfil de otro.
  */
 export function StorefrontPage() {
   const { storeName } = useParams();
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
-  const { storeId, resolving, notFound, fetchedStore } = useStoreIdFromName(storeName, me.id);
+  const { storeId, resolving, notFound } = useStoreIdFromName(storeName, me.id);
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
-  const loadingStore = store ?? fetchedStore;
-  const logoLoaded = useStoreLogoLoaded(
-    loadingStore?.name ?? storeName,
-    loadingStore?.avatarUrl,
-  );
   const [loadNonce] = useState(0);
   const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -225,13 +219,8 @@ export function StorefrontPage() {
     return <Navigate to="/home" replace />;
   }
 
-  if (!notFound && (resolving || detailStatus === "loading" || !logoLoaded)) {
-    return (
-      <StorefrontLoadingState
-        storeName={loadingStore?.name ?? storeName}
-        avatarUrl={loadingStore?.avatarUrl}
-      />
-    );
+  if (!notFound && (resolving || detailStatus === "loading")) {
+    return <StorefrontLoadingState />;
   }
 
   if (!store) {
@@ -249,3 +238,4 @@ export function StorefrontPage() {
     </StorefrontChrome>
   );
 }
+

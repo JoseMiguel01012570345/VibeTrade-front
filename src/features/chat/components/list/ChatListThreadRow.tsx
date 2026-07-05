@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { HelpCircle, LogOut } from 'lucide-react'
+import { HelpCircle, Trash2 } from 'lucide-react'
+import { CeIconButton } from '@shared/components/ui'
 import { cn } from '@shared/lib/cn'
 import type { Thread } from '@features/market/logic/store/useMarketStore'
 import {
@@ -19,6 +20,7 @@ type Props = {
   meId: string
   meName: string
   profileDisplayNames: Record<string, string>
+  activeThreadId?: string
   onLeave: (threadId: string) => void
 }
 
@@ -30,8 +32,10 @@ export function ChatListThreadRow({
   meId,
   meName,
   profileDisplayNames,
+  activeThreadId,
   onLeave,
 }: Props) {
+  const isActive = activeThreadId != null && th.id === activeThreadId
   const inv = Boolean(th.prematureExitUnderInvestigation)
   const sellerUid = resolveSellerUserId(th)
   const imSeller = sellerUid != null && meId === sellerUid
@@ -44,39 +48,35 @@ export function ChatListThreadRow({
   return (
     <div
       className={cn(
-        'flex items-stretch gap-2 border-b border-[var(--border)] transition-colors duration-150 last:border-b-0',
+        'vt-chat-list-row',
+        isActive && !inv && 'vt-chat-list-row--active',
         inv &&
-          '-ml-0.5 border-l-4 border-l-amber-600 bg-[color-mix(in_oklab,#d97706_12%,var(--surface))] pl-2',
+          'border-l-4 border-l-amber-600 bg-[color-mix(in_oklab,#d97706_12%,var(--surface))] pl-1',
       )}
     >
       <Link
         to={`/chat/${th.id}`}
         className={cn(
-          'relative flex min-w-0 flex-1 items-start gap-3 py-3.5 text-inherit no-underline transition-colors duration-150',
-          inv
-            ? 'hover:bg-[color-mix(in_oklab,#d97706_16%,var(--surface))]'
-            : 'hover:bg-[color-mix(in_oklab,var(--primary)_6%,transparent)]',
+          'relative flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-inherit no-underline',
+          inv && 'hover:bg-[color-mix(in_oklab,#d97706_16%,var(--surface))]',
         )}
         title={inv ? PREMATURE_EXIT_TOOLTIP : undefined}
       >
-        {inv ? (
-          <span className="sr-only">{PREMATURE_EXIT_TOOLTIP}</span>
-        ) : null}
+        {inv ? <span className="sr-only">{PREMATURE_EXIT_TOOLTIP}</span> : null}
         <div
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_oklab,var(--primary)_18%,var(--surface))] text-base font-bold text-[var(--primary)]"
+          className="flex size-12 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-white text-base font-semibold text-[var(--muted)]"
           aria-hidden
         >
           {avatarLetter.toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <div className="truncate text-[15px] font-semibold">{listTitle}</div>
+          <div className="mb-0.5 flex items-baseline justify-between gap-2">
+            <div className="truncate text-[15px] font-semibold text-[var(--text)]">
+              {listTitle}
+            </div>
             <div className="flex shrink-0 items-center gap-1.5">
               {inv ? (
-                <span
-                  className="flex leading-none text-amber-700"
-                  aria-hidden
-                >
+                <span className="flex leading-none text-amber-700" aria-hidden>
                   <HelpCircle size={18} strokeWidth={2.25} />
                 </span>
               ) : null}
@@ -85,19 +85,19 @@ export function ChatListThreadRow({
               </span>
             </div>
           </div>
-          <div className="truncate text-[13px] text-[var(--muted)]">
-            {preview}
-          </div>
+          <div className="truncate text-[13px] text-[var(--muted)]">{preview}</div>
         </div>
       </Link>
-      <button
+      <CeIconButton
         type="button"
-        className="vt-btn my-2 mr-1 inline-flex shrink-0 items-center gap-1.5 self-center text-nowrap text-[13px]"
+        variant="danger"
+        className="my-2 mr-2 shrink-0 self-center min-[961px]:mr-3"
         title="Salir: con acuerdo aceptado te expulsa del hilo y pedimos motivo; sin acuerdo, sin motivo ni impacto en confianza"
+        aria-label="Salir del chat"
         onClick={() => onLeave(th.id)}
       >
-        <LogOut size={16} aria-hidden /> Salir
-      </button>
+        <Trash2 size={18} strokeWidth={2} aria-hidden />
+      </CeIconButton>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -20,6 +20,7 @@ import { ThemeToggle } from "../widgets/ThemeToggle";
 import { syncChatNotificationsFromServer } from "@features/notifications/logic/notificationsSync";
 import { useTrustGate } from "@features/trust";
 import { AnalyticsTracker } from "@features/analytics";
+import { useMinWidth961 } from "@features/chat/hooks/useMinWidth961";
 
 const tabs = [
   { to: "/home", label: "Home", icon: Home },
@@ -35,6 +36,15 @@ const tabs = [
   },
 ] as const;
 
+const NAV_TAB_ACTIVE =
+  "bg-[color-mix(in_oklab,#0f766e_12%,transparent)] text-[#0f766e] active:bg-[color-mix(in_oklab,#0f766e_20%,transparent)]";
+
+const NAV_PROFILE_AVATAR_RING =
+  "ring-2 ring-[color-mix(in_oklab,#0f766e_45%,transparent)] ring-offset-2 ring-offset-[var(--surface)]";
+
+const NAV_PROFILE_AVATAR_PLACEHOLDER =
+  "border border-[var(--border)] bg-white text-[10px] font-black text-[var(--muted)]";
+
 function tabIsActive(pathname: string, t: (typeof tabs)[number]) {
   if ("activePrefix" in t && t.activePrefix) {
     const p = t.activePrefix;
@@ -43,7 +53,7 @@ function tabIsActive(pathname: string, t: (typeof tabs)[number]) {
   return pathname === t.to || pathname.startsWith(`${t.to}/`);
 }
 
-/** Lista `/chat`; hilo `/chat/:threadId` — en el hilo se oculta la barra inferior para pantalla completa. */
+/** Lista `/chat`; hilo `/chat/:threadId` â€” en el hilo se oculta la barra inferior para pantalla completa. */
 function isChatThreadPath(pathname: string) {
   return pathname.startsWith("/chat/") && pathname.length > "/chat/".length;
 }
@@ -60,32 +70,44 @@ function isStoreSurfaceRoute(pathname: string) {
   return isStoreSurfacePath(pathname);
 }
 
+/** Lista `/chat` o cualquier ruta bajo `/chat/`. */
+function isChatRoute(pathname: string) {
+  return pathname === "/chat" || pathname.startsWith("/chat/");
+}
+
 export function AppShell() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const wide = useMinWidth961();
   const isOnboarding = pathname.startsWith("/onboarding");
   const isHome = pathname === "/home";
   const isSessionActive = useAppStore((s) => s.isSessionActive);
   const staffSession = isStaffSession(useAppStore((s) => s.me)) && isSessionActive;
   /** El personal (staff) navega solo el panel: sin barra inferior. */
-  const hideBottomNav = isChatThreadPath(pathname) || staffSession;
-  /** Sin campana en hilo de chat ni en Reels; en listado `/chat` sí. */
+  const hideBottomNav =
+    staffSession || (!wide && isChatRoute(pathname));
+  /** Sin campana en hilo de chat ni en Reels; en listado `/chat` sÃ­. */
   const showNotificationsBell =
     isSessionActive &&
     !isChatThreadPath(pathname) &&
     !isReelsRoute(pathname);
-  /** Home: barra con título y buscador. El resto de acciones va en overlay superior derecho. */
+  /** Home: barra con tÃ­tulo y buscador. El resto de acciones va en overlay superior derecho. */
   const showStickyShellHeader = isHome && !isOnboarding;
+  /** Chat en escritorio: el hilo ocupa todo el alto; la nav flota encima. */
+  const chatFullHeightDesktop = wide && isChatRoute(pathname);
+  const hideShellOverlayOnWideChat = chatFullHeightDesktop;
   const showNotificationsInOverlay =
     showNotificationsBell &&
     isSessionActive &&
     !isOnboarding &&
-    !isStoreSurfaceRoute(pathname);
+    !isStoreSurfaceRoute(pathname) &&
+    !hideShellOverlayOnWideChat;
   const showGuestAuthInOverlay =
     !isSessionActive && !isOnboarding && !staffSession && !isStoreSurfaceRoute(pathname);
   const showThemeInOverlay =
     !staffSession &&
     !isStoreSurfaceRoute(pathname) &&
+    !isChatRoute(pathname) &&
     (isOnboarding || isSessionActive);
   const showShellTopRightOverlay =
     showGuestAuthInOverlay ||
@@ -131,11 +153,11 @@ export function AppShell() {
           type="button"
           onClick={() => navigate("/mensualidad")}
           className="flex w-full items-center justify-center gap-2 bg-[color-mix(in_oklab,var(--bad)_16%,var(--surface))] px-3 py-2 text-center text-[13px] font-semibold text-[var(--bad)]"
-          aria-label="Tu confianza está por debajo del umbral. Regularizar la mensualidad"
+          aria-label="Tu confianza estÃ¡ por debajo del umbral. Regularizar la mensualidad"
         >
           <AlertTriangle size={16} aria-hidden />
           <span>
-            Tu confianza está por debajo del umbral. Regulariza tu mensualidad
+            Tu confianza estÃ¡ por debajo del umbral. Regulariza tu mensualidad
             para reactivar tu cuenta.
           </span>
         </button>
@@ -152,7 +174,7 @@ export function AppShell() {
                   type="button"
                   className="order-2 flex w-full min-w-0 basis-full items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 md:w-auto md:flex-1 md:basis-auto"
                   onClick={() => navigate("/search")}
-                  aria-label="Abrir búsqueda de tiendas, productos y servicios"
+                  aria-label="Abrir bÃºsqueda de tiendas, productos y servicios"
                 >
                   <Search
                     size={18}
@@ -161,7 +183,7 @@ export function AppShell() {
                     aria-hidden
                   />
                   <span className="min-w-0 text-[var(--muted)] max-md:whitespace-normal max-md:break-words max-md:leading-snug md:truncate">
-                    Buscar tiendas, productos o servicios…
+                    Buscar tiendas, productos o serviciosâ€¦
                   </span>
                 </button>
               </div>
@@ -191,11 +213,9 @@ export function AppShell() {
 
       <main
         className={cn(
-          "vt-main min-h-0 min-w-0 w-full flex-1 pt-4",
-          /* Hilo de chat (sin nav inferior): en móvil el padding inferior vive en el compositor (área segura); main sin hueco extra. */
-          hideBottomNav
-            ? "max-[960px]:pb-0 min-[961px]:pb-4"
-            : "pb-[88px]",
+          "vt-main min-h-0 min-w-0 w-full flex-1",
+          isChatRoute(pathname) ? "pt-0 pb-0" : "pt-4",
+          !isChatRoute(pathname) && !hideBottomNav && "pb-[var(--vt-bottom-nav-clearance)]",
         )}
       >
         <Outlet />
@@ -222,17 +242,16 @@ export function AppShell() {
                   onClick={openAuthModal}
                   className={cn(
                     "flex flex-col items-center gap-1 rounded-xl px-1.5 py-2 text-xs text-[var(--muted)] opacity-55",
-                    active &&
-                      "bg-[color-mix(in_oklab,var(--primary)_10%,transparent)] text-[var(--primary)]",
+                    active && NAV_TAB_ACTIVE,
                   )}
-                  aria-label={`${t.label} (requiere iniciar sesión)`}
+                  aria-label={`${t.label} (requiere iniciar sesiÃ³n)`}
                 >
                   {profileTab ? (
                     <span
                       className={cn(
-                        "grid h-[22px] w-[22px] shrink-0 place-items-center overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--bg)_60%,var(--surface))] text-[10px] font-black text-[var(--muted)]",
-                        active &&
-                          "ring-2 ring-[color-mix(in_oklab,var(--primary)_55%,transparent)] ring-offset-2 ring-offset-[var(--surface)]",
+                        "grid h-[22px] w-[22px] shrink-0 place-items-center overflow-hidden rounded-full",
+                        NAV_PROFILE_AVATAR_PLACEHOLDER,
+                        active && NAV_PROFILE_AVATAR_RING,
                       )}
                       aria-hidden
                     >
@@ -249,18 +268,15 @@ export function AppShell() {
                   to={t.to}
                   className={cn(
                     "flex flex-col items-center gap-1 rounded-xl px-1.5 py-2 text-xs text-[var(--muted)]",
-                    active &&
-                      "bg-[color-mix(in_oklab,var(--primary)_10%,transparent)] text-[var(--primary)]",
+                    active && NAV_TAB_ACTIVE,
                   )}
                 >
                   {profileTab ? (
                     <span
                       className={cn(
                         "grid h-[22px] w-[22px] shrink-0 place-items-center overflow-hidden rounded-full",
-                        !me.avatarUrl &&
-                          "bg-gradient-to-br from-[var(--primary)] to-violet-600 text-[10px] font-black text-white",
-                        active &&
-                          "ring-2 ring-[color-mix(in_oklab,var(--primary)_55%,transparent)] ring-offset-2 ring-offset-[var(--surface)]",
+                        !me.avatarUrl && NAV_PROFILE_AVATAR_PLACEHOLDER,
+                        active && NAV_PROFILE_AVATAR_RING,
                       )}
                       aria-hidden
                     >
@@ -290,3 +306,4 @@ export function AppShell() {
     </div>
   );
 }
+

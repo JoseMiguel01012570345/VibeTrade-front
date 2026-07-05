@@ -13,7 +13,7 @@ export function ChatJumpToBottomFab({
 }: Props) {
   if (!visible) return null;
   return (
-    <div className="pointer-events-none absolute bottom-2 right-3 z-20 sm:bottom-3 sm:right-4">
+    <div className="vt-chat-jump-fab pointer-events-none absolute z-20">
       <button
         type="button"
         onClick={onJump}

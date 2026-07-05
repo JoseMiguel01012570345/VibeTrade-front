@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, ChevronLeft, ChevronRight, ExternalLink, History, Trash2, X } from 'lucide-react'
+import { Bell, ChevronLeft, ChevronRight, ExternalLink, History, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { CeTransitionModalShell } from '@shared/components/ui'
+import { CeButton, CeDateField, CeModal, CeTimeField } from '@shared/components/ui'
 import { useAppStore } from "@features/auth/logic/useAppStore"
 import type { NotificationItem } from "@features/notifications/Dtos/notificationItem"
 import { cn } from "@shared/lib/cn"
@@ -16,8 +16,6 @@ import {
   setDesktopNotificationsEnabledPreference,
 } from "@features/notifications/logic/desktopNotifications"
 import { notificationDeepLink } from "@features/notifications/logic/notificationRoutes"
-import { VtDateField } from "@shared/components/ui/VtDateField"
-import { VtTimeField } from "@shared/components/ui/VtTimeField"
 import { useNotifications, mapServerNotification } from '@features/notifications'
 
 /** Chat primero salvo avisos explícitos de comentario en ficha → oferta + ancla a comentarios. */
@@ -166,65 +164,38 @@ function HistoryFiltersPanel({
       <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
         Rango (hora local)
       </div>
-      <div className="grid w-full min-w-0 grid-cols-1 gap-4">
-        <div className="min-w-0">
-          <div className="text-[12px] font-extrabold text-[var(--text)]">Desde</div>
-          <div className="mt-1.5 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-            <div className="w-full min-w-0">
-              <VtDateField
-                value={historyFromDate}
-                onChange={onFromDateChange}
-                className="w-full min-w-0"
-                aria-label="Fecha de inicio"
-              />
-            </div>
-            <div className="w-full min-w-0">
-              <VtTimeField
-                value={historyFromTime}
-                onChange={onFromTimeChange}
-                disabled={historyLoading}
-                className="w-full min-w-0"
-                buttonClassName="w-full min-w-0 justify-between gap-2"
-                placeholder="Hora"
-                aria-label="Hora de inicio"
-              />
-            </div>
-          </div>
-        </div>
-        <div className="min-w-0">
-          <div className="text-[12px] font-extrabold text-[var(--text)]">Hasta</div>
-          <div className="mt-1.5 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-            <div className="w-full min-w-0">
-              <VtDateField
-                value={historyToDate}
-                onChange={onToDateChange}
-                className="w-full min-w-0"
-                aria-label="Fecha de fin"
-              />
-            </div>
-            <div className="w-full min-w-0">
-              <VtTimeField
-                value={historyToTime}
-                onChange={onToTimeChange}
-                disabled={historyLoading}
-                className="w-full min-w-0"
-                buttonClassName="w-full min-w-0 justify-between gap-2"
-                placeholder="Hora"
-                aria-label="Hora de fin"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className="vt-btn vt-btn-primary text-xs font-extrabold"
-          onClick={onApply}
+      <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+        <CeDateField
+          label="Desde (fecha)"
+          value={historyFromDate}
+          onChange={onFromDateChange}
+        />
+        <CeTimeField
+          label="Desde (hora)"
+          value={historyFromTime}
+          onChange={onFromTimeChange}
           disabled={historyLoading}
+        />
+        <CeDateField
+          label="Hasta (fecha)"
+          value={historyToDate}
+          onChange={onToDateChange}
+        />
+        <CeTimeField
+          label="Hasta (hora)"
+          value={historyToTime}
+          onChange={onToTimeChange}
+          disabled={historyLoading}
+        />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <CeButton
+          size="sm"
+          loading={historyLoading}
+          onClick={onApply}
         >
           {applyFilterButtonLabel(historyLoading)}
-        </button>
+        </CeButton>
       </div>
       {historyError && (
         <p className="mb-0 mt-2 text-[12px] font-semibold text-[var(--bad)]">{historyError}</p>
@@ -447,30 +418,32 @@ function NotificationsPagination({
   onNext: () => void
 }>) {
   return (
-    <div className="mt-2 flex shrink-0 items-center justify-center gap-2 border-t border-[color-mix(in_oklab,var(--border)_70%,transparent)] pt-3 pb-1">
-      <button
-        type="button"
-        className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[var(--text)] disabled:pointer-events-none disabled:opacity-35"
+    <div className="mt-3 flex shrink-0 items-center justify-center gap-2 border-t border-gray-200 pt-3 pb-1 dark:border-gray-600">
+      <CeButton
+        color="gray"
+        outline
+        size="sm"
         aria-label="Página anterior"
         disabled={pageIndex < 1}
         onClick={onPrevious}
       >
         <ChevronLeft size={16} aria-hidden />
-        <span className="text-[11px] font-extrabold">Anterior</span>
-      </button>
-      <span className="min-w-[5.5rem] text-center text-[12px] font-extrabold text-[var(--muted)]">
+        Anterior
+      </CeButton>
+      <span className="min-w-[5.5rem] text-center text-xs font-semibold text-gray-500 dark:text-gray-400">
         {pageIndex + 1} / {pageCount}
       </span>
-      <button
-        type="button"
-        className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[var(--text)] disabled:pointer-events-none disabled:opacity-35"
+      <CeButton
+        color="gray"
+        outline
+        size="sm"
         aria-label="Página siguiente"
         disabled={pageIndex >= pageCount - 1}
         onClick={onNext}
       >
-        <span className="text-[11px] font-extrabold">Siguiente</span>
+        Siguiente
         <ChevronRight size={16} aria-hidden />
-      </button>
+      </CeButton>
     </div>
   )
 }
@@ -570,16 +543,6 @@ export function NotificationsBell() {
     }
     globalThis.addEventListener?.('focus', onFocus)
     return () => globalThis.removeEventListener?.('focus', onFocus)
-  }, [open])
-
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    const w = globalThis as unknown as Window
-    w.addEventListener('keydown', onKey)
-    return () => w.removeEventListener('keydown', onKey)
   }, [open])
 
   const badgeText = formatBadgeText(unread)
@@ -693,143 +656,142 @@ export function NotificationsBell() {
         )}
       </button>
 
-      <CeTransitionModalShell show={open} onClose={() => setOpen(false)} size="2xl">
-        <div className="flex max-h-[min(88dvh,40rem)] flex-col overflow-y-auto overflow-x-hidden overscroll-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex shrink-0 items-start justify-between gap-3">
-              <div>
-                <div className="vt-modal-title" id="notifications-modal-title">
-                  Notificaciones
-                </div>
-                <div className="vt-modal-body">Historial y avisos recientes.</div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_50%,var(--surface))] px-3 py-1.5 text-xs font-extrabold text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--muted)_14%,var(--surface))]"
-                    onClick={() => {
-                      if (historyFiltersOpen) {
-                        setHistoryFiltersOpen(false)
-                      } else {
-                        openHistoryWithDefaults()
-                      }
-                    }}
-                  >
-                    <History size={14} aria-hidden />
-                    {historyToggleLabel(historyFiltersOpen)}
-                  </button>
-                  {historyFiltered !== null && (
-                    <ViewRecentNotificationsButton
-                      onClick={() => {
-                        setNotifPage(0)
-                        setHistoryFiltered(null)
-                        setHistoryError(null)
-                      }}
-                    />
-                  )}
-                </div>
-                {historyFiltersOpen && (
-                  <HistoryFiltersPanel
-                    historyFromDate={historyFromDate}
-                    historyFromTime={historyFromTime}
-                    historyToDate={historyToDate}
-                    historyToTime={historyToTime}
-                    historyLoading={historyLoading}
-                    historyError={historyError}
-                    onFromDateChange={setHistoryFromDate}
-                    onFromTimeChange={setHistoryFromTime}
-                    onToDateChange={setHistoryToDate}
-                    onToTimeChange={setHistoryToTime}
-                    onApply={() => void applyHistoryFilter()}
-                  />
-                )}
-                {historyFiltered !== null && (
-                  <HistoryRangeSummary
-                    count={displayItems.length}
-                    pageCount={notifPageCount}
-                  />
-                )}
-              </div>
-              <button
-                type="button"
-                className="grid h-9 w-9 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:bg-[color-mix(in_oklab,var(--muted)_18%,var(--surface))] hover:text-[var(--text)]"
-                aria-label="Cerrar"
-                onClick={() => setOpen(false)}
-              >
-                <X size={18} />
-              </button>
-            </div>
+      <CeModal
+        show={open}
+        onClose={() => setOpen(false)}
+        size="2xl"
+        bodyClassName="flex max-h-[min(78dvh,40rem)] flex-col gap-3 overflow-y-auto pt-2"
+        title={
+          <span className="inline-flex items-center gap-2">
+            <Bell
+              size={22}
+              className="shrink-0 text-primary-600 dark:text-primary-400"
+              aria-hidden
+            />
+            Notificaciones
+          </span>
+        }
+      >
+        <p className="m-0 text-sm text-gray-600 dark:text-gray-400">
+          Historial y avisos recientes.
+        </p>
 
-            {isDesktopNotificationSupported() && (
-              <div
-                className="mt-3 shrink-0 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-3 py-3 pr-4"
-                role="region"
-                aria-label="Notificaciones fuera del navegador"
-              >
-                <div className="flex items-start justify-between gap-3 sm:gap-4">
-                  <div className="min-w-0 flex-1 pr-1">
-                    <div className="text-sm font-extrabold leading-snug text-[var(--text)]">
-                      Avisos fuera del navegador
-                    </div>
-                    <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
-                      Cuando cambies de pestaña o minimices, el sistema puede mostrar avisos por mensajes y
-                      alertas (mientras esta pestaña está al frente no duplicamos el aviso).
-                    </p>
-                    <DesktopNotificationHints
-                      permission={desktopNotifPerm}
-                      effectiveOn={desktopEffectiveOn}
-                    />
-                  </div>
-                  <DesktopNotificationToggle
-                    enabled={desktopEffectiveOn}
-                    onToggle={() => void toggleDesktopNotifications()}
-                  />
+        <div className="flex flex-wrap items-center gap-2">
+          <CeButton
+            color="gray"
+            outline
+            size="sm"
+            onClick={() => {
+              if (historyFiltersOpen) {
+                setHistoryFiltersOpen(false)
+              } else {
+                openHistoryWithDefaults()
+              }
+            }}
+          >
+            <History size={14} aria-hidden />
+            {historyToggleLabel(historyFiltersOpen)}
+          </CeButton>
+          {historyFiltered !== null ? (
+            <ViewRecentNotificationsButton
+              onClick={() => {
+                setNotifPage(0)
+                setHistoryFiltered(null)
+                setHistoryError(null)
+              }}
+            />
+          ) : null}
+        </div>
+
+        {historyFiltersOpen ? (
+          <HistoryFiltersPanel
+            historyFromDate={historyFromDate}
+            historyFromTime={historyFromTime}
+            historyToDate={historyToDate}
+            historyToTime={historyToTime}
+            historyLoading={historyLoading}
+            historyError={historyError}
+            onFromDateChange={setHistoryFromDate}
+            onFromTimeChange={setHistoryFromTime}
+            onToDateChange={setHistoryToDate}
+            onToTimeChange={setHistoryToTime}
+            onApply={() => void applyHistoryFilter()}
+          />
+        ) : null}
+
+        {historyFiltered !== null ? (
+          <HistoryRangeSummary
+            count={displayItems.length}
+            pageCount={notifPageCount}
+          />
+        ) : null}
+
+        {isDesktopNotificationSupported() ? (
+          <div
+            className="shrink-0 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-600 dark:bg-gray-800/50"
+            role="region"
+            aria-label="Notificaciones fuera del navegador"
+          >
+            <div className="flex items-start justify-between gap-3 sm:gap-4">
+              <div className="min-w-0 flex-1 pr-1">
+                <div className="text-sm font-semibold leading-snug text-gray-900 dark:text-white">
+                  Avisos fuera del navegador
                 </div>
-              </div>
-            )}
-
-            <div className="mt-3 flex shrink-0 justify-end">
-              <button
-                type="button"
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-extrabold',
-                  'border-[color-mix(in_oklab,var(--bad)_35%,var(--border))] bg-[color-mix(in_oklab,var(--bad)_6%,var(--surface))] text-[var(--text)]',
-                  'hover:bg-[color-mix(in_oklab,var(--bad)_12%,var(--surface))] disabled:pointer-events-none disabled:opacity-40',
-                )}
-                disabled={items.length === 0 || historyFiltered !== null}
-                title={clearNotificationsTitle(historyFiltered)}
-                aria-label="Limpiar todas las notificaciones"
-                onClick={handleClearAll}
-              >
-                <Trash2 size={16} className="text-[var(--bad)]" aria-hidden />
-                Limpiar
-              </button>
-            </div>
-
-            <div ref={filteredListAnchorRef} className="mt-3 flex flex-col gap-2 scroll-mt-3">
-              {notifRangeLabel && (
-                <NotificationsRangeLabel
-                  label={notifRangeLabel}
-                  pageCount={notifPageCount}
-                  pageIndex={notifPageSafe}
-                />
-              )}
-              <div className="pr-1">
-                <NotificationsList
-                  items={pagedNotifItems}
-                  historyFiltered={historyFiltered}
-                  onClose={() => setOpen(false)}
+                <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+                  Cuando cambies de pestaña o minimices, el sistema puede mostrar avisos por mensajes y
+                  alertas (mientras esta pestaña está al frente no duplicamos el aviso).
+                </p>
+                <DesktopNotificationHints
+                  permission={desktopNotifPerm}
+                  effectiveOn={desktopEffectiveOn}
                 />
               </div>
-              {displayItems.length > 0 && notifPageCount > 1 && (
-                <NotificationsPagination
-                  pageIndex={notifPageSafe}
-                  pageCount={notifPageCount}
-                  onPrevious={() => setNotifPage((p) => Math.max(0, p - 1))}
-                  onNext={() => setNotifPage((p) => Math.min(notifPageCount - 1, p + 1))}
-                />
-              )}
+              <DesktopNotificationToggle
+                enabled={desktopEffectiveOn}
+                onToggle={() => void toggleDesktopNotifications()}
+              />
             </div>
           </div>
-      </CeTransitionModalShell>
+        ) : null}
+
+        <div className="flex shrink-0 justify-end">
+          <CeButton
+            color="failure"
+            outline
+            size="sm"
+            disabled={items.length === 0 || historyFiltered !== null}
+            title={clearNotificationsTitle(historyFiltered)}
+            aria-label="Limpiar todas las notificaciones"
+            onClick={handleClearAll}
+          >
+            <Trash2 size={16} aria-hidden />
+            Limpiar
+          </CeButton>
+        </div>
+
+        <div ref={filteredListAnchorRef} className="flex flex-col gap-2 scroll-mt-3">
+          {notifRangeLabel ? (
+            <NotificationsRangeLabel
+              label={notifRangeLabel}
+              pageCount={notifPageCount}
+              pageIndex={notifPageSafe}
+            />
+          ) : null}
+          <NotificationsList
+            items={pagedNotifItems}
+            historyFiltered={historyFiltered}
+            onClose={() => setOpen(false)}
+          />
+          {displayItems.length > 0 && notifPageCount > 1 ? (
+            <NotificationsPagination
+              pageIndex={notifPageSafe}
+              pageCount={notifPageCount}
+              onPrevious={() => setNotifPage((p) => Math.max(0, p - 1))}
+              onNext={() => setNotifPage((p) => Math.min(notifPageCount - 1, p + 1))}
+            />
+          ) : null}
+        </div>
+      </CeModal>
     </>
   )
 }

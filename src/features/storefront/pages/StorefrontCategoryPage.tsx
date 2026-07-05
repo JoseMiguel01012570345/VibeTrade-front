@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
@@ -17,7 +17,6 @@ import { CategoryHeader } from "../components/CategoryHeader";
 import { CategoryGrid } from "../components/CategoryGrid";
 import { CategoryPagination } from "../components/CategoryPagination";
 import { CategoryFooterTabs } from "../components/CategoryFooterTabs";
-import { useStoreLogoLoaded } from "../logic/useStoreLogoLoaded";
 import {
   StorefrontLoadingState,
   StorefrontNotFoundState,
@@ -159,7 +158,7 @@ function StorefrontCategoryPageBody({
       : storeCategoryHref(store, nameOrSlug);
   const title =
     (isService ? categoryParam : productMeta?.label ?? categoryParam) ||
-    (isService ? "Servicios" : "Categoría");
+    (isService ? "Servicios" : "CategorÃ­a");
   const currentTab = isService
     ? categoryParam
     : (productMeta?.slug ?? categoryParam);
@@ -199,8 +198,8 @@ function StorefrontCategoryPageBody({
 }
 
 /**
- * Página dedicada de una categoría de la tienda: breadcrumb, título, ordenamiento,
- * grid paginado y pestañas del resto de categorías del mismo catálogo.
+ * PÃ¡gina dedicada de una categorÃ­a de la tienda: breadcrumb, tÃ­tulo, ordenamiento,
+ * grid paginado y pestaÃ±as del resto de categorÃ­as del mismo catÃ¡logo.
  */
 export function StorefrontCategoryPage({
   kind,
@@ -210,13 +209,8 @@ export function StorefrontCategoryPage({
   const categoryParam = decodeCategoryParam(cat);
 
   const me = useAppStore((s) => s.me);
-  const { storeId, resolving, notFound, fetchedStore } = useStoreIdFromName(storeName, me.id);
+  const { storeId, resolving, notFound } = useStoreIdFromName(storeName, me.id);
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
-  const loadingStore = store ?? fetchedStore;
-  const logoLoaded = useStoreLogoLoaded(
-    loadingStore?.name ?? storeName,
-    loadingStore?.avatarUrl,
-  );
   const [loadNonce] = useState(0);
   const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
 
@@ -224,13 +218,8 @@ export function StorefrontCategoryPage({
     return <Navigate to="/home" replace />;
   }
 
-  if (!notFound && (resolving || detailStatus === "loading" || !logoLoaded)) {
-    return (
-      <StorefrontLoadingState
-        storeName={loadingStore?.name ?? storeName}
-        avatarUrl={loadingStore?.avatarUrl}
-      />
-    );
+  if (!notFound && (resolving || detailStatus === "loading")) {
+    return <StorefrontLoadingState />;
   }
 
   if (!store) {
@@ -247,3 +236,4 @@ export function StorefrontCategoryPage({
     </StorefrontChrome>
   );
 }
+

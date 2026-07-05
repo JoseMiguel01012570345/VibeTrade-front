@@ -47,15 +47,11 @@ export function readAudioMicroPalette(isMine: boolean): VoiceMicroPalette {
   const primary2 = cssVar('--primary-2', '#1d4ed8')
   if (isMine) {
     return {
-      unplayed: resolveCssColor(
-        'color-mix(in oklab, var(--primary) 35%, var(--surface))',
-      ),
-      played: resolveCssColor(
-        'color-mix(in oklab, var(--primary) 65%, var(--surface))',
-      ),
+      unplayed: resolveCssColor(cssVar('--chat-voice-unplayed', '#94a3b8')),
+      played: resolveCssColor(cssVar('--chat-voice-played', primary)),
       thumb: primary2,
       thumbStroke: resolveCssColor(
-        'color-mix(in oklab, var(--surface) 88%, var(--primary))',
+        'color-mix(in oklab, var(--surface) 88%, var(--muted))',
       ),
     }
   }

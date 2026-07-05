@@ -1,4 +1,4 @@
-import {
+﻿import {
   useCallback,
   useEffect,
   useMemo,
@@ -73,6 +73,7 @@ import { ChatJumpToBottomFab } from "../components/layout/ChatJumpToBottomFab";
 import { ChatPageHeader } from "../components/layout/ChatPageHeader";
 import { ChatTradeMobileActionsSheet } from "../components/layout/ChatTradeMobileActionsSheet";
 import { ChatSocialOverlays } from "../components/social/ChatSocialOverlays";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import "../styles/chat.css";
 
 export function ChatPage() {
@@ -87,7 +88,7 @@ export function ChatPage() {
   const pushNotification = useAppStore((s) => s.pushNotification);
 
   const respondTradeAgreement = useMarketStore((s) => s.respondTradeAgreement);
-  /** Una sola suscripción: evita referenciar `thread` antes de inicializarlo si el catálogo depende del hilo. */
+  /** Una sola suscripciÃ³n: evita referenciar `thread` antes de inicializarlo si el catÃ¡logo depende del hilo. */
   const { thread, routeOfferForThisThread, offerForThread } =
     useMarketStore(
       useShallow((s) => {
@@ -248,7 +249,7 @@ export function ChatPage() {
     routeOfferForThisThread,
     setRailOpen,
   });
-  /** Tras cobro: refrescar entregas + volver a intentar permiso de ubicación para telemetría. */
+  /** Tras cobro: refrescar entregas + volver a intentar permiso de ubicaciÃ³n para telemetrÃ­a. */
   useEffect(() => {
     if (isNonCommercialThread || !showLogisticsRail) setRailOpen(false);
   }, [isNonCommercialThread, showLogisticsRail]);
@@ -277,7 +278,7 @@ export function ChatPage() {
       applyThreadRouteTramoSubscriptions,
       setRouteSheetsLoading,
     });
-  /** Móvil: acciones Panel desde FAB + hoja inferior. */
+  /** MÃ³vil: acciones Panel desde FAB + hoja inferior. */
   const [mobileChatActionsOpen, setMobileChatActionsOpen] = useState(false);
   const [socialMembersOpen, setSocialMembersOpen] = useState(false);
   const [socialRenameOpen, setSocialRenameOpen] = useState(false);
@@ -409,7 +410,7 @@ export function ChatPage() {
     setHighlightSubscriberUserId(null);
   }, [threadId]);
 
-  /** QR/PDF «abrir chat en esta hoja» — ?presel=1&sheet= */
+  /** QR/PDF Â«abrir chat en esta hojaÂ» â€” ?presel=1&sheet= */
   useEffect(() => {
     if (!thread?.id) return;
     if (searchParams.get("presel") !== "1") return;
@@ -426,7 +427,7 @@ export function ChatPage() {
     setSearchParams(next, { replace: true });
   }, [thread?.id, searchParams, setSearchParams]);
 
-  /** Deep link desde notificación: ?subs=1&sheet=&hi= */
+  /** Deep link desde notificaciÃ³n: ?subs=1&sheet=&hi= */
   useEffect(() => {
     if (!thread?.id) return;
     const subs = searchParams.get("subs");
@@ -457,7 +458,7 @@ export function ChatPage() {
     setSearchParams(next, { replace: true });
   }, [thread?.id, searchParams, setSearchParams]);
 
-  /** Catálogo de la tienda del hilo: sin esto el acuerdo muestra «Catálogo no disponible» hasta abrir /store/:id. */
+  /** CatÃ¡logo de la tienda del hilo: sin esto el acuerdo muestra Â«CatÃ¡logo no disponibleÂ» hasta abrir /store/:id. */
   useEffect(() => {
     const sid = thread?.storeId;
     if (!sid) return;
@@ -496,7 +497,7 @@ export function ChatPage() {
     };
   }, [threadId, searchParams]);
 
-  /** Evita reenviar PATCH si ya hubo intento exitoso por id en esta sesión de hilo. */
+  /** Evita reenviar PATCH si ya hubo intento exitoso por id en esta sesiÃ³n de hilo. */
   const markReadAttemptedIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     markReadAttemptedIdsRef.current = new Set();
@@ -508,8 +509,8 @@ export function ChatPage() {
   }, [threadId]);
 
   /**
-   * Si faltó <c>messageCreated</c> (cliente apagado), al hidratar el hilo: ACK entregado para todos
-   * los entrantes. El "visto" (API <c>read</c>) se envía con el scroll en <c>ChatMessageList</c>.
+   * Si faltÃ³ <c>messageCreated</c> (cliente apagado), al hidratar el hilo: ACK entregado para todos
+   * los entrantes. El "visto" (API <c>read</c>) se envÃ­a con el scroll en <c>ChatMessageList</c>.
    */
   useEffect(() => {
     if (!threadId?.startsWith("cth_") || !thread) return;
@@ -648,8 +649,17 @@ export function ChatPage() {
   if (!thread) {
     if (threadId.startsWith("cth_") && !persistThreadError) {
       return (
-        <div className="container vt-page">
-          <div className="vt-card vt-card-pad">Cargando chat…</div>
+        <div
+          className="container vt-page flex min-h-[40vh] flex-1 flex-col items-center justify-center gap-3"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          aria-label="Cargando chat"
+        >
+          <CeSpinner size="lg" className="text-emerald-600 dark:text-emerald-400" />
+          <p className="m-0 text-sm font-semibold text-[var(--muted)]">
+            Cargando chat…
+          </p>
         </div>
       );
     }
@@ -657,7 +667,7 @@ export function ChatPage() {
       return (
         <div className="container vt-page">
           <div className="vt-card vt-card-pad">
-            No se pudo cargar este chat. ¿Iniciaste sesión y tienes acceso al
+            No se pudo cargar este chat. Â¿Iniciaste sesiÃ³n y tienes acceso al
             hilo?
           </div>
         </div>
@@ -675,7 +685,7 @@ export function ChatPage() {
   const viewerIsThreadBuyer = resolveBuyerUserId(thread, me.id) === me.id;
   const sellerUid = thread.sellerUserId?.trim() || thread.store.ownerUserId;
   const viewerIsThreadSeller = !!sellerUid && sellerUid === me.id;
-  /** Comprador/vendedor pueden tener servicio de transporte publicado; no son “transportista bloqueado”. */
+  /** Comprador/vendedor pueden tener servicio de transporte publicado; no son â€œtransportista bloqueadoâ€. */
   const threadHasRouteCarriageContext =
     (thread.routeSheets?.length ?? 0) > 0 ||
     !!routeOfferForThisThread ||
@@ -704,48 +714,47 @@ export function ChatPage() {
   const chatActionsLocked = thread.chatActionsLocked === true;
 
   return (
-    <div className="container vt-page vt-chat-page">
+    <div className="container vt-page vt-chat-page flex h-full min-h-0 max-w-none flex-col max-[960px]:h-[100dvh] max-[960px]:max-h-[100dvh]">
       <div
         className={cn(
-          "grid min-h-0 flex-1 grid-cols-1 items-stretch gap-5",
+          "grid min-h-0 flex-1 grid-cols-1 items-stretch gap-5 min-[961px]:gap-0",
           "max-[960px]:grid-rows-[minmax(0,1fr)_auto] max-[960px]:gap-x-4 max-[960px]:row-gap-0",
           !isNonCommercialThread &&
             showLogisticsRail &&
             "min-[961px]:[grid-template-columns:minmax(520px,_1fr)_minmax(260px,_min(420px,_28vw))]",
         )}
       >
-        <div className="flex h-full min-h-0 min-w-0 flex-col px-0 min-[961px]:px-1">
-          <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-3 max-[960px]:gap-2">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col px-0 max-[960px]:min-h-0">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <ChatPageHeader
-              nav={nav}
-              thread={thread}
-              store={store}
-              me={me}
-              profileDisplayNames={profileDisplayNames}
-              offerTitle={
-                isSupportThread ? "Soporte" : offerForThread?.title
-              }
-              isSocialThread={isSocialThread}
-              isSupportThread={isSupportThread}
-              showLogisticsRail={showLogisticsRail}
-              railOpen={railOpen}
-              mobileChatActionsOpen={mobileChatActionsOpen}
-              setMobileChatActionsOpen={setMobileChatActionsOpen}
-              setRailOpen={setRailOpen}
-            />
+                nav={nav}
+                thread={thread}
+                store={store}
+                me={me}
+                profileDisplayNames={profileDisplayNames}
+                offerTitle={
+                  isSupportThread ? "Soporte" : offerForThread?.title
+                }
+                isSocialThread={isSocialThread}
+                isSupportThread={isSupportThread}
+                showLogisticsRail={showLogisticsRail}
+                railOpen={railOpen}
+                mobileChatActionsOpen={mobileChatActionsOpen}
+                setMobileChatActionsOpen={setMobileChatActionsOpen}
+                setRailOpen={setRailOpen}
+              />
 
-            {chatActionsLocked ? (
-              <div
-                className="mx-1 mt-2.5 rounded-xl border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_12%,var(--surface))] p-3 text-sm leading-snug text-[var(--text)]"
-                role="status"
-              >
-                Chat restringido: saliste con un acuerdo{" "}
-                <strong>aceptado</strong> pendiente de cierre. No puedes enviar
-                mensajes hasta que la operación se resuelva por otro canal.
-              </div>
-            ) : null}
+              {chatActionsLocked ? (
+                <div
+                  className="mx-3 mt-2.5 shrink-0 rounded-xl border border-[color-mix(in_oklab,#d97706_35%,var(--border))] bg-[color-mix(in_oklab,#d97706_12%,var(--surface))] p-3 text-sm leading-snug text-[var(--text)] sm:mx-4"
+                  role="status"
+                >
+                  Chat restringido: saliste con un acuerdo{" "}
+                  <strong>aceptado</strong> pendiente de cierre. No puedes enviar
+                  mensajes hasta que la operación se resuelva por otro canal.
+                </div>
+              ) : null}
 
-            <div className="relative min-h-0 flex flex-1 flex-col">
               <ChatMessageList
                 listRef={listRef}
                 listEndRef={listEndRef}
@@ -829,13 +838,12 @@ export function ChatPage() {
               onSocialRenameDraftChange={setSocialRenameDraft}
               onSubmitRename={submitSocialRename}
             />
-          </div>
         </div>
 
         {showLogisticsRail ? (
           <div
             className={cn(
-              /* En móvil el drawer es fixed: hace falta z por encima del header (z-50) y del nav (z-60). */
+              /* En mÃ³vil el drawer es fixed: hace falta z por encima del header (z-50) y del nav (z-60). */
               "relative flex min-h-0 flex-col min-[961px]:self-stretch min-[961px]:z-[2] max-[960px]:z-[100]",
               "vt-chat-rail-wrap",
               railOpen && "vt-chat-rail-wrap--open",
@@ -947,3 +955,4 @@ export function ChatPage() {
     </div>
   );
 }
+

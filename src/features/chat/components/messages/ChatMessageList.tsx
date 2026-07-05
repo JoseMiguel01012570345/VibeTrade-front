@@ -286,7 +286,7 @@ export function ChatMessageList({
     <div
       ref={listRef as RefObject<HTMLDivElement>}
       onScroll={onListScroll}
-      className="vt-card flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[color-mix(in_oklab,var(--bg)_60%,var(--surface))] to-[var(--surface)] px-3 pb-4 pt-3 sm:gap-3.5 sm:px-5 sm:pb-5 sm:pt-4 md:px-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      className="vt-chat-message-list flex min-h-0 flex-1 flex-col gap-3 px-3 pb-4 pt-2 sm:gap-3.5 sm:px-5 sm:pb-5 sm:pt-3 md:px-6 min-[961px]:pb-3"
     >
       {orderedMessages.map((m) => {
         const mine = m.from === "me";
@@ -312,7 +312,6 @@ export function ChatMessageList({
           profileAvatarUrls,
           profileTrustScores,
         );
-        const waVoiceSent = mine && m.type === "audio";
         const isAudio = m.type === "audio";
 
         const rowClassName = cn(
@@ -340,7 +339,7 @@ export function ChatMessageList({
               <Link
                 to={peerProfileHref}
                 className={cn(
-                  "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-white/35 bg-gradient-to-br from-[var(--primary)] to-[#7c3aed] font-black text-white",
+                  "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-[var(--border)] bg-white font-semibold text-[var(--muted)]",
                   mine ? "col-start-2 justify-self-end" : "col-start-1",
                 )}
                 title="Ver perfil"
@@ -366,27 +365,18 @@ export function ChatMessageList({
                 isAudio
                   ? "w-[min(420px,100%)] max-w-[420px] min-w-0 [contain:inline-size]"
                   : "w-fit min-w-0 max-w-full sm:max-w-[min(920px,96%)]",
-                "break-words rounded-xl border border-[var(--border)] px-3 py-2.5 shadow-[0_10px_25px_rgba(15,23,42,0.06)] [overflow-wrap:anywhere] sm:rounded-2xl sm:px-4 sm:py-3",
+                "break-words rounded-xl border border-[var(--border)] px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.06)] [overflow-wrap:anywhere] sm:rounded-2xl sm:px-4 sm:py-3",
                 system &&
                   "col-start-1 w-full min-w-0 bg-[var(--surface)]",
-                !system &&
-                  mine &&
-                  !waVoiceSent &&
-                  "col-start-1 justify-self-end bg-[color-mix(in_oklab,var(--primary)_6%,var(--surface))]",
-                !system &&
-                  mine &&
-                  waVoiceSent &&
-                  "col-start-1 justify-self-end",
+                !system && mine && "col-start-1 justify-self-end vt-chat-bubble--out",
                 !system && !mine && "col-start-2 bg-[var(--surface)]",
                 !system &&
                   !mine &&
                   isAudio &&
                   "w-full max-w-[420px] justify-self-stretch",
-                waVoiceSent &&
-                  "border-[color-mix(in_oklab,var(--primary)_32%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_20%,var(--surface))] text-[var(--text)] shadow-[0_1px_0_rgba(15,23,42,0.06)]",
                 pendingRead &&
-                  !waVoiceSent &&
-                  "border-[color-mix(in_oklab,var(--muted)_35%,var(--border))] bg-[color-mix(in_oklab,var(--muted)_22%,var(--surface))] shadow-[0_8px_20px_rgba(15,23,42,0.05)]",
+                  mine &&
+                  "opacity-80",
                 isSelected &&
                   "outline outline-2 outline-[color-mix(in_oklab,var(--primary)_25%,transparent)]",
               )}
@@ -410,11 +400,7 @@ export function ChatMessageList({
                   </span>
                   <TrustChip
                     score={trust}
-                    className={
-                      waVoiceSent
-                        ? "border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_12%,var(--surface))] text-[var(--muted)]"
-                        : undefined
-                    }
+                    className={mine ? "border-[var(--chat-bubble-out-border)] bg-[color-mix(in_oklab,var(--chat-bubble-out-bg)_60%,var(--surface))] text-[var(--chat-bubble-out-meta)]" : undefined}
                   />
                 </div>
               )}
@@ -476,6 +462,7 @@ export function ChatMessageList({
                 <MsgMeta
                   at={m.at}
                   delivery={mine ? deliveryStateForMineMessage(m) : undefined}
+                  outgoing={mine}
                 />
               )}
             </div>

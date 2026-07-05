@@ -20,20 +20,30 @@ const deliveryTitle: Record<ChatDeliveryStatus, string> = {
 export function MsgMeta({
   at,
   delivery,
+  outgoing,
 }: {
   at: number;
   /** Solo mensajes propios con tipo soportado; ausente = sin icono de estado. */
   delivery?: ChatDeliveryStatus;
+  /** Burbuja saliente verde WA: checks azules. */
+  outgoing?: boolean;
 }) {
   return (
-    <span className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-[var(--muted)]">
+    <span
+      className={cn(
+        "vt-chat-bubble-meta mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-[var(--muted)]",
+        outgoing && "vt-chat-bubble-meta",
+      )}
+    >
       <span className="[font-variant-numeric:tabular-nums]">{hhmm(at)}</span>
       {delivery !== undefined && (
         <span
           className={cn(
             "inline-flex items-center",
             delivery === "read" &&
-              "text-[color-mix(in_oklab,var(--good)_85%,var(--muted))]",
+              (outgoing
+                ? "vt-chat-bubble-read"
+                : "text-[color-mix(in_oklab,var(--good)_85%,var(--muted))]"),
             (delivery === "sent" || delivery === "pending") &&
               "text-[var(--muted)]",
             delivery === "delivered" && "text-[var(--muted)]",

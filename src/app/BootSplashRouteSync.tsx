@@ -1,24 +1,16 @@
-import { useEffect, useLayoutEffect } from "react";
+﻿import { useEffect, useLayoutEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { isStoreSurfacePath } from "@features/market/logic/store/storePath";
 import {
   dismissBootSplash,
   scheduleBootSplashRemoval,
 } from "@shared/lib/bootSplash";
-import {
-  applyStoreBootSplashToDom,
-  enableStoreEntryBootSplashToDom,
-  lookupStoreBootSplashByPathname,
-} from "@shared/lib/storeBootSplash";
-
-function isAdminPanelPath(pathname: string): boolean {
-  return /\/panel(\/|$)/.test(pathname);
-}
+import { enableStoreEntryBootSplashToDom } from "@shared/lib/storeBootSplash";
 
 /**
  * Admin global: mantiene el splash de index.html hasta que React monta.
- * Rutas de tienda: aplican el logo cacheado (sección Tiendas) y dejan que
- * `StoreEntryLoadingScreen` retire el splash al montar.
+ * Rutas de tienda (storefront, ficha, panel, carrito…): fondo difuminado + spinner
+ * hasta que React toma el control y retira el splash.
  */
 export function BootSplashRouteSync() {
   const { pathname } = useLocation();
@@ -26,17 +18,11 @@ export function BootSplashRouteSync() {
 
   useLayoutEffect(() => {
     if (!isStorePath) return;
-    const entry = lookupStoreBootSplashByPathname(pathname);
-    if (entry?.avatarUrl) {
-      applyStoreBootSplashToDom(entry);
-    } else {
-      enableStoreEntryBootSplashToDom();
-    }
+    enableStoreEntryBootSplashToDom();
   }, [isStorePath, pathname]);
 
   useEffect(() => {
-    if (isStorePath) return;
-    if (isAdminPanelPath(pathname)) {
+    if (isStorePath) {
       scheduleBootSplashRemoval();
       return;
     }

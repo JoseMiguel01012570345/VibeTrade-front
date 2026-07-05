@@ -183,7 +183,7 @@ export function ChatSocialOverlays({
                           wrapperClassName="size-10 shrink-0 overflow-hidden rounded-full"
                         />
                       ) : (
-                        <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[color-mix(in_oklab,var(--muted)_25%,var(--surface))] text-xs font-bold text-[var(--muted)]">
+                        <div className="grid size-10 shrink-0 place-items-center rounded-full border border-[var(--border)] bg-white text-xs font-bold text-[var(--muted)]">
                           {(label.slice(0, 1) || "?").toUpperCase()}
                         </div>
                       )}
