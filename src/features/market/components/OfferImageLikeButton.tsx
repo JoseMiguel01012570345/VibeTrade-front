@@ -20,38 +20,34 @@ export function OfferImageLikeButton({
   iconSize = 16,
 }: Props) {
   const shellClass = cn(
-    "pointer-events-auto absolute bottom-2 right-2 z-[2] inline-flex items-center gap-1 rounded-full border border-white/80 bg-white/95 px-2 py-1 text-xs font-extrabold text-slate-700 shadow-md backdrop-blur-sm",
-    canLike && "transition hover:bg-white",
+    "pointer-events-auto absolute bottom-2 right-2 z-[2] inline-flex cursor-pointer items-center gap-1 rounded-full border border-white/80 bg-white/95 px-2 py-1 text-xs font-extrabold text-slate-700 shadow-md backdrop-blur-sm transition hover:bg-white",
     className,
   );
 
-  if (canLike) {
-    return (
-      <button
-        type="button"
-        className={shellClass}
-        title={liked ? "Quitar me gusta" : "Me gusta"}
-        aria-label={liked ? "Quitar me gusta" : "Me gusta"}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onToggle();
-        }}
-      >
-        <Heart
-          size={iconSize}
-          className={cn(liked && "fill-rose-500 text-rose-500")}
-          aria-hidden
-        />
-        <span className="tabular-nums">{likeCount}</span>
-      </button>
-    );
-  }
+  const likeLabel = canLike
+    ? liked
+      ? "Quitar me gusta"
+      : "Me gusta"
+    : "Inicia sesión para dar me gusta";
 
   return (
-    <span className={shellClass} title="Me gusta">
-      <Heart size={iconSize} aria-hidden />
+    <button
+      type="button"
+      className={shellClass}
+      title={likeLabel}
+      aria-label={likeLabel}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onToggle();
+      }}
+    >
+      <Heart
+        size={iconSize}
+        className={cn(liked && "fill-rose-500 text-rose-500")}
+        aria-hidden
+      />
       <span className="tabular-nums">{likeCount}</span>
-    </span>
+    </button>
   );
 }

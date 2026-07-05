@@ -3,6 +3,7 @@ import type {
   StoreProduct,
   StoreService,
 } from "@features/market/logic/storeCatalogTypes";
+import { normalizeStoreService } from "@features/market/logic/storeCatalogTypes";
 import type { SortMode } from "./storefrontTypes";
 
 export function decodeCategoryParam(raw: string | undefined): string {
@@ -41,7 +42,8 @@ export function sortStoreProducts(
 }
 
 function serviceTitle(s: StoreService): string {
-  return s.nombreServicio.trim() || s.category.trim() || "Servicio";
+  const n = normalizeStoreService(s);
+  return n.nombreServicio || n.category || "Servicio";
 }
 
 export function sortStoreServices(

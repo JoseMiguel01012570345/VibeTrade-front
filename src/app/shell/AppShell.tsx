@@ -163,27 +163,27 @@ export function AppShell() {
         </button>
       ) : null}
       {showStickyShellHeader ? (
-        <div className="sticky top-0 z-50 overflow-visible bg-[color-mix(in_oklab,var(--bg)_65%,transparent)] pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-[10px]">
-          <div className="container pb-2.5">
+        <div className="sticky top-0 z-50 overflow-visible border-b border-emerald-100 bg-white/95 pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-sm">
+          <div className="container mx-auto max-w-[1140px] pb-3">
             {isHome && !isOnboarding ? (
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 pt-2.5 md:flex-nowrap">
-                <h1 className="order-1 shrink-0 text-lg font-black tracking-[-0.03em] text-[var(--text)]">
+                <h1 className="order-1 shrink-0 text-lg font-extrabold tracking-tight text-emerald-700 sm:text-xl">
                   Ofertas
                 </h1>
                 <button
                   type="button"
-                  className="order-2 flex w-full min-w-0 basis-full items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-[13px] shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 md:w-auto md:flex-1 md:basis-auto"
+                  className="order-2 flex w-full min-w-0 basis-full items-center gap-2 rounded-full border border-emerald-100 bg-stone-50 px-3 py-2.5 text-left text-[13px] shadow-none transition hover:border-emerald-300 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-100 md:w-auto md:flex-1 md:basis-auto"
                   onClick={() => navigate("/search")}
-                  aria-label="Abrir bÃºsqueda de tiendas, productos y servicios"
+                  aria-label="Abrir búsqueda de tiendas, productos y servicios"
                 >
                   <Search
                     size={18}
                     strokeWidth={2.25}
-                    className="shrink-0 text-[var(--muted)]"
+                    className="shrink-0 text-emerald-600"
                     aria-hidden
                   />
-                  <span className="min-w-0 text-[var(--muted)] max-md:whitespace-normal max-md:break-words max-md:leading-snug md:truncate">
-                    Buscar tiendas, productos o serviciosâ€¦
+                  <span className="min-w-0 text-slate-500 max-md:whitespace-normal max-md:break-words max-md:leading-snug md:truncate">
+                    Buscar tiendas, productos o servicios…
                   </span>
                 </button>
               </div>

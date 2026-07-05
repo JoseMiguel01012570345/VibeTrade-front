@@ -6,6 +6,7 @@ import {
   CATALOG_CURRENCY_CODE,
   catalogDisplayPriceUsd,
   type StoreProduct,
+  normalizeStoreProduct,
 } from "@features/market/logic/storeCatalogTypes";
 import { parseProductPriceNumber } from "@features/market/logic/parseProductPrice";
 import { storeProductHref } from "@features/market/logic/store/storePath";
@@ -16,6 +17,7 @@ import { useAppStore } from "@features/auth/logic/useAppStore";
 import { toggleOfferLike } from "@features/market/api/offerEngagementApi";
 import { applyOfferLikeResult } from "@features/market/logic/applyOfferLikeResult";
 import { OfferImageLikeButton } from "@features/market/components/OfferImageLikeButton";
+import { OfferSaveButton } from "@features/market/components/OfferSaveButton";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 import { ProductCardCartIcon } from "./ProductCardCartIcon";
 
@@ -33,13 +35,14 @@ function stopCardNavigation(e: MouseEvent) {
  * `useCartStore` de VibeTrade; el clic en la tarjeta abre la oferta `/offer/:id`.
  */
 export function StorefrontProductCard({
-  p,
+  p: raw,
   compact = false,
 }: Readonly<{
   p: StoreProduct;
   /** Variante compacta (cuadrícula densa); igual que la referencia. */
   compact?: boolean;
 }>) {
+  const p = normalizeStoreProduct(raw);
   const items = useCartStore((s) => s.items);
   const addItem = useCartStore((s) => s.addItem);
   const setQuantity = useCartStore((s) => s.setQuantity);
@@ -57,9 +60,11 @@ export function StorefrontProductCard({
     const prod = s.storeCatalogs[p.storeId]?.products.find((x) => x.id === p.id);
     return prod?.offerLikeCount;
   });
+  const offerLiked = useMarketStore((s) => s.offers[p.id]?.viewerLikedOffer);
+  const offerLikeCount = useMarketStore((s) => s.offers[p.id]?.offerLikeCount);
   const canLike = sessionReady && me.id !== "guest";
-  const liked = catalogLiked ?? p.viewerLikedOffer ?? false;
-  const likeCount = catalogLikeCount ?? p.offerLikeCount ?? 0;
+  const liked = catalogLiked ?? offerLiked ?? p.viewerLikedOffer ?? false;
+  const likeCount = catalogLikeCount ?? offerLikeCount ?? p.offerLikeCount ?? 0;
 
   const precioMoneda = CATALOG_CURRENCY_CODE;
   const offerHref = storeProductHref({ id: p.storeId, name: storeName ?? "" }, p.id);
@@ -73,7 +78,7 @@ export function StorefrontProductCard({
     productId: p.id,
     serviceId: undefined,
   });
-  const canPurchase = p.availability.trim().length > 0;
+  const canPurchase = p.availability.length > 0;
   const inStockDisplay = canPurchase;
 
   const measureLabel = p.model?.trim() ?? "";
@@ -176,6 +181,7 @@ export function StorefrontProductCard({
             </div>
           )}
         </Link>
+        <OfferSaveButton offerId={p.id} overlay />
         <OfferImageLikeButton
           liked={liked}
           likeCount={likeCount}

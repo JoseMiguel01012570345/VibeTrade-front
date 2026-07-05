@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { toastApiError } from "@features/auth/logic/toastApiError";
 import { Wrench } from "lucide-react";
 import { type StoreService } from "@features/market/logic/storeCatalogTypes";
+import { normalizeStoreService } from "@features/market/logic/storeCatalogTypes";
 import { storeProductHref } from "@features/market/logic/store/storePath";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
@@ -9,6 +10,7 @@ import { useAppStore } from "@features/auth/logic/useAppStore";
 import { toggleOfferLike } from "@features/market/api/offerEngagementApi";
 import { applyOfferLikeResult } from "@features/market/logic/applyOfferLikeResult";
 import { OfferImageLikeButton } from "@features/market/components/OfferImageLikeButton";
+import { OfferSaveButton } from "@features/market/components/OfferSaveButton";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 
 /**
@@ -19,13 +21,14 @@ import { getSessionToken } from "@shared/services/http/sessionToken";
  * lo diferencia de los productos y el clic abre el detalle `/{tienda}/{id}`.
  */
 export function StorefrontServiceCard({
-  s,
+  s: raw,
   compact = false,
 }: Readonly<{
   s: StoreService;
   /** Variante compacta (cuadrícula densa); igual que la tarjeta de producto. */
   compact?: boolean;
 }>) {
+  const s = normalizeStoreService(raw);
   const storeName = useMarketStore((st) => st.stores[s.storeId]?.name);
   const catalogLiked = useMarketStore((st) => {
     const svc = st.storeCatalogs[s.storeId]?.services.find((x) => x.id === s.id);
@@ -35,13 +38,15 @@ export function StorefrontServiceCard({
     const svc = st.storeCatalogs[s.storeId]?.services.find((x) => x.id === s.id);
     return svc?.offerLikeCount;
   });
+  const offerLiked = useMarketStore((st) => st.offers[s.id]?.viewerLikedOffer);
+  const offerLikeCount = useMarketStore((st) => st.offers[s.id]?.offerLikeCount);
   const isSessionActive = useAppStore((st) => st.isSessionActive);
   const me = useAppStore((st) => st.me);
   const openAuthModal = useAppStore((st) => st.openAuthModal);
   const sessionReady = isSessionActive || !!getSessionToken();
   const canLike = sessionReady && me.id !== "guest";
-  const liked = catalogLiked ?? s.viewerLikedOffer ?? false;
-  const likeCount = catalogLikeCount ?? s.offerLikeCount ?? 0;
+  const liked = catalogLiked ?? offerLiked ?? s.viewerLikedOffer ?? false;
+  const likeCount = catalogLikeCount ?? offerLikeCount ?? s.offerLikeCount ?? 0;
   const detailHref = storeProductHref(
     { id: s.storeId, name: storeName ?? "" },
     s.id,
@@ -50,8 +55,8 @@ export function StorefrontServiceCard({
   const photo = (s.photoUrls ?? [])
     .map((u) => String(u).trim())
     .find((u) => u.length > 0);
-  const title = s.nombreServicio.trim() || s.category.trim() || "Servicio";
-  const description = s.descripcion.trim();
+  const title = s.nombreServicio || s.category || "Servicio";
+  const description = s.descripcion;
 
   function toggleLikeNow() {
     if (!canLike) {
@@ -96,6 +101,7 @@ export function StorefrontServiceCard({
             </div>
           )}
         </Link>
+        <OfferSaveButton offerId={s.id} overlay />
         <OfferImageLikeButton
           liked={liked}
           likeCount={likeCount}

@@ -286,6 +286,25 @@ export function mergeStoreCatalogWithLocalExtras(
 }
 
 /** Valores iniciales del formulario de producto (perfil / ficha). */
+export function normalizeStoreProduct(product: StoreProduct): StoreProduct {
+  return {
+    ...product,
+    category: (product.category ?? "").trim() || "Producto",
+    name: (product.name ?? "").trim() || (product.category ?? "").trim() || "Producto",
+    shortDescription: (product.shortDescription ?? "").trim(),
+    mainBenefit: product.mainBenefit ?? "",
+    technicalSpecs: product.technicalSpecs ?? "",
+    price: product.price ?? "",
+    availability: (product.availability ?? "").trim(),
+    warrantyReturn: product.warrantyReturn ?? "",
+    contentIncluded: product.contentIncluded ?? "",
+    usageConditions: product.usageConditions ?? "",
+    photoUrls: product.photoUrls ?? [],
+    customFields: product.customFields ?? [],
+  };
+}
+
+/** Valores iniciales del formulario de producto (perfil / ficha). */
 export function emptyStoreProductInput(): Omit<StoreProduct, "id" | "storeId"> {
   return {
     category: "",
@@ -306,6 +325,29 @@ export function emptyStoreProductInput(): Omit<StoreProduct, "id" | "storeId"> {
     photoUrls: [],
     published: false,
     customFields: [],
+  };
+}
+
+/** Valores iniciales del formulario de servicio (perfil / ficha). */
+export function normalizeStoreService(service: StoreService): StoreService {
+  const legacy = service as StoreService & { tipoServicio?: string };
+  const category = (service.category ?? "").trim() || "Servicio";
+  const nombreServicio =
+    (service.nombreServicio ?? legacy.tipoServicio ?? "").trim() || category;
+  return {
+    ...service,
+    category,
+    nombreServicio,
+    descripcion: (service.descripcion ?? "").trim(),
+    incluye: service.incluye ?? "",
+    noIncluye: service.noIncluye ?? "",
+    entregables: service.entregables ?? "",
+    propIntelectual: service.propIntelectual ?? "",
+    customFields: service.customFields ?? [],
+    riesgos: service.riesgos ?? { enabled: false, items: [] },
+    dependencias: service.dependencias ?? { enabled: false, items: [] },
+    garantias: service.garantias ?? { enabled: false, texto: "" },
+    photoUrls: service.photoUrls ?? [],
   };
 }
 

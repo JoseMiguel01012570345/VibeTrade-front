@@ -1,5 +1,6 @@
 import type { Offer } from "@features/market/logic/store/marketStoreTypes";
 import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes";
+import { normalizeStoreService } from "@features/market/logic/storeCatalogTypes";
 import { TOOL_PLACEHOLDER_SRC } from "./toolPlaceholder";
 
 /** Oferta de ficha cuando el ítem está en `storeCatalogs` pero aún no en `market.offers` (p. ej. enlace desde vitrina). */
@@ -25,17 +26,18 @@ export function offerFromStoreCatalogs(
     }
     const s = cat.services.find((x) => x.id === offerId);
     if (s) {
-      const catLabel = s.category.trim();
+      const svc = normalizeStoreService(s);
+      const catLabel = svc.category;
       const tags = ["Servicio", ...(catLabel ? [catLabel] : [])];
-      const urls = (s.photoUrls ?? [])
+      const urls = (svc.photoUrls ?? [])
         .map((u) => String(u).trim())
         .filter(Boolean);
       return {
-        id: s.id,
-        storeId: s.storeId,
-        title: s.nombreServicio.trim() || s.category || "Servicio",
+        id: svc.id,
+        storeId: svc.storeId,
+        title: svc.nombreServicio || svc.category || "Servicio",
         price: "",
-        description: s.descripcion,
+        description: svc.descripcion,
         tags,
         imageUrl: urls[0] || TOOL_PLACEHOLDER_SRC,
         imageUrls: urls,

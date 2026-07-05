@@ -11,18 +11,28 @@ export function applyOfferLikeResult(
   }>,
 ): void {
   useMarketStore.setState((s) => {
-    const offerPatch = s.offers[offerId]
-      ? {
-          offers: {
-            ...s.offers,
-            [offerId]: {
-              ...s.offers[offerId],
+    const existing = s.offers[offerId];
+    const offerPatch = {
+      offers: {
+        ...s.offers,
+        [offerId]: existing
+          ? {
+              ...existing,
+              offerLikeCount: result.likeCount,
+              viewerLikedOffer: result.liked,
+            }
+          : {
+              id: offerId,
+              storeId: opts?.storeId?.trim() ?? "",
+              title: "",
+              price: "",
+              tags: [],
+              imageUrl: "",
               offerLikeCount: result.likeCount,
               viewerLikedOffer: result.liked,
             },
-          },
-        }
-      : {};
+      },
+    };
 
     const storeId = opts?.storeId?.trim();
     const kind = opts?.catalogKind;

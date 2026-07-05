@@ -4,6 +4,7 @@ import type {
   StoreProduct,
   StoreService,
 } from "@features/market/logic/storeCatalogTypes";
+import { normalizeStoreService } from "@features/market/logic/storeCatalogTypes";
 import { TOOL_PLACEHOLDER_SRC } from "@features/market/logic/toolPlaceholder";
 
 export function isEmergentRouteOffer(offer: Offer): boolean {
@@ -134,6 +135,6 @@ export function resolveHomeServiceFromOffer(
     offer.storeId,
     storeCatalogs,
   );
-  if (fromCatalog) return enrichService(offer, fromCatalog);
+  if (fromCatalog) return enrichService(offer, normalizeStoreService(fromCatalog));
   return serviceFallbackFromOffer(offer);
 }

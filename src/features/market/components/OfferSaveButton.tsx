@@ -82,7 +82,7 @@ export function OfferSaveButton({
       type="button"
       className={cn(
         overlay
-          ? "pointer-events-auto absolute top-2 right-2 z-[2] inline-flex items-center justify-center rounded-full border border-white/80 bg-white/95 p-1.5 text-slate-700 shadow-md backdrop-blur-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+          ? "pointer-events-auto absolute top-2 right-2 z-[2] inline-flex cursor-pointer items-center justify-center rounded-full border border-white/80 bg-white/95 p-1.5 text-slate-700 shadow-md backdrop-blur-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
           : "inline-flex shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] p-2 text-[var(--text)] transition hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]",
         saved &&
           (overlay

@@ -19,7 +19,7 @@ import type {
 import { VtAutocompleteInput } from "@shared/components/ui/VtAutocompleteInput";
 import { StoreSearchResultCard } from "@features/home/components/StoreSearchResultCard";
 import { CatalogOfferSearchCard } from "../components/CatalogOfferSearchCard";
-import { backRowBtnClass } from "@features/market/styles/storePageStyles";
+import "@features/auth/styles/auth.css";
 
 type LocationState = { initialQuery?: string } | null;
 
@@ -318,204 +318,201 @@ export function CatalogSearchPage() {
 
   return (
     <div
-      className={`container vt-page min-w-0 max-w-full overflow-x-clip transition-opacity duration-500 ease-out ${
+      className={`store-front-surface min-h-0 w-full flex-1 bg-[#f7f3ef] pb-[calc(var(--vt-bottom-nav-clearance)+1.125rem)] text-slate-900 transition-opacity duration-500 ease-out ${
         visible ? "opacity-100" : "opacity-0"
       }`}
     >
-      <div className="mb-3 mt-2 flex min-w-0 items-start gap-2 pr-[3.25rem]">
-        <Link
-          to="/home"
-          className={backRowBtnClass}
-          aria-label="Volver"
-          style={{
-            minWidth: 40,
-            minHeight: 40,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <ArrowLeft size={20} aria-hidden />
-        </Link>
-        <div className="min-w-0 flex-1">
-          <h1 className="vt-h1 break-words text-[clamp(22px,6vw,28px)]">
-            Buscar
-          </h1>
-          <div className="vt-muted">
-            Tiendas, productos, servicios y hojas de ruta. Elige filtros y pulsa
-            la lupa.
+      <div className="mx-auto w-full max-w-[1140px] px-4 py-4 sm:py-6">
+        <div className="mb-5 flex min-w-0 items-start gap-2 pr-[3.25rem]">
+          <Link
+            to="/home"
+            className="vt-auth-back-btn mt-0.5 shrink-0"
+            aria-label="Volver al inicio"
+          >
+            <ArrowLeft size={18} strokeWidth={2.25} aria-hidden />
+            Volver
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="vt-auth-title break-words text-[clamp(1.5rem,6vw,1.75rem)]">
+              Buscar
+            </h1>
+            <p className="vt-auth-subtitle">
+              Tiendas, productos, servicios y hojas de ruta. Elige filtros y pulsa
+              la lupa.
+            </p>
           </div>
         </div>
-      </div>
 
-      <div className="vt-card vt-card-pad">
-        <form
-          className="mb-3 flex flex-col gap-2 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-end"
-          onSubmit={onSubmitSearch}
-        >
-          <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)]">
-            <span>Buscar</span>
-            <VtAutocompleteInput
-              value={storeNameQ}
-              onChange={setStoreNameQ}
-              options={nameSuggestions.map((s) => ({ value: s }))}
-              placeholder="Nombre, producto, servicio, ruta…"
-              ariaLabel="Buscar en catálogo"
-              matchMode="fuzzy"
-            />
-          </label>
+        <div className="rounded-[18px] border border-[#d9d5cf] bg-white p-4 shadow-[0_12px_30px_rgba(33,37,41,0.05)] sm:p-5">
+          <form
+            className="mb-3 flex flex-col gap-3 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-end"
+            onSubmit={onSubmitSearch}
+          >
+            <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-xs font-bold text-slate-500">
+              <span>Buscar</span>
+              <VtAutocompleteInput
+                value={storeNameQ}
+                onChange={setStoreNameQ}
+                options={nameSuggestions.map((s) => ({ value: s }))}
+                placeholder="Nombre, producto, servicio, ruta…"
+                ariaLabel="Buscar en catálogo"
+                matchMode="fuzzy"
+                inputClassName="h-11 rounded-xl border border-[#d9d5cf] bg-stone-50 text-sm text-slate-900 shadow-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+              />
+            </label>
 
-          <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-72">
-            <span>Categorías</span>
-            <VtMultiSelect
-              value={storeCategories}
-              onChange={setStoreCategories}
-              ariaLabel="Filtrar por categorías"
-              placeholder="Todas"
-              options={categoryOptions}
-            />
-          </label>
+            <label className="flex w-full flex-col gap-1.5 text-xs font-bold text-slate-500 min-[520px]:w-72">
+              <span>Categorías</span>
+              <VtMultiSelect
+                value={storeCategories}
+                onChange={setStoreCategories}
+                ariaLabel="Filtrar por categorías"
+                placeholder="Todas"
+                options={categoryOptions}
+              />
+            </label>
 
-          <label className="flex w-full flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-56">
-            <span>Tipo</span>
-            <VtMultiSelect
-              value={kinds}
-              onChange={(next) => {
-                const safe =
-                  next.length === 0
-                    ? ([
-                        "store",
-                        "product",
-                        "service",
-                        "emergent",
-                      ] as CatalogSearchKind[])
-                    : (next as CatalogSearchKind[]);
-                setKinds(safe);
-              }}
-              ariaLabel="Filtrar por tipo"
-              placeholder="Todos"
-              options={[
-                { value: "store", label: "Tiendas" },
-                { value: "product", label: "Productos" },
-                { value: "service", label: "Servicios" },
-                { value: "emergent", label: "Hojas de ruta" },
-              ]}
-            />
-          </label>
-
-          <div className="flex w-full min-w-0 gap-2 min-[520px]:contents">
-            <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-44">
-              <span>Radio (km)</span>
-              <input
-                inputMode="decimal"
-                className="vt-input"
-                placeholder="Ej: 10"
-                value={km}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setKm(next);
-                  const kmNum = Number(next.trim());
-                  if (!Number.isFinite(kmNum) || kmNum <= 0) setGeo(null);
+            <label className="flex w-full flex-col gap-1.5 text-xs font-bold text-slate-500 min-[520px]:w-56">
+              <span>Tipo</span>
+              <VtMultiSelect
+                value={kinds}
+                onChange={(next) => {
+                  const safe =
+                    next.length === 0
+                      ? ([
+                          "store",
+                          "product",
+                          "service",
+                          "emergent",
+                        ] as CatalogSearchKind[])
+                      : (next as CatalogSearchKind[]);
+                  setKinds(safe);
                 }}
-                aria-label="Radio de búsqueda en km"
+                ariaLabel="Filtrar por tipo"
+                placeholder="Todos"
+                options={[
+                  { value: "store", label: "Tiendas" },
+                  { value: "product", label: "Productos" },
+                  { value: "service", label: "Servicios" },
+                  { value: "emergent", label: "Hojas de ruta" },
+                ]}
               />
             </label>
 
-            <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] font-semibold text-[var(--muted)] min-[520px]:w-44">
-              <span>Confianza mínima</span>
-              <input
-                inputMode="decimal"
-                className="vt-input"
-                placeholder="Ej: 80"
-                value={trustMin}
-                onChange={(e) => setTrustMin(e.target.value)}
-                min={TRUST_SCORE_FILTER_MIN}
-                max={TRUST_SCORE_MAX}
-                aria-label="Confianza mínima de la tienda"
-              />
-            </label>
-          </div>
+            <div className="flex w-full min-w-0 gap-2 min-[520px]:contents">
+              <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-xs font-bold text-slate-500 min-[520px]:w-44">
+                <span>Radio (km)</span>
+                <input
+                  inputMode="decimal"
+                  className="vt-input min-h-[42px] rounded-xl border-[#d9d5cf] bg-stone-50 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  placeholder="Ej: 10"
+                  value={km}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setKm(next);
+                    const kmNum = Number(next.trim());
+                    if (!Number.isFinite(kmNum) || kmNum <= 0) setGeo(null);
+                  }}
+                  aria-label="Radio de búsqueda en km"
+                />
+              </label>
 
-          <div className="flex w-full min-[520px]:w-auto min-[520px]:shrink-0">
-            <button
-              type="submit"
-              className="vt-btn grid h-10 w-full min-w-[2.75rem] place-items-center px-0 min-[520px]:h-10 min-[520px]:w-10"
-              disabled={status === "loading"}
-              aria-label="Buscar"
-            >
-              <Search size={20} strokeWidth={2.25} aria-hidden />
-            </button>
-          </div>
-        </form>
+              <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-xs font-bold text-slate-500 min-[520px]:w-44">
+                <span>Confianza mínima</span>
+                <input
+                  inputMode="decimal"
+                  className="vt-input min-h-[42px] rounded-xl border-[#d9d5cf] bg-stone-50 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  placeholder="Ej: 80"
+                  value={trustMin}
+                  onChange={(e) => setTrustMin(e.target.value)}
+                  min={TRUST_SCORE_FILTER_MIN}
+                  max={TRUST_SCORE_MAX}
+                  aria-label="Confianza mínima de la tienda"
+                />
+              </label>
+            </div>
 
-        {status === "idle" ? (
-          <div className="vt-muted text-[13px]">
-            Elige filtros y pulsa la{" "}
-            <span className="font-semibold text-[var(--text)]">lupa</span> para
-            ver resultados.
-          </div>
-        ) : null}
-        {status === "loading" ? (
-          <div className="vt-muted text-[13px]">Buscando…</div>
-        ) : null}
-        {status === "error" ? (
-          <div className="vt-muted text-[13px]">
-            No se pudo buscar. ¿Backend en marcha?
-          </div>
-        ) : null}
-        {status === "ready" && results.length === 0 ? (
-          <div className="vt-muted text-[13px]">
-            Sin resultados para esta búsqueda.
-          </div>
-        ) : null}
-        {status === "ready" && results.length > 0 ? (
-          <>
-            <div className="mt-3 grid grid-cols-1 gap-3 min-[720px]:grid-cols-2 min-[1040px]:grid-cols-3">
-              {results.map((it) => {
-                if (it.kind === "store") {
+            <div className="flex w-full min-[520px]:w-auto min-[520px]:shrink-0">
+              <button
+                type="submit"
+                className="grid h-11 w-full min-w-[2.75rem] place-items-center rounded-full bg-emerald-700 text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60 min-[520px]:h-11 min-[520px]:w-11"
+                disabled={status === "loading"}
+                aria-label="Buscar"
+              >
+                <Search size={20} strokeWidth={2.25} aria-hidden />
+              </button>
+            </div>
+          </form>
+
+          {status === "idle" ? (
+            <div className="text-[13px] text-slate-500">
+              Elige filtros y pulsa la{" "}
+              <span className="font-semibold text-slate-800">lupa</span> para ver
+              resultados.
+            </div>
+          ) : null}
+          {status === "loading" ? (
+            <div className="text-[13px] text-slate-500">Buscando…</div>
+          ) : null}
+          {status === "error" ? (
+            <div className="text-[13px] text-slate-500">
+              No se pudo buscar. ¿Backend en marcha?
+            </div>
+          ) : null}
+          {status === "ready" && results.length === 0 ? (
+            <div className="text-[13px] text-slate-500">
+              Sin resultados para esta búsqueda.
+            </div>
+          ) : null}
+          {status === "ready" && results.length > 0 ? (
+            <>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+                {results.map((it) => {
+                  if (it.kind === "store") {
+                    return (
+                      <StoreSearchResultCard
+                        key={catalogItemKey(it, pageIndex)}
+                        store={it.store}
+                        publishedProducts={it.publishedProducts ?? 0}
+                        publishedServices={it.publishedServices ?? 0}
+                        distanceKm={it.distanceKm}
+                      />
+                    );
+                  }
                   return (
-                    <StoreSearchResultCard
+                    <CatalogOfferSearchCard
                       key={catalogItemKey(it, pageIndex)}
-                      store={it.store}
-                      publishedProducts={it.publishedProducts ?? 0}
-                      publishedServices={it.publishedServices ?? 0}
-                      distanceKm={it.distanceKm}
+                      item={it}
                     />
                   );
-                }
-                return (
-                  <CatalogOfferSearchCard
-                    key={catalogItemKey(it, pageIndex)}
-                    item={it}
-                  />
-                );
-              })}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                className="vt-btn vt-btn-sm vt-btn-ghost inline-flex items-center gap-1"
-                disabled={!hasPrevPage}
-                onClick={() => void runSearch(pageIndex - 1)}
-                aria-label="Página anterior"
-              >
-                <ChevronLeft size={16} aria-hidden />
-                Anterior
-              </button>
+                })}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!hasPrevPage}
+                  onClick={() => void runSearch(pageIndex - 1)}
+                  aria-label="Página anterior"
+                >
+                  <ChevronLeft size={16} aria-hidden />
+                  Anterior
+                </button>
 
-              <button
-                type="button"
-                className="vt-btn vt-btn-sm vt-btn-ghost inline-flex items-center gap-1"
-                disabled={!hasNextPage}
-                onClick={() => void runSearch(pageIndex + 1)}
-                aria-label="Página siguiente"
-              >
-                Siguiente
-                <ChevronRight size={16} aria-hidden />
-              </button>
-            </div>
-          </>
-        ) : null}
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!hasNextPage}
+                  onClick={() => void runSearch(pageIndex + 1)}
+                  aria-label="Página siguiente"
+                >
+                  Siguiente
+                  <ChevronRight size={16} aria-hidden />
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
       </div>
     </div>
   );
