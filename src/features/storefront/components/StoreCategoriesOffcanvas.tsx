@@ -123,7 +123,7 @@ function OffcanvasDetailBody({
               className="min-w-0"
               aria-labelledby={`offcanvas-leaf-${leaf.id}`}
             >
-              <div className="flex flex-wrap items-end justify-between gap-2 border-b border-[#ece4dc] pb-2">
+              <div className="flex flex-wrap items-end justify-between gap-2 border-b border-[var(--border)] pb-2">
                 <h3
                   id={`offcanvas-leaf-${leaf.id}`}
                   className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700"
@@ -185,7 +185,7 @@ function OffcanvasDetailBody({
       </div>
 
       {listingLeaves.length > 0 && !productsLoading ? (
-        <div className="mt-8 flex justify-start border-t border-[#ece4dc] pt-6 md:mt-10 md:pt-8">
+        <div className="mt-8 flex justify-start border-t border-[var(--border)] pt-6 md:mt-10 md:pt-8">
           <Link
             to={storeCategoryHref(store, selected.slug)}
             onClick={onNavigate}
@@ -430,7 +430,7 @@ export function StoreCategoriesOffcanvas({
       <div className="fixed inset-0 z-[120]" role="presentation">
         <button
           type="button"
-          className={`absolute inset-0 bg-slate-900/45 backdrop-blur-[2px] transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+          className={`absolute inset-0 vt-modal-backdrop-btn transition-opacity duration-300 ease-out motion-reduce:transition-none ${
             animateIn ? "opacity-100" : "opacity-0"
           }`}
           aria-label="Cerrar menú de categorías"
@@ -445,23 +445,23 @@ export function StoreCategoriesOffcanvas({
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
-          className={`fixed inset-y-0 left-0 z-10 flex h-[100dvh] min-h-[100dvh] w-full max-w-full flex-col bg-white shadow-[12px_0_48px_rgba(0,0,0,0.12)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none md:max-w-[min(100vw,1100px)] md:flex-row ${
+          className={`store-front-surface fixed inset-y-0 left-0 z-10 flex h-[100dvh] min-h-[100dvh] w-full max-w-full flex-col bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none md:max-w-[min(100vw,1100px)] md:flex-row ${
             mainPanelIn ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <aside className="flex h-full min-h-0 flex-1 flex-col border-b border-[#ece4dc] bg-white md:h-auto md:w-[min(100%,280px)] md:flex-none md:shrink-0 md:border-b-0 md:border-r md:border-[#ece4dc]">
-            <div className="shrink-0 border-b border-[#ece4dc] px-5 pb-4 pt-4 sm:pb-5 sm:pt-5">
+          <aside className="flex h-full min-h-0 flex-1 flex-col border-b border-[var(--border)] bg-[var(--surface)] md:h-auto md:w-[min(100%,280px)] md:flex-none md:shrink-0 md:border-b-0 md:border-r md:border-[var(--border)]">
+            <div className="shrink-0 border-b border-[var(--border)] px-5 pb-4 pt-4 sm:pb-5 sm:pt-5">
               <div className="flex items-start justify-between gap-3">
                 <h2
                   id={titleId}
-                  className="text-lg font-extrabold leading-tight text-slate-900"
+                  className="text-lg font-extrabold leading-tight text-[var(--text)]"
                 >
                   Categorías
                 </h2>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="shrink-0 rounded-full p-2 text-slate-400 transition hover:bg-stone-100 hover:text-slate-700 md:hidden"
+                  className="shrink-0 rounded-full p-2 text-[var(--muted)] transition hover:bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] hover:text-[var(--text)] md:hidden"
                   aria-label="Cerrar menú"
                 >
                   <X className="h-5 w-5" aria-hidden />
@@ -503,7 +503,7 @@ export function StoreCategoriesOffcanvas({
                     return (
                       <li
                         key={cat.id}
-                        className="flex min-h-[3rem] border-b border-[#ece4dc] last:border-b-0"
+                        className="flex min-h-[3rem] border-b border-[var(--border)] last:border-b-0"
                       >
                         <button
                           type="button"
@@ -533,7 +533,7 @@ export function StoreCategoriesOffcanvas({
           </aside>
 
           <div className="hidden min-h-0 min-w-0 flex-1 flex-col bg-[#fafaf9] md:flex">
-            <div className="flex items-start justify-between gap-4 border-b border-[#ece4dc] bg-white px-5 py-4 sm:px-8 sm:py-5">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4 sm:px-8 sm:py-5">
               <div className="min-w-0 space-y-1">
                 <p className="text-[11px] font-semibold uppercase leading-relaxed tracking-[0.12em] text-slate-400">
                   Categoría
@@ -545,7 +545,7 @@ export function StoreCategoriesOffcanvas({
               <button
                 type="button"
                 onClick={onClose}
-                className="shrink-0 rounded-full p-2 text-slate-400 transition hover:bg-stone-100 hover:text-slate-700"
+                className="shrink-0 rounded-full p-2 text-[var(--muted)] transition hover:bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] hover:text-[var(--text)]"
                 aria-label="Cerrar"
               >
                 <X className="h-5 w-5" aria-hidden />
@@ -582,7 +582,7 @@ export function StoreCategoriesOffcanvas({
             role="dialog"
             aria-modal="true"
             aria-labelledby={detailTitleId}
-            className={`fixed inset-x-0 bottom-0 z-[130] flex max-h-[min(88dvh,720px)] min-h-[min(52dvh,480px)] flex-col rounded-t-2xl border border-b-0 border-[#e8e1da] bg-[#fafaf9] shadow-[0_-12px_48px_rgba(0,0,0,0.18)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
+            className={`fixed inset-x-0 bottom-0 z-[130] store-front-surface flex max-h-[min(88dvh,720px)] min-h-[min(52dvh,480px)] flex-col rounded-t-2xl border border-b-0 border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_38%,var(--surface))] text-[var(--text)] shadow-[var(--shadow)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
               detailAnimateIn ? "translate-y-0" : "translate-y-full"
             }`}
           >
@@ -590,7 +590,7 @@ export function StoreCategoriesOffcanvas({
               <div className="mx-auto h-1 w-10 rounded-full bg-slate-300" />
             </div>
 
-            <div className="flex items-start justify-between gap-4 border-b border-[#ece4dc] bg-white px-5 py-3 sm:px-6">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-3 sm:px-6">
               <div className="min-w-0 space-y-1">
                 <p
                   id={detailTitleId}
@@ -605,7 +605,7 @@ export function StoreCategoriesOffcanvas({
               <button
                 type="button"
                 onClick={closeCategorySheet}
-                className="shrink-0 rounded-full p-2 text-slate-400 transition hover:bg-stone-100 hover:text-slate-700"
+                className="shrink-0 rounded-full p-2 text-[var(--muted)] transition hover:bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] hover:text-[var(--text)]"
                 aria-label="Cerrar subcategorías"
               >
                 <X className="h-5 w-5" aria-hidden />

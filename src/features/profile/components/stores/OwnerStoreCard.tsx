@@ -41,7 +41,7 @@ export function OwnerStoreCard({
   onDiscardStoreAvatar,
 }: Props) {
   return (
-    <div className="relative min-w-0 w-full overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
+    <div className="relative vt-profile-store-card">
       <Link
         to={storePanelHref(b)}
         className="absolute inset-0 z-[1] rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"

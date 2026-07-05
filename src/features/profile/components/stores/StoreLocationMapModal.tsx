@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { MapContainer, Marker, useMapEvents } from "react-leaflet";
 import type { StoreLocationPoint } from "@features/market/logic/store/marketStoreTypes";
 import { storeMapPinIcon } from "@features/market/logic/map/storeMapPinIcon";
-import { CeButton, CeModal } from "@shared/components/ui";
 import { VibeMapTileLayer } from "@features/home/components/EmergentRouteFeedMap";
 import {
   STORE_LOCATION_MAP_DEFAULT_CENTER,
   STORE_LOCATION_MAP_ZOOM,
 } from "@features/profile/logic/storeMapDefaults";
+import { ProfileButton } from "../ProfileButton";
+import { ProfileModal } from "../ProfileModal";
 import "leaflet/dist/leaflet.css";
 
 function MapClickHandler({
@@ -49,20 +50,19 @@ export function StoreLocationMapModal({
   }, [pos]);
 
   return (
-    <CeModal
+    <ProfileModal
       show={open}
       onClose={onClose}
       title="Ubicación de la tienda"
       size="lg"
-      bodyClassName="overflow-visible max-h-none p-0"
+      bodyClassName="vt-profile-modal-body overflow-visible !max-h-none"
       footer={
         <>
-          <CeButton color="gray" outline onClick={onClose}>
+          <ProfileButton variant="ghost" onClick={onClose}>
             Cancelar
-          </CeButton>
-          <CeButton
-            color="gray"
-            outline
+          </ProfileButton>
+          <ProfileButton
+            variant="danger"
             onClick={() => {
               setPos(undefined);
               onSave(undefined);
@@ -70,48 +70,51 @@ export function StoreLocationMapModal({
             }}
           >
             Quitar ubicación
-          </CeButton>
-          <CeButton
+          </ProfileButton>
+          <ProfileButton
+            variant="primary"
             onClick={() => {
               onSave(pos);
               onClose();
             }}
           >
             Guardar
-          </CeButton>
+          </ProfileButton>
         </>
       }
     >
-      <div className="vt-muted mb-3 text-[13px] leading-snug">
+      <p className="vt-profile-muted mb-4 text-[13px] leading-snug">
         Toca el mapa para colocar el pin. Podés arrastrarlo para ajustar. Es
         opcional y visible para quien visite la tienda.
+      </p>
+      <div className="store-map-modal-frame">
+        <div className="store-map-modal-frame__map">
+          <MapContainer
+            center={center}
+            zoom={STORE_LOCATION_MAP_ZOOM}
+            className="h-[min(48vh,340px)] w-full"
+            scrollWheelZoom
+            attributionControl
+          >
+            <VibeMapTileLayer />
+            <MapClickHandler onPick={(lat, lng) => setPos({ lat, lng })} />
+            {pos ? (
+              <Marker
+                position={[pos.lat, pos.lng]}
+                draggable
+                icon={storeMapPinIcon()}
+                eventHandlers={{
+                  dragend: (e) => {
+                    const m = e.target;
+                    const ll = m.getLatLng();
+                    setPos({ lat: ll.lat, lng: ll.lng });
+                  },
+                }}
+              />
+            ) : null}
+          </MapContainer>
+        </div>
       </div>
-      <div className="store-map-modal-frame overflow-hidden rounded-xl border border-[var(--border)] bg-[#e2e8f0] [&_.leaflet-control-attribution]:text-[10px]">
-        <MapContainer
-          center={center}
-          zoom={STORE_LOCATION_MAP_ZOOM}
-          className="h-[min(52vh,360px)] w-full"
-          scrollWheelZoom
-          attributionControl
-        >
-          <VibeMapTileLayer />
-          <MapClickHandler onPick={(lat, lng) => setPos({ lat, lng })} />
-          {pos ? (
-            <Marker
-              position={[pos.lat, pos.lng]}
-              draggable
-              icon={storeMapPinIcon()}
-              eventHandlers={{
-                dragend: (e) => {
-                  const m = e.target;
-                  const ll = m.getLatLng();
-                  setPos({ lat: ll.lat, lng: ll.lng });
-                },
-              }}
-            />
-          ) : null}
-        </MapContainer>
-      </div>
-    </CeModal>
+    </ProfileModal>
   );
 }

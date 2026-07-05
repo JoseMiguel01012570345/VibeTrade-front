@@ -231,12 +231,12 @@ export function StoreCommentsModal({
 
       <div
         ref={listRef}
-        className="min-h-0 overflow-y-auto overscroll-y-contain border-y border-[#f0ebe6] bg-[#fbfaf8] px-6 py-2"
+        className="min-h-0 overflow-y-auto overscroll-y-contain border-y border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] px-6 py-2"
       >
         {renderListBody()}
       </div>
 
-      <div className="shrink-0 bg-[#fafaf9] px-6 py-3.5">
+      <div className="shrink-0 bg-[color-mix(in_oklab,var(--bg)_38%,var(--surface))] px-6 py-3.5">
         {c.replyingTo ? (
           <div className="mb-2.5 flex items-start justify-between gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2">
             <div className="min-w-0">

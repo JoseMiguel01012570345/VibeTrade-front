@@ -44,7 +44,7 @@ export function StaffLoginPage() {
   }
 
   return (
-    <div className="store-admin-surface -mt-4 grid min-h-[calc(100vh-64px)] place-items-center bg-[#eef0f4] px-4">
+    <div className="store-admin-surface -mt-4 grid min-h-[calc(100vh-64px)] place-items-center bg-[var(--bg)] px-4">
       <form
         onSubmit={submit}
         className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8"

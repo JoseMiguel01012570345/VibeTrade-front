@@ -90,9 +90,7 @@ export function TrustBar() {
               className="vt-profile-trust__fill"
               style={{ width: `calc(${pct}% - 4px)` }}
               data-moving={moving ? "1" : "0"}
-            >
-              <span className="vt-profile-trust__thumb" aria-hidden />
-            </div>
+            />
             <div
               className="vt-profile-trust__threshold"
               style={{ left: `${thresholdPct}%` }}

@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import App from "@/App.tsx";
 import { BootSplashRouteSync } from "@app/BootSplashRouteSync";
 import "@/index.css";
+import "@features/profile/styles/profile.css";
 import {
   applyColorSchemeToDocument,
   readStoredColorScheme,

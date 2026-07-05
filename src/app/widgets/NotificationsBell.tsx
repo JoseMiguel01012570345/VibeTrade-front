@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Bell, ChevronLeft, ChevronRight, ExternalLink, History, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CeButton, CeDateField, CeModal, CeTimeField } from '@shared/components/ui'
+import { ProfileButton } from '@features/profile/components/ProfileButton'
 import { useAppStore } from "@features/auth/logic/useAppStore"
 import type { NotificationItem } from "@features/notifications/Dtos/notificationItem"
 import { cn } from "@shared/lib/cn"
@@ -189,13 +190,14 @@ function HistoryFiltersPanel({
         />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <CeButton
+        <ProfileButton
           size="sm"
+          variant="primary"
           loading={historyLoading}
           onClick={onApply}
         >
           {applyFilterButtonLabel(historyLoading)}
-        </CeButton>
+        </ProfileButton>
       </div>
       {historyError && (
         <p className="mb-0 mt-2 text-[12px] font-semibold text-[var(--bad)]">{historyError}</p>

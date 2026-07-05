@@ -64,15 +64,15 @@
 
   :root.dark {
     color-scheme: dark;
-    --bg: #0b1220;
-    --surface: #141c2b;
-    --text: #f1f5f9;
+    --bg: #12181f;
+    --surface: #1a2430;
+    --text: #e8edf4;
     --muted: #94a3b8;
-    --border: rgba(241, 245, 249, 0.14);
+    --border: rgba(232, 237, 244, 0.12);
     --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 
-    --primary: #3b82f6;
-    --primary-2: #2563eb;
+    --primary: #2dd4bf;
+    --primary-2: #14b8a6;
 
     --good: #4ade80;
     --bad: #f87171;
@@ -391,6 +391,12 @@
     @apply fixed inset-0 z-[80] grid place-items-center bg-[rgba(2,6,23,0.55)] p-[18px];
   }
 
+  .vt-modal-backdrop-btn {
+    background: color-mix(in oklab, var(--text) 42%, transparent);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
+
   .vt-modal {
     @apply w-full max-w-[520px] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)];
   }
@@ -418,17 +424,6 @@
   ) {
     color-scheme: dark;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35) inset;
-  }
-
-  :root.dark .vt-input:where(
-    input[type="date"],
-    input[type="time"],
-    input[type="datetime-local"]
-  ):focus-visible {
-    box-shadow:
-      0 1px 0 rgba(0, 0, 0, 0.35) inset,
-      0 0 0 3px color-mix(in oklab, var(--primary) 25%, transparent);
-    border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
   }
 }
 
@@ -637,32 +632,188 @@ body:has(.vt-home-page) {
 }
 
 /*
- * Superficies de tienda (emerald) â€” replican la UI/UX de las apps de referencia
- * (frontend-guest storefront + frontend-admin panel). Sobrescriben los tokens de
- * color solo dentro de estas superficies, sin repintar el resto de la app (azul).
+ * Superficies de tienda (emerald) — home, storefront, búsqueda, carrito, etc.
+ * Modo claro: crema (#f7f3ef). Modo oscuro: hereda tokens globales como el perfil.
  */
 .store-front-surface {
   --primary: #0f766e;
   --primary-2: #115e59;
+  background: var(--bg);
+  color: var(--text);
+}
+
+:root:not(.dark) .store-front-surface {
   --bg: #f7f3ef;
   --surface: #ffffff;
   --border: #d9d5cf;
-  /* Texto oscuro fijo: estas superficies son siempre claras (como las apps de
-     referencia), incluso si la app estÃ¡ en modo oscuro. */
   --text: #0f172a;
   --muted: #64748b;
   color-scheme: light;
 }
 
+:root.dark .store-front-surface {
+  color-scheme: dark;
+  --primary: #2dd4bf;
+  --primary-2: #14b8a6;
+}
+
+/*
+ * Panel admin de tienda — modo claro gris (#eef0f4); oscuro alineado al perfil.
+ */
 .store-admin-surface {
   --primary: #0f6b4f;
   --primary-2: #0b5540;
+  background: var(--bg);
+  color: var(--text);
+}
+
+:root:not(.dark) .store-admin-surface {
   --bg: #eef0f4;
   --surface: #ffffff;
   --border: rgba(15, 23, 42, 0.1);
   --text: #0f172a;
   --muted: #64748b;
   color-scheme: light;
+}
+
+:root.dark .store-admin-surface {
+  color-scheme: dark;
+  --primary: #2dd4bf;
+  --primary-2: #14b8a6;
+}
+
+/* Remap utilidades Tailwind fijas → tokens semánticos en modo oscuro */
+:root.dark .store-front-surface .text-slate-900,
+:root.dark .store-admin-surface .text-gray-900 {
+  color: var(--text);
+}
+
+:root.dark .store-front-surface .text-slate-600,
+:root.dark .store-front-surface .text-slate-500,
+:root.dark .store-front-surface .text-slate-400,
+:root.dark .store-admin-surface .text-gray-700,
+:root.dark .store-admin-surface .text-gray-600,
+:root.dark .store-admin-surface .text-gray-500 {
+  color: var(--muted);
+}
+
+:root.dark .store-front-surface .text-emerald-700,
+:root.dark .store-front-surface .text-emerald-800,
+:root.dark .store-admin-surface .text-emerald-700,
+:root.dark .store-admin-surface .text-emerald-800 {
+  color: var(--primary);
+}
+
+:root.dark .store-front-surface .text-emerald-600 {
+  color: var(--primary-2);
+}
+
+:root.dark .store-front-surface .bg-white,
+:root.dark .store-admin-surface .bg-white {
+  background-color: var(--surface);
+}
+
+:root.dark .store-front-surface .bg-stone-50,
+:root.dark .store-front-surface .bg-\[\#faf8f5\],
+:root.dark .store-admin-surface .bg-gray-50 {
+  background-color: color-mix(in oklab, var(--bg) 55%, var(--surface));
+}
+
+:root.dark .store-front-surface .bg-\[\#f7f3ef\],
+:root.dark .store-front-surface .bg-\[\#f0ebe6\],
+:root.dark .store-admin-surface .bg-\[\#eef0f4\],
+:root.dark .store-admin-surface .bg-\[\#FDFCF9\],
+:root.dark .store-admin-surface .bg-\[\#EFF2F9\] {
+  background-color: var(--bg);
+}
+
+:root.dark .store-admin-surface .bg-\[\#e9f2ee\] {
+  background-color: color-mix(in oklab, var(--surface) 82%, var(--bg));
+}
+
+:root.dark .store-front-surface .bg-white\/95,
+:root.dark .store-admin-surface .bg-white\/95 {
+  background-color: color-mix(in oklab, var(--surface) 95%, transparent);
+}
+
+:root.dark .store-front-surface .bg-white\/70,
+:root.dark .store-admin-surface .bg-white\/70 {
+  background-color: color-mix(in oklab, var(--surface) 70%, transparent);
+}
+
+:root.dark .store-front-surface .border-emerald-100,
+:root.dark .store-front-surface .border-\[\#d9d5cf\],
+:root.dark .store-front-surface .border-\[\#e2dcd4\],
+:root.dark .store-front-surface .border-\[\#e3ddd6\],
+:root.dark .store-front-surface .border-\[\#e8e1da\],
+:root.dark .store-admin-surface .border-emerald-100,
+:root.dark .store-admin-surface .border-gray-200 {
+  border-color: var(--border);
+}
+
+:root.dark .store-front-surface .hover\:bg-white:hover,
+:root.dark .store-admin-surface .hover\:bg-white:hover,
+:root.dark .store-admin-surface .hover\:bg-gray-50:hover {
+  background-color: var(--surface);
+}
+
+:root.dark .store-admin-surface .hover\:bg-white\/70:hover {
+  background-color: color-mix(in oklab, var(--surface) 70%, transparent);
+}
+
+:root.dark .store-admin-surface .hover\:bg-gray-50\/80:hover {
+  background-color: color-mix(in oklab, var(--bg) 45%, var(--surface));
+}
+
+:root.dark .store-front-surface .focus\:bg-white:focus,
+:root.dark .store-admin-surface .focus\:bg-white:focus {
+  background-color: var(--surface);
+}
+
+:root.dark .store-front-surface .placeholder\:text-slate-400::placeholder,
+:root.dark .store-admin-surface .placeholder\:text-\[\#94A3B8\]::placeholder {
+  color: var(--muted);
+}
+
+/* Cabecera sticky del home (fuera de .store-front-surface, en AppShell) */
+:root.dark .vt-home-shell-header {
+  border-color: var(--border);
+  background-color: color-mix(in oklab, var(--surface) 95%, transparent);
+}
+
+:root.dark .vt-home-shell-header .text-emerald-700 {
+  color: var(--primary);
+}
+
+:root.dark .vt-home-shell-header .text-slate-500 {
+  color: var(--muted);
+}
+
+:root.dark .vt-home-shell-header .vt-home-shell-search {
+  border-color: var(--border);
+  background-color: color-mix(in oklab, var(--bg) 55%, var(--surface));
+  color: var(--text);
+}
+
+:root.dark .vt-home-shell-header .vt-home-shell-search:hover {
+  border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
+  background-color: var(--surface);
+}
+
+:root.dark .store-admin-surface .border-\[\#E8ECF2\],
+:root.dark .store-admin-surface .border-\[\#D8DEE8\],
+:root.dark .store-admin-surface .border-\[\#CBD5E1\],
+:root.dark .store-admin-surface .border-dashed.border-gray-200 {
+  border-color: var(--border);
+}
+
+:root.dark .store-admin-surface .text-\[\#0F172A\] {
+  color: var(--text);
+}
+
+:root.dark .store-front-surface .shadow-\[0_12px_30px_rgba\(33\,37\,41\,0\.05\)\],
+:root.dark .store-admin-surface .shadow-\[0_1px_3px_rgba\(15\,23\,42\,0\.06\)\] {
+  box-shadow: var(--shadow);
 }
 
 /*

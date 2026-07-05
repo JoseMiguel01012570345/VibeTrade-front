@@ -318,7 +318,7 @@ export function CatalogSearchPage() {
 
   return (
     <div
-      className={`store-front-surface min-h-0 w-full flex-1 bg-[#f7f3ef] pb-[calc(var(--vt-bottom-nav-clearance)+1.125rem)] text-slate-900 transition-opacity duration-500 ease-out ${
+      className={`store-front-surface min-h-0 w-full flex-1 bg-[var(--bg)] pb-[calc(var(--vt-bottom-nav-clearance)+1.125rem)] text-[var(--text)] transition-opacity duration-500 ease-out ${
         visible ? "opacity-100" : "opacity-0"
       }`}
     >
@@ -333,7 +333,7 @@ export function CatalogSearchPage() {
           </Link>
         </div>
 
-        <div className="rounded-[18px] border border-[#d9d5cf] bg-white p-4 shadow-[0_12px_30px_rgba(33,37,41,0.05)] sm:p-5">
+        <div className="rounded-[18px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_12px_30px_rgba(33,37,41,0.05)] sm:p-5">
           <form
             className="mb-3 flex flex-col gap-3 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-end"
             onSubmit={onSubmitSearch}

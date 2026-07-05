@@ -194,7 +194,7 @@
   --chat-bubble-out-border: rgba(255, 255, 255, 0.2);
   --chat-voice-unplayed: color-mix(in oklab, var(--muted) 40%, var(--surface));
   --chat-voice-played: var(--primary);
-  --chat-list-row-active: #2a3942;
+  --chat-list-row-active: #243040;
   --chat-list-row-hover: color-mix(in oklab, var(--muted) 14%, var(--surface));
   --chat-list-search-bg: color-mix(in oklab, var(--muted) 18%, var(--surface));
 }

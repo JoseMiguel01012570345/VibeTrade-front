@@ -34,9 +34,9 @@ const MODAL_SIZE_CLASSES: Record<ModalSize, string> = {
 };
 
 const DEFAULT_PANEL_INNER =
-  "relative flex max-h-[min(90dvh,720px)] w-full flex-col overflow-hidden rounded-lg bg-white shadow dark:bg-gray-700";
+  "relative flex max-h-[min(90dvh,720px)] w-full flex-col overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow)]";
 
-const DEFAULT_BACKDROP = "bg-gray-900/50 dark:bg-gray-900/80";
+const DEFAULT_BACKDROP = "vt-modal-backdrop-btn";
 
 type ModalThemeSlice = {
   root?: {

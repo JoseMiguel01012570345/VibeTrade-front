@@ -24,7 +24,7 @@ export function StoreLegacyRedirect({
   if (name) return <Navigate to={`${storePathFromName(name)}${suffix}`} replace />;
   if (query.isError) return <Navigate to="/home" replace />;
   return (
-    <div className="store-front-surface min-h-full bg-[#f7f3ef]">
+    <div className="store-front-surface min-h-full bg-[var(--bg)]">
       <div className="mx-auto max-w-[1140px] px-4 py-10 text-sm text-slate-500">
         Cargando tienda…
       </div>

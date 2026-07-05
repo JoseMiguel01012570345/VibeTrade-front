@@ -26,9 +26,7 @@ const topLinkClass =
 /**
  * Cabecera fija (sticky) de la tienda. Réplica de la UI/UX del header de la app de
  * referencia (frontend-guest, `App.tsx`): marca a la izquierda, buscador central y
- * navegación a la derecha (Inicio + carrito con contador). Aquí la "marca" es la
- * tienda (avatar + nombre). El buscador es controlado en el storefront (filtra el
- * catálogo) o navega a `/store/:id?q=` desde otras vistas (p. ej. el detalle).
+ * navegación a la derecha (categorías, rastreo, carrito e inicio de sesión).
  */
 export function StorefrontHeader({
   store,
@@ -327,7 +325,7 @@ export function StorefrontChrome({
   return (
     <StoreCategoriesProvider storeId={store.id}>
       <StoreBannersProvider storeId={store.id}>
-        <div className="store-front-surface flex w-full min-h-0 flex-1 flex-col bg-[#f7f3ef] text-slate-900">
+        <div className="store-front-surface flex w-full min-h-0 flex-1 flex-col bg-[var(--bg)] text-[var(--text)]">
           <StorefrontHeader
             store={store}
             query={query}

@@ -27,7 +27,9 @@ import {
   textareaMin,
 } from "@shared/styles/modals/formModalStyles";
 import { cn } from "@shared/lib/cn";
-import { CeButton, CeModal, CeSpinner } from "@shared/components/ui";
+import { ProfileButton } from "@features/profile/components/ProfileButton";
+import { ProfileModal } from "@features/profile/components/ProfileModal";
+import { CeSpinner } from "@shared/components/ui";
 import { VtSelect } from "@shared/components/ui/VtSelect";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import {
@@ -235,7 +237,7 @@ export function ServiceEditorModal({
   return (
     <>
       <UploadBlockingOverlay active={uploadBusy} />
-      <CeModal
+      <ProfileModal
         show={open}
         onClose={() => !uploadBusy && onClose()}
         title={title}
@@ -243,12 +245,12 @@ export function ServiceEditorModal({
         bodyClassName="overflow-y-auto max-h-[min(85vh,48rem)]"
         footer={
           <>
-            <CeButton color="gray" outline disabled={uploadBusy} onClick={onClose}>
+            <ProfileButton variant="ghost" disabled={uploadBusy} onClick={onClose}>
               Cancelar
-            </CeButton>
-            <CeButton disabled={uploadBusy} onClick={handleSave}>
+            </ProfileButton>
+            <ProfileButton variant="primary" disabled={uploadBusy} onClick={handleSave}>
               Guardar servicio
-            </CeButton>
+            </ProfileButton>
           </>
         }
       >
@@ -609,7 +611,7 @@ export function ServiceEditorModal({
               showValidation={showVal}
             />
         </div>
-      </CeModal>
+      </ProfileModal>
     </>
   );
 }

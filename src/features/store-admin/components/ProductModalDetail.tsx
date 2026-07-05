@@ -8,7 +8,9 @@ import {
 } from "react";
 import { Label } from "flowbite-react";
 import { ImagePlus, Trash2, X } from "lucide-react";
-import { CeButton, CeModal, CeTransitionModalShell } from "@shared/components/ui";
+import { ProfileButton } from "@features/profile/components/ProfileButton";
+import { ProfileModal } from "@features/profile/components/ProfileModal";
+import { CeTransitionModalShell } from "@shared/components/ui";
 import { toast } from "sonner";
 import type {
   StoreCategoryDto,
@@ -66,6 +68,7 @@ import {
   CE_TX_MUTED,
   CE_UI_BG,
   CE_UI_CARD_TINT,
+  CE_UI_INSET,
   CE_UI_MINT_ZONE,
   CE_UI_PRIMARY,
   CE_UI_SURFACE,
@@ -533,8 +536,7 @@ export function ProductModalDetail({
       >
         <div
           className={cn(
-            "relative flex max-h-[min(92vh,52rem)] w-full flex-col overflow-hidden",
-            CE_UI_BG,
+            "vt-admin-modal-panel relative flex max-h-[min(92vh,52rem)] w-full flex-col overflow-hidden",
           )}
         >
           <UploadBlockingOverlay
@@ -546,8 +548,8 @@ export function ProductModalDetail({
             }
           />
 
-          <div className="relative flex items-start gap-4 border-b border-[#E5E7EB] px-4 pb-4 pt-4 sm:px-6">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#E8F5E9] shadow-inner ring-1 ring-[#C8E6C9]/80">
+          <div className="relative flex items-start gap-4 border-b border-[var(--border)] px-4 pb-4 pt-4 sm:px-6">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[color-mix(in_oklab,var(--primary)_14%,var(--surface))] shadow-inner ring-1 ring-[color-mix(in_oklab,var(--primary)_25%,var(--border))]">
               <span
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-lg font-bold leading-none text-white shadow-sm"
                 style={{ backgroundColor: CE_ADMIN_BRAND }}
@@ -571,7 +573,7 @@ export function ProductModalDetail({
               aria-label="Cerrar"
               disabled={submitting}
               onClick={onClose}
-              className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-lg text-[#64748B] transition hover:bg-[#F1F5F9] hover:text-[#0F172A] disabled:opacity-50 sm:right-6"
+              className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-lg text-[var(--muted)] transition hover:bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] hover:text-[var(--text)] disabled:opacity-50 sm:right-6"
             >
               <X size={20} aria-hidden />
             </button>
@@ -595,7 +597,7 @@ export function ProductModalDetail({
                     />
                   </div>
 
-                  <div className="md:col-span-2 space-y-4 rounded-xl border border-[#E8ECF2] bg-[#FAFBFC] p-4">
+                  <div className={cn("md:col-span-2 space-y-4 p-4", CE_UI_INSET)}>
                     <p className={cn("text-sm font-semibold", CE_TX_HEAD)}>
                       Categoría y subcategoría
                     </p>
@@ -670,12 +672,12 @@ export function ProductModalDetail({
                       </div>
                     </div>
 
-                    <div className="border-t border-[#E8ECF2] pt-4">
+                    <div className="border-t border-[var(--border)] pt-4">
                       <p className={cn("mb-3 text-xs font-semibold uppercase tracking-wide", CE_TX_MUTED)}>
                         Añadir al catálogo de categorías
                       </p>
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2 rounded-lg border border-[#E8ECF2] bg-white p-3">
+                        <div className={cn("space-y-2 rounded-lg p-3", CE_UI_INSET)}>
                           <p className={cn("text-sm font-semibold", CE_TX_HEAD)}>
                             Crear categoría nueva
                           </p>
@@ -692,17 +694,19 @@ export function ProductModalDetail({
                               className="min-w-0 flex-1"
                               onChange={(e) => setNewRootCategoryName(e.target.value)}
                             />
-                            <button
+                            <ProfileButton
                               type="button"
+                              variant="secondary"
+                              size="sm"
                               disabled={categoryBusy}
                               onClick={() => void handleCreateRootCategory()}
-                              className="shrink-0 rounded-xl border border-[#006837]/40 bg-white px-4 py-2.5 text-sm font-semibold text-[#006837] transition hover:bg-[#E8F5E9] disabled:opacity-50"
+                              className="shrink-0"
                             >
                               Crear categoría
-                            </button>
+                            </ProfileButton>
                           </div>
                         </div>
-                        <div className="space-y-2 rounded-lg border border-[#E8ECF2] bg-white p-3">
+                        <div className={cn("space-y-2 rounded-lg p-3", CE_UI_INSET)}>
                           <p className={cn("text-sm font-semibold", CE_TX_HEAD)}>
                             Crear subcategoría nueva
                           </p>
@@ -723,14 +727,16 @@ export function ProductModalDetail({
                               className="min-w-0 flex-1"
                               onChange={(e) => setNewSubcategoryName(e.target.value)}
                             />
-                            <button
+                            <ProfileButton
                               type="button"
+                              variant="secondary"
+                              size="sm"
                               disabled={categoryBusy || !categoryId.trim()}
                               onClick={() => void handleCreateSubcategory()}
-                              className="shrink-0 rounded-xl border border-[#006837]/40 bg-white px-4 py-2.5 text-sm font-semibold text-[#006837] transition hover:bg-[#E8F5E9] disabled:opacity-50"
+                              className="shrink-0"
                             >
                               Crear subcategoría
-                            </button>
+                            </ProfileButton>
                           </div>
                         </div>
                       </div>
@@ -766,7 +772,7 @@ export function ProductModalDetail({
                     ))}
                   </ProductModalSelect>
 
-                  <div className="md:col-span-2 space-y-3 rounded-xl border border-[#E8ECF2] bg-[#FAFBFC] p-4">
+                  <div className={cn("md:col-span-2 space-y-3 p-4", CE_UI_INSET)}>
                     <div className="flex items-center gap-2">
                       <ProductModalCheckbox
                         id="p-has-measure"
@@ -851,7 +857,7 @@ export function ProductModalDetail({
                       {photoSlots.map((slot) => (
                         <li
                           key={slot.id}
-                          className="relative flex w-[7.5rem] flex-col gap-2 rounded-xl border border-white/80 bg-white p-2 shadow-sm ring-1 ring-[#D8DEE8]"
+                          className="relative flex w-[7.5rem] flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow)]"
                         >
                           <button
                             type="button"
@@ -863,7 +869,7 @@ export function ProductModalDetail({
                           </button>
                           <button
                             type="button"
-                            className="block overflow-hidden rounded-lg focus:outline-none focus:ring-2 focus:ring-[#006837]"
+                            className="block overflow-hidden rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                             onClick={() =>
                               setPhotoPreview({ src: slot.url, title: slot.fileName || "Vista de imagen" })
                             }
@@ -891,7 +897,7 @@ export function ProductModalDetail({
                   ) : null}
 
                   <div className={cn("flex flex-col items-center justify-center px-4 py-8", CE_UI_MINT_ZONE)}>
-                    <ImagePlus className="mx-auto h-10 w-10 text-[#006837]/80" aria-hidden />
+                    <ImagePlus className="mx-auto h-10 w-10 text-[var(--primary)]" aria-hidden />
                     <p className={cn("mt-2 text-center text-xs", CE_TX_MUTED)}>
                       JPEG, PNG, WebP o GIF (puedes elegir varias a la vez)
                     </p>
@@ -918,7 +924,7 @@ export function ProductModalDetail({
 
                 {suppliers.length > 0 ? (
                   <div className={cn("p-5", CE_UI_CARD_TINT)}>
-                    <p className="mb-4 text-xs font-bold uppercase tracking-[0.12em] text-[#006837]">
+                    <p className="mb-4 text-xs font-bold uppercase tracking-[0.12em] text-[var(--primary)]">
                       Vinculación a perfil TCP
                     </p>
                     <div className="mb-4 max-w-md">
@@ -977,7 +983,7 @@ export function ProductModalDetail({
                   onChange={(e) => setDesc(e.target.value)}
                 />
 
-                <div className="flex flex-wrap items-center gap-4 rounded-xl border border-[#E8ECF2] bg-[#F8FAFC] px-4 py-4">
+                <div className={cn("flex flex-wrap items-center gap-4 px-4 py-4", CE_UI_INSET)}>
                   <div className="flex items-center gap-2">
                     <ProductModalCheckbox
                       id="p-pending"
@@ -1016,37 +1022,33 @@ export function ProductModalDetail({
             </div>
           </div>
 
-          <div
-            className={cn(
-              "flex flex-col-reverse gap-3 border-t border-[#E8ECF2] px-4 py-4 sm:flex-row sm:justify-end sm:px-6",
-              CE_UI_BG,
-            )}
-          >
-            <CeButton color="gray" outline disabled={submitting} onClick={onClose} className="w-full sm:w-auto">
+          <div className="flex flex-col-reverse gap-3 border-t border-[var(--border)] px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
+            <ProfileButton variant="ghost" disabled={submitting} onClick={onClose} className="w-full sm:w-auto">
               Cancelar
-            </CeButton>
-            <CeButton
+            </ProfileButton>
+            <ProfileButton
+              variant="primary"
               loading={submitting}
               onClick={() => void requestSubmit()}
-              className={cn("w-full sm:w-auto", CE_UI_PRIMARY)}
+              className="w-full sm:w-auto"
             >
               {editingId ? "Guardar cambios" : "Guardar producto"}
-            </CeButton>
+            </ProfileButton>
           </div>
         </div>
       </CeTransitionModalShell>
 
       {photoPreview ? (
-        <CeModal
+        <ProfileModal
           show
           onClose={() => setPhotoPreview(null)}
           title={photoPreview.title}
           size="4xl"
           bodyClassName="overflow-visible max-h-none"
           footer={
-            <CeButton onClick={() => setPhotoPreview(null)} className={CE_UI_PRIMARY}>
+            <ProfileButton variant="primary" onClick={() => setPhotoPreview(null)}>
               Cerrar
-            </CeButton>
+            </ProfileButton>
           }
         >
           <ProtectedMediaImg
@@ -1055,7 +1057,7 @@ export function ProductModalDetail({
             wrapperClassName="mx-auto max-h-[min(80vh,880px)] w-full overflow-hidden rounded-lg"
             className="mx-auto max-h-[min(80vh,880px)] w-full object-contain"
           />
-        </CeModal>
+        </ProfileModal>
       ) : null}
 
       <ConfirmModal

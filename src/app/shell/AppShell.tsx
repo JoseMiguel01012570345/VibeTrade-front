@@ -155,7 +155,7 @@ export function AppShell() {
         </button>
       ) : null}
       {showStickyShellHeader ? (
-        <div className="sticky top-0 z-50 overflow-visible border-b border-emerald-100 bg-white/95 pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-sm">
+        <div className="vt-home-shell-header sticky top-0 z-50 overflow-visible border-b border-emerald-100 bg-white/95 pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-sm">
           <div className="container mx-auto max-w-[1140px] pb-3">
             {isHome && !isOnboarding ? (
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 pt-2.5 md:flex-nowrap">
@@ -164,7 +164,7 @@ export function AppShell() {
                 </h1>
                 <button
                   type="button"
-                  className="order-2 flex w-full min-w-0 basis-full items-center gap-2 rounded-full border border-emerald-100 bg-stone-50 px-3 py-2.5 text-left text-[13px] shadow-none transition hover:border-emerald-300 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-100 md:w-auto md:flex-1 md:basis-auto"
+                  className="vt-home-shell-search order-2 flex w-full min-w-0 basis-full items-center gap-2 rounded-full border border-emerald-100 bg-stone-50 px-3 py-2.5 text-left text-[13px] shadow-none transition hover:border-emerald-300 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-100 md:w-auto md:flex-1 md:basis-auto"
                   onClick={() => navigate("/search")}
                   aria-label="Abrir búsqueda de tiendas, productos y servicios"
                 >

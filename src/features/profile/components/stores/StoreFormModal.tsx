@@ -19,7 +19,8 @@ import {
   textareaMin,
 } from "@shared/styles/modals/formModalStyles";
 import { cn } from "@shared/lib/cn";
-import { CeButton, CeModal } from "@shared/components/ui";
+import { ProfileButton } from "../ProfileButton";
+import { ProfileModal } from "../ProfileModal";
 import { VtSelect } from "@shared/components/ui/VtSelect";
 import { StoreLocationMapModal } from "./StoreLocationMapModal";
 
@@ -101,19 +102,23 @@ export function StoreFormModal({
 
   return (
     <>
-      <CeModal
+      <ProfileModal
         show={open}
         onClose={() => !submitting && onClose()}
         title={title}
         size="4xl"
         footer={
           <>
-            <CeButton color="gray" outline disabled={submitting} onClick={onClose}>
+            <ProfileButton variant="ghost" disabled={submitting} onClick={onClose}>
               Cancelar
-            </CeButton>
-            <CeButton loading={submitting} onClick={() => void handleSave()}>
+            </ProfileButton>
+            <ProfileButton
+              variant="primary"
+              loading={submitting}
+              onClick={() => void handleSave()}
+            >
               Guardar
-            </CeButton>
+            </ProfileButton>
           </>
         }
       >
@@ -126,7 +131,7 @@ export function StoreFormModal({
           <label className={fieldRootWithInvalid(showVal && !name.trim())}>
             <span className={fieldLabel}>Nombre de la tienda</span>
             <input
-              className="vt-input"
+              className="vt-input vt-profile-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
@@ -246,7 +251,7 @@ export function StoreFormModal({
             </div>
           </div>
         </div>
-      </CeModal>
+      </ProfileModal>
       <StoreLocationMapModal
         open={mapOpen}
         initial={location}

@@ -441,11 +441,11 @@ export function HomePage() {
     sheetStoreIds.length > 0;
 
   return (
-    <div className="store-front-surface vt-home-page flex min-h-0 w-full flex-1 flex-col overflow-hidden overscroll-none bg-[#f7f3ef] text-slate-900">
+    <div className="store-front-surface vt-home-page flex min-h-0 w-full flex-1 flex-col overflow-hidden overscroll-none bg-[var(--bg)] text-[var(--text)]">
       <div className="mx-auto flex min-h-0 w-full max-w-[1140px] flex-1 flex-col overflow-hidden px-4 py-4 sm:py-6">
         <div
           ref={viewportRef}
-          className="relative h-[min(780px,calc(100vh-9rem))] min-h-0 w-full overflow-hidden overscroll-contain rounded-[24px] border border-[#d9d5cf] bg-white shadow-[0_12px_30px_rgba(33,37,41,0.05)] sm:h-[calc(100vh-9rem)]"
+          className="relative h-[min(780px,calc(100vh-9rem))] min-h-0 w-full overflow-hidden overscroll-contain rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-[0_12px_30px_rgba(33,37,41,0.05)] sm:h-[calc(100vh-9rem)]"
           aria-label="Feed de ofertas por lotes"
         >
           {cardCount === 0 ? (
@@ -474,9 +474,9 @@ export function HomePage() {
                       key={slideKey}
                       className="flex h-full max-h-full w-full flex-col overflow-hidden"
                     >
-                      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-[24px] bg-[#f7f3ef] p-3 sm:p-4 md:flex-row md:items-stretch md:gap-0">
+                      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-[24px] bg-[var(--bg)] p-3 sm:p-4 md:flex-row md:items-stretch md:gap-0">
                         {bulk.storeIds.length > 0 ? (
-                          <aside className="hidden min-h-0 w-full max-h-[min(42vh,380px)] shrink-0 flex-col border-b border-[#d9d5cf] pb-3 md:flex md:max-h-none md:h-auto md:w-[min(100%,300px)] md:border-b-0 md:border-r md:border-[#d9d5cf] md:pb-0 md:pr-3">
+                          <aside className="hidden min-h-0 w-full max-h-[min(42vh,380px)] shrink-0 flex-col border-b border-[var(--border)] pb-3 md:flex md:max-h-none md:h-auto md:w-[min(100%,300px)] md:border-b-0 md:border-r md:border-[var(--border)] md:pb-0 md:pr-3">
                             <RecommendedStoresRow
                               embedded
                               orientation="vertical"

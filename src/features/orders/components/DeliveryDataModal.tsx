@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { MapContainer, Marker, useMapEvents } from "react-leaflet";
 import { toast } from "sonner";
 import { MapPin, X } from "lucide-react";
+import { ProfileButton } from "@features/profile/components/ProfileButton";
 import { CeFlowbiteModal } from "@shared/components/ui";
 import { VibeMapTileLayer } from "@features/home/components/EmergentRouteFeedMap";
 import { storeMapPinIcon } from "@features/market/logic/map/storeMapPinIcon";
@@ -22,14 +23,14 @@ import "leaflet/dist/leaflet.css";
  *  dirección + pin en el mapa (reusa el tile layer y el pin de la app). */
 function StepBadge({ n }: Readonly<{ n: number }>) {
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-extrabold text-emerald-800">
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--primary)_14%,var(--surface))] text-sm font-extrabold text-[var(--primary)]">
       {n}
     </span>
   );
 }
 
 const inputClass =
-  "h-11 w-full rounded-[10px] border border-[#e2dcd4] bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100";
+  "h-11 w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--muted)] focus:border-[color-mix(in_oklab,var(--primary)_55%,var(--border))] focus:ring-4 focus:ring-[color-mix(in_oklab,var(--primary)_18%,transparent)]";
 
 function LabeledInput({
   id,
@@ -50,7 +51,7 @@ function LabeledInput({
 }>) {
   return (
     <label htmlFor={id} className="block">
-      <span className="mb-1 block text-xs font-bold text-slate-700">
+      <span className="mb-1 block text-xs font-bold text-[var(--muted)]">
         {label}
       </span>
       <input
@@ -162,18 +163,18 @@ export function DeliveryDataModal({
       theme={STOREFRONT_CHECKOUT_MODAL_THEME}
       backdropClassName={STOREFRONT_MODAL_BACKDROP}
     >
-      <div className="flex items-center gap-3 border-b border-[#efe9e3] px-5 py-4 sm:px-6">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-700 text-white">
+      <div className="flex items-center gap-3 border-b border-[var(--border)] px-5 py-4 sm:px-6">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-white">
           <MapPin className="h-5 w-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
           <h2
             id={titleId}
-            className="text-lg font-extrabold tracking-tight text-slate-900"
+            className="text-lg font-extrabold tracking-tight text-[var(--text)]"
           >
             Datos de entrega
           </h2>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <p className="mt-0.5 text-sm text-[var(--muted)]">
             {needsAddress
               ? "Tus datos y el punto exacto de entrega"
               : "Tus datos de contacto para la recogida"}
@@ -182,7 +183,7 @@ export function DeliveryDataModal({
         <button
           type="button"
           onClick={onClose}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--muted)] transition hover:bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] hover:text-[var(--text)]"
           aria-label="Cerrar"
         >
           <X className="h-5 w-5" aria-hidden />
@@ -193,7 +194,7 @@ export function DeliveryDataModal({
           <section>
             <div className="flex items-center gap-3">
               <StepBadge n={1} />
-              <h3 className="text-sm font-extrabold tracking-tight text-slate-900">
+              <h3 className="text-sm font-extrabold tracking-tight text-[var(--text)]">
                 Confirma tus datos de contacto
               </h3>
             </div>
@@ -250,18 +251,18 @@ export function DeliveryDataModal({
           </section>
 
           {needsAddress ? (
-            <section className="mt-6 rounded-[14px] border border-[#e8e1da] bg-[#fafaf9] p-4 sm:p-5">
+            <section className="mt-6 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] p-4 sm:p-5">
               <div className="flex items-center gap-3">
                 <StepBadge n={2} />
-                <h3 className="text-sm font-extrabold tracking-tight text-slate-900">
+                <h3 className="text-sm font-extrabold tracking-tight text-[var(--text)]">
                   Marca tu ubicación
                 </h3>
               </div>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
                 Toca el mapa para colocar el pin en tu punto de entrega. Puedes
                 arrastrarlo para ajustar.
               </p>
-              <div className="mt-4 overflow-hidden rounded-[10px] border border-[#e8e1da] bg-[#e2e8f0]">
+              <div className="mt-4 overflow-hidden rounded-[10px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))]">
                 <MapContainer
                   center={center}
                   zoom={STORE_LOCATION_MAP_ZOOM}
@@ -292,8 +293,8 @@ export function DeliveryDataModal({
                   ) : null}
                 </MapContainer>
               </div>
-              <p className="mt-3 text-xs text-slate-500">
-                <span className="font-semibold text-emerald-800">Pin:</span>{" "}
+              <p className="mt-3 text-xs text-[var(--muted)]">
+                <span className="font-semibold text-[var(--primary)]">Pin:</span>{" "}
                 {pinPlaced && lat != null && lng != null
                   ? `${lat.toFixed(5)}, ${lng.toFixed(5)}`
                   : "Toca el mapa para colocar el pin"}
@@ -302,21 +303,13 @@ export function DeliveryDataModal({
           ) : null}
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-[#efe9e3] px-5 py-4 sm:flex-row sm:px-6">
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-full rounded-[10px] border border-[#ddd5ce] bg-white py-3 text-sm font-bold text-slate-700 transition hover:bg-stone-50 sm:flex-1"
-        >
+      <div className="flex flex-col gap-3 border-t border-[var(--border)] px-5 py-4 sm:flex-row sm:px-6">
+        <ProfileButton variant="ghost" onClick={onClose} className="w-full sm:flex-1">
           Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={handleConfirm}
-          className="w-full rounded-[10px] bg-emerald-700 py-3 text-sm font-bold text-white shadow-[0_14px_28px_rgba(4,120,87,0.25)] transition hover:bg-emerald-800 sm:flex-[2]"
-        >
+        </ProfileButton>
+        <ProfileButton variant="primary" onClick={handleConfirm} className="w-full sm:flex-[2]">
           Guardar datos de entrega
-        </button>
+        </ProfileButton>
       </div>
     </CeFlowbiteModal>
   );

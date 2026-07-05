@@ -133,7 +133,7 @@ export function OwnerStoreDashboard() {
 
   if (!store) {
     return (
-      <div className="store-admin-surface grid min-h-[60vh] place-items-center bg-[#eef0f4]">
+      <div className="store-admin-surface grid min-h-[60vh] place-items-center bg-[var(--bg)]">
         <p className="text-sm text-gray-500">Tienda no encontrada.</p>
       </div>
     );
@@ -289,7 +289,7 @@ export function OwnerStoreDashboard() {
   );
 
   return (
-    <div className="store-admin-surface -mt-4 flex min-h-[calc(100vh-64px)] w-full bg-[#eef0f4] text-gray-900">
+    <div className="store-admin-surface -mt-4 flex min-h-[calc(100vh-64px)] w-full bg-[var(--bg)] text-[var(--text)]">
       {/* Sidebar escritorio */}
       <aside className="hidden w-[264px] shrink-0 flex-col border-r border-emerald-100 bg-[#e9f2ee] py-6 md:flex">
         {sidebar}

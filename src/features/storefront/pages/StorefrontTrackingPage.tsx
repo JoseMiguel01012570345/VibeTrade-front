@@ -29,7 +29,7 @@ export function StorefrontTrackingPage() {
   }
 
   const surface =
-    "store-front-surface min-h-full bg-[#f7f3ef] text-slate-900";
+    "store-front-surface min-h-full bg-[var(--bg)] text-[var(--text)]";
 
   if (!notFound && (resolving || detailStatus === "loading")) {
     return <StorefrontLoadingState />;

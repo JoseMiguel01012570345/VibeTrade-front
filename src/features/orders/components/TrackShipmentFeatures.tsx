@@ -26,13 +26,13 @@ export function TrackShipmentFeatures() {
       {FEATURES.map(({ icon: Icon, title, body }) => (
         <div
           key={title}
-          className="rounded-[14px] border border-[#e3ddd6] bg-[#f5f2ee] px-4 py-5 text-center sm:text-left"
+          className="rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] px-4 py-5 text-center sm:text-left"
         >
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 sm:mx-0">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[color-mix(in_oklab,var(--primary)_14%,var(--surface))] text-[var(--primary)] sm:mx-0">
             <Icon className="h-8 w-8" aria-hidden />
           </div>
-          <h2 className="text-base font-extrabold text-slate-900">{title}</h2>
-          <p className="mt-2 text-sm leading-snug text-slate-600">{body}</p>
+          <h2 className="text-base font-extrabold text-[var(--text)]">{title}</h2>
+          <p className="mt-2 text-sm leading-snug text-[var(--muted)]">{body}</p>
         </div>
       ))}
     </div>

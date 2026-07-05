@@ -107,7 +107,7 @@ export function CartPage() {
   }
 
   return (
-    <div className="store-front-surface min-h-full bg-[#f7f3ef] pb-[96px] text-slate-900 sm:pb-[112px]">
+    <div className="store-front-surface min-h-full bg-[var(--bg)] pb-[96px] text-[var(--text)] sm:pb-[112px]">
       {body}
     </div>
   );

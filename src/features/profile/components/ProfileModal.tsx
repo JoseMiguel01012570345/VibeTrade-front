@@ -20,7 +20,7 @@ const PROFILE_MODAL_THEME = {
   },
   root: {
     show: {
-      on: "flex bg-gray-900/55 dark:bg-gray-950/70",
+      on: "flex vt-modal-backdrop-btn",
     },
   },
 } as const;
