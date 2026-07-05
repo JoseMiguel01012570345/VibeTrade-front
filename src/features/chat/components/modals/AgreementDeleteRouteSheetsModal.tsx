@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { Trash2 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { useMarketStore } from "@features/market/logic/store/useMarketStore"

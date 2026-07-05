@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Store } from "lucide-react";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { dismissBootSplash } from "@shared/lib/bootSplash";
+import { resolveStoreLoaderAvatar } from "@shared/lib/storeBootSplash";
 import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { cn } from "@shared/lib/cn";
 
@@ -13,14 +14,15 @@ type Props = Readonly<{
 }>;
 
 /**
- * Pantalla de entrada a la tienda (guest): imagen de la tienda subida en el perfil
- * (`avatarUrl`) centrada + spinner.
+ * Pantalla de entrada a la tienda: logo subido en la sección Tiendas del perfil
+ * (`avatarUrl`) centrado + spinner.
  */
 export function StoreEntryLoadingScreen({
   storeName,
   avatarUrl,
   label = "Cargando tienda",
 }: Props) {
+  const resolvedAvatar = resolveStoreLoaderAvatar(storeName, avatarUrl);
   const dismissedRef = useRef(false);
 
   useEffect(() => {
@@ -31,16 +33,16 @@ export function StoreEntryLoadingScreen({
 
   const content = (
     <div
-      className="fixed inset-0 z-[100000] flex flex-col items-center justify-center bg-white font-sans"
+      className="fixed inset-0 z-[100000] flex flex-col items-center justify-center bg-white/65 font-sans backdrop-blur-md dark:bg-[#0b1220]/55"
       role="status"
       aria-live="polite"
       aria-busy="true"
       aria-label={label}
     >
       <div className="flex w-full max-w-[min(92vw,32rem)] flex-col items-center gap-8 px-6 text-center">
-        {avatarUrl ? (
+        {resolvedAvatar ? (
           <ProtectedMediaImg
-            src={avatarUrl}
+            src={resolvedAvatar}
             alt={storeName ? `Logo de ${storeName}` : "Logo de la tienda"}
             wrapperClassName="flex h-28 w-28 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-[0_8px_30px_rgba(15,23,42,0.12)] ring-1 ring-[#E8ECF2] sm:h-36 sm:w-36"
             className="h-full w-full object-contain p-2"
@@ -61,7 +63,7 @@ export function StoreEntryLoadingScreen({
             {storeName}
           </p>
         ) : null}
-        <CeSpinner size="xl" />
+        <CeSpinner size="xl" className="text-emerald-600 dark:text-emerald-400" />
       </div>
       <span className="sr-only">{label}</span>
     </div>

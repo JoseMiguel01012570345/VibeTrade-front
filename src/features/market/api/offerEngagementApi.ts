@@ -1,8 +1,5 @@
 import { apiFetch } from "@shared/services/http/apiClient";
-import {
-  apiErrorTextToUserMessage,
-  defaultUnexpectedErrorMessage,
-} from "@shared/services/http/apiErrorMessage";
+import { throwFromResponse } from "@shared/services/http/throwFromResponse";
 
 export type { ToggleLikeResult } from "../Dtos/offerEngagementApiTypes";
 import type { ToggleLikeResult } from "../Dtos/offerEngagementApiTypes";
@@ -16,11 +13,6 @@ export async function toggleOfferLike(offerId: string): Promise<ToggleLikeResult
       body: JSON.stringify({}),
     },
   );
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    throw new Error(
-      apiErrorTextToUserMessage(t, defaultUnexpectedErrorMessage()),
-    );
-  }
+  if (!res.ok) await throwFromResponse(res);
   return (await res.json()) as ToggleLikeResult;
 }

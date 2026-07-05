@@ -1,4 +1,4 @@
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import type { NavigateFunction } from 'react-router-dom'
 import { useAppStore } from '@features/auth/logic/useAppStore'
 import { setSessionToken } from '@shared/services/http/sessionToken'

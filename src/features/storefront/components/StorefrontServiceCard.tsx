@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toastApiError } from "@features/auth/logic/toastApiError";
 import { Wrench } from "lucide-react";
 import { type StoreService } from "@features/market/logic/storeCatalogTypes";
 import { storeProductHref } from "@features/market/logic/store/storePath";
@@ -66,9 +66,7 @@ export function StorefrontServiceCard({
           catalogKind: "service",
         });
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "No se pudo guardar el me gusta.",
-        );
+        toastApiError(err, "No se pudo guardar el me gusta.");
       }
     })();
   }

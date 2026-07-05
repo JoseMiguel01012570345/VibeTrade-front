@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react'
+import { CeSpinner } from '@shared/components/ui/CeSpinner'
 
 type Props = Readonly<{
   active: boolean
@@ -18,7 +18,7 @@ export function UploadBlockingOverlay({
       aria-busy="true"
       aria-live="polite"
     >
-      <Loader2 className="h-10 w-10 animate-spin text-white" aria-hidden />
+      <CeSpinner size="lg" className="text-white" aria-hidden />
       <p className="text-sm font-bold text-white">{message}</p>
     </div>
   )

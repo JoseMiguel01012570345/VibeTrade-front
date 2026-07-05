@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
-import toast from 'react-hot-toast'
-import { AlertTriangle, BadgeCheck, CreditCard, Loader2, XCircle } from 'lucide-react'
+import { toast } from 'sonner'
+import { AlertTriangle, BadgeCheck, CreditCard, XCircle } from 'lucide-react'
+import { CeSpinner } from '@shared/components/ui/CeSpinner'
 import { useNavigate } from 'react-router-dom'
 import { VtSelect } from '@shared/components/ui/VtSelect'
 import { recordSellerServicePayout } from '@features/chat/api/agreementServiceEvidenceApi'
@@ -106,7 +107,7 @@ export function AgreementSellerPayoutModal({
 
           {modal.loadingCards ? (
             <div className="mt-4 flex items-center gap-2 text-[13px] text-[var(--muted)]">
-              <Loader2 size={16} className="animate-spin" aria-hidden />
+              <CeSpinner size="sm" aria-hidden />
               Cargando tarjetas…
             </div>
           ) : modal.cards.length === 0 ? (
@@ -189,7 +190,7 @@ export function AgreementSellerPayoutModal({
             }
           >
             {modal.busy ? (
-              <Loader2 size={16} className="animate-spin" aria-hidden />
+              <CeSpinner size="sm" aria-hidden />
             ) : (
               <BadgeCheck size={16} aria-hidden />
             )}

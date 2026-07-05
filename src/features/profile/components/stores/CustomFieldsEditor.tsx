@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { FileText, Loader2, Plus, Upload, X } from "lucide-react";
-import toast from "react-hot-toast";
+import { FileText, Plus, Upload, X } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
+import { toast } from "sonner";
 import {
   ProtectedMediaAnchor,
   ProtectedMediaImg,
@@ -275,8 +276,8 @@ export function CustomFieldsEditor({
                           key={`pending-${idx}-${pi}`}
                           className="relative flex min-h-[7rem] min-w-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-3 py-4"
                         >
-                          <Loader2
-                            className="h-6 w-6 animate-spin text-[var(--muted)]"
+                          <CeSpinner
+                            className="text-[var(--muted)]"
                             aria-hidden
                           />
                           <span className="text-[10px] font-semibold text-[var(--muted)]">

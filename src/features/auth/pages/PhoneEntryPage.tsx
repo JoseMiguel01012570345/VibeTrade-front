@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Phone } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { CountrySelect } from '../components/CountrySelect'
 import type { SignInCountry } from '../Dtos/signInCountry'
 import { apiFetch } from "@shared/services/http/apiClient"

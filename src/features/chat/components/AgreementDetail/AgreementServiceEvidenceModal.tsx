@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
-import toast from 'react-hot-toast'
-import { BadgeCheck, Loader2, Pencil, Upload, XCircle } from 'lucide-react'
+import { toast } from 'sonner'
+import { BadgeCheck, Pencil, Upload, XCircle } from 'lucide-react'
+import { CeSpinner } from '@shared/components/ui/CeSpinner'
 import type { ServiceEvidenceAttachmentApi } from '@features/chat/Dtos/agreement/agreementServiceEvidenceApiTypes';
 import {
   useDecideServiceEvidenceMutation,
@@ -109,7 +110,7 @@ export function AgreementServiceEvidenceModal({
                 <Upload size={16} aria-hidden />
                 Subir archivos
                 {modal.uploading ? (
-                  <Loader2 className="animate-spin" size={16} aria-hidden />
+                  <CeSpinner size="sm" aria-hidden />
                 ) : null}
                 <input
                   type="file"

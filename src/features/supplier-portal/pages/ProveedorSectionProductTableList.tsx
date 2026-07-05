@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import type {
   SupplierPortalCategoryOption,
   SupplierPortalInventoryRow,

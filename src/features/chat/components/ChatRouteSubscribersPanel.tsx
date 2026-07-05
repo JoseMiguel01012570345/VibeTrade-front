@@ -1,17 +1,18 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { ArrowLeft, ChevronRight, X } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import type {
   RouteOfferPublicState,
   RouteOfferTramoAssignment,
 } from "@features/market/logic/store/marketStoreTypes";
 import { ConfirmModal } from "@shared/components/ui/ConfirmModal";
+import { CeButton, CeModal } from "@shared/components/ui";
 import { cn } from "@shared/lib/cn";
 import type { RouteSheetPayload } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
 import type { RouteTramoSubscriptionItemApi } from "@features/chat/Dtos/thread/chatApiTypes";
 import { fetchThreadRouteSheets, fetchThreadRouteTramoSubscriptions, postAcceptRouteTramoSubscriptions, postRejectRouteTramoSubscriptions, postSellerExpelCarrier } from "@features/chat/api/chatApi";
-import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
+import { toastApiError } from "@features/auth/logic/toastApiError";
 import type { RouteOfferTramoSubscriberGroup, RouteOfferSubscriberSummary, RouteSheetSubscriberSection } from "@features/chat/Dtos/route-sheet/routeOfferSubscribersTypes";
 import { buildRouteSheetsMetaForGrouping, collectRouteOfferSubscribersForThreadSheets, groupSubscribersByRouteSheetThenTramo, subscribersFromApiRouteTramoItems } from "@features/chat/logic/route-sheet/routeOfferSubscribers";
 import {
@@ -26,8 +27,7 @@ import {
   subscribeRouteDeliveriesRefresh,
   subscribeRouteTramoSubscriptionsChanged,
 } from "@features/chat/logic/realtime/chatRealtime";
-import { onBackdropPointerClose } from '@shared/lib/modals/modalClose';
-import { modalShellWide, modalSub } from '@shared/styles/modals/formModalStyles';
+import { modalSub } from '@shared/styles/modals/formModalStyles';
 import { railItemClass } from "./rail/layout/chatRailStyles";
 import { TramoSubscribedServiceFicha } from "./rail/shared/TramoSubscribedServiceFicha";
 
@@ -118,7 +118,6 @@ export function ChatRouteSubscribersPanel({
   const [expelScope, setExpelScope] = useState<"stop" | "all" | null>(null);
   const [expelReason, setExpelReason] = useState("");
   const [expelBusy, setExpelBusy] = useState(false);
-  const expelTitleId = useId();
 
   const routeSheetsMeta = useMemo(
     () =>
@@ -649,9 +648,7 @@ export function ChatRouteSubscribersPanel({
       reloadSubscriptions();
       await onSubscriptionsChanged?.();
     } catch (e) {
-      toast.error(
-        errorToUserMessage(e, "No se pudo retirar al transportista."),
-      );
+      toastApiError(e, "No se pudo retirar al transportista.");
     } finally {
       setExpelBusy(false);
     }
@@ -1126,74 +1123,59 @@ export function ChatRouteSubscribersPanel({
         onConfirm={() => void confirmRejectSubscriber()}
       />
 
-      {expelOpen ? (
-        <div
-          className="vt-modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={expelTitleId}
-          onMouseDown={(e) =>
-            onBackdropPointerClose(
-              e,
-              expelBusy
-                ? () => {}
-                : () => {
-                    setExpelOpen(false);
-                    setExpelScope(null);
-                  },
-            )
+      <CeModal
+        show={expelOpen}
+        onClose={() => {
+          if (!expelBusy) {
+            setExpelOpen(false);
+            setExpelScope(null);
           }
-        >
-          <div
-            className={modalShellWide}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div className="vt-modal-title" id={expelTitleId}>
-              Expulsar transportista
-            </div>
-            <div className={modalSub}>
-              {expelScope === "stop"
-                ? "Indica el motivo. El transportista queda retirado solo del tramo que estás viendo. En la demo, cada tramo confirmado retirado puede generar un ajuste a la confianza de la tienda. Si no le quedan más tramos en el hilo, pierde este chat."
-                : "Indica el motivo. El transportista queda retirado de todos sus tramos activos en este hilo. En la demo, cada tramo confirmado retirado puede generar un ajuste a la confianza de la tienda."}
-            </div>
-            <label
-              className="mb-1 mt-2 block text-[11px] font-extrabold text-[var(--text)]"
-              htmlFor="expel-reason-ta"
-            >
-              Motivo (obligatorio)
-            </label>
-            <textarea
-              id="expel-reason-ta"
-              className="vt-input min-h-[88px] w-full resize-y"
-              value={expelReason}
-              onChange={(e) => setExpelReason(e.target.value)}
+        }}
+        title="Expulsar transportista"
+        size="lg"
+        bodyClassName="pt-2"
+        footer={
+          <>
+            <CeButton
+              color="gray"
+              outline
               disabled={expelBusy}
-              placeholder="Ej.: incumplimiento de plazos, conducta inadecuada…"
-            />
-            <div className="vt-modal-actions">
-              <button
-                type="button"
-                className="vt-btn"
-                onClick={() => {
-                  setExpelOpen(false);
-                  setExpelScope(null);
-                }}
-                disabled={expelBusy}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="vt-btn vt-btn-primary"
-                onClick={() => void confirmExpelSubscriber()}
-                disabled={expelBusy}
-              >
-                Confirmar expulsión
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+              onClick={() => {
+                setExpelOpen(false);
+                setExpelScope(null);
+              }}
+            >
+              Cancelar
+            </CeButton>
+            <CeButton
+              loading={expelBusy}
+              onClick={() => void confirmExpelSubscriber()}
+            >
+              Confirmar expulsión
+            </CeButton>
+          </>
+        }
+      >
+        <p className={modalSub}>
+          {expelScope === "stop"
+            ? "Indica el motivo. El transportista queda retirado solo del tramo que estás viendo. En la demo, cada tramo confirmado retirado puede generar un ajuste a la confianza de la tienda. Si no le quedan más tramos en el hilo, pierde este chat."
+            : "Indica el motivo. El transportista queda retirado de todos sus tramos activos en este hilo. En la demo, cada tramo confirmado retirado puede generar un ajuste a la confianza de la tienda."}
+        </p>
+        <label
+          className="mb-1 mt-2 block text-[11px] font-extrabold text-[var(--text)]"
+          htmlFor="expel-reason-ta"
+        >
+          Motivo (obligatorio)
+        </label>
+        <textarea
+          id="expel-reason-ta"
+          className="vt-input min-h-[88px] w-full resize-y"
+          value={expelReason}
+          onChange={(e) => setExpelReason(e.target.value)}
+          disabled={expelBusy}
+          placeholder="Ej.: incumplimiento de plazos, conducta inadecuada…"
+        />
+      </CeModal>
     </>
   );
 }

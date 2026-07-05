@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, useMap } from "react-leaflet";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { X } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 import {

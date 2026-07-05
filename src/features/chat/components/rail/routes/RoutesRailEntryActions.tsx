@@ -1,4 +1,5 @@
-import { Button, Spinner } from "flowbite-react";
+import { Button } from "flowbite-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { Truck } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 
@@ -18,7 +19,7 @@ export function RoutesRailEntryActions(props: {
     <>
       {routeSheetsLoading ? (
         <div className="vt-muted mb-2 flex items-center gap-2 px-1 text-[13px] font-semibold">
-          <Spinner aria-hidden size="sm" />
+          <CeSpinner size="sm" aria-hidden />
           Cargando hojas de ruta...
         </div>
       ) : null}

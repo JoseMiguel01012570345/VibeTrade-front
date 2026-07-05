@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { OtpInput } from '../components/OtpInput'
 import { DevCodeBanner } from '../components/DevCodeBanner'
 import { confirmPasswordReset } from '@features/auth/api/credentialsAuth'

@@ -1,4 +1,5 @@
-import { Loader2, Link2, Eye, ShoppingCart } from "lucide-react";
+import { Link2, Eye, ShoppingCart } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { formatMoney } from "@features/orders";
 import { useMyAffiliateDashboards } from "../hooks/useFinance";
 
@@ -20,7 +21,7 @@ export function AffiliateDashboardPage() {
 
       {isLoading && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin" />
+          <CeSpinner />
         </div>
       )}
       {isError && (

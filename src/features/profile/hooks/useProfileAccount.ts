@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useAppStore } from '@features/auth/logic/useAppStore'
 import { patchProfile } from '@features/auth/api/patchProfile'
 import { formatPhoneForDisplay } from '@features/auth/logic/formatPhoneForDisplay'

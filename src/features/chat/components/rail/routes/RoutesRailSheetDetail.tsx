@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import type { RoutesRailSheetDetailProps } from "./routesRailSheetDetailTypes";
 import { composeRoutesRailDetailShellMerged } from "@features/chat/logic/rail/routesRailSheetDetailComposer";
 import { RoutesRailSheetDetailShell } from "./RoutesRailSheetDetailShell";

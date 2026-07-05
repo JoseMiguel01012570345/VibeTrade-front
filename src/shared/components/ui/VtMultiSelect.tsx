@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@shared/lib/cn";
@@ -22,6 +23,7 @@ function summaryLabel(values: readonly string[], placeholder: string): string {
   return `${values.length} seleccionados`;
 }
 
+/** Multi-select con portal; pendiente de CeMultiSelect dedicado. */
 export function VtMultiSelect({
   value,
   onChange,
@@ -36,127 +38,76 @@ export function VtMultiSelect({
   const id = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
-
   const selectedSet = useMemo(() => new Set(value), [value]);
-
-  const buttonText = useMemo(
-    () => summaryLabel(value, placeholder),
-    [value, placeholder],
-  );
+  const buttonText = useMemo(() => summaryLabel(value, placeholder), [value, placeholder]);
 
   useEffect(() => {
     function onDocDown(e: MouseEvent) {
       const el = rootRef.current;
       if (!el) return;
-      if (el.contains(e.target as Node)) return;
-      setOpen(false);
-    }
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (!el.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", onDocDown);
-    document.addEventListener("keydown", onEsc);
-    return () => {
-      document.removeEventListener("mousedown", onDocDown);
-      document.removeEventListener("keydown", onEsc);
-    };
+    return () => document.removeEventListener("mousedown", onDocDown);
   }, []);
+
+  function toggle(v: string) {
+    const next = new Set(selectedSet);
+    if (next.has(v)) next.delete(v);
+    else next.add(v);
+    onChange(Array.from(next));
+  }
+
+  const list = (
+    <div
+      className={cn(
+        "max-h-52 overflow-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-800",
+        listClassName,
+      )}
+    >
+      {options.map((o) => {
+        const on = selectedSet.has(o.value);
+        return (
+          <button
+            key={o.value}
+            type="button"
+            disabled={o.disabled}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+            onClick={() => !o.disabled && toggle(o.value)}
+          >
+            <Check size={14} className={on ? "opacity-100" : "opacity-0"} aria-hidden />
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
       <button
         type="button"
+        id={id}
         disabled={disabled}
+        aria-label={ariaLabel}
+        aria-expanded={open}
         className={cn(
-          "vt-input flex min-h-[42px] w-full items-center justify-between gap-2 text-left",
-          "shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[inset_0_1px_0_rgba(0,0,0,0.45)]",
-          "hover:border-[color-mix(in_oklab,var(--primary)_22%,var(--border))]",
-          "focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_25%,transparent)] focus-visible:border-[color-mix(in_oklab,var(--primary)_45%,var(--border))]",
-          disabled && "cursor-not-allowed opacity-60",
+          "flex w-full items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm dark:border-gray-600 dark:bg-gray-800",
           buttonClassName,
         )}
-        onClick={() => setOpen((x) => !x)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={ariaLabel}
+        onClick={() => !disabled && setOpen((v) => !v)}
       >
-        <span
-          className={cn(
-            "min-w-0 flex-1 font-semibold leading-snug",
-            value.length === 0 && "text-[var(--muted)]",
-          )}
-        >
-          {buttonText}
-        </span>
-        <ChevronDown
-          size={16}
-          className={cn(
-            "shrink-0 text-[var(--muted)] transition-transform duration-150",
-            open && "rotate-180",
-          )}
-          aria-hidden
-        />
+        <span className="truncate">{buttonText}</span>
+        <ChevronDown size={16} aria-hidden />
       </button>
-
-      {open ? (
-        <div
-          className={cn(
-            "absolute left-0 right-0 top-[calc(100%+8px)] z-[70] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] shadow-[0_18px_50px_rgba(2,6,23,0.22)]",
-            listClassName,
-          )}
-          role="listbox"
-          aria-label={ariaLabel ?? "Opciones"}
-          aria-multiselectable="true"
-          id={id}
-        >
-          <div className="max-h-[280px] overflow-auto py-1">
-            {options.map((o) => {
-              const isSel = selectedSet.has(o.value);
-              return (
-                <button
-                  key={o.value}
-                  type="button"
-                  role="option"
-                  aria-selected={isSel}
-                  disabled={o.disabled}
-                  className={cn(
-                    "flex w-full items-center justify-between gap-3 border-0 bg-transparent px-3 py-2.5 text-left text-[13px]",
-                    "hover:bg-[color-mix(in_oklab,var(--primary)_7%,transparent)]",
-                    isSel &&
-                      "bg-[color-mix(in_oklab,var(--primary)_10%,transparent)]",
-                    o.disabled &&
-                      "cursor-not-allowed opacity-50 hover:bg-transparent",
-                  )}
-                  onClick={() => {
-                    if (o.disabled) return;
-                    const next = new Set(selectedSet);
-                    if (next.has(o.value)) next.delete(o.value);
-                    else next.add(o.value);
-                    const order = options.map((x) => x.value);
-                    const arr = [...next].sort(
-                      (a, b) => order.indexOf(a) - order.indexOf(b),
-                    );
-                    onChange(arr);
-                  }}
-                >
-                  <span className="min-w-0 truncate font-semibold">
-                    {o.label}
-                  </span>
-                  {isSel ? (
-                    <Check
-                      size={16}
-                      className="shrink-0 text-[var(--primary)]"
-                      aria-hidden
-                    />
-                  ) : (
-                    <span className="w-4 shrink-0" aria-hidden />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
+      {open
+        ? createPortal(
+            <div className="fixed z-[300] mt-1" style={{ top: rootRef.current?.getBoundingClientRect().bottom ?? 0, left: rootRef.current?.getBoundingClientRect().left ?? 0, width: rootRef.current?.getBoundingClientRect().width ?? 200 }}>
+              {list}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

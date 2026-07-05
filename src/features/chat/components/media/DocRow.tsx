@@ -5,8 +5,9 @@ import {
   useRef,
   useState,
 } from 'react'
-import toast from 'react-hot-toast'
-import { Download, FileText, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { Download, FileText } from 'lucide-react'
+import { CeSpinner } from '@shared/components/ui/CeSpinner'
 import { cn } from "@shared/lib/cn"
 import { downloadDocumentFile } from '@features/chat/logic/media/documentDownload'
 
@@ -173,7 +174,7 @@ export function DocRow({
           }}
         >
           {downloading ? (
-            <Loader2 size={20} className="animate-[vt-doc-spin_0.8s_linear_infinite]" />
+            <CeSpinner size="md" aria-hidden />
           ) : (
             <Download size={20} strokeWidth={2} />
           )}

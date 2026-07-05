@@ -1,4 +1,4 @@
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import type { ServiceEvidenceAttachmentApi } from "@features/chat/Dtos/agreement/agreementServiceEvidenceApiTypes";
 import { upsertCarrierDeliveryEvidence } from "@features/chat/api/routeLogisticsApi";
 import { uploadMedia, mediaApiUrl } from "@shared/services/media/mediaClient";

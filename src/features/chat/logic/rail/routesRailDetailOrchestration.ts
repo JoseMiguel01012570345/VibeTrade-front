@@ -1,4 +1,4 @@
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import type {
   RouteOfferPublicState,
 } from "@features/market/logic/store/marketStoreTypes";

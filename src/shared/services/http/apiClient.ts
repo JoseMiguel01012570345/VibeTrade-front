@@ -127,8 +127,13 @@ export async function apiFetch(
         : undefined,
   });
 
-  return new Response(axiosRes.data, {
-    status: axiosRes.status,
+  // 204/205/304 no pueden llevar cuerpo en `Response` (lanza si hay ArrayBuffer vacío).
+  const status = axiosRes.status;
+  const responseBody =
+    status === 204 || status === 205 || status === 304 ? null : axiosRes.data;
+
+  return new Response(responseBody, {
+    status,
     statusText: axiosRes.statusText,
     headers: axiosHeadersToFetchHeaders(axiosRes.headers),
   });

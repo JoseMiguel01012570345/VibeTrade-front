@@ -1,11 +1,15 @@
-import { useEffect, useRef, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useId, useRef, type ReactNode } from "react";
 import { Heart, MessagesSquare, Send, X } from "lucide-react";
+import { CeFlowbiteModal } from "@shared/components/ui";
 import { cn } from "@shared/lib/cn";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
 import type { OfferCommentNorm } from "@features/market/Dtos/offerCommentsTypes";
 import { resolveOfferCommentAuthorLabel } from "@features/market/logic/offerComments";
 import { timeAgo } from "@features/market/logic/relativeTime";
+import {
+  STOREFRONT_COMMENTS_MODAL_THEME,
+  STOREFRONT_MODAL_BACKDROP,
+} from "../lib/storefrontModalTheme";
 import { useStoreComments } from "../logic/useStoreComments";
 
 /**
@@ -27,22 +31,7 @@ export function StoreCommentsModal({
   const c = useStoreComments(store, open);
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape" && !c.sending) onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open, c.sending, onClose]);
-
-  if (!open) return null;
+  const titleId = useId();
 
   function renderThread(parentId: string | null, depth: number) {
     const rows = c.tree.get(parentId) ?? [];
@@ -198,116 +187,106 @@ export function StoreCommentsModal({
     );
   }
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[200] flex items-end justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] pt-[max(1rem,env(safe-area-inset-top,0px))] sm:items-center sm:p-4"
-      role="presentation"
+  return (
+    <CeFlowbiteModal
+      show={open}
+      onClose={onClose}
+      dismissible={!c.sending}
+      mobileSheet
+      size="xl"
+      theme={STOREFRONT_COMMENTS_MODAL_THEME}
+      backdropClassName={STOREFRONT_MODAL_BACKDROP}
     >
-      <button
-        type="button"
-        className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
-        aria-label="Cerrar"
-        disabled={c.sending}
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="storefront-comments-title"
-        className="relative grid max-h-[calc(100dvh-1.5rem)] w-full max-w-xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[20px] border border-[#e8e1da] bg-white text-slate-900 shadow-[0_24px_60px_rgba(33,37,41,0.18)] sm:max-h-[min(90dvh,640px)]"
-      >
-        <div className="relative shrink-0 px-6 pb-3 pt-5 sm:pt-6">
-          <div className="mb-3 flex justify-center sm:hidden" aria-hidden>
-            <div className="h-1 w-10 rounded-full bg-slate-300" />
-          </div>
-          <div className="flex items-start gap-3 pr-8">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
-              <MessagesSquare size={20} aria-hidden />
-            </span>
-            <div className="min-w-0">
-              <h2
-                id="storefront-comments-title"
-                className="text-xl font-extrabold tracking-tight text-slate-900"
-              >
-                Comentarios públicos
-              </h2>
-              <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                Preguntas y opiniones sobre {store.name}. El equipo de la tienda
-                responde por aquí.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={c.sending}
-            aria-label="Cerrar"
-            className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-          >
-            <X size={18} aria-hidden />
-          </button>
+      <div className="relative shrink-0 px-6 pb-3 pt-5 sm:pt-6">
+        <div className="mb-3 flex justify-center sm:hidden" aria-hidden>
+          <div className="h-1 w-10 rounded-full bg-slate-300" />
         </div>
-
-        <div
-          ref={listRef}
-          className="min-h-0 overflow-y-auto overscroll-y-contain border-y border-[#f0ebe6] bg-[#fbfaf8] px-6 py-2"
+        <div className="flex items-start gap-3 pr-8">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+            <MessagesSquare size={20} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h2
+              id={titleId}
+              className="text-xl font-extrabold tracking-tight text-slate-900"
+            >
+              Comentarios públicos
+            </h2>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+              Preguntas y opiniones sobre {store.name}. El equipo de la tienda
+              responde por aquí.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={c.sending}
+          aria-label="Cerrar"
+          className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
         >
-          {renderListBody()}
-        </div>
+          <X size={18} aria-hidden />
+        </button>
+      </div>
 
-        <div className="shrink-0 bg-[#fafaf9] px-6 py-3.5">
-          {c.replyingTo ? (
-            <div className="mb-2.5 flex items-start justify-between gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2">
-              <div className="min-w-0">
-                <span className="block text-xs font-extrabold text-emerald-700">
-                  Respondiendo a{" "}
-                  {resolveOfferCommentAuthorLabel(c.replyingTo.author, c.nameCtx)}
-                </span>
-                <span className="mt-0.5 block truncate text-xs text-slate-500">
-                  {c.replyingTo.text}
-                </span>
-              </div>
-              <button
-                type="button"
-                aria-label="Cancelar respuesta"
-                onClick={() => c.setReplyingTo(null)}
-                className="shrink-0 rounded-lg p-0.5 text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-600"
-              >
-                <X size={16} aria-hidden />
-              </button>
+      <div
+        ref={listRef}
+        className="min-h-0 overflow-y-auto overscroll-y-contain border-y border-[#f0ebe6] bg-[#fbfaf8] px-6 py-2"
+      >
+        {renderListBody()}
+      </div>
+
+      <div className="shrink-0 bg-[#fafaf9] px-6 py-3.5">
+        {c.replyingTo ? (
+          <div className="mb-2.5 flex items-start justify-between gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2">
+            <div className="min-w-0">
+              <span className="block text-xs font-extrabold text-emerald-700">
+                Respondiendo a{" "}
+                {resolveOfferCommentAuthorLabel(c.replyingTo.author, c.nameCtx)}
+              </span>
+              <span className="mt-0.5 block truncate text-xs text-slate-500">
+                {c.replyingTo.text}
+              </span>
             </div>
-          ) : null}
-          {composerHint}
-          <div className="flex items-stretch gap-2.5">
-            <input
-              ref={inputRef}
-              className="min-w-0 flex-1 rounded-full border border-[#e3ddd6] bg-white px-4 text-sm text-slate-900 outline-none ring-emerald-600/30 placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 disabled:cursor-not-allowed disabled:bg-stone-100"
-              disabled={c.sending || c.composerLocked}
-              placeholder={composerPlaceholder}
-              value={c.draft}
-              onChange={(e) => c.setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void c.submit();
-                }
-              }}
-            />
             <button
               type="button"
-              aria-label="Enviar comentario"
-              title="Enviar"
-              disabled={c.sending || c.composerLocked || !c.draft.trim()}
-              onClick={() => void c.submit()}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-emerald-700 text-white transition hover:bg-emerald-800 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Cancelar respuesta"
+              onClick={() => c.setReplyingTo(null)}
+              className="shrink-0 rounded-lg p-0.5 text-slate-400 transition hover:bg-slate-200/60 hover:text-slate-600"
             >
-              <Send size={18} strokeWidth={2.25} aria-hidden />
+              <X size={16} aria-hidden />
             </button>
           </div>
+        ) : null}
+        {composerHint}
+        <div className="flex items-stretch gap-2.5">
+          <input
+            ref={inputRef}
+            className="min-w-0 flex-1 rounded-full border border-[#e3ddd6] bg-white px-4 text-sm text-slate-900 outline-none ring-emerald-600/30 placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 disabled:cursor-not-allowed disabled:bg-stone-100"
+            disabled={c.sending || c.composerLocked}
+            placeholder={composerPlaceholder}
+            value={c.draft}
+            onChange={(e) => c.setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void c.submit();
+              }
+            }}
+          />
+          <button
+            type="button"
+            aria-label="Enviar comentario"
+            title="Enviar"
+            disabled={c.sending || c.composerLocked || !c.draft.trim()}
+            onClick={() => void c.submit()}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-emerald-700 text-white transition hover:bg-emerald-800 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Send size={18} strokeWidth={2.25} aria-hidden />
+          </button>
         </div>
       </div>
-    </div>,
-    document.body,
+    </CeFlowbiteModal>
   );
 }
 

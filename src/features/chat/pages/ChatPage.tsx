@@ -12,7 +12,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { cn } from "@shared/lib/cn";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import {

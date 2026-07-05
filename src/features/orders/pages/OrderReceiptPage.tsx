@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { useOrderTracking } from "../hooks/useOrders";
 import { CheckoutPaymentSuccess } from "../components/CheckoutPaymentSuccess";
 
@@ -10,7 +10,7 @@ export function OrderReceiptPage() {
   if (isLoading) {
     return (
       <div className="container vt-page flex items-center justify-center py-20">
-        <Loader2 className="animate-spin" />
+        <CeSpinner />
       </div>
     );
   }

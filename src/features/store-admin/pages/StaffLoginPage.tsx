@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogIn, Store } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import type { User } from "@features/auth/Dtos/userTypes";
 import { useStoreAdminExtras } from "../logic/storeAdminStore";

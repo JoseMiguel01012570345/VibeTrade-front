@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { CeButton, CeModal } from '@shared/components/ui'
 import { useAppStore } from "@features/auth/logic/useAppStore"
 import { cn } from "@shared/lib/cn"
 import { trustBarValueToPct } from "@features/profile/logic/trustScoreUtils"
@@ -92,30 +93,25 @@ export function TrustBar() {
         </div>
       </div>
 
-      {modal && (
-        <div className="vt-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="vt-modal">
-            <div className="vt-modal-title">
-              {modal === 'below' ? 'Bajaste del umbral' : 'Volviste al umbral'}
-            </div>
-            <div className="vt-modal-body">
-              {modal === 'below' ? (
-                <>
-                  Tu puntaje quedó por debajo del umbral. Se deshabilitan interacciones en la plataforma,
-                  excepto el pago de tu mensualidad.
-                </>
-              ) : (
-                <>Tu puntaje volvió a estar por encima del umbral. Las interacciones quedan habilitadas.</>
-              )}
-            </div>
-            <div className="vt-modal-actions">
-              <button type="button" className="vt-btn vt-btn-primary" onClick={() => setModal(null)}>
-                Entendido
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CeModal
+        show={modal !== null}
+        onClose={() => setModal(null)}
+        title={modal === 'below' ? 'Bajaste del umbral' : 'Volviste al umbral'}
+        size="md"
+        bodyClassName="pt-2"
+        footer={
+          <CeButton onClick={() => setModal(null)}>Entendido</CeButton>
+        }
+      >
+        {modal === 'below' ? (
+          <>
+            Tu puntaje quedó por debajo del umbral. Se deshabilitan interacciones en la plataforma,
+            excepto el pago de tu mensualidad.
+          </>
+        ) : (
+          <>Tu puntaje volvió a estar por encima del umbral. Las interacciones quedan habilitadas.</>
+        )}
+      </CeModal>
     </>
   )
 }

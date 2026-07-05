@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
+import { CePageHeading } from "@shared/components/ui/CePageHeading";
 import { AdminPagination } from "./AdminPagination";
+
+export { CeTable, CeTableBody, CeTableCell, CeTableHead, CeTableHeadCell, CeTableRow } from "@shared/components/ui/CeTable";
 
 /** Clases compartidas para tablas del panel admin. */
 export const adminTableClass =
@@ -102,17 +105,10 @@ export function SectionHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <h2 className="text-xl font-black tracking-tight text-gray-900 sm:text-2xl">
-          {title}
-        </h2>
-        {subtitle ? (
-          <p className="mt-0.5 text-sm text-gray-500">{subtitle}</p>
-        ) : null}
-      </div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <CePageHeading title={title} description={subtitle} className="mb-0 min-w-0 flex-1" />
       {actions ? (
-        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
       ) : null}
     </div>
   );

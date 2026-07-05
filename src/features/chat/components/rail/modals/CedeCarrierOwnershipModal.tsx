@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { Button, Spinner } from "flowbite-react";
+import { CeButton, CeModal } from "@shared/components/ui";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 import type { CedeOwnershipModalState } from "@features/chat/Dtos/rail/routesRailTypes";
 import { submitCedeCarrierOwnership } from "@features/chat/logic/rail/carrier-evidence/cedeCarrierOwnershipModalSubmit";
@@ -24,8 +24,8 @@ export function CedeCarrierOwnershipModal({
   refreshDeliveriesForAgreement,
   onCedeSuccess,
 }: Props) {
-  if (!modal) return null;
   const snap = modal;
+  const isEndOfRoute = snap?.nextOrden === 0;
 
   function dismiss(): void {
     setCedeOwnershipModal(null);
@@ -36,6 +36,7 @@ export function CedeCarrierOwnershipModal({
   }
 
   function confirm(): void {
+    if (!snap) return;
     void submitCedeCarrierOwnership({
       threadId,
       modal: snap,
@@ -48,75 +49,50 @@ export function CedeCarrierOwnershipModal({
     });
   }
 
-  const isEndOfRoute = snap.nextOrden === 0;
-
   return (
-    <div
-      className="fixed inset-0 z-[86] flex items-center justify-center bg-black/60 p-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xl">
-        <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
-          <div className="min-w-0 text-[13px] font-black text-[var(--text)]">
-            {isEndOfRoute
-              ? "Final de la trayectoria"
-              : "Ceder titularidad del paquete"}
-          </div>
-        </div>
-        <div className="px-4 py-3 text-[13px] leading-relaxed text-[var(--text)]">
-          {!isEndOfRoute ? (
-            <>
-              <p className="m-0">
-                ¿Seguro que querés ceder la titularidad del paquete en el tramo{" "}
-                <strong>{snap.currentOrden}</strong> al transportista
-                confirmado del tramo <strong>{snap.nextOrden}</strong> (
-                <span className="font-semibold">
-                  {snap.targetDisplayLabel}
-                </span>
-                )?
-              </p>
-              <p className="vt-muted mt-2 mb-0 text-[12px]">
-                Solo puedes ceder al transportista habilitado en el siguiente
-                tramo. Si el servidor rechaza la operación, verás el motivo
-                aquí.
-              </p>
-            </>
-          ) : (
-            <p className="vt-muted mt-2 mb-0 text-[12px]">
-              ¿Está seguro que decea finalizar el viaje?
-            </p>
-          )}
-        </div>
-        <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border)] px-4 py-3">
-          <Button
-            color="gray"
-            disabled={snap.busy}
-            size="sm"
-            onClick={dismiss}
-          >
+    <CeModal
+      show={modal != null}
+      onClose={() => !snap?.busy && dismiss()}
+      title={
+        isEndOfRoute ? "Final de la trayectoria" : "Ceder titularidad del paquete"
+      }
+      size="md"
+      bodyClassName="pt-2"
+      footer={
+        <>
+          <CeButton color="gray" outline disabled={snap?.busy} onClick={dismiss}>
             Cancelar
-          </Button>
-          <Button
-            className="[&>span]:gap-2"
+          </CeButton>
+          <CeButton
             color="blue"
-            disabled={snap.busy || !getSessionToken()}
-            size="sm"
+            loading={snap?.busy}
+            disabled={!getSessionToken()}
             onClick={confirm}
           >
-            {snap.busy ? (
-              <>
-                <Spinner aria-hidden className="shrink-0" light size="sm" />
-                Procesando…
-              </>
-            ) : isEndOfRoute ? (
-              "Acepto"
-            ) : (
-              "Sí, ceder"
-            )}
-          </Button>
-        </div>
-      </div>
-    </div>
+            {isEndOfRoute ? "Acepto" : "Sí, ceder"}
+          </CeButton>
+        </>
+      }
+    >
+      {!isEndOfRoute ? (
+        <>
+          <p className="m-0 text-sm leading-relaxed text-gray-900 dark:text-gray-100">
+            ¿Seguro que querés ceder la titularidad del paquete en el tramo{" "}
+            <strong>{snap?.currentOrden}</strong> al transportista confirmado del
+            tramo <strong>{snap?.nextOrden}</strong> (
+            <span className="font-semibold">{snap?.targetDisplayLabel}</span>
+            )?
+          </p>
+          <p className="mt-2 mb-0 text-xs text-gray-600 dark:text-gray-400">
+            Solo puedes ceder al transportista habilitado en el siguiente tramo.
+            Si el servidor rechaza la operación, verás el motivo aquí.
+          </p>
+        </>
+      ) : (
+        <p className="mt-2 mb-0 text-xs text-gray-600 dark:text-gray-400">
+          ¿Está seguro que decea finalizar el viaje?
+        </p>
+      )}
+    </CeModal>
   );
 }

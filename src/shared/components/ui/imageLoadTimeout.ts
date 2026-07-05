@@ -1,0 +1,1 @@
+export const IMAGE_LOAD_TIMEOUT_MS = 15_000;

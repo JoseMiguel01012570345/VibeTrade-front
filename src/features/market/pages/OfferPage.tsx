@@ -7,7 +7,8 @@ import {
 } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, BadgeCheck, Heart, Truck } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
+import { toastApiError } from "@features/auth/logic/toastApiError";
 import { cn } from "@shared/lib/cn";
 import {
   offerHeroChromeBtnClass,
@@ -670,9 +671,7 @@ export function OfferPage() {
           };
         });
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "No se pudo guardar el me gusta.",
-        );
+        toastApiError(err, "No se pudo guardar el me gusta.");
       }
     })();
   }
@@ -896,11 +895,7 @@ export function OfferPage() {
                           };
                         });
                       } catch (err) {
-                        toast.error(
-                          err instanceof Error
-                            ? err.message
-                            : "No se pudo guardar el me gusta.",
-                        );
+                        toastApiError(err, "No se pudo guardar el me gusta.");
                       }
                     })();
                   }}

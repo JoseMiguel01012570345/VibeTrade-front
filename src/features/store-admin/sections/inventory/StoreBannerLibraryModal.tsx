@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Trash2, Upload } from "lucide-react";
-import toast from "react-hot-toast";
+import { Trash2, Upload } from "lucide-react";
+import { toast } from "sonner";
 import {
   createStoreBanner,
   deleteStoreBanner,
@@ -9,14 +9,12 @@ import {
 } from "@features/market/api/storeInventoryApi";
 import type { StoreBannerDto } from "@features/market/Dtos/storeCatalogTypes";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
-import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
-import { modalShellWide } from "@shared/styles/modals/formModalStyles";
 import {
   mediaApiUrl,
   uploadMedia,
   MEDIA_MAX_BYTES,
 } from "@shared/services/media/mediaClient";
-import { AdminGhostButton } from "../../components/StoreAdminUi";
+import { CeButton, CeModal, CeSpinner } from "@shared/components/ui";
 
 type BannerKind = "main" | "secondary";
 
@@ -52,19 +50,18 @@ function BannerColumn({
     <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 dark:border-gray-700 dark:bg-gray-900/40">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white">{label}</h3>
-        <button
-          type="button"
+        <CeButton
+          size="xs"
+          color="gray"
+          outline
           disabled={uploading}
+          loading={uploading}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5"
         >
-          {uploading ? (
-            <Loader2 size={14} className="animate-spin" aria-hidden />
-          ) : (
-            <Upload size={14} aria-hidden />
-          )}
+          <Upload size={14} aria-hidden />
           Subir
-        </button>
+        </CeButton>
         <input
           ref={inputRef}
           type="file"
@@ -115,19 +112,18 @@ function BannerColumn({
                   <span>{b.active ? "Activo" : "Inactivo"}</span>
                 </label>
               </div>
-              <button
-                type="button"
+              <CeButton
+                color="failure"
+                outline
+                size="xs"
                 aria-label="Eliminar banner"
                 disabled={busyIds.has(b.id)}
+                loading={busyIds.has(b.id)}
                 onClick={() => onDelete(b)}
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center p-0"
               >
-                {busyIds.has(b.id) ? (
-                  <Loader2 size={14} className="animate-spin" aria-hidden />
-                ) : (
-                  <Trash2 size={14} aria-hidden />
-                )}
-              </button>
+                <Trash2 size={14} aria-hidden />
+              </CeButton>
             </li>
           ))}
         </ul>
@@ -171,6 +167,8 @@ export function StoreBannerLibraryModal({
     () => partitionBanners(banners),
     [banners],
   );
+
+  const busy = loading || uploadingKind !== null || busyIds.size > 0;
 
   function markBusy(id: string, busy: boolean): void {
     setBusyIds((prev) => {
@@ -243,57 +241,48 @@ export function StoreBannerLibraryModal({
     }
   }
 
-  if (!show) return null;
-
   return (
-    <div
-      className="vt-modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="banner-library-title"
-      onMouseDown={(e) => onBackdropPointerClose(e, onClose)}
+    <CeModal
+      show={show}
+      onClose={() => !busy && onClose()}
+      title="Biblioteca de banners"
+      size="5xl"
+      bodyClassName="overflow-y-auto max-h-[min(80vh,40rem)]"
+      footer={
+        <CeButton color="gray" outline disabled={busy} onClick={onClose}>
+          Cerrar
+        </CeButton>
+      }
     >
-      <div
-        className={`${modalShellWide} max-w-5xl`}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="vt-modal-title" id="banner-library-title">
-          Biblioteca de banners
+      {loading && banners.length === 0 ? (
+        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-sm text-gray-500">
+          <CeSpinner size="md" aria-label="Cargando banners" />
+          Cargando banners…
         </div>
-        <div className="vt-modal-body mt-2 max-h-[min(80vh,40rem)] overflow-y-auto">
-          {loading && banners.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500">
-              Cargando banners…
-            </p>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <BannerColumn
-                kind="main"
-                label="Banner principal"
-                banners={main}
-                uploading={uploadingKind === "main"}
-                busyIds={busyIds}
-                onUpload={(file) => void handleUpload("main", file)}
-                onToggleActive={(b, next) => void handleToggleActive(b, next)}
-                onDelete={(b) => void handleDelete(b)}
-              />
-              <BannerColumn
-                kind="secondary"
-                label="Banner secundario"
-                banners={secondary}
-                uploading={uploadingKind === "secondary"}
-                busyIds={busyIds}
-                onUpload={(file) => void handleUpload("secondary", file)}
-                onToggleActive={(b, next) => void handleToggleActive(b, next)}
-                onDelete={(b) => void handleDelete(b)}
-              />
-            </div>
-          )}
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <BannerColumn
+            kind="main"
+            label="Banner principal"
+            banners={main}
+            uploading={uploadingKind === "main"}
+            busyIds={busyIds}
+            onUpload={(file) => void handleUpload("main", file)}
+            onToggleActive={(b, next) => void handleToggleActive(b, next)}
+            onDelete={(b) => void handleDelete(b)}
+          />
+          <BannerColumn
+            kind="secondary"
+            label="Banner secundario"
+            banners={secondary}
+            uploading={uploadingKind === "secondary"}
+            busyIds={busyIds}
+            onUpload={(file) => void handleUpload("secondary", file)}
+            onToggleActive={(b, next) => void handleToggleActive(b, next)}
+            onDelete={(b) => void handleDelete(b)}
+          />
         </div>
-        <div className="vt-modal-actions">
-          <AdminGhostButton onClick={onClose}>Cerrar</AdminGhostButton>
-        </div>
-      </div>
-    </div>
+      )}
+    </CeModal>
   );
 }

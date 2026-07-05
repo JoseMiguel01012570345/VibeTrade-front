@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { useCatalogCategories } from "@features/catalog/hooks/useCatalogCategories";
 import { cn } from "@shared/lib/cn";
 import { onBackdropPointerClose } from '@shared/lib/modals/modalClose';

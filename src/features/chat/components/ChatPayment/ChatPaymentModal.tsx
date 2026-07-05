@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Loader2 } from 'lucide-react'
+import { CeSpinner } from '@shared/components/ui/CeSpinner'
 import type { ChatPaymentModalProps } from '@features/chat/Dtos/payments/chatPaymentModalTypes'
 
 const ChatPaymentModalInner = lazy(() =>
@@ -20,8 +20,9 @@ export function ChatPaymentModal(props: ChatPaymentModalProps) {
           aria-live="polite"
           aria-busy="true"
         >
-          <Loader2
-            className="h-9 w-9 animate-spin text-[var(--primary)]"
+          <CeSpinner
+            size="lg"
+            className="text-[var(--primary)]"
             aria-hidden
           />
         </div>

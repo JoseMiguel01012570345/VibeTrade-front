@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { Loader2, PackageSearch, ShoppingBag } from "lucide-react";
+import { PackageSearch, ShoppingBag } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { useMyOrders } from "../hooks/useOrders";
 import { formatMoney, statusLabel } from "../logic/formatMoney";
 
@@ -13,7 +14,7 @@ export function PurchaseHistoryPage() {
 
       {isLoading && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin" />
+          <CeSpinner />
         </div>
       )}
 

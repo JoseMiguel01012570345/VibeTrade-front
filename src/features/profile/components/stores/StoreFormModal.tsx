@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import type {
   OwnerStoreFormValues,
   StoreLocationPoint,
@@ -10,17 +10,16 @@ import {
   PROFILE_TITLE_MIN,
   validateOwnerStoreForm,
 } from "../../logic/profileStoreFormValidation";
-import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
 import {
   checkRow,
   fieldLabel,
   fieldRootWithInvalid,
   modalFormBody,
-  modalShellWide,
   modalSub,
   textareaMin,
 } from "@shared/styles/modals/formModalStyles";
 import { cn } from "@shared/lib/cn";
+import { CeButton, CeModal } from "@shared/components/ui";
 import { VtSelect } from "@shared/components/ui/VtSelect";
 import { StoreLocationMapModal } from "./StoreLocationMapModal";
 
@@ -55,6 +54,7 @@ export function StoreFormModal({
   );
   const [mapOpen, setMapOpen] = useState(false);
   const [showVal, setShowVal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const categoriesDraft = categories;
   const catInvalid =
@@ -70,17 +70,53 @@ export function StoreFormModal({
       .sort((a, b) => a.localeCompare(b, "es"));
   }, [categoryOptions, categoriesDraft]);
 
-  if (!open) return null;
+  async function handleSave() {
+    const ppkParsed = Number.parseFloat(pricePerKm.replace(",", "."));
+    const payload: OwnerStoreFormValues = {
+      name: name.trim(),
+      categories: categoriesDraft,
+      categoryPitch: pitch,
+      transportIncluded: transport,
+      location,
+      websiteUrl: websiteUrl.trim() || undefined,
+      pricePerKm:
+        Number.isFinite(ppkParsed) && ppkParsed >= 0 ? ppkParsed : undefined,
+    };
+    const err = validateOwnerStoreForm(payload);
+    if (err) {
+      toast.error(err);
+      setShowVal(true);
+      return;
+    }
+    setShowVal(false);
+    setSubmitting(true);
+    try {
+      const result = onSave(payload);
+      const ok = result instanceof Promise ? await result : result;
+      if (ok) onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
-    <div
-      className="vt-modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(e) => onBackdropPointerClose(e, onClose)}
-    >
-      <div className={modalShellWide} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="vt-modal-title">{title}</div>
+    <>
+      <CeModal
+        show={open}
+        onClose={() => !submitting && onClose()}
+        title={title}
+        size="4xl"
+        footer={
+          <>
+            <CeButton color="gray" outline disabled={submitting} onClick={onClose}>
+              Cancelar
+            </CeButton>
+            <CeButton loading={submitting} onClick={() => void handleSave()}>
+              Guardar
+            </CeButton>
+          </>
+        }
+      >
         <div className={modalSub}>
           Nombre de la tienda, categorías (varias), descripción de qué productos
           y servicios ofrece, y si el transporte está incluido (etiqueta visible
@@ -210,47 +246,13 @@ export function StoreFormModal({
             </div>
           </div>
         </div>
-        <div className="vt-modal-actions">
-          <button type="button" className="vt-btn" onClick={onClose}>
-            Cancelar
-          </button>
-          <button
-            type="button"
-            className="vt-btn vt-btn-primary"
-            onClick={async () => {
-              const ppkParsed = Number.parseFloat(pricePerKm.replace(",", "."));
-              const payload: OwnerStoreFormValues = {
-                name: name.trim(),
-                categories: categoriesDraft,
-                categoryPitch: pitch,
-                transportIncluded: transport,
-                location,
-                websiteUrl: websiteUrl.trim() || undefined,
-                pricePerKm:
-                  Number.isFinite(ppkParsed) && ppkParsed >= 0 ? ppkParsed : undefined,
-              };
-              const err = validateOwnerStoreForm(payload);
-              if (err) {
-                toast.error(err);
-                setShowVal(true);
-                return;
-              }
-              setShowVal(false);
-              const result = onSave(payload);
-              const ok = result instanceof Promise ? await result : result;
-              if (ok) onClose();
-            }}
-          >
-            Guardar
-          </button>
-        </div>
-      </div>
+      </CeModal>
       <StoreLocationMapModal
         open={mapOpen}
         initial={location}
         onClose={() => setMapOpen(false)}
         onSave={(p) => setLocation(p)}
       />
-    </div>
+    </>
   );
 }

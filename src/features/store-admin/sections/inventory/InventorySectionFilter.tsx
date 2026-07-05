@@ -1,6 +1,6 @@
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Download, Filter, ImagePlus, TrendingUp, Users } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import type {
   StoreCategoryDto,
   StoreProduct,

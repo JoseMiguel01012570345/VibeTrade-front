@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Boxes, MapPin, Plus, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
 import {
   useStoreAdminExtras,

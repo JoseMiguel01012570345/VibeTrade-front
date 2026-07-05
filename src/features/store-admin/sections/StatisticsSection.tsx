@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { BarChart3, Loader2, PackageCheck, ShoppingBag, Wallet } from "lucide-react";
+import { BarChart3, PackageCheck, ShoppingBag, Wallet } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { formatMoney } from "@features/orders";
 import { useStoreOrders } from "@features/finance/hooks/useWarehouse";
 import type { OrderSummaryDto } from "@features/orders/Dtos/orders";
@@ -77,7 +78,7 @@ export function StatisticsSection({ storeId }: { storeId: string }) {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin text-emerald-700" />
+          <CeSpinner className="text-emerald-700" />
         </div>
       ) : isError ? (
         <AdminEmptyState title="No se pudieron cargar las estadísticas." />

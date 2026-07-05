@@ -1,5 +1,5 @@
 import { Bookmark } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { cn } from "@shared/lib/cn";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
@@ -7,7 +7,7 @@ import {
   useSaveOfferMutation,
   useUnsaveOfferMutation,
 } from "@features/profile/hooks/useSavedOfferMutations";
-import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
+import { toastApiError } from "@features/auth/logic/toastApiError";
 
 type Props = Readonly<{
   offerId: string;
@@ -22,6 +22,7 @@ export function OfferSaveButton({
   iconSize = 18,
 }: Props) {
   const isSessionActive = useAppStore((s) => s.isSessionActive);
+  const openAuthModal = useAppStore((s) => s.openAuthModal);
   const me = useAppStore((s) => s.me);
   const setSavedOffersFromIds = useAppStore((s) => s.setSavedOffersFromIds);
   const offer = useMarketStore((s) => s.offers[offerId]);
@@ -58,7 +59,7 @@ export function OfferSaveButton({
     e.preventDefault();
     e.stopPropagation();
     if (!isSessionActive || me.id === "guest") {
-      toast.error("Inicia sesión para guardar ofertas.");
+      openAuthModal();
       return;
     }
     if (busy) return;
@@ -69,7 +70,7 @@ export function OfferSaveButton({
       setSavedOffersFromIds(ids);
       toast.success(saved ? "Quitada de guardados" : "Guardada en tu perfil");
     } catch (err) {
-      toast.error(errorToUserMessage(err));
+      toastApiError(err);
     }
   }
 

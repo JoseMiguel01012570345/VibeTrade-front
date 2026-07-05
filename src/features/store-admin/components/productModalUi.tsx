@@ -12,7 +12,7 @@ export const CE_UI_CARD_TINT = "rounded-2xl border border-[#D8DEE8] bg-[#EFF2F9]
 export const CE_UI_MINT_ZONE =
   "rounded-2xl border border-[#BFDCC4] bg-[#E8F5E9]/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]";
 export const CE_UI_PRIMARY =
-  "bg-[#006837] hover:bg-[#005530] focus:ring-[#006837] disabled:opacity-60";
+  "bg-[#006837] text-white hover:bg-[#005530] hover:text-white focus:ring-[#006837] disabled:opacity-60";
 export const CE_TX_HEAD = "text-[#0F172A]";
 export const CE_TX_MUTED = "text-[#64748B]";
 

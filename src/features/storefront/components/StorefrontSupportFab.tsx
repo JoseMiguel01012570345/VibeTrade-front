@@ -1,14 +1,15 @@
 import { useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Headset, Loader2 } from "lucide-react";
-import toast from "react-hot-toast";
+import { Headset } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
+import { toast } from "sonner";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { isStaffSession } from "@features/auth/logic/roles";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { createSupportThread } from "@features/chat/api/chatApi";
-import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
+import { toastApiError } from "@features/auth/logic/toastApiError";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 import { cn } from "@shared/lib/cn";
 
@@ -70,7 +71,7 @@ export function StorefrontSupportFab({
       onThreadCreated(dto);
       nav(`/chat/${encodeURIComponent(dto.id)}`);
     } catch (e) {
-      toast.error(errorToUserMessage(e, "No se pudo abrir el chat de soporte."));
+      toastApiError(e, "No se pudo abrir el chat de soporte.");
     } finally {
       setOpening(false);
     }
@@ -98,7 +99,7 @@ export function StorefrontSupportFab({
         title="Soporte"
       >
         {opening ? (
-          <Loader2 size={24} className="animate-spin" aria-hidden />
+          <CeSpinner size="lg" aria-hidden />
         ) : (
           <Headset size={24} strokeWidth={1.75} aria-hidden />
         )}

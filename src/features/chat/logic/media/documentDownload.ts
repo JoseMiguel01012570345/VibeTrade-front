@@ -1,4 +1,4 @@
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 type WindowWithSave = Window & {
   showSaveFilePicker?: (options?: { suggestedName?: string }) => Promise<FileSystemFileHandle>

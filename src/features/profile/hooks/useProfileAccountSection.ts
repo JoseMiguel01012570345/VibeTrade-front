@@ -5,7 +5,7 @@ import {
   useState,
 } from 'react'
 import { useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useAppStore } from '@features/auth/logic/useAppStore'
 import type { SocialNetworkId } from '@features/auth/Dtos/userTypes'
 import { patchProfile } from '@features/auth/api/patchProfile'

@@ -1,0 +1,53 @@
+@keyframes ce-image-light-ray {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+
+  100% {
+    transform: translateX(220%) skewX(-18deg);
+  }
+}
+
+.ce-image-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: #c5c5c5;
+}
+
+.dark .ce-image-shimmer {
+  background-color: #374151;
+}
+
+.ce-image-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 40%,
+    rgb(255 255 255 / 45%) 48%,
+    rgb(255 255 255 / 75%) 50%,
+    rgb(255 255 255 / 45%) 52%,
+    transparent 60%,
+    transparent 100%
+  );
+  animation: ce-image-light-ray 1.75s ease-in-out infinite;
+}
+
+.ce-image-reveal {
+  transition: opacity 0.35s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ce-image-reveal {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ce-image-shimmer::before {
+    animation: none;
+    opacity: 0.35;
+  }
+}

@@ -7,6 +7,7 @@ import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
 import { isReservedStoreName } from "@features/market/logic/store/storePath";
 import { TrackShipmentContent } from "@features/orders";
 import { StorefrontChrome } from "../components/StorefrontChrome";
+import { useStoreLogoLoaded } from "../logic/useStoreLogoLoaded";
 import { StorefrontLoadingState } from "../components/StorefrontPageStates";
 
 /**
@@ -21,6 +22,10 @@ export function StorefrontTrackingPage() {
   const { storeId, resolving, notFound, fetchedStore } = useStoreIdFromName(storeName, me.id);
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
   const loadingStore = store ?? fetchedStore;
+  const logoLoaded = useStoreLogoLoaded(
+    loadingStore?.name ?? storeName,
+    loadingStore?.avatarUrl,
+  );
   const [loadNonce] = useState(0);
   const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
 
@@ -32,7 +37,7 @@ export function StorefrontTrackingPage() {
   const surface =
     "store-front-surface min-h-full bg-[#f7f3ef] text-slate-900";
 
-  if (!notFound && (resolving || detailStatus === "loading")) {
+  if (!notFound && (resolving || detailStatus === "loading" || !logoLoaded)) {
     return (
       <StorefrontLoadingState
         storeName={loadingStore?.name ?? storeName}

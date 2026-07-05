@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { MapContainer, Marker, useMapEvents } from "react-leaflet";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { MapPin, X } from "lucide-react";
+import { CeFlowbiteModal } from "@shared/components/ui";
 import { VibeMapTileLayer } from "@features/home/components/EmergentRouteFeedMap";
 import { storeMapPinIcon } from "@features/market/logic/map/storeMapPinIcon";
 import {
   STORE_LOCATION_MAP_DEFAULT_CENTER,
   STORE_LOCATION_MAP_ZOOM,
 } from "@features/profile/logic/storeMapDefaults";
-import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
+import {
+  STOREFRONT_CHECKOUT_MODAL_THEME,
+  STOREFRONT_MODAL_BACKDROP,
+} from "@features/storefront/lib/storefrontModalTheme";
 import type { OrderDeliveryMode } from "../Dtos/orders";
 import type { DeliveryFormData } from "../logic/checkoutForm";
 import "leaflet/dist/leaflet.css";
@@ -94,6 +98,7 @@ export function DeliveryDataModal({
   const [pinPlaced, setPinPlaced] = useState(false);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
+  const titleId = useId();
 
   const needsAddress = mode === "shipping";
 
@@ -113,8 +118,6 @@ export function DeliveryDataModal({
     if (pinPlaced && lat != null && lng != null) return [lat, lng];
     return STORE_LOCATION_MAP_DEFAULT_CENTER;
   }, [pinPlaced, lat, lng]);
-
-  if (!open) return null;
 
   function handleConfirm() {
     if (!fullName.trim()) {
@@ -152,42 +155,41 @@ export function DeliveryDataModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[90] grid place-items-center bg-slate-900/50 p-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Datos de entrega"
-      onMouseDown={(e) => onBackdropPointerClose(e, onClose)}
+    <CeFlowbiteModal
+      show={open}
+      onClose={onClose}
+      size="2xl"
+      theme={STOREFRONT_CHECKOUT_MODAL_THEME}
+      backdropClassName={STOREFRONT_MODAL_BACKDROP}
     >
-      <div
-        className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-[18px] bg-white shadow-2xl"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-3 border-b border-[#efe9e3] px-5 py-4 sm:px-6">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-700 text-white">
-            <MapPin className="h-5 w-5" aria-hidden />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
-              Datos de entrega
-            </h2>
-            <p className="mt-0.5 text-sm text-slate-500">
-              {needsAddress
-                ? "Tus datos y el punto exacto de entrega"
-                : "Tus datos de contacto para la recogida"}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-            aria-label="Cerrar"
+      <div className="flex items-center gap-3 border-b border-[#efe9e3] px-5 py-4 sm:px-6">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-700 text-white">
+          <MapPin className="h-5 w-5" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2
+            id={titleId}
+            className="text-lg font-extrabold tracking-tight text-slate-900"
           >
-            <X className="h-5 w-5" aria-hidden />
-          </button>
+            Datos de entrega
+          </h2>
+          <p className="mt-0.5 text-sm text-slate-500">
+            {needsAddress
+              ? "Tus datos y el punto exacto de entrega"
+              : "Tus datos de contacto para la recogida"}
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+          aria-label="Cerrar"
+        >
+          <X className="h-5 w-5" aria-hidden />
+        </button>
+      </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
           <section>
             <div className="flex items-center gap-3">
               <StepBadge n={1} />
@@ -298,25 +300,24 @@ export function DeliveryDataModal({
               </p>
             </section>
           ) : null}
-        </div>
-
-        <div className="flex flex-col gap-3 border-t border-[#efe9e3] px-5 py-4 sm:flex-row sm:px-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full rounded-[10px] border border-[#ddd5ce] bg-white py-3 text-sm font-bold text-slate-700 transition hover:bg-stone-50 sm:flex-1"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className="w-full rounded-[10px] bg-emerald-700 py-3 text-sm font-bold text-white shadow-[0_14px_28px_rgba(4,120,87,0.25)] transition hover:bg-emerald-800 sm:flex-[2]"
-          >
-            Guardar datos de entrega
-          </button>
-        </div>
       </div>
-    </div>
+
+      <div className="flex flex-col gap-3 border-t border-[#efe9e3] px-5 py-4 sm:flex-row sm:px-6">
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full rounded-[10px] border border-[#ddd5ce] bg-white py-3 text-sm font-bold text-slate-700 transition hover:bg-stone-50 sm:flex-1"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={handleConfirm}
+          className="w-full rounded-[10px] bg-emerald-700 py-3 text-sm font-bold text-white shadow-[0_14px_28px_rgba(4,120,87,0.25)] transition hover:bg-emerald-800 sm:flex-[2]"
+        >
+          Guardar datos de entrega
+        </button>
+      </div>
+    </CeFlowbiteModal>
   );
 }

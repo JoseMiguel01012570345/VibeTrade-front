@@ -1,114 +1,118 @@
-import { modalShellNarrow } from '@shared/styles/modals/formModalStyles'
+import { CeButton, CeModal } from "@shared/components/ui";
 
 type Props = {
-  open: boolean
-  onClose: () => void
-  /** Si retorna false, el modal permanece abierto (Ãºtil para errores de servidor). */
-  onConfirm: () => void | Promise<boolean | void>
-  /** Si true, el texto menciona hilo (lista) y la pÃ©rdida de acceso al salir. */
-  variant?: 'page' | 'list'
-  blockingCode?: string | null
-  blockingMessage?: string | null
+  open: boolean;
+  onClose: () => void;
+  /** Si retorna false, el modal permanece abierto (útil para errores de servidor). */
+  onConfirm: () => void | Promise<boolean | void>;
+  /** Si true, el texto menciona hilo (lista) y la pérdida de acceso al salir. */
+  variant?: "page" | "list";
+  blockingCode?: string | null;
+  blockingMessage?: string | null;
   refundSuggestion?: {
-    threadId: string
-    agreementId: string
-    routeSheetId: string
-    routeStopId: string
-  } | null
-  refundBusy?: boolean
-  onRequestRefund?: () => void | Promise<void>
-}
+    threadId: string;
+    agreementId: string;
+    routeSheetId: string;
+    routeStopId: string;
+  } | null;
+  refundBusy?: boolean;
+  onRequestRefund?: () => void | Promise<void>;
+};
 
 export function ChatLeaveConfirmModal({
   open,
   onClose,
   onConfirm,
-  variant = 'page',
+  variant = "page",
   blockingCode,
   blockingMessage,
   refundSuggestion,
   refundBusy,
   onRequestRefund,
 }: Props) {
-  if (!open) return null
-
   const listExtra =
-    variant === 'list' ? (
+    variant === "list" ? (
       <span>
-        {' '}
-        AdemÃ¡s, al confirmar, <strong className="text-[var(--text)]">dejÃ¡s de formar parte de este hilo</strong>: dejarÃ¡
-        de mostrarse en la lista y no podrÃ¡s reabrir el mismo hilo.
+        {" "}
+        Además, al confirmar,{" "}
+        <strong className="text-gray-900 dark:text-gray-100">
+          dejás de formar parte de este hilo
+        </strong>
+        : dejará de mostrarse en la lista y no podrás reabrir el mismo hilo.
       </span>
-    ) : null
+    ) : null;
 
   return (
-    <div className="vt-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="chat-leave-title">
-      <div className={modalShellNarrow}>
-        <div id="chat-leave-title" className="vt-modal-title">
-          Â¿Salir del chat?
-        </div>
-        <p className="vt-muted mb-4 text-[13px] leading-snug text-[var(--text)]">
-          Los demÃ¡s participantes verÃ¡n un aviso de que saliste de la conversaciÃ³n.{listExtra}
-        </p>
-        {blockingCode ?
-          <div className="mb-4 rounded-xl border border-[color-mix(in_oklab,var(--bad)_42%,var(--border))] bg-[color-mix(in_oklab,var(--bad)_10%,var(--surface))] px-3 py-2 text-[12px] leading-snug text-[var(--text)]">
-            <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
-              Salida bloqueada
-            </div>
-            <div className="mt-1 font-bold">{blockingMessage ?? blockingCode}</div>
-            {blockingCode === 'route_delivery_active_buyer' ||
-            blockingCode === 'route_delivery_active_seller' ?
-              <p className="vt-muted mt-2 mb-0 text-[12px] leading-snug">
-                Mientras haya entregas activas (pagadas/en curso), tenÃ©s que esperar la evidencia o gestionar un
-                reembolso elegible del tramo con la contraparte.
-              </p>
-            : null}
-          </div>
-        : null}
-
-        {refundSuggestion && onRequestRefund ?
-          <div className="mb-4 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] px-3 py-2 text-[12px] leading-snug">
-            <div className="text-[11px] font-black uppercase tracking-wide text-[var(--muted)]">
-              Reembolso del tramo (si aplica)
-            </div>
-            <p className="vt-muted mt-1 mb-2 text-[12px] leading-snug">
-              Si el servidor marcÃ³ el tramo como elegible para reembolso, podÃ©s intentar solicitarlo aquÃ­ (comprador o
-              vendedor).
-            </p>
-            <button
-              type="button"
-              className="vt-btn vt-btn-primary w-full justify-center"
-              disabled={Boolean(refundBusy)}
-              onClick={() => void onRequestRefund()}
-            >
-              {refundBusy ? 'Solicitandoâ€¦' : 'Solicitar reembolso del tramo'}
-            </button>
-          </div>
-        : null}
-
-        <p className="vt-muted mb-0 text-[12px] leading-snug">
-          Si solo quieres volver atrÃ¡s sin avisar, usa Â«VolverÂ» o navega a otra pantalla.
-        </p>
-        <div className="vt-modal-actions mt-5">
-          <button type="button" className="vt-btn" onClick={onClose}>
+    <CeModal
+      show={open}
+      onClose={onClose}
+      title="¿Salir del chat?"
+      size="md"
+      bodyClassName="pt-2"
+      footer={
+        <>
+          <CeButton color="gray" outline onClick={onClose}>
             Cancelar
-          </button>
-          <button
-            type="button"
-            className="vt-btn vt-btn-primary"
+          </CeButton>
+          <CeButton
             disabled={Boolean(blockingCode)}
             onClick={() => {
               void (async () => {
-                const r = await Promise.resolve(onConfirm())
-                if (r === false) return
-                onClose()
-              })()
+                const r = await Promise.resolve(onConfirm());
+                if (r === false) return;
+                onClose();
+              })();
             }}
           >
-            SÃ­, salir
-          </button>
+            Sí, salir
+          </CeButton>
+        </>
+      }
+    >
+      <p className="mb-4 text-sm leading-snug text-gray-600 dark:text-gray-400">
+        Los demás participantes verán un aviso de que saliste de la conversación.
+        {listExtra}
+      </p>
+      {blockingCode ? (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm leading-snug text-gray-900 dark:border-red-800/50 dark:bg-red-950/30 dark:text-gray-100">
+          <div className="text-xs font-black uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Salida bloqueada
+          </div>
+          <div className="mt-1 font-bold">{blockingMessage ?? blockingCode}</div>
+          {blockingCode === "route_delivery_active_buyer" ||
+          blockingCode === "route_delivery_active_seller" ? (
+            <p className="mt-2 mb-0 text-xs leading-snug text-gray-600 dark:text-gray-400">
+              Mientras haya entregas activas (pagadas/en curso), tenés que esperar
+              la evidencia o gestionar un reembolso elegible del tramo con la
+              contraparte.
+            </p>
+          ) : null}
         </div>
-      </div>
-    </div>
-  )
+      ) : null}
+
+      {refundSuggestion && onRequestRefund ? (
+        <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm leading-snug dark:border-gray-600 dark:bg-gray-800">
+          <div className="text-xs font-black uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Reembolso del tramo (si aplica)
+          </div>
+          <p className="mt-1 mb-2 text-xs leading-snug text-gray-600 dark:text-gray-400">
+            Si el servidor marcó el tramo como elegible para reembolso, podés
+            intentar solicitarlo aquí (comprador o vendedor).
+          </p>
+          <CeButton
+            className="w-full justify-center"
+            loading={Boolean(refundBusy)}
+            onClick={() => void onRequestRefund()}
+          >
+            Solicitar reembolso del tramo
+          </CeButton>
+        </div>
+      ) : null}
+
+      <p className="mb-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+        Si solo quieres volver atrás sin avisar, usa «Volver» o navega a otra
+        pantalla.
+      </p>
+    </CeModal>
+  );
 }

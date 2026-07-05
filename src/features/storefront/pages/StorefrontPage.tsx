@@ -14,6 +14,7 @@ import { StorefrontLatestProductsSection } from "../components/StorefrontLatestP
 import { StorefrontSearchResultsSection } from "../components/StorefrontSearchResultsSection";
 import { StorefrontProductsSection } from "../components/StorefrontProductsSection";
 import { StorefrontServicesSection } from "../components/StorefrontServicesSection";
+import { useStoreLogoLoaded } from "../logic/useStoreLogoLoaded";
 import {
   StorefrontLoadingState,
   StorefrontNotFoundState,
@@ -195,6 +196,10 @@ export function StorefrontPage() {
   const { storeId, resolving, notFound, fetchedStore } = useStoreIdFromName(storeName, me.id);
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
   const loadingStore = store ?? fetchedStore;
+  const logoLoaded = useStoreLogoLoaded(
+    loadingStore?.name ?? storeName,
+    loadingStore?.avatarUrl,
+  );
   const [loadNonce] = useState(0);
   const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -220,7 +225,7 @@ export function StorefrontPage() {
     return <Navigate to="/home" replace />;
   }
 
-  if (!notFound && (resolving || detailStatus === "loading")) {
+  if (!notFound && (resolving || detailStatus === "loading" || !logoLoaded)) {
     return (
       <StorefrontLoadingState
         storeName={loadingStore?.name ?? storeName}

@@ -7,8 +7,9 @@ import {
   useState,
 } from "react";
 import { Label } from "flowbite-react";
-import { ImagePlus, Loader2, Trash2, X } from "lucide-react";
-import toast from "react-hot-toast";
+import { ImagePlus, Trash2, X } from "lucide-react";
+import { CeButton, CeModal, CeTransitionModalShell } from "@shared/components/ui";
+import { toast } from "sonner";
 import type {
   StoreCategoryDto,
   StoreProduct,
@@ -22,7 +23,6 @@ import {
 } from "@features/market/api/storeInventoryApi";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { ConfirmModal } from "@shared/components/ui/ConfirmModal";
-import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
 import { cn } from "@shared/lib/cn";
 import { UploadBlockingOverlay } from "@shared/components/ui/UploadBlockingOverlay";
 import {
@@ -526,19 +526,16 @@ export function ProductModalDetail({
 
   return (
     <>
-      <div
-        className="vt-modal-backdrop z-[120]"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="product-modal-title"
-        onMouseDown={(e) => onBackdropPointerClose(e, submitting ? () => {} : onClose)}
+      <CeTransitionModalShell
+        show={show}
+        onClose={() => !submitting && onClose()}
+        size="7xl"
       >
         <div
           className={cn(
-            "relative mx-auto flex max-h-[min(92vh,52rem)] w-full max-w-7xl flex-col overflow-hidden rounded-2xl shadow-2xl",
+            "relative flex max-h-[min(92vh,52rem)] w-full flex-col overflow-hidden",
             CE_UI_BG,
           )}
-          onMouseDown={(e) => e.stopPropagation()}
         >
           <UploadBlockingOverlay
             active={uploadBusy}
@@ -1025,70 +1022,40 @@ export function ProductModalDetail({
               CE_UI_BG,
             )}
           >
-            <button
-              type="button"
-              disabled={submitting}
-              onClick={onClose}
-              className="w-full rounded-xl border border-[#CBD5E1] bg-white px-5 py-2.5 text-sm font-semibold text-[#334155] shadow-sm transition hover:bg-[#F1F5F9] disabled:opacity-50 sm:w-auto"
-            >
+            <CeButton color="gray" outline disabled={submitting} onClick={onClose} className="w-full sm:w-auto">
               Cancelar
-            </button>
-            <button
-              type="button"
-              disabled={submitting}
+            </CeButton>
+            <CeButton
+              loading={submitting}
               onClick={() => void requestSubmit()}
-              className={cn(
-                "inline-flex w-full items-center justify-center gap-2 rounded-xl border-0 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition sm:w-auto",
-                CE_UI_PRIMARY,
-              )}
+              className={cn("w-full sm:w-auto", CE_UI_PRIMARY)}
             >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  Guardando…
-                </>
-              ) : editingId ? (
-                "Guardar cambios"
-              ) : (
-                "Guardar producto"
-              )}
-            </button>
+              {editingId ? "Guardar cambios" : "Guardar producto"}
+            </CeButton>
           </div>
         </div>
-      </div>
+      </CeTransitionModalShell>
 
       {photoPreview ? (
-        <div
-          className="vt-modal-backdrop z-[130]"
-          role="dialog"
-          aria-modal="true"
-          onMouseDown={(e) => onBackdropPointerClose(e, () => setPhotoPreview(null))}
+        <CeModal
+          show
+          onClose={() => setPhotoPreview(null)}
+          title={photoPreview.title}
+          size="4xl"
+          bodyClassName="overflow-visible max-h-none"
+          footer={
+            <CeButton onClick={() => setPhotoPreview(null)} className={CE_UI_PRIMARY}>
+              Cerrar
+            </CeButton>
+          }
         >
-          <div
-            className="mx-auto max-w-4xl rounded-2xl bg-white p-5 shadow-2xl"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <h3 className="mb-3 text-lg font-bold text-gray-900">{photoPreview.title}</h3>
-            <ProtectedMediaImg
-              src={photoPreview.src}
-              alt=""
-              wrapperClassName="mx-auto max-h-[min(80vh,880px)] w-full overflow-hidden rounded-lg"
-              className="mx-auto max-h-[min(80vh,880px)] w-full object-contain"
-            />
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setPhotoPreview(null)}
-                className={cn(
-                  "rounded-xl px-5 py-2.5 text-sm font-semibold text-white",
-                  CE_UI_PRIMARY,
-                )}
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
+          <ProtectedMediaImg
+            src={photoPreview.src}
+            alt=""
+            wrapperClassName="mx-auto max-h-[min(80vh,880px)] w-full overflow-hidden rounded-lg"
+            className="mx-auto max-h-[min(80vh,880px)] w-full object-contain"
+          />
+        </CeModal>
       ) : null}
 
       <ConfirmModal

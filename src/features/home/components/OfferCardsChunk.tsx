@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
+import { toastApiError } from "@features/auth/logic/toastApiError";
 import { cn } from "@shared/lib/cn";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import type { RouteOfferPublicState } from "@features/market/logic/store/marketStoreTypes";
@@ -152,11 +153,7 @@ export function OfferCardsChunk({
                           : "product",
                       });
                     } catch (err) {
-                      toast.error(
-                        err instanceof Error
-                          ? err.message
-                          : "No se pudo guardar el me gusta.",
-                      );
+                      toastApiError(err, "No se pudo guardar el me gusta.");
                     }
                   })();
                 }}

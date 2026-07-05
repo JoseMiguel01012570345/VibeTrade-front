@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { CeButton, CeModal } from '@shared/components/ui'
 import { VtDateField } from "@shared/components/ui/VtDateField"
 import { validateVigenciaRange } from "@features/chat/logic/agreement/serviceVigenciaDates"
-import { onBackdropPointerClose } from '@shared/lib/modals/modalClose'
-import { modalShellNarrow } from '@shared/styles/modals/formModalStyles'
+import { fieldLabel } from '@shared/styles/modals/formModalStyles'
 
 type Props = {
   open: boolean
@@ -42,8 +42,6 @@ export function ServiceTimeModal({ open, startDate, endDate, onSave, onClose }: 
     wasOpenRef.current = true
   }, [open, startDate, endDate])
 
-  if (!open) return null
-
   function save() {
     const msgs = validateVigenciaRange(s, e)
     if (msgs.length) {
@@ -55,57 +53,55 @@ export function ServiceTimeModal({ open, startDate, endDate, onSave, onClose }: 
   }
 
   return (
-    <div
-      className="vt-modal-backdrop z-[90]"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(ev) => onBackdropPointerClose(ev, onClose)}
-    >
-      <div className={modalShellNarrow}>
-        <div className="vt-modal-title">Tiempo del servicio</div>
-        <p className="vt-muted mb-3 text-[13px]">
-          Indica el período en que se presta el servicio. La fecha de inicio es obligatoria. Las fechas deben
-          ser desde hoy y como máximo 50 años en el futuro.
-        </p>
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-[var(--muted)]">Inicio</span>
-            <VtDateField
-              value={s}
-              onChange={setS}
-              min={bounds.min}
-              max={bounds.max}
-              placeholder="Elegir fecha de inicio"
-              aria-label="Fecha de inicio del servicio"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-[var(--muted)]">Fin (opcional)</span>
-            <VtDateField
-              value={e}
-              onChange={setE}
-              min={bounds.min}
-              max={bounds.max}
-              allowEmpty
-              placeholder="Sin fecha de fin"
-              aria-label="Fecha de fin del servicio"
-            />
-          </div>
-        </div>
-        {err ? (
-          <p className="mt-2 text-xs font-semibold text-[#b91c1c]" role="alert">
-            {err}
-          </p>
-        ) : null}
-        <div className="mt-4 flex flex-wrap justify-end gap-2">
-          <button type="button" className="vt-btn" onClick={onClose}>
+    <CeModal
+      show={open}
+      onClose={onClose}
+      title="Tiempo del servicio"
+      size="md"
+      bodyClassName="pt-2"
+      footer={
+        <>
+          <CeButton color="gray" outline onClick={onClose}>
             Cancelar
-          </button>
-          <button type="button" className="vt-btn vt-btn-primary" onClick={save}>
-            Guardar
-          </button>
+          </CeButton>
+          <CeButton onClick={save}>Guardar</CeButton>
+        </>
+      }
+    >
+      <p className="vt-muted mb-3 text-[13px]">
+        Indica el período en que se presta el servicio. La fecha de inicio es obligatoria. Las fechas deben
+        ser desde hoy y como máximo 50 años en el futuro.
+      </p>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <span className={fieldLabel}>Inicio</span>
+          <VtDateField
+            value={s}
+            onChange={setS}
+            min={bounds.min}
+            max={bounds.max}
+            placeholder="Elegir fecha de inicio"
+            aria-label="Fecha de inicio del servicio"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className={fieldLabel}>Fin (opcional)</span>
+          <VtDateField
+            value={e}
+            onChange={setE}
+            min={bounds.min}
+            max={bounds.max}
+            allowEmpty
+            placeholder="Sin fecha de fin"
+            aria-label="Fecha de fin del servicio"
+          />
         </div>
       </div>
-    </div>
+      {err ? (
+        <p className="mt-2 text-xs font-semibold text-[#b91c1c]" role="alert">
+          {err}
+        </p>
+      ) : null}
+    </CeModal>
   )
 }

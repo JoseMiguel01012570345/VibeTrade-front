@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
-import { Button, Spinner } from "flowbite-react";
+import { toast } from "sonner";
+import { CeButton, CeModal } from "@shared/components/ui";
 import type { RouteSheet } from "@features/chat/Dtos/route-sheet/routeSheetTypes";
 import { postRouteSheetNotifyPreselected } from "@features/chat/api/chatApi";
-import { FlowbiteChatModal } from "../layout/FlowbiteChatModal";
 import type { SelectableColumnDef } from "@features/chat/Dtos/shared/selectableDataTableTypes";
 import { SelectableDataTable } from "../data/SelectableDataTable";
 import { fetchPublicProfile } from "@features/auth/logic/publicProfile";
@@ -149,35 +148,32 @@ export function InviteModal({ routeSheet, onClose, onAccepted }: Props) {
   }
 
   return (
-    <FlowbiteChatModal
+    <CeModal
       show
-      onDismiss={onClose}
+      onClose={() => !inviting && onClose()}
       title="Invitar transportistas"
-      description="Se notificará por la plataforma a cada contacto seleccionado con teléfono registrado."
-      bodyClassName="pt-6"
+      size="3xl"
+      bodyClassName="pt-2"
       footer={
         <>
-          <Button color="light" disabled={inviting} onClick={onClose}>
+          <CeButton color="gray" outline disabled={inviting} onClick={onClose}>
             Cancelar
-          </Button>
-          <Button
-            className="inline-flex items-center gap-2"
+          </CeButton>
+          <CeButton
             color="blue"
-            disabled={inviting || rows.length === 0}
+            loading={inviting}
+            disabled={rows.length === 0}
             onClick={() => void handleInvite()}
           >
-            {inviting ? (
-              <>
-                <Spinner aria-hidden light size="sm" />
-                Enviando…
-              </>
-            ) : (
-              "Invitar"
-            )}
-          </Button>
+            {inviting ? "Enviando…" : "Invitar"}
+          </CeButton>
         </>
       }
     >
+      <p className="mb-4 text-sm leading-snug text-gray-600 dark:text-gray-400">
+        Se notificará por la plataforma a cada contacto seleccionado con teléfono
+        registrado.
+      </p>
       <SelectableDataTable<InviteRow>
         rows={rows}
         columns={inviteColumns}
@@ -202,6 +198,6 @@ export function InviteModal({ routeSheet, onClose, onAccepted }: Props) {
           )
         }
       />
-    </FlowbiteChatModal>
+    </CeModal>
   );
 }

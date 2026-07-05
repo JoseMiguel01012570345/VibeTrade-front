@@ -1,6 +1,6 @@
 import { HelpCircle } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { cn } from "@shared/lib/cn"
 import { VtSelect } from "@shared/components/ui/VtSelect"
 import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes"
@@ -28,10 +28,9 @@ import {
   fieldLabel,
   fieldRootWithInvalid,
   modalFormBody,
-  modalShellWide,
   modalSub,
 } from '@shared/styles/modals/formModalStyles'
-import { onBackdropPointerClose } from '@shared/lib/modals/modalClose'
+import { CeButton, CeModal } from '@shared/components/ui'
 import { formatPaymentSummary, formatScheduleSummary } from '@features/chat/logic/agreement/serviceItemFormat'
 import { ServiceScheduleReadView } from './ServiceScheduleReadView'
 import { ServicePaymentRecurrenceModal } from './ServicePaymentRecurrenceModal'
@@ -285,14 +284,31 @@ export function ServiceConfigWizard({
           : []
 
   return (
-    <div
-      className="vt-modal-backdrop z-[85]"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(e) => onBackdropPointerClose(e, onClose)}
-    >
-      <div className={modalShellWide}>
-        <div className="vt-modal-title">Configurar servicio</div>
+    <>
+      <CeModal
+        show={open}
+        onClose={onClose}
+        title="Configurar servicio"
+        size="5xl"
+        bodyClassName="overflow-y-auto max-h-[min(75vh,40rem)] pt-2"
+        footer={
+          <>
+            <CeButton color="gray" outline onClick={onClose}>
+              Cancelar
+            </CeButton>
+            {step > 0 ? (
+              <CeButton color="gray" outline onClick={prev}>
+                Atrás
+              </CeButton>
+            ) : null}
+            {step < STEPS.length - 1 ? (
+              <CeButton onClick={next}>Siguiente</CeButton>
+            ) : (
+              <CeButton onClick={finish}>Guardar configuración</CeButton>
+            )}
+          </>
+        }
+      >
         <div className={modalSub}>
           Paso {step + 1} de {STEPS.length}: <b>{STEPS[step]}</b>
         </div>
@@ -767,29 +783,7 @@ export function ServiceConfigWizard({
             </div>
           ) : null}
         </div>
-
-        <div className="vt-modal-actions border-t border-[var(--border)] pt-3">
-          <button type="button" className="vt-btn" onClick={onClose}>
-            Cancelar
-          </button>
-          <div className="flex flex-wrap gap-2">
-            {step > 0 ? (
-              <button type="button" className="vt-btn" onClick={prev}>
-                Atrás
-              </button>
-            ) : null}
-            {step < STEPS.length - 1 ? (
-              <button type="button" className="vt-btn vt-btn-primary" onClick={next}>
-                Siguiente
-              </button>
-            ) : (
-              <button type="button" className="vt-btn vt-btn-primary" onClick={finish}>
-                Guardar configuración
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      </CeModal>
 
       <ServiceTimeModal
         open={timeOpen}
@@ -844,6 +838,6 @@ export function ServiceConfigWizard({
             setSv((s) => ({ ...s, terminacion: { ...s.terminacion, causas: items } }))
         }}
       />
-    </div>
+    </>
   )
 }

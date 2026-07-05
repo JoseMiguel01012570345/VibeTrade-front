@@ -17,14 +17,9 @@ import { formatPhoneForDisplay } from '@features/auth/logic/formatPhoneForDispla
 import { StoreTrustMini } from '@features/profile/components/trust/StoreTrustMini'
 import { TrustBar } from '../components/trust/TrustBar'
 import { ThemeToggle } from '@app/widgets/ThemeToggle'
-import { onBackdropPointerClose } from '@shared/lib/modals/modalClose'
-import {
-  fieldLabel,
-  modalFormBody,
-  modalShellWide,
-  modalSub,
-} from '@shared/styles/modals/formModalStyles'
 import { ConfirmModal } from '@shared/components/ui/ConfirmModal'
+import { CeButton, CeModal } from '@shared/components/ui'
+import { fieldLabel, modalSub } from '@shared/styles/modals/formModalStyles'
 import { UploadBlockingOverlay } from '@shared/components/ui/UploadBlockingOverlay'
 import { ImageLightbox } from '@shared/components/media/ImageLightbox'
 import { ContactsModal } from '../components/ContactsModal'
@@ -423,57 +418,39 @@ export function ProfileAccountPage({
         onClose={() => account.setContactsModalOpen(false)}
       />
 
-      {account.socialModal && account.socialModalMeta ? (
-        <div
-          className="vt-modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="profile-social-modal-title"
-          onMouseDown={(e) =>
-            onBackdropPointerClose(e, () => account.setSocialModal(null))
-          }
-        >
-          <div
-            className={modalShellWide}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div className="vt-modal-title" id="profile-social-modal-title">
-              {account.socialModalMeta.title}
-            </div>
-            <div className={modalSub}>{account.socialModalMeta.hint}</div>
-            <div className={modalFormBody}>
-              <label className="flex flex-col gap-2">
-                <span className={fieldLabel}>Usuario o enlace</span>
-                <input
-                  className="vt-input"
-                  autoFocus
-                  placeholder={account.socialModalMeta.placeholder}
-                  value={account.socialDraft}
-                  onChange={(e) => account.setSocialDraft(e.target.value)}
-                />
-              </label>
-            </div>
-            <div className="vt-modal-actions">
-              <button
-                type="button"
-                className="vt-btn"
-                onClick={() => account.setSocialModal(null)}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="vt-btn vt-btn-primary"
-                onClick={() => {
-                  void account.saveSocialFromModal()
-                }}
-              >
-                Guardar
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <CeModal
+        show={account.socialModal !== null && account.socialModalMeta !== null}
+        onClose={() => account.setSocialModal(null)}
+        title={account.socialModalMeta?.title ?? ""}
+        size="lg"
+        bodyClassName="pt-2"
+        footer={
+          <>
+            <CeButton color="gray" outline onClick={() => account.setSocialModal(null)}>
+              Cancelar
+            </CeButton>
+            <CeButton onClick={() => void account.saveSocialFromModal()}>
+              Guardar
+            </CeButton>
+          </>
+        }
+      >
+        {account.socialModalMeta ? (
+          <>
+            <p className={modalSub}>{account.socialModalMeta.hint}</p>
+            <label className="flex flex-col gap-2">
+              <span className={fieldLabel}>Usuario o enlace</span>
+              <input
+                className="vt-input"
+                autoFocus
+                placeholder={account.socialModalMeta.placeholder}
+                value={account.socialDraft}
+                onChange={(e) => account.setSocialDraft(e.target.value)}
+              />
+            </label>
+          </>
+        ) : null}
+      </CeModal>
 
       <ConfirmModal
         open={account.logoutConfirmOpen}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { cartSubtotal, useCartStore, type CartItem } from "./cartStore";
 import {
   buildShareCartPath,

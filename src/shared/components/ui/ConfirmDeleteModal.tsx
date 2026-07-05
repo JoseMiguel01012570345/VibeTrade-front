@@ -1,6 +1,6 @@
 import { Trash2 } from "lucide-react";
-import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
-import { modalFormBody, modalShellWide, modalSub } from "@shared/styles/modals/formModalStyles";
+import { CeButton } from "./CeButton";
+import { CeModal } from "./CeModal";
 
 type Props = Readonly<{
   open: boolean;
@@ -21,38 +21,32 @@ export function ConfirmDeleteModal({
   onCancel,
   onConfirm,
 }: Props) {
-  if (!open) return null;
   return (
-    <div
-      className="vt-modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      onMouseDown={(e) => onBackdropPointerClose(e, onCancel)}
-    >
-      <div className={modalShellWide} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="vt-modal-title">{title}</div>
-        <div className={modalSub}>{message}</div>
-        <div className={modalFormBody}>
-          <div className="rounded-xl border border-[color-mix(in_oklab,var(--bad)_45%,var(--border))] bg-[color-mix(in_oklab,var(--bad)_8%,transparent)] p-3 text-[12px] text-[color-mix(in_oklab,var(--bad)_85%,black)]">
-            Esta acción <b>no se puede deshacer</b>.
-          </div>
-        </div>
-        <div className="vt-modal-actions">
-          <button type="button" className="vt-btn" onClick={onCancel} disabled={confirmBusy}>
+    <CeModal
+      show={open}
+      onClose={() => !confirmBusy && onCancel()}
+      title={title}
+      size="md"
+      footer={
+        <>
+          <CeButton color="gray" outline disabled={confirmBusy} onClick={onCancel}>
             Cancelar
-          </button>
-          <button
-            type="button"
-            className="vt-btn vt-btn-primary inline-flex items-center gap-2 bg-[var(--bad)] hover:bg-[color-mix(in_oklab,var(--bad)_85%,black)]"
+          </CeButton>
+          <CeButton
+            color="failure"
+            loading={confirmBusy}
             onClick={onConfirm}
-            disabled={confirmBusy}
+            className="inline-flex items-center gap-2"
           >
             <Trash2 size={16} aria-hidden /> {confirmLabel}
-          </button>
-        </div>
+          </CeButton>
+        </>
+      }
+    >
+      <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
+      <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
+        Esta acción <b>no se puede deshacer</b>.
       </div>
-    </div>
+    </CeModal>
   );
 }
-

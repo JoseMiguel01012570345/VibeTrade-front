@@ -1,6 +1,5 @@
-import { useId } from "react";
-import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
-import { modalShellWide, modalSub } from "@shared/styles/modals/formModalStyles";
+import { CeButton } from "./CeButton";
+import { CeModal } from "./CeModal";
 
 type Props = Readonly<{
   open: boolean;
@@ -13,7 +12,7 @@ type Props = Readonly<{
   onConfirm: () => void;
 }>;
 
-/** Diálogo de confirmación neutro (sin copy de borrado irreversible). */
+/** Diálogo de confirmación neutro sobre CeModal. */
 export function ConfirmModal({
   open,
   title,
@@ -24,42 +23,25 @@ export function ConfirmModal({
   onCancel,
   onConfirm,
 }: Props) {
-  const titleId = useId();
-  if (!open) return null;
   return (
-    <div
-      className="vt-modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      onMouseDown={(e) =>
-        onBackdropPointerClose(e, confirmBusy ? () => {} : onCancel)
+    <CeModal
+      show={open}
+      onClose={() => !confirmBusy && onCancel()}
+      title={title}
+      size="md"
+      bodyClassName="pt-2"
+      footer={
+        <>
+          <CeButton color="gray" outline disabled={confirmBusy} onClick={onCancel}>
+            {cancelLabel}
+          </CeButton>
+          <CeButton loading={confirmBusy} onClick={onConfirm}>
+            {confirmLabel}
+          </CeButton>
+        </>
       }
     >
-      <div className={modalShellWide} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="vt-modal-title" id={titleId}>
-          {title}
-        </div>
-        <div className={modalSub}>{message}</div>
-        <div className="vt-modal-actions">
-          <button
-            type="button"
-            className="vt-btn"
-            onClick={onCancel}
-            disabled={confirmBusy}
-          >
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            className="vt-btn vt-btn-primary"
-            onClick={onConfirm}
-            disabled={confirmBusy}
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+      <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
+    </CeModal>
   );
 }

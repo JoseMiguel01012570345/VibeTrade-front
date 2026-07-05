@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
-import { Button } from "flowbite-react";
+import { CeButton } from "@shared/components/ui";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 import { carrierDeliveryEvidenceStatusLabelEs } from "@features/chat/logic/route-sheet/routeLogisticsLabels";
 import type { CarrierEvReadModalState } from "@features/chat/Dtos/rail/routesRailTypes";
@@ -99,32 +99,33 @@ export function RailCarrierEvidenceReadModal(props: Props) {
     showSellerFooter ?
       (
         <>
-          <Button
-            className="[&>span]:gap-2"
+          <CeButton
             color="blue"
             disabled={
               !getSessionToken() ||
               logisticsBusyKey === `${readBusyBase}:acc`
             }
+            loading={logisticsBusyKey === `${readBusyBase}:acc`}
             size="sm"
             onClick={accept}
           >
             <ThumbsUp className="h-4 w-4 shrink-0" aria-hidden /> Aceptar
             evidencia
-          </Button>
-          <Button
-            className="[&>span]:gap-2"
+          </CeButton>
+          <CeButton
             color="gray"
+            outline
             disabled={
               !getSessionToken() ||
               logisticsBusyKey === `${readBusyBase}:rej`
             }
+            loading={logisticsBusyKey === `${readBusyBase}:rej`}
             size="sm"
             onClick={reject}
           >
             <ThumbsDown className="h-4 w-4 shrink-0" aria-hidden /> Rechazar
             evidencia
-          </Button>
+          </CeButton>
         </>
       )
     : undefined;

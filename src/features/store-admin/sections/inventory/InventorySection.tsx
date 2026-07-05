@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
-import toast from "react-hot-toast";
+import { CeButton, CeModal, CeSpinner } from "@shared/components/ui";
+import { toast } from "sonner";
 import type {
   StoreCategoryDto,
   StoreProduct,
@@ -12,8 +12,6 @@ import {
 } from "@features/market/api/storeInventoryApi";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { ConfirmModal } from "@shared/components/ui/ConfirmModal";
-import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
-import { modalShellWide } from "@shared/styles/modals/formModalStyles";
 import {
   DEFAULT_ADMIN_PAGE_SIZE,
   usePagedSlice,
@@ -23,7 +21,6 @@ import {
   isVisibleInStore,
   productStock,
 } from "../../logic/inventoryUtils";
-import { AdminGhostButton } from "../../components/StoreAdminUi";
 import { InventorySectionFilter } from "./InventorySectionFilter";
 import { InventorySectionTableList } from "./InventorySectionTableList";
 import { StoreBannerLibraryModal } from "./StoreBannerLibraryModal";
@@ -175,7 +172,7 @@ export function InventorySection({
           aria-busy="true"
           aria-live="polite"
         >
-          <Loader2 className="h-10 w-10 animate-spin text-[#0f6b4f]" aria-hidden />
+          <CeSpinner size="lg" className="text-[#0f6b4f]" aria-hidden />
         </div>
       ) : null}
 
@@ -223,39 +220,27 @@ export function InventorySection({
         onClose={() => setBannerModalOpen(false)}
       />
 
-      {listPhotoPreview ? (
-        <div
-          className="vt-modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="photo-preview-title"
-          onMouseDown={(e) =>
-            onBackdropPointerClose(e, () => setListPhotoPreview(null))
-          }
-        >
-          <div
-            className={`${modalShellWide} max-w-4xl`}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div className="vt-modal-title" id="photo-preview-title">
-              {listPhotoPreview.title}
-            </div>
-            <div className="vt-modal-body mt-2">
-              <ProtectedMediaImg
-                src={listPhotoPreview.src}
-                alt=""
-                wrapperClassName="mx-auto max-h-[min(80vh,880px)] w-full overflow-hidden rounded-lg"
-                className="mx-auto max-h-[min(80vh,880px)] w-full object-contain"
-              />
-            </div>
-            <div className="vt-modal-actions">
-              <AdminGhostButton onClick={() => setListPhotoPreview(null)}>
-                Cerrar
-              </AdminGhostButton>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <CeModal
+        show={listPhotoPreview !== null}
+        onClose={() => setListPhotoPreview(null)}
+        title={listPhotoPreview?.title ?? "Vista previa"}
+        size="4xl"
+        bodyClassName="pt-2 overflow-visible max-h-none"
+        footer={
+          <CeButton color="gray" outline onClick={() => setListPhotoPreview(null)}>
+            Cerrar
+          </CeButton>
+        }
+      >
+        {listPhotoPreview ? (
+          <ProtectedMediaImg
+            src={listPhotoPreview.src}
+            alt=""
+            wrapperClassName="mx-auto max-h-[min(80vh,880px)] w-full overflow-hidden rounded-lg"
+            className="mx-auto max-h-[min(80vh,880px)] w-full object-contain"
+          />
+        ) : null}
+      </CeModal>
 
       <ConfirmModal
         open={productToApprove !== null}

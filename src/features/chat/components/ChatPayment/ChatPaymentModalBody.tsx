@@ -1,5 +1,5 @@
-import { CreditCard, FileDown, Loader2 } from "lucide-react";
-import { cn } from "@shared/lib/cn";
+import { CreditCard, FileDown } from "lucide-react";
+import { CeButton, CeSpinner, CeTransitionModalShell } from "@shared/components/ui";
 import { paymentFeeLabels, minorToMajor } from "@features/payments/logic/paymentFeePolicy";
 import { PAYMENT_FEE_POLICY_URL } from "@features/payments/logic/paymentFeePolicyLinks";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
@@ -387,8 +387,9 @@ function PaymentCheckoutContent({ vm }: { vm: Vm }) {
         aria-live="polite"
         aria-busy="true"
       >
-        <Loader2
-          className="h-9 w-9 animate-spin text-[var(--primary)]"
+        <CeSpinner
+          size="lg"
+          className="text-[var(--primary)]"
           aria-hidden
         />
         <p className="vt-muted text-center text-[13px] leading-snug">
@@ -598,9 +599,8 @@ function PaymentFooterActions({
       ) : null}
 
       {showAddCardCta ? (
-        <button
-          type="button"
-          className="vt-btn vt-btn-primary w-full sm:ml-auto sm:w-auto"
+        <CeButton
+          className="w-full sm:ml-auto sm:w-auto"
           onClick={() =>
             nav(
               `/profile/${encodeURIComponent(me.id)}/account?paymentCards=1`,
@@ -608,7 +608,7 @@ function PaymentFooterActions({
           }
         >
           Ir al perfil a guardar tarjeta
-        </button>
+        </CeButton>
       ) : null}
 
       {showPayRow ? (
@@ -624,27 +624,27 @@ function PaymentFooterActions({
               buttonClassName="min-h-10 border-[color-mix(in_oklab,var(--border)_90%,transparent)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] shadow-[inset_0_1px_0_rgba(2,6,23,0.55)]"
             />
             <div className="flex flex-wrap gap-2 sm:ml-auto sm:items-center sm:justify-end">
-              <button
-                type="button"
-                className="vt-btn shrink-0"
+              <CeButton
+                loading={busyPay}
                 disabled={payDisabled}
                 onClick={() => void handlePayCurrency(pendingCurrency)}
               >
-                {busyPay ? "Procesando…" : `Pagar ${pendingCurrency.toUpperCase()}`}
-              </button>
+                Pagar {pendingCurrency.toUpperCase()}
+              </CeButton>
             </div>
           </div>
         </div>
       ) : null}
 
-      <button
-        type="button"
-        className="vt-btn vt-btn-ghost order-last min-h-10 w-full justify-center px-5 py-2.5 no-underline border border-[color-mix(in_oklab,var(--border)_80%,transparent)] sm:w-auto sm:self-end"
+      <CeButton
+        color="gray"
+        outline
+        className="order-last min-h-10 w-full justify-center sm:w-auto sm:self-end"
         onClick={onClose}
         disabled={busyPay}
       >
         Cerrar
-      </button>
+      </CeButton>
     </div>
   );
 }
@@ -664,20 +664,8 @@ export function ChatPaymentModalBody({ vm, onClose }: ChatPaymentModalBodyProps)
   } = vm;
 
   return (
-    <div
-      className="vt-modal-backdrop"
-      role="presentation"
-      onMouseDown={onClose}
-    >
-      <div
-        className={cn(
-          "vt-modal relative flex max-h-[min(88vh,780px)] w-full max-w-[560px] flex-col overflow-hidden p-0",
-        )}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="chat-pay-title"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
+    <CeTransitionModalShell show onClose={onClose} size="lg">
+      <div className="relative flex max-h-[min(88vh,780px)] flex-col overflow-hidden">
         <RoutePaymentCarrierWarningModal
           open={vm.carrierWarningOpen}
           routeSheetTitle={vm.carrierWarningSheetTitle}
@@ -772,6 +760,6 @@ export function ChatPaymentModalBody({ vm, onClose }: ChatPaymentModalBodyProps)
 
         <PaymentFooterActions vm={vm} onClose={onClose} />
       </div>
-    </div>
+    </CeTransitionModalShell>
   );
 }

@@ -1,4 +1,4 @@
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { postCedeCarrierOwnership } from "@features/chat/api/routeLogisticsApi";
 import type { CedeOwnershipModalState } from "@features/chat/Dtos/rail/routesRailTypes";
 

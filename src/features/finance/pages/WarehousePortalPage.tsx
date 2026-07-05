@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
-import { Loader2, Package, Truck, CheckCircle2, XCircle } from "lucide-react";
-import toast from "react-hot-toast";
+import { Package, Truck, CheckCircle2, XCircle } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
+import { toast } from "sonner";
 import { formatMoney, statusLabel } from "@features/orders";
 import type { OrderSummaryDto } from "@features/orders/Dtos/orders";
 import {
@@ -56,7 +57,7 @@ export function WarehousePortalPage() {
 
       {isLoading && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin" />
+          <CeSpinner />
         </div>
       )}
       {isError && (

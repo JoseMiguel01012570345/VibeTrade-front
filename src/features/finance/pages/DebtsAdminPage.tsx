@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Loader2, Wallet } from "lucide-react";
-import toast from "react-hot-toast";
+import { Wallet } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
+import { toast } from "sonner";
 import { formatMoney } from "@features/orders";
 import { useDebtsOverview, useLiquidateDebts } from "../hooks/useFinance";
 import type {
@@ -111,7 +112,7 @@ export function DebtsAdminPage() {
 
       {isLoading && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin" />
+          <CeSpinner />
         </div>
       )}
       {isError && (

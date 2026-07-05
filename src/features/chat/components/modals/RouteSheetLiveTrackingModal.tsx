@@ -20,9 +20,8 @@ import {
   routeMapFinishWaypointIcon,
   routeMapNumberedWaypointIcon,
 } from "@features/market/logic/map/storeMapPinIcon";
+import { CeTransitionModalShell } from "@shared/components/ui";
 import {
-  mapBackdropLayerAboveChatRail,
-  modalShellWide,
   modalSub,
 } from '@shared/styles/modals/formModalStyles';
 import "@features/home/styles/emergentRouteMapMarkers.css";
@@ -520,24 +519,11 @@ export function RouteSheetLiveTrackingModal({
     return pts;
   }, [stopsOrdered, carrierLivePins]);
 
-  if (!open) return null;
-
   const fitKey = `${threadId.trim()}-${agreementId.trim()}-${routeSheet.id.trim()}`;
 
   return (
-    <div
-      className={cn("vt-modal-backdrop", mapBackdropLayerAboveChatRail)}
-      role="presentation"
-    >
-      <div
-        className={cn(
-          modalShellWide,
-          "flex max-h-[min(92dvh,880px)] w-full max-w-[980px] flex-col overflow-hidden p-0",
-        )}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="vt-live-route-title"
-      >
+    <CeTransitionModalShell show={open} onClose={onClose} size="6xl">
+      <div className="flex max-h-[min(92dvh,880px)] flex-col overflow-hidden">
         <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
           <div className="min-w-0">
             <div id="vt-live-route-title" className="vt-modal-title">
@@ -668,6 +654,6 @@ export function RouteSheetLiveTrackingModal({
           </div>
         </div>
       </div>
-    </div>
+    </CeTransitionModalShell>
   );
 }

@@ -1,5 +1,6 @@
 import { Bookmark, MessageCircle, Send, ThumbsUp, Upload } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
+import { CeButton, CeModal } from '@shared/components/ui'
 import { cn } from '@shared/lib/cn'
 import { ReelCommentsPanel } from '../components/ReelCommentsPanel'
 import { useReelsPage } from '../hooks/useReelsPage'
@@ -132,36 +133,35 @@ export function ReelsPage() {
         viewerId={me.id}
       />
 
-      {shareOpen && (
-        <div className="vt-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="vt-modal">
-            <div className="vt-modal-title">Compartir</div>
-            <div className="vt-modal-body">
-              Lista de contactos registrados:
-              <div className="mt-3 flex flex-wrap gap-2.5">
-                {['María', 'Carlos', 'Lucía', 'Pedro'].map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className="vt-btn"
-                    onClick={() => {
-                      toast.success(`Compartido con ${c}`)
-                      setShareOpen(false)
-                    }}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="vt-modal-actions">
-              <button type="button" className="vt-btn" onClick={() => setShareOpen(false)}>
-                Cerrar
-              </button>
-            </div>
-          </div>
+      <CeModal
+        show={shareOpen}
+        onClose={() => setShareOpen(false)}
+        title="Compartir"
+        size="md"
+        bodyClassName="pt-2"
+        footer={
+          <CeButton color="gray" outline onClick={() => setShareOpen(false)}>
+            Cerrar
+          </CeButton>
+        }
+      >
+        Lista de contactos registrados:
+        <div className="mt-3 flex flex-wrap gap-2.5">
+          {['María', 'Carlos', 'Lucía', 'Pedro'].map((c) => (
+            <CeButton
+              key={c}
+              color="gray"
+              outline
+              onClick={() => {
+                toast.success(`Compartido con ${c}`)
+                setShareOpen(false)
+              }}
+            >
+              {c}
+            </CeButton>
+          ))}
         </div>
-      )}
+      </CeModal>
     </div>
   )
 }

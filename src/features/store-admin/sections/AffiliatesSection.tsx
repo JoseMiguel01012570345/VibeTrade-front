@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Plus, Share2, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import {
   affiliatesForStore,
   useStoreAdminExtras,

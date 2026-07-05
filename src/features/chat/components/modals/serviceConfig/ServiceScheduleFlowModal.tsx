@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
+import { CeButton, CeModal } from "@shared/components/ui";
 import { VtSelect, type VtSelectOption } from "@shared/components/ui/VtSelect";
 import { VtTimeField } from "@shared/components/ui/VtTimeField";
 import { cn } from "@shared/lib/cn";
-import { onBackdropPointerClose } from '@shared/lib/modals/modalClose';
 import type { ServiceScheduleState } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
 import {
   coerceServiceSchedule,
@@ -19,7 +19,6 @@ import {
   monthsOverlappingVigenciaInYear,
   yearsTouchingVigencia,
 } from "@features/chat/logic/agreement/serviceVigenciaDates";
-import { modalShellWide } from '@shared/styles/modals/formModalStyles';
 
 const STEP_TITLES = [
   "Meses",
@@ -493,17 +492,64 @@ export function ServiceScheduleFlowModal({
     : `desde ${vigenciaStart}`;
 
   return (
-    <div
-      className="vt-modal-backdrop z-[90]"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(e) => onBackdropPointerClose(e, onClose)}
+    <CeModal
+      show={open}
+      onClose={onClose}
+      title="Horarios y fechas del servicio"
+      size="5xl"
+      bodyClassName="overflow-y-auto max-h-[min(75vh,40rem)] pt-2"
+      footer={
+        <>
+          <CeButton
+            color="gray"
+            outline
+            onClick={() => (sub === 0 ? onClose() : setSub((s) => s - 1))}
+          >
+            {sub === 0 ? "Cancelar" : "Atrás"}
+          </CeButton>
+          {sub < 2 ? (
+            <CeButton
+              disabled={sub === 0 && !st.months.length}
+              onClick={() => {
+                if (sub === 0) {
+                  setSt((p) => {
+                    const dbm = { ...p.daysByMonth };
+                    for (const m of p.months) {
+                      if (!dbm[m]?.length) {
+                        dbm[m] = defaultDaysForMonth(
+                          p.calendarYear,
+                          m,
+                        );
+                      }
+                    }
+                    return { ...p, daysByMonth: dbm };
+                  });
+                  setSub(1);
+                  return;
+                }
+                if (sub === 1) {
+                  if (!st.months.length) {
+                    toast.error("Elige al menos un mes.");
+                    return;
+                  }
+                  const next = ensureDaysForSelectedMonths(st);
+                  if (!next) return;
+                  setSt(next);
+                  setSub(2);
+                }
+              }}
+            >
+              Siguiente
+            </CeButton>
+          ) : (
+            <CeButton onClick={finish}>Guardar horarios</CeButton>
+          )}
+        </>
+      }
     >
-      <div className={modalShellWide}>
-        <div className="vt-modal-title">Horarios y fechas del servicio</div>
-        <p className="vt-muted mb-3 text-[13px]">
-          Paso {sub + 1} de 3: {stepTitle}
-        </p>
+      <p className="vt-muted mb-3 text-[13px]">
+        Paso {sub + 1} de 3: {stepTitle}
+      </p>
 
         {sub === 0 ? (
           <div className="space-y-3">
@@ -789,64 +835,6 @@ export function ServiceScheduleFlowModal({
             </ul>
           </div>
         ) : null}
-
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-          <button
-            type="button"
-            className="vt-btn"
-            onClick={() => (sub === 0 ? onClose() : setSub((s) => s - 1))}
-          >
-            {sub === 0 ? "Cancelar" : "Atrás"}
-          </button>
-          <div className="flex gap-2">
-            {sub < 2 ? (
-              <button
-                type="button"
-                className="vt-btn vt-btn-primary"
-                disabled={sub === 0 && !st.months.length}
-                onClick={() => {
-                  if (sub === 0) {
-                    setSt((p) => {
-                      const dbm = { ...p.daysByMonth };
-                      for (const m of p.months) {
-                        if (!dbm[m]?.length) {
-                          dbm[m] = defaultDaysForMonth(
-                            p.calendarYear,
-                            m,
-                          );
-                        }
-                      }
-                      return { ...p, daysByMonth: dbm };
-                    });
-                    setSub(1);
-                    return;
-                  }
-                  if (sub === 1) {
-                    if (!st.months.length) {
-                      toast.error("Elige al menos un mes.");
-                      return;
-                    }
-                    const next = ensureDaysForSelectedMonths(st);
-                    if (!next) return;
-                    setSt(next);
-                    setSub(2);
-                  }
-                }}
-              >
-                Siguiente
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="vt-btn vt-btn-primary"
-                onClick={finish}
-              >
-                Guardar horarios
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    </CeModal>
   );
 }

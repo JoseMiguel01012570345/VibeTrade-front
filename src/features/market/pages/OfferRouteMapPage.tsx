@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { buildEmergentMapLegs } from "@features/market/logic/map/emergentRouteMapLegs";
 import { EmergentRouteFeedMap } from "@features/home/components/EmergentRouteFeedMap";

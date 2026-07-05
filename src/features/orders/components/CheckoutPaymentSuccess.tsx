@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Info, Loader2, ShieldCheck } from "lucide-react";
-import toast from "react-hot-toast";
+import { CheckCircle2, Info, ShieldCheck } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
+import { toast } from "sonner";
 import { downloadOrderReceiptPdf } from "../logic/orderReceiptPdf";
 
 export function CheckoutPaymentSuccess({
@@ -96,7 +97,7 @@ export function CheckoutPaymentSuccess({
               onClick={() => void downloadReceipt()}
               className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border-2 border-emerald-700 bg-white px-5 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 disabled:opacity-60"
             >
-              {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {pdfLoading ? <CeSpinner size="sm" /> : null}
               <span>{pdfLoading ? "Generando…" : "Descargar comprobante"}</span>
             </button>
           </div>

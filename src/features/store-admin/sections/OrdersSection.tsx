@@ -2,12 +2,12 @@ import { useMemo } from "react";
 import {
   CheckCircle2,
   Download,
-  Loader2,
   ShoppingBag,
   Truck,
   XCircle,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
+import { toast } from "sonner";
 import { formatMoney, statusLabel } from "@features/orders";
 import type {
   OrderPaymentStatus,
@@ -141,7 +141,7 @@ export function OrdersSection({ storeId }: { storeId: string }) {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin text-emerald-700" />
+          <CeSpinner className="text-emerald-700" />
         </div>
       ) : isError ? (
         <AdminEmptyState title="No se pudieron cargar los pedidos." />

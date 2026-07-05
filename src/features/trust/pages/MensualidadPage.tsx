@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
-import { Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
+import { toast } from "sonner";
+import { ShieldCheck, ShieldAlert } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { useTrustGate, usePayMensualidad } from "../hooks/useTrustGate";
 
 export function MensualidadPage() {
@@ -32,7 +33,7 @@ export function MensualidadPage() {
 
       {isLoading && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin" />
+          <CeSpinner />
         </div>
       )}
       {isError && (

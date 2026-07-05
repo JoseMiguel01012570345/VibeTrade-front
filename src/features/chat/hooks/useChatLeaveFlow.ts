@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useAppStore } from '@features/auth/logic/useAppStore'
 import type { Thread } from '@features/market/logic/store/useMarketStore'
 import {
@@ -20,7 +20,7 @@ import {
 } from '@features/chat/api/chatApi'
 import { counterpartyAlreadyRecordedPartyExit } from '@features/chat/logic/party-exit/threadPeerPartyExit'
 import { getSessionToken } from '@shared/services/http/sessionToken'
-import { errorToUserMessage } from '@shared/services/http/apiErrorMessage'
+import { toastApiError, openAuthModalForApiError } from '@features/auth/logic/toastApiError'
 import { VtHttpError } from '@shared/services/http/VtHttpError'
 import { requestEligibleLegRefund } from '@features/chat/api/routeLogisticsApi'
 import {
@@ -143,15 +143,11 @@ export function useChatLeaveFlow() {
             }
           }
         } catch (e) {
+          if (openAuthModalForApiError(e)) return
           if (e instanceof VtHttpError) {
             toast.error(e.message)
           } else {
-            toast.error(
-              errorToUserMessage(
-                e,
-                'No se pudo registrar la salida como transportista.',
-              ),
-            )
+            toastApiError(e, 'No se pudo registrar la salida como transportista.')
           }
           return
         }
@@ -256,6 +252,7 @@ export function useChatLeaveFlow() {
                   /* seguir con mensaje del servidor */
                 }
               }
+              if (openAuthModalForApiError(e)) return
               toast.error(e.message)
               return
             }
@@ -287,15 +284,11 @@ export function useChatLeaveFlow() {
                   }
                 }
               }
+              if (openAuthModalForApiError(e)) return
               toast.error(e.message)
               return
             }
-            toast.error(
-              errorToUserMessage(
-                e,
-                'No se pudo registrar la salida en el servidor.',
-              ),
-            )
+            toastApiError(e, 'No se pudo registrar la salida en el servidor.')
             return
           }
           const token = getSessionToken()
@@ -492,7 +485,7 @@ export function useChatLeaveFlow() {
       await requestEligibleLegRefund(r)
       toast.success('Reembolso solicitado (si el tramo era elegible).')
     } catch (e) {
-      toast.error(errorToUserMessage(e, 'No se pudo solicitar el reembolso.'))
+      toastApiError(e, 'No se pudo solicitar el reembolso.')
     } finally {
       setLeaveRefundBusy(false)
     }

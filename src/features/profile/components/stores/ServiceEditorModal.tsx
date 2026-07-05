@@ -1,6 +1,6 @@
 import { type ChangeEvent, useId, useMemo, useState } from "react";
-import toast from "react-hot-toast";
-import { HelpCircle, Loader2, Upload, X } from "lucide-react";
+import { toast } from "sonner";
+import { HelpCircle, Upload, X } from "lucide-react";
 import { UploadBlockingOverlay } from "@shared/components/ui/UploadBlockingOverlay";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { assertEntityPayloadUnderLimit } from "@shared/services/media/payloadLimits";
@@ -18,17 +18,16 @@ import {
   PROFILE_TITLE_MIN,
   validateServiceForm,
 } from "../../logic/profileStoreFormValidation";
-import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
 import {
   checkRow,
   fieldLabel,
   fieldRootWithInvalid,
   modalFormBody,
-  modalShellWide,
   modalSub,
   textareaMin,
 } from "@shared/styles/modals/formModalStyles";
 import { cn } from "@shared/lib/cn";
+import { CeButton, CeModal, CeSpinner } from "@shared/components/ui";
 import { VtSelect } from "@shared/components/ui/VtSelect";
 import { CustomFieldsEditor } from "./CustomFieldsEditor";
 import {
@@ -166,30 +165,98 @@ export function ServiceEditorModal({
     [photoSlots],
   );
 
-  if (!open) return null;
-
   const riesgosLines = fixSplitLines(riesgosText);
   const depLines = fixSplitLines(depText);
+
+  function handleSave() {
+    const riesgosItems = form.riesgos.enabled
+      ? fixSplitLines(riesgosText)
+      : [];
+    const depItems = form.dependencias.enabled
+      ? fixSplitLines(depText)
+      : [];
+    const draftForValidate: Omit<StoreService, "id" | "storeId"> = {
+      ...form,
+      photoUrls: serviceCatalogImagePhotoUrlsFromSlots(photoSlots),
+      riesgos: {
+        enabled: form.riesgos.enabled,
+        items: riesgosItems,
+      },
+      dependencias: {
+        enabled: form.dependencias.enabled,
+        items: depItems,
+      },
+      garantias: form.garantias,
+    };
+    const err = validateServiceForm(
+      draftForValidate,
+      riesgosText.split("\n"),
+      depText.split("\n"),
+    );
+    if (err) {
+      toast.error(err);
+      setShowVal(true);
+      return;
+    }
+    setShowVal(false);
+    const snapshot: Omit<StoreService, "id" | "storeId"> = {
+      ...form,
+      photoUrls: serviceCatalogImagePhotoUrlsFromSlots(photoSlots),
+      currencyCode: "USD",
+      recurrenceMonth: form.recurrenceMonth ?? 1,
+      recurrenceDay: form.recurrenceDay ?? 1,
+      published: form.published !== false,
+      riesgos: {
+        enabled: form.riesgos.enabled && riesgosItems.length > 0,
+        items: riesgosItems,
+      },
+      dependencias: {
+        enabled: form.dependencias.enabled && depItems.length > 0,
+        items: depItems,
+      },
+      garantias: {
+        enabled:
+          form.garantias.enabled && !!form.garantias.texto.trim(),
+        texto: form.garantias.texto,
+      },
+    };
+    const limitErr = assertEntityPayloadUnderLimit(
+      snapshot,
+      "Este servicio",
+    );
+    if (limitErr) {
+      toast.error(limitErr);
+      return;
+    }
+    onSave(snapshot);
+    onClose();
+  }
 
   return (
     <>
       <UploadBlockingOverlay active={uploadBusy} />
-      <div
-        className="vt-modal-backdrop"
-        role="dialog"
-        aria-modal="true"
-        onMouseDown={(e) => onBackdropPointerClose(e, onClose)}
+      <CeModal
+        show={open}
+        onClose={() => !uploadBusy && onClose()}
+        title={title}
+        size="5xl"
+        bodyClassName="overflow-y-auto max-h-[min(85vh,48rem)]"
+        footer={
+          <>
+            <CeButton color="gray" outline disabled={uploadBusy} onClick={onClose}>
+              Cancelar
+            </CeButton>
+            <CeButton disabled={uploadBusy} onClick={handleSave}>
+              Guardar servicio
+            </CeButton>
+          </>
+        }
       >
-        <div
-          className={modalShellWide}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <div className="vt-modal-title">{title}</div>
-          <div className={modalSub}>
-            Ficha de servicio (flow-ui). Si desmarcás riesgos o dependencias,
-            esas listas no aplican.
-          </div>
-          <div className={modalFormBody}>
+        <div className={modalSub}>
+          Ficha de servicio (flow-ui). Si desmarcás riesgos o dependencias,
+          esas listas no aplican.
+        </div>
+        <div className={modalFormBody}>
             <div className="grid gap-3 min-[560px]:grid-cols-2">
               <label
                 className={fieldRootWithInvalid(
@@ -506,8 +573,9 @@ export function ServiceEditorModal({
                         key={`svc-photo-pending-${i}`}
                         className="relative flex aspect-square w-[calc(50%-4px)] min-[480px]:w-[140px] shrink-0 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))]"
                       >
-                        <Loader2
-                          className="h-7 w-7 animate-spin text-[var(--muted)]"
+                        <CeSpinner
+                          size="md"
+                          className="text-[var(--muted)]"
                           aria-hidden
                         />
                         <span className="px-1 text-[9px] font-semibold text-[var(--muted)]">
@@ -540,83 +608,8 @@ export function ServiceEditorModal({
               }}
               showValidation={showVal}
             />
-          </div>
-          <div className="vt-modal-actions">
-            <button type="button" className="vt-btn" onClick={onClose}>
-              Cancelar
-            </button>
-            <button
-              type="button"
-              className="vt-btn vt-btn-primary"
-              onClick={() => {
-                const riesgosItems = form.riesgos.enabled
-                  ? fixSplitLines(riesgosText)
-                  : [];
-                const depItems = form.dependencias.enabled
-                  ? fixSplitLines(depText)
-                  : [];
-                const draftForValidate: Omit<StoreService, "id" | "storeId"> = {
-                  ...form,
-                  photoUrls: serviceCatalogImagePhotoUrlsFromSlots(photoSlots),
-                  riesgos: {
-                    enabled: form.riesgos.enabled,
-                    items: riesgosItems,
-                  },
-                  dependencias: {
-                    enabled: form.dependencias.enabled,
-                    items: depItems,
-                  },
-                  garantias: form.garantias,
-                };
-                const err = validateServiceForm(
-                  draftForValidate,
-                  riesgosText.split("\n"),
-                  depText.split("\n"),
-                );
-                if (err) {
-                  toast.error(err);
-                  setShowVal(true);
-                  return;
-                }
-                setShowVal(false);
-                const snapshot: Omit<StoreService, "id" | "storeId"> = {
-                  ...form,
-                  photoUrls: serviceCatalogImagePhotoUrlsFromSlots(photoSlots),
-                  currencyCode: "USD",
-                  recurrenceMonth: form.recurrenceMonth ?? 1,
-                  recurrenceDay: form.recurrenceDay ?? 1,
-                  published: form.published !== false,
-                  riesgos: {
-                    enabled: form.riesgos.enabled && riesgosItems.length > 0,
-                    items: riesgosItems,
-                  },
-                  dependencias: {
-                    enabled: form.dependencias.enabled && depItems.length > 0,
-                    items: depItems,
-                  },
-                  garantias: {
-                    enabled:
-                      form.garantias.enabled && !!form.garantias.texto.trim(),
-                    texto: form.garantias.texto,
-                  },
-                };
-                const limitErr = assertEntityPayloadUnderLimit(
-                  snapshot,
-                  "Este servicio",
-                );
-                if (limitErr) {
-                  toast.error(limitErr);
-                  return;
-                }
-                onSave(snapshot);
-                onClose();
-              }}
-            >
-              Guardar servicio
-            </button>
-          </div>
         </div>
-      </div>
+      </CeModal>
     </>
   );
 }

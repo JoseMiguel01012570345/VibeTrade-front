@@ -1,6 +1,6 @@
 import { createElement as h } from "react";
 import * as signalR from "@microsoft/signalr";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { notifyDesktopIfUnfocused } from "@features/notifications/logic/desktopNotifications";
@@ -58,7 +58,7 @@ function handleIncomingPersistedChatMessage(dto: ChatMessageDto): void {
   });
 
   toast.custom(
-    (t) =>
+    (id) =>
       h(
         "button",
         {
@@ -66,7 +66,7 @@ function handleIncomingPersistedChatMessage(dto: ChatMessageDto): void {
           className:
             "flex w-full max-w-[min(100vw-2rem,24rem)] cursor-pointer flex-col gap-1 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-left shadow-lg transition hover:bg-[color-mix(in_oklab,var(--muted)_12%,var(--surface))]",
           onClick: () => {
-            toast.dismiss(t.id);
+            toast.dismiss(id);
             window.location.assign(`/chat/${encodeURIComponent(dto.threadId)}`);
           },
         },

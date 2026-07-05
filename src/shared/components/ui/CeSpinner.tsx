@@ -24,7 +24,7 @@ export function CeSpinner({
   return (
     <svg
       className={cn(
-        "ce-spinner shrink-0 text-emerald-700 dark:text-emerald-400",
+        "ce-spinner shrink-0 text-primary-600 dark:text-primary-400",
         sizeClass[size],
         className,
       )}

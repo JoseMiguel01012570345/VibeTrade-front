@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
-import { Loader2, UserCheck, X } from "lucide-react";
+import { toast } from "sonner";
+import { UserCheck, X } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { cn } from "@shared/lib/cn";
 import { useResolveUserByPhoneMutation } from "@features/profile/hooks/useContacts";
 import { usePublishedTransportServicesQuery } from "@features/market/hooks/usePublishedTransportServicesQuery";
@@ -248,7 +249,7 @@ export function RouteSheetTransportistaPhoneField({
               onClick={() => void onSearch()}
             >
               {searchBusy ? (
-                <Loader2 className="animate-spin" size={16} aria-hidden />
+                <CeSpinner size="sm" aria-hidden />
               ) : (
                 <UserCheck size={16} aria-hidden />
               )}

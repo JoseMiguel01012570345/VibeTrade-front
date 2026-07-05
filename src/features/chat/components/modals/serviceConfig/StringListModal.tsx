@@ -1,15 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
-import { onBackdropPointerClose } from '@shared/lib/modals/modalClose'
-import { modalShellNarrow } from '@shared/styles/modals/formModalStyles'
+import { useEffect, useRef, useState } from "react";
+import { CeButton, CeModal } from "@shared/components/ui";
 
 type Props = {
-  open: boolean
-  title: string
-  items: string[]
-  onSave: (items: string[]) => void
-  onClose: () => void
-  placeholder?: string
-}
+  open: boolean;
+  title: string;
+  items: string[];
+  onSave: (items: string[]) => void;
+  onClose: () => void;
+  placeholder?: string;
+};
 
 export function StringListModal({
   open,
@@ -17,56 +16,52 @@ export function StringListModal({
   items: initial,
   onSave,
   onClose,
-  placeholder = 'Una lÃ­nea por Ã­tem',
+  placeholder = "Una línea por ítem",
 }: Props) {
-  const [text, setText] = useState('')
-  const wasOpenRef = useRef(false)
+  const [text, setText] = useState("");
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
     if (!open) {
-      wasOpenRef.current = false
-      return
+      wasOpenRef.current = false;
+      return;
     }
-    if (!wasOpenRef.current) setText(initial.join('\n'))
-    wasOpenRef.current = true
-  }, [open, initial])
-
-  if (!open) return null
+    if (!wasOpenRef.current) setText(initial.join("\n"));
+    wasOpenRef.current = true;
+  }, [open, initial]);
 
   function save() {
     const lines = text
       .split(/\n/)
       .map((l) => l.trim())
-      .filter(Boolean)
-    onSave(lines)
-    onClose()
+      .filter(Boolean);
+    onSave(lines);
+    onClose();
   }
 
   return (
-    <div
-      className="vt-modal-backdrop z-[90]"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(e) => onBackdropPointerClose(e, onClose)}
-    >
-      <div className={modalShellNarrow}>
-        <div className="vt-modal-title">{title}</div>
-        <textarea
-          className="vt-input mt-2 min-h-[160px] resize-y"
-          value={text}
-          placeholder={placeholder}
-          onChange={(e) => setText(e.target.value)}
-          rows={8}
-        />
-        <div className="mt-4 flex flex-wrap justify-end gap-2">
-          <button type="button" className="vt-btn" onClick={onClose}>
+    <CeModal
+      show={open}
+      onClose={onClose}
+      title={title}
+      size="md"
+      bodyClassName="pt-2"
+      footer={
+        <>
+          <CeButton color="gray" outline onClick={onClose}>
             Cancelar
-          </button>
-          <button type="button" className="vt-btn vt-btn-primary" onClick={save}>
-            Guardar lista
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+          </CeButton>
+          <CeButton onClick={save}>Guardar lista</CeButton>
+        </>
+      }
+    >
+      <textarea
+        className="mt-1 min-h-[160px] w-full resize-y rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+        value={text}
+        placeholder={placeholder}
+        onChange={(e) => setText(e.target.value)}
+        rows={8}
+      />
+    </CeModal>
+  );
 }

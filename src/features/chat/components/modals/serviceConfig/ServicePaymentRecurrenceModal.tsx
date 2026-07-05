@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import {
   VtSelect,
   type VtSelectOption,
 } from "@shared/components/ui/VtSelect";
+import { CeButton, CeModal } from "@shared/components/ui";
 import { cn } from "@shared/lib/cn";
 import { parseDecimal } from "@features/chat/logic/agreement/tradeAgreementValidation";
-import { onBackdropPointerClose } from '@shared/lib/modals/modalClose';
 import {
   monthsInScheduleAndVigencia,
   daysForServiceMonthInSchedule,
@@ -18,7 +18,6 @@ import {
   DEFAULT_RECURRENCE_MONEDA,
   emptyServicePaymentRecurrence,
 } from "@features/chat/logic/agreement/tradeAgreementTypes";
-import { modalShellWide } from '@shared/styles/modals/formModalStyles';
 
 const MES = [
   { n: 1, l: "Ene" },
@@ -379,20 +378,32 @@ export function ServicePaymentRecurrenceModal({
   }
 
   return (
-    <div
-      className="vt-modal-backdrop z-[90]"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(e) => onBackdropPointerClose(e, onClose)}
+    <CeModal
+      show={open}
+      onClose={onClose}
+      title="Recurrencia de pagos"
+      size="5xl"
+      bodyClassName="overflow-y-auto max-h-[min(75vh,40rem)] pt-2"
+      footer={
+        <>
+          <CeButton color="gray" outline onClick={onClose}>
+            Cancelar
+          </CeButton>
+          <CeButton
+            onClick={save}
+            disabled={!pickerMonths.length || !st.months.length || !st.entries.length}
+          >
+            Guardar
+          </CeButton>
+        </>
+      }
     >
-      <div className={modalShellWide}>
-        <div className="vt-modal-title">Recurrencia de pagos</div>
-        <p className="vt-muted mb-3 text-[13px]">
-          Los meses y días coinciden con la grilla de horarios (y la vigencia
-          del contrato). En cada fila indica mes, día, moneda y monto; las
-          monedas posibles dependen de la ficha (si anclaste el servicio) o de
-          la lista general del asistente.
-        </p>
+      <p className="vt-muted mb-3 text-[13px]">
+        Los meses y días coinciden con la grilla de horarios (y la vigencia
+        del contrato). En cada fila indica mes, día, moneda y monto; las
+        monedas posibles dependen de la ficha (si anclaste el servicio) o de
+        la lista general del asistente.
+      </p>
 
         {!pickerMonths.length ? (
           <p className="mb-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-sm text-[var(--muted)]">
@@ -530,23 +541,6 @@ export function ServicePaymentRecurrenceModal({
         >
           + Añadir pago
         </button>
-
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <button type="button" className="vt-btn" onClick={onClose}>
-            Cancelar
-          </button>
-          <button
-            type="button"
-            className="vt-btn vt-btn-primary"
-            disabled={
-              !pickerMonths.length || !st.months.length || !st.entries.length
-            }
-            onClick={save}
-          >
-            Guardar
-          </button>
-        </div>
-      </div>
-    </div>
+    </CeModal>
   );
 }

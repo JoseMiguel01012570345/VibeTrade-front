@@ -1,8 +1,8 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { Loader2, Plus, Search, ShieldCheck, Trash2, UserCog } from "lucide-react";
-import toast from "react-hot-toast";
-import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
-import { modalShellWide } from "@shared/styles/modals/formModalStyles";
+import { useMemo, useState } from "react";
+import { Plus, Search, ShieldCheck, Trash2, UserCog } from "lucide-react";
+import { CeButton, CeModal, CeSpinner } from "@shared/components/ui";
+import { toast } from "sonner";
+import { fieldLabel } from "@shared/styles/modals/formModalStyles";
 import {
   ROLE_ADMIN,
   ROLE_AFILIADO,
@@ -31,32 +31,6 @@ const ASSIGNABLE: { id: string; label: string }[] = [
   { id: ROLE_ALMACEN, label: "Almacén" },
   { id: ROLE_AFILIADO, label: "Afiliado" },
 ];
-
-function Modal({
-  title,
-  onClose,
-  children,
-  busy,
-}: {
-  title: string;
-  onClose: () => void;
-  children: ReactNode;
-  busy?: boolean;
-}) {
-  return (
-    <div
-      className="vt-modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      onMouseDown={(e) => onBackdropPointerClose(e, busy ? () => {} : onClose)}
-    >
-      <div className={modalShellWide} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="vt-modal-title">{title}</div>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 function RoleBadges({ roles }: { roles: string[] }) {
   if (roles.length === 0)
@@ -232,7 +206,7 @@ export function UsersAdminPage() {
 
       {isLoading && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin" />
+          <CeSpinner />
         </div>
       )}
       {isError && (
@@ -313,128 +287,154 @@ export function UsersAdminPage() {
         </section>
       )}
 
-      {createOpen && (
-        <Modal title="Nuevo usuario" onClose={() => setCreateOpen(false)} busy={createMut.isPending}>
-          <div className="flex flex-col gap-3">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm vt-muted">Email</span>
-              <input className="vt-input" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm vt-muted">Contraseña (mínimo 8)</span>
-              <input className="vt-input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm vt-muted">Nombre (opcional)</span>
-              <input className="vt-input" value={newName} onChange={(e) => setNewName(e.target.value)} />
-            </label>
-          </div>
-          <div className="vt-modal-actions">
-            <button className="vt-btn" onClick={() => setCreateOpen(false)} disabled={createMut.isPending}>
+      <CeModal
+        show={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Nuevo usuario"
+        size="lg"
+        bodyClassName="pt-2"
+        footer={
+          <>
+            <CeButton color="gray" outline disabled={createMut.isPending} onClick={() => setCreateOpen(false)}>
               Cancelar
-            </button>
-            <button className="vt-btn vt-btn-primary" onClick={onCreate} disabled={createMut.isPending}>
+            </CeButton>
+            <CeButton loading={createMut.isPending} onClick={onCreate}>
               Crear
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {rolesTarget && (
-        <Modal
-          title={`Roles de ${rolesTarget.displayName || rolesTarget.email || rolesTarget.id}`}
-          onClose={() => setRolesTarget(null)}
-          busy={rolesMut.isPending}
-        >
-          <div className="flex flex-col gap-2">
-            {rolesTarget.ownsStore ? (
-              <p className="vt-muted text-sm">
-                Este usuario es dueño de una tienda, por lo que siempre es superadmin.
-              </p>
-            ) : null}
-            {ASSIGNABLE.map((r) => (
-              <label key={r.id} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={rolesDraft.has(r.id)}
-                  onChange={() => toggleRole(r.id)}
-                />
-                {r.label}
-              </label>
-            ))}
-          </div>
-          <div className="vt-modal-actions">
-            <button className="vt-btn" onClick={() => setRolesTarget(null)} disabled={rolesMut.isPending}>
-              Cancelar
-            </button>
-            <button className="vt-btn vt-btn-primary" onClick={onSaveRoles} disabled={rolesMut.isPending}>
-              Guardar roles
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {editTarget && (
-        <Modal title="Editar usuario" onClose={() => setEditTarget(null)} busy={updateMut.isPending}>
-          <div className="flex flex-col gap-3">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm vt-muted">Nombre</span>
-              <input className="vt-input" value={editName} onChange={(e) => setEditName(e.target.value)} />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm vt-muted">Email</span>
-              <input className="vt-input" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
-            </label>
-          </div>
-          <div className="vt-modal-actions">
-            <button className="vt-btn" onClick={() => setEditTarget(null)} disabled={updateMut.isPending}>
-              Cancelar
-            </button>
-            <button className="vt-btn vt-btn-primary" onClick={onSaveEdit} disabled={updateMut.isPending}>
-              Guardar
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {passwordTarget && (
-        <Modal title="Cambiar contraseña" onClose={() => setPasswordTarget(null)} busy={passwordMut.isPending}>
+            </CeButton>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
           <label className="flex flex-col gap-1">
-            <span className="text-sm vt-muted">Nueva contraseña (mínimo 8)</span>
-            <input
-              className="vt-input"
-              type="password"
-              value={passwordValue}
-              onChange={(e) => setPasswordValue(e.target.value)}
-            />
+            <span className={fieldLabel}>Email</span>
+            <input className="vt-input" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
           </label>
-          <div className="vt-modal-actions">
-            <button className="vt-btn" onClick={() => setPasswordTarget(null)} disabled={passwordMut.isPending}>
-              Cancelar
-            </button>
-            <button className="vt-btn vt-btn-primary" onClick={onSavePassword} disabled={passwordMut.isPending}>
-              Cambiar
-            </button>
-          </div>
-        </Modal>
-      )}
+          <label className="flex flex-col gap-1">
+            <span className={fieldLabel}>Contraseña (mínimo 8)</span>
+            <input className="vt-input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={fieldLabel}>Nombre (opcional)</span>
+            <input className="vt-input" value={newName} onChange={(e) => setNewName(e.target.value)} />
+          </label>
+        </div>
+      </CeModal>
 
-      {deleteTarget && (
-        <Modal title="Eliminar usuario" onClose={() => setDeleteTarget(null)} busy={deleteMut.isPending}>
-          <p className="text-sm">
-            ¿Eliminar a{" "}
-            <strong>{deleteTarget.displayName || deleteTarget.email || deleteTarget.id}</strong>? Esta acción no se puede deshacer.
-          </p>
-          <div className="vt-modal-actions">
-            <button className="vt-btn" onClick={() => setDeleteTarget(null)} disabled={deleteMut.isPending}>
+      <CeModal
+        show={rolesTarget !== null}
+        onClose={() => setRolesTarget(null)}
+        title={`Roles de ${rolesTarget?.displayName || rolesTarget?.email || rolesTarget?.id || ""}`}
+        size="lg"
+        bodyClassName="pt-2"
+        footer={
+          <>
+            <CeButton color="gray" outline disabled={rolesMut.isPending} onClick={() => setRolesTarget(null)}>
               Cancelar
-            </button>
-            <button className="vt-btn vt-btn-primary" onClick={onDelete} disabled={deleteMut.isPending}>
+            </CeButton>
+            <CeButton loading={rolesMut.isPending} onClick={onSaveRoles}>
+              Guardar roles
+            </CeButton>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-2">
+          {rolesTarget?.ownsStore ? (
+            <p className="vt-muted text-sm">
+              Este usuario es dueño de una tienda, por lo que siempre es superadmin.
+            </p>
+          ) : null}
+          {ASSIGNABLE.map((r) => (
+            <label key={r.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={rolesDraft.has(r.id)}
+                onChange={() => toggleRole(r.id)}
+              />
+              {r.label}
+            </label>
+          ))}
+        </div>
+      </CeModal>
+
+      <CeModal
+        show={editTarget !== null}
+        onClose={() => setEditTarget(null)}
+        title="Editar usuario"
+        size="lg"
+        bodyClassName="pt-2"
+        footer={
+          <>
+            <CeButton color="gray" outline disabled={updateMut.isPending} onClick={() => setEditTarget(null)}>
+              Cancelar
+            </CeButton>
+            <CeButton loading={updateMut.isPending} onClick={onSaveEdit}>
+              Guardar
+            </CeButton>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1">
+            <span className={fieldLabel}>Nombre</span>
+            <input className="vt-input" value={editName} onChange={(e) => setEditName(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={fieldLabel}>Email</span>
+            <input className="vt-input" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+          </label>
+        </div>
+      </CeModal>
+
+      <CeModal
+        show={passwordTarget !== null}
+        onClose={() => setPasswordTarget(null)}
+        title="Cambiar contraseña"
+        size="md"
+        bodyClassName="pt-2"
+        footer={
+          <>
+            <CeButton color="gray" outline disabled={passwordMut.isPending} onClick={() => setPasswordTarget(null)}>
+              Cancelar
+            </CeButton>
+            <CeButton loading={passwordMut.isPending} onClick={onSavePassword}>
+              Cambiar
+            </CeButton>
+          </>
+        }
+      >
+        <label className="flex flex-col gap-1">
+          <span className={fieldLabel}>Nueva contraseña (mínimo 8)</span>
+          <input
+            className="vt-input"
+            type="password"
+            value={passwordValue}
+            onChange={(e) => setPasswordValue(e.target.value)}
+          />
+        </label>
+      </CeModal>
+
+      <CeModal
+        show={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="Eliminar usuario"
+        size="md"
+        bodyClassName="pt-2"
+        footer={
+          <>
+            <CeButton color="gray" outline disabled={deleteMut.isPending} onClick={() => setDeleteTarget(null)}>
+              Cancelar
+            </CeButton>
+            <CeButton color="failure" loading={deleteMut.isPending} onClick={onDelete}>
               Eliminar
-            </button>
-          </div>
-        </Modal>
-      )}
+            </CeButton>
+          </>
+        }
+      >
+        <p className="text-sm">
+          ¿Eliminar a{" "}
+          <strong>{deleteTarget?.displayName || deleteTarget?.email || deleteTarget?.id}</strong>? Esta acción no se puede deshacer.
+        </p>
+      </CeModal>
     </div>
   );
 }

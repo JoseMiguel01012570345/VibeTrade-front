@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { Lock, Mail } from 'lucide-react'
 import { forgotPassword } from '@features/auth/api/credentialsAuth'
 import { isValidEmail, isValidPassword } from '@features/auth/logic/credentialsValidation'

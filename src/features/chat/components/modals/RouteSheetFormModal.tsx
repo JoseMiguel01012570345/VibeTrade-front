@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import L from "leaflet";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { MapContainer, Marker, useMap, useMapEvents } from "react-leaflet";
 import { cn } from "@shared/lib/cn";
 import { VtDateField } from "@shared/components/ui/VtDateField";

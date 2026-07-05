@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import QRCode from "qrcode";
 import { useNavigate } from "react-router-dom";
 import type { AgreementCheckoutBreakdownApi, AgreementPaymentStatusApi, AgreementRoutePathApi } from "@features/chat/Dtos/agreement/agreementCheckoutApiTypes";

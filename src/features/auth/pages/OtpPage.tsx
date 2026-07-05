@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { cn } from "@shared/lib/cn"
 import { useAppStore } from "@features/auth/logic/useAppStore"
 import { OtpInput } from "../components/OtpInput"

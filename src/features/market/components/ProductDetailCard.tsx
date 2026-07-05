@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Heart, MessageCircle, Package, ShoppingCart, Truck } from "lucide-react";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import {
   CATALOG_CURRENCY_CODE,
   catalogDisplayPriceUsd,

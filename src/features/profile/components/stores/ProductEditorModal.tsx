@@ -1,6 +1,6 @@
 import { type ChangeEvent, useId, useMemo, useState } from "react";
-import toast from "react-hot-toast";
-import { Loader2, Upload, X } from "lucide-react";
+import { toast } from "sonner";
+import { Upload, X } from "lucide-react";
 import type { MerchandiseCondition } from "@features/market/Dtos/merchandiseCondition";
 import {
   CATALOG_CURRENCY_CODE,
@@ -12,16 +12,15 @@ import {
   PROFILE_TITLE_MIN,
   validateProductForm,
 } from "../../logic/profileStoreFormValidation";
-import { onBackdropPointerClose } from "@shared/lib/modals/modalClose";
 import {
   fieldLabel,
   fieldRootWithInvalid,
   modalFormBody,
-  modalShellWide,
   modalSub,
   textareaMin,
 } from "@shared/styles/modals/formModalStyles";
 import { cn } from "@shared/lib/cn";
+import { CeButton, CeModal, CeSpinner } from "@shared/components/ui";
 import { VtSelect } from "@shared/components/ui/VtSelect";
 import { UploadBlockingOverlay } from "@shared/components/ui/UploadBlockingOverlay";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
@@ -75,8 +74,6 @@ export function ProductEditorModal({
     if (form.category.trim()) merged.add(form.category.trim());
     return [...merged].sort((a, b) => a.localeCompare(b, "es"));
   }, [categoryOptions, form.category]);
-
-  if (!open) return null;
 
   function onPickProductPhoto(e: ChangeEvent<HTMLInputElement>) {
     void (async () => {
@@ -141,6 +138,32 @@ export function ProductEditorModal({
     })();
   }
 
+  function handleSave() {
+    const snapshot = {
+      ...form,
+      photoUrls: photoSlots.map((p) => p.url),
+      monedaPrecio: CATALOG_CURRENCY_CODE,
+      monedas: [CATALOG_CURRENCY_CODE],
+    };
+    const err = validateProductForm(snapshot);
+    if (err) {
+      toast.error(err);
+      setShowVal(true);
+      return;
+    }
+    const limitErr = assertEntityPayloadUnderLimit(
+      snapshot,
+      "Este producto",
+    );
+    if (limitErr) {
+      toast.error(limitErr);
+      return;
+    }
+    setShowVal(false);
+    onSave(snapshot);
+    onClose();
+  }
+
   function removeProductPhoto(slotId: string) {
     setPhotoSlots((prev) => {
       const slot = prev.find((p) => p.id === slotId);
@@ -165,21 +188,27 @@ export function ProductEditorModal({
   return (
     <>
       <UploadBlockingOverlay active={uploadBusy} />
-      <div
-        className="vt-modal-backdrop"
-        role="dialog"
-        aria-modal="true"
-        onMouseDown={(e) => onBackdropPointerClose(e, onClose)}
+      <CeModal
+        show={open}
+        onClose={() => !uploadBusy && onClose()}
+        title={title}
+        size="5xl"
+        bodyClassName="overflow-y-auto max-h-[min(85vh,48rem)]"
+        footer={
+          <>
+            <CeButton color="gray" outline disabled={uploadBusy} onClick={onClose}>
+              Cancelar
+            </CeButton>
+            <CeButton disabled={uploadBusy} onClick={handleSave}>
+              Guardar producto
+            </CeButton>
+          </>
+        }
       >
-        <div
-          className={modalShellWide}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <div className="vt-modal-title">{title}</div>
-          <div className={modalSub}>
-            Campos de ficha de producto según el perfil de negocio (flow-ui).
-          </div>
-          <div className={modalFormBody}>
+        <div className={modalSub}>
+          Campos de ficha de producto según el perfil de negocio (flow-ui).
+        </div>
+        <div className={modalFormBody}>
             <div className="grid gap-3 min-[560px]:grid-cols-2">
               <label
                 className={fieldRootWithInvalid(
@@ -486,9 +515,10 @@ export function ProductEditorModal({
                         key={`photo-pending-${i}`}
                         className="relative flex aspect-square w-[calc(50%-4px)] min-[480px]:w-[140px] shrink-0 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))]"
                       >
-                        <Loader2
-                          className="h-7 w-7 animate-spin text-[var(--muted)]"
-                          aria-hidden
+                        <CeSpinner
+                          size="lg"
+                          aria-label="Subiendo"
+                          className="text-[var(--muted)]"
                         />
                         <span className="px-1 text-[9px] font-semibold text-[var(--muted)]">
                           Subiendo…
@@ -524,45 +554,8 @@ export function ProductEditorModal({
               }}
               showValidation={showVal}
             />
-          </div>
-          <div className="vt-modal-actions">
-            <button type="button" className="vt-btn" onClick={onClose}>
-              Cancelar
-            </button>
-            <button
-              type="button"
-              className="vt-btn vt-btn-primary"
-              onClick={() => {
-                const snapshot = {
-                  ...form,
-                  photoUrls: photoSlots.map((p) => p.url),
-                  monedaPrecio: CATALOG_CURRENCY_CODE,
-                  monedas: [CATALOG_CURRENCY_CODE],
-                };
-                const err = validateProductForm(snapshot);
-                if (err) {
-                  toast.error(err);
-                  setShowVal(true);
-                  return;
-                }
-                const limitErr = assertEntityPayloadUnderLimit(
-                  snapshot,
-                  "Este producto",
-                );
-                if (limitErr) {
-                  toast.error(limitErr);
-                  return;
-                }
-                setShowVal(false);
-                onSave(snapshot);
-                onClose();
-              }}
-            >
-              Guardar producto
-            </button>
-          </div>
         </div>
-      </div>
+      </CeModal>
     </>
   );
 }

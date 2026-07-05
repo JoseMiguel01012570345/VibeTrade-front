@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { ArrowLeft, LayoutGrid, RefreshCw } from "lucide-react";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";

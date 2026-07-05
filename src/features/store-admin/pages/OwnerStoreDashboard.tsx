@@ -17,6 +17,7 @@ import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
 import { storeHref, storePanelHref } from "@features/market/logic/store/storePath";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { StoreEntryLoadingScreen } from "@features/storefront/components/StoreEntryLoadingScreen";
+import { useStoreLogoLoaded } from "@features/storefront/logic/useStoreLogoLoaded";
 import { logoutWebApp } from "@features/auth/logic/logoutWebApp";
 import { isStaffSession } from "@features/auth/logic/roles";
 import {
@@ -55,6 +56,10 @@ export function OwnerStoreDashboard() {
   const storeId = storeIdParam ?? resolvedByName;
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
   const loadingStore = store ?? fetchedStore;
+  const logoLoaded = useStoreLogoLoaded(
+    loadingStore?.name ?? storeName,
+    loadingStore?.avatarUrl,
+  );
   const [loadNonce] = useState(0);
   const { detailStatus, isFetching } = useStorePageDetail(
     storeId,
@@ -116,7 +121,7 @@ export function OwnerStoreDashboard() {
 
   if (!storeName && !storeIdParam) return <Navigate to="/home" replace />;
 
-  if ((resolving || detailStatus === "loading") && !store && !notFound) {
+  if ((resolving || detailStatus === "loading" || !logoLoaded) && !store && !notFound) {
     return (
       <StoreEntryLoadingScreen
         storeName={loadingStore?.name ?? storeName}

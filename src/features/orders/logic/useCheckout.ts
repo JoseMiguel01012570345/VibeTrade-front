@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { cartHasProducts, cartSubtotal, useCartStore } from "./cartStore";
 import { useCheckoutPreview, useCreateOrder } from "../hooks/useOrders";
 import type { OrderDeliveryMode } from "../Dtos/orders";
@@ -10,6 +10,7 @@ import {
   isDeliveryComplete,
   type DeliveryFormData,
 } from "./checkoutForm";
+import { toastApiError } from "@features/auth/logic/toastApiError";
 import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
@@ -130,7 +131,7 @@ export function useCheckout() {
       setPaymentSuccess(res);
       toast.success(`Pedido ${res.publicNumber} creado.`);
     } catch (err) {
-      toast.error(errorToUserMessage(err, "No se pudo crear el pedido."));
+      toastApiError(err, "No se pudo crear el pedido.");
     }
   }
 

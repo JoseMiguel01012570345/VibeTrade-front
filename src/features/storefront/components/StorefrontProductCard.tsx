@@ -1,6 +1,7 @@
 import { type MouseEvent } from "react";
 import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
+import { toastApiError } from "@features/auth/logic/toastApiError";
 import {
   CATALOG_CURRENCY_CODE,
   catalogDisplayPriceUsd,
@@ -145,9 +146,7 @@ export function StorefrontProductCard({
           catalogKind: "product",
         });
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "No se pudo guardar el me gusta.",
-        );
+        toastApiError(err, "No se pudo guardar el me gusta.");
       }
     })();
   }

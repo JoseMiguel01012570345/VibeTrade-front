@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo } from 'react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useMarketStore } from '@features/market/logic/store/useMarketStore'
 import { offerFromStoreCatalogs } from '@features/market/logic/offerFromCatalog'
 import {

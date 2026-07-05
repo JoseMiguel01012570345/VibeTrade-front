@@ -1,4 +1,4 @@
-import { modalShellNarrow } from '@shared/styles/modals/formModalStyles';
+import { CeButton, CeModal } from "@shared/components/ui";
 
 type Props = {
   open: boolean;
@@ -13,43 +13,33 @@ export function PeerPartyExitedInfoModal({
   reason,
   onAcknowledge,
 }: Props) {
-  if (!open) return null;
-
   return (
-    <div
-      className="vt-modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="peer-party-exit-title"
+    <CeModal
+      show={open}
+      onClose={onAcknowledge}
+      title="Salida del chat"
+      size="md"
+      bodyClassName="pt-2"
+      footer={
+        <CeButton onClick={onAcknowledge}>Entendido</CeButton>
+      }
     >
-      <div className={modalShellNarrow}>
-        <div id="peer-party-exit-title" className="vt-modal-title">
-          Salida del chat
-        </div>
-        <p className="vt-muted mb-3 text-[13px] leading-snug text-[var(--text)]">
-          <span className="font-semibold text-[var(--text)]">{roleLabel}</span>{" "}
-          saliÃ³ de este chat con un acuerdo ya aceptado.
-        </p>
-        <p className="mb-1 text-[12px] font-medium uppercase tracking-wide text-[var(--muted)]">
-          Motivo indicado
-        </p>
-        <p className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[13px] leading-snug text-[var(--text)]">
-          {reason}
-        </p>
-        <p className="vt-muted mt-4 mb-0 text-[12px] leading-snug">
-          El hilo sigue disponible para vos; la otra parte ya fue dada de baja de
-          este hilo (no lo verÃ¡ en la lista y no tendrÃ¡ acceso a este mismo hilo).
-        </p>
-        <div className="vt-modal-actions mt-5">
-          <button
-            type="button"
-            className="vt-btn vt-btn-primary"
-            onClick={onAcknowledge}
-          >
-            Entendido
-          </button>
-        </div>
-      </div>
-    </div>
+      <p className="mb-3 text-sm leading-snug text-gray-600 dark:text-gray-400">
+        <span className="font-semibold text-gray-900 dark:text-gray-100">
+          {roleLabel}
+        </span>{" "}
+        salió de este chat con un acuerdo ya aceptado.
+      </p>
+      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        Motivo indicado
+      </p>
+      <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm leading-snug text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
+        {reason}
+      </p>
+      <p className="mt-4 mb-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+        El hilo sigue disponible para vos; la otra parte ya fue dada de baja de
+        este hilo (no lo verá en la lista y no tendrá acceso a este mismo hilo).
+      </p>
+    </CeModal>
   );
 }

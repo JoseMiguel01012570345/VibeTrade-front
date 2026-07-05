@@ -1,5 +1,4 @@
-import { Button } from "flowbite-react";
-import { FlowbiteChatModal } from "../../layout/FlowbiteChatModal";
+import { CeButton, CeModal } from "@shared/components/ui";
 
 type Props = Readonly<{
   open: boolean;
@@ -22,24 +21,24 @@ export function RouteSheetActionConfirmModal({
   onConfirm,
 }: Props) {
   return (
-    <FlowbiteChatModal
+    <CeModal
       show={open}
-      onDismiss={onCancel}
+      onClose={onCancel}
       title={title}
-      description={message}
       size="md"
+      bodyClassName="pt-2"
       footer={
         <>
-          <Button color="light" onClick={onCancel}>
+          <CeButton color="gray" outline onClick={onCancel}>
             Cancelar
-          </Button>
-          <Button color={confirmColor} onClick={onConfirm}>
+          </CeButton>
+          <CeButton color={confirmColor} onClick={onConfirm}>
             {confirmLabel}
-          </Button>
+          </CeButton>
         </>
       }
     >
-      {null}
-    </FlowbiteChatModal>
+      <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
+    </CeModal>
   );
 }

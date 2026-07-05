@@ -8,6 +8,7 @@ import { setMarketHydrating } from '@features/market/api/marketPersistence'
 import { mergeStoreCatalogWithLocalExtras } from '@features/market/logic/storeCatalogTypes'
 import type { StoreDetailOwner } from '@features/market/api/fetchStoreDetail'
 import { useMarketStore } from '@features/market/logic/store/useMarketStore'
+import { rememberStoreBootSplash } from '@shared/lib/storeBootSplash'
 
 export function useStoreCatalogMeta() {
   const categories = useCatalogCategories()
@@ -42,6 +43,7 @@ export function useStorePageDetail(
           ),
         },
       }))
+      rememberStoreBootSplash(detail.store.name, detail.store.avatarUrl)
       if (detail.owner) {
         const o = detail.owner
         const nm = o.name?.trim() ?? ''
@@ -96,6 +98,7 @@ export async function reloadStoreDetailToStore(
         ),
       },
     }))
+    rememberStoreBootSplash(data.store.name, data.store.avatarUrl)
   } finally {
     setMarketHydrating(false)
   }

@@ -8,7 +8,7 @@ import {
   type RefObject,
 } from "react";
 import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { cn } from "@shared/lib/cn";
 import type { Message } from "@features/market/logic/store/marketStoreTypes";

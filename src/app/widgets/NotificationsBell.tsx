@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { Bell, ChevronLeft, ChevronRight, ExternalLink, History, Trash2, X } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
+import { CeTransitionModalShell } from '@shared/components/ui'
 import { useAppStore } from "@features/auth/logic/useAppStore"
 import type { NotificationItem } from "@features/notifications/Dtos/notificationItem"
 import { cn } from "@shared/lib/cn"
@@ -174,10 +174,7 @@ function HistoryFiltersPanel({
               <VtDateField
                 value={historyFromDate}
                 onChange={onFromDateChange}
-                disabled={historyLoading}
                 className="w-full min-w-0"
-                buttonClassName="w-full min-w-0 justify-between gap-2"
-                placeholder="Fecha inicio"
                 aria-label="Fecha de inicio"
               />
             </div>
@@ -201,10 +198,7 @@ function HistoryFiltersPanel({
               <VtDateField
                 value={historyToDate}
                 onChange={onToDateChange}
-                disabled={historyLoading}
                 className="w-full min-w-0"
-                buttonClassName="w-full min-w-0 justify-between gap-2"
-                placeholder="Fecha fin"
                 aria-label="Fecha de fin"
               />
             </div>
@@ -699,35 +693,8 @@ export function NotificationsBell() {
         )}
       </button>
 
-      {open &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div
-            className={cn(
-              'vt-modal-backdrop',
-              /* Sobre la barra inferior (z-60); el overlay vivía en el header (z-50) y quedaba debajo. */
-              '!z-[100]',
-            )}
-            role="button"
-            tabIndex={0}
-            aria-label="Cerrar notificaciones"
-            onPointerDown={(e) => {
-              if (e.target === e.currentTarget) setOpen(false)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                setOpen(false)
-              }
-            }}
-          >
-            <div
-              className="vt-modal flex max-h-[min(88dvh,40rem)] w-[min(100vw-2.25rem,36rem)] max-w-[36rem] flex-col overflow-y-auto overflow-x-hidden overscroll-contain px-5 pt-5 pb-7 [-ms-overflow-style:none] [scrollbar-width:none] sm:min-w-[22rem] sm:px-6 sm:pt-6 sm:pb-8 [&::-webkit-scrollbar]:hidden"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="notifications-modal-title"
-              onPointerDown={(e) => e.stopPropagation()}
-            >
+      <CeTransitionModalShell show={open} onClose={() => setOpen(false)} size="2xl">
+        <div className="flex max-h-[min(88dvh,40rem)] flex-col overflow-y-auto overflow-x-hidden overscroll-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex shrink-0 items-start justify-between gap-3">
               <div>
                 <div className="vt-modal-title" id="notifications-modal-title">
@@ -862,9 +829,7 @@ export function NotificationsBell() {
               )}
             </div>
           </div>
-        </div>,
-          document.body,
-        )}
+      </CeTransitionModalShell>
     </>
   )
 }

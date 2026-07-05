@@ -1,4 +1,5 @@
-import { AlertCircle, Check, CheckCheck, Loader2 } from "lucide-react";
+import { AlertCircle, Check, CheckCheck } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { cn } from "@shared/lib/cn";
 import type { ChatDeliveryStatus } from "@features/market/logic/store/marketStoreTypes";
 import {
@@ -43,7 +44,7 @@ export function MsgMeta({
           aria-label={deliveryTitle[delivery]}
         >
           {delivery === "pending" && (
-            <Loader2 className="size-3.5 shrink-0 animate-spin" strokeWidth={2.5} />
+            <CeSpinner size="sm" className="size-3.5" aria-hidden />
           )}
           {delivery === "sent" && (
             <Check size={14} strokeWidth={2.5} className="shrink-0" />

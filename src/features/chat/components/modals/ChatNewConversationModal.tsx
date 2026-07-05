@@ -1,14 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
-import { Loader2, Users } from "lucide-react";
-import { onBackdropPointerClose } from '@shared/lib/modals/modalClose';
-import {
-  fieldLabel,
-  modalFormBody,
-  modalShellWide,
-  modalSub,
-} from '@shared/styles/modals/formModalStyles';
+import { Users } from "lucide-react";
+import { CeButton, CeModal, CeSpinner } from "@shared/components/ui";
+import { fieldLabel } from "@shared/styles/modals/formModalStyles";
 import { VtMultiSelect } from "@shared/components/ui/VtMultiSelect";
 import type { VtSelectOption } from "@shared/components/ui/VtSelect";
 import {
@@ -17,7 +11,8 @@ import {
 } from "@features/profile/hooks/useContacts";
 import type { UserContact } from "@features/profile/api/contactsApi";
 import { createSocialGroupChatThread } from "@features/chat/api/chatApi";
-import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
+import { toast } from "sonner";
+import { toastApiError } from "@features/auth/logic/toastApiError";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 
 type Props = Readonly<{
@@ -94,12 +89,7 @@ export function ChatNewConversationModal({ open, onClose }: Props) {
         `${u.displayName?.trim() || "Usuario"} añadido a la selección`,
       );
     } catch (e) {
-      toast.error(
-        errorToUserMessage(
-          e,
-          "No encontramos un usuario con ese número en VibeTrade.",
-        ),
-      );
+      toastApiError(e, "No encontramos un usuario con ese número en VibeTrade.");
     }
   }
 
@@ -118,111 +108,93 @@ export function ChatNewConversationModal({ open, onClose }: Props) {
       onClose();
       nav(`/chat/${dto.id}`);
     } catch (e) {
-      toast.error(
-        errorToUserMessage(
-          e,
-          "No se pudo crear el chat. ¿Tenés una tienda en tu cuenta?",
-        ),
-      );
+      toastApiError(e, "No se pudo crear el chat. ¿Tenés una tienda en tu cuenta?");
     } finally {
       setCreateBusy(false);
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div
-      className="vt-modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="chat-new-conv-title"
-      onMouseDown={(e) => onBackdropPointerClose(e, onClose)}
-    >
-      <div className={modalShellWide} onMouseDown={(e) => e.stopPropagation()}>
-        <div className="vt-modal-title flex items-center gap-2" id="chat-new-conv-title">
-          <Users size={22} className="shrink-0 text-[var(--primary)]" aria-hidden />
+    <CeModal
+      show={open}
+      onClose={() => !createBusy && onClose()}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <Users size={22} className="shrink-0 text-primary-600 dark:text-primary-400" aria-hidden />
           Nuevo chat o grupo
-        </div>
-        <div className={modalSub}>
-          Elegí uno o más contactos para abrir un chat directo o grupal. Podés
-          buscar por número: si está registrado en VibeTrade, se añade a la
-          selección. Este tipo de chat no incluye acuerdos comerciales ni rutas.
-        </div>
-
-        <div className={modalFormBody}>
-          <label className="flex flex-col gap-2">
-            <span className={fieldLabel}>Buscar por teléfono</span>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <input
-                className="vt-input min-h-[42px] flex-1"
-                type="tel"
-                autoComplete="tel"
-                placeholder="+54 …"
-                value={phoneSearch}
-                onChange={(e) => setPhoneSearch(e.target.value)}
-                disabled={resolveMutation.isPending}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void addResolvedFromSearch();
-                  }
-                }}
-              />
-              <button
-                type="button"
-                className="vt-btn vt-btn-primary inline-flex shrink-0 items-center justify-center gap-2"
-                disabled={resolveMutation.isPending}
-                onClick={() => void addResolvedFromSearch()}
-              >
-                {resolveMutation.isPending ? (
-                  <Loader2 className="animate-spin" size={16} aria-hidden />
-                ) : null}
-                Añadir si existe
-              </button>
-            </div>
-          </label>
-
-          <div className="mt-4">
-            <span className={fieldLabel}>Participantes</span>
-            <p className="mb-2 text-[12px] font-semibold text-[var(--muted)]">
-              Contactos y números validados. Podés elegir varios para armar un
-              grupo.
-            </p>
-            {loading ? (
-              <div className="flex items-center gap-2 py-6 text-[var(--muted)]">
-                <Loader2 className="animate-spin" size={18} aria-hidden />
-                Cargando contactos…
-              </div>
-            ) : (
-              <VtMultiSelect
-                ariaLabel="Participantes del chat"
-                placeholder="Seleccionar contactos…"
-                value={selectedIds}
-                onChange={setSelectedIds}
-                options={multiselectOptions}
-              />
-            )}
-          </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border)] pt-4">
-          <button type="button" className="vt-btn vt-btn-ghost" onClick={onClose}>
+        </span>
+      }
+      size="3xl"
+      bodyClassName="pt-2"
+      footer={
+        <>
+          <CeButton color="gray" outline disabled={createBusy} onClick={onClose}>
             Cancelar
-          </button>
-          <button
-            type="button"
-            className="vt-btn vt-btn-primary inline-flex items-center gap-2"
-            disabled={createBusy || loading || selectedIds.length === 0}
+          </CeButton>
+          <CeButton
+            loading={createBusy}
+            disabled={loading || selectedIds.length === 0}
             onClick={() => void createChat()}
           >
-            {createBusy ? (
-              <Loader2 className="animate-spin" size={16} aria-hidden />
-            ) : null}
             Abrir chat
-          </button>
+          </CeButton>
+        </>
+      }
+    >
+      <p className="mb-4 text-sm leading-snug text-gray-600 dark:text-gray-400">
+        Elegí uno o más contactos para abrir un chat directo o grupal. Podés
+        buscar por número: si está registrado en VibeTrade, se añade a la
+        selección. Este tipo de chat no incluye acuerdos comerciales ni rutas.
+      </p>
+
+      <label className="flex flex-col gap-2">
+        <span className={fieldLabel}>Buscar por teléfono</span>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            className="min-h-[42px] flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            type="tel"
+            autoComplete="tel"
+            placeholder="+54 …"
+            value={phoneSearch}
+            onChange={(e) => setPhoneSearch(e.target.value)}
+            disabled={resolveMutation.isPending}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void addResolvedFromSearch();
+              }
+            }}
+          />
+          <CeButton
+            className="shrink-0"
+            loading={resolveMutation.isPending}
+            onClick={() => void addResolvedFromSearch()}
+          >
+            Añadir si existe
+          </CeButton>
         </div>
+      </label>
+
+      <div className="mt-4">
+        <span className={fieldLabel}>Participantes</span>
+        <p className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+          Contactos y números validados. Podés elegir varios para armar un grupo.
+        </p>
+        {loading ? (
+          <div className="flex items-center gap-2 py-6 text-gray-500 dark:text-gray-400">
+            <CeSpinner size="md" aria-label="Cargando contactos" />
+            Cargando contactos…
+          </div>
+        ) : (
+          <VtMultiSelect
+            ariaLabel="Participantes del chat"
+            placeholder="Seleccionar contactos…"
+            value={selectedIds}
+            onChange={setSelectedIds}
+            options={multiselectOptions}
+          />
+        )}
       </div>
-    </div>
+    </CeModal>
   );
 }

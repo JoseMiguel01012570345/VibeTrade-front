@@ -36,6 +36,63 @@
       :root.dark #boot-splash .boot-backdrop {
         background: #0b1220;
       }
+      #boot-splash.boot-splash--store .boot-backdrop {
+        background: rgba(255, 255, 255, 0.65);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+      }
+      :root.dark #boot-splash.boot-splash--store .boot-backdrop {
+        background: rgba(11, 18, 32, 0.55);
+      }
+      #boot-splash.boot-splash--store .boot-logo {
+        display: none;
+      }
+      #boot-splash .boot-spinner {
+        display: none;
+        width: 3.5rem;
+        height: 3.5rem;
+        color: #059669;
+        animation: boot-spinner-rotate 2s linear infinite;
+      }
+      #boot-splash.boot-splash--store .boot-spinner {
+        display: block;
+      }
+      #boot-splash .boot-spinner circle {
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2px;
+        stroke-linecap: round;
+        animation: boot-spinner-dash 1.5s ease-in-out infinite;
+      }
+      @keyframes boot-spinner-rotate {
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes boot-spinner-dash {
+        0% {
+          stroke-dasharray: 1, 150;
+          stroke-dashoffset: 0;
+        }
+        50% {
+          stroke-dasharray: 90, 150;
+          stroke-dashoffset: -35;
+        }
+        100% {
+          stroke-dasharray: 90, 150;
+          stroke-dashoffset: -124;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-splash .boot-spinner {
+          animation: none;
+        }
+        #boot-splash .boot-spinner circle {
+          animation: none;
+          stroke-dasharray: 90, 150;
+          stroke-dashoffset: -35;
+        }
+      }
       #boot-splash .boot-inner {
         position: relative;
         z-index: 1;
@@ -54,21 +111,39 @@
         width: min(92vw, 520px);
         height: auto;
       }
+      #boot-splash .boot-store-logo {
+        display: block;
+        width: 7rem;
+        height: 7rem;
+        max-width: 7rem;
+        object-fit: contain;
+        padding: 0.5rem;
+        border-radius: 1rem;
+        background: #ffffff;
+        box-shadow: 0 8px 30px rgba(15, 23, 42, 0.12);
+        border: 1px solid #e8ecf2;
+      }
+      @media (min-width: 640px) {
+        #boot-splash .boot-store-logo {
+          width: 9rem;
+          height: 9rem;
+          max-width: 9rem;
+        }
+      }
     </style>
   </head>
   <body>
     <div id="boot-splash" aria-busy="true">
       <div class="boot-backdrop" aria-hidden="true"></div>
       <div class="boot-inner">
-        <img
-          class="boot-logo"
-          src="/logo-oficial.svg"
-          alt="VibeTrade"
-          width="520"
-          height="353"
-          decoding="async"
-          fetchpriority="high"
-        />
+        <svg
+          class="boot-spinner"
+          viewBox="0 0 100 100"
+          role="status"
+          aria-label="Cargando tienda"
+        >
+          <circle cx="50" cy="50" r="20" />
+        </svg>
       </div>
     </div>
     <div id="root"></div>

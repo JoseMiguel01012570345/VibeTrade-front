@@ -1,4 +1,4 @@
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { Download } from "lucide-react";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { cn } from "@shared/lib/cn";

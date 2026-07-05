@@ -1,4 +1,5 @@
-import { Loader2, PencilLine, Users, X } from "lucide-react";
+import { PencilLine, Users, X } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import type { ChatThreadMemberDto } from "@features/chat/Dtos/thread/chatApiTypes";
 
@@ -152,8 +153,9 @@ export function ChatSocialOverlays({
             </div>
             {socialMembersLoading ? (
               <div className="flex justify-center py-8">
-                <Loader2
-                  className="size-8 animate-spin text-[var(--primary)]"
+                <CeSpinner
+                  size="lg"
+                  className="text-[var(--primary)]"
                   aria-hidden
                 />
               </div>

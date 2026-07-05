@@ -12,6 +12,7 @@ import { normStoreName } from '@features/market/logic/store/marketSliceHelpers'
 import { findStoreByNormalizedName } from '@features/market/logic/store/storePath'
 import { useMarketStore } from '@features/market/logic/store/useMarketStore'
 import { useAppStore } from '@features/auth/logic/useAppStore'
+import { rememberStoreBootSplash } from '@shared/lib/storeBootSplash'
 
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
 
@@ -93,6 +94,7 @@ function hydrateStoreDetail(
         [id]: mergeStoreCatalogWithLocalExtras(s.storeCatalogs[id], detail.catalog),
       },
     }))
+    rememberStoreBootSplash(detail.store.name, detail.store.avatarUrl)
     if (detail.owner) {
       const o = detail.owner
       const nm = o.name?.trim() ?? ''

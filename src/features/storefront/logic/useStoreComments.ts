@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import toast from "react-hot-toast";
+import { toastApiError, openAuthModalForApiError } from "@features/auth/logic/toastApiError";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { getSessionToken } from "@shared/services/http/sessionToken";
-import { errorToUserMessage } from "@shared/services/http/apiErrorMessage";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
 import type {
   OfferQaCommentEnriched,
@@ -140,7 +139,7 @@ export function useStoreComments(store: StoreBadge, open: boolean) {
       setReplyingTo(null);
       await reload();
     } catch (e) {
-      toast.error(errorToUserMessage(e, "No se pudo enviar. Prueba de nuevo."));
+      toastApiError(e, "No se pudo enviar. Prueba de nuevo.");
     } finally {
       setSending(false);
     }
@@ -180,9 +179,8 @@ export function useStoreComments(store: StoreBadge, open: boolean) {
               : c,
           ),
         );
-        toast.error(
-          e instanceof Error ? e.message : "No se pudo actualizar el me gusta.",
-        );
+        if (openAuthModalForApiError(e)) return;
+        toastApiError(e, "No se pudo actualizar el me gusta.");
       }
     },
     [canEngageLikes, store.id],

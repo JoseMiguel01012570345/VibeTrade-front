@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { modalShellNarrow } from '@shared/styles/modals/formModalStyles';
+import { CeButton, CeModal } from "@shared/components/ui";
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  /** Si retorna false, el modal permanece abierto (motivo vacÃ­o o error). */
+  /** Si retorna false, el modal permanece abierto (motivo vacío o error). */
   onConfirm: (reason: string) => void | Promise<boolean | void>;
   busy?: boolean;
   emptyReasonError?: string | null;
@@ -19,48 +19,20 @@ export function ChatLeaveReasonModal({
 }: Props) {
   const [reason, setReason] = useState("");
 
-  if (!open) return null;
-
   return (
-    <div
-      className="vt-modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="chat-leave-reason-title"
-    >
-      <div className={modalShellNarrow}>
-        <div id="chat-leave-reason-title" className="vt-modal-title">
-          Motivo de salida
-        </div>
-        <p className="vt-muted mb-3 text-[13px] leading-snug text-[var(--text)]">
-          Indica el motivo de tu salida. Los demÃ¡s participantes podrÃ¡n ver que abandonaste la
-          conversaciÃ³n.
-        </p>
-        <label
-          className="mb-1 block text-[11px] font-extrabold text-[var(--text)]"
-          htmlFor="chat-leave-reason-ta"
-        >
-          Motivo (obligatorio)
-        </label>
-        <textarea
-          id="chat-leave-reason-ta"
-          className="vt-input min-h-[88px] w-full resize-y"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          disabled={busy}
-          placeholder="Ej.: cambio de planes, acuerdo cumplidoâ€¦"
-        />
-        {emptyReasonError ?
-          <p className="mt-2 text-[12px] font-semibold text-[var(--bad)]">{emptyReasonError}</p>
-        : null}
-        <div className="vt-modal-actions mt-4">
-          <button type="button" className="vt-btn" onClick={onClose} disabled={busy}>
+    <CeModal
+      show={open}
+      onClose={() => !busy && onClose()}
+      title="Motivo de salida"
+      size="md"
+      bodyClassName="pt-2"
+      footer={
+        <>
+          <CeButton color="gray" outline disabled={busy} onClick={onClose}>
             Cancelar
-          </button>
-          <button
-            type="button"
-            className="vt-btn vt-btn-primary"
-            disabled={busy}
+          </CeButton>
+          <CeButton
+            loading={busy}
             onClick={() => {
               void (async () => {
                 const r = await Promise.resolve(onConfirm(reason.trim()));
@@ -71,9 +43,33 @@ export function ChatLeaveReasonModal({
             }}
           >
             Confirmar salida
-          </button>
-        </div>
-      </div>
-    </div>
+          </CeButton>
+        </>
+      }
+    >
+      <p className="mb-3 text-sm leading-snug text-gray-600 dark:text-gray-400">
+        Indica el motivo de tu salida. Los demás participantes podrán ver que
+        abandonaste la conversación.
+      </p>
+      <label
+        className="mb-1 block text-xs font-extrabold text-gray-900 dark:text-gray-100"
+        htmlFor="chat-leave-reason-ta"
+      >
+        Motivo (obligatorio)
+      </label>
+      <textarea
+        id="chat-leave-reason-ta"
+        className="min-h-[88px] w-full resize-y rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        disabled={busy}
+        placeholder="Ej.: cambio de planes, acuerdo cumplido…"
+      />
+      {emptyReasonError ? (
+        <p className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400">
+          {emptyReasonError}
+        </p>
+      ) : null}
+    </CeModal>
   );
 }

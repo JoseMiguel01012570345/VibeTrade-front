@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Download, Loader2, Wallet } from "lucide-react";
+import { Download, Wallet } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { formatMoney } from "@features/orders";
 import { useStoreOrders } from "@features/finance/hooks/useWarehouse";
 import type { OrderSummaryDto } from "@features/orders/Dtos/orders";
@@ -85,7 +86,7 @@ export function FinanceSection({ storeId }: { storeId: string }) {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin text-emerald-700" />
+          <CeSpinner className="text-emerald-700" />
         </div>
       ) : isError ? (
         <AdminEmptyState title="No se pudieron cargar las finanzas." />

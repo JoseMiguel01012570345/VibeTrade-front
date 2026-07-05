@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { FileDown, Loader2, MapPin } from "lucide-react";
-import toast from "react-hot-toast";
+import { FileDown, MapPin } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
+import { toast } from "sonner";
 import { cn } from "@shared/lib/cn";
 import type { Message, ReplyQuote } from "@features/market/logic/store/useMarketStore";
 import type { TradeAgreement } from "@features/chat/Dtos/agreement/tradeAgreementTypes";
@@ -210,7 +211,7 @@ function PaymentFeeReceiptBubble({ receipt }: { receipt: PaymentFeeReceiptPayloa
         className="inline-flex min-h-10 w-full max-w-xs items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] px-3 py-2 text-[12px] font-black text-[var(--text)] hover:bg-[color-mix(in_oklab,var(--primary)_16%,var(--surface))] disabled:opacity-60"
       >
         {busy ?
-          <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+          <CeSpinner size="sm" aria-hidden />
         : <FileDown className="size-4 shrink-0" aria-hidden />}
         Descargar PDF del desglose
       </button>

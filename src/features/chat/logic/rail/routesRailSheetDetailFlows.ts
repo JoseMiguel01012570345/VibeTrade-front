@@ -1,4 +1,4 @@
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import type { NavigateFunction } from "react-router-dom";
 import { postRouteSheetEditCarrierResponse } from "@features/chat/api/chatApi";
 import { getSessionToken } from "@shared/services/http/sessionToken";

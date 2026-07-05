@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BarChart3, Loader2 } from "lucide-react";
+import { BarChart3 } from "lucide-react";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { StatisticsDateRangeFilter } from "../components/StatisticsDateRangeFilter";
 import { StatisticsChartCard } from "../components/StatisticsChartCard";
 import {
@@ -114,7 +115,7 @@ export function StatisticsPage() {
         </div>
       ) : isLoading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="animate-spin text-[var(--primary)]" size={32} />
+          <CeSpinner size="lg" className="text-[var(--primary)]" />
         </div>
       ) : (
         <>

@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import { toast } from "sonner";
 import { trackOrder } from "../api/ordersApi";
 import { ordersQueryKeys } from "../hooks/useOrders";
 import {

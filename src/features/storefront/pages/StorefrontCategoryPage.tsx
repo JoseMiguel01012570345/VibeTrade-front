@@ -17,6 +17,7 @@ import { CategoryHeader } from "../components/CategoryHeader";
 import { CategoryGrid } from "../components/CategoryGrid";
 import { CategoryPagination } from "../components/CategoryPagination";
 import { CategoryFooterTabs } from "../components/CategoryFooterTabs";
+import { useStoreLogoLoaded } from "../logic/useStoreLogoLoaded";
 import {
   StorefrontLoadingState,
   StorefrontNotFoundState,
@@ -212,6 +213,10 @@ export function StorefrontCategoryPage({
   const { storeId, resolving, notFound, fetchedStore } = useStoreIdFromName(storeName, me.id);
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
   const loadingStore = store ?? fetchedStore;
+  const logoLoaded = useStoreLogoLoaded(
+    loadingStore?.name ?? storeName,
+    loadingStore?.avatarUrl,
+  );
   const [loadNonce] = useState(0);
   const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
 
@@ -219,7 +224,7 @@ export function StorefrontCategoryPage({
     return <Navigate to="/home" replace />;
   }
 
-  if (!notFound && (resolving || detailStatus === "loading")) {
+  if (!notFound && (resolving || detailStatus === "loading" || !logoLoaded)) {
     return (
       <StorefrontLoadingState
         storeName={loadingStore?.name ?? storeName}

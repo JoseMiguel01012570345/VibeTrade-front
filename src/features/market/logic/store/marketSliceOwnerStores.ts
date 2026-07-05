@@ -1,5 +1,6 @@
 import type { StoreCatalog, StoreProduct, StoreService } from "@features/market/logic/storeCatalogTypes"
 import { normalizeOwnerWebsiteUrl } from "@shared/lib/websiteUrl"
+import { rememberStoreBootSplash } from "@shared/lib/storeBootSplash"
 import { uid } from './marketStoreHelpers'
 import { isOwnerOfStore, normStoreName } from './marketSliceHelpers'
 import { storeNameUrlIssue } from './storePath'
@@ -137,6 +138,10 @@ updateOwnerStore: (storeId, ownerUserId, patch) => {
       storeCatalogs: { ...prev.storeCatalogs, [storeId]: nextCat },
     }
   })
+  if (patch.avatarUrl !== undefined) {
+    const updated = get().stores[storeId]
+    if (updated) rememberStoreBootSplash(updated.name, updated.avatarUrl)
+  }
   return true
 },
 

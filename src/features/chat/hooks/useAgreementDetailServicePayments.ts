@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useMarketStore } from '@features/market/logic/store/useMarketStore'
 import type {
   AgreementServicePaymentApi,
