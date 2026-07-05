@@ -12,7 +12,6 @@ import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useCartStore } from "@features/orders/logic/cartStore";
 import { CartNavButton } from "@features/orders/components/CartNavButton";
 import { GuestAuthControls } from "@features/auth/components/GuestAuthControls";
-import { ThemeToggle } from "@app/widgets/ThemeToggle";
 import { VtAutocompleteInput } from "@shared/components/ui/VtAutocompleteInput";
 import { fetchStoreCatalogAutocomplete } from "../api/fetchStoreCatalogAutocomplete";
 import { StorefrontSupportFab } from "./StorefrontSupportFab";
@@ -31,9 +30,6 @@ const topLinkClass =
  * tienda (avatar + nombre). El buscador es controlado en el storefront (filtra el
  * catálogo) o navega a `/store/:id?q=` desde otras vistas (p. ej. el detalle).
  */
-const themeWrapClass =
-  "flex h-10 items-center [&_button]:border-emerald-200 [&_button]:bg-white/95 [&_button]:shadow-[0_2px_10px_rgba(15,118,110,0.08)]";
-
 export function StorefrontHeader({
   store,
   query,
@@ -178,13 +174,7 @@ export function StorefrontHeader({
             </Link>
             <div className="flex items-center gap-2 sm:gap-2.5">
               <CartNavButton href={storeCartHref(store)} count={cartCount} />
-              {!isSessionActive ? (
-                <GuestAuthControls />
-              ) : (
-                <div className={themeWrapClass}>
-                  <ThemeToggle />
-                </div>
-              )}
+              {!isSessionActive ? <GuestAuthControls /> : null}
             </div>
           </nav>
         </div>

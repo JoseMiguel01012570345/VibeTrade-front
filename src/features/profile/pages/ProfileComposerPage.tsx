@@ -25,7 +25,8 @@ import { ProfileAccountPage } from "./ProfileAccountPage";
 import { ProfileSavedPage } from "./ProfileSavedPage";
 import { ProfileReelsPage } from "./ProfileReelsPage";
 import { ProfilePageHeader } from "../components/ProfilePageHeader";
-import { ProfilePageTabs } from "../components/ProfilePageTabs";
+import { ProfileSidebar } from "../components/ProfileSidebar";
+import "../styles/profile.css";
 
 export function ProfileComposerPage() {
   const { userId, section: sectionParam } = useParams();
@@ -105,54 +106,58 @@ export function ProfileComposerPage() {
   }
 
   return (
-    <div className="container vt-page">
-      <div className="flex flex-col gap-3.5">
+    <div className="vt-profile-page">
+      <div className="mx-auto w-full max-w-[1140px] px-4 py-4 sm:py-6">
         <ProfilePageHeader
           title={isMe ? "Perfil" : `Perfil · ${profileDisplayName}`}
           onBack={() => nav(-1)}
         />
 
-        <ProfilePageTabs
-          userId={userId}
-          tab={tab}
-          isMe={isMe}
-          showStoresTab={isMe || storesForProfile.length > 0}
-        />
-
-        {tab === "account" ? (
-          <ProfileAccountPage
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
+          <ProfileSidebar
+            userId={userId}
+            tab={tab}
             isMe={isMe}
-            safeName={safeName}
-            safeEmail={safeEmail}
-            safeUsername={safeUsername}
-            profileDisplayName={profileDisplayName}
-            letter={letter}
-            visitorPublic={visitorPublic}
-            visitorPublicStatus={visitorPublicStatus}
-            visitorAvatarDisplay={visitorAvatarDisplay}
-            searchParams={searchParams}
-            setSearchParams={setSearchParams}
+            showStoresTab={isMe || storesForProfile.length > 0}
           />
-        ) : null}
 
-        {tab === "stores" && (isMe || storesForProfile.length > 0) ? (
-          <ProfileStoresSection
-            ownerUserId={resolvedProfileUserId}
-            canEdit={isMe}
-          />
-        ) : null}
+          <div className="min-w-0 flex-1">
+            {tab === "account" ? (
+              <ProfileAccountPage
+                isMe={isMe}
+                safeName={safeName}
+                safeEmail={safeEmail}
+                safeUsername={safeUsername}
+                profileDisplayName={profileDisplayName}
+                letter={letter}
+                visitorPublic={visitorPublic}
+                visitorPublicStatus={visitorPublicStatus}
+                visitorAvatarDisplay={visitorAvatarDisplay}
+                searchParams={searchParams}
+                setSearchParams={setSearchParams}
+              />
+            ) : null}
 
-        {tab === "saved" && isMe ? (
-          <ProfileSavedPage
-            savedOfferItems={savedOfferItems}
-            stores={stores}
-            routeOfferPublic={routeOfferPublic}
-          />
-        ) : null}
+            {tab === "stores" && (isMe || storesForProfile.length > 0) ? (
+              <ProfileStoresSection
+                ownerUserId={resolvedProfileUserId}
+                canEdit={isMe}
+              />
+            ) : null}
 
-        {tab === "reels" && isMe ? (
-          <ProfileReelsPage savedIds={savedIds} reelTitles={reelTitles} />
-        ) : null}
+            {tab === "saved" && isMe ? (
+              <ProfileSavedPage
+                savedOfferItems={savedOfferItems}
+                stores={stores}
+                routeOfferPublic={routeOfferPublic}
+              />
+            ) : null}
+
+            {tab === "reels" && isMe ? (
+              <ProfileReelsPage savedIds={savedIds} reelTitles={reelTitles} />
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );

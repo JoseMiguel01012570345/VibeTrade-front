@@ -16,7 +16,6 @@ import { GuestAuthControls } from "@features/auth/components/GuestAuthControls";
 import { NotificationsBell } from "../widgets/NotificationsBell";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { AuthEntryModal } from "@features/auth";
-import { ThemeToggle } from "../widgets/ThemeToggle";
 import { syncChatNotificationsFromServer } from "@features/notifications/logic/notificationsSync";
 import { useTrustGate } from "@features/trust";
 import { AnalyticsTracker } from "@features/analytics";
@@ -104,15 +103,8 @@ export function AppShell() {
     !hideShellOverlayOnWideChat;
   const showGuestAuthInOverlay =
     !isSessionActive && !isOnboarding && !staffSession && !isStoreSurfaceRoute(pathname);
-  const showThemeInOverlay =
-    !staffSession &&
-    !isStoreSurfaceRoute(pathname) &&
-    !isChatRoute(pathname) &&
-    (isOnboarding || isSessionActive);
   const showShellTopRightOverlay =
-    showGuestAuthInOverlay ||
-    (showThemeInOverlay && !showGuestAuthInOverlay) ||
-    showNotificationsInOverlay;
+    showGuestAuthInOverlay || showNotificationsInOverlay;
   const me = useAppStore((s) => s.me);
   const trustThreshold = useAppStore((s) => s.trustThreshold);
   const showTrustBanner =
@@ -197,10 +189,6 @@ export function AppShell() {
           <div className="container flex items-center justify-end gap-2 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pe-[max(10px,calc(env(safe-area-inset-right,0px)+10px))] sm:pe-4">
             {showGuestAuthInOverlay ? (
               <GuestAuthControls className="pointer-events-auto" />
-            ) : showThemeInOverlay ? (
-              <div className="pointer-events-auto flex h-10 items-center">
-                <ThemeToggle />
-              </div>
             ) : null}
             {showNotificationsInOverlay ? (
               <div className="pointer-events-auto flex h-10 items-center">

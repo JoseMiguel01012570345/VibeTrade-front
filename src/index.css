@@ -24,7 +24,7 @@
 
 @layer base {
   :root {
-    --bg: #f6f7fb;
+    --bg: #f7f3ef;
     --surface: #ffffff;
     --text: #0f172a;
     --muted: #64748b;
@@ -145,6 +145,14 @@
 }
 
 @layer components {
+  .vt-app {
+    background: var(--bg);
+  }
+
+  .vt-main {
+    background: var(--bg);
+  }
+
   .vt-page {
     @apply p-0;
   }
@@ -399,148 +407,6 @@
     @apply mt-3.5 flex flex-wrap items-center justify-end gap-2.5;
   }
 
-  /* TrustBar: gradiente + ondas (pseudo-elementos); layout en TrustBar.tsx */
-  .vt-trust-bar {
-    position: relative;
-    height: 18px;
-    border-radius: 999px;
-    background: var(--surface);
-    overflow: hidden;
-    border: 1px solid var(--border);
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
-  }
-
-  .vt-trust-fill {
-    position: absolute;
-    inset: 0 auto 0 0;
-    background: linear-gradient(90deg, var(--bad), #f59e0b, var(--good));
-    border-right: 1px solid color-mix(in oklab, var(--surface) 70%, transparent);
-    transition: width 320ms cubic-bezier(0.2, 0.9, 0.2, 1);
-    will-change: width;
-    overflow: hidden;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  }
-
-  .vt-trust-fill::before,
-  .vt-trust-fill::after {
-    content: "";
-    position: absolute;
-    left: -80px;
-    right: -80px;
-    top: 0;
-    height: 22px;
-    background-repeat: repeat-x;
-    background-position: 0 0;
-    opacity: 0.46;
-    filter: blur(0.12px);
-    transform: translateY(0);
-    animation-timing-function: linear, ease-in-out;
-    animation-iteration-count: infinite, infinite;
-    pointer-events: none;
-  }
-
-  .vt-trust-fill::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='22' viewBox='0 0 160 22'%3E%3Cpath d='M0 14 C 20 8, 40 20, 60 14 S 100 8, 120 14 S 140 20, 160 14 V22 H0 Z' fill='rgba(255,255,255,0.92)'/%3E%3C/svg%3E");
-    background-size: 160px 22px;
-    animation-name: vt-water-x1, vt-water-y1;
-    animation-duration: 1050ms, 1500ms;
-  }
-
-  .vt-trust-fill::after {
-    top: 0;
-    opacity: 0.22;
-    filter: blur(0.3px);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='22' viewBox='0 0 120 22'%3E%3Cpath d='M0 15 C 15 10, 30 20, 45 15 S 75 10, 90 15 S 105 20, 120 15 V22 H0 Z' fill='rgba(255,255,255,0.82)'/%3E%3C/svg%3E");
-    background-size: 120px 22px;
-    animation-name: vt-water-x2, vt-water-y2;
-    animation-duration: 820ms, 1200ms;
-  }
-
-  .vt-trust-fill[data-moving="1"]::before,
-  .vt-trust-fill[data-moving="1"]::after {
-    opacity: 0.74;
-    filter: blur(0.08px);
-  }
-
-  .vt-trust-fill[data-moving="1"]::before {
-    animation-duration: 750ms, 1400ms;
-  }
-
-  .vt-trust-fill[data-moving="1"]::after {
-    animation-duration: 620ms, 1100ms;
-  }
-
-  /* Modo oscuro: degradado mÃ¡s apagado y ondas menos brillantes */
-  :root.dark .vt-trust-fill {
-    background: linear-gradient(
-      90deg,
-      #8f2d2d,
-      #9a3412,
-      #a16207,
-      #3d6b2e
-    );
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  }
-
-  :root.dark .vt-trust-fill::before {
-    opacity: 0.14;
-    filter: blur(0.2px);
-  }
-
-  :root.dark .vt-trust-fill::after {
-    opacity: 0.08;
-    filter: blur(0.35px);
-  }
-
-  :root.dark .vt-trust-fill[data-moving="1"]::before,
-  :root.dark .vt-trust-fill[data-moving="1"]::after {
-    opacity: 0.28;
-  }
-
-  .vt-trust-threshold {
-    position: absolute;
-    top: -10px;
-    bottom: -10px;
-    width: 4px;
-    border-radius: 999px;
-    background: rgba(15, 23, 42, 0.85);
-    box-shadow:
-      0 0 0 3px rgba(255, 255, 255, 0.92),
-      0 10px 18px rgba(15, 23, 42, 0.18),
-      0 0 18px rgba(37, 99, 235, 0.25);
-    cursor: help;
-  }
-
-  .vt-trust-score {
-    position: absolute;
-    inset: 0;
-    font-size: 12px;
-    font-weight: 800;
-    color: rgba(15, 23, 42, 0.92);
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
-    pointer-events: none;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  :root.dark .vt-trust-score {
-    color: rgba(248, 250, 252, 0.96);
-    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
-  }
-
-  :root.dark .vt-trust-threshold {
-    background: rgba(248, 250, 252, 0.92);
-    box-shadow:
-      0 0 0 3px rgba(15, 23, 42, 0.82),
-      0 10px 18px rgba(0, 0, 0, 0.35),
-      0 0 18px rgba(59, 130, 246, 0.28);
-  }
-
-  :root.dark .vt-trust-bar {
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
-  }
-
   :root.dark .vt-card {
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
   }
@@ -767,60 +633,6 @@ body:has(.vt-home-page) {
 @keyframes vt-rec-dot {
   50% {
     opacity: 0.4;
-  }
-}
-
-@keyframes vt-water-x1 {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: 160px 0;
-  }
-}
-
-@keyframes vt-water-x2 {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: -120px 0;
-  }
-}
-
-@keyframes vt-water-y1 {
-  0% {
-    transform: translateY(0);
-  }
-  25% {
-    transform: translateY(2.6px);
-  }
-  55% {
-    transform: translateY(1.2px);
-  }
-  75% {
-    transform: translateY(3.2px);
-  }
-  100% {
-    transform: translateY(0);
-  }
-}
-
-@keyframes vt-water-y2 {
-  0% {
-    transform: translateY(1px);
-  }
-  30% {
-    transform: translateY(3.4px);
-  }
-  60% {
-    transform: translateY(1.6px);
-  }
-  85% {
-    transform: translateY(3.8px);
-  }
-  100% {
-    transform: translateY(1px);
   }
 }
 

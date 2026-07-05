@@ -1,12 +1,25 @@
 import { cn } from "@shared/lib/cn";
 
-export const profileTabLinkClass =
-  "min-w-[calc(50%-6px)] flex-1 cursor-pointer rounded-[14px] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-center font-black no-underline sm:min-w-0";
+export const profileSectionCardClass = "vt-profile-card";
+
+export const profileSectionTitleClass = "vt-profile-section-title";
+
+export const profileSectionMutedClass = "vt-profile-muted";
+
+export const profileGhostBtnClass = "vt-profile-btn vt-profile-btn--ghost";
+
+export const profilePrimaryBtnClass = "vt-profile-btn vt-profile-btn--primary";
+
+export const profileSecondaryBtnClass = "vt-profile-btn vt-profile-btn--secondary";
+
+export const profileFieldLabelClass = "vt-profile-field-label";
+
+export const profileInputClass = "vt-input vt-profile-input";
+
+export const profileDividerClass = "vt-profile-divider";
+
+export const profilePanelClass = "vt-profile-panel";
 
 export function profileTabClass(active: boolean): string {
-  return cn(
-    profileTabLinkClass,
-    active &&
-      "border-[color-mix(in_oklab,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))]",
-  );
+  return cn("vt-profile-nav-link", active && "vt-profile-nav-link--active");
 }

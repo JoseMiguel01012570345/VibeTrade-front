@@ -31,16 +31,19 @@ export function UserAvatarBadge({
           className="h-full w-full object-cover"
         />
       ) : (
-        <span className="text-lg font-black text-white">{fallbackLetter}</span>
+        <span className="text-lg font-black">{fallbackLetter}</span>
       )}
     </>
   )
 
   const shellClass = cn(
-    'relative grid place-items-center overflow-hidden rounded-[18px] bg-gradient-to-br from-[var(--primary)] to-violet-600 text-white',
+    'relative grid place-items-center overflow-hidden rounded-[18px]',
     sizeClass,
+    avatarUrl
+      ? 'border border-[var(--border)] bg-[var(--surface)]'
+      : 'vt-avatar-placeholder',
     interactive &&
-      'ring-offset-2 transition hover:opacity-95 focus-within:outline-none focus-within:ring-2 focus-within:ring-[var(--primary)]',
+      'ring-offset-2 transition hover:opacity-95 focus-within:outline-none focus-within:ring-2 focus-within:ring-[color-mix(in_oklab,var(--border)_70%,var(--text))]',
   )
 
   if (interactive && onPickClick) {

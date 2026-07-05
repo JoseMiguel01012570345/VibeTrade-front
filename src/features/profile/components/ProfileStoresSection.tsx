@@ -24,6 +24,12 @@ import {
   matchesNameQuery,
 } from "@features/market/logic/nameCategoryFilter";
 import { mergeStoreCatalogWithLocalExtras } from "@features/market/logic/storeCatalogTypes";
+import {
+  profileGhostBtnClass,
+  profilePrimaryBtnClass,
+  profileSectionCardClass,
+  profileSectionTitleClass,
+} from "@features/profile/logic/profileTabStyles";
 
 export function ProfileStoresSection({
   ownerUserId,
@@ -308,12 +314,12 @@ export function ProfileStoresSection({
   if (!canEdit) {
     return (
       <>
-        <div className="vt-card vt-card-pad">
+        <div className={profileSectionCardClass}>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="vt-h2">Tiendas</div>
+            <div className={profileSectionTitleClass}>Tiendas</div>
             <button
               type="button"
-              className="vt-btn vt-btn-ghost vt-btn-sm inline-flex items-center gap-1"
+              className={profileGhostBtnClass}
               disabled={storesReloadBusy || myStores.length === 0}
               title="Recargar todas las tiendas desde el servidor"
               aria-label="Recargar todas las tiendas"
@@ -452,7 +458,7 @@ export function ProfileStoresSection({
           }
         }}
       />
-      <div className="vt-card vt-card-pad">
+      <div className={profileSectionCardClass}>
         <datalist id="store-cat-hints">
           {catalogCategories.map((c) => (
             <option key={c} value={c} />
@@ -462,10 +468,10 @@ export function ProfileStoresSection({
         <div className="flex flex-col gap-3 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-start min-[520px]:justify-between min-[520px]:gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="vt-h2">Mis tiendas</div>
+              <div className={profileSectionTitleClass}>Mis tiendas</div>
               <button
                 type="button"
-                className="vt-btn vt-btn-ghost vt-btn-sm inline-flex items-center gap-1"
+                className={profileGhostBtnClass}
                 disabled={storesReloadBusy || myStores.length === 0}
                 title="Recargar todas las tiendas desde el servidor"
                 aria-label="Recargar todas las tiendas"
@@ -479,7 +485,7 @@ export function ProfileStoresSection({
                 Recargar
               </button>
             </div>
-            <p className="vt-muted mt-1.5 max-w-[640px] text-[13px] leading-snug">
+            <p className="mt-1.5 max-w-[640px] text-[13px] leading-snug text-slate-500">
               Configurá nombre, categorías, descripción del catálogo,
               verificación (soporte), transporte y logo. Para cargar o editar
               productos y servicios abre la tienda desde la tarjeta.
@@ -487,7 +493,7 @@ export function ProfileStoresSection({
           </div>
           <button
             type="button"
-            className="vt-btn vt-btn-primary inline-flex w-full shrink-0 items-center justify-center gap-2 min-[520px]:w-auto"
+            className={`${profilePrimaryBtnClass} w-full shrink-0 min-[520px]:w-auto`}
             onClick={() => setCreateOpen(true)}
           >
             <Plus size={18} /> Nueva tienda

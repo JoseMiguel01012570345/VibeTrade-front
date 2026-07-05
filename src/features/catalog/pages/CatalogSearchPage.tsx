@@ -323,24 +323,14 @@ export function CatalogSearchPage() {
       }`}
     >
       <div className="mx-auto w-full max-w-[1140px] px-4 py-4 sm:py-6">
-        <div className="mb-5 flex min-w-0 items-start gap-2 pr-[3.25rem]">
+        <div className="mb-5 flex min-w-0 items-center pr-[3.25rem]">
           <Link
             to="/home"
-            className="vt-auth-back-btn mt-0.5 shrink-0"
+            className="vt-auth-back-btn shrink-0"
             aria-label="Volver al inicio"
           >
             <ArrowLeft size={18} strokeWidth={2.25} aria-hidden />
-            Volver
           </Link>
-          <div className="min-w-0 flex-1">
-            <h1 className="vt-auth-title break-words text-[clamp(1.5rem,6vw,1.75rem)]">
-              Buscar
-            </h1>
-            <p className="vt-auth-subtitle">
-              Tiendas, productos, servicios y hojas de ruta. Elige filtros y pulsa
-              la lupa.
-            </p>
-          </div>
         </div>
 
         <div className="rounded-[18px] border border-[#d9d5cf] bg-white p-4 shadow-[0_12px_30px_rgba(33,37,41,0.05)] sm:p-5">

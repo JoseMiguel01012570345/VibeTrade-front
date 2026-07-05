@@ -17,15 +17,24 @@ import { formatPhoneForDisplay } from '@features/auth/logic/formatPhoneForDispla
 import { StoreTrustMini } from '@features/profile/components/trust/StoreTrustMini'
 import { TrustBar } from '../components/trust/TrustBar'
 import { ThemeToggle } from '@app/widgets/ThemeToggle'
-import { ConfirmModal } from '@shared/components/ui/ConfirmModal'
-import { CeButton, CeModal } from '@shared/components/ui'
-import { fieldLabel, modalSub } from '@shared/styles/modals/formModalStyles'
 import { UploadBlockingOverlay } from '@shared/components/ui/UploadBlockingOverlay'
 import { ImageLightbox } from '@shared/components/media/ImageLightbox'
 import { ContactsModal } from '../components/ContactsModal'
 import { PaymentGatewayConfigModal } from '../components/PaymentGatewayConfigModal'
+import { ProfileButton } from '../components/ProfileButton'
+import { ProfileConfirmModal } from '../components/ProfileConfirmModal'
+import { ProfileModal } from '../components/ProfileModal'
 import { UserAvatarBadge } from '../components/account/UserAvatarBadge'
 import { PROFILE_SOCIAL_META } from '@features/profile/logic/profileSocialMeta'
+import {
+  profileDividerClass,
+  profileFieldLabelClass,
+  profileInputClass,
+  profilePanelClass,
+  profileSectionCardClass,
+  profileSectionMutedClass,
+  profileSectionTitleClass,
+} from '@features/profile/logic/profileTabStyles'
 import { useProfileAccountSection } from '../hooks/useProfileAccountSection'
 import type { ProfileVisitorPublic } from '../Dtos/profileVisitorPublic'
 
@@ -87,9 +96,9 @@ export function ProfileAccountPage({
         onChange={account.onProfileAvatarChange}
       />
 
-      <div className="vt-card vt-card-pad">
+      <div className={profileSectionCardClass}>
         <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-          <div className="vt-h2">Configuración del usuario</div>
+          <div className={profileSectionTitleClass}>Configuración del usuario</div>
           {isMe ? (
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
               <Suspense fallback={null}>
@@ -98,13 +107,13 @@ export function ProfileAccountPage({
             </div>
           ) : null}
         </div>
-        <div className="vt-divider my-3" />
+        <div className={profileDividerClass} />
 
         {isMe ? (
           <div className="mb-4 flex flex-col gap-3 border-b border-[var(--border)] pb-4">
             <TrustBar />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs font-black text-[var(--muted)]">
+              <span className={profileFieldLabelClass}>
                 Apariencia (modo claro / oscuro)
               </span>
               <ThemeToggle />
@@ -164,31 +173,31 @@ export function ProfileAccountPage({
               />
               <div className="flex min-w-0 flex-1 flex-col gap-2">
                 <div>
-                  <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+                  <div className={profileFieldLabelClass}>
                     <ImageIcon size={14} /> Foto de perfil
                   </div>
-                  <p className="vt-muted mt-1 max-w-md text-[13px] leading-snug">
+                  <p className={`${profileSectionMutedClass} mt-1 max-w-md`}>
                     Elige una imagen desde tu dispositivo y guárdala con el botón
                     (vista previa local con URL blob).
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                  <button
-                    type="button"
-                    className="vt-btn vt-btn-primary vt-btn-sm inline-flex items-center gap-1.5"
+                  <ProfileButton
+                    variant="primary"
+                    size="sm"
                     disabled={!account.profileAvatarDirty}
                     onClick={account.saveProfileAvatar}
                   >
                     <Save size={14} aria-hidden /> Guardar foto
-                  </button>
-                  <button
-                    type="button"
-                    className="vt-btn vt-btn-ghost vt-btn-sm"
+                  </ProfileButton>
+                  <ProfileButton
+                    variant="ghost"
+                    size="sm"
                     disabled={!account.profileAvatarDirty}
                     onClick={account.discardProfileAvatarDraft}
                   >
                     Descartar
-                  </button>
+                  </ProfileButton>
                 </div>
               </div>
             </div>
@@ -198,11 +207,11 @@ export function ProfileAccountPage({
         <div className="flex flex-col gap-3">
           {isMe ? (
             <label className="flex flex-col gap-2">
-              <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+              <span className={profileFieldLabelClass}>
                 <User size={14} /> Nombre de usuario
               </span>
               <input
-                className="vt-input"
+                className={profileInputClass}
                 value={safeUsername}
                 disabled
                 readOnly
@@ -211,13 +220,13 @@ export function ProfileAccountPage({
             </label>
           ) : null}
           <label className="flex flex-col gap-2">
-            <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+            <span className={profileFieldLabelClass}>
               <User size={14} /> Nombre
             </span>
             {isMe ? (
               <div className="flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-stretch">
                 <input
-                  className="vt-input min-w-0 flex-1"
+                  className={`${profileInputClass} min-w-0 flex-1`}
                   value={account.nameDraft}
                   onChange={(e) =>
                     account.setNameDraft(e.target.value.slice(0, 100))
@@ -225,18 +234,19 @@ export function ProfileAccountPage({
                   autoComplete="name"
                   maxLength={100}
                 />
-                <button
-                  type="button"
-                  className="vt-btn vt-btn-primary vt-btn-sm inline-flex shrink-0 items-center justify-center gap-1.5 min-[480px]:self-stretch"
+                <ProfileButton
+                  variant="primary"
+                  size="sm"
+                  className="min-[480px]:self-stretch"
                   disabled={!account.nameDirty}
                   onClick={account.saveDisplayName}
                 >
                   <Save size={14} aria-hidden /> Guardar
-                </button>
+                </ProfileButton>
               </div>
             ) : (
               <input
-                className="vt-input"
+                className={profileInputClass}
                 value={profileDisplayName}
                 disabled
                 readOnly
@@ -245,13 +255,13 @@ export function ProfileAccountPage({
           </label>
 
           <label className="flex flex-col gap-2">
-            <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+            <span className={profileFieldLabelClass}>
               <Mail size={14} /> Email (obligatorio)
             </span>
             {isMe ? (
               <div className="flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-stretch">
                 <input
-                  className="vt-input min-w-0 flex-1"
+                  className={`${profileInputClass} min-w-0 flex-1`}
                   type="email"
                   autoComplete="email"
                   inputMode="email"
@@ -261,26 +271,27 @@ export function ProfileAccountPage({
                   }
                   maxLength={120}
                 />
-                <button
-                  type="button"
-                  className="vt-btn vt-btn-primary vt-btn-sm inline-flex shrink-0 items-center justify-center gap-1.5 min-[480px]:self-stretch"
+                <ProfileButton
+                  variant="primary"
+                  size="sm"
+                  className="min-[480px]:self-stretch"
                   disabled={!account.emailDirty}
                   onClick={account.saveEmailField}
                 >
                   <Save size={14} aria-hidden /> Guardar
-                </button>
+                </ProfileButton>
               </div>
             ) : (
-              <input className="vt-input" value="—" disabled readOnly />
+              <input className={profileInputClass} value="—" disabled readOnly />
             )}
           </label>
 
           <label className="flex flex-col gap-2">
-            <span className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+            <span className={profileFieldLabelClass}>
               <Phone size={14} /> Teléfono (obligatorio)
             </span>
             <input
-              className="vt-input"
+              className={profileInputClass}
               value={isMe ? formatPhoneForDisplay(account.me.phone) : '—'}
               disabled
               readOnly
@@ -289,58 +300,58 @@ export function ProfileAccountPage({
 
           {isMe ? (
             <div className="flex flex-col gap-2">
-              <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+              <div className={profileFieldLabelClass}>
                 <Users size={14} /> Agenda en la plataforma
               </div>
-              <p className="vt-muted max-w-md text-[13px] leading-snug">
+              <p className={`${profileSectionMutedClass} max-w-md`}>
                 Guarda números de otros usuarios registrados para verlos con
                 nombre y teléfono del perfil.
               </p>
-              <button
-                type="button"
-                className="vt-btn inline-flex w-fit items-center gap-2"
+              <ProfileButton
+                variant="secondary"
+                className="w-fit"
                 onClick={() => account.setContactsModalOpen(true)}
               >
                 <Users size={16} aria-hidden /> Contactos
-              </button>
+              </ProfileButton>
             </div>
           ) : null}
 
           <div className="flex flex-col gap-2">
-            <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+            <div className={profileFieldLabelClass}>
               <ExternalLink size={14} /> Multi-cuenta (Instagram / Telegram / X)
             </div>
-            <div className="flex flex-wrap gap-2.5">
-              <button
-                type="button"
-                className="vt-btn"
+            <div className="flex flex-wrap gap-2">
+              <ProfileButton
+                variant="secondary"
+                size="sm"
                 disabled={!isMe}
                 onClick={() => isMe && account.openSocialModal('instagram')}
               >
-                <Camera size={16} aria-hidden /> Conectar Instagram
-              </button>
-              <button
-                type="button"
-                className="vt-btn"
+                <Camera size={16} aria-hidden /> Instagram
+              </ProfileButton>
+              <ProfileButton
+                variant="secondary"
+                size="sm"
                 disabled={!isMe}
                 onClick={() => isMe && account.openSocialModal('telegram')}
               >
-                <Send size={16} aria-hidden /> Conectar Telegram
-              </button>
-              <button
-                type="button"
-                className="vt-btn"
+                <Send size={16} aria-hidden /> Telegram
+              </ProfileButton>
+              <ProfileButton
+                variant="secondary"
+                size="sm"
                 disabled={!isMe}
                 onClick={() => isMe && account.openSocialModal('x')}
               >
                 Conectar X
-              </button>
+              </ProfileButton>
             </div>
             {isMe &&
             (account.profileSocialLinks.instagram ||
               account.profileSocialLinks.telegram ||
               account.profileSocialLinks.x) ? (
-              <div className="mt-1 rounded-xl border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-3">
+              <div className={profilePanelClass}>
                 <div className="text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
                   Cuentas guardadas
                 </div>
@@ -352,24 +363,25 @@ export function ProfileAccountPage({
                       return (
                         <li
                           key={id}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2"
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2"
                         >
                           <span className="font-bold text-[var(--text)]">
                             {PROFILE_SOCIAL_META[id].short}
                           </span>
                           <span
-                            className="vt-muted min-w-0 flex-1 truncate text-right font-mono text-[12px]"
+                            className={`${profileSectionMutedClass} min-w-0 flex-1 truncate text-right font-mono text-[12px]`}
                             title={v}
                           >
                             {v}
                           </span>
-                          <button
-                            type="button"
-                            className="vt-btn vt-btn-ghost vt-btn-sm shrink-0"
+                          <ProfileButton
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0"
                             onClick={() => account.openSocialModal(id)}
                           >
                             Editar
-                          </button>
+                          </ProfileButton>
                         </li>
                       )
                     },
@@ -381,33 +393,33 @@ export function ProfileAccountPage({
 
           {isMe ? (
             <div className="flex flex-col gap-2">
-              <div className="inline-flex items-center gap-2 text-xs font-black text-[var(--muted)]">
+              <div className={profileFieldLabelClass}>
                 <CreditCard size={14} /> Configurar tarjetas de pago (solo
                 propietario)
               </div>
-              <div className="vt-muted">
+              <div className={profileSectionMutedClass}>
                 Elige una pasarela y añade credenciales necesarias por pasarela
                 (demo).
               </div>
-              <button
-                type="button"
-                className="vt-btn"
+              <ProfileButton
+                variant="secondary"
+                className="w-fit"
                 onClick={() => account.setPaymentConfigOpen(true)}
               >
                 Configurar
-              </button>
+              </ProfileButton>
             </div>
           ) : null}
 
           {isMe ? (
             <div className="mt-6 flex flex-col gap-2 border-t border-[var(--border)] pt-5">
-              <button
-                type="button"
-                className="vt-btn inline-flex items-center justify-center gap-2 border-[color-mix(in_oklab,var(--bad)_45%,var(--border))] text-[var(--bad)]"
+              <ProfileButton
+                variant="danger"
+                className="w-full"
                 onClick={() => account.setLogoutConfirmOpen(true)}
               >
                 <LogOut size={16} aria-hidden /> Cerrar sesión
-              </button>
+              </ProfileButton>
             </div>
           ) : null}
         </div>
@@ -418,30 +430,37 @@ export function ProfileAccountPage({
         onClose={() => account.setContactsModalOpen(false)}
       />
 
-      <CeModal
+      <ProfileModal
         show={account.socialModal !== null && account.socialModalMeta !== null}
         onClose={() => account.setSocialModal(null)}
         title={account.socialModalMeta?.title ?? ""}
         size="lg"
-        bodyClassName="pt-2"
         footer={
           <>
-            <CeButton color="gray" outline onClick={() => account.setSocialModal(null)}>
+            <ProfileButton
+              variant="secondary"
+              onClick={() => account.setSocialModal(null)}
+            >
               Cancelar
-            </CeButton>
-            <CeButton onClick={() => void account.saveSocialFromModal()}>
+            </ProfileButton>
+            <ProfileButton
+              variant="primary"
+              onClick={() => void account.saveSocialFromModal()}
+            >
               Guardar
-            </CeButton>
+            </ProfileButton>
           </>
         }
       >
         {account.socialModalMeta ? (
           <>
-            <p className={modalSub}>{account.socialModalMeta.hint}</p>
+            <p className={`${profileSectionMutedClass} mb-4`}>
+              {account.socialModalMeta.hint}
+            </p>
             <label className="flex flex-col gap-2">
-              <span className={fieldLabel}>Usuario o enlace</span>
+              <span className={profileFieldLabelClass}>Usuario o enlace</span>
               <input
-                className="vt-input"
+                className={profileInputClass}
                 autoFocus
                 placeholder={account.socialModalMeta.placeholder}
                 value={account.socialDraft}
@@ -450,9 +469,9 @@ export function ProfileAccountPage({
             </label>
           </>
         ) : null}
-      </CeModal>
+      </ProfileModal>
 
-      <ConfirmModal
+      <ProfileConfirmModal
         open={account.logoutConfirmOpen}
         title="¿Cerrar sesión?"
         message="Vas a salir de tu cuenta en este dispositivo. Puedes volver a iniciar sesión cuando quieras."

@@ -9,6 +9,11 @@ import { buildEmergentMapLegs } from '@features/market/logic/map/emergentRouteMa
 import { storeProductHref } from '@features/market/logic/store/storePath'
 import { EmergentRouteFeedMap } from '@features/home'
 import { ProtectedMediaImg } from '@shared/components/media/ProtectedMediaImg'
+import {
+  profileSectionCardClass,
+  profileSectionMutedClass,
+  profileSectionTitleClass,
+} from '@features/profile/logic/profileTabStyles'
 
 type Props = {
   savedOfferItems: Offer[]
@@ -22,17 +27,17 @@ export function ProfileSavedPage({
   routeOfferPublic,
 }: Props) {
   return (
-    <div className="vt-card vt-card-pad">
-      <div className="vt-h2">Ofertas guardadas</div>
-      <div className="vt-muted mt-1.5">
+    <div className={profileSectionCardClass}>
+      <div className={profileSectionTitleClass}>Ofertas guardadas</div>
+      <div className={`${profileSectionMutedClass} mt-1.5`}>
         Toca una tarjeta para abrir la oferta. Puedes guardar desde el ícono de
         marcador en el listado o en el detalle.
       </div>
       <div className="vt-divider my-3" />
       {savedOfferItems.length === 0 ? (
-        <div className="vt-muted">Aún no guardaste ofertas.</div>
+        <div className={profileSectionMutedClass}>Aún no guardaste ofertas.</div>
       ) : (
-        <div className="grid grid-cols-12 gap-3.5">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
           {savedOfferItems.map((o, idx) => {
             const store = stores[o.storeId]
             const routePreview =
@@ -59,7 +64,7 @@ export function ProfileSavedPage({
                 key={o.id}
                 to={offerHref}
                 className={cn(
-                  'vt-card col-span-12 overflow-hidden min-[640px]:col-span-6 no-underline text-[var(--text)]',
+                  'vt-card block h-full overflow-hidden no-underline text-[var(--text)]',
                   isEmergentRouteCard ? 'group' : !isToolPlaceholder && 'group',
                 )}
               >
