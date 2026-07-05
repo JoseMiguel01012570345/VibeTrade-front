@@ -198,7 +198,7 @@ export function ProfileStoresSection({
             if (oldDraft) revokeIfBlob(oldDraft);
             return { ...prev, [storeId]: url };
           });
-          toast.success("Revisa la imagen y toca Guardar foto para confirmar.");
+          toast.success("Revisa el logo y toca Guardar logo para confirmar.");
         } catch (err) {
           const msg =
             err instanceof Error && err.message
@@ -226,9 +226,9 @@ export function ProfileStoresSection({
         return next;
       });
       void saveMarketStoreProfiles(useMarketStore.getState()).catch(() => {
-        toast.error("No se pudo guardar la imagen en el servidor.");
+        toast.error("No se pudo guardar el logo en el servidor.");
       });
-      toast.success("Imagen de tienda guardada");
+      toast.success("Logo de la tienda guardado");
     } else {
       revokeIfBlob(draft);
       setAvatarDrafts((p) => {
@@ -236,7 +236,7 @@ export function ProfileStoresSection({
         delete next[storeId];
         return next;
       });
-      toast.error("No se pudo guardar la imagen");
+      toast.error("No se pudo guardar el logo");
     }
   }
 
@@ -413,7 +413,7 @@ export function ProfileStoresSection({
     <>
       <UploadBlockingOverlay
         active={storeAvatarUploadBusy}
-        message="Subiendo imagen de tienda…"
+        message="Subiendo logo de la tienda…"
       />
       <ConfirmDeleteModal
         open={deleteTarget !== null}
@@ -481,7 +481,7 @@ export function ProfileStoresSection({
             </div>
             <p className="vt-muted mt-1.5 max-w-[640px] text-[13px] leading-snug">
               Configurá nombre, categorías, descripción del catálogo,
-              verificación (soporte), transporte y foto. Para cargar o editar
+              verificación (soporte), transporte y logo. Para cargar o editar
               productos y servicios abre la tienda desde la tarjeta.
             </p>
           </div>

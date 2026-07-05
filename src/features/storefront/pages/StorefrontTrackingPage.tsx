@@ -18,8 +18,9 @@ import { StorefrontLoadingState } from "../components/StorefrontPageStates";
 export function StorefrontTrackingPage() {
   const { storeName } = useParams();
   const me = useAppStore((s) => s.me);
-  const { storeId, resolving, notFound } = useStoreIdFromName(storeName, me.id);
+  const { storeId, resolving, notFound, fetchedStore } = useStoreIdFromName(storeName, me.id);
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
+  const loadingStore = store ?? fetchedStore;
   const [loadNonce] = useState(0);
   const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
 
@@ -31,8 +32,13 @@ export function StorefrontTrackingPage() {
   const surface =
     "store-front-surface min-h-full bg-[#f7f3ef] text-slate-900";
 
-  if (!store && (resolving || detailStatus === "loading") && !notFound) {
-    return <StorefrontLoadingState />;
+  if (!notFound && (resolving || detailStatus === "loading")) {
+    return (
+      <StorefrontLoadingState
+        storeName={loadingStore?.name ?? storeName}
+        avatarUrl={loadingStore?.avatarUrl}
+      />
+    );
   }
 
   // Sin tienda resoluble: buscador de rastreo sin cintillo (mismo contenido).

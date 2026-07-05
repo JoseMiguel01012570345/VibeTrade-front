@@ -14,7 +14,7 @@ export type OwnerStoreFormValues = {
   pricePerKm?: number;
 };
 
-/** Parcial permitido al actualizar tienda (incl. imagen de vitrina). */
+/** Parcial permitido al actualizar tienda (incl. logo en `avatarUrl`). */
 export type OwnerStorePatch = Partial<
   OwnerStoreFormValues & {
     avatarUrl: string | null | undefined;

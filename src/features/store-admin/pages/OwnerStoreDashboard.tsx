@@ -16,6 +16,7 @@ import {
 import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
 import { storeHref, storePanelHref } from "@features/market/logic/store/storePath";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
+import { StoreEntryLoadingScreen } from "@features/storefront/components/StoreEntryLoadingScreen";
 import { logoutWebApp } from "@features/auth/logic/logoutWebApp";
 import { isStaffSession } from "@features/auth/logic/roles";
 import {
@@ -47,12 +48,13 @@ export function OwnerStoreDashboard() {
   const { storeName, storeId: storeIdParam, section } = useParams();
   const nav = useNavigate();
   const me = useAppStore((s) => s.me);
-  const { storeId: resolvedByName, resolving, notFound } = useStoreIdFromName(
+  const { storeId: resolvedByName, resolving, notFound, fetchedStore } = useStoreIdFromName(
     storeName,
     me.id,
   );
   const storeId = storeIdParam ?? resolvedByName;
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
+  const loadingStore = store ?? fetchedStore;
   const [loadNonce] = useState(0);
   const { detailStatus, isFetching } = useStorePageDetail(
     storeId,
@@ -116,9 +118,11 @@ export function OwnerStoreDashboard() {
 
   if ((resolving || detailStatus === "loading") && !store && !notFound) {
     return (
-      <div className="store-admin-surface grid min-h-[60vh] place-items-center bg-[#eef0f4]">
-        <p className="text-sm text-gray-500">Cargando panel…</p>
-      </div>
+      <StoreEntryLoadingScreen
+        storeName={loadingStore?.name ?? storeName}
+        avatarUrl={loadingStore?.avatarUrl}
+        label="Cargando panel"
+      />
     );
   }
 
@@ -204,13 +208,13 @@ export function OwnerStoreDashboard() {
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 px-4 pb-6 pt-1">
-        <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl border border-emerald-100 bg-white text-emerald-700">
+        <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl border border-emerald-100 bg-white p-1 text-emerald-700">
           {store.avatarUrl ? (
             <ProtectedMediaImg
               src={store.avatarUrl}
-              alt={store.name}
+              alt={`Logo de ${store.name}`}
               wrapperClassName="h-full w-full"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain"
             />
           ) : (
             <Store size={20} aria-hidden />

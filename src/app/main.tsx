@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import App from "@/App.tsx";
+import { BootSplashRouteSync } from "@app/BootSplashRouteSync";
 import "@/index.css";
 import {
   applyColorSchemeToDocument,
@@ -27,6 +28,7 @@ async function start() {
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
+          <BootSplashRouteSync />
           <App />
           <Toaster
             position="top-center"

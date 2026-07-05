@@ -11,6 +11,7 @@ import {
 import { cn } from "@shared/lib/cn";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { isStaffSession } from "@features/auth/logic/roles";
+import { isStoreSurfacePath } from "@features/market/logic/store/storePath";
 import { GuestAuthControls } from "@features/auth/components/GuestAuthControls";
 import { NotificationsBell } from "../widgets/NotificationsBell";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
@@ -52,49 +53,11 @@ function isReelsRoute(pathname: string) {
 }
 
 /**
- * Primeros segmentos que pertenecen a la app (no son tiendas). Todo lo demás en la
- * raíz (`/{nombre}`) es el storefront/panel de una tienda por su nombre.
- */
-const KNOWN_TOP_LEVEL_ROUTES = new Set<string>([
-  "onboarding",
-  "home",
-  "search",
-  "stores",
-  "offer",
-  "staff-login",
-  "store",
-  "cart",
-  "checkout",
-  "pedido",
-  "rastreo",
-  "mis-compras",
-  "finanzas",
-  "afiliado",
-  "almacen",
-  "mensualidad",
-  "admin",
-  "estadisticas",
-  "chat",
-  "invite",
-  "reels",
-  "profile",
-  "notifications",
-]);
-
-/**
  * Superficies de tienda (storefront `/{nombre}` y su panel, ficha `/offer/:id` y el
- * legado `/store/:id`): traen su propia cabecera de tienda. Una tienda es también
- * cualquier ruta de raíz cuyo primer segmento no sea una ruta conocida de la app.
+ * legado `/store/:id`): traen su propia cabecera de tienda.
  */
 function isStoreSurfaceRoute(pathname: string) {
-  if (
-    pathname.startsWith("/store/") ||
-    pathname.startsWith("/offer/")
-  )
-    return true;
-  const seg = pathname.split("/")[1] ?? "";
-  if (!seg) return false;
-  return !KNOWN_TOP_LEVEL_ROUTES.has(seg.toLowerCase());
+  return isStoreSurfacePath(pathname);
 }
 
 export function AppShell() {

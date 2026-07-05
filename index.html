@@ -1,12 +1,76 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="preload" href="/logo-oficial.svg" as="image" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <meta name="color-scheme" content="light dark" />
+    <title>VibeTrade</title>
+    <style>
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: Inter, system-ui, sans-serif;
+        opacity: 1;
+        transition: opacity 360ms ease-out;
+      }
+      #boot-splash.boot-splash--exit {
+        opacity: 0;
+        pointer-events: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-splash {
+          transition: none;
+        }
+      }
+      #boot-splash .boot-backdrop {
+        position: absolute;
+        inset: 0;
+        background: #ffffff;
+      }
+      :root.dark #boot-splash .boot-backdrop {
+        background: #0b1220;
+      }
+      #boot-splash .boot-inner {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        width: 100%;
+        max-width: min(92vw, 32rem);
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: clamp(1.25rem, 4vw, 2rem);
+        padding: 1.5rem;
+        text-align: center;
+      }
+      #boot-splash .boot-logo {
+        display: block;
+        width: min(92vw, 520px);
+        height: auto;
+      }
+    </style>
   </head>
   <body>
+    <div id="boot-splash" aria-busy="true">
+      <div class="boot-backdrop" aria-hidden="true"></div>
+      <div class="boot-inner">
+        <img
+          class="boot-logo"
+          src="/logo-oficial.svg"
+          alt="VibeTrade"
+          width="520"
+          height="353"
+          decoding="async"
+          fetchpriority="high"
+        />
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/app/main.tsx"></script>
   </body>

@@ -209,8 +209,9 @@ export function StorefrontCategoryPage({
   const categoryParam = decodeCategoryParam(cat);
 
   const me = useAppStore((s) => s.me);
-  const { storeId, resolving, notFound } = useStoreIdFromName(storeName, me.id);
+  const { storeId, resolving, notFound, fetchedStore } = useStoreIdFromName(storeName, me.id);
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
+  const loadingStore = store ?? fetchedStore;
   const [loadNonce] = useState(0);
   const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
 
@@ -218,8 +219,13 @@ export function StorefrontCategoryPage({
     return <Navigate to="/home" replace />;
   }
 
-  if ((resolving || detailStatus === "loading") && !store && !notFound) {
-    return <StorefrontLoadingState />;
+  if (!notFound && (resolving || detailStatus === "loading")) {
+    return (
+      <StorefrontLoadingState
+        storeName={loadingStore?.name ?? storeName}
+        avatarUrl={loadingStore?.avatarUrl}
+      />
+    );
   }
 
   if (!store) {

@@ -18,7 +18,7 @@ type Props = Readonly<{
   store: StoreBadge;
   catalog: StoreCatalog | undefined;
   joinedLabel: string;
-  /** Vista previa local o imagen guardada */
+  /** Vista previa local o logo guardado (`avatarUrl`). */
   avatarDisplayUrl: string | undefined;
   storeAvatarDirty: boolean;
   onEditDetails: () => void;
@@ -59,24 +59,24 @@ export function OwnerStoreCard({
           */}
           <div className="flex min-w-0 flex-1 gap-3 max-[479px]:w-full min-[480px]:min-w-0">
             <input
-              id={`store-avatar-${b.id}`}
+              id={`store-logo-${b.id}`}
               type="file"
               className="sr-only"
               accept="image/*"
-              aria-label={`Imagen de tienda ${b.name}`}
+              aria-label={`Logo de la tienda ${b.name}`}
               onChange={onAvatarFileChange}
             />
             <label
-              htmlFor={`store-avatar-${b.id}`}
-              className="pointer-events-auto grid h-12 w-12 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] shadow-sm transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))]"
-              title="Tocar para subir foto de la tienda"
+              htmlFor={`store-logo-${b.id}`}
+              className="pointer-events-auto grid h-12 w-12 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-1 shadow-sm transition hover:border-[color-mix(in_oklab,var(--primary)_35%,var(--border))]"
+              title="Tocar para subir el logo de la tienda"
             >
               {avatarDisplayUrl ? (
                 <ProtectedMediaImg
                   src={avatarDisplayUrl}
-                  alt=""
+                  alt={`Logo de ${b.name}`}
                   wrapperClassName="h-full w-full"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
               ) : (
                 <Store size={22} className="text-[var(--muted)]" aria-hidden />
@@ -119,9 +119,9 @@ export function OwnerStoreCard({
               </div>
               <p className="vt-muted mt-2 max-w-full text-[12px] leading-snug sm:max-w-md">
                 Abre el panel de gestión para administrar productos, servicios,
-                pedidos, estadísticas, finanzas, personal y afiliados. Elige una
-                imagen con el avatar y guárdala con el botón (vista previa local
-                con URL blob).
+                pedidos, estadísticas, finanzas, personal y afiliados. Toca el
+                logo para subir la imagen de tu tienda y confírmala con Guardar
+                logo.
               </p>
               <div className="pointer-events-auto mt-2 flex min-w-0 flex-col gap-2 min-[360px]:flex-row min-[360px]:flex-wrap">
                 <button
@@ -130,7 +130,7 @@ export function OwnerStoreCard({
                   disabled={!storeAvatarDirty}
                   onClick={onSaveStoreAvatar}
                 >
-                  <Save size={14} aria-hidden /> Guardar foto
+                  <Save size={14} aria-hidden /> Guardar logo
                 </button>
                 <button
                   type="button"

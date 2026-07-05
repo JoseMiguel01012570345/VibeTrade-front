@@ -13,10 +13,14 @@ import { findStoreByNormalizedName } from '@features/market/logic/store/storePat
 import { useMarketStore } from '@features/market/logic/store/useMarketStore'
 import { useAppStore } from '@features/auth/logic/useAppStore'
 
+import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
+
 export type StoreNameResolution = {
   storeId: string | undefined
   resolving: boolean
   notFound: boolean
+  /** Ficha recién resuelta por nombre (incluye avatarUrl antes de hidratar Zustand). */
+  fetchedStore?: StoreBadge
 }
 
 /**
@@ -60,6 +64,7 @@ export function useStoreIdFromName(
     storeId: loadedId ?? detail?.store.id,
     resolving: enabled && query.isLoading,
     notFound: enabled && query.isError,
+    fetchedStore: detail?.store,
   }
 }
 

@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import { Checkbox, type CheckboxProps } from "flowbite-react";
 import { Calendar } from "lucide-react";
 import { cn } from "@shared/lib/cn";
 
@@ -112,6 +113,20 @@ export function ProductModalDateField({
         />
       </div>
     </label>
+  );
+}
+
+export const PRODUCT_MODAL_CHECK_CLASS =
+  "text-[#006837] focus:ring-[#006837] dark:text-[#006837] dark:focus:ring-[#006837]";
+
+/** Checkbox verde del modal de producto (referencia frontend-admin). */
+export function ProductModalCheckbox(props: CheckboxProps) {
+  return (
+    <Checkbox
+      color="green"
+      className={PRODUCT_MODAL_CHECK_CLASS}
+      {...props}
+    />
   );
 }
 

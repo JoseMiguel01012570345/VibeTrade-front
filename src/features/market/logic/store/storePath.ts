@@ -170,6 +170,45 @@ export function storeTrackingHref(
   return name ? `${storePathFromName(name)}/rastreo` : '/rastreo'
 }
 
+/** Primeros segmentos de la app (no son nombres de tienda en `/{nombre}`). */
+const APP_TOP_LEVEL_SEGMENTS = new Set<string>([
+  "onboarding",
+  "home",
+  "search",
+  "stores",
+  "offer",
+  "staff-login",
+  "store",
+  "cart",
+  "checkout",
+  "pedido",
+  "rastreo",
+  "mis-compras",
+  "finanzas",
+  "afiliado",
+  "almacen",
+  "mensualidad",
+  "admin",
+  "estadisticas",
+  "chat",
+  "invite",
+  "reels",
+  "profile",
+  "notifications",
+]);
+
+/**
+ * Storefront `/{nombre}`, panel `/{nombre}/panel`, legado `/store/:id` y ficha `/offer/:id`.
+ */
+export function isStoreSurfacePath(pathname: string): boolean {
+  if (pathname.startsWith("/store/") || pathname.startsWith("/offer/")) {
+    return true;
+  }
+  const seg = pathname.split("/")[1] ?? "";
+  if (!seg) return false;
+  return !APP_TOP_LEVEL_SEGMENTS.has(seg.toLowerCase());
+}
+
 /** Busca en el estado una tienda cuyo nombre normalizado coincida con `normalized`. */
 export function findStoreByNormalizedName(
   stores: Record<string, StoreBadge>,

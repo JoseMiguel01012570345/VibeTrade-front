@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Checkbox, Label } from "flowbite-react";
+import { Label } from "flowbite-react";
 import { ImagePlus, Loader2, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import type {
@@ -70,10 +70,12 @@ import {
   CE_UI_PRIMARY,
   CE_UI_SURFACE,
   currencyOptionLabel,
+  ProductModalCheckbox,
   ProductModalDateField,
   ProductModalIconButton,
   ProductModalSelect,
   ProductModalTextField,
+  PRODUCT_MODAL_CHECK_CLASS,
 } from "./productModalUi";
 
 type Props = Readonly<{
@@ -769,7 +771,7 @@ export function ProductModalDetail({
 
                   <div className="md:col-span-2 space-y-3 rounded-xl border border-[#E8ECF2] bg-[#FAFBFC] p-4">
                     <div className="flex items-center gap-2">
-                      <Checkbox
+                      <ProductModalCheckbox
                         id="p-has-measure"
                         checked={measureEnabled}
                         onChange={(e) => {
@@ -880,7 +882,7 @@ export function ProductModalDetail({
                             <input
                               type="radio"
                               name="primary-product-photo"
-                              className="text-[#006837] focus:ring-[#006837]"
+                              className={PRODUCT_MODAL_CHECK_CLASS}
                               checked={primaryPhotoId === slot.id}
                               onChange={() => setPrimaryPhotoId(slot.id)}
                             />
@@ -980,7 +982,7 @@ export function ProductModalDetail({
 
                 <div className="flex flex-wrap items-center gap-4 rounded-xl border border-[#E8ECF2] bg-[#F8FAFC] px-4 py-4">
                   <div className="flex items-center gap-2">
-                    <Checkbox
+                    <ProductModalCheckbox
                       id="p-pending"
                       checked={pendingApproval}
                       onChange={(e) => setPendingApproval(e.target.checked)}
@@ -990,7 +992,7 @@ export function ProductModalDetail({
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Checkbox
+                    <ProductModalCheckbox
                       id="p-available"
                       checked={published}
                       onChange={(e) => setPublished(e.target.checked)}

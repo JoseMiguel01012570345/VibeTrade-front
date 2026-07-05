@@ -130,13 +130,13 @@ export function StorefrontHeader({
             to={storeHome}
             className="flex min-w-0 items-center gap-2.5 md:order-1 md:shrink-0"
           >
-            <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700">
+            <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-2xl border border-emerald-100 bg-white p-1 text-emerald-700">
               {store.avatarUrl ? (
                 <ProtectedMediaImg
                   src={store.avatarUrl}
-                  alt={store.name}
+                  alt={`Logo de ${store.name}`}
                   wrapperClassName="h-full w-full"
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
               ) : (
                 <Store size={20} aria-hidden />

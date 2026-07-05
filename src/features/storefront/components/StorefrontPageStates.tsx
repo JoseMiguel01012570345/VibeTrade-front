@@ -1,12 +1,19 @@
 import { ArrowLeft } from "lucide-react";
+import { StoreEntryLoadingScreen } from "./StoreEntryLoadingScreen";
 
-export function StorefrontLoadingState() {
+export function StorefrontLoadingState({
+  storeName,
+  avatarUrl,
+}: Readonly<{
+  storeName?: string;
+  avatarUrl?: string | null;
+}>) {
   return (
-    <div className="store-front-surface min-h-full bg-[#f7f3ef]">
-      <div className="mx-auto max-w-[1140px] px-4 py-10 text-sm text-slate-500">
-        Cargando tienda…
-      </div>
-    </div>
+    <StoreEntryLoadingScreen
+      storeName={storeName}
+      avatarUrl={avatarUrl}
+      label="Cargando tienda"
+    />
   );
 }
 
