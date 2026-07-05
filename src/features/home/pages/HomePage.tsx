@@ -441,16 +441,16 @@ export function HomePage() {
     sheetStoreIds.length > 0;
 
   return (
-    <div className="vt-home-page flex min-h-0 flex-1 flex-col overflow-hidden overscroll-none">
-      <div className="flex min-h-0 w-full flex-1 flex-col items-center overflow-hidden pb-3 pl-[max(0px,env(safe-area-inset-left))] pr-[max(0px,env(safe-area-inset-right))] pt-1">
+    <div className="store-front-surface vt-home-page flex min-h-0 w-full flex-1 flex-col overflow-hidden overscroll-none bg-[#f7f3ef] text-slate-900">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1140px] flex-1 flex-col overflow-hidden px-4 py-4 sm:py-6">
         <div
           ref={viewportRef}
-          className="relative h-[min(780px,calc(100vh-9rem))] min-h-0 w-full max-w-[1100px] overflow-hidden overscroll-contain rounded-xl border border-[var(--border)] bg-[var(--bg)] sm:h-[calc(100vh-9rem)]"
+          className="relative h-[min(780px,calc(100vh-9rem))] min-h-0 w-full overflow-hidden overscroll-contain rounded-[24px] border border-[#d9d5cf] bg-white shadow-[0_12px_30px_rgba(33,37,41,0.05)] sm:h-[calc(100vh-9rem)]"
           aria-label="Feed de ofertas por lotes"
         >
           {cardCount === 0 ? (
             <div className="flex h-full items-center justify-center px-6 text-center">
-              <p className="text-sm text-[var(--muted)]">
+              <p className="text-sm text-slate-500">
                 {prefetchBusy
                   ? "Cargando recomendaciones…"
                   : "No hay ofertas para mostrar."}
@@ -474,9 +474,9 @@ export function HomePage() {
                       key={slideKey}
                       className="flex h-full max-h-full w-full flex-col overflow-hidden"
                     >
-                      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-xl bg-[var(--bg)] p-3 sm:p-4 md:flex-row md:items-stretch md:gap-0">
+                      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-[24px] bg-[#f7f3ef] p-3 sm:p-4 md:flex-row md:items-stretch md:gap-0">
                         {bulk.storeIds.length > 0 ? (
-                          <aside className="hidden min-h-0 w-full max-h-[min(42vh,380px)] shrink-0 flex-col border-b border-[var(--border)] pb-3 md:flex md:max-h-none md:h-auto md:w-[min(100%,300px)] md:border-b-0 md:border-r md:border-[var(--border)] md:pb-0 md:pr-3">
+                          <aside className="hidden min-h-0 w-full max-h-[min(42vh,380px)] shrink-0 flex-col border-b border-[#d9d5cf] pb-3 md:flex md:max-h-none md:h-auto md:w-[min(100%,300px)] md:border-b-0 md:border-r md:border-[#d9d5cf] md:pb-0 md:pr-3">
                             <RecommendedStoresRow
                               embedded
                               orientation="vertical"
@@ -500,11 +500,10 @@ export function HomePage() {
                             {chunkItems.length > 0 ? (
                               <OfferCardsChunk
                                 items={chunkItems}
-                                stores={stores}
                                 routeOfferPublic={routeOfferPublic}
                               />
                             ) : (
-                              <p className="py-6 text-center text-sm text-[var(--muted)]">
+                              <p className="py-6 text-center text-sm text-slate-500">
                                 Sin ofertas en este lote.
                               </p>
                             )}
@@ -517,7 +516,7 @@ export function HomePage() {
               </div>
               {showFeedOverlayLoader ? (
                 <div
-                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-[var(--bg)]/85 backdrop-blur-[2px]"
+                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[24px] bg-white/85 backdrop-blur-[2px]"
                   aria-busy="true"
                   aria-live="polite"
                 >
@@ -541,7 +540,7 @@ export function HomePage() {
             {!homeStoresSheetOpen ? (
               <button
                 type="button"
-                className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.25rem)] right-4 z-[61] flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_oklab,var(--primary)_78%,var(--border))] bg-[var(--primary)] text-white shadow-[0_10px_28px_rgba(37,99,235,0.38)] md:hidden hover:bg-[var(--primary-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] active:translate-y-[0.5px]"
+                className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.25rem)] right-4 z-[61] flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-emerald-800 bg-emerald-700 text-white shadow-[0_10px_28px_rgba(4,120,87,0.35)] md:hidden hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f3ef] active:translate-y-[0.5px]"
                 aria-label={`Tiendas sugeridas en este lote (${sheetStoreIds.length})`}
                 onClick={() => setHomeStoresSheetOpen(true)}
               >
@@ -566,16 +565,16 @@ export function HomePage() {
                   aria-label="Cerrar tiendas recomendadas"
                   onClick={() => setHomeStoresSheetOpen(false)}
                 />
-                <div className="absolute bottom-0 left-0 right-0 flex max-h-[min(82dvh,720px)] min-h-[40%] flex-col rounded-t-[18px] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)]">
-                  <div className="flex shrink-0 items-center gap-3 border-b border-[var(--border)] px-4 py-3 pr-2">
+                <div className="absolute bottom-0 left-0 right-0 flex max-h-[min(82dvh,720px)] min-h-[40%] flex-col rounded-t-[18px] border border-[#d9d5cf] bg-white shadow-[0_12px_30px_rgba(33,37,41,0.08)]">
+                  <div className="flex shrink-0 items-center gap-3 border-b border-[#d9d5cf] px-4 py-3 pr-2">
                     <div className="min-w-0 flex-1">
                       <p
                         id="vt-home-stores-sheet-title"
-                        className="truncate text-[15px] font-extrabold tracking-[-0.02em]"
+                        className="truncate text-[15px] font-extrabold tracking-[-0.02em] text-slate-900"
                       >
                         Tiendas para vos
                       </p>
-                      <p className="mt-0.5 text-[12px] text-[var(--muted)]">
+                      <p className="mt-0.5 text-[12px] text-slate-500">
                         {sheetStoreIds.length}{" "}
                         {sheetStoreIds.length === 1 ? "tienda" : "tiendas"}{" "}
                         recomendadas en este lote
@@ -607,7 +606,7 @@ export function HomePage() {
         ) : null}
 
         {showBottomPrefetchSpinner ? (
-          <div className="mt-3 w-full max-w-[1100px]">
+          <div className="mt-3 w-full">
             <FeedLoadingSpinner label="Cargando más sugerencias…" />
           </div>
         ) : null}

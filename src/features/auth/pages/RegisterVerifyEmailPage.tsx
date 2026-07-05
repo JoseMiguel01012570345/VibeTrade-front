@@ -5,6 +5,7 @@ import { OtpInput } from '../components/OtpInput'
 import { DevCodeBanner } from '../components/DevCodeBanner'
 import { verifyRegistrationEmail } from '@features/auth/api/credentialsAuth'
 import { applyAuthSession } from '../logic/applyAuthSession'
+import { AuthPageShell } from '../components/AuthPageShell'
 
 type LocationState = {
   registrationId?: string
@@ -47,29 +48,22 @@ export function RegisterVerifyEmailPage() {
   if (!registrationId) return null
 
   return (
-    <div className="container vt-page">
-      <div className="mx-auto mt-[18px] flex w-full max-w-[520px] flex-col gap-3.5">
-        <div className="flex flex-col gap-1.5">
-          <h1 className="vt-h1">Verificá tu email</h1>
-          <div className="vt-muted">
-            Ingresá el código enviado a {email || 'tu email'}.
-          </div>
-          <DevCodeBanner devHint={devHint} />
-        </div>
-
-        <div className="vt-card vt-card-pad bg-[var(--surface)]">
-          <div className="vt-col">
-            <OtpInput value={otp} length={codeLength} error={err} onChange={setOtp} onComplete={verify} />
-            <button
-              className="vt-btn vt-btn-primary w-full px-3 py-3"
-              disabled={busy}
-              onClick={() => void verify(otp)}
-            >
-              {busy ? 'Verificando…' : 'Completar registro'}
-            </button>
-          </div>
-        </div>
+    <AuthPageShell
+      title="Verificá tu email"
+      subtitle={`Ingresá el código enviado a ${email || 'tu email'}.`}
+      headerExtra={<DevCodeBanner devHint={devHint} />}
+    >
+      <div className="vt-auth-form">
+        <OtpInput value={otp} length={codeLength} error={err} onChange={setOtp} onComplete={verify} />
+        <button
+          type="button"
+          className="vt-btn vt-btn-primary w-full px-3 py-3"
+          disabled={busy}
+          onClick={() => void verify(otp)}
+        >
+          {busy ? 'Verificando…' : 'Completar registro'}
+        </button>
       </div>
-    </div>
+    </AuthPageShell>
   )
 }

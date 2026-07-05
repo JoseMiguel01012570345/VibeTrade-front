@@ -1,11 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { LogIn, UserPlus } from "lucide-react";
-import { CeModal } from "@shared/components/ui";
+import { CeTransitionModalShell } from "@shared/components/ui";
+import "../styles/auth.css";
 
 type Props = Readonly<{
   open: boolean;
   onClose: () => void;
 }>;
+
+const AUTH_MODAL_PANEL =
+  "flex max-h-[min(90dvh,720px)] w-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] text-[var(--text)] vt-auth-page";
 
 export function AuthEntryModal({ open, onClose }: Props) {
   const nav = useNavigate();
@@ -16,19 +20,30 @@ export function AuthEntryModal({ open, onClose }: Props) {
   }
 
   return (
-    <CeModal show={open} onClose={onClose} title="Iniciar sesión" size="lg">
-      <div className="text-sm text-[var(--muted)]">
+    <CeTransitionModalShell
+      show={open}
+      onClose={onClose}
+      size="lg"
+      theme={{
+        content: {
+          inner: AUTH_MODAL_PANEL,
+        },
+      }}
+      backdropClassName="bg-[rgba(2,6,23,0.55)]"
+    >
+      <h2 className="vt-auth-title text-[1.35rem]">Iniciar sesión</h2>
+      <p className="vt-auth-subtitle">
         Elige cómo quieres continuar. El login usa email y contraseña.
-      </div>
+      </p>
 
-      <div className="mt-3 flex flex-col gap-2.5">
+      <div className="mt-4 flex flex-col gap-3">
         <button
           type="button"
-          className="vt-card vt-card-pad flex w-full flex-col items-stretch gap-3 rounded-[16px] border border-[var(--border)] bg-[var(--surface)] text-left transition hover:border-[color-mix(in_oklab,var(--primary)_45%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--primary)_35%,transparent)]"
+          className="vt-auth-option-card"
           onClick={() => go("/onboarding/register")}
         >
           <div className="flex items-start gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[color-mix(in_oklab,var(--primary)_12%,transparent)] text-[var(--primary)]">
+            <span className="vt-auth-option-card__icon">
               <UserPlus size={20} strokeWidth={2.25} aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
@@ -44,11 +59,11 @@ export function AuthEntryModal({ open, onClose }: Props) {
 
         <button
           type="button"
-          className="vt-card vt-card-pad flex w-full flex-col items-stretch gap-3 rounded-[16px] border border-[var(--border)] bg-[var(--surface)] text-left transition hover:border-[color-mix(in_oklab,var(--primary)_45%,var(--border))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--primary)_35%,transparent)]"
+          className="vt-auth-option-card"
           onClick={() => go("/onboarding/login")}
         >
           <div className="flex items-start gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[color-mix(in_oklab,var(--primary)_12%,transparent)] text-[var(--primary)]">
+            <span className="vt-auth-option-card__icon">
               <LogIn size={20} strokeWidth={2.25} aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
@@ -62,6 +77,6 @@ export function AuthEntryModal({ open, onClose }: Props) {
           </div>
         </button>
       </div>
-    </CeModal>
+    </CeTransitionModalShell>
   );
 }

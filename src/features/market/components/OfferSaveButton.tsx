@@ -14,12 +14,15 @@ type Props = Readonly<{
   className?: string;
   /** Tamaño del icono en px (lucide size prop). */
   iconSize?: number;
+  /** Superpuesto sobre la imagen (esquina superior derecha), como el botón de me gusta. */
+  overlay?: boolean;
 }>;
 
 export function OfferSaveButton({
   offerId,
   className,
   iconSize = 18,
+  overlay = false,
 }: Props) {
   const isSessionActive = useAppStore((s) => s.isSessionActive);
   const openAuthModal = useAppStore((s) => s.openAuthModal);
@@ -78,9 +81,13 @@ export function OfferSaveButton({
     <button
       type="button"
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] p-2 text-[var(--text)] transition hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]",
+        overlay
+          ? "pointer-events-auto absolute top-2 right-2 z-[2] inline-flex items-center justify-center rounded-full border border-white/80 bg-white/95 p-1.5 text-slate-700 shadow-md backdrop-blur-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+          : "inline-flex shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_45%,var(--surface))] p-2 text-[var(--text)] transition hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]",
         saved &&
-          "border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_12%,var(--surface))] text-[var(--primary)]",
+          (overlay
+            ? "border-white/90 text-emerald-700"
+            : "border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_12%,var(--surface))] text-[var(--primary)]"),
         className,
       )}
       onClick={(e) => void onClick(e)}
@@ -90,7 +97,7 @@ export function OfferSaveButton({
       title={saved ? "Quitar de guardados" : "Guardar"}
     >
       <Bookmark
-        size={iconSize}
+        size={overlay ? 16 : iconSize}
         aria-hidden
         className={cn(saved && "fill-current")}
         strokeWidth={2}
