@@ -15,7 +15,7 @@ function ParticipantCardBody({ p }: { p: ChatParticipant }) {
   return (
     <>
       <span
-        className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-[var(--border)] bg-white text-[15px] font-black text-[var(--muted)]"
+        className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[10px] vt-avatar-placeholder text-[15px] font-black"
         aria-hidden
       >
         {p.avatarUrl ? (

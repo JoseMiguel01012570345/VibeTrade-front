@@ -33,7 +33,7 @@ export function ChatListPanel({ activeThreadId }: Props) {
       />
       <ChatListLeaveModals {...leave} />
 
-      <div className="shrink-0 px-1 pt-1 sm:px-0 min-[961px]:px-3 min-[961px]:pt-3">
+      <div className="shrink-0 ps-3 pt-3 pe-1 min-[961px]:px-3 min-[961px]:pt-3">
         <ChatListHeader
           value={nameFilterQuery}
           onChange={setNameFilterQuery}

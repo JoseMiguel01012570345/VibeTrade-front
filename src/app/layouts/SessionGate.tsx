@@ -1,4 +1,5 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
+import { CeAnimatedOutlet } from "@shared/components/ui";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { isStaffSession } from "@features/auth/logic/roles";
@@ -53,5 +54,5 @@ export function SessionGate() {
   if (isSessionActive && pathname.startsWith("/onboarding")) {
     return <Navigate to="/home" replace />;
   }
-  return <Outlet />;
+  return <CeAnimatedOutlet />;
 }

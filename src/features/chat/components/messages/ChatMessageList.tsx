@@ -339,7 +339,7 @@ export function ChatMessageList({
               <Link
                 to={peerProfileHref}
                 className={cn(
-                  "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-[var(--border)] bg-white font-semibold text-[var(--muted)]",
+                  "relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full vt-avatar-placeholder font-semibold",
                   mine ? "col-start-2 justify-self-end" : "col-start-1",
                 )}
                 title="Ver perfil"

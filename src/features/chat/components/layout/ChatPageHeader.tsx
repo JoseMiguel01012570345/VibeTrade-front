@@ -47,11 +47,12 @@ export function ChatPageHeader({
         <div className="flex min-w-0 w-full items-center gap-2.5 md:min-h-0 md:min-w-0 md:flex-1">
           {!wide ? (
             <button
-              className="vt-btn shrink-0"
+              type="button"
+              className="vt-chat-thread-back-btn shrink-0"
               onClick={() => nav("/chat")}
               aria-label="Volver a la lista de chats"
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={20} strokeWidth={2.25} aria-hidden />
             </button>
           ) : null}
           <div className="min-w-0 flex-1">

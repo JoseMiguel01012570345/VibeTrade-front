@@ -1,4 +1,5 @@
 export { cn } from "@shared/lib/cn";
+export { CeAnimatedOutlet } from "./CeAnimatedOutlet";
 export { CeButton, type CeButtonProps } from "./CeButton";
 export { CeDateField } from "./CeDateField";
 export { CeField, ceAdminFieldLabelClass, type CeFieldProps } from "./CeField";

@@ -365,6 +365,7 @@ export function ChatPage() {
     unreadBelowCount,
   } = useChatScrollUnread(thread, threadId);
   const [persistThreadError, setPersistThreadError] = useState(false);
+  const persistLoadErrorHandledRef = useRef(false);
   useHydratePersistedChatThread({
     threadId,
     searchParams,
@@ -372,6 +373,20 @@ export function ChatPage() {
     setContractsLoading: () => {},
     setRouteSheetsLoading,
   });
+
+  useEffect(() => {
+    persistLoadErrorHandledRef.current = false;
+  }, [threadId]);
+
+  useEffect(() => {
+    if (!threadId?.startsWith("cth_") || !persistThreadError) return;
+    if (persistLoadErrorHandledRef.current) return;
+    persistLoadErrorHandledRef.current = true;
+    toast.error(
+      "No se pudo cargar este chat. ¿Iniciaste sesión y tienes acceso al hilo?",
+    );
+    nav("/chat", { replace: true });
+  }, [threadId, persistThreadError, nav]);
 
   const composer = useChatPageComposer({
     threadId,
@@ -664,14 +679,7 @@ export function ChatPage() {
       );
     }
     if (threadId.startsWith("cth_") && persistThreadError) {
-      return (
-        <div className="container vt-page">
-          <div className="vt-card vt-card-pad">
-            No se pudo cargar este chat. Â¿Iniciaste sesiÃ³n y tienes acceso al
-            hilo?
-          </div>
-        </div>
-      );
+      return null;
     }
     return (
       <div className="container vt-page">

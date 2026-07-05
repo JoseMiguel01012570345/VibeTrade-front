@@ -43,7 +43,7 @@ const NAV_PROFILE_AVATAR_RING =
   "ring-2 ring-[color-mix(in_oklab,#0f766e_45%,transparent)] ring-offset-2 ring-offset-[var(--surface)]";
 
 const NAV_PROFILE_AVATAR_PLACEHOLDER =
-  "border border-[var(--border)] bg-white text-[10px] font-black text-[var(--muted)]";
+  "vt-avatar-placeholder text-[10px] font-black";
 
 function tabIsActive(pathname: string, t: (typeof tabs)[number]) {
   if ("activePrefix" in t && t.activePrefix) {
@@ -85,7 +85,7 @@ export function AppShell() {
   const staffSession = isStaffSession(useAppStore((s) => s.me)) && isSessionActive;
   /** El personal (staff) navega solo el panel: sin barra inferior. */
   const hideBottomNav =
-    staffSession || (!wide && isChatRoute(pathname));
+    staffSession || (!wide && isChatThreadPath(pathname));
   /** Sin campana en hilo de chat ni en Reels; en listado `/chat` sÃ­. */
   const showNotificationsBell =
     isSessionActive &&
@@ -222,7 +222,7 @@ export function AppShell() {
       </main>
 
       {!isOnboarding && !hideBottomNav && (
-        <nav className="fixed bottom-0 left-0 right-0 z-[60] border-t border-[var(--border)] bg-[var(--surface)]">
+        <nav className="fixed bottom-0 left-0 right-0 z-[60] rounded-t-[2rem] border-t border-transparent bg-[var(--surface)] min-[961px]:rounded-none">
           <div className="container grid grid-cols-4 gap-1.5 py-2.5">
             {tabs.map((t) => {
               const active = tabIsActive(pathname, t);

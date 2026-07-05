@@ -64,7 +64,7 @@ export function ChatListThreadRow({
       >
         {inv ? <span className="sr-only">{PREMATURE_EXIT_TOOLTIP}</span> : null}
         <div
-          className="flex size-12 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-white text-base font-semibold text-[var(--muted)]"
+          className="flex size-12 shrink-0 items-center justify-center rounded-full vt-avatar-placeholder text-base font-semibold"
           aria-hidden
         >
           {avatarLetter.toUpperCase()}

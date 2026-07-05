@@ -254,6 +254,30 @@
   display: none;
 }
 
+.vt-chat-thread-back-btn {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 9999px;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.vt-chat-thread-back-btn:hover {
+  background: color-mix(in oklab, var(--muted) 12%, transparent);
+}
+
+.vt-chat-thread-back-btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary) 35%, transparent);
+  outline-offset: 2px;
+}
+
 /* Embeds inside bubbles */
 .vt-chat-embed {
   margin-inline: -0.75rem;
