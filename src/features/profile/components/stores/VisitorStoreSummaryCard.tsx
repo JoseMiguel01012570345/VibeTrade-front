@@ -39,10 +39,9 @@ export function VisitorStoreSummaryCard({
         className="absolute inset-0 z-[1] rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
         aria-label={`Abrir tienda ${b.name}`}
       />
-      <div className="relative z-[2] p-3.5 pointer-events-none">
-      <div className="flex w-full min-w-0 flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 gap-3 max-[379px]:w-full">
-          <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
+      <div className="relative z-[2] min-w-0 w-full p-3.5 pointer-events-none">
+      <div className="vt-profile-store-card__main">
+        <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
             {b.avatarUrl ?
               <ProtectedMediaImg
                 src={b.avatarUrl}
@@ -52,11 +51,9 @@ export function VisitorStoreSummaryCard({
               />
             : <Store size={22} className="text-[var(--muted)]" aria-hidden />}
           </div>
-          <div className="min-w-0 flex-1">
+          <div className="vt-profile-store-card__content">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="min-w-0 break-words text-base font-black tracking-[-0.02em]">
-                {b.name}
-              </span>
+              <span className="vt-profile-store-card__name">{b.name}</span>
               {b.verified ? (
                 <span
                   className="inline-flex items-center text-[var(--primary)]"
@@ -67,29 +64,26 @@ export function VisitorStoreSummaryCard({
                 </span>
               ) : null}
             </div>
-            <div className="vt-muted mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+            <div className="vt-profile-store-card__meta vt-muted mt-2 flex flex-wrap gap-x-4 gap-y-1">
               <span className="inline-flex items-center gap-1">
                 <Calendar size={12} aria-hidden /> Alta: {joined}
               </span>
             </div>
-            <div className="mt-2 max-w-[320px]">
+            <div className="mt-2 w-full max-w-full">
               <StoreTrustMini score={b.trustScore} />
             </div>
             {(() => {
               const pitchText = (cat?.pitch ?? b.pitch ?? "").trim();
               if (!pitchText) return null;
               return (
-                <p className="mt-2 break-words text-[13px] leading-snug">
-                  {pitchText}
-                </p>
+                <p className="vt-profile-store-card__pitch">{pitchText}</p>
               );
             })()}
-            <div className="vt-muted mt-1 text-xs">{b.categories.join(' · ')}</div>
+            <div className="vt-profile-store-card__categories vt-muted mt-1">{b.categories.join(' · ')}</div>
           </div>
         </div>
-      </div>
 
-      <div className="mt-3 grid grid-cols-1 gap-2 border-t border-[var(--border)] pt-3 min-[480px]:grid-cols-2 pointer-events-auto">
+      <div className="vt-profile-store-card__vitrina">
         <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2">
           <div className="flex items-center justify-between gap-1.5">
             <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--muted)]">
@@ -164,7 +158,7 @@ export function VisitorStoreSummaryCard({
         </div>
       </div>
 
-      <p className="vt-muted mt-2 flex items-start gap-1.5 text-[11px] leading-snug pointer-events-none">
+      <p className="vt-profile-store-card__hint vt-muted mt-2 flex items-start gap-1.5 pointer-events-none">
         <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[var(--good)]" aria-hidden />
         Toca la tarjeta para ver el catálogo y la vitrina pública de la tienda.
       </p>

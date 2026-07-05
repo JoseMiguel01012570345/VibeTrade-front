@@ -48,16 +48,8 @@ export function OwnerStoreCard({
         aria-label={`Abrir panel de ${b.name}`}
       />
       <div className="relative z-[2] min-w-0 w-full space-y-0 p-3.5 pointer-events-none">
-        {/*
-          En móvil: columna (texto a ancho completo); los botones Editar/Eliminar van abajo.
-          En ≥480px: fila con botones a la derecha — evita que flex-1 comparta fila con los botones y aplaste el texto a pocos px.
-        */}
-        <div className="flex min-w-0 w-full flex-col gap-3 min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between min-[480px]:gap-3">
-          {/*
-            Importante: sin `w-full` en ≥480px — `w-full` + `flex-1` en un ítem flex suele
-            dejar el texto en una columna de pocos px con hueco vacío a la derecha.
-          */}
-          <div className="flex min-w-0 flex-1 gap-3 max-[479px]:w-full min-[480px]:min-w-0">
+        <div className="vt-profile-store-card__header">
+          <div className="vt-profile-store-card__main">
             <input
               id={`store-logo-${b.id}`}
               type="file"
@@ -82,11 +74,9 @@ export function OwnerStoreCard({
                 <Store size={22} className="text-[var(--muted)]" aria-hidden />
               )}
             </label>
-            <div className="min-w-0 flex-1 pointer-events-none">
+            <div className="vt-profile-store-card__content pointer-events-none">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="min-w-0 break-words text-base font-black tracking-[-0.02em]">
-                  {b.name}
-                </span>
+                <span className="vt-profile-store-card__name">{b.name}</span>
                 {b.verified ? (
                   <span
                     className="inline-flex items-center text-[var(--primary)]"
@@ -97,36 +87,34 @@ export function OwnerStoreCard({
                   </span>
                 ) : null}
               </div>
-              <div className="vt-muted mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+              <div className="vt-profile-store-card__meta vt-muted mt-2 flex flex-wrap gap-x-4 gap-y-1">
                 <span className="inline-flex items-center gap-1">
                   <Calendar size={12} aria-hidden /> Alta: {joined}
                 </span>
               </div>
-              <div className="mt-2 w-full max-w-full min-[480px]:max-w-[min(100%,360px)]">
+              <div className="mt-2 w-full max-w-full">
                 <StoreTrustMini score={b.trustScore} />
               </div>
               {(() => {
                 const pitchText = (cat?.pitch ?? b.pitch ?? "").trim();
                 if (!pitchText) return null;
                 return (
-                  <p className="mt-2 break-words text-[13px] leading-snug">
-                    {pitchText}
-                  </p>
+                  <p className="vt-profile-store-card__pitch">{pitchText}</p>
                 );
               })()}
-              <div className="vt-muted mt-1 break-words text-xs leading-snug">
+              <div className="vt-profile-store-card__categories vt-muted mt-1">
                 {b.categories.join(" · ")}
               </div>
-              <p className="vt-muted mt-2 max-w-full text-[12px] leading-snug sm:max-w-md">
+              <p className="vt-profile-store-card__hint vt-muted">
                 Abre el panel de gestión para administrar productos, servicios,
                 pedidos, estadísticas, finanzas, personal y afiliados. Toca el
                 logo para subir la imagen de tu tienda y confírmala con Guardar
                 logo.
               </p>
-              <div className="pointer-events-auto mt-2 flex min-w-0 flex-col gap-2 min-[360px]:flex-row min-[360px]:flex-wrap">
+              <div className="vt-profile-store-card__logo-actions">
                 <button
                   type="button"
-                  className="vt-btn vt-btn-primary vt-btn-sm inline-flex w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap min-[360px]:w-auto"
+                  className="vt-profile-store-card__logo-btn vt-profile-btn vt-profile-btn--primary vt-profile-btn--sm w-full shrink-0"
                   disabled={!storeAvatarDirty}
                   onClick={onSaveStoreAvatar}
                 >
@@ -134,7 +122,7 @@ export function OwnerStoreCard({
                 </button>
                 <button
                   type="button"
-                  className="vt-btn vt-btn-ghost vt-btn-sm inline-flex w-full shrink-0 items-center justify-center min-[360px]:w-auto"
+                  className="vt-profile-store-card__logo-btn vt-profile-btn vt-profile-btn--ghost vt-profile-btn--sm w-full shrink-0"
                   disabled={!storeAvatarDirty}
                   onClick={onDiscardStoreAvatar}
                 >
@@ -143,23 +131,23 @@ export function OwnerStoreCard({
               </div>
             </div>
           </div>
-          <div className="flex w-full min-w-0 flex-wrap gap-2 pointer-events-auto min-[480px]:w-auto min-[480px]:shrink-0 min-[480px]:justify-end">
+          <div className="vt-profile-store-card__actions">
             <Link
               to={storePanelHref(b)}
-              className="vt-btn vt-btn-primary vt-btn-sm inline-flex flex-1 items-center justify-center gap-1 min-[360px]:flex-initial"
+              className="vt-profile-store-card__action-btn vt-profile-btn vt-profile-btn--primary vt-profile-btn--sm w-full"
             >
               <Store size={14} /> Gestionar
             </Link>
             <button
               type="button"
-              className="vt-btn vt-btn-sm inline-flex flex-1 items-center justify-center gap-1 min-[360px]:flex-initial"
+              className="vt-profile-store-card__action-btn vt-profile-btn vt-profile-btn--secondary vt-profile-btn--sm w-full"
               onClick={onEditDetails}
             >
               <Pencil size={14} /> Editar datos
             </button>
             <button
               type="button"
-              className="vt-btn vt-btn-ghost vt-btn-sm inline-flex flex-1 items-center justify-center gap-1 text-[#b91c1c] min-[360px]:flex-initial"
+              className="vt-profile-store-card__action-btn vt-profile-btn vt-profile-btn--danger vt-profile-btn--sm w-full"
               onClick={onRequestDeleteStore}
             >
               <Trash2 size={14} /> Eliminar
