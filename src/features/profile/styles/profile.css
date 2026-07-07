@@ -24,7 +24,7 @@
   width: 100%;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 1.25rem;
+  border-radius: 0.75rem;
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text);

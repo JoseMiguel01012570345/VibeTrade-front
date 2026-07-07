@@ -22,7 +22,7 @@ type Props = Readonly<{
 }>;
 
 const CHAT_MODAL_PANEL =
-  "flex max-h-[min(90vh,900px)] w-[min(920px,100%)] max-w-none flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] text-[var(--text)]";
+  "flex max-h-[min(90vh,900px)] w-[min(480px,100%)] max-w-none flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow)] text-[var(--text)]";
 
 function contactLabel(c: UserContact): string {
   const name = c.displayName?.trim();
@@ -122,7 +122,7 @@ export function ChatNewConversationModal({ open, onClose }: Props) {
     <CeTransitionModalShell
       show={open}
       onClose={() => !createBusy && onClose()}
-      size="7xl"
+      size="2xl"
       theme={{
         content: {
           inner: `${CHAT_MODAL_PANEL} vt-chat-new-conversation-modal`,

@@ -164,7 +164,7 @@ function StorefrontCategoryPageBody({
     : (productMeta?.slug ?? categoryParam);
 
   return (
-    <div className="mx-auto w-full max-w-[1140px] space-y-10 px-4 py-6 sm:py-8">
+    <div className="w-full space-y-10 px-4 py-6 sm:py-8">
       <CategoryHeader
         storeHome={storeHome}
         title={title}

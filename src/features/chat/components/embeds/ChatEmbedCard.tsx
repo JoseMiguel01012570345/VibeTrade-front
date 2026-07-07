@@ -28,7 +28,7 @@ export function ChatEmbedCard({
       )}
     >
       {frame}
-      <div className={cn(!bleed && frame && 'vt-chat-embed__body', bleed && 'p-2.5')}>
+      <div className={cn(!bleed && frame && 'vt-chat-embed__body', bleed && 'p-3.5')}>
         {header}
         {title ? (
           <div className="line-clamp-2 text-[13px] font-black leading-snug text-[var(--text)]">
@@ -36,13 +36,15 @@ export function ChatEmbedCard({
           </div>
         ) : null}
         {description ? (
-          <div className="mt-1 line-clamp-3 text-[11px] font-semibold leading-snug text-[var(--muted)]">
+          <div className="mt-1 line-clamp-3 text-[11px] font-semibold leading-snug text-[var(--muted)] ">
             {description}
           </div>
         ) : null}
       </div>
       {footer ? (
-        <div className={cn(!bleed && 'vt-chat-embed__footer')}>{footer}</div>
+        <div className={cn(!bleed && 'vt-chat-embed__footer', bleed && 'px-3.5 pb-2.5')}>
+          {footer}
+        </div>
       ) : null}
     </div>
   )

@@ -10,7 +10,7 @@ export function StorefrontNotFoundState({
 }: Readonly<{ onBack: () => void }>) {
   return (
     <div className="store-front-surface min-h-full bg-[var(--bg)]">
-      <div className="mx-auto max-w-[1140px] px-4 py-16 text-center">
+      <div className="w-full px-4 py-16 text-center">
         <p className="text-lg font-extrabold text-slate-900">
           Tienda no encontrada
         </p>

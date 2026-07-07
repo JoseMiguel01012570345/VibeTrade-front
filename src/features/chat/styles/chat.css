@@ -114,7 +114,32 @@
     flex-shrink: 0;
     height: 100%;
     align-self: stretch;
-    border-right: 1px solid var(--border);
+  }
+
+  .vt-chat-layout__resizer {
+    width: 6px;
+    flex-shrink: 0;
+    cursor: col-resize;
+    background: transparent;
+    position: relative;
+    z-index: 5;
+    transition: background-color 0.15s;
+    touch-action: none;
+  }
+
+  .vt-chat-layout__resizer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    left: 50%;
+    width: 1px;
+    transform: translateX(-50%);
+    background: var(--border);
+  }
+
+  .vt-chat-layout__resizer:hover::after,
+  .vt-chat-layout__resizer:active::after {
+    background: var(--primary);
   }
 
   .vt-chat-layout__conversation {

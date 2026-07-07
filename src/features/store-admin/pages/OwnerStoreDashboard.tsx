@@ -271,7 +271,7 @@ export function OwnerStoreDashboard() {
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-gray-600 hover:bg-white/70"
         >
           <LogOut size={16} className="text-gray-400" aria-hidden />
-          Cerrar sesiÃ³n
+          Cerrar sesión
         </button>
         <div className="flex items-center gap-3 rounded-xl bg-white px-3 py-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-700 text-xs font-bold text-white">
