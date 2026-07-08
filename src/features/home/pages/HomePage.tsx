@@ -16,10 +16,15 @@ import {
   shouldFetchRecommendationBag,
   shouldMergePendingBag,
 } from "../logic/homeFeedMerge";
-import { Store as StoreLucideIcon, X } from "lucide-react";
 import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { OfferCardsChunk } from "../components/OfferCardsChunk";
 import { RecommendedStoresRow } from "../components/RecommendedStoresRow";
+import { HomeStoresMobileSheet } from "../components/HomeStoresMobileSheet";
+import {
+  organicFeedOverlayClass,
+  organicFeedPanelClass,
+  organicSlideBgClass,
+} from "@shared/styles/organicCardStyles";
 
 const emptySignals = {
   next: null as string | null,
@@ -198,15 +203,6 @@ export function HomePage() {
   }, [recommendationHomeBulks]);
 
   useEffect(() => {
-    if (!homeStoresSheetOpen) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [homeStoresSheetOpen]);
-
-  useEffect(() => {
     const mq = globalThis.matchMedia("(min-width: 768px)");
     const onChange = () => {
       if (mq.matches) setHomeStoresSheetOpen(false);
@@ -214,15 +210,6 @@ export function HomePage() {
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
-
-  useEffect(() => {
-    if (!homeStoresSheetOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setHomeStoresSheetOpen(false);
-    };
-    globalThis.addEventListener("keydown", onKey);
-    return () => globalThis.removeEventListener("keydown", onKey);
-  }, [homeStoresSheetOpen]);
 
   const runMergePendingBag = useCallback(
     (batch: RecommendationBatch) => {
@@ -445,7 +432,7 @@ export function HomePage() {
       <div className="mx-auto flex min-h-0 w-full max-w-[1140px] flex-1 flex-col overflow-hidden px-4 py-4 sm:py-6">
         <div
           ref={viewportRef}
-          className="relative h-[min(780px,calc(100vh-9rem))] min-h-0 w-full overflow-hidden overscroll-contain rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-[0_12px_30px_rgba(33,37,41,0.05)] sm:h-[calc(100vh-9rem)]"
+          className={`${organicFeedPanelClass} relative h-[min(780px,calc(100vh-9rem))] min-h-0 w-full overflow-hidden overscroll-contain sm:h-[calc(100vh-9rem)]`}
           aria-label="Feed de ofertas por lotes"
         >
           {cardCount === 0 ? (
@@ -474,9 +461,9 @@ export function HomePage() {
                       key={slideKey}
                       className="flex h-full max-h-full w-full flex-col overflow-hidden"
                     >
-                      <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-[24px] bg-[var(--bg)] p-3 sm:p-4 md:flex-row md:items-stretch md:gap-0">
+                      <div className={`flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-[24px] p-3 sm:p-4 md:flex-row md:items-stretch md:gap-0 ${organicSlideBgClass}`}>
                         {bulk.storeIds.length > 0 ? (
-                          <aside className="hidden min-h-0 w-full max-h-[min(42vh,380px)] shrink-0 flex-col border-b border-[var(--border)] pb-3 md:flex md:max-h-none md:h-auto md:w-[min(100%,300px)] md:border-b-0 md:border-r md:border-[var(--border)] md:pb-0 md:pr-3">
+                          <aside className="hidden min-h-0 w-full max-h-[min(42vh,380px)] shrink-0 flex-col border-b border-[color-mix(in_oklab,var(--organic-cream)_45%,var(--border))] pb-3 md:flex md:max-h-none md:h-auto md:w-[min(100%,300px)] md:border-b-0 md:border-r md:border-[color-mix(in_oklab,var(--organic-cream)_45%,var(--border))] md:pb-0 md:pr-3">
                             <RecommendedStoresRow
                               embedded
                               orientation="vertical"
@@ -516,13 +503,13 @@ export function HomePage() {
               </div>
               {showFeedOverlayLoader ? (
                 <div
-                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[24px] bg-white/85 backdrop-blur-[2px]"
+                  className={`pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[24px] ${organicFeedOverlayClass}`}
                   aria-busy="true"
                   aria-live="polite"
                 >
                   <div className="pointer-events-auto flex flex-col items-center gap-3 px-4">
-                    <CeSpinner size="lg" className="text-emerald-600" aria-label={overlayIsUpdateOrMerge ? "Actualizando el feed…" : "Descargando el siguiente bloque…"} />
-                    <span className="text-sm font-semibold text-slate-500">{overlayIsUpdateOrMerge ? "Actualizando el feed…" : "Descargando el siguiente bloque…"}</span>
+                    <CeSpinner size="lg" className="text-[var(--organic-emerald)]" aria-label={overlayIsUpdateOrMerge ? "Actualizando el feed…" : "Descargando el siguiente bloque…"} />
+                    <span className="text-sm font-semibold text-[var(--muted)]">{overlayIsUpdateOrMerge ? "Actualizando el feed…" : "Descargando el siguiente bloque…"}</span>
                   </div>
                 </div>
               ) : null}
@@ -530,80 +517,19 @@ export function HomePage() {
           )}
         </div>
 
-        {showStoresMobileFab ? (
-          <>
-            {!homeStoresSheetOpen ? (
-              <button
-                type="button"
-                className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.25rem)] right-4 z-[61] flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-emerald-800 bg-emerald-700 text-white shadow-[0_10px_28px_rgba(4,120,87,0.35)] md:hidden hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f3ef] active:translate-y-[0.5px]"
-                aria-label={`Tiendas sugeridas en este lote (${sheetStoreIds.length})`}
-                onClick={() => setHomeStoresSheetOpen(true)}
-              >
-                <StoreLucideIcon
-                  strokeWidth={2.25}
-                  className="h-7 w-7"
-                  aria-hidden
-                />
-              </button>
-            ) : null}
-
-            {homeStoresSheetOpen ? (
-              <div
-                className="fixed inset-0 z-[92] md:hidden"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="vt-home-stores-sheet-title"
-              >
-                <button
-                  type="button"
-                  className="absolute inset-0 bg-[rgba(2,6,23,0.55)] backdrop-blur-[3px]"
-                  aria-label="Cerrar tiendas recomendadas"
-                  onClick={() => setHomeStoresSheetOpen(false)}
-                />
-                <div className="absolute bottom-0 left-0 right-0 flex max-h-[min(82dvh,720px)] min-h-[40%] flex-col rounded-t-[18px] border border-[#d9d5cf] bg-white shadow-[0_12px_30px_rgba(33,37,41,0.08)]">
-                  <div className="flex shrink-0 items-center gap-3 border-b border-[#d9d5cf] px-4 py-3 pr-2">
-                    <div className="min-w-0 flex-1">
-                      <p
-                        id="vt-home-stores-sheet-title"
-                        className="truncate text-[15px] font-extrabold tracking-[-0.02em] text-slate-900"
-                      >
-                        Tiendas para vos
-                      </p>
-                      <p className="mt-0.5 text-[12px] text-slate-500">
-                        {sheetStoreIds.length}{" "}
-                        {sheetStoreIds.length === 1 ? "tienda" : "tiendas"}{" "}
-                        recomendadas en este lote
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="vt-btn shrink-0"
-                      aria-label="Cerrar panel de tiendas"
-                      onClick={() => setHomeStoresSheetOpen(false)}
-                    >
-                      <X size={18} aria-hidden />
-                    </button>
-                  </div>
-                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 pb-[max(14px,calc(env(safe-area-inset-bottom,0px)+12px))] pt-2">
-                    <RecommendedStoresRow
-                      embedded
-                      hideTitle
-                      orientation="vertical"
-                      storeIds={sheetStoreIds}
-                      stores={stores}
-                      storeCatalogs={storeCatalogs}
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : null}
-          </>
-        ) : null}
+        <HomeStoresMobileSheet
+          open={homeStoresSheetOpen}
+          onOpenChange={setHomeStoresSheetOpen}
+          showFab={showStoresMobileFab}
+          storeIds={sheetStoreIds}
+          stores={stores}
+          storeCatalogs={storeCatalogs}
+        />
 
         {showBottomPrefetchSpinner ? (
           <div className="mt-3 flex w-full flex-col items-center gap-2 py-4">
-            <CeSpinner size="md" className="text-emerald-600" aria-label="Cargando más sugerencias…" />
-            <span className="text-sm font-semibold text-slate-500">Cargando más sugerencias…</span>
+            <CeSpinner size="md" className="text-[var(--organic-emerald)]" aria-label="Cargando más sugerencias…" />
+            <span className="text-sm font-semibold text-[var(--muted)]">Cargando más sugerencias…</span>
           </div>
         ) : null}
       </div>

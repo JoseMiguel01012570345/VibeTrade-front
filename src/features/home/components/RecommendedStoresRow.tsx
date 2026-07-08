@@ -8,20 +8,13 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@shared/lib/cn";
-import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
-import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
-import { StoreLocationMiniMap } from "@features/market/components/StoreLocationMiniMap";
 import type { StoreCatalog } from "@features/market/logic/storeCatalogTypes";
 import type { StoreBadge } from "@features/market/logic/store/useMarketStore";
 import { storeHref } from "@features/market/logic/store/storePath";
-import { ChevronLeft, ChevronRight, ExternalLink, Store } from "lucide-react";
-import { websiteUrlDisplayLabel } from "@shared/lib/websiteUrl";
-import { homeRecommendedStoreOrganicCardClass } from "@shared/styles/organicCardStyles";
-import {
-  isValidStoreLocation,
-  storeCategoriesLabel,
-  storeDescriptionSnippet,
-} from "../logic/homeTextUtils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { StoreOrganicCard } from "./StoreOrganicCard";
+import { storeDescriptionSnippet } from "../logic/homeTextUtils";
+import { organicIconBtnClass } from "@shared/styles/organicCardStyles";
 
 /** Carril de tiendas sugeridas: horizontal (flechas) o vertical (sidebar en home). */
 export function RecommendedStoresRow({
@@ -88,8 +81,7 @@ export function RecommendedStoresRow({
 
   if (resolved.length === 0) return null;
 
-  const arrowBtn =
-    "grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] text-[var(--text)] shadow-sm transition-[opacity,colors] hover:border-[color-mix(in_oklab,var(--primary)_40%,var(--border))] hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-35";
+  const arrowBtn = organicIconBtnClass;
 
   const titleClass = cn(
     "shrink-0 font-extrabold uppercase tracking-[0.08em] text-[var(--muted)]",
@@ -109,86 +101,13 @@ export function RecommendedStoresRow({
           orientation === "vertical" ? "w-full" : "w-[min(300px,88vw)] shrink-0",
         )}
       >
-        <div
-          role="link"
-          tabIndex={0}
-          className={cn(homeRecommendedStoreOrganicCardClass, "hover:border-[color-mix(in_oklab,var(--primary)_28%,var(--border))]")}
-          onClick={() => navigate(storeHref(s))}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              navigate(storeHref(s));
-            }
-          }}
-        >
-          <div className="flex min-w-0 items-start gap-2.5">
-            <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)]">
-              {s.avatarUrl?.trim() ? (
-                <ProtectedMediaImg
-                  src={s.avatarUrl.trim()}
-                  alt=""
-                  wrapperClassName="h-full w-full"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <Store size={20} className="text-[var(--muted)]" aria-hidden />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="line-clamp-2 text-[14px] font-black leading-tight tracking-[-0.02em] text-[var(--text)]">
-                {s.name}
-              </div>
-              <div className="mt-0.5 text-[11px] font-semibold leading-snug text-[var(--muted)]">
-                {storeCategoriesLabel(s.categories)}
-              </div>
-              {s.websiteUrl ? (
-                <a
-                  href={s.websiteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="pointer-events-auto mt-1 inline-flex max-w-full items-center gap-1 truncate text-[11px] font-bold text-[var(--primary)] hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <ExternalLink size={12} className="shrink-0" aria-hidden />
-                  <span className="truncate">
-                    {websiteUrlDisplayLabel(s.websiteUrl)}
-                  </span>
-                </a>
-              ) : null}
-            </div>
-          </div>
-          <StoreTrustMini score={s.trustScore} className="max-w-full" />
-          {isValidStoreLocation(s.location) ? (
-            <div
-              className={cn(
-                "w-full overflow-hidden rounded-lg self-start",
-                orientation === "vertical" ? "max-w-full" : "max-w-[220px]",
-              )}
-            >
-              <StoreLocationMiniMap
-                location={s.location}
-                mapKey={`${s.id}-${s.location.lat}-${s.location.lng}`}
-              />
-            </div>
-          ) : (
-            <div
-              className={cn(
-                "flex h-[88px] items-center justify-center self-start rounded-lg border border-dashed border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_70%,var(--surface))] px-2 text-center text-[10px] font-semibold leading-tight text-[var(--muted)]",
-                orientation === "vertical" ? "w-full" : "w-full max-w-[220px]",
-              )}
-            >
-              Sin ubicación en mapa
-            </div>
-          )}
-          {desc ? (
-            <p
-              className="line-clamp-2 min-h-0 break-words text-[11px] leading-snug text-[var(--muted)]"
-              title={fullDesc.length > desc.length ? fullDesc : undefined}
-            >
-              {desc}
-            </p>
-          ) : null}
-        </div>
+        <StoreOrganicCard
+          store={s}
+          variant="feed"
+          description={desc || undefined}
+          descriptionTitle={fullDesc.length > desc.length ? fullDesc : undefined}
+          onNavigate={() => navigate(storeHref(s))}
+        />
       </div>
     );
   };

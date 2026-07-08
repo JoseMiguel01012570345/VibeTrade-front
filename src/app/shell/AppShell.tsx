@@ -9,6 +9,15 @@ import {
   User,
 } from "lucide-react";
 import { cn } from "@shared/lib/cn";
+import {
+  organicBottomNavClass,
+  organicNavAvatarRingClass,
+  organicNavTabActiveClass,
+  organicNavTabClass,
+  organicShellHeaderClass,
+  organicShellSearchClass,
+  organicShellTitleClass,
+} from "@shared/styles/organicCardStyles";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { isStaffSession } from "@features/auth/logic/roles";
 import { isStoreSurfacePath } from "@features/market/logic/store/storePath";
@@ -34,12 +43,6 @@ const tabs = [
     activePrefix: "/profile/me",
   },
 ] as const;
-
-const NAV_TAB_ACTIVE =
-  "bg-[color-mix(in_oklab,#0f766e_12%,transparent)] text-[#0f766e] active:bg-[color-mix(in_oklab,#0f766e_20%,transparent)]";
-
-const NAV_PROFILE_AVATAR_RING =
-  "ring-2 ring-[color-mix(in_oklab,#0f766e_45%,transparent)] ring-offset-2 ring-offset-[var(--surface)]";
 
 const NAV_PROFILE_AVATAR_PLACEHOLDER =
   "vt-avatar-placeholder text-[10px] font-black";
@@ -155,26 +158,39 @@ export function AppShell() {
         </button>
       ) : null}
       {showStickyShellHeader ? (
-        <div className="vt-home-shell-header sticky top-0 z-50 overflow-visible border-b border-emerald-100 bg-white/95 pt-[max(10px,env(safe-area-inset-top,0px))] backdrop-blur-sm">
+        <div
+          className={cn(
+            organicShellHeaderClass,
+            "sticky top-0 z-50 overflow-visible pt-[max(10px,env(safe-area-inset-top,0px))]",
+          )}
+        >
           <div className="container mx-auto max-w-[1140px] pb-3">
             {isHome && !isOnboarding ? (
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 pt-2.5 md:flex-nowrap">
-                <h1 className="order-1 shrink-0 text-lg font-extrabold tracking-tight text-emerald-700 sm:text-xl">
+                <h1
+                  className={cn(
+                    organicShellTitleClass,
+                    "order-1 shrink-0 text-lg sm:text-xl",
+                  )}
+                >
                   Ofertas
                 </h1>
                 <button
                   type="button"
-                  className="vt-home-shell-search order-2 flex w-full min-w-0 basis-full items-center gap-2 rounded-full border border-emerald-100 bg-stone-50 px-3 py-2.5 text-left text-[13px] shadow-none transition hover:border-emerald-300 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-100 md:w-auto md:flex-1 md:basis-auto"
+                  className={cn(
+                    organicShellSearchClass,
+                    "order-2 flex w-full min-w-0 basis-full items-center gap-2 px-3 py-2.5 text-left text-[13px] md:w-auto md:flex-1 md:basis-auto",
+                  )}
                   onClick={() => navigate("/search")}
                   aria-label="Abrir búsqueda de tiendas, productos y servicios"
                 >
                   <Search
                     size={18}
                     strokeWidth={2.25}
-                    className="shrink-0 text-emerald-600"
+                    className="shrink-0 text-[var(--organic-emerald)]"
                     aria-hidden
                   />
-                  <span className="min-w-0 text-slate-500 max-md:whitespace-normal max-md:break-words max-md:leading-snug md:truncate">
+                  <span className="min-w-0 text-[var(--muted)] max-md:whitespace-normal max-md:break-words max-md:leading-snug md:truncate">
                     Buscar tiendas, productos o servicios…
                   </span>
                 </button>
@@ -210,7 +226,12 @@ export function AppShell() {
       </main>
 
       {!isOnboarding && !hideBottomNav && (
-        <nav className="fixed bottom-0 left-0 right-0 z-[60] rounded-t-[2rem] border-t border-transparent bg-[var(--surface)] min-[961px]:rounded-none">
+        <nav
+          className={cn(
+            organicBottomNavClass,
+            "fixed bottom-0 left-0 right-0 z-[60] rounded-t-[2rem] min-[961px]:rounded-none",
+          )}
+        >
           <div className="container grid grid-cols-4 gap-1.5 py-2.5">
             {tabs.map((t) => {
               const active = tabIsActive(pathname, t);
@@ -229,8 +250,9 @@ export function AppShell() {
                   type="button"
                   onClick={openAuthModal}
                   className={cn(
-                    "flex flex-col items-center gap-1 rounded-xl px-1.5 py-2 text-xs text-[var(--muted)] opacity-55",
-                    active && NAV_TAB_ACTIVE,
+                    organicNavTabClass,
+                    "flex flex-col items-center gap-1 px-1.5 py-2 text-xs opacity-55",
+                    active && organicNavTabActiveClass,
                   )}
                   aria-label={`${t.label} (requiere iniciar sesiÃ³n)`}
                 >
@@ -239,7 +261,7 @@ export function AppShell() {
                       className={cn(
                         "grid h-[22px] w-[22px] shrink-0 place-items-center overflow-hidden rounded-full",
                         NAV_PROFILE_AVATAR_PLACEHOLDER,
-                        active && NAV_PROFILE_AVATAR_RING,
+                        active && organicNavAvatarRingClass,
                       )}
                       aria-hidden
                     >
@@ -255,8 +277,9 @@ export function AppShell() {
                   key={t.to}
                   to={t.to}
                   className={cn(
-                    "flex flex-col items-center gap-1 rounded-xl px-1.5 py-2 text-xs text-[var(--muted)]",
-                    active && NAV_TAB_ACTIVE,
+                    organicNavTabClass,
+                    "flex flex-col items-center gap-1 px-1.5 py-2 text-xs",
+                    active && organicNavTabActiveClass,
                   )}
                 >
                   {profileTab ? (
@@ -264,7 +287,7 @@ export function AppShell() {
                       className={cn(
                         "grid h-[22px] w-[22px] shrink-0 place-items-center overflow-hidden rounded-full",
                         !me.avatarUrl && NAV_PROFILE_AVATAR_PLACEHOLDER,
-                        active && NAV_PROFILE_AVATAR_RING,
+                        active && organicNavAvatarRingClass,
                       )}
                       aria-hidden
                     >

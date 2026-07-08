@@ -775,27 +775,23 @@ body:has(.vt-home-page) {
   color: var(--muted);
 }
 
-/* Cabecera sticky del home (fuera de .store-front-surface, en AppShell) */
-:root.dark .vt-home-shell-header {
+/* Cabecera sticky del home (AppShell) — estilo orgánico */
+:root.dark .vt-organic-shell-header {
   border-color: var(--border);
   background-color: color-mix(in oklab, var(--surface) 95%, transparent);
 }
 
-:root.dark .vt-home-shell-header .text-emerald-700 {
+:root.dark .vt-organic-shell-title {
   color: var(--primary);
 }
 
-:root.dark .vt-home-shell-header .text-slate-500 {
-  color: var(--muted);
-}
-
-:root.dark .vt-home-shell-header .vt-home-shell-search {
+:root.dark .vt-organic-shell-search {
   border-color: var(--border);
   background-color: color-mix(in oklab, var(--bg) 55%, var(--surface));
   color: var(--text);
 }
 
-:root.dark .vt-home-shell-header .vt-home-shell-search:hover {
+:root.dark .vt-organic-shell-search:hover {
   border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
   background-color: var(--surface);
 }

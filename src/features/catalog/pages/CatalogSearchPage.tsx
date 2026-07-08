@@ -19,6 +19,13 @@ import type {
 import { VtAutocompleteInput } from "@shared/components/ui/VtAutocompleteInput";
 import { StoreSearchResultCard } from "@features/home/components/StoreSearchResultCard";
 import { CatalogOfferSearchCard } from "../components/CatalogOfferSearchCard";
+import {
+  organicBackBtnClass,
+  organicInputClass,
+  organicPaginationBtnClass,
+  organicSearchPanelClass,
+  organicSearchSubmitBtnClass,
+} from "@shared/styles/organicCardStyles";
 import "@features/auth/styles/auth.css";
 
 type LocationState = { initialQuery?: string } | null;
@@ -326,19 +333,19 @@ export function CatalogSearchPage() {
         <div className="mb-5 flex min-w-0 items-center pr-[3.25rem]">
           <Link
             to="/home"
-            className="vt-auth-back-btn shrink-0"
+            className={organicBackBtnClass}
             aria-label="Volver al inicio"
           >
             <ArrowLeft size={18} strokeWidth={2.25} aria-hidden />
           </Link>
         </div>
 
-        <div className="rounded-[18px] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[0_12px_30px_rgba(33,37,41,0.05)] sm:p-5">
+        <div className={`${organicSearchPanelClass} p-4 sm:p-5`}>
           <form
             className="mb-3 flex flex-col gap-3 min-[520px]:flex-row min-[520px]:flex-wrap min-[520px]:items-end"
             onSubmit={onSubmitSearch}
           >
-            <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-xs font-bold text-slate-500">
+            <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-xs font-bold text-[var(--muted)]">
               <span>Buscar</span>
               <VtAutocompleteInput
                 value={storeNameQ}
@@ -347,11 +354,11 @@ export function CatalogSearchPage() {
                 placeholder="Nombre, producto, servicio, ruta…"
                 ariaLabel="Buscar en catálogo"
                 matchMode="fuzzy"
-                inputClassName="h-11 rounded-xl border border-[#d9d5cf] bg-stone-50 text-sm text-slate-900 shadow-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+                inputClassName={`${organicInputClass} h-11 text-sm text-[var(--text)] shadow-none transition placeholder:text-[var(--muted)]`}
               />
             </label>
 
-            <label className="flex w-full flex-col gap-1.5 text-xs font-bold text-slate-500 min-[520px]:w-72">
+            <label className="flex w-full flex-col gap-1.5 text-xs font-bold text-[var(--muted)] min-[520px]:w-72">
               <span>Categorías</span>
               <VtMultiSelect
                 value={storeCategories}
@@ -359,10 +366,11 @@ export function CatalogSearchPage() {
                 ariaLabel="Filtrar por categorías"
                 placeholder="Todas"
                 options={categoryOptions}
+                buttonClassName={`${organicInputClass} min-h-[42px] px-3 py-2.5 text-sm hover:border-[color-mix(in_oklab,var(--organic-sage)_38%,var(--border))]`}
               />
             </label>
 
-            <label className="flex w-full flex-col gap-1.5 text-xs font-bold text-slate-500 min-[520px]:w-56">
+            <label className="flex w-full flex-col gap-1.5 text-xs font-bold text-[var(--muted)] min-[520px]:w-56">
               <span>Tipo</span>
               <VtMultiSelect
                 value={kinds}
@@ -380,6 +388,7 @@ export function CatalogSearchPage() {
                 }}
                 ariaLabel="Filtrar por tipo"
                 placeholder="Todos"
+                buttonClassName={`${organicInputClass} min-h-[42px] px-3 py-2.5 text-sm hover:border-[color-mix(in_oklab,var(--organic-sage)_38%,var(--border))]`}
                 options={[
                   { value: "store", label: "Tiendas" },
                   { value: "product", label: "Productos" },
@@ -390,11 +399,11 @@ export function CatalogSearchPage() {
             </label>
 
             <div className="flex w-full min-w-0 gap-2 min-[520px]:contents">
-              <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-xs font-bold text-slate-500 min-[520px]:w-44">
+              <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-xs font-bold text-[var(--muted)] min-[520px]:w-44">
                 <span>Radio (km)</span>
                 <input
                   inputMode="decimal"
-                  className="vt-input min-h-[42px] rounded-xl border-[#d9d5cf] bg-stone-50 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  className={`vt-input ${organicInputClass} min-h-[42px]`}
                   placeholder="Ej: 10"
                   value={km}
                   onChange={(e) => {
@@ -407,11 +416,11 @@ export function CatalogSearchPage() {
                 />
               </label>
 
-              <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-xs font-bold text-slate-500 min-[520px]:w-44">
+              <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-xs font-bold text-[var(--muted)] min-[520px]:w-44">
                 <span>Confianza mínima</span>
                 <input
                   inputMode="decimal"
-                  className="vt-input min-h-[42px] rounded-xl border-[#d9d5cf] bg-stone-50 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                  className={`vt-input ${organicInputClass} min-h-[42px]`}
                   placeholder="Ej: 80"
                   value={trustMin}
                   onChange={(e) => setTrustMin(e.target.value)}
@@ -425,7 +434,7 @@ export function CatalogSearchPage() {
             <div className="flex w-full min-[520px]:w-auto min-[520px]:shrink-0">
               <button
                 type="submit"
-                className="grid h-11 w-full min-w-[2.75rem] place-items-center rounded-full bg-emerald-700 text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60 min-[520px]:h-11 min-[520px]:w-11"
+                className={`grid place-items-center rounded-full disabled:cursor-not-allowed disabled:opacity-60 ${organicSearchSubmitBtnClass}`}
                 disabled={status === "loading"}
                 aria-label="Buscar"
               >
@@ -435,22 +444,22 @@ export function CatalogSearchPage() {
           </form>
 
           {status === "idle" ? (
-            <div className="text-[13px] text-slate-500">
+            <div className="text-[13px] text-[var(--muted)]">
               Elige filtros y pulsa la{" "}
-              <span className="font-semibold text-slate-800">lupa</span> para ver
+              <span className="font-semibold text-[var(--text)]">lupa</span> para ver
               resultados.
             </div>
           ) : null}
           {status === "loading" ? (
-            <div className="text-[13px] text-slate-500">Buscando…</div>
+            <div className="text-[13px] text-[var(--muted)]">Buscando…</div>
           ) : null}
           {status === "error" ? (
-            <div className="text-[13px] text-slate-500">
+            <div className="text-[13px] text-[var(--muted)]">
               No se pudo buscar. ¿Backend en marcha?
             </div>
           ) : null}
           {status === "ready" && results.length === 0 ? (
-            <div className="text-[13px] text-slate-500">
+            <div className="text-[13px] text-[var(--muted)]">
               Sin resultados para esta búsqueda.
             </div>
           ) : null}
@@ -480,7 +489,7 @@ export function CatalogSearchPage() {
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className={organicPaginationBtnClass}
                   disabled={!hasPrevPage}
                   onClick={() => void runSearch(pageIndex - 1)}
                   aria-label="Página anterior"
@@ -491,7 +500,7 @@ export function CatalogSearchPage() {
 
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className={organicPaginationBtnClass}
                   disabled={!hasNextPage}
                   onClick={() => void runSearch(pageIndex + 1)}
                   aria-label="Página siguiente"

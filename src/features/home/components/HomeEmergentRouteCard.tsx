@@ -15,7 +15,7 @@ import {
   routeOfferPublicBlockedForBuyerWithAgreement,
 } from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
 
-import { homeEmergentRouteOrganicCardClass } from "@shared/styles/organicCardStyles";
+import { homeEmergentRouteOrganicCardClass, storefrontOrganicBtnBlockClass } from "@shared/styles/organicCardStyles";
 
 export function HomeEmergentRouteCard({
   offer,
@@ -81,16 +81,14 @@ export function HomeEmergentRouteCard({
           {canSubscribeEmergent ? (
             <Link
               to={`/offer/${offer.id}#hoja-suscribir`}
-              className={cn(
-                "flex h-11 w-full items-center justify-center rounded-full bg-emerald-700 text-sm font-bold text-white transition hover:bg-emerald-800",
-              )}
+              className={storefrontOrganicBtnBlockClass}
             >
               Suscribirse
             </Link>
           ) : (
             <button
               type="button"
-              className="flex h-11 w-full items-center justify-center rounded-full bg-emerald-700 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className={cn(storefrontOrganicBtnBlockClass, "disabled:cursor-not-allowed disabled:opacity-48")}
               onClick={() => {
                 if (!sessionReady) {
                   openAuthModal();

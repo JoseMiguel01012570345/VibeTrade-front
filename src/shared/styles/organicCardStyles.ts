@@ -41,9 +41,39 @@ export const storefrontOrganicOverlayLikeClass = cn(
 /** Tarjeta de hoja de ruta emergente en el feed home. */
 export const homeEmergentRouteOrganicCardClass = storefrontOrganicFeedCardClass;
 
-/** Tile orgánico — tiendas recomendadas en sidebar / carril home. */
-export const homeRecommendedStoreOrganicCardClass = cn(
-  "vt-organic-card vt-organic-card--tile vt-organic-card--interactive",
-  "flex w-full cursor-pointer flex-col gap-2 p-3 text-left",
+/** Tarjeta orgánica — tiendas en feed y búsqueda (mismo relieve que producto/servicio). */
+export const storeOrganicCardClass = cn(
+  "vt-organic-card vt-organic-card--feed vt-organic-card--interactive",
+  "relative flex w-full min-w-0 flex-col gap-2.5 p-3.5 text-left",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2",
+);
+
+/** @deprecated Usar `storeOrganicCardClass` */
+export const homeRecommendedStoreOrganicCardClass = storeOrganicCardClass;
+
+/** Panel orgánico — viewport del feed home. */
+export const organicFeedPanelClass = cn("vt-organic-panel vt-organic-panel--feed");
+
+/** Panel orgánico — formulario y resultados de búsqueda. */
+export const organicSearchPanelClass = cn("vt-organic-panel vt-organic-panel--search");
+
+export const organicShellHeaderClass = "vt-organic-shell-header";
+export const organicShellTitleClass = "vt-organic-shell-title";
+export const organicShellSearchClass = "vt-organic-shell-search";
+export const organicBottomNavClass = "vt-organic-bottom-nav";
+export const organicNavTabClass = "vt-organic-nav-tab";
+export const organicNavTabActiveClass = "vt-organic-nav-tab--active";
+export const organicNavAvatarRingClass = "vt-organic-nav-avatar-ring";
+export const organicInputClass = "vt-organic-input";
+export const organicBackBtnClass = "vt-organic-back-btn";
+export const organicPaginationBtnClass = "vt-organic-pagination-btn";
+export const organicFabClass = "vt-organic-fab";
+export const organicSheetClass = "vt-organic-sheet";
+export const organicIconBtnClass = "vt-organic-icon-btn";
+export const organicSlideBgClass = "vt-organic-slide-bg";
+export const organicFeedOverlayClass = "vt-organic-feed-overlay";
+
+export const organicSearchSubmitBtnClass = cn(
+  storefrontOrganicBtnForestClass,
+  "h-11 w-full min-w-[2.75rem] min-[520px]:h-11 min-[520px]:w-11",
 );
