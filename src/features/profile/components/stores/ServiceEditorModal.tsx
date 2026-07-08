@@ -241,8 +241,8 @@ export function ServiceEditorModal({
         show={open}
         onClose={() => !uploadBusy && onClose()}
         title={title}
-        size="5xl"
-        bodyClassName="overflow-y-auto max-h-[min(85vh,48rem)]"
+        size="3xl"
+        bodyClassName="overflow-y-auto"
         footer={
           <>
             <ProfileButton variant="ghost" disabled={uploadBusy} onClick={onClose}>

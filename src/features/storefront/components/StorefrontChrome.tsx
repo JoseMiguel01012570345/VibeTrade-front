@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, type FormEvent, type ReactNode } from "re
 import { Link, useNavigate } from "react-router-dom";
 import { BadgeCheck, Search, Store } from "lucide-react";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
+import { useDominantImageColor } from "@shared/lib/image/useDominantImageColor";
 import {
   storeCartHref,
   storeHref,
@@ -54,6 +55,8 @@ export function StorefrontHeader({
   const cartCount = useCartStore((s) =>
     s.items.reduce((n, i) => n + i.quantity, 0),
   );
+  const logoRgb = useDominantImageColor(store.avatarUrl ?? null, true, "offer-card");
+  const logoColor = useMemo(() => `rgb(${logoRgb})`, [logoRgb]);
 
   const controlled = onQueryChange !== undefined;
   const [localQuery, setLocalQuery] = useState("");
@@ -155,9 +158,10 @@ export function StorefrontHeader({
             </span>
             <span
               className={cn(
-                "flex min-w-0 items-center gap-1 truncate text-xl font-extrabold tracking-tight text-emerald-700 sm:text-2xl md:text-[1.8rem]",
+                "flex min-w-0 items-center gap-1 truncate text-xl font-extrabold tracking-tight sm:text-2xl md:text-[1.8rem]",
                 hasPageAmbient && "vt-storefront-accent-text",
               )}
+              style={{ color: logoColor }}
             >
               <span className="truncate">{store.name}</span>
               {store.verified ? (

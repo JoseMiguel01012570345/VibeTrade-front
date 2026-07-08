@@ -29,11 +29,12 @@ export function useStorefrontBannerAmbient(): StorefrontBannerAmbient {
     Boolean(mainBannerUrl),
     "storefront-surface",
   );
-  const footerRgb = useDominantImageColor(
+  const accentRgb = useDominantImageColor(
     secondaryBannerUrl,
     Boolean(secondaryBannerUrl),
     "storefront-surface",
   );
+  const footerRgb = accentRgb;
 
   return useMemo(() => {
     const hasPageAmbient = Boolean(mainBannerUrl);
@@ -45,7 +46,7 @@ export function useStorefrontBannerAmbient(): StorefrontBannerAmbient {
       pageRgb: hasPageAmbient ? pageRgb : null,
       footerRgb: hasFooterAmbient ? footerRgb : null,
       shellStyle: hasPageAmbient
-        ? storefrontShellStyle(pageRgb, colorScheme)
+        ? storefrontShellStyle(pageRgb, colorScheme, hasFooterAmbient ? accentRgb : undefined)
         : undefined,
       footerStyle: hasFooterAmbient
         ? ({
@@ -55,6 +56,7 @@ export function useStorefrontBannerAmbient(): StorefrontBannerAmbient {
         : undefined,
     };
   }, [
+    accentRgb,
     colorScheme,
     footerRgb,
     mainBannerUrl,

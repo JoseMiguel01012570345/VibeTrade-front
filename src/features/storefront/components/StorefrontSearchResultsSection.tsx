@@ -9,10 +9,14 @@ export function StorefrontSearchResultsSection({
   products,
   services,
   loading,
+  onProductSelect,
+  onServiceSelect,
 }: Readonly<{
   products: StoreProduct[];
   services: StoreService[];
   loading?: boolean;
+  onProductSelect?: (product: StoreProduct) => void;
+  onServiceSelect?: (service: StoreService) => void;
 }>) {
   const hasResults = products.length > 0 || services.length > 0;
 
@@ -34,10 +38,10 @@ export function StorefrontSearchResultsSection({
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
           {products.map((p) => (
-            <StorefrontProductCard key={`prd-${p.id}`} p={p} />
+            <StorefrontProductCard key={`prd-${p.id}`} p={p} onSelect={onProductSelect} />
           ))}
           {services.map((s) => (
-            <StorefrontServiceCard key={`svc-${s.id}`} s={s} />
+            <StorefrontServiceCard key={`svc-${s.id}`} s={s} onSelect={onServiceSelect} />
           ))}
         </div>
       )}

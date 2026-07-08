@@ -294,21 +294,24 @@ export type StorefrontShellCssVars = {
 export function buildStorefrontShellCssVars(
   pageRgb: RgbTriplet,
   scheme: "light" | "dark",
+  accentRgb?: RgbTriplet,
 ): StorefrontShellCssVars {
+  const accent = accentRgb ?? pageRgb;
   return {
     "--storefront-page-rgb": pageRgb,
-    "--storefront-accent-rgb": storefrontAccentRgb(pageRgb, scheme),
-    "--storefront-accent-strong-rgb": storefrontAccentStrongRgb(pageRgb, scheme),
-    "--storefront-border-rgb": storefrontBorderRgb(pageRgb, scheme),
+    "--storefront-accent-rgb": storefrontAccentRgb(accent, scheme),
+    "--storefront-accent-strong-rgb": storefrontAccentStrongRgb(accent, scheme),
+    "--storefront-border-rgb": storefrontBorderRgb(accent, scheme),
   };
 }
 
 export function storefrontShellStyle(
   pageRgb: RgbTriplet,
   scheme: "light" | "dark",
+  accentRgb?: RgbTriplet,
 ): CSSProperties {
   return {
-    ...buildStorefrontShellCssVars(pageRgb, scheme),
+    ...buildStorefrontShellCssVars(pageRgb, scheme, accentRgb),
     background: storefrontPageBackground(pageRgb, scheme),
   } as CSSProperties;
 }

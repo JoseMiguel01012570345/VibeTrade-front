@@ -1,12 +1,15 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { useStorePageDetail } from "@features/market/hooks/useStorePageDetail";
 import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
 import { isReservedStoreName } from "@features/market/logic/store/storePath";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
+import type { StoreProduct, StoreService } from "@features/market/logic/storeCatalogTypes";
 import { StorefrontChrome } from "../components/StorefrontChrome";
+import { StorefrontProductModal } from "../components/StorefrontProductModal";
+import { StorefrontServiceModal } from "../components/StorefrontServiceModal";
 import { BannerSlider } from "../components/BannerSlider";
 import { StorefrontHeroBanner } from "../components/StorefrontHeroBanner";
 import { StorefrontCategorySection } from "../components/StorefrontCategorySection";
@@ -31,11 +34,30 @@ import type { CategoryMeta } from "../logic/storefrontTypes";
 
 function StorefrontCatalogBody({ store }: Readonly<{ store: StoreBadge }>) {
   const catalog = useMarketStore((s) => s.storeCatalogs[store.id]);
+  const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
+  const [selectedService, setSelectedService] = useState<StoreService | null>(null);
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const nav = useNavigate();
   const submittedQuery = (searchParams.get("q") ?? "").trim();
   const catalogSearch = useStoreCatalogSearch(store.id, submittedQuery);
   const { mainBanners, secondaryBanners } = useStoreBanners();
   const { categoryMetas } = useStoreCategories();
+
+  useEffect(() => {
+    const state = location.state as
+      | { selectedOfferId?: string; selectedOfferKind?: "product" | "service" }
+      | undefined;
+    if (!state?.selectedOfferId) return;
+    if (state.selectedOfferKind === "service") {
+      const svc = catalog?.services.find((s) => s.id === state.selectedOfferId);
+      if (svc) setSelectedService(svc);
+    } else {
+      const prod = catalog?.products.find((p) => p.id === state.selectedOfferId);
+      if (prod) setSelectedProduct(prod);
+    }
+    nav(location.pathname + location.search, { replace: true, state: {} });
+  }, [catalog, location.pathname, location.search, location.state, nav]);
 
   const publishedProducts = useMemo(
     () => (catalog?.products ?? []).filter((p) => p.published),
@@ -140,7 +162,10 @@ function StorefrontCatalogBody({ store }: Readonly<{ store: StoreBadge }>) {
       ) : null}
 
       {isBrowsingAll ? (
-        <StorefrontLatestProductsSection products={latestProducts} />
+        <StorefrontLatestProductsSection
+          products={latestProducts}
+          onProductSelect={setSelectedProduct}
+        />
       ) : null}
 
       {isBrowsingAll && secondaryBannerSlides.length > 0 ? (
@@ -163,6 +188,8 @@ function StorefrontCatalogBody({ store }: Readonly<{ store: StoreBadge }>) {
           products={visibleProducts}
           services={visibleServices}
           loading={isSearchLoading}
+          onProductSelect={setSelectedProduct}
+          onServiceSelect={setSelectedService}
         />
       ) : (
         <>
@@ -170,16 +197,32 @@ function StorefrontCatalogBody({ store }: Readonly<{ store: StoreBadge }>) {
             heading="Ofertas que no puedes dejar pasar"
             products={visibleProducts}
             hasAnyPublished={publishedProducts.length > 0}
+            onProductSelect={setSelectedProduct}
           />
 
           {publishedServices.length > 0 ? (
             <StorefrontServicesSection
               heading="Servicios"
               services={visibleServices}
+              onServiceSelect={setSelectedService}
             />
           ) : null}
         </>
       )}
+
+      <StorefrontProductModal
+        product={selectedProduct}
+        storeName={store.name}
+        isOpen={!!selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+      />
+
+      <StorefrontServiceModal
+        service={selectedService}
+        storeName={store.name}
+        isOpen={!!selectedService}
+        onClose={() => setSelectedService(null)}
+      />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { useStorePageDetail } from "@features/market/hooks/useStorePageDetail";
 import { useStoreIdFromName } from "@features/market/hooks/useStoreByName";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
-import type { StoreProduct } from "@features/market/Dtos/storeCatalogTypes";
+import type { StoreProduct, StoreService } from "@features/market/Dtos/storeCatalogTypes";
 import {
   isReservedStoreName,
   storeCategoryHref,
@@ -13,6 +13,8 @@ import {
   storeServiceCategoryHref,
 } from "@features/market/logic/store/storePath";
 import { StorefrontChrome } from "../components/StorefrontChrome";
+import { StorefrontProductModal } from "../components/StorefrontProductModal";
+import { StorefrontServiceModal } from "../components/StorefrontServiceModal";
 import { CategoryHeader } from "../components/CategoryHeader";
 import { CategoryGrid } from "../components/CategoryGrid";
 import { CategoryPagination } from "../components/CategoryPagination";
@@ -60,6 +62,8 @@ function StorefrontCategoryPageBody({
 
   const [sort, setSort] = useState<SortMode>(sortOptions[0].value);
   const [page, setPage] = useState(1);
+  const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
+  const [selectedService, setSelectedService] = useState<StoreService | null>(null);
 
   const publishedProducts = useMemo(
     () => (catalog?.products ?? []).filter((p) => p.published),
@@ -179,6 +183,22 @@ function StorefrontCategoryPageBody({
         isService={isService}
         products={pageProducts}
         services={pageServices}
+        onProductSelect={setSelectedProduct}
+        onServiceSelect={setSelectedService}
+      />
+
+      <StorefrontProductModal
+        product={selectedProduct}
+        storeName={store.name}
+        isOpen={!!selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+      />
+
+      <StorefrontServiceModal
+        service={selectedService}
+        storeName={store.name}
+        isOpen={!!selectedService}
+        onClose={() => setSelectedService(null)}
       />
 
       <CategoryPagination

@@ -33,12 +33,15 @@ export function StorefrontServiceCard({
   compact = false,
   offerAmbient = true,
   offerAmbientImageUrl = null,
+  onSelect,
 }: Readonly<{
   s: StoreService;
   /** Variante compacta (cuadrícula densa); igual que la tarjeta de producto. */
   compact?: boolean;
   offerAmbient?: boolean;
   offerAmbientImageUrl?: string | null;
+  /** Si se provee, el clic en la tarjeta abre el modal en lugar de navegar a la ficha. */
+  onSelect?: (service: StoreService) => void;
 }>) {
   const s = normalizeStoreService(raw);
   const storeName = useMarketStore((st) => st.stores[s.storeId]?.name);
@@ -101,21 +104,43 @@ export function StorefrontServiceCard({
       style={ambientStyle.style}
     >
       <div className={`${storefrontOrganicMediaClass} ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}>
-        <Link to={detailHref} className="block h-full w-full">
-          {photo ? (
-            <ProtectedMediaImg
-              src={photo}
-              alt={title}
-              wrapperClassName="h-full w-full"
-              className="h-full w-full object-cover"
-              onImageLoad={ambientStyle.onImageLoad}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_oklab,var(--organic-sage)_18%,var(--surface))] text-[var(--organic-emerald)]">
-              <Wrench className="h-9 w-9" aria-hidden />
-            </div>
-          )}
-        </Link>
+        {onSelect ? (
+          <button
+            type="button"
+            onClick={() => onSelect(s)}
+            className="block h-full w-full text-left"
+          >
+            {photo ? (
+              <ProtectedMediaImg
+                src={photo}
+                alt={title}
+                wrapperClassName="h-full w-full"
+                className="h-full w-full object-cover"
+                onImageLoad={ambientStyle.onImageLoad}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_oklab,var(--organic-sage)_18%,var(--surface))] text-[var(--organic-emerald)]">
+                <Wrench className="h-9 w-9" aria-hidden />
+              </div>
+            )}
+          </button>
+        ) : (
+          <Link to={detailHref} className="block h-full w-full">
+            {photo ? (
+              <ProtectedMediaImg
+                src={photo}
+                alt={title}
+                wrapperClassName="h-full w-full"
+                className="h-full w-full object-cover"
+                onImageLoad={ambientStyle.onImageLoad}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_oklab,var(--organic-sage)_18%,var(--surface))] text-[var(--organic-emerald)]">
+                <Wrench className="h-9 w-9" aria-hidden />
+              </div>
+            )}
+          </Link>
+        )}
         <OfferSaveButton offerId={s.id} overlay />
         <OfferImageLikeButton
           liked={liked}
@@ -137,18 +162,37 @@ export function StorefrontServiceCard({
           {s.category || "\u00a0"}
         </p>
 
-        <Link to={detailHref} className="mt-2 block shrink-0">
-          <h3
-            className={`overflow-hidden font-extrabold text-[var(--text)] ${
-              compact
-                ? "line-clamp-3 h-[4.5rem] text-[1.05rem] leading-6"
-                : "line-clamp-2 h-12 text-lg leading-6"
-            }`}
-            title={title}
+        {onSelect ? (
+          <button
+            type="button"
+            onClick={() => onSelect(s)}
+            className="mt-2 block shrink-0 text-left"
           >
-            {title}
-          </h3>
-        </Link>
+            <h3
+              className={`overflow-hidden font-extrabold text-[var(--text)] ${
+                compact
+                  ? "line-clamp-3 h-[4.5rem] text-[1.05rem] leading-6"
+                  : "line-clamp-2 h-12 text-lg leading-6"
+              }`}
+              title={title}
+            >
+              {title}
+            </h3>
+          </button>
+        ) : (
+          <Link to={detailHref} className="mt-2 block shrink-0">
+            <h3
+              className={`overflow-hidden font-extrabold text-[var(--text)] ${
+                compact
+                  ? "line-clamp-3 h-[4.5rem] text-[1.05rem] leading-6"
+                  : "line-clamp-2 h-12 text-lg leading-6"
+              }`}
+              title={title}
+            >
+              {title}
+            </h3>
+          </Link>
+        )}
 
         <p
           className={`mt-2 shrink-0 overflow-hidden text-[var(--muted)] ${
@@ -171,9 +215,19 @@ export function StorefrontServiceCard({
         </div>
 
         <div className={`shrink-0 ${compact ? "mt-auto pt-4" : "mt-auto pt-5"}`}>
-          <Link to={detailHref} className={storefrontOrganicBtnBlockClass}>
-            Ver servicio
-          </Link>
+          {onSelect ? (
+            <button
+              type="button"
+              onClick={() => onSelect(s)}
+              className={storefrontOrganicBtnBlockClass}
+            >
+              Ver servicio
+            </button>
+          ) : (
+            <Link to={detailHref} className={storefrontOrganicBtnBlockClass}>
+              Ver servicio
+            </Link>
+          )}
         </div>
       </div>
     </article>

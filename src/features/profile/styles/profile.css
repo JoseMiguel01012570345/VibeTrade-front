@@ -481,6 +481,7 @@ a.vt-profile-btn--primary:focus-visible {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.5rem;
+  margin-top: auto;
   border-top: 1px solid var(--border);
   padding: 0.875rem 1.25rem;
 }

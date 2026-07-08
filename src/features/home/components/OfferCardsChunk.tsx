@@ -1,6 +1,8 @@
 import type { RouteOfferPublicState } from "@features/market/logic/store/marketStoreTypes";
 import type { Offer } from "@features/market/logic/store/useMarketStore";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
+import { useNavigate } from "react-router-dom";
+import { storeHref } from "@features/market/logic/store/storePath";
 import { StorefrontProductCard } from "@features/storefront/components/StorefrontProductCard";
 import { StorefrontServiceCard } from "@features/storefront/components/StorefrontServiceCard";
 import {
@@ -20,6 +22,15 @@ export function OfferCardsChunk({
   routeOfferPublic: Partial<Record<string, RouteOfferPublicState>>;
 }>) {
   const storeCatalogs = useMarketStore((s) => s.storeCatalogs);
+  const stores = useMarketStore((s) => s.stores);
+  const nav = useNavigate();
+
+  function navigateToStore(storeId: string, offerId: string, kind: "product" | "service") {
+    const store = stores[storeId];
+    nav(storeHref(store), {
+      state: { selectedOfferId: offerId, selectedOfferKind: kind },
+    });
+  }
 
   return (
     <section>
@@ -53,6 +64,7 @@ export function OfferCardsChunk({
                   offer,
                   storeCatalogs,
                 )}
+                onSelect={(s) => navigateToStore(s.storeId, s.id, "service")}
               />
             );
           }
@@ -63,6 +75,7 @@ export function OfferCardsChunk({
               key={`${offer.id}-${i}`}
               p={product}
               offerAmbient={false}
+              onSelect={(p) => navigateToStore(p.storeId, p.id, "product")}
               offerAmbientImageUrl={resolveHomeOfferPrimaryImageUrl(
                 offer,
                 storeCatalogs,

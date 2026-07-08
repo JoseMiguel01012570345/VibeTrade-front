@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Trash2, Upload } from "lucide-react";
+import { AlertTriangle, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import {
   createStoreBanner,
@@ -254,6 +254,20 @@ export function StoreBannerLibraryModal({
         </CeButton>
       }
     >
+      <div className="mb-4 flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
+        <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden />
+        <div className="space-y-1">
+          <p className="font-bold">Políticas de banners</p>
+          <ul className="list-disc space-y-0.5 pl-4 text-xs leading-relaxed">
+            <li>Formato de imagen: JPG, PNG o WebP.</li>
+            <li>Tamaño máximo: {(MEDIA_MAX_BYTES / 1024 / 1024).toFixed(0)} MB.</li>
+            <li>Banner principal: se recomienda 1200 × 400 px (relación 3:1).</li>
+            <li>Banner secundario: se recomienda 1200 × 300 px (relación 4:1). Sus colores dominantes determinarán el color de los botones de la tienda.</li>
+            <li>Usa fondos limpios para que el tono extraído sea preciso.</li>
+          </ul>
+        </div>
+      </div>
+
       {loading && banners.length === 0 ? (
         <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-sm text-gray-500">
           <CeSpinner size="md" aria-label="Cargando banners" />

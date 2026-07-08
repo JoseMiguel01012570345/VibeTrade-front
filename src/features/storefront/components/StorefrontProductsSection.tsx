@@ -5,10 +5,12 @@ export function StorefrontProductsSection({
   heading,
   products,
   hasAnyPublished,
+  onProductSelect,
 }: Readonly<{
   heading: string;
   products: StoreProduct[];
   hasAnyPublished: boolean;
+  onProductSelect?: (product: StoreProduct) => void;
 }>) {
   return (
     <section>
@@ -26,7 +28,7 @@ export function StorefrontProductsSection({
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
             {products.map((p) => (
-              <StorefrontProductCard key={p.id} p={p} />
+              <StorefrontProductCard key={p.id} p={p} onSelect={onProductSelect} />
             ))}
           </div>
       )}

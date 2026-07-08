@@ -49,6 +49,7 @@ export function StorefrontProductCard({
   compact = false,
   offerAmbient = true,
   offerAmbientImageUrl = null,
+  onSelect,
 }: Readonly<{
   p: StoreProduct;
   /** Variante compacta (cuadrícula densa); igual que la referencia. */
@@ -56,6 +57,8 @@ export function StorefrontProductCard({
   /** Fondo glass teñido con el color dominante de la imagen de la oferta. */
   offerAmbient?: boolean;
   offerAmbientImageUrl?: string | null;
+  /** Si se provee, el clic en la tarjeta abre el modal en lugar de navegar a la ficha. */
+  onSelect?: (product: StoreProduct) => void;
 }>) {
   const p = normalizeStoreProduct(raw);
   const items = useCartStore((s) => s.items);
@@ -185,21 +188,43 @@ export function StorefrontProductCard({
   return (
     <article className={cn(cardClass, ambientStyle.className)} style={ambientStyle.style}>
       <div className={`${storefrontOrganicMediaClass} ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}>
-        <Link to={offerHref} className="block h-full w-full">
-          {p.photoUrls[0] ? (
-            <ProtectedMediaImg
-              src={p.photoUrls[0]}
-              alt={p.name}
-              wrapperClassName="h-full w-full"
-              className="h-full w-full object-cover"
-              onImageLoad={ambientStyle.onImageLoad}
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_oklab,var(--organic-cream)_35%,var(--surface))] text-sm text-[var(--muted)]">
-              Sin foto
-            </div>
-          )}
-        </Link>
+        {onSelect ? (
+          <button
+            type="button"
+            onClick={() => onSelect(p)}
+            className="block h-full w-full text-left"
+          >
+            {p.photoUrls[0] ? (
+              <ProtectedMediaImg
+                src={p.photoUrls[0]}
+                alt={p.name}
+                wrapperClassName="h-full w-full"
+                className="h-full w-full object-cover"
+                onImageLoad={ambientStyle.onImageLoad}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_oklab,var(--organic-cream)_35%,var(--surface))] text-sm text-[var(--muted)]">
+                Sin foto
+              </div>
+            )}
+          </button>
+        ) : (
+          <Link to={offerHref} className="block h-full w-full">
+            {p.photoUrls[0] ? (
+              <ProtectedMediaImg
+                src={p.photoUrls[0]}
+                alt={p.name}
+                wrapperClassName="h-full w-full"
+                className="h-full w-full object-cover"
+                onImageLoad={ambientStyle.onImageLoad}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_oklab,var(--organic-cream)_35%,var(--surface))] text-sm text-[var(--muted)]">
+                Sin foto
+              </div>
+            )}
+          </Link>
+        )}
         <OfferSaveButton offerId={p.id} overlay />
         <OfferImageLikeButton
           liked={liked}
@@ -221,18 +246,37 @@ export function StorefrontProductCard({
           {p.category || "\u00a0"}
         </p>
 
-        <Link to={offerHref} className="mt-2 block shrink-0">
-          <h3
-            className={`overflow-hidden font-extrabold text-[var(--text)] ${
-              compact
-                ? "line-clamp-3 h-[4.5rem] text-[1.05rem] leading-6"
-                : "line-clamp-2 h-12 text-lg leading-6"
-            }`}
-            title={p.name}
+        {onSelect ? (
+          <button
+            type="button"
+            onClick={() => onSelect(p)}
+            className="mt-2 block shrink-0 text-left"
           >
-            {p.name}
-          </h3>
-        </Link>
+            <h3
+              className={`overflow-hidden font-extrabold text-[var(--text)] ${
+                compact
+                  ? "line-clamp-3 h-[4.5rem] text-[1.05rem] leading-6"
+                  : "line-clamp-2 h-12 text-lg leading-6"
+              }`}
+              title={p.name}
+            >
+              {p.name}
+            </h3>
+          </button>
+        ) : (
+          <Link to={offerHref} className="mt-2 block shrink-0">
+            <h3
+              className={`overflow-hidden font-extrabold text-[var(--text)] ${
+                compact
+                  ? "line-clamp-3 h-[4.5rem] text-[1.05rem] leading-6"
+                  : "line-clamp-2 h-12 text-lg leading-6"
+              }`}
+              title={p.name}
+            >
+              {p.name}
+            </h3>
+          </Link>
+        )}
 
         <p
           className={`mt-2 shrink-0 overflow-hidden text-[var(--muted)] ${

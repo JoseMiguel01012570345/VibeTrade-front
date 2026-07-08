@@ -4,9 +4,11 @@ import { StorefrontServiceCard } from "./StorefrontServiceCard";
 export function StorefrontServicesSection({
   heading,
   services,
+  onServiceSelect,
 }: Readonly<{
   heading: string;
   services: StoreService[];
+  onServiceSelect?: (service: StoreService) => void;
 }>) {
   return (
     <section id="storefront-servicios" className="scroll-mt-24">
@@ -22,7 +24,7 @@ export function StorefrontServicesSection({
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
           {services.map((s) => (
-            <StorefrontServiceCard key={s.id} s={s} />
+            <StorefrontServiceCard key={s.id} s={s} onSelect={onServiceSelect} />
           ))}
         </div>
       )}

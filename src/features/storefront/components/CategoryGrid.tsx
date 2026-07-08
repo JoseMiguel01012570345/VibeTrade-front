@@ -9,10 +9,14 @@ export function CategoryGrid({
   isService,
   products,
   services,
+  onProductSelect,
+  onServiceSelect,
 }: Readonly<{
   isService: boolean;
   products: StoreProduct[];
   services: StoreService[];
+  onProductSelect?: (product: StoreProduct) => void;
+  onServiceSelect?: (service: StoreService) => void;
 }>) {
   const isEmpty = isService ? services.length === 0 : products.length === 0;
   if (isEmpty) {
@@ -30,8 +34,10 @@ export function CategoryGrid({
     <section>
       <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
         {isService
-          ? services.map((s) => <StorefrontServiceCard key={s.id} s={s} />)
-          : products.map((p) => <StorefrontProductCard key={p.id} p={p} />)}
+          ? services.map((s) => <StorefrontServiceCard key={s.id} s={s} onSelect={onServiceSelect} />)
+          : products.map((p) => (
+              <StorefrontProductCard key={p.id} p={p} onSelect={onProductSelect} />
+            ))}
       </div>
     </section>
   );
