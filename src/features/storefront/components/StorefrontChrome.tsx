@@ -138,7 +138,7 @@ export function StorefrontHeader({
           >
             <span
               className={cn(
-                "grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-2xl border border-emerald-100 bg-white p-1 text-emerald-700",
+                "grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-white p-1 text-emerald-700",
                 hasPageAmbient && "vt-storefront-logo-ring",
               )}
             >
@@ -155,7 +155,7 @@ export function StorefrontHeader({
             </span>
             <span
               className={cn(
-                "flex min-w-0 items-center gap-1 truncate text-lg font-extrabold tracking-tight text-emerald-700 sm:text-xl md:text-[1.6rem]",
+                "flex min-w-0 items-center gap-1 truncate text-xl font-extrabold tracking-tight text-emerald-700 sm:text-2xl md:text-[1.8rem]",
                 hasPageAmbient && "vt-storefront-accent-text",
               )}
             >

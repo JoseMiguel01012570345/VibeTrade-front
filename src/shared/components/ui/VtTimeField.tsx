@@ -382,7 +382,7 @@ export function VtTimeField({
           organic
             ? cn(
                 organicInputClass,
-                "flex min-h-[42px] w-full items-center justify-between gap-2 text-left font-semibold tabular-nums",
+                "flex min-h-[42px] w-full items-center justify-between gap-2 px-3 py-2.5 text-left font-semibold tabular-nums",
               )
             : cn(
                 "vt-input flex min-h-[42px] w-full items-center justify-between gap-2 text-left",

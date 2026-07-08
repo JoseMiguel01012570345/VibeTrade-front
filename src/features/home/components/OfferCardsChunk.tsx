@@ -37,6 +37,7 @@ export function OfferCardsChunk({
                 offer={offer}
                 routePreview={routePreview}
                 mapKey={`map-${offer.id}-${i}`}
+                offerAmbient={false}
               />
             );
           }
@@ -47,6 +48,7 @@ export function OfferCardsChunk({
               <StorefrontServiceCard
                 key={`${offer.id}-${i}`}
                 s={service}
+                offerAmbient={false}
                 offerAmbientImageUrl={resolveHomeOfferPrimaryImageUrl(
                   offer,
                   storeCatalogs,
@@ -60,6 +62,7 @@ export function OfferCardsChunk({
             <StorefrontProductCard
               key={`${offer.id}-${i}`}
               p={product}
+              offerAmbient={false}
               offerAmbientImageUrl={resolveHomeOfferPrimaryImageUrl(
                 offer,
                 storeCatalogs,

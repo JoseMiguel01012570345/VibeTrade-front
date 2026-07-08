@@ -181,7 +181,7 @@ function CeDatePickerControl({
           organic
             ? cn(
                 organicInputClass,
-                'flex min-h-[42px] w-full items-center justify-between gap-2 text-left font-semibold',
+                'flex min-h-[42px] w-full items-center justify-between gap-2 px-3 py-2.5 text-left font-semibold',
               )
             : cn(
                 'block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900',
