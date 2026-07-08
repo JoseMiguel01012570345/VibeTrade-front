@@ -77,3 +77,16 @@ export const organicSearchSubmitBtnClass = cn(
   storefrontOrganicBtnForestClass,
   "h-11 w-full min-w-[2.75rem] min-[520px]:h-11 min-[520px]:w-11",
 );
+
+export const organicNotifCardClass =
+  "vt-organic-notif-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2";
+export const organicNotifCardUnreadClass = "vt-organic-notif-card--unread";
+export const organicNotifCardPressedClass = "vt-organic-notif-card--pressed";
+export const organicNotifIconClass = "vt-organic-notif-icon";
+export const organicNotifSectionClass = "vt-organic-notif-section";
+export const organicChipBtnClass = "vt-organic-chip-btn";
+export const organicChipBtnDangerClass = "vt-organic-chip-btn vt-organic-chip-btn--danger";
+export const organicChipBtnTextClass = "vt-organic-chip-btn vt-organic-chip-btn--text";
+export const organicCollapseOpenClass = "vt-organic-collapse vt-organic-collapse--open";
+export const organicCollapseClosedClass = "vt-organic-collapse vt-organic-collapse--closed";
+export const organicListEnterClass = "vt-organic-list-enter";

@@ -2,6 +2,7 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
+  Bell,
   Home,
   MessageCircle,
   PlaySquare,
@@ -22,7 +23,7 @@ import { useAppStore } from "@features/auth/logic/useAppStore";
 import { isStaffSession } from "@features/auth/logic/roles";
 import { isStoreSurfacePath } from "@features/market/logic/store/storePath";
 import { GuestAuthControls } from "@features/auth/components/GuestAuthControls";
-import { NotificationsBell } from "../widgets/NotificationsBell";
+import { formatNotificationBadgeText, useNotifications } from "@features/notifications";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { AuthEntryModal } from "@features/auth";
 import { syncChatNotificationsFromServer } from "@features/notifications/logic/notificationsSync";
@@ -35,6 +36,7 @@ const tabs = [
   { to: "/reels", label: "Reels", icon: PlaySquare },
   /** Lista en `/chat`; `activePrefix` mantiene el tab activo dentro de un hilo. */
   { to: "/chat", label: "Chat", icon: MessageCircle, activePrefix: "/chat" },
+  { to: "/notifications", label: "Avisos", icon: Bell, activePrefix: "/notifications" },
   /** Cuenta / Reels / Tiendas viven bajo `/profile/me/...`. */
   {
     to: "/profile/me/account",
@@ -46,6 +48,22 @@ const tabs = [
 
 const NAV_PROFILE_AVATAR_PLACEHOLDER =
   "vt-avatar-placeholder text-[10px] font-black";
+
+function NotificationsNavIcon({ unread }: Readonly<{ unread: number }>) {
+  return (
+    <span className="relative inline-grid h-[22px] w-[22px] place-items-center">
+      <Bell size={18} aria-hidden />
+      {unread > 0 ? (
+        <span
+          className="absolute -right-2 -top-1.5 z-[1] grid h-4 min-w-4 place-items-center rounded-full bg-[var(--bad)] px-0.5 text-[9px] font-black leading-none text-white"
+          aria-hidden
+        >
+          {formatNotificationBadgeText(unread)}
+        </span>
+      ) : null}
+    </span>
+  );
+}
 
 function tabIsActive(pathname: string, t: (typeof tabs)[number]) {
   if ("activePrefix" in t && t.activePrefix) {
@@ -60,8 +78,47 @@ function isChatThreadPath(pathname: string) {
   return pathname.startsWith("/chat/") && pathname.length > "/chat/".length;
 }
 
-function isReelsRoute(pathname: string) {
-  return pathname === "/reels" || pathname.startsWith("/reels/");
+function renderNavIcon(
+  t: (typeof tabs)[number],
+  options: Readonly<{
+    profileTab: boolean;
+    profileLetter: string;
+    meAvatarUrl?: string;
+    unread: number;
+    active: boolean;
+  }>,
+) {
+  const { profileTab, profileLetter, meAvatarUrl, unread, active } = options;
+  if (t.to === "/notifications") {
+    return <NotificationsNavIcon unread={unread} />;
+  }
+  if (profileTab) {
+    return (
+      <span
+        className={cn(
+          "grid h-[22px] w-[22px] shrink-0 place-items-center overflow-hidden rounded-full",
+          !meAvatarUrl && NAV_PROFILE_AVATAR_PLACEHOLDER,
+          active && organicNavAvatarRingClass,
+        )}
+        aria-hidden
+      >
+        {meAvatarUrl ? (
+          <ProtectedMediaImg
+            src={meAvatarUrl}
+            alt=""
+            wrapperClassName="h-full w-full"
+            className="h-full w-full object-cover"
+          />
+        ) : profileLetter === "?" ? (
+          "VT"
+        ) : (
+          profileLetter
+        )}
+      </span>
+    );
+  }
+  const Icon = t.icon;
+  return <Icon size={18} />;
 }
 
 /**
@@ -85,29 +142,14 @@ export function AppShell() {
   const isHome = pathname === "/home";
   const isSessionActive = useAppStore((s) => s.isSessionActive);
   const staffSession = isStaffSession(useAppStore((s) => s.me)) && isSessionActive;
+  const { unread: notificationUnread } = useNotifications();
   /** El personal (staff) navega solo el panel: sin barra inferior. */
   const hideBottomNav =
     staffSession || (!wide && isChatThreadPath(pathname));
-  /** Sin campana en hilo de chat ni en Reels; en listado `/chat` sÃ­. */
-  const showNotificationsBell =
-    isSessionActive &&
-    !isChatThreadPath(pathname) &&
-    !isReelsRoute(pathname);
-  /** Home: barra con tÃ­tulo y buscador. El resto de acciones va en overlay superior derecho. */
+  /** Home: barra con título y buscador. Invitados: controles de auth arriba a la derecha. */
   const showStickyShellHeader = isHome && !isOnboarding;
-  /** Chat en escritorio: el hilo ocupa todo el alto; la nav flota encima. */
-  const chatFullHeightDesktop = wide && isChatRoute(pathname);
-  const hideShellOverlayOnWideChat = chatFullHeightDesktop;
-  const showNotificationsInOverlay =
-    showNotificationsBell &&
-    isSessionActive &&
-    !isOnboarding &&
-    !isStoreSurfaceRoute(pathname) &&
-    !hideShellOverlayOnWideChat;
   const showGuestAuthInOverlay =
     !isSessionActive && !isOnboarding && !staffSession && !isStoreSurfaceRoute(pathname);
-  const showShellTopRightOverlay =
-    showGuestAuthInOverlay || showNotificationsInOverlay;
   const me = useAppStore((s) => s.me);
   const trustThreshold = useAppStore((s) => s.trustThreshold);
   const showTrustBanner =
@@ -200,17 +242,10 @@ export function AppShell() {
         </div>
       ) : null}
 
-      {showShellTopRightOverlay ? (
+      {showGuestAuthInOverlay ? (
         <div className="pointer-events-none fixed inset-x-0 top-0 z-[55]">
           <div className="container flex items-center justify-end gap-2 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pe-[max(10px,calc(env(safe-area-inset-right,0px)+10px))] sm:pe-4">
-            {showGuestAuthInOverlay ? (
-              <GuestAuthControls className="pointer-events-auto" />
-            ) : null}
-            {showNotificationsInOverlay ? (
-              <div className="pointer-events-auto flex h-10 items-center">
-                <NotificationsBell />
-              </div>
-            ) : null}
+            <GuestAuthControls className="pointer-events-auto" />
           </div>
         </div>
       ) : null}
@@ -232,18 +267,26 @@ export function AppShell() {
             "fixed bottom-0 left-0 right-0 z-[60] rounded-t-[2rem] min-[961px]:rounded-none",
           )}
         >
-          <div className="container grid grid-cols-4 gap-1.5 py-2.5">
+          <div className="container grid grid-cols-5 gap-1 py-2.5">
             {tabs.map((t) => {
               const active = tabIsActive(pathname, t);
-              const Icon = t.icon;
               const profileTab =
                 "activePrefix" in t && t.activePrefix === "/profile/me";
+              const notificationsTab = t.to === "/notifications";
               const profileLetter = (me.name ?? "?").slice(0, 1).toUpperCase();
               const blockedForGuest =
                 !isSessionActive &&
                 (t.to === "/reels" ||
                   t.to === "/chat" ||
+                  t.to === "/notifications" ||
                   ("activePrefix" in t && t.activePrefix === "/profile/me"));
+              const iconOptions = {
+                profileTab,
+                profileLetter,
+                meAvatarUrl: me.avatarUrl,
+                unread: notificationUnread,
+                active,
+              };
               return blockedForGuest ? (
                 <button
                   key={t.to}
@@ -251,25 +294,12 @@ export function AppShell() {
                   onClick={openAuthModal}
                   className={cn(
                     organicNavTabClass,
-                    "flex flex-col items-center gap-1 px-1.5 py-2 text-xs opacity-55",
+                    "flex flex-col items-center gap-1 px-1 py-2 text-xs opacity-55",
                     active && organicNavTabActiveClass,
                   )}
-                  aria-label={`${t.label} (requiere iniciar sesiÃ³n)`}
+                  aria-label={`${t.label} (requiere iniciar sesión)`}
                 >
-                  {profileTab ? (
-                    <span
-                      className={cn(
-                        "grid h-[22px] w-[22px] shrink-0 place-items-center overflow-hidden rounded-full",
-                        NAV_PROFILE_AVATAR_PLACEHOLDER,
-                        active && organicNavAvatarRingClass,
-                      )}
-                      aria-hidden
-                    >
-                      {profileLetter === "?" ? "VT" : profileLetter}
-                    </span>
-                  ) : (
-                    <Icon size={18} />
-                  )}
+                  {renderNavIcon(t, iconOptions)}
                   <span>{t.label}</span>
                 </button>
               ) : (
@@ -278,33 +308,16 @@ export function AppShell() {
                   to={t.to}
                   className={cn(
                     organicNavTabClass,
-                    "flex flex-col items-center gap-1 px-1.5 py-2 text-xs",
+                    "flex flex-col items-center gap-1 px-1 py-2 text-xs",
                     active && organicNavTabActiveClass,
                   )}
+                  aria-label={
+                    notificationsTab && notificationUnread > 0
+                      ? `${t.label} (${notificationUnread} sin leer)`
+                      : undefined
+                  }
                 >
-                  {profileTab ? (
-                    <span
-                      className={cn(
-                        "grid h-[22px] w-[22px] shrink-0 place-items-center overflow-hidden rounded-full",
-                        !me.avatarUrl && NAV_PROFILE_AVATAR_PLACEHOLDER,
-                        active && organicNavAvatarRingClass,
-                      )}
-                      aria-hidden
-                    >
-                      {me.avatarUrl ? (
-                        <ProtectedMediaImg
-                          src={me.avatarUrl}
-                          alt=""
-                          wrapperClassName="h-full w-full"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        profileLetter
-                      )}
-                    </span>
-                  ) : (
-                    <Icon size={18} />
-                  )}
+                  {renderNavIcon(t, iconOptions)}
                   <span>{t.label}</span>
                 </Link>
               );

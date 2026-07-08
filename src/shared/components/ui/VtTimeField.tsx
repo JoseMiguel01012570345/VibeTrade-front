@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Clock } from "lucide-react";
 import { cn } from "@shared/lib/cn";
+import { organicInputClass } from "@shared/styles/organicCardStyles";
 
 const H12_LIST = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
@@ -28,6 +29,7 @@ type Props = Readonly<{
   placeholder?: string;
   /** z-index del popover portaled (alinear con `VtDateField` en modales apilados). */
   popoverZIndexClass?: string;
+  variant?: "default" | "organic";
   /** Si devuelve true, la hora no se puede elegir (p. ej. viola recogida &lt; entrega). */
   isTimeDisabled?: (hhmm: string) => boolean;
   "aria-label"?: string;
@@ -113,6 +115,7 @@ export function VtTimeField({
   buttonClassName,
   placeholder = "Elegir hora",
   popoverZIndexClass = "z-[220]",
+  variant = "default",
   isTimeDisabled,
   "aria-label": ariaLabel,
 }: Props) {
@@ -239,19 +242,35 @@ export function VtTimeField({
     [value, placeholder],
   );
 
-  const colClass =
-    "vt-time-scroll max-h-52 min-w-0 flex-1 overflow-y-auto overscroll-y-contain scroll-smooth rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_88%,var(--surface))] py-1.5";
+  const organic = variant === "organic";
+
+  const colClass = organic
+    ? "vt-time-scroll vt-organic-timepicker-col max-h-52 min-w-0 flex-1 overflow-y-auto overscroll-y-contain scroll-smooth py-1.5"
+    : "vt-time-scroll max-h-52 min-w-0 flex-1 overflow-y-auto overscroll-y-contain scroll-smooth rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_88%,var(--surface))] py-1.5";
 
   const itemBtn = (sel: boolean, dis: boolean) =>
-    cn(
-      "w-full min-h-[2.25rem] px-2 text-center text-[14px] font-semibold tabular-nums text-[var(--text)]",
-      "transition-[background,color,box-shadow] duration-100",
-      dis && "cursor-not-allowed opacity-30",
-      !dis && !sel && "hover:bg-[color-mix(in_oklab,var(--primary)_10%,transparent)]",
-      !dis &&
-        sel &&
-        "bg-[var(--primary)] text-white shadow-[0_1px_0_rgba(0,0,0,0.06)]",
-    );
+    organic
+      ? cn(
+          "w-full min-h-[2.25rem] px-2 text-center text-[14px] font-semibold tabular-nums text-[var(--text)]",
+          "transition-[background,color,transform] duration-150",
+          dis && "cursor-not-allowed opacity-30",
+          !dis &&
+            !sel &&
+            "hover:bg-[color-mix(in_oklab,var(--organic-cream)_45%,var(--surface))]",
+          !dis &&
+            sel &&
+            "bg-[var(--organic-emerald)] text-white shadow-[0_2px_0_color-mix(in_oklab,var(--organic-forest)_35%,transparent)]",
+          !dis && !sel && "active:scale-[0.98]",
+        )
+      : cn(
+          "w-full min-h-[2.25rem] px-2 text-center text-[14px] font-semibold tabular-nums text-[var(--text)]",
+          "transition-[background,color,box-shadow] duration-100",
+          dis && "cursor-not-allowed opacity-30",
+          !dis && !sel && "hover:bg-[color-mix(in_oklab,var(--primary)_10%,transparent)]",
+          !dis &&
+            sel &&
+            "bg-[var(--primary)] text-white shadow-[0_1px_0_rgba(0,0,0,0.06)]",
+        );
 
   function timeDisabled(hhmm: string): boolean {
     return isTimeDisabled?.(hhmm) ?? false;
@@ -261,7 +280,9 @@ export function VtTimeField({
     <div
       ref={listRef}
       className={cn(
-        "fixed max-w-[min(100vw-24px,340px)] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[0_18px_50px_rgba(2,6,23,0.22)]",
+        organic
+          ? "vt-organic-timepicker-popup fixed max-w-[min(100vw-24px,340px)] overflow-hidden p-3"
+          : "fixed max-w-[min(100vw-24px,340px)] overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[0_18px_50px_rgba(2,6,23,0.22)]",
         popoverZIndexClass,
       )}
       style={{
@@ -345,17 +366,31 @@ export function VtTimeField({
   );
 
   return (
-    <div ref={rootRef} className={cn("relative w-full", className)}>
+    <div
+      ref={rootRef}
+      className={cn(
+        "relative w-full",
+        organic && open && "z-[310]",
+        className,
+      )}
+    >
       <button
         id={triggerId}
         type="button"
         disabled={disabled}
         className={cn(
-          "vt-input flex min-h-[42px] w-full items-center justify-between gap-2 text-left",
-          "shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[inset_0_1px_0_rgba(0,0,0,0.45)]",
-          "hover:border-[color-mix(in_oklab,var(--primary)_22%,var(--border))]",
-          "focus-visible:outline-none focus-visible:border-[color-mix(in_oklab,var(--primary)_45%,var(--border))]",
-          "focus-visible:shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_0_0_3px_color-mix(in_oklab,var(--primary)_25%,transparent)] dark:focus-visible:shadow-[inset_0_1px_0_rgba(0,0,0,0.45),0_0_0_3px_color-mix(in_oklab,var(--primary)_25%,transparent)]",
+          organic
+            ? cn(
+                organicInputClass,
+                "flex min-h-[42px] w-full items-center justify-between gap-2 text-left font-semibold tabular-nums",
+              )
+            : cn(
+                "vt-input flex min-h-[42px] w-full items-center justify-between gap-2 text-left",
+                "shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[inset_0_1px_0_rgba(0,0,0,0.45)]",
+                "hover:border-[color-mix(in_oklab,var(--primary)_22%,var(--border))]",
+                "focus-visible:outline-none focus-visible:border-[color-mix(in_oklab,var(--primary)_45%,var(--border))]",
+                "focus-visible:shadow-[inset_0_1px_0_rgba(255,255,255,0.5),0_0_0_3px_color-mix(in_oklab,var(--primary)_25%,transparent)] dark:focus-visible:shadow-[inset_0_1px_0_rgba(0,0,0,0.45),0_0_0_3px_color-mix(in_oklab,var(--primary)_25%,transparent)]",
+              ),
           disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
           buttonClassName,
         )}
@@ -372,7 +407,14 @@ export function VtTimeField({
         >
           {label}
         </span>
-        <Clock size={16} className="shrink-0 text-[var(--muted)]" aria-hidden />
+        <Clock
+          size={16}
+          className={cn(
+            "shrink-0",
+            organic ? "text-[var(--organic-emerald)]" : "text-[var(--muted)]",
+          )}
+          aria-hidden
+        />
       </button>
       {open && !disabled && box && typeof document !== "undefined"
         ? createPortal(popover, document.body)

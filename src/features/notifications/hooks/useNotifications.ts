@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@features/auth/logic/useAppStore'
 import {
@@ -28,6 +28,11 @@ export function useNotifications() {
     },
   })
 
+  const syncFromServer = useCallback(
+    () => syncMutation.mutateAsync(),
+    [syncMutation.mutateAsync],
+  )
+
   const items = storeItems
   const unread = useMemo(() => items.filter((x) => !x.read).length, [items])
 
@@ -35,7 +40,7 @@ export function useNotifications() {
     items,
     unread,
     markAllRead: markAllReadStore,
-    syncFromServer: () => syncMutation.mutateAsync(),
+    syncFromServer,
     isSyncing: syncMutation.isPending,
     refetch: query.refetch,
   }
