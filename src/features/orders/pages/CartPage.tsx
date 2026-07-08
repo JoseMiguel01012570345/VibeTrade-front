@@ -36,7 +36,7 @@ export function CartPage() {
       <div className="mx-auto w-full max-w-[1140px] px-4 py-6 sm:py-10">
         <Link
           to={keepShoppingHref}
-          className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-emerald-700 transition hover:text-emerald-800 lg:hidden"
+          className="mb-4 inline-flex items-center gap-2 text-sm font-bold vt-storefront-accent-text transition lg:hidden"
         >
           <span aria-hidden>←</span>
           <span>Seguir comprando</span>
@@ -53,7 +53,7 @@ export function CartPage() {
 
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
           <div className="min-w-0 lg:flex-[6]">
-            <div className="overflow-hidden rounded-[12px] border border-[#e3ddd6] bg-white shadow-[0_10px_26px_rgba(33,37,41,0.04)]">
+            <div className="vt-storefront-section-panel overflow-hidden rounded-[12px] border shadow-[0_10px_26px_rgba(33,37,41,0.04)]">
               {detailedLines.map((line, index) => (
                 <CartLineRow
                   key={line.productId}
@@ -68,7 +68,7 @@ export function CartPage() {
 
             <Link
               to={keepShoppingHref}
-              className="mt-8 hidden items-center gap-2 text-sm font-bold text-emerald-700 transition hover:text-emerald-800 lg:inline-flex"
+              className="vt-storefront-accent-text mt-8 hidden items-center gap-2 text-sm font-bold transition lg:inline-flex"
             >
               <span aria-hidden>←</span>
               <span>Seguir comprando</span>

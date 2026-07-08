@@ -12,6 +12,11 @@ import {
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
 import type { StoreProduct } from "@features/market/Dtos/storeCatalogTypes";
 import { useStoreCategories } from "../context/StoreCategoriesContext";
+import {
+  useStorefrontAmbient,
+  storefrontAmbientPortalProps,
+} from "../context/StorefrontAmbientContext";
+import { cn } from "@shared/lib/cn";
 import { assignUniqueCategorySlugs } from "../logic/categoryTree/buildGuestCategoryMetas";
 import type { CategoryMeta } from "../logic/categoryTree/categoryMeta";
 import {
@@ -93,7 +98,7 @@ function OffcanvasDetailBody({
         <Link
           to={storeCategoryHref(store, selected.slug)}
           onClick={onNavigate}
-          className="inline-flex text-sm font-semibold italic text-emerald-700 underline-offset-4 hover:underline"
+          className="vt-storefront-accent-text inline-flex text-sm font-semibold italic underline-offset-4 hover:underline"
         >
           Explorar categoría
         </Link>
@@ -126,12 +131,12 @@ function OffcanvasDetailBody({
               <div className="flex flex-wrap items-end justify-between gap-2 border-b border-[var(--border)] pb-2">
                 <h3
                   id={`offcanvas-leaf-${leaf.id}`}
-                  className="text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700"
+                  className="vt-storefront-accent-text text-[11px] font-bold uppercase tracking-[0.12em]"
                 >
                   <Link
                     to={storeCategoryHref(store, slug)}
                     onClick={onNavigate}
-                    className="transition hover:text-emerald-900"
+                    className="vt-storefront-accent-text transition hover:opacity-90"
                   >
                     {leaf.name}
                   </Link>
@@ -139,7 +144,7 @@ function OffcanvasDetailBody({
                 <Link
                   to={storeCategoryHref(store, slug)}
                   onClick={onNavigate}
-                  className="text-xs font-semibold text-slate-500 underline-offset-2 hover:text-emerald-700 hover:underline"
+                  className="text-xs font-semibold text-slate-500 underline-offset-2 transition hover:underline vt-storefront-accent-text"
                 >
                   Ver todos
                 </Link>
@@ -157,7 +162,7 @@ function OffcanvasDetailBody({
                         <Link
                           to={storeProductHref(store, p.id)}
                           onClick={onNavigate}
-                          className="block text-sm font-normal leading-snug text-slate-600 transition hover:text-emerald-700"
+                          className="block text-sm font-normal leading-snug text-slate-600 transition vt-storefront-accent-text hover:opacity-90"
                         >
                           {p.name}
                         </Link>
@@ -171,7 +176,7 @@ function OffcanvasDetailBody({
                       <Link
                         to={storeCategoryHref(store, slug)}
                         onClick={onNavigate}
-                        className="font-semibold text-emerald-700 hover:underline"
+                        className="vt-storefront-accent-text font-semibold hover:underline"
                       >
                         Ver todos en esta subcategoría
                       </Link>
@@ -189,7 +194,7 @@ function OffcanvasDetailBody({
           <Link
             to={storeCategoryHref(store, selected.slug)}
             onClick={onNavigate}
-            className="inline-flex w-fit max-w-full shrink-0 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800"
+            className="vt-storefront-accent-btn inline-flex w-fit max-w-full shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-sm transition"
           >
             Ver todos en {selected.label}
           </Link>
@@ -218,6 +223,8 @@ export function StoreCategoriesOffcanvas({
   const panelRef = useRef<HTMLDivElement>(null);
   const detailPanelRef = useRef<HTMLDivElement>(null);
   const sheetCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ambient = useStorefrontAmbient();
+  const portalAmbient = storefrontAmbientPortalProps(ambient);
 
   const { categoryMetas, categories, loading: categoriesLoading } =
     useStoreCategories();
@@ -445,11 +452,14 @@ export function StoreCategoriesOffcanvas({
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
-          className={`store-front-surface fixed inset-y-0 left-0 z-10 flex h-[100dvh] min-h-[100dvh] w-full max-w-full flex-col bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none md:max-w-[min(100vw,1100px)] md:flex-row ${
-            mainPanelIn ? "translate-x-0" : "-translate-x-full"
-          }`}
+          className={cn(
+            `store-front-surface fixed inset-y-0 left-0 z-10 flex h-[100dvh] min-h-[100dvh] w-full max-w-full flex-col text-[var(--text)] shadow-[var(--shadow)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none md:max-w-[min(100vw,1100px)] md:flex-row vt-storefront-offcanvas-panel`,
+            mainPanelIn ? "translate-x-0" : "-translate-x-full",
+            portalAmbient.className,
+          )}
+          style={portalAmbient.style}
         >
-          <aside className="flex h-full min-h-0 flex-1 flex-col border-b border-[var(--border)] bg-[var(--surface)] md:h-auto md:w-[min(100%,280px)] md:flex-none md:shrink-0 md:border-b-0 md:border-r md:border-[var(--border)]">
+          <aside className="vt-storefront-offcanvas-aside flex h-full min-h-0 flex-1 flex-col border-b border-[var(--border)] md:h-auto md:w-[min(100%,280px)] md:flex-none md:shrink-0 md:border-b-0 md:border-r md:border-[var(--border)]">
             <div className="shrink-0 border-b border-[var(--border)] px-5 pb-4 pt-4 sm:pb-5 sm:pt-5">
               <div className="flex items-start justify-between gap-3">
                 <h2
@@ -508,11 +518,12 @@ export function StoreCategoriesOffcanvas({
                         <button
                           type="button"
                           onClick={() => openCategorySheet(cat.id)}
-                          className={`flex h-full w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm font-semibold transition md:rounded-xl md:px-3 md:py-2.5 ${
+                          className={cn(
+                            "flex h-full w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm font-semibold transition md:rounded-xl md:px-3 md:py-2.5",
                             isHighlighted
-                              ? "bg-emerald-700 text-white shadow-sm md:shadow-sm"
-                              : "text-slate-700 hover:bg-stone-50"
-                          }`}
+                              ? "vt-storefront-offcanvas-nav-item--active shadow-sm md:shadow-sm"
+                              : "text-slate-700 hover:bg-stone-50",
+                          )}
                           aria-expanded={mdUp ? undefined : sheetOpenForThis}
                           aria-current={desktopActive ? "true" : undefined}
                         >
@@ -532,13 +543,13 @@ export function StoreCategoriesOffcanvas({
             </nav>
           </aside>
 
-          <div className="hidden min-h-0 min-w-0 flex-1 flex-col bg-[#fafaf9] md:flex">
-            <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4 sm:px-8 sm:py-5">
+          <div className="vt-storefront-offcanvas-detail hidden min-h-0 min-w-0 flex-1 flex-col md:flex">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-4 sm:px-8 sm:py-5">
               <div className="min-w-0 space-y-1">
                 <p className="text-[11px] font-semibold uppercase leading-relaxed tracking-[0.12em] text-slate-400">
                   Categoría
                 </p>
-                <p className="text-[11px] font-bold uppercase leading-relaxed tracking-[0.12em] text-emerald-700">
+                <p className="vt-storefront-accent-text text-[11px] font-bold uppercase leading-relaxed tracking-[0.12em]">
                   {selected ? selected.label : "—"}
                 </p>
               </div>
@@ -582,19 +593,22 @@ export function StoreCategoriesOffcanvas({
             role="dialog"
             aria-modal="true"
             aria-labelledby={detailTitleId}
-            className={`fixed inset-x-0 bottom-0 z-[130] store-front-surface flex max-h-[min(88dvh,720px)] min-h-[min(52dvh,480px)] flex-col rounded-t-2xl border border-b-0 border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_38%,var(--surface))] text-[var(--text)] shadow-[var(--shadow)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${
-              detailAnimateIn ? "translate-y-0" : "translate-y-full"
-            }`}
+            className={cn(
+              `fixed inset-x-0 bottom-0 z-[130] store-front-surface flex max-h-[min(88dvh,720px)] min-h-[min(52dvh,480px)] flex-col rounded-t-2xl border border-b-0 border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_38%,var(--surface))] text-[var(--text)] shadow-[var(--shadow)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none vt-storefront-offcanvas-panel`,
+              detailAnimateIn ? "translate-y-0" : "translate-y-full",
+              portalAmbient.className,
+            )}
+            style={portalAmbient.style}
           >
             <div className="shrink-0 pt-2" aria-hidden>
               <div className="mx-auto h-1 w-10 rounded-full bg-slate-300" />
             </div>
 
-            <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-5 py-3 sm:px-6">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-5 py-3 sm:px-6">
               <div className="min-w-0 space-y-1">
                 <p
                   id={detailTitleId}
-                  className="text-[11px] font-bold uppercase leading-relaxed tracking-[0.12em] text-emerald-700"
+                  className="vt-storefront-accent-text text-[11px] font-bold uppercase leading-relaxed tracking-[0.12em]"
                 >
                   {selected ? selected.label : "—"}
                 </p>

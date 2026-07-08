@@ -173,7 +173,7 @@ export function BannerSlider({
               aria-current={i === slide.current ? "true" : undefined}
               className={`h-2.5 rounded-full transition-all duration-200 ${
                 i === slide.current
-                  ? "w-8 bg-emerald-600"
+                  ? "vt-storefront-accent-dot w-8"
                   : "w-2.5 bg-slate-300 hover:bg-slate-400"
               }`}
               onClick={() => goTo(i)}

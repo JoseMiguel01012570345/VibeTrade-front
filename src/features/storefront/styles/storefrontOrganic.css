@@ -1201,10 +1201,298 @@
   -webkit-backdrop-filter: blur(10px) saturate(1.1);
 }
 
-/* === Storefront: color ambiente desde banners === */
+/* === Storefront: tema desde banner principal === */
 
 .vt-storefront-ambient {
   --storefront-page-rgb: 136, 170, 123;
+  --storefront-accent-rgb: 45, 95, 75;
+  --storefront-accent-strong-rgb: 28, 78, 58;
+  --storefront-border-rgb: 210, 225, 205;
+}
+
+/* Remap tokens semánticos → color del banner (checkout, carrito, modales, ProfileButton) */
+.vt-storefront-ambient.store-front-surface {
+  --primary: rgb(var(--storefront-accent-strong-rgb));
+  --primary-2: color-mix(in oklab, rgb(var(--storefront-accent-strong-rgb)) 85%, black);
+  --profile-emerald: rgb(var(--storefront-accent-rgb));
+  --profile-emerald-dark: rgb(var(--storefront-accent-strong-rgb));
+  --profile-emerald-hover: color-mix(in oklab, rgb(var(--storefront-accent-strong-rgb)) 88%, black);
+}
+
+:root:not(.dark) .vt-storefront-ambient.store-front-surface {
+  --surface: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 28%, #ffffff);
+  --border: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 78%, #d9d5cf);
+}
+
+.vt-storefront-ambient .vt-profile-btn--primary {
+  background: rgb(var(--storefront-accent-strong-rgb));
+  box-shadow: 0 6px 16px color-mix(in oklab, rgb(var(--storefront-accent-strong-rgb)) 32%, transparent);
+}
+
+.vt-storefront-ambient .vt-profile-btn--primary:hover:not(:disabled) {
+  background: color-mix(in oklab, rgb(var(--storefront-accent-strong-rgb)) 88%, black);
+}
+
+.vt-storefront-ambient .vt-profile-btn--secondary {
+  border-color: color-mix(in oklab, rgb(var(--storefront-accent-strong-rgb)) 35%, var(--border));
+  color: rgb(var(--storefront-accent-strong-rgb));
+}
+
+.vt-storefront-ambient .vt-profile-btn--secondary:hover:not(:disabled) {
+  border-color: color-mix(in oklab, rgb(var(--storefront-accent-strong-rgb)) 55%, var(--border));
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 18%, var(--surface));
+  color: color-mix(in oklab, rgb(var(--storefront-accent-strong-rgb)) 88%, black);
+}
+
+.vt-storefront-ambient .vt-storefront-header {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 72%, var(--border));
+  background: color-mix(
+    in oklab,
+    rgb(var(--storefront-page-rgb)) 38%,
+    color-mix(in oklab, rgba(255, 255, 255, 0.94) 100%, var(--surface))
+  );
+  backdrop-filter: blur(14px) saturate(1.12);
+  -webkit-backdrop-filter: blur(14px) saturate(1.12);
+  transition: background 0.7s ease, border-color 0.7s ease;
+}
+
+:root.dark .vt-storefront-ambient .vt-storefront-header {
+  background: color-mix(
+    in oklab,
+    rgb(var(--storefront-page-rgb)) 28%,
+    color-mix(in oklab, rgba(26, 58, 50, 0.88) 100%, var(--surface))
+  );
+}
+
+.vt-storefront-ambient .vt-storefront-accent-text {
+  color: rgb(var(--storefront-accent-rgb));
+  transition: color 0.45s ease;
+}
+
+.vt-storefront-ambient .vt-storefront-accent-text:hover {
+  color: rgb(var(--storefront-accent-strong-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-offcanvas-aside {
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 14%, var(--surface));
+}
+
+.vt-storefront-ambient .vt-storefront-offcanvas-detail {
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 10%, var(--surface));
+}
+
+.vt-storefront-ambient .vt-storefront-accent-btn,
+.vt-storefront-ambient.vt-storefront-accent-btn {
+  background: rgb(var(--storefront-accent-strong-rgb)) !important;
+  color: white !important;
+}
+
+.vt-storefront-ambient .vt-storefront-accent-btn:hover:not(:disabled),
+.vt-storefront-ambient.vt-storefront-accent-btn:hover:not(:disabled) {
+  background: color-mix(in oklab, rgb(var(--storefront-accent-strong-rgb)) 88%, black) !important;
+  transition: background 0.45s ease, box-shadow 0.45s ease;
+}
+
+.vt-storefront-ambient .vt-storefront-accent-btn-outline {
+  border-color: rgb(var(--storefront-accent-strong-rgb));
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 16%, var(--surface));
+  color: rgb(var(--storefront-accent-strong-rgb));
+  transition: background 0.45s ease, border-color 0.45s ease, color 0.45s ease;
+}
+
+.vt-storefront-ambient .vt-storefront-accent-btn-outline:hover:not(:disabled) {
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 24%, var(--surface));
+}
+
+.vt-storefront-ambient .vt-storefront-step-badge {
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 22%, var(--surface));
+  color: rgb(var(--storefront-accent-strong-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-input {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 80%, var(--border));
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 10%, #fafaf9);
+}
+
+.vt-storefront-ambient .vt-storefront-input:focus {
+  border-color: color-mix(in oklab, rgb(var(--storefront-accent-rgb)) 55%, var(--border));
+  --tw-ring-color: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 28%, transparent);
+}
+
+.vt-storefront-ambient .vt-storefront-logo-ring {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 75%, var(--border));
+  color: rgb(var(--storefront-accent-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-category-tile {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 85%, var(--border));
+  background: color-mix(
+    in oklab,
+    rgb(var(--storefront-page-rgb)) 32%,
+    color-mix(in oklab, white 88%, var(--surface))
+  );
+  transition: background 0.55s ease, border-color 0.55s ease, color 0.45s ease, box-shadow 0.45s ease;
+}
+
+.vt-storefront-ambient .vt-storefront-category-tile:hover {
+  border-color: color-mix(in oklab, rgb(var(--storefront-accent-rgb)) 45%, var(--border));
+  color: rgb(var(--storefront-accent-rgb));
+  box-shadow: 0 4px 14px color-mix(in oklab, rgb(var(--storefront-page-rgb)) 22%, transparent);
+}
+
+.vt-storefront-ambient .vt-storefront-section-title {
+  color: color-mix(in oklab, rgb(var(--storefront-accent-strong-rgb)) 35%, #0f172a);
+}
+
+.vt-storefront-ambient .vt-storefront-section-panel,
+.vt-storefront-ambient .vt-storefront-hero-panel,
+.vt-storefront-ambient .vt-storefront-category-header,
+.vt-storefront-ambient .vt-storefront-state-panel {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 80%, var(--border));
+  background: color-mix(
+    in oklab,
+    rgb(var(--storefront-page-rgb)) 32%,
+    color-mix(in oklab, white 88%, var(--surface))
+  );
+  transition: background 0.7s ease, border-color 0.7s ease;
+}
+
+.vt-storefront-ambient .vt-storefront-category-tab {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 85%, var(--border));
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 18%, white);
+  transition: background 0.45s ease, border-color 0.45s ease, color 0.45s ease;
+}
+
+.vt-storefront-ambient .vt-storefront-category-tab:hover {
+  border-color: color-mix(in oklab, rgb(var(--storefront-accent-rgb)) 40%, var(--border));
+  color: rgb(var(--storefront-accent-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-category-tab--active {
+  border-color: rgb(var(--storefront-accent-strong-rgb)) !important;
+  background: rgb(var(--storefront-accent-strong-rgb)) !important;
+  color: white !important;
+}
+
+.vt-storefront-ambient .vt-storefront-control {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 85%, var(--border));
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 16%, white);
+  transition: background 0.45s ease, border-color 0.45s ease, color 0.45s ease;
+}
+
+.vt-storefront-ambient .vt-storefront-control:hover:not(:disabled) {
+  border-color: color-mix(in oklab, rgb(var(--storefront-accent-rgb)) 38%, var(--border));
+  color: rgb(var(--storefront-accent-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-control--active {
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 28%, white);
+  color: rgb(var(--storefront-accent-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-control--selected {
+  background: rgb(var(--storefront-accent-strong-rgb));
+  border-color: rgb(var(--storefront-accent-strong-rgb));
+  color: white;
+}
+
+.vt-storefront-ambient .vt-storefront-control-menu {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 80%, var(--border));
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 14%, white);
+}
+
+.vt-storefront-ambient .vt-storefront-control-menu-item--active {
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 24%, white);
+  color: rgb(var(--storefront-accent-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-offcanvas-panel {
+  background: color-mix(
+    in oklab,
+    rgb(var(--storefront-page-rgb)) 26%,
+    var(--surface)
+  ) !important;
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 70%, var(--border));
+}
+
+.vt-storefront-ambient .vt-storefront-banner-glow {
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 35%, transparent);
+}
+
+.vt-storefront-ambient .vt-storefront-accent-dot {
+  background: rgb(var(--storefront-accent-strong-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-nav-link:hover {
+  color: rgb(var(--storefront-accent-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-offcanvas-nav-item--active {
+  background: rgb(var(--storefront-accent-strong-rgb));
+  color: white;
+}
+
+.vt-storefront-ambient .vt-storefront-modal {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 75%, var(--border));
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 26%, var(--surface));
+}
+
+.vt-storefront-ambient .vt-storefront-modal-avatar--store {
+  background: rgb(var(--storefront-accent-strong-rgb));
+  color: white;
+}
+
+.vt-storefront-ambient .vt-storefront-modal-avatar--guest {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 70%, var(--border));
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 22%, white);
+  color: rgb(var(--storefront-accent-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-modal-chip {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 75%, var(--border));
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 18%, white);
+  color: rgb(var(--storefront-accent-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-modal-reply-banner {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 75%, var(--border));
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 20%, white);
+}
+
+.vt-storefront-ambient .vt-storefront-modal-icon {
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 22%, white);
+  color: rgb(var(--storefront-accent-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-cart-nav {
+  border-color: color-mix(in oklab, rgb(var(--storefront-border-rgb)) 75%, var(--border));
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 18%, white);
+  color: rgb(var(--storefront-accent-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-cart-nav:hover {
+  border-color: color-mix(in oklab, rgb(var(--storefront-accent-rgb)) 35%, var(--border));
+  background: color-mix(in oklab, rgb(var(--storefront-page-rgb)) 28%, white);
+}
+
+.vt-storefront-ambient .vt-btn-primary {
+  background: rgb(var(--storefront-accent-strong-rgb));
+  border-color: rgb(var(--storefront-accent-strong-rgb));
+  color: white;
+}
+
+.vt-storefront-ambient .vt-btn-primary:hover:not(:disabled) {
+  background: color-mix(in oklab, rgb(var(--storefront-accent-strong-rgb)) 88%, black);
+  border-color: color-mix(in oklab, rgb(var(--storefront-accent-strong-rgb)) 88%, black);
+}
+
+.vt-storefront-ambient .vt-storefront-track-node--active {
+  border-color: rgb(var(--storefront-accent-strong-rgb));
+  background: rgb(var(--storefront-accent-strong-rgb));
+}
+
+.vt-storefront-ambient .vt-storefront-track-segment--done {
+  background: rgb(var(--storefront-accent-strong-rgb));
 }
 
 .vt-storefront-footer-ambient {

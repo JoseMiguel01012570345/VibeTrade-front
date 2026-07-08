@@ -15,9 +15,9 @@ import { ProfileButton } from "@features/profile/components/ProfileButton";
 import { cartLineKey } from "../logic/cartStore";
 
 const checkoutSection =
-  "rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow)] sm:p-8";
+  "vt-storefront-section-panel rounded-[14px] border p-6 shadow-[var(--shadow)] sm:p-8";
 const checkoutInset =
-  "rounded-[10px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] px-4 py-4";
+  "vt-storefront-section-panel rounded-[10px] border px-4 py-4";
 const checkoutCallout =
   "mt-6 flex items-start gap-3 rounded-[10px] border border-[color-mix(in_oklab,var(--primary)_35%,var(--border))] bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] px-4 py-4";
 const checkoutActionBtn =
@@ -266,7 +266,7 @@ export function CheckoutPage() {
           </div>
 
           <aside className="order-1 flex min-w-0 flex-col gap-4 lg:order-2 lg:flex-[3] lg:sticky lg:top-28">
-            <div className="rounded-[14px] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow)]">
+            <div className="vt-storefront-section-panel rounded-[14px] border p-5 shadow-[var(--shadow)]">
               <h3 className="text-lg font-extrabold tracking-tight text-[var(--text)]">
                 Resumen del pedido
               </h3>

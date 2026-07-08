@@ -17,14 +17,17 @@ import { fetchStoreCatalogAutocomplete } from "../api/fetchStoreCatalogAutocompl
 import { StorefrontSupportFab } from "./StorefrontSupportFab";
 import { StoreCategoriesProvider } from "../context/StoreCategoriesContext";
 import { StoreBannersProvider } from "../context/StoreBannersContext";
-import { useStorefrontBannerAmbient } from "../hooks/useStorefrontBannerAmbient";
+import {
+  StorefrontAmbientProvider,
+  useStorefrontAmbient,
+} from "../context/StorefrontAmbientContext";
 import { StoreCategoriesOffcanvas } from "./StoreCategoriesOffcanvas";
 import { StoreCommentsModal } from "./StoreCommentsModal";
 import { cn } from "@shared/lib/cn";
 import type { CSSProperties } from "react";
 
 const topLinkClass =
-  "inline-flex items-center text-xs font-semibold text-slate-600 transition-colors hover:text-emerald-700 sm:text-sm";
+  "vt-storefront-nav-link inline-flex items-center text-xs font-semibold text-slate-600 transition-colors hover:text-emerald-700 sm:text-sm";
 
 /**
  * Cabecera fija (sticky) de la tienda. Réplica de la UI/UX del header de la app de
@@ -37,12 +40,14 @@ export function StorefrontHeader({
   onQueryChange,
   onSearchSubmit,
   onOpenCategories,
+  hasPageAmbient = false,
 }: Readonly<{
   store: StoreBadge;
   query?: string;
   onQueryChange?: (value: string) => void;
   onSearchSubmit?: (term: string) => void;
   onOpenCategories?: () => void;
+  hasPageAmbient?: boolean;
 }>) {
   const nav = useNavigate();
   const isSessionActive = useAppStore((s) => s.isSessionActive);
@@ -120,14 +125,23 @@ export function StorefrontHeader({
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-emerald-100 bg-white/95 backdrop-blur">
+    <header
+      className={cn(
+        "vt-storefront-header sticky top-0 z-40 border-b border-emerald-100 bg-white/95 backdrop-blur",
+      )}
+    >
       <div className="mx-auto flex w-full max-w-[1140px] flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4">
         <div className="flex min-w-0 w-full items-center justify-between gap-2 md:contents">
           <Link
             to={storeHome}
             className="flex min-w-0 items-center gap-2.5 md:order-1 md:shrink-0"
           >
-            <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-2xl border border-emerald-100 bg-white p-1 text-emerald-700">
+            <span
+              className={cn(
+                "grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-2xl border border-emerald-100 bg-white p-1 text-emerald-700",
+                hasPageAmbient && "vt-storefront-logo-ring",
+              )}
+            >
               {store.avatarUrl ? (
                 <ProtectedMediaImg
                   src={store.avatarUrl}
@@ -139,7 +153,12 @@ export function StorefrontHeader({
                 <Store size={20} aria-hidden />
               )}
             </span>
-            <span className="flex min-w-0 items-center gap-1 truncate text-lg font-extrabold tracking-tight text-emerald-700 sm:text-xl md:text-[1.6rem]">
+            <span
+              className={cn(
+                "flex min-w-0 items-center gap-1 truncate text-lg font-extrabold tracking-tight text-emerald-700 sm:text-xl md:text-[1.6rem]",
+                hasPageAmbient && "vt-storefront-accent-text",
+              )}
+            >
               <span className="truncate">{store.name}</span>
               {store.verified ? (
                 <BadgeCheck
@@ -157,7 +176,7 @@ export function StorefrontHeader({
           >
             <button
               type="button"
-              className={topLinkClass}
+              className={cn(topLinkClass, hasPageAmbient && "vt-storefront-accent-text")}
               onClick={() => {
                 if (onOpenCategories) onOpenCategories();
                 else goToSection("storefront-categorias");
@@ -167,7 +186,7 @@ export function StorefrontHeader({
             </button>
             <Link
               to={storeTrackingHref(store)}
-              className={topLinkClass}
+              className={cn(topLinkClass, hasPageAmbient && "vt-storefront-accent-text")}
               aria-label="Rastrea tu envío"
             >
               <span className="sm:hidden">Rastreo</span>
@@ -195,12 +214,18 @@ export function StorefrontHeader({
             placeholder="¿Qué estás buscando?"
             ariaLabel="Buscar en la tienda"
             className="w-full"
-            inputClassName="h-11 rounded-full border border-emerald-100 bg-stone-50 pl-4 pr-12 text-sm text-slate-900 shadow-none outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+            inputClassName={cn(
+              "h-11 rounded-full border border-emerald-100 bg-stone-50 pl-4 pr-12 text-sm text-slate-900 shadow-none outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100",
+              hasPageAmbient && "vt-storefront-input",
+            )}
           />
           <button
             type="submit"
             aria-label="Buscar productos"
-            className="absolute right-1.5 top-1/2 z-[1] grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-emerald-700 text-white transition hover:bg-emerald-800"
+            className={cn(
+              "absolute right-1.5 top-1/2 z-[1] grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-emerald-700 text-white transition hover:bg-emerald-800",
+              hasPageAmbient && "vt-storefront-accent-btn",
+            )}
           >
             <Search size={16} aria-hidden />
           </button>
@@ -333,7 +358,7 @@ function StorefrontChromeBody({
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const setActiveStore = useCartStore((s) => s.setActiveStore);
-  const ambient = useStorefrontBannerAmbient();
+  const ambient = useStorefrontAmbient();
 
   useEffect(() => {
     if (store.id) setActiveStore(store.id);
@@ -343,11 +368,9 @@ function StorefrontChromeBody({
     <div
       className={cn(
         "store-front-surface flex w-full min-h-0 flex-1 flex-col text-[var(--text)] transition-[background] duration-700 ease-out",
-        ambient.hasPageAmbient
-          ? "vt-storefront-ambient"
-          : "bg-[var(--bg)]",
+        ambient.hasPageAmbient ? "vt-storefront-ambient" : "bg-[var(--bg)]",
       )}
-      style={ambient.pageStyle}
+      style={ambient.shellStyle}
     >
       <StorefrontHeader
         store={store}
@@ -355,6 +378,7 @@ function StorefrontChromeBody({
         onQueryChange={onQueryChange}
         onSearchSubmit={onSearchSubmit}
         onOpenCategories={() => setCategoriesOpen(true)}
+        hasPageAmbient={ambient.hasPageAmbient}
       />
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       <StorefrontFooter
@@ -394,14 +418,16 @@ export function StorefrontChrome({
   return (
     <StoreCategoriesProvider storeId={store.id}>
       <StoreBannersProvider storeId={store.id}>
-        <StorefrontChromeBody
-          store={store}
-          query={query}
-          onQueryChange={onQueryChange}
-          onSearchSubmit={onSearchSubmit}
-        >
-          {children}
-        </StorefrontChromeBody>
+        <StorefrontAmbientProvider>
+          <StorefrontChromeBody
+            store={store}
+            query={query}
+            onQueryChange={onQueryChange}
+            onSearchSubmit={onSearchSubmit}
+          >
+            {children}
+          </StorefrontChromeBody>
+        </StorefrontAmbientProvider>
       </StoreBannersProvider>
     </StoreCategoriesProvider>
   );

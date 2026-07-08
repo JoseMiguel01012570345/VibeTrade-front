@@ -16,7 +16,7 @@ export function StorefrontNotFoundState({
         </p>
         <button
           type="button"
-          className="mt-4 inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
+          className="vt-storefront-accent-btn mt-4 inline-flex items-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
           onClick={onBack}
         >
           <ArrowLeft size={16} aria-hidden /> Volver al feed

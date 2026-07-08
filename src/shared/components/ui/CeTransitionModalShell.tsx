@@ -1,5 +1,5 @@
 import { ModalContext } from "flowbite-react";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { lockBodyScroll, unlockBodyScroll } from "@shared/lib/bodyScrollLock";
 import {
@@ -81,6 +81,8 @@ type Props = {
   dismissible?: boolean;
   mobileSheet?: boolean;
   backdropClassName?: string;
+  panelClassName?: string;
+  panelStyle?: CSSProperties;
   children: ReactNode;
 };
 
@@ -93,6 +95,8 @@ export function CeTransitionModalShell({
   dismissible = true,
   mobileSheet = false,
   backdropClassName,
+  panelClassName,
+  panelStyle,
   children,
 }: Props) {
   const titleId = useId();
@@ -144,7 +148,8 @@ export function CeTransitionModalShell({
           role="dialog"
           aria-modal="true"
           aria-labelledby={headerId}
-          className={`relative w-full ${MODAL_SIZE_CLASSES[size]} transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${panelInner} ${panelTransitionClasses(animateIn, mobileSheet)}`}
+          className={`relative w-full ${MODAL_SIZE_CLASSES[size]} transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${panelInner} ${panelTransitionClasses(animateIn, mobileSheet)} ${panelClassName ?? ""}`}
+          style={panelStyle}
           onMouseDown={(event) => event.stopPropagation()}
         >
           <ModalContext.Provider

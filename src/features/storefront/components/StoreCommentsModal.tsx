@@ -10,6 +10,10 @@ import {
   STOREFRONT_COMMENTS_MODAL_THEME,
   STOREFRONT_MODAL_BACKDROP,
 } from "../lib/storefrontModalTheme";
+import {
+  useStorefrontAmbient,
+  storefrontAmbientPortalProps,
+} from "../context/StorefrontAmbientContext";
 import { useStoreComments } from "../logic/useStoreComments";
 
 /**
@@ -29,6 +33,8 @@ export function StoreCommentsModal({
   onClose: () => void;
 }>) {
   const c = useStoreComments(store, open);
+  const ambient = useStorefrontAmbient();
+  const portalAmbient = storefrontAmbientPortalProps(ambient);
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const titleId = useId();
@@ -52,8 +58,8 @@ export function StoreCommentsModal({
               className={cn(
                 "grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black uppercase",
                 isStoreAuthor
-                  ? "bg-emerald-600 text-white"
-                  : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+                  ? "vt-storefront-modal-avatar--store"
+                  : "vt-storefront-modal-avatar--guest ring-1",
               )}
               aria-hidden
             >
@@ -65,12 +71,12 @@ export function StoreCommentsModal({
                   {authorLabel}
                 </span>
                 {isStoreAuthor ? (
-                  <span className="rounded-full border border-emerald-200 bg-emerald-600/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-emerald-700">
+                  <span className="vt-storefront-modal-chip rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
                     Tienda
                   </span>
                 ) : null}
                 <span
-                  className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700"
+                  className="vt-storefront-modal-chip rounded-full border px-2 py-0.5 text-[11px] font-semibold"
                   title="Indicador de confianza del autor."
                 >
                   Confianza {trustScore}
@@ -91,7 +97,7 @@ export function StoreCommentsModal({
                 {c.sessionReady && !c.isGuest ? (
                   <button
                     type="button"
-                    className="text-xs font-extrabold text-emerald-700 transition hover:text-emerald-800 hover:underline"
+                    className="vt-storefront-accent-text text-xs font-extrabold transition hover:underline"
                     onClick={() => {
                       c.setReplyingTo(comment);
                       inputRef.current?.focus();
@@ -105,7 +111,7 @@ export function StoreCommentsModal({
           </div>
           {childRows.length > 0 ? (
             <div
-              className="mb-1 ml-3.5 border-l-2 border-emerald-100 pl-3"
+              className="mb-1 ml-3.5 border-l-2 border-[color-mix(in_oklab,rgb(var(--storefront-border-rgb))_65%,var(--border))] pl-3"
               role="group"
               aria-label="Respuestas en este hilo"
             >
@@ -142,7 +148,7 @@ export function StoreCommentsModal({
           <button
             type="button"
             onClick={() => void c.reload()}
-            className="mt-3 rounded-full border border-emerald-200 bg-white px-4 py-1.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
+            className="vt-storefront-control mt-3 rounded-full border px-4 py-1.5 text-sm font-semibold transition"
           >
             Reintentar
           </button>
@@ -152,7 +158,7 @@ export function StoreCommentsModal({
     if (rootCount === 0) {
       return (
         <div className="py-12 text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
+          <span className="vt-storefront-modal-icon mx-auto grid h-12 w-12 place-items-center rounded-2xl">
             <MessagesSquare size={22} aria-hidden />
           </span>
           <p className="mt-3 text-sm font-semibold text-slate-700">
@@ -196,13 +202,15 @@ export function StoreCommentsModal({
       size="xl"
       theme={STOREFRONT_COMMENTS_MODAL_THEME}
       backdropClassName={STOREFRONT_MODAL_BACKDROP}
+      panelClassName={cn("vt-storefront-modal store-front-surface", portalAmbient.className)}
+      panelStyle={portalAmbient.style}
     >
       <div className="relative shrink-0 px-6 pb-3 pt-5 sm:pt-6">
         <div className="mb-3 flex justify-center sm:hidden" aria-hidden>
           <div className="h-1 w-10 rounded-full bg-slate-300" />
         </div>
         <div className="flex items-start gap-3 pr-8">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+          <span className="vt-storefront-modal-icon grid h-10 w-10 shrink-0 place-items-center rounded-2xl">
             <MessagesSquare size={20} aria-hidden />
           </span>
           <div className="min-w-0">
@@ -238,9 +246,9 @@ export function StoreCommentsModal({
 
       <div className="shrink-0 bg-[color-mix(in_oklab,var(--bg)_38%,var(--surface))] px-6 py-3.5">
         {c.replyingTo ? (
-          <div className="mb-2.5 flex items-start justify-between gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2">
+          <div className="vt-storefront-modal-reply-banner mb-2.5 flex items-start justify-between gap-2 rounded-xl border px-3 py-2">
             <div className="min-w-0">
-              <span className="block text-xs font-extrabold text-emerald-700">
+              <span className="vt-storefront-accent-text block text-xs font-extrabold">
                 Respondiendo a{" "}
                 {resolveOfferCommentAuthorLabel(c.replyingTo.author, c.nameCtx)}
               </span>
@@ -262,7 +270,7 @@ export function StoreCommentsModal({
         <div className="flex items-stretch gap-2.5">
           <input
             ref={inputRef}
-            className="min-w-0 flex-1 rounded-full border border-[#e3ddd6] bg-white px-4 text-sm text-slate-900 outline-none ring-emerald-600/30 placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 disabled:cursor-not-allowed disabled:bg-stone-100"
+            className="vt-storefront-input min-w-0 flex-1 rounded-full border px-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:ring-2 disabled:cursor-not-allowed disabled:bg-stone-100"
             disabled={c.sending || c.composerLocked}
             placeholder={composerPlaceholder}
             value={c.draft}
@@ -280,7 +288,7 @@ export function StoreCommentsModal({
             title="Enviar"
             disabled={c.sending || c.composerLocked || !c.draft.trim()}
             onClick={() => void c.submit()}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-emerald-700 text-white transition hover:bg-emerald-800 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
+            className="vt-storefront-accent-btn grid h-11 w-11 shrink-0 place-items-center rounded-full text-white transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Send size={18} strokeWidth={2.25} aria-hidden />
           </button>
@@ -317,7 +325,7 @@ function LikeButton({
       type="button"
       onClick={onToggle}
       title={liked ? "Quitar me gusta" : "Me gusta"}
-      className="inline-flex items-center gap-1 rounded-full border border-[#e3ddd6] bg-white px-2 py-0.5 text-[11px] font-extrabold text-slate-500 transition hover:border-emerald-200 hover:text-emerald-700"
+      className="vt-storefront-control inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-extrabold text-slate-500 transition"
     >
       <Heart
         size={14}

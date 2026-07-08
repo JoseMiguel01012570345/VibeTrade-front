@@ -4,6 +4,7 @@ import {
   isProtectedMediaUrl,
   normalizeMediaCacheKey,
 } from "@shared/services/media/mediaClient";
+import type { CSSProperties } from "react";
 
 /** RGB en formato `r,g,b` para CSS `rgb(var(--token))`. */
 export type RgbTriplet = `${number},${number},${number}`;
@@ -201,6 +202,115 @@ export function storefrontPageBackground(
 ): string {
   const tint = scheme === "light" ? "26%" : "18%";
   return `color-mix(in oklab, rgb(${rgb}) ${tint}, var(--bg))`;
+}
+
+/** Acento legible para texto y links. */
+export function storefrontAccentRgb(
+  rgb: RgbTriplet,
+  scheme: "light" | "dark",
+): RgbTriplet {
+  if (scheme === "light") {
+    return formatRgbTriplet(
+      parseRgbTriplet(rgb)[0] * 0.55 + 15,
+      parseRgbTriplet(rgb)[1] * 0.55 + 45,
+      parseRgbTriplet(rgb)[2] * 0.55 + 35,
+    );
+  }
+  return scaleRgbTriplet(rgb, 0.85);
+}
+
+/** Acento fuerte para botones primarios y estados activos. */
+export function storefrontAccentStrongRgb(
+  rgb: RgbTriplet,
+  scheme: "light" | "dark",
+): RgbTriplet {
+  if (scheme === "light") {
+    return formatRgbTriplet(
+      parseRgbTriplet(rgb)[0] * 0.72 + 8,
+      parseRgbTriplet(rgb)[1] * 0.72 + 28,
+      parseRgbTriplet(rgb)[2] * 0.72 + 22,
+    );
+  }
+  return scaleRgbTriplet(rgb, 0.75);
+}
+
+export function storefrontBorderRgb(
+  rgb: RgbTriplet,
+  scheme: "light" | "dark",
+): RgbTriplet {
+  if (scheme === "light") {
+    return formatRgbTriplet(
+      parseRgbTriplet(rgb)[0] * 0.35 + 180,
+      parseRgbTriplet(rgb)[1] * 0.35 + 200,
+      parseRgbTriplet(rgb)[2] * 0.35 + 190,
+    );
+  }
+  return scaleRgbTriplet(rgb, 0.45);
+}
+
+export function storefrontHeaderBackground(
+  rgb: RgbTriplet,
+  scheme: "light" | "dark",
+): string {
+  const tint = scheme === "light" ? "38%" : "28%";
+  const base =
+    scheme === "light"
+      ? "color-mix(in oklab, rgba(255, 255, 255, 0.94) 100%, var(--surface))"
+      : "color-mix(in oklab, rgba(26, 58, 50, 0.88) 100%, var(--surface))";
+  return `color-mix(in oklab, rgb(${rgb}) ${tint}, ${base})`;
+}
+
+export function storefrontSurfaceBackground(
+  rgb: RgbTriplet,
+  scheme: "light" | "dark",
+): string {
+  const tint = scheme === "light" ? "32%" : "22%";
+  const base =
+    scheme === "light"
+      ? "color-mix(in oklab, rgba(255, 255, 255, 0.88) 100%, var(--surface))"
+      : "color-mix(in oklab, rgba(26, 58, 50, 0.75) 100%, var(--surface))";
+  return `color-mix(in oklab, rgb(${rgb}) ${tint}, ${base})`;
+}
+
+export function storefrontMutedSurfaceBackground(
+  rgb: RgbTriplet,
+  scheme: "light" | "dark",
+): string {
+  const tint = scheme === "light" ? "18%" : "14%";
+  const base =
+    scheme === "light"
+      ? "color-mix(in oklab, #fbfaf8 100%, var(--surface))"
+      : "color-mix(in oklab, rgba(26, 58, 50, 0.65) 100%, var(--surface))";
+  return `color-mix(in oklab, rgb(${rgb}) ${tint}, ${base})`;
+}
+
+export type StorefrontShellCssVars = {
+  "--storefront-page-rgb": RgbTriplet;
+  "--storefront-accent-rgb": RgbTriplet;
+  "--storefront-accent-strong-rgb": RgbTriplet;
+  "--storefront-border-rgb": RgbTriplet;
+};
+
+export function buildStorefrontShellCssVars(
+  pageRgb: RgbTriplet,
+  scheme: "light" | "dark",
+): StorefrontShellCssVars {
+  return {
+    "--storefront-page-rgb": pageRgb,
+    "--storefront-accent-rgb": storefrontAccentRgb(pageRgb, scheme),
+    "--storefront-accent-strong-rgb": storefrontAccentStrongRgb(pageRgb, scheme),
+    "--storefront-border-rgb": storefrontBorderRgb(pageRgb, scheme),
+  };
+}
+
+export function storefrontShellStyle(
+  pageRgb: RgbTriplet,
+  scheme: "light" | "dark",
+): CSSProperties {
+  return {
+    ...buildStorefrontShellCssVars(pageRgb, scheme),
+    background: storefrontPageBackground(pageRgb, scheme),
+  } as CSSProperties;
 }
 
 export function storefrontFooterBackground(

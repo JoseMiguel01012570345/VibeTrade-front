@@ -35,7 +35,7 @@ export function CategorySortControl({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex h-14 w-full items-center justify-between gap-4 rounded-[16px] border border-[#d9d5cf] bg-white px-5 text-sm font-semibold text-slate-700 shadow-[0_10px_24px_rgba(33,37,41,0.04)] transition hover:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+        className="vt-storefront-control flex h-14 w-full items-center justify-between gap-4 rounded-[16px] border border-[#d9d5cf] bg-white px-5 text-sm font-semibold text-slate-700 shadow-[0_10px_24px_rgba(33,37,41,0.04)] transition hover:border-emerald-300 focus:outline-none focus:ring-4 focus:ring-emerald-100"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
@@ -53,7 +53,7 @@ export function CategorySortControl({
       </button>
 
       {open ? (
-        <div className="absolute left-0 top-[calc(100%+0.55rem)] z-20 w-full min-w-[15rem] overflow-hidden rounded-[18px] border border-[#e5ddd5] bg-white p-2 shadow-[0_20px_44px_rgba(33,37,41,0.12)]">
+        <div className="vt-storefront-control-menu absolute left-0 top-[calc(100%+0.55rem)] z-20 w-full min-w-[15rem] overflow-hidden rounded-[18px] border border-[#e5ddd5] bg-white p-2 shadow-[0_20px_44px_rgba(33,37,41,0.12)]">
           <div className="space-y-1" role="listbox" aria-label="Ordenar">
             {options.map((option) => {
               const active = option.value === value;
@@ -67,7 +67,7 @@ export function CategorySortControl({
                   }}
                   className={`flex w-full items-center justify-between rounded-[12px] px-4 py-3 text-left text-sm font-medium transition ${
                     active
-                      ? "bg-emerald-50 text-emerald-700"
+                      ? "vt-storefront-control-menu-item--active bg-emerald-50 text-emerald-700"
                       : "text-slate-700 hover:bg-stone-50"
                   }`}
                   role="option"
@@ -76,7 +76,7 @@ export function CategorySortControl({
                   <span>{option.label}</span>
                   {active ? (
                     <span
-                      className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-600"
+                      className="vt-storefront-accent-dot inline-flex h-2.5 w-2.5 rounded-full"
                       aria-hidden
                     />
                   ) : null}

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Wrench } from "lucide-react";
+import { cn } from "@shared/lib/cn";
 
 export function CategoryFooterTabs({
   categories,
@@ -27,11 +28,12 @@ export function CategoryFooterTabs({
               key={name}
               to={hrefFor(name)}
               role="listitem"
-              className={`flex min-h-[2.75rem] min-w-[8.25rem] max-w-[11rem] shrink-0 items-center justify-center gap-1.5 rounded-[16px] border px-3 py-2 text-center text-xs font-bold leading-snug transition sm:min-w-[9.5rem] sm:max-w-none sm:px-4 sm:py-4 sm:text-sm ${
+              className={cn(
+                "vt-storefront-category-tab flex min-h-[2.75rem] min-w-[8.25rem] max-w-[11rem] shrink-0 items-center justify-center gap-1.5 rounded-[16px] border px-3 py-2 text-center text-xs font-bold leading-snug transition sm:min-w-[9.5rem] sm:max-w-none sm:px-4 sm:py-4 sm:text-sm",
                 active
-                  ? "border-emerald-700 bg-emerald-700 text-white"
-                  : "border-[#d9d5cf] bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-700"
-              }`}
+                  ? "vt-storefront-category-tab--active text-white"
+                  : "text-slate-700",
+              )}
             >
               {isService ? (
                 <Wrench className="h-3.5 w-3.5 shrink-0" aria-hidden />

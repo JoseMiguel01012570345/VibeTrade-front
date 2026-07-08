@@ -65,7 +65,7 @@ export function CartLineRow({
         <div className="min-w-0">
           <Link
             to={offerHref}
-            className="block truncate text-[0.98rem] font-bold text-slate-900 transition hover:text-emerald-700"
+            className="vt-storefront-accent-text block truncate text-[0.98rem] font-bold text-slate-900 transition hover:opacity-90"
           >
             {line.name}
           </Link>
@@ -73,20 +73,20 @@ export function CartLineRow({
             {measure}
             {line.currencyCode ? ` · ${line.currencyCode}` : ""}
           </p>
-          <p className="mt-1 text-[0.92rem] font-bold text-emerald-700">
+          <p className="vt-storefront-accent-text mt-1 text-[0.92rem] font-bold">
             {priceTag(line.unitPrice, line.currencyCode)}
           </p>
         </div>
       </div>
 
       <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3 sm:w-auto sm:flex-nowrap sm:justify-end">
-        <div className="inline-flex items-center gap-4 rounded-full border border-[#ddd5ce] bg-white px-3 py-1.5 text-[0.95rem] font-semibold text-slate-600">
+        <div className="vt-storefront-control inline-flex items-center gap-4 rounded-full border px-3 py-1.5 text-[0.95rem] font-semibold text-slate-600">
           <button
             type="button"
             onClick={() =>
               onSetQuantity(lineKey, Math.max(1, line.quantity - 1))
             }
-            className="transition hover:text-emerald-700"
+            className="vt-storefront-accent-text transition"
             aria-label={`Reducir cantidad de ${line.name}`}
           >
             −
@@ -97,7 +97,7 @@ export function CartLineRow({
           <button
             type="button"
             onClick={() => onSetQuantity(lineKey, line.quantity + 1)}
-            className="transition hover:text-emerald-700"
+            className="vt-storefront-accent-text transition"
             aria-label={`Aumentar cantidad de ${line.name}`}
           >
             +

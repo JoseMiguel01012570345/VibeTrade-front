@@ -18,7 +18,7 @@ export function TrackShipmentCard({
   canSubmit: boolean;
 }>) {
   return (
-    <div className="rounded-[18px] border border-[#e3ddd6] bg-white p-6 shadow-[0_18px_44px_rgba(33,37,41,0.08)] sm:p-8">
+    <div className="vt-storefront-section-panel rounded-[18px] border p-6 shadow-[0_18px_44px_rgba(33,37,41,0.08)] sm:p-8">
       <form onSubmit={onSubmit} className="space-y-5">
         <div>
           <label
@@ -33,7 +33,7 @@ export function TrackShipmentCard({
           </p>
           <div className="relative mt-3">
             <span
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-emerald-700"
+              className="vt-storefront-accent-text pointer-events-none absolute left-4 top-1/2 -translate-y-1/2"
               aria-hidden
             >
               <Truck className="h-5 w-5" />
@@ -46,7 +46,7 @@ export function TrackShipmentCard({
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder="ej. BX-12345678"
-              className="h-12 w-full rounded-full border border-[#e2dcd4] bg-[#faf8f5] pl-12 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
+              className="vt-storefront-input h-12 w-full rounded-full border pl-12 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4"
             />
           </div>
         </div>
@@ -54,7 +54,7 @@ export function TrackShipmentCard({
         <button
           type="submit"
           disabled={!canSubmit}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 py-3.5 text-base font-bold text-white shadow-[0_14px_28px_rgba(4,120,87,0.22)] transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-55"
+          className="vt-storefront-accent-btn flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-base font-bold text-white shadow-[0_14px_28px_rgba(4,120,87,0.22)] transition disabled:cursor-not-allowed disabled:opacity-55"
         >
           <span>{submitting ? "Consultando…" : "Consultar Estado"}</span>
           {!submitting ? <ArrowRight className="h-5 w-5 shrink-0" aria-hidden /> : null}

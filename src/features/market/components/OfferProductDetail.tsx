@@ -50,7 +50,7 @@ function ProductGallery({
 
   return (
     <>
-      <div className="rounded-[10px] border border-[#d9d5cf] bg-white p-4 shadow-[0_12px_30px_rgba(33,37,41,0.05)]">
+      <div className="vt-storefront-section-panel rounded-[10px] border p-4 shadow-[0_12px_30px_rgba(33,37,41,0.05)]">
         {currentImage ? (
           <div className="relative">
             <ProtectedMediaImg
@@ -130,11 +130,11 @@ function BuyActions({
 
   return (
     <>
-      <div className="mt-7 inline-flex items-center gap-5 rounded-full border border-[#d9d5cf] bg-white px-4 py-3 text-lg font-semibold text-slate-600">
+      <div className="mt-7 inline-flex items-center gap-5 rounded-full border px-4 py-3 text-lg font-semibold text-slate-600 vt-storefront-control">
         <button
           type="button"
           onClick={() => setQuantity((c) => Math.max(1, c - 1))}
-          className="transition hover:text-emerald-700"
+          className="vt-storefront-accent-text transition"
           aria-label="Reducir cantidad"
         >
           −
@@ -143,7 +143,7 @@ function BuyActions({
         <button
           type="button"
           onClick={() => setQuantity((c) => c + 1)}
-          className="transition hover:text-emerald-700"
+          className="vt-storefront-accent-text transition"
           aria-label="Aumentar cantidad"
         >
           +
@@ -153,14 +153,14 @@ function BuyActions({
       <div className="mt-8 space-y-3">
         <button
           type="button"
-          className="flex h-14 w-full items-center justify-center rounded-[6px] bg-emerald-700 text-sm font-bold text-white transition hover:bg-emerald-800"
+          className="vt-storefront-accent-btn flex h-14 w-full items-center justify-center rounded-[6px] text-sm font-bold text-white transition"
           onClick={() => onAddToCart(quantity)}
         >
           Añadir al carrito
         </button>
         <button
           type="button"
-          className="flex h-14 w-full items-center justify-center rounded-[6px] border border-emerald-700 bg-white text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
+          className="vt-storefront-accent-btn-outline flex h-14 w-full items-center justify-center rounded-[6px] border text-sm font-bold transition"
           onClick={() => onBuyNow(quantity)}
         >
           Comprar ahora
@@ -193,7 +193,7 @@ function OfferPriceBlock({
   }
   return (
     <div className="mt-7 border-y border-[#e5ddd5] py-6">
-      <span className="text-2xl font-extrabold leading-none text-emerald-700 sm:text-4xl lg:text-[3.3rem]">
+      <span className="text-2xl font-extrabold leading-none vt-storefront-accent-text sm:text-4xl lg:text-[3.3rem]">
         {price}
       </span>
       <p className="mt-2 text-sm text-slate-500">
@@ -311,7 +311,7 @@ export function OfferProductDetail({
         </div>
 
         <aside className="min-w-0 pt-4">
-          <span className="inline-flex max-w-full truncate rounded-full bg-emerald-700 px-4 py-1 text-xs font-bold text-white">
+          <span className="vt-storefront-accent-btn inline-flex max-w-full truncate rounded-full px-4 py-1 text-xs font-bold text-white">
             {category}
           </span>
           <h1 className="mt-5 break-words text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl lg:text-3xl">

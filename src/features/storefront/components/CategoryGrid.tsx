@@ -18,7 +18,7 @@ export function CategoryGrid({
   if (isEmpty) {
     return (
       <section>
-        <p className="rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-5 py-10 text-center text-sm text-slate-500">
+        <p className="vt-storefront-section-panel rounded-[18px] border border-dashed px-5 py-10 text-center text-sm text-slate-500">
           {isService
             ? "No hay servicios disponibles en esta categoría."
             : "No hay productos disponibles en esta categoría."}

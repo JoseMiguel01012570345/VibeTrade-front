@@ -7,7 +7,7 @@ export const STOREFRONT_COMMENTS_MODAL_THEME = {
   },
   content: {
     inner:
-      "relative grid max-h-[calc(100dvh-1.5rem)] w-full grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow)] sm:max-h-[min(90dvh,640px)]",
+      "relative grid max-h-[calc(100dvh-1.5rem)] w-full grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow)] sm:max-h-[min(90dvh,640px)] transition-[background,border-color] duration-700 ease-out",
   },
 };
 

@@ -19,16 +19,16 @@ export function StorefrontSearchResultsSection({
   return (
     <section>
       <div className="mb-5 flex items-center justify-between gap-3">
-        <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+        <h2 className="vt-storefront-section-title text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
           Resultados
         </h2>
       </div>
       {loading ? (
-        <p className="rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
+        <p className="vt-storefront-section-panel rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
           Buscando en el catálogo…
         </p>
       ) : !hasResults ? (
-        <p className="rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
+        <p className="vt-storefront-section-panel rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
           Ningún resultado coincide con tu búsqueda.
         </p>
       ) : (

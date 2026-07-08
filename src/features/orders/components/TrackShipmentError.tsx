@@ -25,13 +25,13 @@ export function TrackShipmentError({
           <button
             type="button"
             onClick={onRetry}
-            className="rounded-xl bg-emerald-700 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-700/15 transition hover:bg-emerald-800"
+            className="vt-storefront-accent-btn rounded-xl px-6 py-2.5 text-sm font-bold text-white shadow-lg transition"
           >
             Intentar de nuevo
           </button>
           <Link
             to="/mis-compras"
-            className="rounded-xl border border-emerald-200 bg-white px-6 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50"
+            className="vt-storefront-control rounded-xl border px-6 py-2.5 text-sm font-bold transition"
           >
             Ver mis compras
           </Link>
@@ -44,7 +44,7 @@ export function TrackShipmentError({
         </h3>
         <ul className="mt-5 space-y-4 text-sm leading-snug text-slate-700">
           <li className="flex gap-3">
-            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-emerald-700 shadow-sm">
+            <span className="vt-storefront-accent-text mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
               <CheckCircle2 className="h-5 w-5" aria-hidden />
             </span>
             <span>

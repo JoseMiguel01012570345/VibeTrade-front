@@ -28,7 +28,7 @@ const DIRECTION_META: Record<
 };
 
 const BASE_CLASS =
-  "absolute top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#e2dcd4] bg-white text-emerald-700 shadow-[0_8px_20px_rgba(15,107,79,0.15)] transition hover:bg-emerald-50 hover:text-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:flex";
+  "vt-storefront-control absolute top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-[#e2dcd4] bg-white text-emerald-700 shadow-[0_8px_20px_rgba(15,107,79,0.15)] transition hover:bg-emerald-50 hover:text-emerald-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:flex";
 
 export function ScrollArrowButton({
   direction,

@@ -23,7 +23,7 @@ export function StorefrontCategorySection({
   return (
     <section id="storefront-categorias" className="scroll-mt-24 space-y-6">
       <div>
-        <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+        <h2 className="vt-storefront-section-title text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
           Explora por Categoría
         </h2>
         <p className="text-sm text-slate-500">

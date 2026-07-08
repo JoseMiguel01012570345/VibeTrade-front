@@ -14,6 +14,11 @@ import {
   STOREFRONT_CHECKOUT_MODAL_THEME,
   STOREFRONT_MODAL_BACKDROP,
 } from "@features/storefront/lib/storefrontModalTheme";
+import {
+  useStorefrontAmbient,
+  storefrontAmbientPortalProps,
+} from "@features/storefront/context/StorefrontAmbientContext";
+import { cn } from "@shared/lib/cn";
 import type { OrderDeliveryMode } from "../Dtos/orders";
 import type { DeliveryFormData } from "../logic/checkoutForm";
 import "leaflet/dist/leaflet.css";
@@ -23,14 +28,14 @@ import "leaflet/dist/leaflet.css";
  *  dirección + pin en el mapa (reusa el tile layer y el pin de la app). */
 function StepBadge({ n }: Readonly<{ n: number }>) {
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--primary)_14%,var(--surface))] text-sm font-extrabold text-[var(--primary)]">
+    <span className="vt-storefront-step-badge flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold">
       {n}
     </span>
   );
 }
 
 const inputClass =
-  "h-11 w-full rounded-[10px] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--muted)] focus:border-[color-mix(in_oklab,var(--primary)_55%,var(--border))] focus:ring-4 focus:ring-[color-mix(in_oklab,var(--primary)_18%,transparent)]";
+  "vt-storefront-input h-11 w-full rounded-[10px] border px-3 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--muted)] focus:ring-4";
 
 function LabeledInput({
   id,
@@ -100,6 +105,8 @@ export function DeliveryDataModal({
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const titleId = useId();
+  const ambient = useStorefrontAmbient();
+  const portalAmbient = storefrontAmbientPortalProps(ambient);
 
   const needsAddress = mode === "shipping";
 
@@ -162,9 +169,11 @@ export function DeliveryDataModal({
       size="2xl"
       theme={STOREFRONT_CHECKOUT_MODAL_THEME}
       backdropClassName={STOREFRONT_MODAL_BACKDROP}
+      panelClassName={cn("vt-storefront-modal store-front-surface", portalAmbient.className)}
+      panelStyle={portalAmbient.style}
     >
       <div className="flex items-center gap-3 border-b border-[var(--border)] px-5 py-4 sm:px-6">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-white">
+        <span className="vt-storefront-accent-btn flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white">
           <MapPin className="h-5 w-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
@@ -251,7 +260,7 @@ export function DeliveryDataModal({
           </section>
 
           {needsAddress ? (
-            <section className="mt-6 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_42%,var(--surface))] p-4 sm:p-5">
+            <section className="vt-storefront-section-panel mt-6 rounded-[14px] border p-4 sm:p-5">
               <div className="flex items-center gap-3">
                 <StepBadge n={2} />
                 <h3 className="text-sm font-extrabold tracking-tight text-[var(--text)]">

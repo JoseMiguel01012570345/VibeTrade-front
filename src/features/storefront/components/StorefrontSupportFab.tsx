@@ -12,6 +12,7 @@ import { createSupportThread } from "@features/chat/api/chatApi";
 import { toastApiError } from "@features/auth/logic/toastApiError";
 import { getSessionToken } from "@shared/services/http/sessionToken";
 import { cn } from "@shared/lib/cn";
+import { useStorefrontAmbient, storefrontAmbientCssVarsOnly } from "../context/StorefrontAmbientContext";
 
 /** Altura reservada por la barra inferior fija de AppShell. */
 const BOTTOM_NAV_CLEARANCE_PX = 78;
@@ -46,6 +47,7 @@ export function StorefrontSupportFab({
   const openAuthModal = useAppStore((s) => s.openAuthModal);
   const onThreadCreated = useMarketStore((s) => s.onThreadCreatedFromServer);
   const [opening, setOpening] = useState(false);
+  const ambient = useStorefrontAmbient();
 
   const hideBottomNav =
     isChatThreadPath(pathname) ||
@@ -92,9 +94,13 @@ export function StorefrontSupportFab({
         disabled={opening}
         onClick={() => void handleOpenSupport()}
         className={cn(
-          "pointer-events-auto fixed right-[max(1.25rem,env(safe-area-inset-right,0px))] z-[91] grid h-14 w-14 place-items-center rounded-full bg-emerald-700 text-white shadow-[0_14px_32px_rgba(4,120,87,0.35)] transition-colors hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:opacity-70 sm:right-[max(2rem,env(safe-area-inset-right,0px))]",
+          "pointer-events-auto fixed right-[max(1.25rem,env(safe-area-inset-right,0px))] z-[91] grid h-14 w-14 place-items-center rounded-full text-white shadow-[0_14px_32px_rgba(4,120,87,0.35)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-70 sm:right-[max(2rem,env(safe-area-inset-right,0px))]",
+          ambient.hasPageAmbient
+            ? "vt-storefront-ambient vt-storefront-accent-btn focus-visible:outline-[color-mix(in_oklab,rgb(var(--storefront-accent-strong-rgb))_100%,transparent)]"
+            : "bg-emerald-700 hover:bg-emerald-800 focus-visible:outline-emerald-700",
           supportFabBottomClass(hideBottomNav),
         )}
+        style={storefrontAmbientCssVarsOnly(ambient)}
         aria-label="Abrir chat de soporte"
         title="Soporte"
       >

@@ -106,7 +106,7 @@ function StorefrontCatalogBody({ store }: Readonly<{ store: StoreBadge }>) {
         <section aria-label="Banner principal" className="relative">
           <div
             aria-hidden
-            className="pointer-events-none absolute -inset-8 -z-10 rounded-[60px] bg-slate-300/55 blur-3xl sm:-inset-12 lg:-inset-16"
+            className="pointer-events-none absolute -inset-8 -z-10 rounded-[60px] bg-slate-300/55 blur-3xl sm:-inset-12 lg:-inset-16 vt-storefront-banner-glow"
           />
           <div
             className={`overflow-hidden rounded-[24px] sm:rounded-[28px] lg:rounded-[30px] ${BANNER_MOBILE_EDGE_CLASS}`}

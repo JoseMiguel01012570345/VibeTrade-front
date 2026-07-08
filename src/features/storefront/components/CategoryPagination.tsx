@@ -24,9 +24,9 @@ export function CategoryPagination({
             key={pageNumber}
             type="button"
             onClick={() => onChange(pageNumber)}
-            className={`inline-flex h-10 min-w-[2.5rem] items-center justify-center rounded-full px-3 text-sm font-bold transition ${
+            className={`vt-storefront-control inline-flex h-10 min-w-[2.5rem] items-center justify-center rounded-full px-3 text-sm font-bold transition ${
               pageNumber === page
-                ? "bg-emerald-700 text-white shadow-sm"
+                ? "vt-storefront-control--selected bg-emerald-700 text-white shadow-sm"
                 : "border border-[#d9d5cf] bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-700"
             }`}
             aria-current={pageNumber === page ? "page" : undefined}

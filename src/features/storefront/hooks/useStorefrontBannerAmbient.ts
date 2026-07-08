@@ -3,19 +3,21 @@ import { useAppStore } from "@features/auth/logic/useAppStore";
 import { useStoreBanners } from "@features/storefront/context/StoreBannersContext";
 import {
   storefrontFooterBackground,
-  storefrontPageBackground,
+  storefrontShellStyle,
   type RgbTriplet,
 } from "@shared/lib/image/extractDominantColor";
 import { useDominantImageColor } from "@shared/lib/image/useDominantImageColor";
 
-export function useStorefrontBannerAmbient(): {
+export type StorefrontBannerAmbient = {
   hasPageAmbient: boolean;
   hasFooterAmbient: boolean;
   pageRgb: RgbTriplet | null;
   footerRgb: RgbTriplet | null;
-  pageStyle?: CSSProperties;
+  shellStyle?: CSSProperties;
   footerStyle?: CSSProperties;
-} {
+};
+
+export function useStorefrontBannerAmbient(): StorefrontBannerAmbient {
   const colorScheme = useAppStore((s) => s.colorScheme);
   const { mainBanners, secondaryBanners } = useStoreBanners();
 
@@ -42,11 +44,8 @@ export function useStorefrontBannerAmbient(): {
       hasFooterAmbient,
       pageRgb: hasPageAmbient ? pageRgb : null,
       footerRgb: hasFooterAmbient ? footerRgb : null,
-      pageStyle: hasPageAmbient
-        ? ({
-            "--storefront-page-rgb": pageRgb,
-            background: storefrontPageBackground(pageRgb, colorScheme),
-          } as CSSProperties)
+      shellStyle: hasPageAmbient
+        ? storefrontShellStyle(pageRgb, colorScheme)
         : undefined,
       footerStyle: hasFooterAmbient
         ? ({

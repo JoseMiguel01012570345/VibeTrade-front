@@ -21,9 +21,9 @@ export function CategoryHeader({
   selectedSortLabel: string;
 }>) {
   return (
-    <section className="rounded-[32px] border border-[#ece4dc] bg-[#fbfaf8] px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
+    <section className="vt-storefront-category-header rounded-[32px] border border-[#ece4dc] bg-[#fbfaf8] px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
       <div className="mb-8 flex items-center gap-2 text-sm text-slate-400 sm:mb-10">
-        <Link to={storeHome} className="transition hover:text-emerald-700">
+        <Link to={storeHome} className="vt-storefront-accent-text transition hover:text-emerald-700">
           Inicio
         </Link>
         <span aria-hidden>›</span>
@@ -37,7 +37,7 @@ export function CategoryHeader({
           <h1 className="flex items-center gap-3 break-words text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-[3rem]">
             {isService ? (
               <Wrench
-                className="h-7 w-7 shrink-0 text-emerald-700 lg:h-10 lg:w-10"
+                className="vt-storefront-accent-text h-7 w-7 shrink-0 text-emerald-700 lg:h-10 lg:w-10"
                 aria-hidden
               />
             ) : null}

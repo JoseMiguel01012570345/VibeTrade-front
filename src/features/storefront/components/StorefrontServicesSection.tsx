@@ -11,12 +11,12 @@ export function StorefrontServicesSection({
   return (
     <section id="storefront-servicios" className="scroll-mt-24">
       <div className="mb-5">
-        <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+        <h2 className="vt-storefront-section-title text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
           {heading}
         </h2>
       </div>
       {services.length === 0 ? (
-        <p className="rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
+        <p className="vt-storefront-section-panel rounded-[18px] border border-dashed border-[#d9d5cf] bg-white px-4 py-10 text-center text-sm text-slate-500">
           Esta tienda todavía no publicó servicios.
         </p>
       ) : (

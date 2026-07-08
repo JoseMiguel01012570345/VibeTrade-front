@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, CSSProperties } from "react";
 import { CeTransitionModalShell } from "./CeTransitionModalShell";
 
 type ModalSize =
@@ -35,6 +35,8 @@ type Props = Readonly<{
   children: ReactNode;
   mobileSheet?: boolean;
   backdropClassName?: string;
+  panelClassName?: string;
+  panelStyle?: CSSProperties;
 }>;
 
 /** Shell de modal con transición para layouts Flowbite o personalizados. */
@@ -47,6 +49,8 @@ export function CeFlowbiteModal({
   children,
   mobileSheet = false,
   backdropClassName,
+  panelClassName,
+  panelStyle,
 }: Props) {
   return (
     <CeTransitionModalShell
@@ -57,6 +61,8 @@ export function CeFlowbiteModal({
       dismissible={dismissible}
       mobileSheet={mobileSheet}
       backdropClassName={backdropClassName}
+      panelClassName={panelClassName}
+      panelStyle={panelStyle}
     >
       {children}
     </CeTransitionModalShell>

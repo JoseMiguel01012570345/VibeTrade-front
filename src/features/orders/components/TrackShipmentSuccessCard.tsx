@@ -21,9 +21,9 @@ function TimelineNode({
     <span
       className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition ${
         active
-          ? "border-emerald-600 bg-emerald-600 text-white shadow-[0_8px_18px_rgba(5,150,105,0.28)]"
+          ? "vt-storefront-track-node--active border-2 text-white shadow-[0_8px_18px_rgba(5,150,105,0.28)]"
           : "border-slate-200 bg-white text-slate-300"
-      } ${state === "current" ? "ring-4 ring-emerald-100" : ""}`}
+      } ${state === "current" ? "ring-4 ring-[color-mix(in_oklab,rgb(var(--storefront-page-rgb))_28%,transparent)]" : ""}`}
       aria-hidden
     >
       {active ? (
@@ -57,10 +57,10 @@ export function TrackShipmentSuccessCard({
     deliveryMode === "pickup" ? "Recoger en almacén" : "Envío a domicilio";
 
   return (
-    <div className="rounded-[18px] border border-[#e3ddd6] bg-white p-6 shadow-[0_18px_44px_rgba(33,37,41,0.08)] sm:p-8">
+    <div className="vt-storefront-section-panel rounded-[18px] border p-6 shadow-[0_18px_44px_rgba(33,37,41,0.08)] sm:p-8">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-800 ring-1 ring-emerald-100">
+          <span className="vt-storefront-modal-chip inline-flex rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] ring-1">
             {model.badgeLabel}
           </span>
           <p className="mt-4 text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
@@ -68,7 +68,7 @@ export function TrackShipmentSuccessCard({
           </p>
         </div>
         <div className="hidden items-center gap-2 text-sm font-semibold text-slate-600 sm:flex sm:pt-8">
-          <Truck className="h-6 w-6 shrink-0 text-emerald-700" aria-hidden />
+          <Truck className="vt-storefront-accent-text h-6 w-6 shrink-0" aria-hidden />
           {transportLabel}
         </div>
       </div>
@@ -83,7 +83,7 @@ export function TrackShipmentSuccessCard({
                 {i > 0 ? (
                   <div
                     className={`mx-0 mt-[22px] h-1 min-h-[4px] flex-1 rounded-full ${
-                      segmentGreen ? "bg-emerald-600" : "bg-slate-200"
+                      segmentGreen ? "vt-storefront-track-segment--done" : "bg-slate-200"
                     }`}
                     aria-hidden
                   />
@@ -92,7 +92,7 @@ export function TrackShipmentSuccessCard({
                   <TimelineNode state={state} isTransitStep={i === 2} />
                   <p
                     className={`mt-3 text-xs font-bold leading-tight sm:text-sm ${
-                      state === "pending" ? "text-slate-500" : "text-emerald-800"
+                      state === "pending" ? "text-slate-500" : "vt-storefront-accent-text"
                     }`}
                   >
                     {def.title}
@@ -123,7 +123,7 @@ export function TrackShipmentSuccessCard({
           type="button"
           disabled={pdfLoading}
           onClick={onDownloadReceipt}
-          className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-55"
+          className="vt-storefront-control w-full rounded-xl border px-3 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-55"
         >
           {pdfLoading ? "Generando…" : "Descargar comprobante"}
         </button>

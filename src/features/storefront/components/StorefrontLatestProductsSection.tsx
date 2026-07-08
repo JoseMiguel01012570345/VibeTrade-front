@@ -9,7 +9,7 @@ export function StorefrontLatestProductsSection({
   return (
     <section>
       <div className="mb-5 flex items-center justify-between">
-        <h2 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+        <h2 className="vt-storefront-section-title text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
           Productos más recientes
         </h2>
       </div>

@@ -23,9 +23,9 @@ export function StorefrontHeroBanner({
     <section aria-label="Banner principal" className="relative">
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-8 -z-10 rounded-[60px] bg-slate-300/40 blur-3xl sm:-inset-12"
+        className="pointer-events-none absolute -inset-8 -z-10 rounded-[60px] bg-slate-300/40 blur-3xl sm:-inset-12 vt-storefront-banner-glow"
       />
-      <div className="relative overflow-hidden rounded-[24px] border border-[#d9d5cf] bg-white px-6 py-8 sm:rounded-[28px] sm:px-10 sm:py-10">
+      <div className="vt-storefront-hero-panel relative overflow-hidden rounded-[24px] border border-[#d9d5cf] bg-white px-6 py-8 sm:rounded-[28px] sm:px-10 sm:py-10">
         <div className="flex items-center justify-between gap-6">
           <div className="min-w-0 flex-1">
             <h2 className="max-w-xs text-2xl font-extrabold leading-tight text-slate-900 sm:text-3xl">
@@ -42,9 +42,9 @@ export function StorefrontHeroBanner({
               {heroPills.map((pill) => (
                 <span
                   key={pill.label}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[#d9d5cf] bg-stone-50 px-3 py-1 text-xs font-semibold text-slate-600"
+                  className="vt-storefront-control inline-flex items-center gap-1.5 rounded-full border border-[#d9d5cf] bg-stone-50 px-3 py-1 text-xs font-semibold text-slate-600"
                 >
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                  <span className="vt-storefront-accent-dot h-1.5 w-1.5 shrink-0 rounded-full" aria-hidden />
                   {pill.label}
                 </span>
               ))}
@@ -57,7 +57,7 @@ export function StorefrontHeroBanner({
               <p className="text-4xl font-black leading-none text-slate-900 sm:text-5xl">
                 24H
               </p>
-              <span className="mt-1 inline-block rounded-md bg-emerald-600 px-3 py-1 text-xs font-extrabold uppercase tracking-widest text-white">
+              <span className="vt-storefront-accent-btn mt-1 inline-block rounded-md bg-emerald-600 px-3 py-1 text-xs font-extrabold uppercase tracking-widest text-white">
                 {store.name ? `${store.name} entrega` : "Entregamos"}
               </span>
             </div>

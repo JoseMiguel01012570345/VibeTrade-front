@@ -21,7 +21,7 @@ export function CartOrderSummaryCard({
 }>) {
   return (
     <aside className="flex min-w-0 flex-col gap-4 lg:flex-[4] lg:sticky lg:top-28">
-      <div className="rounded-[10px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--primary)_8%,var(--surface))] p-4 shadow-[var(--shadow)]">
+      <div className="vt-storefront-section-panel rounded-[10px] border p-4 shadow-[var(--shadow)]">
         <h2 className="text-[1.15rem] font-extrabold tracking-tight text-[var(--text)]">
           Resumen del Pedido
         </h2>
@@ -55,11 +55,11 @@ export function CartOrderSummaryCard({
         </div>
       </div>
 
-      <div className="rounded-[10px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_40%,var(--surface))] p-4 shadow-[var(--shadow)]">
+      <div className="vt-storefront-section-panel rounded-[10px] border p-4 shadow-[var(--shadow)]">
         <button
           type="button"
           onClick={onCheckout}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-[8px] bg-emerald-700 text-sm font-bold text-white transition hover:bg-emerald-800"
+          className="vt-storefront-accent-btn flex h-12 w-full items-center justify-center gap-2 rounded-[8px] text-sm font-bold text-white transition"
         >
           <span>Proceder al pago</span>
           <Lock className="h-4 w-4" aria-hidden />
@@ -68,7 +68,7 @@ export function CartOrderSummaryCard({
           type="button"
           onClick={onShare}
           disabled={shareDisabled}
-          className="mt-3 flex h-12 w-full items-center justify-center gap-3 rounded-[8px] border border-[var(--primary)] bg-[var(--surface)] text-sm font-bold text-[var(--primary)] transition hover:bg-[color-mix(in_oklab,var(--primary)_10%,var(--surface))] disabled:cursor-not-allowed disabled:opacity-60"
+          className="vt-storefront-accent-btn-outline mt-3 flex h-12 w-full items-center justify-center gap-3 rounded-[8px] border text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span>{sharing ? "Copiando enlace…" : "Compartir carrito"}</span>
           <Share2 className="h-4 w-4" aria-hidden />

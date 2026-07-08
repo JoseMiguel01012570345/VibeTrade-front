@@ -19,7 +19,7 @@ export function CartNavButton({
     <Link
       to={href}
       className={cn(
-        "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50 text-emerald-700 shadow-[0_2px_10px_rgba(15,118,110,0.08)] transition hover:border-emerald-200 hover:bg-emerald-100",
+        "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-[0_2px_10px_rgba(15,118,110,0.08)] transition vt-storefront-cart-nav",
         className,
       )}
       aria-label={label}
