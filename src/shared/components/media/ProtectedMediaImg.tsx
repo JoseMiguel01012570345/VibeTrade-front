@@ -13,6 +13,7 @@ type ImgProps = Readonly<{
   alt: string;
   className?: string;
   wrapperClassName?: string;
+  onImageLoad?: (event: React.SyntheticEvent<HTMLImageElement>) => void;
 }>;
 
 /** @deprecated Usar CeProtectedMediaImage; alias de compatibilidad. */

@@ -6,6 +6,7 @@ import { StorefrontServiceCard } from "@features/storefront/components/Storefron
 import {
   isEmergentRouteOffer,
   isServiceOffer,
+  resolveHomeOfferPrimaryImageUrl,
   resolveHomeProductFromOffer,
   resolveHomeServiceFromOffer,
 } from "../logic/homeOfferCatalogItem";
@@ -42,11 +43,29 @@ export function OfferCardsChunk({
 
           if (isServiceOffer(offer)) {
             const service = resolveHomeServiceFromOffer(offer, storeCatalogs);
-            return <StorefrontServiceCard key={`${offer.id}-${i}`} s={service} />;
+            return (
+              <StorefrontServiceCard
+                key={`${offer.id}-${i}`}
+                s={service}
+                offerAmbientImageUrl={resolveHomeOfferPrimaryImageUrl(
+                  offer,
+                  storeCatalogs,
+                )}
+              />
+            );
           }
 
           const product = resolveHomeProductFromOffer(offer, storeCatalogs);
-          return <StorefrontProductCard key={`${offer.id}-${i}`} p={product} />;
+          return (
+            <StorefrontProductCard
+              key={`${offer.id}-${i}`}
+              p={product}
+              offerAmbientImageUrl={resolveHomeOfferPrimaryImageUrl(
+                offer,
+                storeCatalogs,
+              )}
+            />
+          );
         })}
       </div>
     </section>

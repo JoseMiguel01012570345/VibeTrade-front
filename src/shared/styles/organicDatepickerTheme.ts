@@ -93,3 +93,15 @@ export const organicDatepickerTheme = {
     },
   },
 } as const;
+
+/** Tema para `Datepicker inline` dentro de popover (sin offset `top-10`). */
+export const organicInlineDatepickerTheme = {
+  ...organicDatepickerTheme,
+  popup: {
+    ...organicDatepickerTheme.popup,
+    root: {
+      ...organicDatepickerTheme.popup.root,
+      base: "relative block",
+    },
+  },
+} as const;

@@ -14,6 +14,7 @@ type ImgProps = Readonly<{
   alt: string;
   className?: string;
   wrapperClassName?: string;
+  onImageLoad?: (event: React.SyntheticEvent<HTMLImageElement>) => void;
 }>;
 
 /**
@@ -24,6 +25,7 @@ export function CeProtectedMediaImage({
   alt,
   className,
   wrapperClassName,
+  onImageLoad,
 }: ImgProps) {
   if (!src) {
     return (
@@ -39,6 +41,7 @@ export function CeProtectedMediaImage({
           alt={alt}
           className="size-full"
           imageClassName={className}
+          onLoad={onImageLoad}
         />
       </span>
     );
@@ -50,6 +53,7 @@ export function CeProtectedMediaImage({
       alt={alt}
       className={className}
       wrapperClassName={wrapperClassName}
+      onImageLoad={onImageLoad}
     />
   );
 }
@@ -59,7 +63,14 @@ function ProtectedMediaBlobImage({
   alt,
   className,
   wrapperClassName,
-}: Readonly<{ src: string; alt: string; className?: string; wrapperClassName?: string }>) {
+  onImageLoad,
+}: Readonly<{
+  src: string;
+  alt: string;
+  className?: string;
+  wrapperClassName?: string;
+  onImageLoad?: (event: React.SyntheticEvent<HTMLImageElement>) => void;
+}>) {
   const [displaySrc, setDisplaySrc] = useState<string | undefined>(() =>
     getCachedMediaObjectUrl(src),
   );
@@ -71,9 +82,12 @@ function ProtectedMediaBlobImage({
   const syncLoadedIfImageComplete = useCallback(() => {
     queueMicrotask(() => {
       const el = imgRef.current;
-      if (el?.complete && el.naturalWidth > 0) setImgLoaded(true);
+      if (el?.complete && el.naturalWidth > 0) {
+        setImgLoaded(true);
+        onImageLoad?.({ currentTarget: el } as React.SyntheticEvent<HTMLImageElement>);
+      }
     });
-  }, []);
+  }, [onImageLoad]);
 
   useEffect(() => {
     setFetchFailed(false);
@@ -144,7 +158,10 @@ function ProtectedMediaBlobImage({
             className,
             imgLoaded ? "opacity-100" : "pointer-events-none opacity-0",
           )}
-          onLoad={() => setImgLoaded(true)}
+          onLoad={(event) => {
+            setImgLoaded(true);
+            onImageLoad?.(event);
+          }}
           onError={() => setImgLoaded(true)}
         />
       ) : showSizingPlaceholder ? (

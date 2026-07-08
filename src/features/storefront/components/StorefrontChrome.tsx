@@ -17,8 +17,11 @@ import { fetchStoreCatalogAutocomplete } from "../api/fetchStoreCatalogAutocompl
 import { StorefrontSupportFab } from "./StorefrontSupportFab";
 import { StoreCategoriesProvider } from "../context/StoreCategoriesContext";
 import { StoreBannersProvider } from "../context/StoreBannersContext";
+import { useStorefrontBannerAmbient } from "../hooks/useStorefrontBannerAmbient";
 import { StoreCategoriesOffcanvas } from "./StoreCategoriesOffcanvas";
 import { StoreCommentsModal } from "./StoreCommentsModal";
+import { cn } from "@shared/lib/cn";
+import type { CSSProperties } from "react";
 
 const topLinkClass =
   "inline-flex items-center text-xs font-semibold text-slate-600 transition-colors hover:text-emerald-700 sm:text-sm";
@@ -218,7 +221,14 @@ const footerLink =
 export function StorefrontFooter({
   store,
   onOpenComments,
-}: Readonly<{ store: StoreBadge; onOpenComments?: () => void }>) {
+  ambientStyle,
+  hasFooterAmbient = false,
+}: Readonly<{
+  store: StoreBadge;
+  onOpenComments?: () => void;
+  ambientStyle?: CSSProperties;
+  hasFooterAmbient?: boolean;
+}>) {
   const tagline =
     store.pitch?.trim() ||
     "Calidad, confianza y buena atención en cada compra.";
@@ -226,7 +236,13 @@ export function StorefrontFooter({
   return (
     <footer
       id="storefront-footer"
-      className="mt-12 scroll-mt-24 border-t border-emerald-100 bg-[#f0ebe6]"
+      className={cn(
+        "mt-12 scroll-mt-24 border-t transition-[background,border-color] duration-700 ease-out",
+        hasFooterAmbient
+          ? "vt-storefront-footer-ambient border-[color-mix(in_oklab,rgb(var(--storefront-footer-rgb))_28%,var(--border))]"
+          : "border-emerald-100 bg-[#f0ebe6]",
+      )}
+      style={ambientStyle}
     >
       {/* El pb extra reintegra el espacio de la barra inferior fija que antes daba
           el <main> (pb-[88px]), ahora removido para que la tienda sea full-bleed. */}
@@ -301,7 +317,7 @@ export function StorefrontFooter({
  * contenido + pie de página. Se usa en el catálogo de la tienda y en el detalle
  * de producto para que ambos compartan header/footer.
  */
-export function StorefrontChrome({
+function StorefrontChromeBody({
   store,
   query,
   onQueryChange,
@@ -317,39 +333,75 @@ export function StorefrontChrome({
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const setActiveStore = useCartStore((s) => s.setActiveStore);
+  const ambient = useStorefrontBannerAmbient();
 
   useEffect(() => {
     if (store.id) setActiveStore(store.id);
   }, [store.id, setActiveStore]);
 
   return (
+    <div
+      className={cn(
+        "store-front-surface flex w-full min-h-0 flex-1 flex-col text-[var(--text)] transition-[background] duration-700 ease-out",
+        ambient.hasPageAmbient
+          ? "vt-storefront-ambient"
+          : "bg-[var(--bg)]",
+      )}
+      style={ambient.pageStyle}
+    >
+      <StorefrontHeader
+        store={store}
+        query={query}
+        onQueryChange={onQueryChange}
+        onSearchSubmit={onSearchSubmit}
+        onOpenCategories={() => setCategoriesOpen(true)}
+      />
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      <StorefrontFooter
+        store={store}
+        onOpenComments={() => setCommentsOpen(true)}
+        ambientStyle={ambient.footerStyle}
+        hasFooterAmbient={ambient.hasFooterAmbient}
+      />
+      <StorefrontSupportFab store={store} />
+      <StoreCategoriesOffcanvas
+        open={categoriesOpen}
+        store={store}
+        onClose={() => setCategoriesOpen(false)}
+      />
+      <StoreCommentsModal
+        open={commentsOpen}
+        store={store}
+        onClose={() => setCommentsOpen(false)}
+      />
+    </div>
+  );
+}
+
+export function StorefrontChrome({
+  store,
+  query,
+  onQueryChange,
+  onSearchSubmit,
+  children,
+}: Readonly<{
+  store: StoreBadge;
+  query?: string;
+  onQueryChange?: (value: string) => void;
+  onSearchSubmit?: (term: string) => void;
+  children: ReactNode;
+}>) {
+  return (
     <StoreCategoriesProvider storeId={store.id}>
       <StoreBannersProvider storeId={store.id}>
-        <div className="store-front-surface flex w-full min-h-0 flex-1 flex-col bg-[var(--bg)] text-[var(--text)]">
-          <StorefrontHeader
-            store={store}
-            query={query}
-            onQueryChange={onQueryChange}
-            onSearchSubmit={onSearchSubmit}
-            onOpenCategories={() => setCategoriesOpen(true)}
-          />
-          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-          <StorefrontFooter
-            store={store}
-            onOpenComments={() => setCommentsOpen(true)}
-          />
-          <StorefrontSupportFab store={store} />
-          <StoreCategoriesOffcanvas
-            open={categoriesOpen}
-            store={store}
-            onClose={() => setCategoriesOpen(false)}
-          />
-          <StoreCommentsModal
-            open={commentsOpen}
-            store={store}
-            onClose={() => setCommentsOpen(false)}
-          />
-        </div>
+        <StorefrontChromeBody
+          store={store}
+          query={query}
+          onQueryChange={onQueryChange}
+          onSearchSubmit={onSearchSubmit}
+        >
+          {children}
+        </StorefrontChromeBody>
       </StoreBannersProvider>
     </StoreCategoriesProvider>
   );

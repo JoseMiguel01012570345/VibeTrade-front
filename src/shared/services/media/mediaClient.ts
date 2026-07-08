@@ -15,9 +15,24 @@ const objectUrlCache = new Map<string, string>()
 /** Peticiones en curso por URL: varios <ProtectedMediaImg> con el mismo `src` comparten un solo fetch. */
 const mediaFetchInFlight = new Map<string, Promise<string>>()
 
+/** Normaliza la clave de caché para medios protegidos (relativa o absoluta). */
+export function normalizeMediaCacheKey(url: string): string {
+  const trimmed = url.trim()
+  if (!trimmed) return trimmed
+  try {
+    const path = /^https?:\/\//i.test(trimmed)
+      ? new URL(trimmed).pathname
+      : trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+    if (path.startsWith('/api/v1/media/')) return path
+  } catch {
+    /* ignore */
+  }
+  return trimmed
+}
+
 /** Blob URL ya resuelta para esta URL de API (evita spinner al volver a montar el componente). */
 export function getCachedMediaObjectUrl(srcUrl: string): string | undefined {
-  return objectUrlCache.get(srcUrl)
+  return objectUrlCache.get(normalizeMediaCacheKey(srcUrl))
 }
 
 /** Upload binary media and return its id (protected download via /api/v1/media/{id}). */
@@ -58,7 +73,16 @@ export function mediaApiUrl(id: string): string {
 
 /** True if url points to protected media endpoint. */
 export function isProtectedMediaUrl(url: string): boolean {
-  return url.startsWith('/api/v1/media/')
+  const trimmed = url.trim()
+  if (trimmed.startsWith('/api/v1/media/')) return true
+  try {
+    const path = /^https?:\/\//i.test(trimmed)
+      ? new URL(trimmed).pathname
+      : trimmed
+    return path.startsWith('/api/v1/media/')
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -66,36 +90,38 @@ export function isProtectedMediaUrl(url: string): boolean {
  * Caches by source URL; reutiliza un único `fetch` en vuelo por `srcUrl` (mismo avatar en muchos mensajes).
  */
 export async function fetchMediaObjectUrl(srcUrl: string): Promise<string> {
-  const cached = objectUrlCache.get(srcUrl)
+  const cacheKey = normalizeMediaCacheKey(srcUrl)
+  const cached = objectUrlCache.get(cacheKey)
   if (cached) return cached
 
-  const inFlight = mediaFetchInFlight.get(srcUrl)
+  const inFlight = mediaFetchInFlight.get(cacheKey)
   if (inFlight) return inFlight
 
   const p = (async () => {
     try {
-      const res = await apiFetch(srcUrl, { method: 'GET' })
+      const res = await apiFetch(cacheKey, { method: 'GET' })
       if (!res.ok) {
         const t = await res.text().catch(() => '')
         throw new Error(t || `media fetch failed: ${res.status}`)
       }
       const blob = await res.blob()
       const obj = URL.createObjectURL(blob)
-      objectUrlCache.set(srcUrl, obj)
+      objectUrlCache.set(cacheKey, obj)
       return obj
     } finally {
-      mediaFetchInFlight.delete(srcUrl)
+      mediaFetchInFlight.delete(cacheKey)
     }
   })()
 
-  mediaFetchInFlight.set(srcUrl, p)
+  mediaFetchInFlight.set(cacheKey, p)
   return p
 }
 
 export function releaseMediaObjectUrl(srcUrl: string): void {
-  const obj = objectUrlCache.get(srcUrl)
+  const cacheKey = normalizeMediaCacheKey(srcUrl)
+  const obj = objectUrlCache.get(cacheKey)
   if (!obj) return
-  objectUrlCache.delete(srcUrl)
+  objectUrlCache.delete(cacheKey)
   revokeObjectUrlIfNeeded(obj)
 }
 

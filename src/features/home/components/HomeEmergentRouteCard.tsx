@@ -16,15 +16,18 @@ import {
 } from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
 
 import { homeEmergentRouteOrganicCardClass, storefrontOrganicBtnBlockClass } from "@shared/styles/organicCardStyles";
+import { useOfferCardAmbientStyle } from "@shared/lib/image/useOfferCardAmbientStyle";
 
 export function HomeEmergentRouteCard({
   offer,
   routePreview,
   mapKey,
+  offerAmbient = true,
 }: Readonly<{
   offer: Offer;
   routePreview: RouteOfferPublicState | undefined;
   mapKey: string;
+  offerAmbient?: boolean;
 }>) {
   const isSessionActive = useAppStore((s) => s.isSessionActive);
   const openAuthModal = useAppStore((s) => s.openAuthModal);
@@ -45,8 +48,13 @@ export function HomeEmergentRouteCard({
     userHasTransportService(me.id, allStores, storeCatalogs) &&
     !buyerBlockedOnRoute;
 
+  const ambientStyle = useOfferCardAmbientStyle(null, offerAmbient);
+
   return (
-    <article className={homeEmergentRouteOrganicCardClass}>
+    <article
+      className={cn(homeEmergentRouteOrganicCardClass, ambientStyle.className)}
+      style={ambientStyle.style}
+    >
       <div className="relative overflow-hidden rounded-[14px]">
         <Link to={`/offer/${offer.id}`} className="block">
           <div className="flex min-h-[140px] w-full flex-col overflow-hidden sm:min-h-[160px]">

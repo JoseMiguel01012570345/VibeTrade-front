@@ -1044,3 +1044,169 @@
   border-color: color-mix(in oklab, var(--organic-emerald) 22%, var(--border));
   background: color-mix(in oklab, var(--organic-forest) 32%, var(--surface));
 }
+
+/* === Home: glass shell + tarjetas con color de imagen === */
+
+.vt-home-page--glass {
+  position: relative;
+  background: var(--bg);
+}
+
+.vt-home-page--glass .vt-organic-panel--feed {
+  border-color: color-mix(in oklab, white 42%, var(--border));
+  background: color-mix(in oklab, rgba(255, 255, 255, 0.52) 100%, transparent);
+  backdrop-filter: blur(22px) saturate(1.28);
+  -webkit-backdrop-filter: blur(22px) saturate(1.28);
+  box-shadow:
+    0 3px 0 color-mix(in oklab, var(--organic-tan) 18%, transparent),
+    0 18px 46px rgba(26, 58, 50, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+:root.dark .vt-home-page--glass .vt-organic-panel--feed {
+  border-color: color-mix(in oklab, var(--organic-emerald) 28%, var(--border));
+  background: color-mix(in oklab, rgba(26, 58, 50, 0.58) 100%, transparent);
+  box-shadow:
+    0 3px 0 color-mix(in oklab, var(--organic-forest) 55%, transparent),
+    0 18px 46px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.vt-home-page--glass .vt-organic-slide-bg {
+  background: color-mix(in oklab, rgba(255, 255, 255, 0.28) 100%, transparent);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+}
+
+:root.dark .vt-home-page--glass .vt-organic-slide-bg {
+  background: color-mix(in oklab, rgba(26, 58, 50, 0.34) 100%, transparent);
+}
+
+.vt-organic-card.vt-offer-card-ambient {
+  --offer-card-rgb: 159, 200, 144;
+  border-color: color-mix(in oklab, white 46%, var(--border));
+  backdrop-filter: blur(16px) saturate(1.22);
+  -webkit-backdrop-filter: blur(16px) saturate(1.22);
+  box-shadow:
+    0 3px 0 color-mix(in oklab, rgb(var(--offer-card-rgb)) 22%, transparent),
+    0 12px 28px color-mix(in oklab, rgb(var(--offer-card-rgb)) 24%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  transition:
+    background 0.55s ease,
+    box-shadow 0.55s ease,
+    border-color 0.55s ease;
+}
+
+:root.dark .vt-organic-card.vt-offer-card-ambient {
+  --offer-card-rgb: 65, 81, 59;
+  border-color: color-mix(in oklab, var(--organic-emerald) 22%, var(--border));
+  box-shadow:
+    0 3px 0 color-mix(in oklab, var(--organic-forest) 48%, transparent),
+    0 12px 28px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.vt-organic-card.vt-offer-card-ambient.vt-organic-card--interactive:hover {
+  background: color-mix(
+    in oklab,
+    rgb(var(--offer-card-rgb)) 56%,
+    color-mix(in oklab, rgba(255, 255, 255, 0.68) 100%, var(--surface))
+  ) !important;
+  box-shadow:
+    0 4px 0 color-mix(in oklab, rgb(var(--offer-card-rgb)) 26%, transparent),
+    0 20px 42px color-mix(in oklab, rgb(var(--offer-card-rgb)) 28%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+:root.dark .vt-organic-card.vt-offer-card-ambient.vt-organic-card--interactive:hover {
+  background: color-mix(
+    in oklab,
+    rgb(var(--offer-card-rgb)) 38%,
+    color-mix(in oklab, rgba(26, 58, 50, 0.72) 100%, var(--surface))
+  ) !important;
+}
+
+.vt-home-page--glass .vt-organic-feed-overlay {
+  background: color-mix(in oklab, rgba(255, 255, 255, 0.62) 100%, transparent);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+
+:root.dark .vt-home-page--glass .vt-organic-feed-overlay {
+  background: color-mix(in oklab, rgba(26, 58, 50, 0.72) 100%, transparent);
+}
+
+.vt-home-page--glass .vt-organic-fab {
+  border-color: color-mix(in oklab, var(--organic-emerald) 42%, var(--border));
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in oklab, rgba(255, 255, 255, 0.88) 100%, var(--organic-cream-light)) 0%,
+      color-mix(in oklab, var(--organic-cream-light) 72%, var(--organic-cream)) 100%
+    );
+  backdrop-filter: blur(16px) saturate(1.25);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  color: var(--organic-emerald);
+  box-shadow:
+    0 10px 26px rgba(26, 58, 50, 0.16),
+    0 2px 0 color-mix(in oklab, var(--organic-emerald) 22%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.vt-home-page--glass .vt-organic-fab:hover {
+  color: var(--organic-forest);
+  filter: none;
+}
+
+.vt-home-page--glass .vt-organic-fab:focus-visible {
+  box-shadow:
+    0 10px 26px rgba(26, 58, 50, 0.16),
+    0 0 0 3px color-mix(in oklab, var(--organic-sage) 38%, transparent);
+}
+
+:root.dark .vt-home-page--glass .vt-organic-fab {
+  border-color: color-mix(in oklab, var(--organic-sage) 36%, var(--border));
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in oklab, rgba(26, 58, 50, 0.88) 100%, var(--organic-forest)) 0%,
+      color-mix(in oklab, var(--organic-forest) 72%, var(--surface)) 100%
+    );
+  color: color-mix(in oklab, var(--organic-cream) 94%, white);
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.34),
+    0 2px 0 color-mix(in oklab, var(--organic-forest) 55%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+:root.dark .vt-home-page--glass .vt-organic-fab:hover {
+  color: white;
+}
+
+.vt-home-glass-sheet {
+  border-color: color-mix(in oklab, white 42%, var(--border));
+  background: color-mix(in oklab, rgba(255, 255, 255, 0.78) 100%, transparent);
+  backdrop-filter: blur(24px) saturate(1.25);
+  -webkit-backdrop-filter: blur(24px) saturate(1.25);
+}
+
+:root.dark .vt-home-glass-sheet {
+  border-color: color-mix(in oklab, var(--organic-emerald) 24%, var(--border));
+  background: color-mix(in oklab, rgba(26, 58, 50, 0.82) 100%, transparent);
+}
+
+.vt-home-glass-backdrop {
+  background: rgba(2, 6, 23, 0.48) !important;
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+}
+
+/* === Storefront: color ambiente desde banners === */
+
+.vt-storefront-ambient {
+  --storefront-page-rgb: 136, 170, 123;
+}
+
+.vt-storefront-footer-ambient {
+  --storefront-footer-rgb: 136, 170, 123;
+}

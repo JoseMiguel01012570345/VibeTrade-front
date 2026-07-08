@@ -28,6 +28,8 @@ import {
   storefrontOrganicQtyBtnClass,
 } from "@shared/styles/organicCardStyles";
 import { ProductCardCartIcon } from "./ProductCardCartIcon";
+import { useOfferCardAmbientStyle } from "@shared/lib/image/useOfferCardAmbientStyle";
+import { cn } from "@shared/lib/cn";
 
 function stopCardNavigation(e: MouseEvent) {
   e.preventDefault();
@@ -45,10 +47,15 @@ function stopCardNavigation(e: MouseEvent) {
 export function StorefrontProductCard({
   p: raw,
   compact = false,
+  offerAmbient = true,
+  offerAmbientImageUrl = null,
 }: Readonly<{
   p: StoreProduct;
   /** Variante compacta (cuadrícula densa); igual que la referencia. */
   compact?: boolean;
+  /** Fondo glass teñido con el color dominante de la imagen de la oferta. */
+  offerAmbient?: boolean;
+  offerAmbientImageUrl?: string | null;
 }>) {
   const p = normalizeStoreProduct(raw);
   const items = useCartStore((s) => s.items);
@@ -167,9 +174,16 @@ export function StorefrontProductCard({
   const cardClass = compact
     ? storefrontOrganicFeedCardCompactClass
     : storefrontOrganicFeedCardClass;
+  const productPhoto =
+    (p.photoUrls ?? []).map((u) => String(u).trim()).find((u) => u.length > 0) ??
+    null;
+  const ambientStyle = useOfferCardAmbientStyle(
+    offerAmbientImageUrl ?? productPhoto,
+    offerAmbient,
+  );
 
   return (
-    <article className={cardClass}>
+    <article className={cn(cardClass, ambientStyle.className)} style={ambientStyle.style}>
       <div className={`${storefrontOrganicMediaClass} ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}>
         <Link to={offerHref} className="block h-full w-full">
           {p.photoUrls[0] ? (
@@ -178,6 +192,7 @@ export function StorefrontProductCard({
               alt={p.name}
               wrapperClassName="h-full w-full"
               className="h-full w-full object-cover"
+              onImageLoad={ambientStyle.onImageLoad}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_oklab,var(--organic-cream)_35%,var(--surface))] text-sm text-[var(--muted)]">

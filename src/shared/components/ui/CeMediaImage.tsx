@@ -1,15 +1,22 @@
 import {
-  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
   type ImgHTMLAttributes,
+  type SyntheticEvent,
 } from "react";
 import { ImageLoadingShimmer } from "./ImageLoadingShimmer";
 import { IMAGE_LOAD_TIMEOUT_MS } from "./imageLoadTimeout";
 import { cn } from "@shared/lib/cn";
 import "./ceImageLoading.css";
+
+const MAX_LOAD_ATTEMPTS = 4;
+
+type LoadState = {
+  attempt: number;
+  loaded: boolean;
+};
 
 export type CeMediaImageProps = {
   src: string;
@@ -26,6 +33,7 @@ export type CeMediaImageProps = {
   | "width"
   | "height"
   | "fetchPriority"
+  | "onLoad"
 >;
 
 function srcWithRetryAttempt(src: string, attempt: number): string {
@@ -33,6 +41,8 @@ function srcWithRetryAttempt(src: string, attempt: number): string {
   const sep = src.includes("?") ? "&" : "?";
   return `${src}${sep}ceRetry=${attempt}`;
 }
+
+const initialLoadState: LoadState = { attempt: 0, loaded: false };
 
 export function CeMediaImage({
   src,
@@ -47,47 +57,65 @@ export function CeMediaImage({
   width,
   height,
   fetchPriority,
+  onLoad,
 }: CeMediaImageProps) {
   const imgRef = useRef<HTMLImageElement>(null);
-  const skipLoadAttemptResetRef = useRef(true);
-  const [loadAttempt, setLoadAttempt] = useState(0);
-  const [loaded, setLoaded] = useState(false);
+  const gaveUpRef = useRef(false);
+  const layoutHandledSrcRef = useRef<string | null>(null);
+  const [loadState, setLoadState] = useState<LoadState>(initialLoadState);
 
-  const fetchSrc = src ? srcWithRetryAttempt(src, loadAttempt) : "";
-
-  const revealLoadedImage = useCallback(() => {
-    setLoaded(true);
-  }, []);
+  const fetchSrc = src ? srcWithRetryAttempt(src, loadState.attempt) : "";
+  const { attempt: loadAttempt, loaded } = loadState;
 
   useEffect(() => {
-    skipLoadAttemptResetRef.current = true;
-    setLoadAttempt(0);
-    setLoaded(false);
+    gaveUpRef.current = false;
+    layoutHandledSrcRef.current = null;
+    setLoadState(initialLoadState);
   }, [src]);
 
-  useEffect(() => {
-    if (skipLoadAttemptResetRef.current) {
-      skipLoadAttemptResetRef.current = false;
-      return;
-    }
-    setLoaded(false);
-  }, [loadAttempt]);
-
+  /** Imágenes en caché: `onLoad` a veces no dispara; un solo chequeo por `fetchSrc`. */
   useLayoutEffect(() => {
-    if (loaded) return;
+    if (layoutHandledSrcRef.current === fetchSrc) return;
     const img = imgRef.current;
-    if (img?.complete && img.naturalWidth > 0) {
-      revealLoadedImage();
-    }
-  }, [fetchSrc, loaded, revealLoadedImage]);
+    if (!img?.complete || img.naturalWidth <= 0) return;
+    layoutHandledSrcRef.current = fetchSrc;
+    setLoadState((prev) => (prev.loaded ? prev : { ...prev, loaded: true }));
+    onLoad?.({ currentTarget: img } as SyntheticEvent<HTMLImageElement>);
+  }, [fetchSrc, onLoad]);
 
   useEffect(() => {
-    if (!src || loaded) return;
+    if (!src || loaded || gaveUpRef.current) return;
+    if (loadAttempt >= MAX_LOAD_ATTEMPTS - 1) return;
+
     const timer = window.setTimeout(() => {
-      setLoadAttempt((attempt) => attempt + 1);
+      setLoadState((prev) => {
+        if (prev.loaded || prev.attempt >= MAX_LOAD_ATTEMPTS - 1) return prev;
+        return { attempt: prev.attempt + 1, loaded: false };
+      });
     }, timeoutMs);
+
     return () => window.clearTimeout(timer);
-  }, [src, fetchSrc, loaded, timeoutMs]);
+  }, [src, fetchSrc, loaded, loadAttempt, timeoutMs]);
+
+  function handleLoad(event: SyntheticEvent<HTMLImageElement>) {
+    setLoadState((prev) => (prev.loaded ? prev : { ...prev, loaded: true }));
+    onLoad?.(event);
+  }
+
+  function handleError() {
+    if (gaveUpRef.current) return;
+
+    setLoadState((prev) => {
+      const nextAttempt = prev.attempt + 1;
+      if (nextAttempt >= MAX_LOAD_ATTEMPTS) {
+        gaveUpRef.current = true;
+        layoutHandledSrcRef.current = fetchSrc;
+        return { attempt: prev.attempt, loaded: true };
+      }
+      layoutHandledSrcRef.current = null;
+      return { attempt: nextAttempt, loaded: false };
+    });
+  }
 
   return (
     <div className={cn("relative overflow-hidden", className)}>
@@ -103,7 +131,6 @@ export function CeMediaImage({
       {src ? (
         <img
           ref={imgRef}
-          key={loadAttempt}
           src={fetchSrc}
           alt={alt}
           loading={loading}
@@ -112,14 +139,14 @@ export function CeMediaImage({
           style={style}
           width={width}
           height={height}
-          fetchPriority={fetchPriority}
+          {...(fetchPriority ? { fetchpriority: fetchPriority } : {})}
           className={cn(
             "ce-image-reveal relative z-[1] size-full object-cover",
             loaded ? "opacity-100" : "pointer-events-none opacity-0",
             imageClassName,
           )}
-          onLoad={revealLoadedImage}
-          onError={() => setLoadAttempt((attempt) => attempt + 1)}
+          onLoad={handleLoad}
+          onError={handleError}
         />
       ) : null}
     </div>

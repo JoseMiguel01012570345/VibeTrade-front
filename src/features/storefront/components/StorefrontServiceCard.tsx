@@ -18,6 +18,8 @@ import {
   storefrontOrganicMediaClass,
   storefrontOrganicBtnBlockClass,
 } from "@shared/styles/organicCardStyles";
+import { useOfferCardAmbientStyle } from "@shared/lib/image/useOfferCardAmbientStyle";
+import { cn } from "@shared/lib/cn";
 
 /**
  * Tarjeta de servicio del storefront (cliente). Comparte la misma estructura, clases
@@ -29,10 +31,14 @@ import {
 export function StorefrontServiceCard({
   s: raw,
   compact = false,
+  offerAmbient = true,
+  offerAmbientImageUrl = null,
 }: Readonly<{
   s: StoreService;
   /** Variante compacta (cuadrícula densa); igual que la tarjeta de producto. */
   compact?: boolean;
+  offerAmbient?: boolean;
+  offerAmbientImageUrl?: string | null;
 }>) {
   const s = normalizeStoreService(raw);
   const storeName = useMarketStore((st) => st.stores[s.storeId]?.name);
@@ -63,6 +69,10 @@ export function StorefrontServiceCard({
     .find((u) => u.length > 0);
   const title = s.nombreServicio || s.category || "Servicio";
   const description = s.descripcion;
+  const ambientStyle = useOfferCardAmbientStyle(
+    offerAmbientImageUrl ?? photo ?? null,
+    offerAmbient,
+  );
 
   function toggleLikeNow() {
     if (!canLike) {
@@ -84,7 +94,11 @@ export function StorefrontServiceCard({
 
   return (
     <article
-      className={compact ? storefrontOrganicFeedCardCompactClass : storefrontOrganicFeedCardClass}
+      className={cn(
+        compact ? storefrontOrganicFeedCardCompactClass : storefrontOrganicFeedCardClass,
+        ambientStyle.className,
+      )}
+      style={ambientStyle.style}
     >
       <div className={`${storefrontOrganicMediaClass} ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}>
         <Link to={detailHref} className="block h-full w-full">
@@ -94,6 +108,7 @@ export function StorefrontServiceCard({
               alt={title}
               wrapperClassName="h-full w-full"
               className="h-full w-full object-cover"
+              onImageLoad={ambientStyle.onImageLoad}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_oklab,var(--organic-sage)_18%,var(--surface))] text-[var(--organic-emerald)]">

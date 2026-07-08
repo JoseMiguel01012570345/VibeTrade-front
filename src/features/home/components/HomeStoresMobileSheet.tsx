@@ -10,6 +10,8 @@ import {
 import { useModalTransition } from "@shared/components/ui/useModalTransition";
 import {
   organicFabClass,
+  organicHomeGlassBackdropClass,
+  organicHomeGlassSheetClass,
   organicSheetClass,
 } from "@shared/styles/organicCardStyles";
 import { RecommendedStoresRow } from "./RecommendedStoresRow";
@@ -27,6 +29,7 @@ type Props = Readonly<{
   storeIds: string[];
   stores: Record<string, StoreBadge>;
   storeCatalogs: Record<string, StoreCatalog>;
+  glass?: boolean;
 }>;
 
 export function HomeStoresMobileSheet({
@@ -36,6 +39,7 @@ export function HomeStoresMobileSheet({
   storeIds,
   stores,
   storeCatalogs,
+  glass = false,
 }: Props) {
   const { displayed, animateIn } = useModalTransition(open);
 
@@ -76,7 +80,11 @@ export function HomeStoresMobileSheet({
           aria-expanded={open}
           onClick={() => onOpenChange(true)}
         >
-          <StoreLucideIcon strokeWidth={2.25} className="h-7 w-7" aria-hidden />
+          <StoreLucideIcon
+            strokeWidth={2.35}
+            className="h-7 w-7 shrink-0 text-current"
+            aria-hidden
+          />
         </button>
       ) : null}
 
@@ -91,6 +99,7 @@ export function HomeStoresMobileSheet({
             type="button"
             className={cn(
               "absolute inset-0 bg-[rgba(2,6,23,0.55)] backdrop-blur-[3px] transition-opacity duration-300 ease-out motion-reduce:transition-none",
+              glass && organicHomeGlassBackdropClass,
               backdropTransitionClasses(animateIn),
             )}
             aria-label="Cerrar tiendas recomendadas"
@@ -99,6 +108,7 @@ export function HomeStoresMobileSheet({
           <div
             className={cn(
               organicSheetClass,
+              glass && organicHomeGlassSheetClass,
               SHEET_PANEL_TRANSITION,
               panelTransitionClasses(animateIn, true),
               "absolute bottom-0 left-0 right-0 flex max-h-[min(82dvh,720px)] min-h-[40%] flex-col rounded-t-[18px] shadow-[0_12px_30px_rgba(33,37,41,0.08)]",

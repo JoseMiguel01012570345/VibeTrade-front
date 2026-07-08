@@ -138,3 +138,23 @@ export function resolveHomeServiceFromOffer(
   if (fromCatalog) return enrichService(offer, normalizeStoreService(fromCatalog));
   return serviceFallbackFromOffer(offer);
 }
+
+/** Primera imagen útil de una oferta del feed home (para ambiente / color dominante). */
+export function resolveHomeOfferPrimaryImageUrl(
+  offer: Offer,
+  storeCatalogs: Record<string, StoreCatalog>,
+): string | null {
+  if (isEmergentRouteOffer(offer)) return null;
+
+  if (isServiceOffer(offer)) {
+    const service = resolveHomeServiceFromOffer(offer, storeCatalogs);
+    const url = (service.photoUrls ?? []).find(
+      (u) => u.trim() && u !== TOOL_PLACEHOLDER_SRC,
+    );
+    return url?.trim() ?? null;
+  }
+
+  const product = resolveHomeProductFromOffer(offer, storeCatalogs);
+  const url = (product.photoUrls ?? []).find((u) => u.trim());
+  return url?.trim() ?? null;
+}

@@ -428,8 +428,8 @@ export function HomePage() {
     sheetStoreIds.length > 0;
 
   return (
-    <div className="store-front-surface vt-home-page flex min-h-0 w-full flex-1 flex-col overflow-hidden overscroll-none bg-[var(--bg)] text-[var(--text)]">
-      <div className="mx-auto flex min-h-0 w-full max-w-[1140px] flex-1 flex-col overflow-hidden px-4 py-4 sm:py-6">
+    <div className="store-front-surface vt-home-page vt-home-page--glass relative flex min-h-0 w-full flex-1 flex-col overflow-hidden overscroll-none bg-[var(--bg)] text-[var(--text)]">
+      <div className="relative z-[1] mx-auto flex min-h-0 w-full max-w-[1140px] flex-1 flex-col overflow-hidden px-4 py-4 sm:py-6">
         <div
           ref={viewportRef}
           className={`${organicFeedPanelClass} relative h-[min(780px,calc(100vh-9rem))] min-h-0 w-full overflow-hidden overscroll-contain sm:h-[calc(100vh-9rem)]`}
@@ -524,6 +524,7 @@ export function HomePage() {
           storeIds={sheetStoreIds}
           stores={stores}
           storeCatalogs={storeCatalogs}
+          glass
         />
 
         {showBottomPrefetchSpinner ? (

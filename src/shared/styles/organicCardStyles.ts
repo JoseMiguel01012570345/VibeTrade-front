@@ -72,6 +72,11 @@ export const organicSheetClass = "vt-organic-sheet";
 export const organicIconBtnClass = "vt-organic-icon-btn";
 export const organicSlideBgClass = "vt-organic-slide-bg";
 export const organicFeedOverlayClass = "vt-organic-feed-overlay";
+export const offerCardAmbientClass = "vt-offer-card-ambient";
+
+/** Sheet móvil de tiendas en home con glass. */
+export const organicHomeGlassSheetClass = "vt-home-glass-sheet";
+export const organicHomeGlassBackdropClass = "vt-home-glass-backdrop";
 
 export const organicSearchSubmitBtnClass = cn(
   storefrontOrganicBtnForestClass,
