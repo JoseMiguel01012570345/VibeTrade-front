@@ -7,6 +7,7 @@ import App from "@/App.tsx";
 import { BootSplashRouteSync } from "@app/BootSplashRouteSync";
 import "@/index.css";
 import "@features/profile/styles/profile.css";
+import "@features/storefront/styles/storefrontOrganic.css";
 import {
   applyColorSchemeToDocument,
   readStoredColorScheme,

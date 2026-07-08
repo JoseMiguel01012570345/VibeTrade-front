@@ -6,6 +6,7 @@ import { storeHref } from "@features/market/logic/store/storePath";
 import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { StoreTrustMini } from "@features/profile/components/trust/StoreTrustMini";
 import { fmtKm } from "@features/home/logic/formatDistance";
+import { PointLocationFeedMap } from "./EmergentRouteFeedMap";
 
 type Props = Readonly<{
   store: StoreBadge;
@@ -20,69 +21,85 @@ export function StoreSearchResultCard({
   publishedServices,
   distanceKm,
 }: Props) {
+  const hasMap = s.location != null;
+
   return (
-    <div className="relative min-w-0 max-w-full overflow-hidden rounded-[14px] border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_35%,var(--surface))]">
+    <div className="relative min-w-0 max-w-full overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
       <Link
         to={storeHref(s)}
         className="absolute inset-0 z-[1] rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
         aria-label={`Abrir tienda ${s.name}`}
       />
 
-      <div className="relative z-[2] p-3.5 pointer-events-none">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-1 gap-3">
-            <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[14px] border border-[var(--border)] bg-[var(--surface)]">
-              {s.avatarUrl ? (
-                <ProtectedMediaImg
-                  src={s.avatarUrl}
-                  alt=""
-                  wrapperClassName="h-full w-full"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <Store size={22} className="text-[var(--muted)]" aria-hidden />
-              )}
+      {hasMap ? (
+        <div className="relative h-32 w-full overflow-hidden border-b border-[var(--border)]">
+          <PointLocationFeedMap
+            location={s.location!}
+            mapKey={`search-card-map-${s.id}`}
+            fixedZoom={14}
+            showAttribution={false}
+            className="h-full w-full [&_.leaflet-control-zoom]:hidden [&_.leaflet-control-attribution]:hidden"
+          />
+        </div>
+      ) : null}
+
+      <div className="relative z-[2] p-3 pointer-events-none">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-[10px] border border-[var(--border)] bg-[var(--surface)]">
+            {s.avatarUrl ? (
+              <ProtectedMediaImg
+                src={s.avatarUrl}
+                alt=""
+                wrapperClassName="h-full w-full"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <Store size={18} className="text-[var(--muted)]" aria-hidden />
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="line-clamp-2 break-words text-sm font-black leading-snug tracking-[-0.02em]">
+              {s.name}
             </div>
-            <div className="min-w-0">
-              <div className="line-clamp-2 break-words text-base font-black tracking-[-0.02em]">
-                {s.name}
-              </div>
-              <div className="vt-muted mt-1 line-clamp-2 break-words text-xs leading-snug">
+            {s.categories.length > 0 ? (
+              <div className="vt-muted mt-0.5 truncate text-[11px] leading-snug">
                 {s.categories.join(" · ")}
               </div>
-              {s.websiteUrl ? (
-                <a
-                  href={s.websiteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="pointer-events-auto mt-1 inline-flex max-w-full items-center gap-1 truncate text-xs font-semibold text-[var(--primary)] hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <ExternalLink size={12} className="shrink-0" aria-hidden />
-                  <span className="truncate">
-                    {websiteUrlDisplayLabel(s.websiteUrl)}
-                  </span>
-                </a>
-              ) : null}
-
-              <div className="vt-muted mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                <span className="inline-flex items-center gap-1">
-                  <Package size={12} aria-hidden /> {publishedProducts}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Wrench size={12} aria-hidden /> {publishedServices}
-                </span>
-                {typeof distanceKm === "number" ? (
-                  <span className="inline-flex items-center gap-1">
-                    <MapPin size={12} aria-hidden /> {fmtKm(distanceKm)}
-                  </span>
-                ) : null}
-              </div>
-              <div className="mt-2 max-w-[300px]">
-                <StoreTrustMini score={s.trustScore} />
-              </div>
-            </div>
+            ) : null}
           </div>
+        </div>
+
+        <div className="vt-muted mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+          <span className="inline-flex items-center gap-1">
+            <Package size={11} aria-hidden /> {publishedProducts}
+          </span>
+          {publishedServices > 0 ? (
+            <span className="inline-flex items-center gap-1">
+              <Wrench size={11} aria-hidden /> {publishedServices}
+            </span>
+          ) : null}
+          {typeof distanceKm === "number" ? (
+            <span className="inline-flex items-center gap-1">
+              <MapPin size={11} aria-hidden /> {fmtKm(distanceKm)}
+            </span>
+          ) : null}
+          {s.websiteUrl ? (
+            <a
+              href={s.websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="pointer-events-auto inline-flex max-w-full items-center gap-1 truncate font-semibold text-[var(--primary)] hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink size={11} className="shrink-0" aria-hidden />
+              <span className="truncate">{websiteUrlDisplayLabel(s.websiteUrl)}</span>
+            </a>
+          ) : null}
+        </div>
+
+        <div className="mt-2">
+          <StoreTrustMini score={s.trustScore} />
         </div>
       </div>
     </div>

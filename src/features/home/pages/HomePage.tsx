@@ -17,7 +17,7 @@ import {
   shouldMergePendingBag,
 } from "../logic/homeFeedMerge";
 import { Store as StoreLucideIcon, X } from "lucide-react";
-import { FeedLoadingSpinner } from "../components/FeedLoadingSpinner";
+import { CeSpinner } from "@shared/components/ui/CeSpinner";
 import { OfferCardsChunk } from "../components/OfferCardsChunk";
 import { RecommendedStoresRow } from "../components/RecommendedStoresRow";
 
@@ -520,14 +520,9 @@ export function HomePage() {
                   aria-busy="true"
                   aria-live="polite"
                 >
-                  <div className="pointer-events-auto px-4">
-                    <FeedLoadingSpinner
-                      label={
-                        overlayIsUpdateOrMerge
-                          ? "Actualizando el feed…"
-                          : "Descargando el siguiente bloque…"
-                      }
-                    />
+                  <div className="pointer-events-auto flex flex-col items-center gap-3 px-4">
+                    <CeSpinner size="lg" className="text-emerald-600" aria-label={overlayIsUpdateOrMerge ? "Actualizando el feed…" : "Descargando el siguiente bloque…"} />
+                    <span className="text-sm font-semibold text-slate-500">{overlayIsUpdateOrMerge ? "Actualizando el feed…" : "Descargando el siguiente bloque…"}</span>
                   </div>
                 </div>
               ) : null}
@@ -606,8 +601,9 @@ export function HomePage() {
         ) : null}
 
         {showBottomPrefetchSpinner ? (
-          <div className="mt-3 w-full">
-            <FeedLoadingSpinner label="Cargando más sugerencias…" />
+          <div className="mt-3 flex w-full flex-col items-center gap-2 py-4">
+            <CeSpinner size="md" className="text-emerald-600" aria-label="Cargando más sugerencias…" />
+            <span className="text-sm font-semibold text-slate-500">Cargando más sugerencias…</span>
           </div>
         ) : null}
       </div>

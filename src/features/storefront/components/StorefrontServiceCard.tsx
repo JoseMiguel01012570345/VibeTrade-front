@@ -12,6 +12,12 @@ import { applyOfferLikeResult } from "@features/market/logic/applyOfferLikeResul
 import { OfferImageLikeButton } from "@features/market/components/OfferImageLikeButton";
 import { OfferSaveButton } from "@features/market/components/OfferSaveButton";
 import { getSessionToken } from "@shared/services/http/sessionToken";
+import {
+  storefrontOrganicFeedCardClass,
+  storefrontOrganicFeedCardCompactClass,
+  storefrontOrganicMediaClass,
+  storefrontOrganicBtnBlockClass,
+} from "@shared/styles/organicCardStyles";
 
 /**
  * Tarjeta de servicio del storefront (cliente). Comparte la misma estructura, clases
@@ -78,25 +84,19 @@ export function StorefrontServiceCard({
 
   return (
     <article
-      className={`group flex h-full min-w-0 flex-col rounded-[18px] border border-[#d9d5cf] bg-white p-3 shadow-[0_12px_30px_rgba(33,37,41,0.05)] transition hover:-translate-y-1 hover:shadow-[0_20px_36px_rgba(33,37,41,0.08)] ${
-        compact ? "rounded-[14px] p-2.5" : ""
-      }`}
+      className={compact ? storefrontOrganicFeedCardCompactClass : storefrontOrganicFeedCardClass}
     >
-      <div className="relative">
-        <Link to={detailHref} className="block">
+      <div className={`${storefrontOrganicMediaClass} ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}>
+        <Link to={detailHref} className="block h-full w-full">
           {photo ? (
             <ProtectedMediaImg
               src={photo}
               alt={title}
-              wrapperClassName={`w-full overflow-hidden rounded-[14px] ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}
+              wrapperClassName="h-full w-full"
               className="h-full w-full object-cover"
             />
           ) : (
-            <div
-              className={`flex w-full items-center justify-center rounded-[14px] bg-emerald-50 text-emerald-600 ${
-                compact ? "aspect-[1/1]" : "aspect-[4/3]"
-              }`}
-            >
+            <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_oklab,var(--organic-sage)_18%,var(--surface))] text-[var(--organic-emerald)]">
               <Wrench className="h-9 w-9" aria-hidden />
             </div>
           )}
@@ -114,7 +114,7 @@ export function StorefrontServiceCard({
         className={`flex min-w-0 flex-1 flex-col ${compact ? "px-1 pt-3" : "px-1 pt-4"}`}
       >
         <p
-          className={`shrink-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold uppercase tracking-[0.18em] text-slate-400 ${
+          className={`shrink-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold uppercase tracking-[0.18em] text-[var(--muted)] ${
             compact ? "h-3.5 text-[10px]" : "h-4 text-[11px]"
           }`}
           title={s.category || undefined}
@@ -124,7 +124,7 @@ export function StorefrontServiceCard({
 
         <Link to={detailHref} className="mt-2 block shrink-0">
           <h3
-            className={`overflow-hidden font-extrabold text-slate-900 ${
+            className={`overflow-hidden font-extrabold text-[var(--text)] ${
               compact
                 ? "line-clamp-3 h-[4.5rem] text-[1.05rem] leading-6"
                 : "line-clamp-2 h-12 text-lg leading-6"
@@ -136,7 +136,7 @@ export function StorefrontServiceCard({
         </Link>
 
         <p
-          className={`mt-2 shrink-0 overflow-hidden text-slate-500 ${
+          className={`mt-2 shrink-0 overflow-hidden text-[var(--muted)] ${
             compact
               ? "line-clamp-2 h-8 text-xs leading-4"
               : "line-clamp-2 h-10 text-sm leading-5"
@@ -149,17 +149,14 @@ export function StorefrontServiceCard({
         <div
           className={`mt-3 flex h-7 shrink-0 flex-wrap items-center gap-2 ${compact ? "mt-2" : ""}`}
         >
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+          <span className="vt-organic-badge">
             <Wrench className="h-3 w-3 shrink-0" aria-hidden />
             Servicio
           </span>
         </div>
 
         <div className={`shrink-0 ${compact ? "mt-auto pt-4" : "mt-auto pt-5"}`}>
-          <Link
-            to={detailHref}
-            className="flex h-11 w-full items-center justify-center rounded-full bg-emerald-700 text-sm font-bold text-white transition hover:bg-emerald-800"
-          >
+          <Link to={detailHref} className={storefrontOrganicBtnBlockClass}>
             Ver servicio
           </Link>
         </div>

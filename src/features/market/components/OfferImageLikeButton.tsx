@@ -1,5 +1,6 @@
 import { Heart } from "lucide-react";
 import { cn } from "@shared/lib/cn";
+import { storefrontOrganicOverlayLikeClass } from "@shared/styles/organicCardStyles";
 
 type Props = Readonly<{
   liked: boolean;
@@ -20,7 +21,8 @@ export function OfferImageLikeButton({
   iconSize = 16,
 }: Props) {
   const shellClass = cn(
-    "pointer-events-auto absolute bottom-2 right-2 z-[2] inline-flex cursor-pointer items-center gap-1 rounded-full border border-white/80 bg-white/95 px-2 py-1 text-xs font-extrabold text-slate-700 shadow-md backdrop-blur-sm transition hover:bg-white",
+    storefrontOrganicOverlayLikeClass,
+    liked && "vt-organic-overlay-btn--liked",
     className,
   );
 
@@ -44,7 +46,9 @@ export function OfferImageLikeButton({
     >
       <Heart
         size={iconSize}
-        className={cn(liked && "fill-rose-500 text-rose-500")}
+        className={cn(
+          liked && "vt-organic-overlay-btn__heart--on fill-current",
+        )}
         aria-hidden
       />
       <span className="tabular-nums">{likeCount}</span>

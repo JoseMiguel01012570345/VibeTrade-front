@@ -14,10 +14,10 @@ export function StorefrontLatestProductsSection({
         </h2>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
-        {products.map((p) => (
-          <StorefrontProductCard key={p.id} p={p} />
-        ))}
-      </div>
+          {products.map((p) => (
+            <StorefrontProductCard key={p.id} p={p} />
+          ))}
+        </div>
     </section>
   );
 }

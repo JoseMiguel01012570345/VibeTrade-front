@@ -15,8 +15,7 @@ import {
   routeOfferPublicBlockedForBuyerWithAgreement,
 } from "@features/chat/logic/route-sheet/routeSheetOfferGuards";
 
-const HOME_ROUTE_CARD =
-  "group flex h-full min-w-0 flex-col rounded-[18px] border border-[#d9d5cf] bg-white p-3 shadow-[0_12px_30px_rgba(33,37,41,0.05)] transition hover:-translate-y-1 hover:shadow-[0_20px_36px_rgba(33,37,41,0.08)]";
+import { homeEmergentRouteOrganicCardClass } from "@shared/styles/organicCardStyles";
 
 export function HomeEmergentRouteCard({
   offer,
@@ -47,7 +46,7 @@ export function HomeEmergentRouteCard({
     !buyerBlockedOnRoute;
 
   return (
-    <article className={HOME_ROUTE_CARD}>
+    <article className={homeEmergentRouteOrganicCardClass}>
       <div className="relative overflow-hidden rounded-[14px]">
         <Link to={`/offer/${offer.id}`} className="block">
           <div className="flex min-h-[140px] w-full flex-col overflow-hidden sm:min-h-[160px]">

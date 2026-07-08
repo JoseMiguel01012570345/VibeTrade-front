@@ -74,11 +74,12 @@ export function CeMediaImage({
   }, [loadAttempt]);
 
   useLayoutEffect(() => {
+    if (loaded) return;
     const img = imgRef.current;
     if (img?.complete && img.naturalWidth > 0) {
       revealLoadedImage();
     }
-  }, [fetchSrc, revealLoadedImage]);
+  }, [fetchSrc, loaded, revealLoadedImage]);
 
   useEffect(() => {
     if (!src || loaded) return;

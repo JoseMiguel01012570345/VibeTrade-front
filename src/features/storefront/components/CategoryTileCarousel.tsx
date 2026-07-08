@@ -67,7 +67,7 @@ export function CategoryTileCarousel({
         {categories.map((category) => (
           <div
             key={category.id}
-            className="w-[9.5rem] shrink-0 sm:w-40"
+            className="shrink-0"
             role="listitem"
           >
             <CategoryTileLink

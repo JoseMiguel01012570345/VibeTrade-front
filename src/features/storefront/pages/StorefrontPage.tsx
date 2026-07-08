@@ -101,7 +101,7 @@ function StorefrontCatalogBody({ store }: Readonly<{ store: StoreBadge }>) {
   );
 
   return (
-    <div className="w-full space-y-8 px-4 py-6 sm:py-8">
+    <div className="mx-auto w-full max-w-[1140px] space-y-6 px-4 py-6 sm:py-8">
       {mainBannerSlides.length > 0 ? (
         <section aria-label="Banner principal" className="relative">
           <div

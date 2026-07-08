@@ -19,6 +19,14 @@ import { applyOfferLikeResult } from "@features/market/logic/applyOfferLikeResul
 import { OfferImageLikeButton } from "@features/market/components/OfferImageLikeButton";
 import { OfferSaveButton } from "@features/market/components/OfferSaveButton";
 import { getSessionToken } from "@shared/services/http/sessionToken";
+import {
+  storefrontOrganicFeedCardClass,
+  storefrontOrganicFeedCardCompactClass,
+  storefrontOrganicMediaClass,
+  storefrontOrganicBtnForestIconClass,
+  storefrontOrganicQtyClass,
+  storefrontOrganicQtyBtnClass,
+} from "@shared/styles/organicCardStyles";
 import { ProductCardCartIcon } from "./ProductCardCartIcon";
 
 function stopCardNavigation(e: MouseEvent) {
@@ -156,27 +164,23 @@ export function StorefrontProductCard({
     })();
   }
 
+  const cardClass = compact
+    ? storefrontOrganicFeedCardCompactClass
+    : storefrontOrganicFeedCardClass;
+
   return (
-    <article
-      className={`group flex h-full min-w-0 flex-col rounded-[18px] border border-[#d9d5cf] bg-white p-3 shadow-[0_12px_30px_rgba(33,37,41,0.05)] transition hover:-translate-y-1 hover:shadow-[0_20px_36px_rgba(33,37,41,0.08)] ${
-        compact ? "rounded-[14px] p-2.5" : ""
-      }`}
-    >
-      <div className="relative">
-        <Link to={offerHref} className="block">
+    <article className={cardClass}>
+      <div className={`${storefrontOrganicMediaClass} ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}>
+        <Link to={offerHref} className="block h-full w-full">
           {p.photoUrls[0] ? (
             <ProtectedMediaImg
               src={p.photoUrls[0]}
               alt={p.name}
-              wrapperClassName={`w-full overflow-hidden rounded-[14px] ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}
+              wrapperClassName="h-full w-full"
               className="h-full w-full object-cover"
             />
           ) : (
-            <div
-              className={`flex w-full items-center justify-center rounded-[14px] bg-stone-100 text-sm text-slate-400 ${
-                compact ? "aspect-[1/1]" : "aspect-[4/3]"
-              }`}
-            >
+            <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_oklab,var(--organic-cream)_35%,var(--surface))] text-sm text-[var(--muted)]">
               Sin foto
             </div>
           )}
@@ -194,7 +198,7 @@ export function StorefrontProductCard({
         className={`flex min-w-0 flex-1 flex-col ${compact ? "px-1 pt-3" : "px-1 pt-4"}`}
       >
         <p
-          className={`shrink-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold uppercase tracking-[0.18em] text-slate-400 ${
+          className={`shrink-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold uppercase tracking-[0.18em] text-[var(--muted)] ${
             compact ? "h-3.5 text-[10px]" : "h-4 text-[11px]"
           }`}
           title={p.category || undefined}
@@ -204,7 +208,7 @@ export function StorefrontProductCard({
 
         <Link to={offerHref} className="mt-2 block shrink-0">
           <h3
-            className={`overflow-hidden font-extrabold text-slate-900 ${
+            className={`overflow-hidden font-extrabold text-[var(--text)] ${
               compact
                 ? "line-clamp-3 h-[4.5rem] text-[1.05rem] leading-6"
                 : "line-clamp-2 h-12 text-lg leading-6"
@@ -216,7 +220,7 @@ export function StorefrontProductCard({
         </Link>
 
         <p
-          className={`mt-2 shrink-0 overflow-hidden text-slate-500 ${
+          className={`mt-2 shrink-0 overflow-hidden text-[var(--muted)] ${
             compact
               ? "line-clamp-2 h-8 text-xs leading-4"
               : "line-clamp-2 h-10 text-sm leading-5"
@@ -227,7 +231,7 @@ export function StorefrontProductCard({
         </p>
 
         <p
-          className={`mt-1 shrink-0 overflow-hidden font-semibold text-slate-600 ${
+          className={`mt-1 shrink-0 overflow-hidden font-semibold text-[color-mix(in_oklab,var(--text)_78%,var(--muted))] ${
             compact
               ? "h-4 truncate text-xs leading-4"
               : "h-5 truncate text-sm leading-5"
@@ -241,16 +245,9 @@ export function StorefrontProductCard({
           className={`mt-3 flex h-7 shrink-0 flex-wrap items-center gap-2 ${compact ? "mt-2" : ""}`}
         >
           <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
-              inStockDisplay
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-red-100 text-red-800"
-            }`}
+            className={`vt-organic-badge ${inStockDisplay ? "" : "vt-organic-badge--bad"}`}
           >
-            <span
-              className={`h-1.5 w-1.5 shrink-0 rounded-full ${inStockDisplay ? "bg-emerald-600" : "bg-red-600"}`}
-              aria-hidden
-            />
+            <span className="vt-organic-badge-dot" aria-hidden />
             {inStockDisplay ? "Disponible" : "No disponible"}
           </span>
         </div>
@@ -262,7 +259,7 @@ export function StorefrontProductCard({
             }`}
             title={catalogDisplayPriceUsd(p.price)}
           >
-            {p.price}
+            {(p.price ?? "").trim().replace(/\s+(USD|CUP|EUR|ARS|MLC)\s*$/i, "").trim() || p.price}
             <span className="ml-1 text-sm font-bold text-[#d9532b]/80">
               {precioMoneda}
             </span>
@@ -270,24 +267,24 @@ export function StorefrontProductCard({
         </div>
 
         <div
-          className={`mt-4 grid min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 ${compact ? "mt-auto pt-4" : "mt-auto pt-5"}`}
+          className={`mt-4 flex min-w-0 shrink-0 items-center justify-between gap-2 ${compact ? "mt-auto pt-4" : "mt-auto pt-5"}`}
         >
-          <div className="flex w-fit max-w-full items-center gap-0.5 justify-self-start rounded-full border border-[#d9d5cf] px-1.5 py-1 text-sm font-semibold text-slate-600 sm:gap-1 sm:px-2 sm:py-1.5">
+          <div className={`${storefrontOrganicQtyClass} shrink-0`}>
             <button
               type="button"
-              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#d9d5cf] transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40 sm:h-8 sm:w-8"
+              className={storefrontOrganicQtyBtnClass}
               disabled={cartQuantity <= 0}
               onClick={onMinus}
               aria-label="Quitar una unidad del carrito"
             >
               −
             </button>
-            <span className="min-w-[1.25rem] shrink-0 text-center tabular-nums sm:min-w-[1.5rem]">
+            <span className="min-w-[1.25rem] shrink-0 text-center tabular-nums">
               {cartQuantity}
             </span>
             <button
               type="button"
-              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#d9d5cf] transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-40 sm:h-8 sm:w-8"
+              className={storefrontOrganicQtyBtnClass}
               disabled={!canPurchase}
               onClick={onPlus}
               aria-label="Añadir una unidad al carrito"
@@ -298,12 +295,12 @@ export function StorefrontProductCard({
 
           <button
             type="button"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center justify-self-end rounded-full bg-emerald-700 text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className={storefrontOrganicBtnForestIconClass}
             disabled={!canPurchase}
             onClick={onCartIcon}
             aria-label={`Añadir ${p.name} al carrito`}
           >
-            <ProductCardCartIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+            <ProductCardCartIcon className="h-4 w-4" />
           </button>
         </div>
       </div>

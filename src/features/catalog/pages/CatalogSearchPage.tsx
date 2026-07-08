@@ -456,7 +456,7 @@ export function CatalogSearchPage() {
           ) : null}
           {status === "ready" && results.length > 0 ? (
             <>
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+              <div className="mt-4 grid grid-cols-2 items-start gap-3 sm:gap-5 xl:grid-cols-4">
                 {results.map((it) => {
                   if (it.kind === "store") {
                     return (

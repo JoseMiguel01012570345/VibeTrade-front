@@ -118,7 +118,7 @@ export function StorefrontHeader({
 
   return (
     <header className="sticky top-0 z-40 border-b border-emerald-100 bg-white/95 backdrop-blur">
-      <div className="flex w-full flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4">
+      <div className="mx-auto flex w-full max-w-[1140px] flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:gap-4">
         <div className="flex min-w-0 w-full items-center justify-between gap-2 md:contents">
           <Link
             to={storeHome}
@@ -230,7 +230,7 @@ export function StorefrontFooter({
     >
       {/* El pb extra reintegra el espacio de la barra inferior fija que antes daba
           el <main> (pb-[88px]), ahora removido para que la tienda sea full-bleed. */}
-      <div className="w-full px-4 pt-10 pb-[96px] sm:px-5 sm:pt-14 sm:pb-[112px]">
+      <div className="mx-auto w-full max-w-[1140px] px-4 pt-10 pb-[96px] sm:px-5 sm:pt-14 sm:pb-[112px]">
         <div className="grid grid-cols-1 gap-y-10 sm:grid-cols-2 sm:gap-x-8 lg:grid-cols-3 lg:gap-y-0">
           <div className="min-w-0">
             <p className="text-xl font-extrabold tracking-tight text-emerald-700 sm:text-2xl">

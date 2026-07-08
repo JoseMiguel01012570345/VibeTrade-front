@@ -27,23 +27,17 @@ export function StorefrontCategorySection({
           Explora por Categoría
         </h2>
         <p className="text-sm text-slate-500">
-          Entra a una familia de productos o servicios y navega su catálogo
-          dedicado.
+          Entra a una familia de productos y navega su catálogo dedicado.
         </p>
       </div>
 
       {productCategoryMetas.length > 0 ? (
-        <div>
-          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-            Productos
-          </p>
-          <CategoryTileCarousel
-            categories={productCategoryMetas}
-            hrefFor={(category) => storeCategoryHref(store, category.slug)}
-            ariaLabel="Categorías de productos"
-            kind="product"
-          />
-        </div>
+        <CategoryTileCarousel
+          categories={productCategoryMetas}
+          hrefFor={(category) => storeCategoryHref(store, category.slug)}
+          ariaLabel="Categorías de productos"
+          kind="product"
+        />
       ) : null}
 
       {serviceCategoryMetas.length > 0 ? (
