@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { X } from "lucide-react";
 import { toast } from "sonner";
@@ -7,6 +7,8 @@ import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { ImageLightbox } from "@shared/components/media/ImageLightbox";
 import { CeTransitionModalShell } from "@shared/components/ui/CeTransitionModalShell";
 import { useAppStore } from "@features/auth/logic/useAppStore";
+import { useDominantImageColor } from "@shared/lib/image/useDominantImageColor";
+import { buildStorefrontShellCssVars } from "@shared/lib/image/extractDominantColor";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { cartLineKey, useCartStore } from "@features/orders/logic/cartStore";
 import { parseProductPriceNumber } from "@features/market/logic/parseProductPrice";
@@ -110,10 +112,10 @@ function ProductGallery({
               type="button"
               onClick={() => setActiveImage(index)}
               className={cn(
-                "relative overflow-hidden rounded-[4px] border bg-white",
+                "relative overflow-hidden rounded-[4px] border bg-[var(--surface)]",
                 index === activeImage
-                  ? "border-emerald-700 ring-2 ring-emerald-100"
-                  : "border-[#d9d5cf]"
+                  ? "border-[var(--primary)] ring-2 ring-[color-mix(in_oklab,var(--primary)_22%,var(--surface))]"
+                  : "border-[var(--border)]"
               )}
             >
               <ProtectedMediaImg
@@ -148,6 +150,7 @@ function ModalContent({
   const items = useCartStore((s) => s.items);
   const addItem = useCartStore((s) => s.addItem);
   const setQuantity = useCartStore((s) => s.setQuantity);
+  const removeItem = useCartStore((s) => s.removeItem);
   const isSessionActive = useAppStore((s) => s.isSessionActive);
   const me = useAppStore((s) => s.me);
   const openAuthModal = useAppStore((s) => s.openAuthModal);
@@ -168,7 +171,6 @@ function ModalContent({
   const liked = catalogLiked ?? offerLiked ?? p.viewerLikedOffer ?? false;
   const likeCount = catalogLikeCount ?? offerLikeCount ?? p.offerLikeCount ?? 0;
 
-  const [quantity, setLocalQuantity] = useState(1);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const precioMoneda = CATALOG_CURRENCY_CODE;
@@ -218,13 +220,24 @@ function ModalContent({
       warnCurrency();
       return;
     }
-    const qty = Math.max(1, quantity);
     if (cartQuantity === 0) {
-      addOne(qty);
+      addOne();
     } else {
-      setQuantity(lineKey, cartQuantity + qty);
+      setQuantity(lineKey, cartQuantity + 1);
       toast.success(`${p.name} se añadió al carrito.`);
     }
+  }
+
+  function onMinus() {
+    if (cartQuantity <= 0) return;
+    if (cartQuantity <= 1) removeItem(lineKey);
+    else setQuantity(lineKey, cartQuantity - 1);
+  }
+
+  function onPlus() {
+    if (!canPurchase) return;
+    if (cartQuantity === 0) addOne();
+    else setQuantity(lineKey, cartQuantity + 1);
   }
 
   function toggleLikeNow() {
@@ -254,7 +267,7 @@ function ModalContent({
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3 sm:px-6">
             <Link
               to={storeHref({ id: p.storeId, name: resolvedStoreName })}
-              className="truncate text-sm font-bold text-[var(--muted)] hover:text-emerald-700 sm:text-base"
+              className="truncate text-sm font-bold text-[var(--muted)] hover:text-[var(--primary)] sm:text-base"
               onClick={onClose}
             >
               {resolvedStoreName || "Tienda"}
@@ -317,16 +330,17 @@ function ModalContent({
                 <div className={`${storefrontOrganicQtyClass} shrink-0`}>
                   <button
                     type="button"
-                    onClick={() => setLocalQuantity((q) => Math.max(1, q - 1))}
+                    onClick={onMinus}
                     className={storefrontOrganicQtyBtnClass}
                     aria-label="Reducir cantidad"
+                    disabled={cartQuantity <= 0}
                   >
                     −
                   </button>
-                  <span className="min-w-[1.25rem] shrink-0 text-center tabular-nums">{quantity}</span>
+                  <span className="min-w-[1.25rem] shrink-0 text-center tabular-nums">{cartQuantity}</span>
                   <button
                     type="button"
-                    onClick={() => setLocalQuantity((q) => q + 1)}
+                    onClick={onPlus}
                     className={storefrontOrganicQtyBtnClass}
                     aria-label="Aumentar cantidad"
                   >
@@ -367,11 +381,18 @@ export function StorefrontProductModal({
   onClose,
 }: Props) {
   const [lastProduct, setLastProduct] = useState<StoreProduct | null>(product);
+  const colorScheme = useAppStore((s) => s.colorScheme);
+  const displayedProduct = product || lastProduct;
+  const photoUrl = (displayedProduct?.photoUrls ?? [])[0] || null;
+  const imageRgb = useDominantImageColor(photoUrl, true, "storefront-surface");
+  const imageStyle = useMemo<CSSProperties>(
+    () => buildStorefrontShellCssVars(imageRgb, colorScheme) as CSSProperties,
+    [imageRgb, colorScheme],
+  );
   useEffect(() => {
     if (product) setLastProduct(product);
   }, [product]);
 
-  const displayedProduct = product || lastProduct;
   if (!displayedProduct) return null;
 
   return (
@@ -380,7 +401,11 @@ export function StorefrontProductModal({
       onClose={onClose}
       size="4xl"
       dismissible
-      panelClassName="max-h-[min(92dvh,800px)] overflow-hidden rounded-2xl bg-[var(--surface)]"
+      panelClassName={cn(
+        "max-h-[min(92dvh,800px)] overflow-hidden rounded-2xl bg-[var(--surface)]",
+        "vt-storefront-ambient store-front-surface",
+      )}
+      panelStyle={imageStyle}
     >
       <ModalContent product={displayedProduct} storeName={storeName} onClose={onClose} />
     </CeTransitionModalShell>

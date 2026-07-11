@@ -54,7 +54,7 @@ export function TrackShipmentCard({
         <button
           type="submit"
           disabled={!canSubmit}
-          className="vt-storefront-accent-btn flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-base font-bold text-white shadow-[0_14px_28px_rgba(4,120,87,0.22)] transition disabled:cursor-not-allowed disabled:opacity-55"
+          className="vt-storefront-accent-btn flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-base font-bold text-white shadow-[0_14px_28px_color-mix(in_oklab,var(--primary)_32%,transparent)] transition disabled:cursor-not-allowed disabled:opacity-55"
         >
           <span>{submitting ? "Consultando…" : "Consultar Estado"}</span>
           {!submitting ? <ArrowRight className="h-5 w-5 shrink-0" aria-hidden /> : null}

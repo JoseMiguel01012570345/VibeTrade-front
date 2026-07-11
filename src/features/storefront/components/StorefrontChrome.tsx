@@ -1,7 +1,14 @@
-import { useState, useEffect, useMemo, type FormEvent, type ReactNode } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BadgeCheck, Search, Store } from "lucide-react";
 import type { StoreBadge } from "@features/market/logic/store/marketStoreTypes";
+import type { StoreProduct } from "@features/market/Dtos/storeCatalogTypes";
 import { useDominantImageColor } from "@shared/lib/image/useDominantImageColor";
 import {
   storeCartHref,
@@ -30,6 +37,11 @@ import type { CSSProperties } from "react";
 const topLinkClass =
   "vt-storefront-nav-link inline-flex items-center text-xs font-semibold text-slate-600 transition-colors hover:text-emerald-700 sm:text-sm";
 
+function useStoreLogoColor(store: StoreBadge): string {
+  const rgb = useDominantImageColor(store.avatarUrl ?? null, true, "offer-card");
+  return useMemo(() => `rgb(${rgb})`, [rgb]);
+}
+
 /**
  * Cabecera fija (sticky) de la tienda. Réplica de la UI/UX del header de la app de
  * referencia (frontend-guest, `App.tsx`): marca a la izquierda, buscador central y
@@ -55,8 +67,7 @@ export function StorefrontHeader({
   const cartCount = useCartStore((s) =>
     s.items.reduce((n, i) => n + i.quantity, 0),
   );
-  const logoRgb = useDominantImageColor(store.avatarUrl ?? null, true, "offer-card");
-  const logoColor = useMemo(() => `rgb(${logoRgb})`, [logoRgb]);
+  const logoColor = useStoreLogoColor(store);
 
   const controlled = onQueryChange !== undefined;
   const [localQuery, setLocalQuery] = useState("");
@@ -262,6 +273,7 @@ export function StorefrontFooter({
     store.pitch?.trim() ||
     "Calidad, confianza y buena atención en cada compra.";
   const storeHomeHref = storeHref(store);
+  const logoColor = useStoreLogoColor(store);
   return (
     <footer
       id="storefront-footer"
@@ -278,7 +290,10 @@ export function StorefrontFooter({
       <div className="mx-auto w-full max-w-[1140px] px-4 pt-10 pb-[96px] sm:px-5 sm:pt-14 sm:pb-[112px]">
         <div className="grid grid-cols-1 gap-y-10 sm:grid-cols-2 sm:gap-x-8 lg:grid-cols-3 lg:gap-y-0">
           <div className="min-w-0">
-            <p className="text-xl font-extrabold tracking-tight text-emerald-700 sm:text-2xl">
+            <p
+              className="text-xl font-extrabold tracking-tight sm:text-2xl"
+              style={{ color: logoColor }}
+            >
               {store.name}
             </p>
             <p className="mt-3 max-w-md text-sm leading-6 text-slate-600">
@@ -351,12 +366,14 @@ function StorefrontChromeBody({
   query,
   onQueryChange,
   onSearchSubmit,
+  onProductSelect,
   children,
 }: Readonly<{
   store: StoreBadge;
   query?: string;
   onQueryChange?: (value: string) => void;
   onSearchSubmit?: (term: string) => void;
+  onProductSelect?: (product: StoreProduct) => void;
   children: ReactNode;
 }>) {
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -396,6 +413,7 @@ function StorefrontChromeBody({
         open={categoriesOpen}
         store={store}
         onClose={() => setCategoriesOpen(false)}
+        onProductSelect={onProductSelect}
       />
       <StoreCommentsModal
         open={commentsOpen}
@@ -411,12 +429,14 @@ export function StorefrontChrome({
   query,
   onQueryChange,
   onSearchSubmit,
+  onProductSelect,
   children,
 }: Readonly<{
   store: StoreBadge;
   query?: string;
   onQueryChange?: (value: string) => void;
   onSearchSubmit?: (term: string) => void;
+  onProductSelect?: (product: StoreProduct) => void;
   children: ReactNode;
 }>) {
   return (
@@ -428,6 +448,7 @@ export function StorefrontChrome({
             query={query}
             onQueryChange={onQueryChange}
             onSearchSubmit={onSearchSubmit}
+            onProductSelect={onProductSelect}
           >
             {children}
           </StorefrontChromeBody>

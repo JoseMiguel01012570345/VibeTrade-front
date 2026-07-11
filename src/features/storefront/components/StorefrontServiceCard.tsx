@@ -72,6 +72,7 @@ export function StorefrontServiceCard({
     .find((u) => u.length > 0);
   const title = s.nombreServicio || s.category || "Servicio";
   const description = s.descripcion;
+  const isUnavailable = s.published === false;
   const ambientStyle = useOfferCardAmbientStyle(
     offerAmbientImageUrl ?? photo ?? null,
     offerAmbient,
@@ -104,7 +105,28 @@ export function StorefrontServiceCard({
       style={ambientStyle.style}
     >
       <div className={`${storefrontOrganicMediaClass} ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}>
-        {onSelect ? (
+        {isUnavailable ? (
+          <div className="relative block h-full w-full">
+            {photo ? (
+              <ProtectedMediaImg
+                src={photo}
+                alt={title}
+                wrapperClassName="h-full w-full"
+                className="h-full w-full object-cover grayscale"
+                onImageLoad={ambientStyle.onImageLoad}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_oklab,var(--organic-sage)_18%,var(--surface))] text-[var(--organic-emerald)]">
+                <Wrench className="h-9 w-9" aria-hidden />
+              </div>
+            )}
+            <div className="absolute inset-0 grid place-items-center bg-black/45">
+              <span className="rounded-lg bg-red-600 px-3 py-1.5 text-center text-sm font-black uppercase tracking-wider text-white shadow-lg">
+                No disponible
+              </span>
+            </div>
+          </div>
+        ) : onSelect ? (
           <button
             type="button"
             onClick={() => onSelect(s)}
@@ -162,7 +184,20 @@ export function StorefrontServiceCard({
           {s.category || "\u00a0"}
         </p>
 
-        {onSelect ? (
+        {isUnavailable ? (
+          <div className="mt-2 block shrink-0">
+            <h3
+              className={`overflow-hidden font-extrabold text-[var(--text)] ${
+                compact
+                  ? "line-clamp-3 h-[4.5rem] text-[1.05rem] leading-6"
+                  : "line-clamp-2 h-12 text-lg leading-6"
+              }`}
+              title={title}
+            >
+              {title}
+            </h3>
+          </div>
+        ) : onSelect ? (
           <button
             type="button"
             onClick={() => onSelect(s)}
@@ -215,7 +250,11 @@ export function StorefrontServiceCard({
         </div>
 
         <div className={`shrink-0 ${compact ? "mt-auto pt-4" : "mt-auto pt-5"}`}>
-          {onSelect ? (
+          {isUnavailable ? (
+            <span className="block w-full rounded-lg border border-[var(--border)] bg-[color-mix(in_oklab,var(--bg)_55%,var(--surface))] px-4 py-2.5 text-center text-sm font-bold text-[var(--muted)]">
+              No disponible
+            </span>
+          ) : onSelect ? (
             <button
               type="button"
               onClick={() => onSelect(s)}

@@ -21,7 +21,7 @@ function TimelineNode({
     <span
       className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition ${
         active
-          ? "vt-storefront-track-node--active border-2 text-white shadow-[0_8px_18px_rgba(5,150,105,0.28)]"
+          ? "vt-storefront-track-node--active border-2 text-white shadow-[0_8px_18px_color-mix(in_oklab,var(--primary)_32%,transparent)]"
           : "border-slate-200 bg-white text-slate-300"
       } ${state === "current" ? "ring-4 ring-[color-mix(in_oklab,rgb(var(--storefront-page-rgb))_28%,transparent)]" : ""}`}
       aria-hidden

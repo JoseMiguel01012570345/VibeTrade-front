@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useState, type MouseEvent, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { X } from "lucide-react";
 import { toast } from "sonner";
@@ -7,6 +7,8 @@ import { ProtectedMediaImg } from "@shared/components/media/ProtectedMediaImg";
 import { ImageLightbox } from "@shared/components/media/ImageLightbox";
 import { CeTransitionModalShell } from "@shared/components/ui/CeTransitionModalShell";
 import { useAppStore } from "@features/auth/logic/useAppStore";
+import { useDominantImageColor } from "@shared/lib/image/useDominantImageColor";
+import { buildStorefrontShellCssVars } from "@shared/lib/image/extractDominantColor";
 import { useMarketStore } from "@features/market/logic/store/useMarketStore";
 import { CATALOG_CURRENCY_CODE } from "@features/market/logic/storeCatalogTypes";
 import type { StoreService } from "@features/market/logic/storeCatalogTypes";
@@ -106,10 +108,10 @@ function ServiceGallery({
               type="button"
               onClick={() => setActiveImage(index)}
               className={cn(
-                "relative overflow-hidden rounded-[4px] border bg-white",
+                "relative overflow-hidden rounded-[4px] border bg-[var(--surface)]",
                 index === activeImage
-                  ? "border-emerald-700 ring-2 ring-emerald-100"
-                  : "border-[#d9d5cf]"
+                  ? "border-[var(--primary)] ring-2 ring-[color-mix(in_oklab,var(--primary)_22%,var(--surface))]"
+                  : "border-[var(--border)]"
               )}
             >
               <ProtectedMediaImg
@@ -158,11 +160,11 @@ function ModalContent({ service, storeName, onClose }: ContentProps) {
   const likeCount = catalogLikeCount ?? offerLikeCount ?? s.offerLikeCount ?? 0;
 
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [localQuantity, setLocalQuantity] = useState(1);
 
   const items = useCartStore((st) => st.items);
   const addItem = useCartStore((st) => st.addItem);
   const setQuantity = useCartStore((st) => st.setQuantity);
+  const removeItem = useCartStore((st) => st.removeItem);
 
   const displayPrice =
     s.fixedPrice && s.fixedPrice > 0
@@ -217,13 +219,24 @@ function ModalContent({ service, storeName, onClose }: ContentProps) {
       warnCurrency();
       return;
     }
-    const qty = Math.max(1, localQuantity);
     if (cartQuantity === 0) {
-      addOne(qty);
+      addOne();
     } else {
-      setQuantity(lineKey, cartQuantity + qty);
+      setQuantity(lineKey, cartQuantity + 1);
       toast.success(`${title} se añadió al carrito.`);
     }
+  }
+
+  function onMinus() {
+    if (cartQuantity <= 0) return;
+    if (cartQuantity <= 1) removeItem(lineKey);
+    else setQuantity(lineKey, cartQuantity - 1);
+  }
+
+  function onPlus() {
+    if (!canPurchase) return;
+    if (cartQuantity === 0) addOne();
+    else setQuantity(lineKey, cartQuantity + 1);
   }
 
   function toggleLikeNow() {
@@ -243,6 +256,66 @@ function ModalContent({ service, storeName, onClose }: ContentProps) {
 
   const description = s.descripcion?.trim() || "";
   const includes = s.incluye?.trim() || "";
+  const excludes = s.noIncluye?.trim() || "";
+  const deliverables = s.entregables?.trim() || "";
+  const intellectualProperty = s.propIntelectual?.trim() || "";
+  const risks = s.riesgos?.enabled ? s.riesgos.items.filter((i) => i.trim()) : [];
+  const dependencies = s.dependencias?.enabled
+    ? s.dependencias.items.filter((i) => i.trim())
+    : [];
+  const warranty = s.garantias?.enabled ? s.garantias.texto?.trim() : "";
+  const recurrenceLabel = (() => {
+    const month = s.recurrenceMonth;
+    const day = s.recurrenceDay;
+    if (!month || !day) return "";
+    const months = [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre",
+    ];
+    return `Se renueva el ${day} de ${months[month - 1] ?? month}`;
+  })();
+
+  function Section({ label, text }: { label: string; text: string }) {
+    if (!text) return null;
+    return (
+      <div className="mt-5">
+        <p className="text-sm font-bold text-slate-700">{label}</p>
+        <p className="mt-1 whitespace-pre-line text-sm leading-6 text-slate-600">
+          {text}
+        </p>
+      </div>
+    );
+  }
+
+  function ListSection({
+    label,
+    items,
+  }: {
+    label: string;
+    items: string[];
+  }) {
+    if (!items.length) return null;
+    return (
+      <div className="mt-5">
+        <p className="text-sm font-bold text-slate-700">{label}</p>
+        <ul className="mt-1 list-inside list-disc space-y-1 text-sm leading-6 text-slate-600">
+          {items.map((item, idx) => (
+            <li key={`${label}-${idx}`}>{item}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -250,7 +323,7 @@ function ModalContent({ service, storeName, onClose }: ContentProps) {
         <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3 sm:px-6">
           <Link
             to={storeHref({ id: s.storeId, name: resolvedStoreName })}
-            className="truncate text-sm font-bold text-[var(--muted)] hover:text-emerald-700 sm:text-base"
+            className="truncate text-sm font-bold text-[var(--muted)] hover:text-[var(--primary)] sm:text-base"
             onClick={onClose}
           >
             {resolvedStoreName || "Tienda"}
@@ -309,6 +382,21 @@ function ModalContent({ service, storeName, onClose }: ContentProps) {
                   </p>
                 </div>
               ) : null}
+
+              <Section label="No incluye" text={excludes} />
+              <ListSection label="Riesgos" items={risks} />
+              <ListSection label="Dependencias" items={dependencies} />
+              <Section label="Entregables" text={deliverables} />
+              <Section label="Garantías" text={warranty} />
+              <Section label="Propiedad intelectual" text={intellectualProperty} />
+              {recurrenceLabel ? (
+                <div className="mt-5">
+                  <p className="text-sm font-bold text-slate-700">Recurrencia</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    {recurrenceLabel}
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -319,16 +407,17 @@ function ModalContent({ service, storeName, onClose }: ContentProps) {
               <div className={`${storefrontOrganicQtyClass} shrink-0`}>
                 <button
                   type="button"
-                  onClick={() => setLocalQuantity((q) => Math.max(1, q - 1))}
+                  onClick={onMinus}
                   className={storefrontOrganicQtyBtnClass}
                   aria-label="Reducir cantidad"
+                  disabled={cartQuantity <= 0}
                 >
                   −
                 </button>
-                <span className="min-w-[1.25rem] shrink-0 text-center tabular-nums">{localQuantity}</span>
+                <span className="min-w-[1.25rem] shrink-0 text-center tabular-nums">{cartQuantity}</span>
                 <button
                   type="button"
-                  onClick={() => setLocalQuantity((q) => q + 1)}
+                  onClick={onPlus}
                   className={storefrontOrganicQtyBtnClass}
                   aria-label="Aumentar cantidad"
                 >
@@ -369,11 +458,18 @@ export function StorefrontServiceModal({
   onClose,
 }: Props) {
   const [lastService, setLastService] = useState<StoreService | null>(service);
+  const colorScheme = useAppStore((s) => s.colorScheme);
+  const displayedService = service || lastService;
+  const photoUrl = (displayedService?.photoUrls ?? [])[0] || null;
+  const imageRgb = useDominantImageColor(photoUrl, true, "storefront-surface");
+  const imageStyle = useMemo<CSSProperties>(
+    () => buildStorefrontShellCssVars(imageRgb, colorScheme) as CSSProperties,
+    [imageRgb, colorScheme],
+  );
   useEffect(() => {
     if (service) setLastService(service);
   }, [service]);
 
-  const displayedService = service || lastService;
   if (!displayedService) return null;
 
   return (
@@ -382,7 +478,11 @@ export function StorefrontServiceModal({
       onClose={onClose}
       size="4xl"
       dismissible
-      panelClassName="max-h-[min(92dvh,800px)] overflow-hidden rounded-2xl bg-[var(--surface)]"
+      panelClassName={cn(
+        "max-h-[min(92dvh,800px)] overflow-hidden rounded-2xl bg-[var(--surface)]",
+        "vt-storefront-ambient store-front-surface",
+      )}
+      panelStyle={imageStyle}
     >
       <ModalContent service={displayedService} storeName={storeName} onClose={onClose} />
     </CeTransitionModalShell>

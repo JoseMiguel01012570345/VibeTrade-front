@@ -97,6 +97,7 @@ export function StorefrontProductCard({
     serviceId: undefined,
   });
   const canPurchase = p.availability.length > 0;
+  const isSoldOut = !canPurchase;
   const inStockDisplay = canPurchase;
 
   const measureLabel = p.model?.trim() ?? "";
@@ -188,7 +189,28 @@ export function StorefrontProductCard({
   return (
     <article className={cn(cardClass, ambientStyle.className)} style={ambientStyle.style}>
       <div className={`${storefrontOrganicMediaClass} ${compact ? "aspect-[1/1]" : "aspect-[4/3]"}`}>
-        {onSelect ? (
+        {isSoldOut ? (
+          <div className="relative block h-full w-full">
+            {p.photoUrls[0] ? (
+              <ProtectedMediaImg
+                src={p.photoUrls[0]}
+                alt={p.name}
+                wrapperClassName="h-full w-full"
+                className="h-full w-full object-cover grayscale"
+                onImageLoad={ambientStyle.onImageLoad}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[color-mix(in_oklab,var(--organic-cream)_35%,var(--surface))] text-sm text-[var(--muted)]">
+                Sin foto
+              </div>
+            )}
+            <div className="absolute inset-0 grid place-items-center bg-black/45">
+              <span className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-black uppercase tracking-wider text-white shadow-lg">
+                Agotado
+              </span>
+            </div>
+          </div>
+        ) : onSelect ? (
           <button
             type="button"
             onClick={() => onSelect(p)}
@@ -246,7 +268,20 @@ export function StorefrontProductCard({
           {p.category || "\u00a0"}
         </p>
 
-        {onSelect ? (
+        {isSoldOut ? (
+          <div className="mt-2 block shrink-0">
+            <h3
+              className={`overflow-hidden font-extrabold text-[var(--text)] ${
+                compact
+                  ? "line-clamp-3 h-[4.5rem] text-[1.05rem] leading-6"
+                  : "line-clamp-2 h-12 text-lg leading-6"
+              }`}
+              title={p.name}
+            >
+              {p.name}
+            </h3>
+          </div>
+        ) : onSelect ? (
           <button
             type="button"
             onClick={() => onSelect(p)}
@@ -307,7 +342,7 @@ export function StorefrontProductCard({
             className={`vt-organic-badge ${inStockDisplay ? "" : "vt-organic-badge--bad"}`}
           >
             <span className="vt-organic-badge-dot" aria-hidden />
-            {inStockDisplay ? "Disponible" : "No disponible"}
+            {inStockDisplay ? "Disponible" : "Agotado"}
           </span>
         </div>
 

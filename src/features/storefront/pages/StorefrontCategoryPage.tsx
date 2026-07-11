@@ -50,10 +50,18 @@ function StorefrontCategoryPageBody({
   store,
   kind,
   categoryParam,
+  selectedProduct,
+  selectedService,
+  setSelectedProduct,
+  setSelectedService,
 }: Readonly<{
   store: StoreBadge;
   kind: CategoryKind;
   categoryParam: string;
+  selectedProduct: StoreProduct | null;
+  selectedService: StoreService | null;
+  setSelectedProduct: (p: StoreProduct | null) => void;
+  setSelectedService: (s: StoreService | null) => void;
 }>) {
   const catalog = useMarketStore((s) => s.storeCatalogs[store.id]);
   const { categories, categoryMetas } = useStoreCategories();
@@ -62,8 +70,6 @@ function StorefrontCategoryPageBody({
 
   const [sort, setSort] = useState<SortMode>(sortOptions[0].value);
   const [page, setPage] = useState(1);
-  const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
-  const [selectedService, setSelectedService] = useState<StoreService | null>(null);
 
   const publishedProducts = useMemo(
     () => (catalog?.products ?? []).filter((p) => p.published),
@@ -233,6 +239,8 @@ export function StorefrontCategoryPage({
   const store = useMarketStore((s) => (storeId ? s.stores[storeId] : undefined));
   const [loadNonce] = useState(0);
   const { detailStatus } = useStorePageDetail(storeId, me.id, loadNonce);
+  const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
+  const [selectedService, setSelectedService] = useState<StoreService | null>(null);
 
   if (!store && isReservedStoreName(storeName ?? "")) {
     return <Navigate to="/home" replace />;
@@ -247,11 +255,15 @@ export function StorefrontCategoryPage({
   }
 
   return (
-    <StorefrontChrome store={store}>
+    <StorefrontChrome store={store} onProductSelect={setSelectedProduct}>
       <StorefrontCategoryPageBody
         store={store}
         kind={kind}
         categoryParam={categoryParam}
+        selectedProduct={selectedProduct}
+        selectedService={selectedService}
+        setSelectedProduct={setSelectedProduct}
+        setSelectedService={setSelectedService}
       />
     </StorefrontChrome>
   );

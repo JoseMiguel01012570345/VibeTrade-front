@@ -74,6 +74,7 @@ type OffcanvasDetailBodyProps = {
   productsLoading: boolean;
   idToSlug: Map<string, string>;
   onNavigate: () => void;
+  onProductSelect?: (product: StoreProduct) => void;
 };
 
 function OffcanvasDetailBody({
@@ -84,6 +85,7 @@ function OffcanvasDetailBody({
   productsLoading,
   idToSlug,
   onNavigate,
+  onProductSelect,
 }: OffcanvasDetailBodyProps) {
   if (!selected) {
     return <p className="text-sm text-slate-500">Selecciona una categoría.</p>;
@@ -159,13 +161,26 @@ function OffcanvasDetailBody({
                   <ul className="flex flex-col gap-2.5 pt-1">
                     {shownProducts.map((p) => (
                       <li key={p.id}>
-                        <Link
-                          to={storeProductHref(store, p.id)}
-                          onClick={onNavigate}
-                          className="block text-sm font-normal leading-snug text-slate-600 transition vt-storefront-accent-text hover:opacity-90"
-                        >
-                          {p.name}
-                        </Link>
+                        {onProductSelect ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onProductSelect(p);
+                              onNavigate();
+                            }}
+                            className="block w-full text-left text-sm font-normal leading-snug text-slate-600 transition vt-storefront-accent-text hover:opacity-90"
+                          >
+                            {p.name}
+                          </button>
+                        ) : (
+                          <Link
+                            to={storeProductHref(store, p.id)}
+                            onClick={onNavigate}
+                            className="block text-sm font-normal leading-snug text-slate-600 transition vt-storefront-accent-text hover:opacity-90"
+                          >
+                            {p.name}
+                          </Link>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -212,10 +227,12 @@ export function StoreCategoriesOffcanvas({
   open,
   onClose,
   store,
+  onProductSelect,
 }: Readonly<{
   open: boolean;
   onClose: () => void;
   store: StoreBadge;
+  onProductSelect?: (product: StoreProduct) => void;
 }>) {
   const mdUp = useMdUp();
   const titleId = useId();
@@ -572,6 +589,7 @@ export function StoreCategoriesOffcanvas({
                 productsLoading={productsLoading}
                 idToSlug={idToSlug}
                 onNavigate={onClose}
+                onProductSelect={onProductSelect}
               />
             </div>
           </div>
@@ -635,6 +653,7 @@ export function StoreCategoriesOffcanvas({
                 productsLoading={productsLoading}
                 idToSlug={idToSlug}
                 onNavigate={onNavigateMobile}
+                onProductSelect={onProductSelect}
               />
             </div>
           </div>

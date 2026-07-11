@@ -18,7 +18,7 @@ export function CheckoutPayButton({
     <button
       type="submit"
       disabled={disabled}
-      className={`vt-storefront-accent-btn flex w-full items-center justify-center gap-2 rounded-[10px] py-4 text-base font-bold text-white shadow-[0_14px_28px_rgba(4,120,87,0.25)] transition disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`vt-storefront-accent-btn flex w-full items-center justify-center gap-2 rounded-[10px] py-4 text-base font-bold text-white shadow-[0_14px_28px_color-mix(in_oklab,var(--primary)_32%,transparent)] transition disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
       <span>{label}</span>
       {!disabled ? <ArrowRight className="h-5 w-5" aria-hidden /> : null}

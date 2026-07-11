@@ -32,10 +32,20 @@ import {
 import { LATEST_PRODUCTS_COUNT } from "../logic/storefrontConstants";
 import type { CategoryMeta } from "../logic/storefrontTypes";
 
-function StorefrontCatalogBody({ store }: Readonly<{ store: StoreBadge }>) {
+function StorefrontCatalogBody({
+  store,
+  selectedProduct,
+  selectedService,
+  setSelectedProduct,
+  setSelectedService,
+}: Readonly<{
+  store: StoreBadge;
+  selectedProduct: StoreProduct | null;
+  selectedService: StoreService | null;
+  setSelectedProduct: (p: StoreProduct | null) => void;
+  setSelectedService: (s: StoreService | null) => void;
+}>) {
   const catalog = useMarketStore((s) => s.storeCatalogs[store.id]);
-  const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
-  const [selectedService, setSelectedService] = useState<StoreService | null>(null);
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const nav = useNavigate();
@@ -242,6 +252,8 @@ export function StorefrontPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [query, setQuery] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<StoreProduct | null>(null);
+  const [selectedService, setSelectedService] = useState<StoreService | null>(null);
 
   useEffect(() => {
     setQuery(searchParams.get("q") ?? "");
@@ -276,8 +288,15 @@ export function StorefrontPage() {
       query={query}
       onQueryChange={setQuery}
       onSearchSubmit={handleSearchSubmit}
+      onProductSelect={setSelectedProduct}
     >
-      <StorefrontCatalogBody store={store} />
+      <StorefrontCatalogBody
+        store={store}
+        selectedProduct={selectedProduct}
+        selectedService={selectedService}
+        setSelectedProduct={setSelectedProduct}
+        setSelectedService={setSelectedService}
+      />
     </StorefrontChrome>
   );
 }
