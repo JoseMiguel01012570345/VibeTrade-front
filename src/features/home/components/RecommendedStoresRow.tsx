@@ -121,7 +121,7 @@ export function RecommendedStoresRow({
         )}
       >
         {!hideTitle ? (
-          <p className={titleClass}>Tiendas para vos</p>
+          <p className={titleClass}>Tiendas para ti</p>
         ) : null}
         <div
           ref={scrollerRef}
@@ -140,7 +140,7 @@ export function RecommendedStoresRow({
 
   return (
     <div className={cn("min-w-0", embedded ? "mb-3 md:mb-3.5" : "mb-4")}>
-      <p className={titleClass}>Tiendas para vos</p>
+      <p className={titleClass}>Tiendas para ti</p>
       <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
         <button
           type="button"

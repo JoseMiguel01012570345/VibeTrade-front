@@ -202,13 +202,33 @@ export function HomePage() {
     return () => cancelAnimationFrame(id);
   }, [recommendationHomeBulks]);
 
+  const [isMobile, setIsMobile] = useState(globalThis.innerWidth <= 768);
+
   useEffect(() => {
-    const mq = globalThis.matchMedia("(min-width: 768px)");
-    const onChange = () => {
-      if (mq.matches) setHomeStoresSheetOpen(false);
+    const el = viewportRef.current;
+    const updateIsMobile = () => {
+      const width = el?.clientWidth ?? globalThis.innerWidth;
+      setIsMobile(width <= 768);
+      console.log("updateIsMobile", width);
     };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+
+    updateIsMobile();
+
+    let observer: ResizeObserver | null = null;
+    if (el && typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(updateIsMobile);
+      observer.observe(el);
+    } else {
+      globalThis.addEventListener("resize", updateIsMobile);
+    }
+
+    return () => {
+      if (observer) {
+        observer.disconnect();
+      } else {
+        globalThis.removeEventListener("resize", updateIsMobile);
+      }
+    };
   }, []);
 
   const runMergePendingBag = useCallback(
@@ -422,10 +442,7 @@ export function HomePage() {
     prefetchBusy && cardCount > 0 && !showFeedOverlayLoader;
 
   const sheetStoreIds = cardCount > 0 ? displayBulks[cardIdx]?.storeIds ?? [] : [];
-  const showStoresMobileFab =
-    cardCount > 0 &&
-    !showFeedOverlayLoader &&
-    sheetStoreIds.length > 0;
+  const showStoresMobileFab = !showFeedOverlayLoader && isMobile
 
   return (
     <div className="store-front-surface vt-home-page vt-home-page--glass relative flex min-h-0 w-full flex-1 flex-col overflow-hidden overscroll-none bg-[var(--bg)] text-[var(--text)]">
@@ -463,7 +480,9 @@ export function HomePage() {
                     >
                       <div className={`flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-t-[24px] p-3 sm:p-4 md:flex-row md:items-stretch md:gap-0 ${organicSlideBgClass}`}>
                         {bulk.storeIds.length > 0 ? (
-                          <aside className="hidden min-h-0 w-full max-h-[min(42vh,380px)] shrink-0 flex-col border-b border-[color-mix(in_oklab,var(--organic-cream)_45%,var(--border))] pb-3 md:flex md:max-h-none md:h-auto md:w-[min(100%,300px)] md:border-b-0 md:border-r md:border-[color-mix(in_oklab,var(--organic-cream)_45%,var(--border))] md:pb-0 md:pr-3">
+                          <aside 
+                          className="hidden min-h-0 w-full max-h-[min(42vh,380px)] shrink-0 flex-col border-b border-[color-mix(in_oklab,var(--organic-cream)_45%,var(--border))] pb-3 md:flex md:max-h-none md:h-auto md:w-[min(100%,300px)] md:border-b-0 md:border-r md:border-[color-mix(in_oklab,var(--organic-cream)_45%,var(--border))] md:pb-0 md:pr-3"
+                          >
                             <RecommendedStoresRow
                               embedded
                               orientation="vertical"

@@ -120,7 +120,7 @@ export function HomeStoresMobileSheet({
                   id="vt-home-stores-sheet-title"
                   className="truncate text-[15px] font-extrabold tracking-[-0.02em] text-[var(--text)]"
                 >
-                  Tiendas para vos
+                  Tiendas para ti
                 </p>
                 <p className="mt-0.5 text-[12px] text-[var(--muted)]">
                   {storeIds.length}{" "}
